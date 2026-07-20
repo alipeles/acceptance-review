@@ -2,7 +2,9 @@ import json
 
 import pytest
 
-from acceptance.cli import main
+from acceptance.cli import main, run_check
+from acceptance.config import RunConfig
+from acceptance.review_store import ReviewStore
 
 
 def test_check_json_emits_empty_structured_review(git_repo, fixture_task_path, capsys):
@@ -141,3 +143,36 @@ def test_check_fails_cleanly_on_unresolvable_revision(git_repo, fixture_task_pat
 def test_check_requires_all_flags(fixture_task_path):
     with pytest.raises(SystemExit):
         main(["check", "--task", fixture_task_path])
+
+
+def test_run_check_accepts_an_explicit_repo_independent_of_cwd(
+    git_repo_elsewhere, fixture_task_path, tmp_path
+):
+    """M-B0.2: the runner passes each case's repo as data, not via chdir."""
+    review = run_check(
+        task=fixture_task_path,
+        base=git_repo_elsewhere["base"],
+        head=git_repo_elsewhere["head"],
+        config=RunConfig(),
+        store=ReviewStore(tmp_path / "reviews"),
+        repo=git_repo_elsewhere["path"],
+    )
+
+    assert review.reviewed_revision == git_repo_elsewhere["head"]
+    assert review.change_set.base_revision == git_repo_elsewhere["base"]
+
+
+def test_run_check_rejects_a_revision_missing_from_the_given_repo(
+    git_repo_elsewhere, fixture_task_path, tmp_path
+):
+    from acceptance.cli import CliError
+
+    with pytest.raises(CliError):
+        run_check(
+            task=fixture_task_path,
+            base="not-a-real-revision",
+            head=git_repo_elsewhere["head"],
+            config=RunConfig(),
+            store=ReviewStore(tmp_path / "reviews"),
+            repo=git_repo_elsewhere["path"],
+        )

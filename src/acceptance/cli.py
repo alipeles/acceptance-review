@@ -27,13 +27,14 @@ class CliError(Exception):
     """A user-facing CLI failure (bad input), not a bug."""
 
 
-def _resolve_revision(revision: str) -> str:
+def _resolve_revision(revision: str, repo: Path | None = None) -> str:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--verify", f"{revision}^{{commit}}"],
             capture_output=True,
             text=True,
             check=True,
+            cwd=repo,
         )
     except FileNotFoundError as exc:
         raise CliError("git executable not found") from exc
@@ -42,25 +43,38 @@ def _resolve_revision(revision: str) -> str:
     return result.stdout.strip()
 
 
-def _read_task(task_path: str) -> str:
+def _read_task(task_path: str, repo: Path | None = None) -> str:
     path = Path(task_path)
+    if repo is not None and not path.is_absolute():
+        path = repo / path
     if not path.is_file():
         raise CliError(f"task file not found: {task_path!r}")
     return path.read_text()
 
 
 def run_check(
-    task: str, base: str, head: str, config: RunConfig, store: ReviewStore
+    task: str,
+    base: str,
+    head: str,
+    config: RunConfig,
+    store: ReviewStore,
+    repo: Path | None = None,
 ) -> Review:
     """Walking-skeleton pipeline: ingest → build empty Review → persist.
+
+    `repo` is the git working tree to run against; it defaults to the current
+    directory (the CLI's own §16 invocation has no --repo flag and always
+    means "here"). The benchmark runner (M-B0.2) passes each case's own repo
+    explicitly instead, since it processes many cases without changing the
+    process's working directory.
 
     The obligation/coverage/test analysis that consumes config.build_client()
     lands in M1+. What is real here is the end-to-end shape: a task and a
     revision range in, a well-formed persisted Review out.
     """
-    _read_task(task)
-    base_sha = _resolve_revision(base)
-    head_sha = _resolve_revision(head)
+    _read_task(task, repo=repo)
+    base_sha = _resolve_revision(base, repo=repo)
+    head_sha = _resolve_revision(head, repo=repo)
     review = Review(
         mode="local",
         reviewed_revision=head_sha,
