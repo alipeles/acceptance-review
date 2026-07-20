@@ -1,9 +1,10 @@
 """Review-state data model (§15).
 
 Typed, persisted review state: obligations, mappings, findings, and evidence
-tiers are explicit fields, not free text (CLAUDE.md invariant). `EvidenceTier`
-here is ordering-only; M0.3 adds the rule that a component may only raise a
-tier it is authorized to produce. Benchmark case is out of scope (M-B0).
+tiers are explicit fields, not free text (CLAUDE.md invariant). Findings also
+record which component produced them and are validated against that
+component's authorized tier ceiling (evidence_tier.py, M0.3). Benchmark case
+is out of scope (M-B0).
 
 Schemas are pydantic models: validation and round-trip (de)serialization come
 from the library rather than hand-rolled per class.
@@ -11,20 +12,27 @@ from the library rather than hand-rolled per class.
 
 from __future__ import annotations
 
-from enum import IntEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from acceptance.evidence_tier import Component, EvidenceTier, authorize_tier
 
-class EvidenceTier(IntEnum):
-    """§8.1 evidence ladder, weakest to strongest."""
-
-    BUILDER_CLAIM = 1
-    STATIC = 2
-    COVERAGE_CONFIRMED = 3
-    DEFECT_KILLED = 4
-    CI_CONFIRMED = 5
+__all__ = [
+    "Component",
+    "EvidenceTier",
+    "Project",
+    "TaskSource",
+    "MandateInterpretation",
+    "BuilderDeclaration",
+    "ChangeSet",
+    "Obligation",
+    "TestEvidence",
+    "ExecutionEvidence",
+    "Link",
+    "Finding",
+    "Review",
+]
 
 
 class _Model(BaseModel):
@@ -137,12 +145,14 @@ class Link(_Model):
 
 class Finding(_Model):
     """Typed and linked (CLAUDE.md invariant): cannot be built without an
-    evidence tier and at least one link target."""
+    evidence tier and at least one link target, and the producing component
+    must be authorized for the claimed tier (§8.1, M0.3)."""
 
     type: str
     severity: str
     description: str
     evidence_tier: EvidenceTier
+    produced_by: Component
     links: list[Link]
     related_obligation: str | None = None
     supporting_evidence: list[str] = Field(default_factory=list)
@@ -155,6 +165,11 @@ class Finding(_Model):
         if not value:
             raise ValueError("Finding requires at least one link target")
         return value
+
+    @model_validator(mode="after")
+    def _require_authorized_tier(self) -> "Finding":
+        authorize_tier(self.produced_by, self.evidence_tier)
+        return self
 
 
 class Review(_Model):

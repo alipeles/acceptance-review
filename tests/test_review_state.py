@@ -5,6 +5,7 @@ import pytest
 from acceptance.review_state import (
     BuilderDeclaration,
     ChangeSet,
+    Component,
     EvidenceTier,
     ExecutionEvidence,
     Finding,
@@ -150,6 +151,7 @@ def test_finding_round_trips():
         severity="high",
         description="Test asserts only that a result exists.",
         evidence_tier=EvidenceTier.STATIC,
+        produced_by=Component.STATIC_ANALYZER,
         links=[Link(kind="test", ref="tests/test_bond.py:42")],
         related_obligation="Coupons use index + contractual spread.",
         supporting_evidence=["tests/test_bond.py::test_coupon_uses_spread"],
@@ -166,6 +168,7 @@ def test_finding_requires_evidence_tier():
             severity="high",
             description="...",
             evidence_tier=None,
+            produced_by=Component.STATIC_ANALYZER,
             links=[Link(kind="test", ref="tests/test_bond.py:42")],
         )
 
@@ -177,6 +180,7 @@ def test_finding_requires_at_least_one_link():
             severity="high",
             description="...",
             evidence_tier=EvidenceTier.STATIC,
+            produced_by=Component.STATIC_ANALYZER,
             links=[],
         )
 
@@ -187,6 +191,7 @@ def test_finding_cannot_be_constructed_without_evidence_tier_arg():
             type="weak_test_evidence",
             severity="high",
             description="...",
+            produced_by=Component.STATIC_ANALYZER,
             links=[Link(kind="test", ref="tests/test_bond.py:42")],
         )
 
@@ -198,14 +203,20 @@ def test_finding_cannot_be_constructed_without_links_arg():
             severity="high",
             description="...",
             evidence_tier=EvidenceTier.STATIC,
+            produced_by=Component.STATIC_ANALYZER,
         )
 
 
-def test_evidence_tier_ordering():
-    assert EvidenceTier.BUILDER_CLAIM < EvidenceTier.STATIC
-    assert EvidenceTier.STATIC < EvidenceTier.COVERAGE_CONFIRMED
-    assert EvidenceTier.COVERAGE_CONFIRMED < EvidenceTier.DEFECT_KILLED
-    assert EvidenceTier.DEFECT_KILLED < EvidenceTier.CI_CONFIRMED
+def test_finding_requires_authorized_producer():
+    with pytest.raises(ValueError):
+        Finding(
+            type="weak_test_evidence",
+            severity="high",
+            description="A static analyzer cannot claim a defect-killed tier.",
+            evidence_tier=EvidenceTier.DEFECT_KILLED,
+            produced_by=Component.STATIC_ANALYZER,
+            links=[Link(kind="test", ref="tests/test_bond.py:42")],
+        )
 
 
 def test_review_round_trips_empty():
@@ -228,6 +239,7 @@ def test_review_round_trips_populated():
         severity="high",
         description="...",
         evidence_tier=EvidenceTier.STATIC,
+        produced_by=Component.STATIC_ANALYZER,
         links=[Link(kind="code", ref="src/bond.py:10")],
     )
     review = Review(
@@ -259,6 +271,7 @@ def test_review_evidence_tier_summary_is_derived_not_stored():
         severity="high",
         description="...",
         evidence_tier=EvidenceTier.STATIC,
+        produced_by=Component.STATIC_ANALYZER,
         links=[Link(kind="code", ref="src/bond.py:10")],
     )
     review = Review(
