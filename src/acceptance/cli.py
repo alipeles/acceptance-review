@@ -2,9 +2,10 @@
 
 Parses `check --task --base --head` plus the M0.5 determinism controls
 (`--model`, `--mode`, `--seed`, `--temperature`), validates its inputs, and
-exits cleanly with an empty structured Review stamped with how it was produced.
-Requirement interpretation, diffing, and the §16 report land in later
-milestones; the pipeline that actually consumes the model client is M0.6.
+runs the M0.6 walking-skeleton pipeline: ingest task + revisions → write an
+empty but well-formed Review to the state store → render the §16 report.
+Requirement interpretation, real diffing, and test analysis land in later
+milestones; the sections render present-and-empty until then.
 """
 
 from __future__ import annotations
@@ -17,7 +18,9 @@ from pathlib import Path
 
 from acceptance.config import DEFAULT_MODEL, RunConfig
 from acceptance.llm import Mode
-from acceptance.review_state import Review
+from acceptance.report import render_report
+from acceptance.review_state import ChangeSet, Review
+from acceptance.review_store import ReviewStore
 
 
 class CliError(Exception):
@@ -46,18 +49,27 @@ def _read_task(task_path: str) -> str:
     return path.read_text()
 
 
-def run_check(task: str, base: str, head: str, config: RunConfig) -> Review:
+def run_check(
+    task: str, base: str, head: str, config: RunConfig, store: ReviewStore
+) -> Review:
+    """Walking-skeleton pipeline: ingest → build empty Review → persist.
+
+    The obligation/coverage/test analysis that consumes config.build_client()
+    lands in M1+. What is real here is the end-to-end shape: a task and a
+    revision range in, a well-formed persisted Review out.
+    """
     _read_task(task)
-    _resolve_revision(base)
+    base_sha = _resolve_revision(base)
     head_sha = _resolve_revision(head)
-    # No-op pipeline for now: the analysis that consumes config.build_client()
-    # is M0.6+. What M0.5 delivers is that the review records how it was
-    # produced, so two runs of the same input are provably reproducible.
-    return Review(
+    review = Review(
         mode="local",
         reviewed_revision=head_sha,
         provenance=config.provenance(),
+        # Diff endpoints only; real change extraction (files, diffs) is M2.
+        change_set=ChangeSet(base_revision=base_sha, head_revision=head_sha),
     )
+    store.write(review)
+    return review
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -84,6 +96,11 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument(
         "--temperature", type=float, default=0.0, help="Model temperature (default: 0.0)."
     )
+    check.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the structured Review as JSON instead of the §16 report.",
+    )
 
     return parser
 
@@ -100,11 +117,14 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
         )
         try:
-            review = run_check(args.task, args.base, args.head, config)
+            review = run_check(args.task, args.base, args.head, config, ReviewStore())
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)
             return 1
-        print(json.dumps(review.to_dict(), indent=2))
+        if args.json:
+            print(json.dumps(review.to_dict(), indent=2))
+        else:
+            print(render_report(review))
         return 0
 
     parser.error(f"unknown command: {args.command}")
