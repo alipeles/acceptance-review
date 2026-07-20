@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Independent acceptance review for AI-assisted software changes."
 requires-python = ">=3.10"
 readme = "README.md"
+dependencies = ["pydantic>=2"]
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]

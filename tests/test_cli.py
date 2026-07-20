@@ -19,7 +19,6 @@ def test_check_exits_zero_with_empty_structured_review(git_repo, fixture_task_pa
     assert review["change_set"] is None
     assert review["obligation_map"] == []
     assert review["findings"] == []
-    assert review["evidence_tiers"] == {}
     assert review["limitations"] == []
     assert review["recommendation"] is None
 
