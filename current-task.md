@@ -1,5 +1,5 @@
 ## Deliverable
-an evidence-tier enum (builder-claim < static < coverage-confirmed < defect-killed < CI-confirmed) with an ordering and a rule that a tier can only be raised by the component authorized to produce it.
+a thin layer that issues schema-constrained model calls, validates responses against the target schema, and records every prompt/response for replay.
 
 ## Acceptance
-attempting to set `defect-killed` from the static analyzer raises; ordering comparisons match §8.1.
+a recorded transcript replays a full run with zero live model calls; a malformed model response is rejected with a typed error, not silently accepted.
