@@ -1,5 +1,5 @@
 ## Deliverable
-configurable seed/temperature and a replay/record mode.
+end-to-end no-op pipeline: ingest task + diff → write an empty but well-formed Review to the state store → render an empty CLI report.
 
 ## Acceptance
-two consecutive recorded runs over the same input produce byte-identical review state.
+the §16 CLI shell renders with all sections present and empty; no unhandled exceptions.
