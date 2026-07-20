@@ -1,0 +1,46 @@
+name: CI
+
+# Runs on every push and pull request to main, and on demand from the Actions tab.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Get the code onto the runner.
+      - uses: actions/checkout@v4
+
+      # 2. Install the Python the project targets (see plan §3.1).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 3. Install the project if it declares how to be installed yet.
+      #    Harmless no-op while the repo is still just docs + plan.
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f pyproject.toml ]; then pip install -e ".[dev]" || pip install -e . ; fi
+          if [ -f requirements.txt ]; then pip install -r requirements.txt ; fi
+
+      # 4. Lint. Non-blocking until ruff is configured.
+      - name: Lint (ruff)
+        run: |
+          pip install ruff
+          ruff check . || echo "ruff not configured yet — skipping"
+
+      # 5. Tests. pytest exit code 5 means "no tests collected"; treat that as
+      #    success so CI stays green until the first tests land (M0).
+      - name: Tests (pytest)
+        run: |
+          pip install pytest
+          set +e
+          pytest -q
+          code=$?
+          if [ $code -eq 5 ]; then echo "No tests yet — OK"; exit 0; fi
+          exit $code

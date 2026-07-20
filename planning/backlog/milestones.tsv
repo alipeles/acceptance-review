@@ -1,0 +1,14 @@
+1	M0 — Foundations & walking skeleton	Depends on: —. Review-state store + evidence-tier primitives + LLM-orchestration harness must precede all typed findings.
+2	M-B0 — Benchmark harness & case schema	Depends on: M0. Same data shapes as the checker; define scoring before building capabilities so each is measured as it lands.
+3	M-B5a — Archetype scenarios #1–9	Depends on: M-B0. Hand-built ground truth to drive M1–M7 test-first; seeds the archetype benchmark layer.
+4	M1 — Requirement interpretation (task → obligations)	Depends on: M0. First real capability; obligations are the spine everything maps to.
+5	M2 — Git change analysis	Depends on: M0. Provides the diff/source context M3–M5 consume.
+6	M3 — Implementation-coverage analysis	Depends on: M1, M2. Needs obligations + change set.
+7	M4 — Test discovery & mapping	Depends on: M2, M1. Needs change set + obligations.
+8	M5 — Test-semantic analysis (core)	Depends on: M4. The core hard capability; consumes the test↔obligation map.
+9	M6 — Builder-declaration comparison (optional input)	Depends on: M1, M3, M5. Compares declaration against obligations/diff/tests.
+10	M7 — Completion result, recommendations, CLI output	Depends on: M3, M5, M6. Assembles the static pipeline into a usable result. Static checker feature-complete here.
+11	M-B1…M-B4 — Real-change benchmark datasets + accuracy report	Depends on: M7, M-B0. Needs the full static pipeline to score; produces headline accuracy figures.
+12	M8 — Optional execution tier	Depends on: M5, M7. Elevates tiers; can only confirm what the static pipeline already maps.
+13	M-B5b + M-B6 — Execution archetype + user-correction capture	Depends on: M8. Execution-confirmed archetype; capture corrections as labeled cases.
+14	M9 — Hardening & Stage-1 exit	Depends on: all. Meet the Stage-1 quality bar; gate to Stage 2.

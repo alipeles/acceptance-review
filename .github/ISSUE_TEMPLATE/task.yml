@@ -1,0 +1,43 @@
+name: Development task
+description: A single agent-ready task from the Stage-1 plan (or a follow-up).
+title: "Mx.y: <short title>"
+labels: ["stage-1"]
+body:
+  - type: input
+    id: task_id
+    attributes:
+      label: Task ID
+      description: The plan ID, e.g. M0.3 or M-B1.
+      placeholder: M0.3
+    validations:
+      required: true
+  - type: textarea
+    id: inputs
+    attributes:
+      label: Inputs
+      description: What this task consumes (prior tasks, spec sections, data).
+    validations:
+      required: true
+  - type: textarea
+    id: deliverable
+    attributes:
+      label: Deliverable
+      description: What must exist when this is done.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: The concrete, verifiable check. Mark [human] if it needs human judgment.
+    validations:
+      required: true
+  - type: dropdown
+    id: track
+    attributes:
+      label: Track
+      options:
+        - checker
+        - benchmark
+    validations:
+      required: true

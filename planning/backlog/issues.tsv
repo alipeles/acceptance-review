@@ -1,0 +1,52 @@
+M0.1	M0.1: Repo scaffold & CLI entrypoint	M0 — Foundations & walking skeleton	stage-1,track:checker	M0.1.md
+M0.2	M0.2: Review-state data model	M0 — Foundations & walking skeleton	stage-1,track:checker	M0.2.md
+M0.3	M0.3: Evidence-tier primitives	M0 — Foundations & walking skeleton	stage-1,track:checker	M0.3.md
+M0.4	M0.4: LLM-orchestration harness	M0 — Foundations & walking skeleton	stage-1,track:checker	M0.4.md
+M0.5	M0.5: Determinism controls	M0 — Foundations & walking skeleton	stage-1,track:checker	M0.5.md
+M0.6	M0.6: Walking skeleton	M0 — Foundations & walking skeleton	stage-1,track:checker	M0.6.md
+M-B0.1	M-B0.1: Benchmark-case schema	M-B0 — Benchmark harness & case schema	stage-1,track:benchmark	M-B0.1.md
+M-B0.2	M-B0.2: Checker-under-test runner	M-B0 — Benchmark harness & case schema	stage-1,track:benchmark	M-B0.2.md
+M-B0.3	M-B0.3: Scoring & report	M-B0 — Benchmark harness & case schema	stage-1,track:benchmark	M-B0.3.md
+M-B0.4	M-B0.4: Variance disclosure	M-B0 — Benchmark harness & case schema	stage-1,track:benchmark	M-B0.4.md
+M-B5a.1	M-B5a.1: Fixture repos	M-B5a — Archetype scenarios #1–9	stage-1,track:benchmark	M-B5a.1.md
+M-B5a.2	M-B5a.2: Ground-truth labels	M-B5a — Archetype scenarios #1–9	stage-1,track:benchmark,human-gate	M-B5a.2.md
+M1.1	M1.1: Task-file ingestion	M1 — Requirement interpretation (task → obligations)	stage-1,track:checker	M1.1.md
+M1.2	M1.2: Obligation decomposition	M1 — Requirement interpretation (task → obligations)	stage-1,track:checker	M1.2.md
+M1.3	M1.3: Explicit / inferred / ambiguous labeling	M1 — Requirement interpretation (task → obligations)	stage-1,track:checker	M1.3.md
+M1.4	M1.4: Decomposition scoring hook	M1 — Requirement interpretation (task → obligations)	stage-1,track:checker	M1.4.md
+M2.1	M2.1: Revision & diff extraction	M2 — Git change analysis	stage-1,track:checker	M2.1.md
+M2.2	M2.2: Surrounding-code retrieval	M2 — Git change analysis	stage-1,track:checker	M2.2.md
+M2.3	M2.3: Working-tree mode	M2 — Git change analysis	stage-1,track:checker	M2.3.md
+M3.1	M3.1: Obligation-to-diff classification	M3 — Implementation-coverage analysis	stage-1,track:checker	M3.1.md
+M3.2	M3.2: Unrequested-change detection	M3 — Implementation-coverage analysis	stage-1,track:checker	M3.2.md
+M3.3	M3.3: Coverage scoring hook	M3 — Implementation-coverage analysis	stage-1,track:checker	M3.3.md
+M4.1	M4.1: Test discovery	M4 — Test discovery & mapping	stage-1,track:checker	M4.1.md
+M4.2	M4.2: Test-to-obligation mapping	M4 — Test discovery & mapping	stage-1,track:checker	M4.2.md
+M5.1	M5.1: Per-test structural extraction	M5 — Test-semantic analysis (core)	stage-1,track:checker	M5.1.md
+M5.2	M5.2: Discrimination judgment	M5 — Test-semantic analysis (core)	stage-1,track:checker	M5.2.md
+M5.3	M5.3: Strength classification	M5 — Test-semantic analysis (core)	stage-1,track:checker	M5.3.md
+M5.4	M5.4: Weak-evidence detectors	M5 — Test-semantic analysis (core)	stage-1,track:checker	M5.4.md
+M5.5	M5.5: Semantic scoring hook	M5 — Test-semantic analysis (core)	stage-1,track:checker	M5.5.md
+M6.1	M6.1: Declaration ingestion	M6 — Builder-declaration comparison (optional input)	stage-1,track:checker	M6.1.md
+M6.2	M6.2: Declaration-vs-evidence comparison	M6 — Builder-declaration comparison (optional input)	stage-1,track:checker	M6.2.md
+M7.1	M7.1: Structured recommendations	M7 — Completion result, recommendations, CLI output	stage-1,track:checker	M7.1.md
+M7.2	M7.2: Completion verdict	M7 — Completion result, recommendations, CLI output	stage-1,track:checker	M7.2.md
+M7.3	M7.3: Next-instruction generator	M7 — Completion result, recommendations, CLI output	stage-1,track:checker	M7.3.md
+M7.4	M7.4: CLI report	M7 — Completion result, recommendations, CLI output	stage-1,track:checker	M7.4.md
+M7.5	M7.5: Incremental re-run	M7 — Completion result, recommendations, CLI output	stage-1,track:checker	M7.5.md
+M-B1	M-B1: Ready-made labeled instances	M-B1…M-B4 — Real-change benchmark datasets + accuracy report	stage-1,track:benchmark,human-gate	M-B1.md
+M-B2	M-B2: Real merged PRs + follow-up-fix labels	M-B1…M-B4 — Real-change benchmark datasets + accuracy report	stage-1,track:benchmark,human-gate	M-B2.md
+M-B3	M-B3: Offline mutants for test-strength labels	M-B1…M-B4 — Real-change benchmark datasets + accuracy report	stage-1,track:benchmark	M-B3.md
+M-B4	M-B4: Real agent-output layer	M-B1…M-B4 — Real-change benchmark datasets + accuracy report	stage-1,track:benchmark	M-B4.md
+M-B*.report	M-B*.report: Accuracy report	M-B1…M-B4 — Real-change benchmark datasets + accuracy report	stage-1,track:benchmark	M-Bstar.report.md
+M8.1	M8.1: Feasibility probe	M8 — Optional execution tier	stage-1,track:checker	M8.1.md
+M8.2	M8.2: Sandbox runner	M8 — Optional execution tier	stage-1,track:checker	M8.2.md
+M8.3	M8.3: Coverage-confirmed tier	M8 — Optional execution tier	stage-1,track:checker	M8.3.md
+M8.4	M8.4: Targeted mutation (defect-killed tier)	M8 — Optional execution tier	stage-1,track:checker	M8.4.md
+M8.5	M8.5: Close-the-loop confirmation	M8 — Optional execution tier	stage-1,track:checker	M8.5.md
+M-B5b	M-B5b: Execution-confirmed archetype	M-B5b + M-B6 — Execution archetype + user-correction capture	stage-1,track:benchmark	M-B5b.md
+M-B6	M-B6: User-correction capture	M-B5b + M-B6 — Execution archetype + user-correction capture	stage-1,track:benchmark	M-B6.md
+M9.1	M9.1: Cost/latency pass	M9 — Hardening & Stage-1 exit	stage-1,track:checker	M9.1.md
+M9.2	M9.2: Confidence-language audit	M9 — Hardening & Stage-1 exit	stage-1,track:checker,human-gate	M9.2.md
+M9.3	M9.3: Demo-scenario acceptance run	M9 — Hardening & Stage-1 exit	stage-1,track:checker	M9.3.md
+M9.4	M9.4: Headline accuracy sign-off	M9 — Hardening & Stage-1 exit	stage-1,track:checker,human-gate	M9.4.md

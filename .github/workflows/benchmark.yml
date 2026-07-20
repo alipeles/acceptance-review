@@ -1,0 +1,20 @@
+name: Benchmark (accuracy report)
+
+# Placeholder for the Stage-1 validation harness (plan M-B*.report).
+# Manual-dispatch only for now — it will grow into the single-command accuracy
+# report (recall / precision / decomposition / mapping / agreement).
+on:
+  workflow_dispatch:
+
+jobs:
+  accuracy-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run accuracy report
+        run: |
+          echo "Benchmark harness not built yet (see milestone M-B0 / M-B*.report)."
+          echo "When ready, this step will run the single-command accuracy report."

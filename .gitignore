@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Env / secrets
+.env
+.env.*
+
+# Recorded model transcripts / local run artifacts (plan M0.4/M0.5)
+.acceptance/cache/
+*.local
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
