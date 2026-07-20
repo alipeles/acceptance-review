@@ -3,8 +3,9 @@
 Typed, persisted review state: obligations, mappings, findings, and evidence
 tiers are explicit fields, not free text (CLAUDE.md invariant). Findings also
 record which component produced them and are validated against that
-component's authorized tier ceiling (evidence_tier.py, M0.3). Benchmark case
-is out of scope (M-B0).
+component's authorized tier ceiling (evidence_tier.py, M0.3). The Benchmark
+case schema (M-B0.1) lives in benchmark/case.py and reuses Review here as its
+reviewer-output slot rather than duplicating it.
 
 Schemas are pydantic models: validation and round-trip (de)serialization come
 from the library rather than hand-rolled per class.
@@ -14,9 +15,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from acceptance.evidence_tier import Component, EvidenceTier, authorize_tier
+from acceptance.model_base import PersistableModel as _Model
 from acceptance.serialization import canonical_json
 
 __all__ = [
@@ -35,19 +37,6 @@ __all__ = [
     "ReviewProvenance",
     "Review",
 ]
-
-
-class _Model(BaseModel):
-    """Base for all review-state schemas: strict fields, uniform persistence."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    def to_dict(self) -> dict:
-        return self.model_dump(mode="json")
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls.model_validate(data)
 
 
 class Project(_Model):

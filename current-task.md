@@ -1,5 +1,5 @@
 ## Deliverable
-end-to-end no-op pipeline: ingest task + diff → write an empty but well-formed Review to the state store → render an empty CLI report.
+a case type carrying source (dataset/PR/mutant/agent/archetype), inputs, ground-truth labels (gaps, decomposition, mappings, evidence classes), and slots for reviewer output + score.
 
 ## Acceptance
-the §16 CLI shell renders with all sections present and empty; no unhandled exceptions.
+a case serializes/deserializes; a case missing ground-truth labels fails validation.
