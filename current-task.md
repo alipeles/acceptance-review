@@ -1,5 +1,5 @@
 ## Deliverable
-a case type carrying source (dataset/PR/mutant/agent/archetype), inputs, ground-truth labels (gaps, decomposition, mappings, evidence classes), and slots for reviewer output + score.
+a runner that feeds a case's inputs through the current checker and captures its Review output against the case.
 
 ## Acceptance
-a case serializes/deserializes; a case missing ground-truth labels fails validation.
+running the empty skeleton over an archetype case yields a scored (all-miss) result without error.

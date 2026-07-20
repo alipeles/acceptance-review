@@ -15,9 +15,7 @@ def _rev_parse(repo: Path, revision: str) -> str:
     return result.stdout.strip()
 
 
-@pytest.fixture
-def git_repo(tmp_path, monkeypatch):
-    repo = tmp_path / "repo"
+def _make_git_repo(repo: Path) -> dict:
     repo.mkdir()
     _git(repo, "init", "-q")
     _git(repo, "config", "user.email", "test@example.com")
@@ -33,8 +31,21 @@ def git_repo(tmp_path, monkeypatch):
     _git(repo, "commit", "-q", "-m", "head")
     head_sha = _rev_parse(repo, "HEAD")
 
-    monkeypatch.chdir(repo)
     return {"path": repo, "base": base_sha, "head": head_sha}
+
+
+@pytest.fixture
+def git_repo(tmp_path, monkeypatch):
+    info = _make_git_repo(tmp_path / "repo")
+    monkeypatch.chdir(info["path"])
+    return info
+
+
+@pytest.fixture
+def git_repo_elsewhere(tmp_path):
+    """A git repo the test process is NOT chdir'd into — proves callers that
+    pass an explicit repo path don't depend on the current working directory."""
+    return _make_git_repo(tmp_path / "repo")
 
 
 @pytest.fixture
