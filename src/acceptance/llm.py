@@ -33,6 +33,8 @@ from typing import Any, Callable, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from acceptance.serialization import canonical_json
+
 DEFAULT_TRANSCRIPT_ROOT = Path(".acceptance/cache/transcripts")
 
 ResponseModelT = TypeVar("ResponseModelT", bound=BaseModel)
@@ -63,18 +65,13 @@ class TranscriptNotFoundError(LLMError):
     """REPLAY mode found no recorded transcript for a request."""
 
 
-def _canonical_json(payload: Any) -> str:
-    """Stable JSON: sorted keys, no incidental whitespace."""
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-
-
 def request_key(request: dict) -> str:
     """Content-address a request.
 
     The response schema is part of the key: changing a `response_model`
     invalidates its old transcripts instead of replaying a stale shape.
     """
-    return hashlib.sha256(_canonical_json(request).encode("utf-8")).hexdigest()
+    return hashlib.sha256(canonical_json(request).encode("utf-8")).hexdigest()
 
 
 class TranscriptStore:
@@ -95,7 +92,7 @@ class TranscriptStore:
     def write(self, key: str, record: dict) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
         # Canonical form: identical records serialize byte-identically (M0.5).
-        self.path_for(key).write_text(_canonical_json(record) + "\n")
+        self.path_for(key).write_text(canonical_json(record) + "\n")
 
 
 def _default_completion_fn(**kwargs: Any) -> Any:
