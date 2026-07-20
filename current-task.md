@@ -1,5 +1,5 @@
 ## Deliverable
-a runner that feeds a case's inputs through the current checker and captures its Review output against the case.
+scorers for gap-detection (recall), false-alarm (precision), obligation-decomposition accuracy, test-to-obligation mapping accuracy, and evidence-classification agreement; a single-command report over a case set.
 
 ## Acceptance
-running the empty skeleton over an archetype case yields a scored (all-miss) result without error.
+on a synthetic set with known labels, computed metrics match hand-calculated expected values.
