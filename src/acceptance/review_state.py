@@ -17,6 +17,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from acceptance.evidence_tier import Component, EvidenceTier, authorize_tier
+from acceptance.serialization import canonical_json
 
 __all__ = [
     "Component",
@@ -31,6 +32,7 @@ __all__ = [
     "ExecutionEvidence",
     "Link",
     "Finding",
+    "ReviewProvenance",
     "Review",
 ]
 
@@ -172,9 +174,24 @@ class Finding(_Model):
         return self
 
 
+class ReviewProvenance(_Model):
+    """How a review was produced (§13.6 trustworthiness). Stored so a reader
+    can tell what determinism controls were in force — a fixed-seed replay is
+    reproducible in a way a live sampled run is not, and M-B0.4's variance
+    disclosure reads this. Mode is stored as its string value, not the harness
+    `Mode` enum, so the data model stays independent of the LLM harness.
+    """
+
+    determinism_mode: Literal["record", "replay"]
+    model: str
+    temperature: float
+    seed: int | None = None
+
+
 class Review(_Model):
     mode: str
     reviewed_revision: str
+    provenance: ReviewProvenance | None = None
     mandate: MandateInterpretation | None = None
     declaration: BuilderDeclaration | None = None
     change_set: ChangeSet | None = None
@@ -182,6 +199,12 @@ class Review(_Model):
     findings: list[Finding] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
     recommendation: str | None = None
+
+    def to_canonical_json(self) -> str:
+        """Byte-stable persisted form: identical review state serializes to
+        identical bytes across runs (M0.5 acceptance). Distinct from the
+        human-readable CLI report rendered in M0.6."""
+        return canonical_json(self.to_dict())
 
     def evidence_tier_summary(self) -> dict[str, int]:
         """Tier counts derived from obligations/findings, not stored — the
