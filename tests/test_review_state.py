@@ -6,8 +6,10 @@ from acceptance.review_state import (
     BuilderDeclaration,
     ChangeSet,
     Component,
+    DiffHunk,
     EvidenceTier,
     ExecutionEvidence,
+    FileChange,
     Finding,
     Link,
     MandateInterpretation,
@@ -83,10 +85,23 @@ def test_change_set_round_trips():
     change_set = ChangeSet(
         base_revision="abc123",
         head_revision="def456",
-        changed_files=["src/foo.py"],
-        source_diff="--- a/src/foo.py\n+++ b/src/foo.py\n",
-        test_diff="",
-        config_dependency_changes=[],
+        files=[
+            FileChange(
+                path="src/foo.py",
+                status="modified",
+                category="source",
+                hunks=[
+                    DiffHunk(
+                        header="@@ -1,2 +1,2 @@",
+                        old_start=1,
+                        old_lines=2,
+                        new_start=1,
+                        new_lines=2,
+                        content=" a\n-b\n+c",
+                    )
+                ],
+            )
+        ],
     )
     assert _round_trip(change_set) == change_set
 
