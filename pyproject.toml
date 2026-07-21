@@ -22,6 +22,12 @@ where = ["src"]
 [tool.ruff]
 target-version = "py310"
 line-length = 100
+# Archetype fixtures deliberately contain weak/imperfect code (circular tests,
+# superficial assertions); they are data, not code held to our own standards.
+extend-exclude = ["tests/fixtures"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# tests/fixtures holds archetype fixture data (its own task/base/head trees and
+# test_*.py files) that materialize into throwaway repos — never our own suite.
+addopts = "--ignore=tests/fixtures"

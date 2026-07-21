@@ -1,0 +1,6 @@
+{
+  "scenario": 1,
+  "name": "missed-obligation",
+  "intended_pytest": "pass",
+  "summary": "The task lists four formatting rules; the implementation delivers three and silently omits the fourth (returns shown in parentheses). The suite is green because no test covers the missed rule."
+}

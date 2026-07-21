@@ -1,0 +1,6 @@
+{
+  "scenario": 5,
+  "name": "circular-expected-result",
+  "intended_pytest": "pass",
+  "summary": "The test builds its expected value by calling the same production helper (_apply_tax) that the function under test uses. A bug in that helper would corrupt both sides of the assertion equally, so the test can never fail."
+}
