@@ -41,7 +41,14 @@ from acceptance.benchmark.case import (
 )
 from acceptance.benchmark.scoring import score_case_set
 from acceptance.evidence_tier import Component, EvidenceTier
-from acceptance.review_state import Finding, Link, Obligation, Review, ReviewProvenance
+from acceptance.review_state import (
+    Finding,
+    Link,
+    Obligation,
+    ObligationType,
+    Review,
+    ReviewProvenance,
+)
 
 
 def _inputs() -> BenchmarkCaseInputs:
@@ -61,9 +68,9 @@ def _provenance() -> ReviewProvenance:
 
 def _reviewer_obligation(description: str, test_evidence: list[str]) -> Obligation:
     return Obligation(
+        id=description.lower(),
         description=description,
-        type="behavior",
-        source_text="...",
+        type=ObligationType.FUNCTIONAL,
         importance="critical",
         explicit=True,
         observable_behavior="...",

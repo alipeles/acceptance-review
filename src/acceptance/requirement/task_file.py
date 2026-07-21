@@ -17,6 +17,9 @@ from markdown_it import MarkdownIt
 from markdown_it.tree import SyntaxTreeNode
 
 from acceptance.model_base import PersistableModel
+from acceptance.source_ref import TextSpan
+
+__all__ = ["TextSpan", "ParsedTaskFile", "parse_task_file"]
 
 # §7.1 section headings, normalized (lowercased). A file may add other
 # sections; unknown ones are ignored rather than rejected.
@@ -24,14 +27,6 @@ _CONSTRAINTS = {"constraints"}
 _COMPLETION = {"completion expectations"}
 _EXCLUSIONS = {"scope exclusions", "exclusions"}
 _TASK = {"task"}
-
-
-class TextSpan(PersistableModel):
-    """A slice of the source: `text` is exactly `source[start:end]`."""
-
-    text: str
-    start: int
-    end: int
 
 
 class ParsedTaskFile(PersistableModel):

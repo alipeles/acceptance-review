@@ -1,5 +1,13 @@
 from acceptance.report import render_report
-from acceptance.review_state import Component, EvidenceTier, Finding, Link, Obligation, Review
+from acceptance.review_state import (
+    Component,
+    EvidenceTier,
+    Finding,
+    Link,
+    Obligation,
+    ObligationType,
+    Review,
+)
 
 
 def test_empty_review_renders_the_full_shell():
@@ -27,9 +35,9 @@ def test_populated_review_lists_obligations_and_findings():
         reviewed_revision="abc",
         obligation_map=[
             Obligation(
+                id="coupons-use-spread",
                 description="Coupons use index + spread.",
-                type="behavior",
-                source_text="...",
+                type=ObligationType.FUNCTIONAL,
                 importance="critical",
                 explicit=True,
                 observable_behavior="...",

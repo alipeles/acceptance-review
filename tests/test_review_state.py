@@ -12,10 +12,12 @@ from acceptance.review_state import (
     Link,
     MandateInterpretation,
     Obligation,
+    ObligationType,
     Project,
     Review,
     TaskSource,
     TestEvidence,
+    TextSpan,
 )
 
 
@@ -91,12 +93,13 @@ def test_change_set_round_trips():
 
 def test_obligation_round_trips_with_tier():
     obligation = Obligation(
+        id="coupons-use-spread",
         description="Coupons use index + contractual spread.",
-        type="behavior",
-        source_text="Add floating-rate bonds using an index curve plus contractual spread.",
+        type=ObligationType.FUNCTIONAL,
         importance="critical",
         explicit=True,
         observable_behavior="calculate_coupon returns index + spread",
+        source_spans=[TextSpan(text="index curve plus contractual spread", start=20, end=55)],
         achieved_evidence_tier=EvidenceTier.STATIC,
         test_evidence=["test_coupon_uses_spread"],
     )
@@ -105,9 +108,9 @@ def test_obligation_round_trips_with_tier():
 
 def test_obligation_round_trips_without_tier():
     obligation = Obligation(
+        id="fixed-rate-unchanged",
         description="Fixed-rate results unchanged.",
-        type="regression",
-        source_text="Existing fixed-rate behavior must not change.",
+        type=ObligationType.REGRESSION,
         importance="critical",
         explicit=True,
         observable_behavior="fixed-rate coupons identical to pre-change output",
@@ -226,9 +229,9 @@ def test_review_round_trips_empty():
 
 def test_review_round_trips_populated():
     obligation = Obligation(
+        id="coupons-use-spread",
         description="Coupons use index + contractual spread.",
-        type="behavior",
-        source_text="...",
+        type=ObligationType.FUNCTIONAL,
         importance="critical",
         explicit=True,
         observable_behavior="...",
@@ -258,9 +261,9 @@ def test_review_round_trips_populated():
 
 def test_review_evidence_tier_summary_is_derived_not_stored():
     obligation = Obligation(
+        id="obligation-1",
         description="...",
-        type="behavior",
-        source_text="...",
+        type=ObligationType.FUNCTIONAL,
         importance="critical",
         explicit=True,
         observable_behavior="...",
