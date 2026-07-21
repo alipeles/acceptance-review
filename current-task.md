@@ -1,10 +1,10 @@
 # Task
-Convert the parsed task file into discrete, typed obligations the checker can review the implementation against.
+Label each obligation as explicit or reasonable-inferred, and surface material ambiguities as open questions instead of inventing obligations.
 
 ## Constraints
-- Type each obligation using the §7.3 set: functional, boundary, error-handling, invariant, regression, compatibility, explanation/observability, docs/config, human-review.
-- Give each obligation a stable id and link it to the source span in the task text it derives from.
-- Produce obligations through a schema-constrained model call recorded for replay; capability tests run off the recorded transcript with no live calls.
+- Flag each obligation as explicit (directly stated in the task) or reasonable-inferred.
+- When a requirement is materially underspecified, emit an open question needing user judgment rather than a fabricated obligation.
+- Link each open question to the ambiguous source text.
 
 ## Completion expectations
 - Implementation
