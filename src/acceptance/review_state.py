@@ -13,6 +13,7 @@ from the library rather than hand-rolled per class.
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
@@ -20,10 +21,13 @@ from pydantic import Field, field_validator, model_validator
 from acceptance.evidence_tier import Component, EvidenceTier, authorize_tier
 from acceptance.model_base import PersistableModel as _Model
 from acceptance.serialization import canonical_json
+from acceptance.source_ref import TextSpan
 
 __all__ = [
     "Component",
     "EvidenceTier",
+    "TextSpan",
+    "ObligationType",
     "Project",
     "TaskSource",
     "MandateInterpretation",
@@ -37,6 +41,20 @@ __all__ = [
     "ReviewProvenance",
     "Review",
 ]
+
+
+class ObligationType(str, Enum):
+    """§7.3 obligation types."""
+
+    FUNCTIONAL = "functional"
+    BOUNDARY = "boundary"
+    ERROR_HANDLING = "error_handling"
+    INVARIANT = "invariant"
+    REGRESSION = "regression"
+    COMPATIBILITY = "compatibility"
+    EXPLANATION_OBSERVABILITY = "explanation_observability"
+    DOCS_CONFIG = "docs_config"
+    HUMAN_REVIEW = "human_review"
 
 
 class Project(_Model):
@@ -91,12 +109,20 @@ class ChangeSet(_Model):
 
 
 class Obligation(_Model):
+    """A discrete, typed obligation derived from the task (§7.3, §9.1; M1.2).
+
+    `id` is a stable slug so a reviewer obligation joins to the benchmark's
+    ground-truth obligation by id. `source_spans` link it to the exact task
+    text it derives from (M1.1). `explicit` is refined into explicit /
+    reasonable-inferred / open-question by M1.3."""
+
+    id: str
     description: str
-    type: str
-    source_text: str
-    importance: str
+    type: ObligationType
+    importance: Literal["critical", "normal"]
     explicit: bool
     observable_behavior: str
+    source_spans: list[TextSpan] = Field(default_factory=list)
     achieved_evidence_tier: EvidenceTier | None = None
     test_evidence: list[str] = Field(default_factory=list)
 
