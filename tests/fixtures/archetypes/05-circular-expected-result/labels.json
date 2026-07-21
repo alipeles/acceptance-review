@@ -1,0 +1,34 @@
+{
+  "obligations": [
+    {
+      "id": "add-tax",
+      "description": "Return subtotal plus tax (subtotal times tax_rate)",
+      "explicit": true,
+      "evidence_class": "nominally_supported",
+      "evidence_rationale": "The candidate test is present and targets order_total, but its expected value is derived from the same production helper (_apply_tax), so it can never fail - every mapped mutant survives (structurally unfailable / circular).",
+      "candidate_tests": ["test_orders.py::test_total_applies_tax"]
+    },
+    {
+      "id": "round-2",
+      "description": "Round the total to two decimals",
+      "explicit": true,
+      "evidence_class": "nominally_supported",
+      "evidence_rationale": "The same circular test can never fail, so a rounding mutant survives it too. A present, relevant test that kills zero mapped mutants.",
+      "candidate_tests": ["test_orders.py::test_total_applies_tax"]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "gap-add-tax",
+      "description": "The expected value is built from the same production helper (_apply_tax) the function uses, so a wrong tax computation would corrupt both sides equally and the test can never fail",
+      "obligation_id": "add-tax",
+      "severity": "high"
+    },
+    {
+      "id": "gap-round-2",
+      "description": "The same circular test can never fail, so it does not establish the two-decimal rounding either",
+      "obligation_id": "round-2",
+      "severity": "medium"
+    }
+  ]
+}

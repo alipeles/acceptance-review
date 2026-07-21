@@ -1,0 +1,34 @@
+{
+  "obligations": [
+    {
+      "id": "select-rate",
+      "description": "Select the index rate for the given date via rate_source.rate_for(date)",
+      "explicit": true,
+      "evidence_class": "nominally_supported",
+      "evidence_rationale": "The candidate test targets coupon but mocks rate_for to a constant, so a mutant that selects the wrong rate for the date survives it. A present, relevant test that kills zero mapped mutants (behavior mocked out).",
+      "candidate_tests": ["test_coupon.py::test_coupon_uses_selected_rate"]
+    },
+    {
+      "id": "compute-coupon",
+      "description": "Return nominal times the selected rate, rounded to four decimals",
+      "explicit": true,
+      "evidence_class": "partially_supported",
+      "evidence_rationale": "The test asserts nominal times rate (1000*0.05=50), so a wrong-multiply mutant is killed; but rounding to four decimals is not exercised, so those mutants survive - kills some, misses some.",
+      "candidate_tests": ["test_coupon.py::test_coupon_uses_selected_rate"]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "gap-mocked-rate",
+      "description": "rate_for is mocked to a constant regardless of date, so the test never establishes that the rate selected corresponds to the date - the exact behavior under review is mocked away",
+      "obligation_id": "select-rate",
+      "severity": "high"
+    },
+    {
+      "id": "gap-compute-coupon-rounding",
+      "description": "The multiplication is checked (1000*0.05=50) but rounding to four decimals is never exercised, so a wrong rounding would pass - partial coverage, acceptance only with that caveat",
+      "obligation_id": "compute-coupon",
+      "severity": "low"
+    }
+  ]
+}

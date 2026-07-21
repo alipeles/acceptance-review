@@ -1,0 +1,21 @@
+{
+  "obligations": [
+    {
+      "id": "round-nearest",
+      "description": "Round to the nearest integer",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Covered by both tests; 2.3->2 together with the tie cases pins nearest-integer rounding.",
+      "candidate_tests": ["test_rounding.py::test_rounds_to_nearest", "test_rounding.py::test_ties_round_to_even"]
+    },
+    {
+      "id": "ties-to-even",
+      "description": "Ties go to the even neighbour (banker's rounding)",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "test_ties_round_to_even asserts 2.5->2 and 3.5->4, which distinguishes banker's rounding from round-half-up.",
+      "candidate_tests": ["test_rounding.py::test_ties_round_to_even"]
+    }
+  ],
+  "gaps": []
+}

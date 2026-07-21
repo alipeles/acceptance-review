@@ -4,11 +4,9 @@ from acceptance.benchmark.case import (
     BenchmarkCase,
     BenchmarkCaseInputs,
     BenchmarkCaseSource,
-    GroundTruthDecompositionItem,
-    GroundTruthEvidenceClass,
     GroundTruthGap,
     GroundTruthLabels,
-    GroundTruthMapping,
+    GroundTruthObligation,
 )
 from acceptance.benchmark.scoring import score_case
 from acceptance.review_state import Review
@@ -25,14 +23,31 @@ def _archetype_case(**overrides) -> BenchmarkCase:
             head_revision="def456",
         ),
         ground_truth=GroundTruthLabels(
-            gaps=[GroundTruthGap(description="Active filters not applied", obligation_ref="filters")],
-            decomposition=[
-                GroundTruthDecompositionItem(description="CSV generation", explicit=True),
-                GroundTruthDecompositionItem(description="Active filters applied", explicit=True),
+            obligations=[
+                GroundTruthObligation(
+                    id="csv-generation",
+                    description="CSV generation",
+                    explicit=True,
+                    evidence_class="strongly_supported",
+                    evidence_rationale="The test asserts the generated CSV exactly.",
+                    candidate_tests=["test_csv.py::test_basic"],
+                ),
+                GroundTruthObligation(
+                    id="filters",
+                    description="Active filters applied",
+                    explicit=True,
+                    evidence_class="unsupported",
+                    evidence_rationale="No test exercises filtering.",
+                    candidate_tests=[],
+                ),
             ],
-            mappings=[GroundTruthMapping(test_id="test_csv_basic", obligation_ref="csv-generation")],
-            evidence_classes=[
-                GroundTruthEvidenceClass(obligation_ref="csv-generation", classification="strongly_supported")
+            gaps=[
+                GroundTruthGap(
+                    id="gap-filters",
+                    description="Active filters not applied",
+                    obligation_id="filters",
+                    severity="high",
+                )
             ],
         ),
     )
@@ -47,9 +62,7 @@ def test_score_case_raises_without_reviewer_output():
 
 
 def test_empty_review_yields_an_all_miss_score():
-    case = _archetype_case(
-        reviewer_output=Review(mode="local", reviewed_revision="def456")
-    )
+    case = _archetype_case(reviewer_output=Review(mode="local", reviewed_revision="def456"))
 
     score = score_case(case)
 
@@ -57,22 +70,33 @@ def test_empty_review_yields_an_all_miss_score():
     assert score.gap_recall == 0.0
     assert score.decomposition_accuracy == 0.0
     assert score.mapping_accuracy == 0.0
-    # evidence_agreement is a real 0.0 too: Finding has no §9.3 classification
-    # field yet (M5.3), so nothing can ever be reported for this metric.
+    # evidence_agreement is a real 0.0: a reviewer Obligation has no §9.3
+    # classification field yet (M5.3), so nothing can be reported for it.
     assert score.evidence_agreement == 0.0
     # Nothing was reported to be right or wrong about: undefined, not 0.0/1.0.
     assert score.gap_precision is None
 
 
-def test_recall_and_precision_are_none_when_ground_truth_is_empty():
+def test_metrics_are_none_when_their_ground_truth_is_empty():
+    # An obligation with no candidate test and a case with no gaps: mapping has
+    # no ground-truth edges, and gaps have none, so both are undefined.
     case = _archetype_case(
-        ground_truth=GroundTruthLabels(gaps=[GroundTruthGap(description="only gaps present")]),
+        ground_truth=GroundTruthLabels(
+            obligations=[
+                GroundTruthObligation(
+                    id="only", description="only obligation", explicit=True,
+                    evidence_class="unsupported", evidence_rationale="No test at all.",
+                    candidate_tests=[],
+                )
+            ],
+            gaps=[],
+        ),
         reviewer_output=Review(mode="local", reviewed_revision="def456"),
     )
 
     score = score_case(case)
 
-    # No ground-truth decomposition/mappings/evidence_classes to score against.
-    assert score.decomposition_accuracy is None
-    assert score.mapping_accuracy is None
-    assert score.evidence_agreement is None
+    assert score.gap_recall is None  # no labeled gaps
+    assert score.mapping_accuracy is None  # no candidate_tests edges
+    assert score.decomposition_accuracy == 0.0  # one obligation, none reported
+    assert score.evidence_agreement == 0.0  # one obligation with an evidence class

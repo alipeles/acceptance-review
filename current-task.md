@@ -1,5 +1,5 @@
 ## Deliverable
-nine minimal Git fixture repos, each a real task file + base/head diff + tests reproducing the archetype (missed obligation, qualifier missed, superficial test, non-discriminating input, circular expected result, mocked-out behavior, declaration mismatch, unrequested change, revision cycle).
+a labeled benchmark case per fixture with the expected finding(s) and expected obligation decomposition.
 
 ## Acceptance
-each fixture builds; `git diff base head` is non-empty; pytest runs (pass/fail as the archetype intends).
+each case validates; labels reviewed for correctness `[human]`.

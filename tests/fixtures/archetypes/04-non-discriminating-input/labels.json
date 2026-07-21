@@ -1,0 +1,48 @@
+{
+  "obligations": [
+    {
+      "id": "daily-rate",
+      "description": "Daily rate is monthly_price divided by days_in_month",
+      "explicit": true,
+      "evidence_class": "nominally_supported",
+      "evidence_rationale": "The candidate test asserts prorate(30,15,30)==15.0, but the plausible defect (a hard-coded price/30) gives the same answer for a 30-day month, so that mapped mutant survives - a present, relevant test that kills zero mapped mutants for this rule.",
+      "candidate_tests": ["test_billing.py::test_half_of_a_month"]
+    },
+    {
+      "id": "charge-days-used",
+      "description": "Charge for the days used at the daily rate",
+      "explicit": true,
+      "evidence_class": "partially_supported",
+      "evidence_rationale": "A mutant that ignores days_used gives 30 not 15, so the test kills it; but boundaries (0 days, a full month) are untested, so those mutants survive - kills some, misses some.",
+      "candidate_tests": ["test_billing.py::test_half_of_a_month"]
+    },
+    {
+      "id": "round-2",
+      "description": "Round the result to two decimals",
+      "explicit": true,
+      "evidence_class": "nominally_supported",
+      "evidence_rationale": "The candidate test exercises prorate (covering the round() call) but its asserted result (15.0) is a whole number, so a mutant that changes the rounding survives it. A present, relevant test that kills zero mapped mutants.",
+      "candidate_tests": ["test_billing.py::test_half_of_a_month"]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "gap-daily-rate",
+      "description": "The only test uses a 30-day month, where price/days_in_month and a hard-coded price/30 give the same answer, so it cannot establish that the rate uses days_in_month",
+      "obligation_id": "daily-rate",
+      "severity": "medium"
+    },
+    {
+      "id": "gap-round-2",
+      "description": "The asserted result (15.0) is a whole number, so rounding to two decimals is never exercised; a wrong rounding rule would pass",
+      "obligation_id": "round-2",
+      "severity": "low"
+    },
+    {
+      "id": "gap-charge-days-used",
+      "description": "Only one input (15 of 30 days) is exercised, with no boundaries (0 days, a full month), so a violation at those boundaries would pass - partial coverage, acceptance only with that caveat",
+      "obligation_id": "charge-days-used",
+      "severity": "low"
+    }
+  ]
+}

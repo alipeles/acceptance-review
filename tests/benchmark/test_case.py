@@ -7,11 +7,9 @@ from acceptance.benchmark.case import (
     BenchmarkCaseInputs,
     BenchmarkCaseSource,
     BenchmarkScore,
-    GroundTruthDecompositionItem,
-    GroundTruthEvidenceClass,
     GroundTruthGap,
     GroundTruthLabels,
-    GroundTruthMapping,
+    GroundTruthObligation,
 )
 from acceptance.review_state import Review
 
@@ -20,6 +18,40 @@ def _round_trip(instance):
     cls = type(instance)
     persisted = json.loads(json.dumps(instance.to_dict()))
     return cls.from_dict(persisted)
+
+
+def _obligation(**overrides) -> GroundTruthObligation:
+    defaults = dict(
+        id="csv-generation",
+        description="CSV generation",
+        explicit=True,
+        evidence_class="strongly_supported",
+        evidence_rationale="The test asserts the generated CSV exactly.",
+        candidate_tests=["test_csv.py::test_basic"],
+    )
+    defaults.update(overrides)
+    return GroundTruthObligation(**defaults)
+
+
+def _labels(**overrides) -> GroundTruthLabels:
+    defaults = dict(
+        obligations=[
+            _obligation(),
+            _obligation(id="filters", description="Active filters applied",
+                        evidence_class="unsupported",
+                        evidence_rationale="No test exercises filtering.", candidate_tests=[]),
+        ],
+        gaps=[
+            GroundTruthGap(
+                id="gap-filters",
+                description="Active filters not applied",
+                obligation_id="filters",
+                severity="high",
+            )
+        ],
+    )
+    defaults.update(overrides)
+    return GroundTruthLabels(**defaults)
 
 
 def _case(**overrides) -> BenchmarkCase:
@@ -32,9 +64,7 @@ def _case(**overrides) -> BenchmarkCase:
             base_revision="abc123",
             head_revision="def456",
         ),
-        ground_truth=GroundTruthLabels(
-            gaps=[GroundTruthGap(description="Active filters not applied")]
-        ),
+        ground_truth=_labels(),
     )
     defaults.update(overrides)
     return BenchmarkCase(**defaults)
@@ -53,7 +83,17 @@ def test_benchmark_case_round_trips_with_reviewer_output_and_score():
     assert _round_trip(case) == case
 
 
-def test_case_missing_ground_truth_entirely_fails_validation():
+def test_labels_round_trip():
+    labels = _labels()
+    assert _round_trip(labels) == labels
+
+
+def test_case_with_no_obligations_fails_validation():
+    with pytest.raises(ValueError):
+        GroundTruthLabels(obligations=[], gaps=[])
+
+
+def test_case_requires_ground_truth():
     with pytest.raises(ValueError):
         BenchmarkCase(
             case_id="archetype-01",
@@ -67,36 +107,51 @@ def test_case_missing_ground_truth_entirely_fails_validation():
         )
 
 
-def test_empty_ground_truth_labels_fails_validation():
-    with pytest.raises(ValueError):
-        GroundTruthLabels()
-
-
-@pytest.mark.parametrize(
-    "kwargs",
-    [
-        {"gaps": [GroundTruthGap(description="Filter behavior unsupported")]},
-        {"decomposition": [GroundTruthDecompositionItem(description="CSV export", explicit=True)]},
-        {"mappings": [GroundTruthMapping(test_id="test_csv", obligation_ref="csv-export")]},
-        {
-            "evidence_classes": [
-                GroundTruthEvidenceClass(obligation_ref="csv-export", classification="unsupported")
-            ]
-        },
-    ],
-)
-def test_each_ground_truth_category_alone_is_sufficient(kwargs):
-    labels = GroundTruthLabels(**kwargs)
-    assert _round_trip(labels) == labels
-
-
-def test_ground_truth_evidence_classification_rejects_unknown_value():
+def test_gap_referencing_unknown_obligation_fails_validation():
     with pytest.raises(ValueError):
         GroundTruthLabels(
-            evidence_classes=[
-                GroundTruthEvidenceClass(obligation_ref="csv-export", classification="bogus")
-            ]
+            obligations=[_obligation()],
+            gaps=[GroundTruthGap(id="g1", description="x", obligation_id="does-not-exist")],
         )
+
+
+def test_gap_with_no_obligation_id_is_allowed():
+    labels = GroundTruthLabels(
+        obligations=[_obligation()],
+        gaps=[GroundTruthGap(id="g1", description="a declaration overclaim", obligation_id=None)],
+    )
+    assert labels.gaps[0].obligation_id is None
+
+
+def test_duplicate_obligation_ids_fail_validation():
+    with pytest.raises(ValueError):
+        GroundTruthLabels(obligations=[_obligation(), _obligation()])
+
+
+def test_duplicate_gap_ids_fail_validation():
+    with pytest.raises(ValueError):
+        GroundTruthLabels(
+            obligations=[_obligation()],
+            gaps=[
+                GroundTruthGap(id="g1", description="a"),
+                GroundTruthGap(id="g1", description="b"),
+            ],
+        )
+
+
+def test_empty_candidate_test_id_fails_validation():
+    with pytest.raises(ValueError):
+        GroundTruthLabels(obligations=[_obligation(candidate_tests=[""])])
+
+
+def test_missing_evidence_rationale_fails_validation():
+    with pytest.raises(ValueError):
+        GroundTruthLabels(obligations=[_obligation(evidence_rationale="  ")])
+
+
+def test_unknown_evidence_classification_is_rejected():
+    with pytest.raises(ValueError):
+        _obligation(evidence_class="bogus")
 
 
 def test_benchmark_case_source_round_trips():

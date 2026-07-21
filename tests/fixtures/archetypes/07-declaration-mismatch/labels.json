@@ -1,0 +1,20 @@
+{
+  "obligations": [
+    {
+      "id": "lookup",
+      "description": "Return the user record matching user_id from the users mapping",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "The test asserts the exact record for an existing id; a wrong lookup would fail.",
+      "candidate_tests": ["test_users.py::test_existing_id_returns_the_record"]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "gap-declaration-overclaim",
+      "description": "The declaration claims get_user raises KeyError with a clear message on a missing id, but the implementation returns None and no test exercises the missing-id path. This is a declaration-vs-code discrepancy, not a task obligation (the task never asked for missing-id handling), so it has no obligation_id",
+      "obligation_id": null,
+      "severity": "medium"
+    }
+  ]
+}
