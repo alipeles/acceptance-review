@@ -1,9 +1,10 @@
 # Task
-Wire the decomposition output (M1.2/M1.3) into the benchmark's decomposition-accuracy metric (M-B0.3), so archetype cases report a real decomposition-accuracy number.
+Extract the Git change set between a base and head revision: changed files, a source-vs-test partition, hunk-level diffs, and config/dependency-file changes.
 
 ## Constraints
-- Decomposing a case only needs its task text, not a materialized repo — the hook should not require the full check pipeline's git/diff machinery.
-- Stay replay-first: the scoring hook's own tests inject a recorded model response, no live calls.
+- Categorize every changed file as source, test, config, or other.
+- Represent diffs at hunk granularity, not as one flattened string per side.
+- Correctly detect added, modified, deleted, and renamed files.
 
 ## Completion expectations
 - Implementation
