@@ -74,7 +74,8 @@ FLOATING_RATE_RESPONSE = {
             "observable_behavior": "the result reports the fixing date and spread used",
             "source_quote": "using an index curve plus contractual spread",
         },
-    ]
+    ],
+    "open_questions": [],
 }
 
 
@@ -166,7 +167,8 @@ def test_archetype_1_includes_the_omitted_obligation():
                 "observable_behavior": "a return shows quantity and total in parentheses",
                 "source_quote": "For returns (a negative quantity), show the quantity and the line total in",
             },
-        ]
+        ],
+        "open_questions": [],
     }
 
     obligations = decompose(parsed, _client_returning(response)).obligations
@@ -199,7 +201,8 @@ def test_duplicate_ids_are_made_unique():
                 "observable_behavior": "...",
                 "source_quote": "contractual spread",
             },
-        ]
+        ],
+        "open_questions": [],
     }
     obligations = decompose(parsed, _client_returning(response)).obligations
     assert [o.id for o in obligations] == ["dup", "dup-2"]

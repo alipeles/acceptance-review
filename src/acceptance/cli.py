@@ -17,8 +17,10 @@ import sys
 from pathlib import Path
 
 from acceptance.config import DEFAULT_MODEL, RunConfig
-from acceptance.llm import Mode
+from acceptance.llm import LLMError, Mode
 from acceptance.report import render_report
+from acceptance.requirement.obligations import Decomposition, decompose
+from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import ChangeSet, Review
 from acceptance.review_store import ReviewStore
 
@@ -86,6 +88,51 @@ def run_check(
     return review
 
 
+def run_decompose(task: str, config: RunConfig) -> Decomposition:
+    """Parse a task file and decompose it into obligations + open questions.
+
+    Uses a live model call (in RECORD mode) — the dogfooding path for M1.2/M1.3.
+    """
+    parsed = parse_task_file(_read_task(task))
+    return decompose(parsed, config.build_client())
+
+
+def render_decomposition(result: Decomposition) -> str:
+    lines = ["Obligations:"]
+    if result.obligations:
+        for o in result.obligations:
+            flag = "explicit" if o.explicit else "inferred"
+            lines.append(f"  [{o.type.value}/{flag}] {o.id}: {o.description}")
+    else:
+        lines.append("  (none)")
+    lines.append("")
+    lines.append("Open questions:")
+    if result.open_questions:
+        for q in result.open_questions:
+            lines.append(f"  ? {q.id}: {q.question}")
+    else:
+        lines.append("  (none)")
+    return "\n".join(lines)
+
+
+def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None:
+    parser.add_argument(
+        "--model",
+        default=DEFAULT_MODEL,
+        help=f"Model to route via LiteLLM (default: {DEFAULT_MODEL}).",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=[m.value for m in Mode],
+        default=default_mode,
+        help="record (live call on cache miss) or replay (transcripts only).",
+    )
+    parser.add_argument("--seed", type=int, default=None, help="Model seed (determinism).")
+    parser.add_argument(
+        "--temperature", type=float, default=0.0, help="Model temperature (default: 0.0)."
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="acceptance")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -94,26 +141,22 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--task", required=True, help="Path to the task file.")
     check.add_argument("--base", required=True, help="Base Git revision.")
     check.add_argument("--head", required=True, help="Head Git revision.")
-    check.add_argument(
-        "--model",
-        default=DEFAULT_MODEL,
-        help=f"Model to route via LiteLLM (default: {DEFAULT_MODEL}).",
-    )
-    check.add_argument(
-        "--mode",
-        choices=[m.value for m in Mode],
-        default=Mode.REPLAY.value,
-        help="record (live call on cache miss) or replay (transcripts only). "
-        "Default: replay — never issues a live call.",
-    )
-    check.add_argument("--seed", type=int, default=None, help="Model seed (determinism).")
-    check.add_argument(
-        "--temperature", type=float, default=0.0, help="Model temperature (default: 0.0)."
-    )
+    _add_model_flags(check, default_mode=Mode.REPLAY.value)  # never call live unbidden
     check.add_argument(
         "--json",
         action="store_true",
         help="Emit the structured Review as JSON instead of the §16 report.",
+    )
+
+    dec = subparsers.add_parser(
+        "decompose", help="Decompose a task file into obligations + open questions (live)."
+    )
+    dec.add_argument("--task", required=True, help="Path to the task file.")
+    _add_model_flags(dec, default_mode=Mode.RECORD.value)  # dogfood: live call on cache miss
+    dec.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the structured Decomposition as JSON.",
     )
 
     return parser
@@ -139,6 +182,27 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(review.to_dict(), indent=2))
         else:
             print(render_report(review))
+        return 0
+
+    if args.command == "decompose":
+        config = RunConfig(
+            model=args.model,
+            mode=Mode(args.mode),
+            seed=args.seed,
+            temperature=args.temperature,
+        )
+        try:
+            result = run_decompose(args.task, config)
+        except CliError as exc:
+            print(f"acceptance: error: {exc}", file=sys.stderr)
+            return 1
+        except LLMError as exc:
+            print(f"acceptance: model error: {exc}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(result.to_dict(), indent=2))
+        else:
+            print(render_decomposition(result))
         return 0
 
     parser.error(f"unknown command: {args.command}")

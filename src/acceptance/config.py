@@ -23,7 +23,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from acceptance.llm import DEFAULT_TRANSCRIPT_ROOT, Mode, ModelClient, TranscriptStore
 from acceptance.review_state import ReviewProvenance
 
-DEFAULT_MODEL = "anthropic/claude-sonnet-5"
+# LiteLLM model string. Provider-agnostic: swap freely via --model / RunConfig.
+DEFAULT_MODEL = "openai/gpt-5.4-mini"
 
 
 class RunConfig(BaseModel):
