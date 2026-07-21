@@ -206,7 +206,27 @@ Classify each obligation against the diff: **Addressed** (credible implementatio
 
 Central question per testable criterion: **would the available tests fail if the implementation violated this criterion in a plausible way?** A test is not strong merely because its name resembles the requirement, it invokes changed code, it's in a passing suite, or it raises coverage. Where the execution tier is available, this is answered by observation, not prediction (§8).
 
-Classifications: **Strongly supported** (discriminating inputs and assertions that would catch plausible violations; execution-confirmed where feasible); **Partially supported** (exercised but missing cases/boundaries/assertions/failure modes); **Nominally supported** (a related-looking test with little real evidence); **Unsupported** (no test meaningfully establishes it); **Requires other evidence**; **Indeterminate** (complexity, dynamic behavior, framework indirection, or missing context prevents reliable assessment).
+The classifications are defined over the **plausible-violation space** — the set of plausible defects for the criterion, made concrete as the §8.2 mapped mutants. A single bright line separates real evidence from the rest: **does the mapped test catch at least one plausible violation?**
+
+- **Strongly supported** — the mapped test would fail for *every* plausible violation of the criterion (discriminating inputs and assertions across its cases, boundaries, and qualifiers). *Executed criterion: kills all mapped mutants.*
+- **Partially supported** — the test genuinely discriminates the criterion but only across *part* of its plausible-violation space: it would fail for some plausible violations and pass for others (e.g. the happy path is covered but boundaries/negative/failure cases are not, or an assertion checks the result but not every required qualifier). *Executed criterion: kills at least one, but not all, mapped mutants.*
+- **Nominally supported** — a mapped test is present and *looks* like evidence (named for the criterion, in the changed code, or lifts coverage) but has **zero discriminating power**: it passes regardless of whether the criterion is met. Two mechanisms: (a) it never constrains the behavior (trivially-true assertions, or assertions that don't reference the required result); (b) it targets the criterion but is structurally unfailable (behavior mocked out, expected value derived from the code under test / circular, or an assertion that cannot fail). *Executed criterion: a mapped test exists but survives all mapped mutants.* Nominal **requires** a present, relevant-looking test — with none, the criterion is Unsupported.
+- **Unsupported** — no mapped test is relevant to the criterion at all.
+- **Requires other evidence** — the criterion needs non-test evidence (docs, visual behavior, deploy config).
+- **Indeterminate** — the mapped test cannot be run, or its outcome cannot be decided statically (complexity, dynamic behavior, framework indirection, or missing context).
+
+Decision procedure:
+
+| Situation | Classification |
+|---|---|
+| no mapped criterion-relevant test | Unsupported |
+| mapped test catches every plausible defect | Strongly supported |
+| catches some, misses some | Partially supported |
+| catches none, but looks like evidence | Nominally supported |
+| cannot run / cannot decide statically | Indeterminate |
+| needs non-test evidence | Requires other evidence |
+
+Without the execution tier these are **static predictions** of which mutants a mapped test would kill; where execution is available (§8.2) they are confirmed by observation. The predictions are validated against that executed ground truth — which is exactly what §11.1's evidence-classification-agreement measures.
 
 Assess whether: inputs distinguish competing interpretations; boundaries are exercised; negative behavior is tested; assertions target the required result; expected values have independent provenance; mocks bypass the behavior; a test can pass under a plausible defect; qualifiers are omitted; regression behavior is constrained; the test reaches the relevant path; execution/CI confirms the result against the reviewed commit.
 
