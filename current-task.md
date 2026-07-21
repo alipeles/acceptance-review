@@ -1,5 +1,11 @@
-## Deliverable
-a labeled benchmark case per fixture with the expected finding(s) and expected obligation decomposition.
+# Task
+Parse the local task file (`current-task.md`, §7.1 format) into structured task content the checker can reason over.
 
-## Acceptance
-each case validates; labels reviewed for correctness `[human]`.
+## Constraints
+- Extract the task behavior, constraints, scope exclusions, and completion expectations as separate fields.
+- Preserve a source-text reference (the exact span) for every extracted item.
+- Accept the §7.1 structure: `# Task`, `## Constraints`, `## Completion expectations`, and an optional scope-exclusions section.
+
+## Completion expectations
+- Implementation
+- Unit tests
