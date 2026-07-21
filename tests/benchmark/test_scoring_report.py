@@ -38,7 +38,7 @@ from acceptance.benchmark.case import (
 )
 from acceptance.benchmark.scoring import score_case_set
 from acceptance.evidence_tier import Component, EvidenceTier
-from acceptance.review_state import Finding, Link, Obligation, Review
+from acceptance.review_state import Finding, Link, Obligation, Review, ReviewProvenance
 
 
 def _inputs() -> BenchmarkCaseInputs:
@@ -47,6 +47,12 @@ def _inputs() -> BenchmarkCaseInputs:
         task_text="## Deliverable\n...\n",
         base_revision="abc123",
         head_revision="def456",
+    )
+
+
+def _provenance() -> ReviewProvenance:
+    return ReviewProvenance(
+        determinism_mode="replay", model="anthropic/claude-sonnet-5", temperature=0.0
     )
 
 
@@ -74,6 +80,7 @@ def _case_a() -> BenchmarkCase:
         reviewer_output=Review(
             mode="local",
             reviewed_revision="def456",
+            provenance=_provenance(),
             obligation_map=[
                 Obligation(
                     description="CSV generation",
@@ -115,6 +122,7 @@ def _case_b() -> BenchmarkCase:
         reviewer_output=Review(
             mode="local",
             reviewed_revision="def456",
+            provenance=_provenance(),
             obligation_map=[
                 Obligation(
                     description="Escape special characters",
@@ -154,6 +162,7 @@ def test_pooled_report_matches_hand_calculated_values():
     report = score_case_set([_case_a(), _case_b()])
 
     assert report.case_count == 2
+    assert report.determinism_mode == "replay"
     assert report.gap_recall == 2 / 3
     assert report.gap_precision == 2 / 3
     assert report.decomposition_accuracy == 2 / 3
@@ -177,6 +186,7 @@ def test_empty_case_set_yields_no_metrics():
     report = score_case_set([])
 
     assert report.case_count == 0
+    assert report.determinism_mode is None
     assert report.gap_recall is None
     assert report.gap_precision is None
     assert report.decomposition_accuracy is None
@@ -189,3 +199,27 @@ def test_case_set_raises_if_any_case_has_no_reviewer_output():
     unrun_case = _case_a().model_copy(update={"reviewer_output": None})
     with pytest.raises(ValueError):
         score_case_set([unrun_case])
+
+
+def test_case_set_raises_if_a_case_has_no_provenance():
+    case = _case_a()
+    unstamped = case.model_copy(
+        update={"reviewer_output": case.reviewer_output.model_copy(update={"provenance": None})}
+    )
+    with pytest.raises(ValueError):
+        score_case_set([unstamped])
+
+
+def test_case_set_raises_on_mixed_determinism_modes():
+    case_a = _case_a()
+    recorded_provenance = _provenance().model_copy(update={"determinism_mode": "record"})
+    case_a_recorded = case_a.model_copy(
+        update={
+            "reviewer_output": case_a.reviewer_output.model_copy(
+                update={"provenance": recorded_provenance}
+            )
+        }
+    )
+
+    with pytest.raises(ValueError):
+        score_case_set([case_a_recorded, _case_b()])
