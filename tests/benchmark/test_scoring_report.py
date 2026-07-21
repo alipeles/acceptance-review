@@ -1,27 +1,32 @@
 """M-B0.3 acceptance: on a synthetic set with known labels, computed metrics
-match hand-calculated expected values.
+match hand-calculated expected values. Recomputed for the M-B5a.2 obligation
+tree (each obligation carries its covered_by tests and evidence class).
 
-Case A: gap ground truth {filters, row-limit}; reviewer reports {filters}.
-  -> gap: matched=1, gt=2, reported=1
-Case B: gap ground truth {csv-escaping}; reviewer reports {csv-escaping, unrelated}.
-  -> gap: matched=1, gt=1, reported=2
-Pooled: matched=2, gt=3, reported=3 -> gap_recall = 2/3, gap_precision = 2/3
+Two cases with hand-authored reviewer output. Match keys: obligations by
+description, mappings by (obligation description, test id), gaps by the
+description of the obligation they concern, evidence agreement always
+reported_total=0 (no reviewer §9.3 classification yet).
 
-Case A decomposition ground truth {"CSV generation", "Active filters applied"};
-  reviewer reports {"CSV generation"}. -> matched=1, gt=2
-Case B decomposition ground truth {"Escape special characters"};
-  reviewer reports {"Escape special characters"}. -> matched=1, gt=1
-Pooled: matched=2, gt=3 -> decomposition_accuracy = 2/3
+Case A ground truth: obligations {Alpha [T1], Beta []}, gap on Beta.
+       reviewer: reports obligation Alpha (but not its T1 mapping); flags Beta.
+  gap:           matched 1, gt 1, reported 1
+  decomposition: matched 1 (Alpha), gt 2, reported 1
+  mapping:       matched 0, gt 1 (Alpha,T1), reported 0
+  evidence:      gt 2, reported 0
 
-Case A mapping ground truth {(test_csv, "CSV generation")}; reviewer reports
-  the same pair via Obligation.test_evidence. -> matched=1, gt=1
-Case B mapping ground truth {(test_escape, escaping)}; reviewer reports nothing.
-  -> matched=0, gt=1
-Pooled: matched=1, gt=2 -> mapping_accuracy = 1/2
+Case B ground truth: obligations {Gamma [T2]}, no gaps (true negative).
+       reviewer: reports Gamma with its T2 mapping + a spurious Delta;
+                 raises a spurious Epsilon finding.
+  gap:           matched 0, gt 0, reported 1
+  decomposition: matched 1 (Gamma), gt 1, reported 2 (Gamma, Delta)
+  mapping:       matched 1 (Gamma,T2), gt 1, reported 1
+  evidence:      gt 1, reported 0
 
-evidence_classes: Case A has 1 ground-truth label, Case B has none.
-Pooled ground truth=1, matched=0 (Finding can't express a classification yet)
-  -> evidence_agreement = 0/1 = 0.0
+Pooled:
+  gap_recall    = 1/1 = 1.0     gap_precision = 1/2 = 0.5
+  decomposition = 2/3
+  mapping       = 1/2 = 0.5
+  evidence      = 0/3 = 0.0
 """
 
 import pytest
@@ -30,11 +35,9 @@ from acceptance.benchmark.case import (
     BenchmarkCase,
     BenchmarkCaseInputs,
     BenchmarkCaseSource,
-    GroundTruthDecompositionItem,
-    GroundTruthEvidenceClass,
     GroundTruthGap,
     GroundTruthLabels,
-    GroundTruthMapping,
+    GroundTruthObligation,
 )
 from acceptance.benchmark.scoring import score_case_set
 from acceptance.evidence_tier import Component, EvidenceTier
@@ -56,53 +59,56 @@ def _provenance() -> ReviewProvenance:
     )
 
 
+def _reviewer_obligation(description: str, test_evidence: list[str]) -> Obligation:
+    return Obligation(
+        description=description,
+        type="behavior",
+        source_text="...",
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
+        test_evidence=test_evidence,
+    )
+
+
+def _finding(related_obligation: str) -> Finding:
+    return Finding(
+        type="missed_obligation",
+        severity="high",
+        description=f"gap on {related_obligation}",
+        evidence_tier=EvidenceTier.STATIC,
+        produced_by=Component.STATIC_ANALYZER,
+        links=[Link(kind="requirement", ref="task.md:1")],
+        related_obligation=related_obligation,
+    )
+
+
 def _case_a() -> BenchmarkCase:
     return BenchmarkCase(
         case_id="synthetic-a",
         source=BenchmarkCaseSource(kind="archetype", identifier="synthetic-a"),
         inputs=_inputs(),
         ground_truth=GroundTruthLabels(
-            gaps=[
-                GroundTruthGap(description="filters missing", obligation_ref="filters"),
-                GroundTruthGap(description="row limit missing", obligation_ref="row-limit"),
+            obligations=[
+                GroundTruthObligation(
+                    id="alpha", description="Alpha", explicit=True,
+                    evidence_class="strongly_supported", evidence_rationale="asserted",
+                    candidate_tests=["T1"],
+                ),
+                GroundTruthObligation(
+                    id="beta", description="Beta", explicit=True,
+                    evidence_class="unsupported", evidence_rationale="no test",
+                    candidate_tests=[],
+                ),
             ],
-            decomposition=[
-                GroundTruthDecompositionItem(description="CSV generation", explicit=True),
-                GroundTruthDecompositionItem(description="Active filters applied", explicit=True),
-            ],
-            mappings=[GroundTruthMapping(test_id="test_csv", obligation_ref="CSV generation")],
-            evidence_classes=[
-                GroundTruthEvidenceClass(
-                    obligation_ref="CSV generation", classification="strongly_supported"
-                )
-            ],
+            gaps=[GroundTruthGap(id="gap-beta", description="Beta missing", obligation_id="beta")],
         ),
         reviewer_output=Review(
             mode="local",
             reviewed_revision="def456",
             provenance=_provenance(),
-            obligation_map=[
-                Obligation(
-                    description="CSV generation",
-                    type="behavior",
-                    source_text="...",
-                    importance="critical",
-                    explicit=True,
-                    observable_behavior="...",
-                    test_evidence=["test_csv"],
-                )
-            ],
-            findings=[
-                Finding(
-                    type="missed_obligation",
-                    severity="high",
-                    description="Filters not applied",
-                    evidence_tier=EvidenceTier.STATIC,
-                    produced_by=Component.STATIC_ANALYZER,
-                    links=[Link(kind="requirement", ref="task.md:1")],
-                    related_obligation="filters",
-                )
-            ],
+            obligation_map=[_reviewer_obligation("Alpha", test_evidence=[])],
+            findings=[_finding("Beta")],
         ),
     )
 
@@ -113,47 +119,24 @@ def _case_b() -> BenchmarkCase:
         source=BenchmarkCaseSource(kind="archetype", identifier="synthetic-b"),
         inputs=_inputs(),
         ground_truth=GroundTruthLabels(
-            gaps=[GroundTruthGap(description="csv escaping missing", obligation_ref="csv-escaping")],
-            decomposition=[
-                GroundTruthDecompositionItem(description="Escape special characters", explicit=True)
+            obligations=[
+                GroundTruthObligation(
+                    id="gamma", description="Gamma", explicit=True,
+                    evidence_class="strongly_supported", evidence_rationale="asserted",
+                    candidate_tests=["T2"],
+                ),
             ],
-            mappings=[GroundTruthMapping(test_id="test_escape", obligation_ref="escaping")],
+            gaps=[],
         ),
         reviewer_output=Review(
             mode="local",
             reviewed_revision="def456",
             provenance=_provenance(),
             obligation_map=[
-                Obligation(
-                    description="Escape special characters",
-                    type="behavior",
-                    source_text="...",
-                    importance="critical",
-                    explicit=True,
-                    observable_behavior="...",
-                    # No test_evidence: the mapping ground truth goes unmatched.
-                )
+                _reviewer_obligation("Gamma", test_evidence=["T2"]),
+                _reviewer_obligation("Delta", test_evidence=[]),
             ],
-            findings=[
-                Finding(
-                    type="missed_obligation",
-                    severity="high",
-                    description="CSV escaping not handled",
-                    evidence_tier=EvidenceTier.STATIC,
-                    produced_by=Component.STATIC_ANALYZER,
-                    links=[Link(kind="requirement", ref="task.md:2")],
-                    related_obligation="csv-escaping",
-                ),
-                Finding(
-                    type="missed_obligation",
-                    severity="low",
-                    description="Spurious, unrelated finding",
-                    evidence_tier=EvidenceTier.STATIC,
-                    produced_by=Component.STATIC_ANALYZER,
-                    links=[Link(kind="requirement", ref="task.md:3")],
-                    related_obligation="unrelated",
-                ),
-            ],
+            findings=[_finding("Epsilon")],
         ),
     )
 
@@ -163,10 +146,10 @@ def test_pooled_report_matches_hand_calculated_values():
 
     assert report.case_count == 2
     assert report.determinism_mode == "replay"
-    assert report.gap_recall == 2 / 3
-    assert report.gap_precision == 2 / 3
+    assert report.gap_recall == 1.0
+    assert report.gap_precision == 0.5
     assert report.decomposition_accuracy == 2 / 3
-    assert report.mapping_accuracy == 1 / 2
+    assert report.mapping_accuracy == 0.5
     assert report.evidence_agreement == 0.0
 
 
@@ -174,12 +157,16 @@ def test_report_includes_per_case_scores():
     report = score_case_set([_case_a(), _case_b()])
 
     assert len(report.per_case) == 2
-    # Case A alone: gap matched=1, gt=2, reported=1.
-    assert report.per_case[0].gap_recall == 0.5
+    # Case A: gap 1/1, decomposition 1/2, mapping 0/1.
+    assert report.per_case[0].gap_recall == 1.0
     assert report.per_case[0].gap_precision == 1.0
-    # Case B alone: gap matched=1, gt=1, reported=2.
-    assert report.per_case[1].gap_recall == 1.0
-    assert report.per_case[1].gap_precision == 0.5
+    assert report.per_case[0].decomposition_accuracy == 0.5
+    assert report.per_case[0].mapping_accuracy == 0.0
+    # Case B: no gaps -> recall None, precision 0/1; decomposition 1/2; mapping 1/1.
+    assert report.per_case[1].gap_recall is None
+    assert report.per_case[1].gap_precision == 0.0
+    assert report.per_case[1].decomposition_accuracy == 1.0
+    assert report.per_case[1].mapping_accuracy == 1.0
 
 
 def test_empty_case_set_yields_no_metrics():

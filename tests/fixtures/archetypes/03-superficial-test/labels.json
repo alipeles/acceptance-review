@@ -1,0 +1,42 @@
+{
+  "obligations": [
+    {
+      "id": "equal-payments",
+      "description": "Return a list of equal monthly payments",
+      "explicit": true,
+      "evidence_class": "nominally_supported",
+      "evidence_rationale": "The candidate test exercises amortize (in the changed code, lifts coverage) but asserts only the list length and that values are positive; it references nothing about equality, so a mutant that makes the payments unequal survives it. A present, relevant test that kills zero mapped mutants.",
+      "candidate_tests": ["test_loan.py::test_returns_a_payment_for_each_month"]
+    },
+    {
+      "id": "one-per-month",
+      "description": "One payment entry per month",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "The test asserts len(schedule)==12 for a 12-month loan, which kills any wrong-count mutant.",
+      "candidate_tests": ["test_loan.py::test_returns_a_payment_for_each_month"]
+    },
+    {
+      "id": "fully-amortizing",
+      "description": "Payments fully pay off the loan using standard amortization",
+      "explicit": true,
+      "evidence_class": "nominally_supported",
+      "evidence_rationale": "The candidate test exercises amortize but never asserts the payment amounts or that they pay off the loan, so a wrong-payment-formula mutant survives it. A present, relevant test that kills zero mapped mutants.",
+      "candidate_tests": ["test_loan.py::test_returns_a_payment_for_each_month"]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "gap-equal-payments",
+      "description": "The test asserts only the list length and that values are positive, never that the payments are equal, so an unequal-payment schedule would pass",
+      "obligation_id": "equal-payments",
+      "severity": "medium"
+    },
+    {
+      "id": "gap-fully-amortizing",
+      "description": "The test never asserts the payment amounts or that they pay off the loan, so a wrong payment formula would pass",
+      "obligation_id": "fully-amortizing",
+      "severity": "medium"
+    }
+  ]
+}

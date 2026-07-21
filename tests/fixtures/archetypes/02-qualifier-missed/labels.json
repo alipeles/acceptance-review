@@ -1,0 +1,36 @@
+{
+  "obligations": [
+    {
+      "id": "parse-symbol",
+      "description": "Parse a leading currency symbol into its ISO code ($ USD, GBP, EUR)",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Both tests assert the ISO code for a symbol prefix (USD, EUR); a wrong mapping would fail.",
+      "candidate_tests": ["test_pricing.py::test_dollar_symbol", "test_pricing.py::test_euro_symbol"]
+    },
+    {
+      "id": "parse-amount",
+      "description": "Parse the remaining numeric amount as a float",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Both tests assert the exact parsed amount (12.50, 3.00); a wrong parse would fail.",
+      "candidate_tests": ["test_pricing.py::test_dollar_symbol", "test_pricing.py::test_euro_symbol"]
+    },
+    {
+      "id": "backward-compat",
+      "description": "Plain numeric strings with no symbol keep working and default to USD",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "No test passes a plain numeric string, and the code strips the first digit and raises on one, so nothing establishes the default-USD path.",
+      "candidate_tests": []
+    }
+  ],
+  "gaps": [
+    {
+      "id": "gap-backward-compat",
+      "description": "Plain numeric strings without a symbol now raise (the first digit is stripped and used as a symbol lookup) instead of parsing and defaulting to USD; the backward-compatibility qualifier is unimplemented and untested",
+      "obligation_id": "backward-compat",
+      "severity": "high"
+    }
+  ]
+}

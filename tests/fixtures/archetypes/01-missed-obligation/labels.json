@@ -1,0 +1,44 @@
+{
+  "obligations": [
+    {
+      "id": "show-fields",
+      "description": "Show the item name, quantity, and unit price",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Both tests assert the full formatted line exactly, so a missing or malformed field would fail.",
+      "candidate_tests": ["test_receipt.py::test_positive_line", "test_receipt.py::test_two_decimal_formatting"]
+    },
+    {
+      "id": "line-total",
+      "description": "Include the line total (quantity times unit price)",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Both tests assert the exact total (3x2.5=7.50, 1x4=4.00); a wrong total formula would fail.",
+      "candidate_tests": ["test_receipt.py::test_positive_line", "test_receipt.py::test_two_decimal_formatting"]
+    },
+    {
+      "id": "money-format",
+      "description": "Format money as USD with two decimals and a leading $",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Both tests assert exact $ formatting ($2.50, $7.50, $4.00); wrong formatting would fail.",
+      "candidate_tests": ["test_receipt.py::test_positive_line", "test_receipt.py::test_two_decimal_formatting"]
+    },
+    {
+      "id": "returns-in-parens",
+      "description": "Show negative-quantity returns with the quantity and total in parentheses",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "No test exercises a negative quantity, and the behavior is unimplemented, so nothing establishes it.",
+      "candidate_tests": []
+    }
+  ],
+  "gaps": [
+    {
+      "id": "gap-returns-in-parens",
+      "description": "Returns (negative quantity) are not shown in parentheses; the fourth stated rule is unimplemented and untested",
+      "obligation_id": "returns-in-parens",
+      "severity": "high"
+    }
+  ]
+}

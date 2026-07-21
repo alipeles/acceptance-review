@@ -1,45 +1,27 @@
-"""Benchmark scoring & report (M-B0.3, §11.1).
+"""Benchmark scoring & report (M-B0.3, §11.1; ground-truth tree revised M-B5a.2).
 
-Real scorer suite superseding M-B0.2's provisional score_case: gap-detection
-recall, false-alarm precision, obligation-decomposition accuracy,
-test-to-obligation mapping accuracy, and evidence-classification agreement.
+The §11.1 metrics fall out of the obligation tree (case.py): decomposition
+accuracy from the obligations, mapping accuracy from each obligation's
+candidate_tests edges, evidence agreement from each obligation's evidence
+class, and gap recall/precision from the gaps.
 
-Matching is exact-ref against the structured ground-truth refs from M-B0.1's
-schema (GroundTruthGap.obligation_ref, GroundTruthMapping.test_id +
-obligation_ref, etc.) against the corresponding fields on the reviewer's
-Review — no fuzzy/NLP matching, since the ground-truth schema is already
-structured rather than free text.
+Ground truth identifies obligations by a stable id; the reviewer's Review
+(review_state.py) does not yet — its obligations are identified only by
+description, and its Findings carry no §9.3 classification (that is the M1
+obligation-schema and M5.3 strength-classification work). So the cross-join
+to reviewer output is by description for now, and evidence agreement scores
+with reported_total=0 until a reviewer can express a classification. When M1
+gives reviewer obligations ids, these joins move to ids; the ground-truth
+tree is already the anchor for that.
 
-`evidence_agreement` is always computed with reported_total=0: Finding
-(review_state.py) has no field for a §9.3 test-strength classification yet
-— that's M5.3's job. M-B0.2's version compared Finding.evidence_tier (how
-evidence was PRODUCED: builder-claim/static/coverage-confirmed/...) against
-GroundTruthEvidenceClass.classification (how STRONG it is:
-strongly_supported/unsupported/...) — two disjoint vocabularies that could
-never usefully match. Being explicit that nothing is reported yet gives a
-real, meaningful 0.0 ("the reviewer can't express this yet") rather than a
-number that happens to read as zero for the wrong reason.
+Aggregation pools raw match counts across cases before dividing
+(micro-averaging), so small or no-op-heavy cases can't dilute the headline
+figures; a macro-averaged variant may be added later. A ratio is None when
+undefined (no ground truth, or nothing reported) rather than a misleading 0.0.
 
-score_case and score_case_set pool the same per-case match counts; the case
-set aggregates by pooling raw counts across all cases before dividing
-(micro-averaging) rather than averaging each case's own ratio. That avoids
-both macro- vs micro-averaging ambiguity and the awkwardness of averaging
-in the presence of a per-case None (a case with no ground truth in a
-category contributes no counts, rather than needing to be excluded from an
-average). A macro-averaged variant (e.g. for per-source-type breakdowns) may
-be worth adding later, but pooled counts stay the default so small or
-no-op-heavy cases can't dilute the headline figures.
-
-Variance disclosure (M-B0.4, §3.2's deferred "N-sample majority" alternative
-to M0.5's fixed-seed strategy): every BenchmarkReport discloses its
-determinism_mode (from the underlying cases' ReviewProvenance — kept as the
-same plain string literal M0.5 used, independent of the LLM harness's Mode
-enum). disclose_variance() then takes N such reports over repeated runs of
-the same case set and computes a mean and spread per metric. It takes
-already-computed reports rather than orchestrating the N runs itself: the
-checker is still the M0.6 no-op skeleton, so there is no real variance yet
-for a runner to produce — this function is ready the moment M1+ makes the
-pipeline genuinely sampled, without speculative orchestration plumbing now.
+Variance disclosure: every BenchmarkReport discloses its determinism_mode
+(from the cases' ReviewProvenance); disclose_variance() computes a mean and
+spread per metric across N runs of the same case set.
 """
 
 from __future__ import annotations
@@ -81,50 +63,59 @@ class _MatchCounts:
         return self.matched / self.reported_total
 
 
-def _gap_counts(case: BenchmarkCase) -> _MatchCounts:
-    review = case.reviewer_output
-    ground_truth_refs = {g.obligation_ref for g in case.ground_truth.gaps if g.obligation_ref}
-    reported_refs = {
-        f.related_obligation for f in review.findings if f.related_obligation is not None
-    }
+def _counts(ground_truth_refs: set, reported_refs: set) -> _MatchCounts:
     return _MatchCounts(
         matched=len(ground_truth_refs & reported_refs),
         ground_truth_total=len(ground_truth_refs),
         reported_total=len(reported_refs),
     )
+
+
+def _gap_counts(case: BenchmarkCase) -> _MatchCounts:
+    review = case.reviewer_output
+    obligation_desc = {o.id: o.description for o in case.ground_truth.obligations}
+    # A gap is keyed by the obligation it concerns (so "found" means the checker
+    # flagged a finding for that obligation); an obligation-less gap (e.g. a
+    # declaration overclaim) is keyed by its own id and is unmatchable until the
+    # declaration-comparison capability (M6) can produce it.
+    ground_truth_refs = {
+        obligation_desc.get(gap.obligation_id, gap.id) for gap in case.ground_truth.gaps
+    }
+    reported_refs = {
+        f.related_obligation for f in review.findings if f.related_obligation is not None
+    }
+    return _counts(ground_truth_refs, reported_refs)
 
 
 def _decomposition_counts(case: BenchmarkCase) -> _MatchCounts:
     review = case.reviewer_output
-    ground_truth_refs = {d.description for d in case.ground_truth.decomposition}
+    ground_truth_refs = {o.description for o in case.ground_truth.obligations}
     reported_refs = {o.description for o in review.obligation_map}
-    return _MatchCounts(
-        matched=len(ground_truth_refs & reported_refs),
-        ground_truth_total=len(ground_truth_refs),
-        reported_total=len(reported_refs),
-    )
+    return _counts(ground_truth_refs, reported_refs)
 
 
 def _mapping_counts(case: BenchmarkCase) -> _MatchCounts:
     review = case.reviewer_output
-    ground_truth_refs = {(m.test_id, m.obligation_ref) for m in case.ground_truth.mappings}
+    ground_truth_refs = {
+        (obligation.description, test_id)
+        for obligation in case.ground_truth.obligations
+        for test_id in obligation.candidate_tests
+    }
     reported_refs = {
-        (test_id, obligation.description)
+        (obligation.description, test_id)
         for obligation in review.obligation_map
         for test_id in obligation.test_evidence
     }
-    return _MatchCounts(
-        matched=len(ground_truth_refs & reported_refs),
-        ground_truth_total=len(ground_truth_refs),
-        reported_total=len(reported_refs),
-    )
+    return _counts(ground_truth_refs, reported_refs)
 
 
 def _evidence_counts(case: BenchmarkCase) -> _MatchCounts:
-    # reported_total is always 0: Finding has no §9.3 classification field
-    # yet (M5.3). See module docstring — this is deliberate, not a stub.
+    # Every obligation carries an evidence class, so the denominator is the full
+    # decomposition. reported_total is 0 until a reviewer Obligation can express
+    # a §9.3 classification (M5.3); matched is therefore 0 for now.
     ground_truth_refs = {
-        (e.obligation_ref, e.classification) for e in case.ground_truth.evidence_classes
+        (obligation.description, obligation.evidence_class)
+        for obligation in case.ground_truth.obligations
     }
     return _MatchCounts(matched=0, ground_truth_total=len(ground_truth_refs), reported_total=0)
 
@@ -174,8 +165,6 @@ class BenchmarkReport(PersistableModel):
 
 
 def _case_determinism_mode(case: BenchmarkCase) -> str:
-    # reviewer_output is already known non-None here: _all_counts checks it
-    # before this is called.
     provenance = case.reviewer_output.provenance
     if provenance is None:
         raise ValueError(

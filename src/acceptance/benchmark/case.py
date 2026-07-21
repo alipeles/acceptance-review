@@ -1,18 +1,31 @@
-"""Benchmark-case schema (§15 Benchmark case, §11.1 metrics; M-B0.1).
+"""Benchmark-case schema (§15 Benchmark case, §11.1 metrics; M-B0.1, revised M-B5a.2).
 
 A case pairs a real (or offline-mutated, or hand-curated) input with
 human-verified ground truth, so the checker's output can be scored against
-it. The four ground-truth categories on `GroundTruthLabels` map directly to
-§11.1's metrics:
+it.
 
-    gaps          -> gap-detection recall / false-alarm precision
-    decomposition -> obligation-decomposition accuracy
-    mappings      -> test-to-obligation mapping accuracy
-    evidence_classes -> evidence-classification agreement
+The ground truth is an **obligation tree**: the obligation is the spine
+(CLAUDE.md — "obligations are the spine everything maps to"), and each one
+carries its own stable `id`, the tests relevant to it (`candidate_tests`), how
+strong that evidence is (`evidence_class`, a §9.3 class), and why
+(`evidence_rationale`). `gaps` are the findings a good reviewer should raise,
+each linked to the obligation it concerns. This mirrors exactly the tree the
+tool must show a user — obligation -> candidate tests -> evidence strength (with
+a reason) — and makes the §11.1 metrics fall out of it:
 
-`reviewer_output` and `score` start empty and are filled in by later
-milestones (M-B0.2's checker-under-test runner, M-B0.3's scoring) — a case is
-valid the moment it carries real ground truth, before it has ever been run.
+    obligations                 -> obligation-decomposition accuracy
+    obligation.candidate_tests  -> test-to-obligation mapping accuracy
+    obligation.evidence_class   -> evidence-classification agreement
+    gaps                        -> gap-detection recall / false-alarm precision
+
+Identifiers, not prose, are the join keys: `obligation_id` on a gap and the
+test ids in `candidate_tests` are validated to resolve, so ground truth can't
+carry a dangling reference, an obligation with no evidence class, or a weak
+result with no stated reason.
+
+`reviewer_output` and `score` start empty and are filled in by the runner
+(M-B0.2) and scorer (M-B0.3) — a case is valid the moment it carries real
+ground truth, before it has ever been run.
 """
 
 from __future__ import annotations
@@ -64,40 +77,72 @@ class BenchmarkCaseInputs(PersistableModel):
     declaration_text: str | None = None
 
 
-class GroundTruthGap(PersistableModel):
+class GroundTruthObligation(PersistableModel):
+    """One obligation in the expected decomposition, with the tests a reviewer
+    would examine for it, its evidence strength, and why — a node in the
+    obligation tree.
+
+    `candidate_tests` are the tests relevant to this obligation (§9.1 "candidate
+    tests"); a test can be a candidate yet establish nothing (mocked, circular,
+    non-discriminating), which is exactly what `evidence_class` records.
+    `evidence_rationale` states *why* the class is what it is — required so a
+    weak or negative result can never appear without an explanation (§13.6)."""
+
+    id: str
     description: str
-    obligation_ref: str | None = None
+    explicit: bool
+    evidence_class: EvidenceClassification
+    evidence_rationale: str
+    candidate_tests: list[str] = Field(default_factory=list)  # test ids (pytest nodeids)
+
+
+class GroundTruthGap(PersistableModel):
+    """A finding a good reviewer should raise. `obligation_id` links it to the
+    obligation it concerns, or is None when the gap is not about a task
+    obligation (e.g. a declaration overclaim the task never requested)."""
+
+    id: str
+    description: str
+    obligation_id: str | None = None
     severity: str | None = None
 
 
-class GroundTruthDecompositionItem(PersistableModel):
-    description: str
-    explicit: bool
-
-
-class GroundTruthMapping(PersistableModel):
-    test_id: str
-    obligation_ref: str
-
-
-class GroundTruthEvidenceClass(PersistableModel):
-    obligation_ref: str
-    classification: EvidenceClassification
-
-
 class GroundTruthLabels(PersistableModel):
+    obligations: list[GroundTruthObligation] = Field(default_factory=list)
     gaps: list[GroundTruthGap] = Field(default_factory=list)
-    decomposition: list[GroundTruthDecompositionItem] = Field(default_factory=list)
-    mappings: list[GroundTruthMapping] = Field(default_factory=list)
-    evidence_classes: list[GroundTruthEvidenceClass] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _require_at_least_one_label(self) -> "GroundTruthLabels":
-        if not (self.gaps or self.decomposition or self.mappings or self.evidence_classes):
-            raise ValueError(
-                "GroundTruthLabels requires at least one label "
-                "(gaps, decomposition, mappings, or evidence_classes)"
-            )
+    def _check_tree_integrity(self) -> "GroundTruthLabels":
+        if not self.obligations:
+            raise ValueError("GroundTruthLabels requires at least one obligation")
+
+        obligation_ids = [o.id for o in self.obligations]
+        if any(not oid.strip() for oid in obligation_ids):
+            raise ValueError("every obligation id must be a non-empty string")
+        if len(set(obligation_ids)) != len(obligation_ids):
+            raise ValueError("obligation ids must be unique")
+
+        gap_ids = [g.id for g in self.gaps]
+        if any(not gid.strip() for gid in gap_ids):
+            raise ValueError("every gap id must be a non-empty string")
+        if len(set(gap_ids)) != len(gap_ids):
+            raise ValueError("gap ids must be unique")
+
+        known = set(obligation_ids)
+        for gap in self.gaps:
+            if gap.obligation_id is not None and gap.obligation_id not in known:
+                raise ValueError(
+                    f"gap {gap.id!r} references unknown obligation {gap.obligation_id!r}"
+                )
+        for obligation in self.obligations:
+            if any(not test_id.strip() for test_id in obligation.candidate_tests):
+                raise ValueError(
+                    f"obligation {obligation.id!r} has an empty test id in candidate_tests"
+                )
+            if not obligation.evidence_rationale.strip():
+                raise ValueError(
+                    f"obligation {obligation.id!r} must have a non-empty evidence_rationale"
+                )
         return self
 
 

@@ -4,10 +4,32 @@ from acceptance.benchmark.case import (
     BenchmarkCaseSource,
     GroundTruthGap,
     GroundTruthLabels,
+    GroundTruthObligation,
 )
 from acceptance.benchmark.runner import run_case
 from acceptance.config import RunConfig
 from acceptance.review_store import ReviewStore
+
+
+def _labels() -> GroundTruthLabels:
+    return GroundTruthLabels(
+        obligations=[
+            GroundTruthObligation(
+                id="filters",
+                description="Active filters are applied to the export",
+                explicit=True,
+                evidence_class="unsupported",
+                evidence_rationale="No test exercises filtering.",
+            )
+        ],
+        gaps=[
+            GroundTruthGap(
+                id="gap-filters",
+                description="Active filters not applied",
+                obligation_id="filters",
+            )
+        ],
+    )
 
 
 def test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_score(
@@ -24,9 +46,7 @@ def test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_sc
             base_revision=git_repo_elsewhere["base"],
             head_revision=git_repo_elsewhere["head"],
         ),
-        ground_truth=GroundTruthLabels(
-            gaps=[GroundTruthGap(description="Active filters not applied", obligation_ref="filters")]
-        ),
+        ground_truth=_labels(),
     )
 
     result = run_case(
@@ -52,7 +72,7 @@ def test_run_case_does_not_mutate_the_input_case(git_repo_elsewhere, tmp_path):
             base_revision=git_repo_elsewhere["base"],
             head_revision=git_repo_elsewhere["head"],
         ),
-        ground_truth=GroundTruthLabels(gaps=[GroundTruthGap(description="x")]),
+        ground_truth=_labels(),
     )
 
     run_case(case, config=RunConfig(), review_store=ReviewStore(tmp_path / "reviews"))

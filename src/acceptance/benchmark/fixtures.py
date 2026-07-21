@@ -12,21 +12,36 @@ nested .git), so each is kept as reviewable source trees under
     base/            source tree before the change
     head/            source tree after the change (implementation + tests)
     meta.json        scenario number, name, intended pytest outcome, summary
+    labels.json      human-verified ground truth (decomposition, gaps, mappings,
+                     evidence classes) — the §11.2 archetype layer (M-B5a.2)
 
 `materialize_archetype` turns one of those into a real two-commit git repo on
 demand, which is exactly the shape M-B0.2's runner consumes (repo +
 base/head revisions). Commit timestamps are fixed, so the same fixture always
 materializes to the same base/head SHAs — reproducible, in the spirit of M0.5.
+
+`build_benchmark_case` goes one step further, assembling a full labeled
+BenchmarkCase (M-B0.1 schema): the inputs come from materialization, the
+ground truth from labels.json. The case is built on demand rather than
+persisted whole, because its inputs carry the materialized repo's real
+revisions; labels.json is the persisted, reviewable artifact.
 """
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from acceptance.benchmark.case import (
+    BenchmarkCase,
+    BenchmarkCaseInputs,
+    BenchmarkCaseSource,
+    GroundTruthLabels,
+)
 from acceptance.model_base import PersistableModel
 
 # Fixed identity + timestamps so materialization is deterministic (stable SHAs).
@@ -51,9 +66,31 @@ class MaterializedFixture:
 
 
 def load_meta(fixture_dir: Path) -> ArchetypeMeta:
-    import json
-
     return ArchetypeMeta.from_dict(json.loads((fixture_dir / "meta.json").read_text()))
+
+
+def load_labels(fixture_dir: Path) -> GroundTruthLabels:
+    return GroundTruthLabels.from_dict(json.loads((fixture_dir / "labels.json").read_text()))
+
+
+def build_benchmark_case(fixture_dir: Path, dest: Path) -> BenchmarkCase:
+    """Materialize a fixture and assemble its labeled BenchmarkCase."""
+    fixture = materialize_archetype(fixture_dir, dest)
+    declaration_path = fixture_dir / "declaration.md"
+    return BenchmarkCase(
+        case_id=fixture_dir.name,
+        source=BenchmarkCaseSource(kind="archetype", identifier=fixture.meta.name),
+        inputs=BenchmarkCaseInputs(
+            repo=str(fixture.repo_path),
+            task_text=(fixture_dir / "task.md").read_text(),
+            base_revision=fixture.base_sha,
+            head_revision=fixture.head_sha,
+            declaration_text=(
+                declaration_path.read_text() if declaration_path.is_file() else None
+            ),
+        ),
+        ground_truth=load_labels(fixture_dir),
+    )
 
 
 def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
