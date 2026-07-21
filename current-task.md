@@ -1,5 +1,5 @@
 ## Deliverable
-scorers for gap-detection (recall), false-alarm (precision), obligation-decomposition accuracy, test-to-obligation mapping accuracy, and evidence-classification agreement; a single-command report over a case set.
+report records determinism mode and, if sampling, variance across N runs.
 
 ## Acceptance
-on a synthetic set with known labels, computed metrics match hand-calculated expected values.
+report output includes the determinism mode and (when sampled) a spread figure per metric.
