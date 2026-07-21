@@ -176,3 +176,47 @@ def test_run_check_rejects_a_revision_missing_from_the_given_repo(
             store=ReviewStore(tmp_path / "reviews"),
             repo=git_repo_elsewhere["path"],
         )
+
+
+# --- decompose subcommand (M1.2/M1.3 dogfood path) ---
+
+def test_decompose_replay_without_transcript_fails_cleanly(
+    fixture_task_path, tmp_path, monkeypatch, capsys
+):
+    # REPLAY mode with no recorded transcript must not call live; it errors out.
+    # chdir to an empty dir so the relative transcript store is guaranteed empty.
+    monkeypatch.chdir(tmp_path)
+    exit_code = main(["decompose", "--task", fixture_task_path, "--mode", "replay"])
+
+    assert exit_code == 1
+    assert "model error" in capsys.readouterr().err
+
+
+def test_decompose_missing_task_fails_cleanly(capsys):
+    exit_code = main(["decompose", "--task", "does-not-exist.md", "--mode", "replay"])
+    assert exit_code == 1
+    assert "task file not found" in capsys.readouterr().err
+
+
+def test_render_decomposition_lists_obligations_and_open_questions():
+    from acceptance.cli import render_decomposition
+    from acceptance.requirement.obligations import Decomposition
+    from acceptance.review_state import Obligation, ObligationType, OpenQuestion
+
+    result = Decomposition(
+        obligations=[
+            Obligation(
+                id="ob-1",
+                description="Do the thing.",
+                type=ObligationType.FUNCTIONAL,
+                importance="critical",
+                explicit=True,
+                observable_behavior="...",
+            )
+        ],
+        open_questions=[OpenQuestion(id="q-1", question="How many?", importance="normal")],
+    )
+
+    rendered = render_decomposition(result)
+    assert "[functional/explicit] ob-1: Do the thing." in rendered
+    assert "? q-1: How many?" in rendered
