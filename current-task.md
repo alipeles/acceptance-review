@@ -1,10 +1,10 @@
 # Task
-Extract the Git change set between a base and head revision: changed files, a source-vs-test partition, hunk-level diffs, and config/dependency-file changes.
+For each changed code region, retrieve the enclosing definition and its direct in-repo call sites, within a bounded retrieval budget.
 
 ## Constraints
-- Categorize every changed file as source, test, config, or other.
-- Represent diffs at hunk granularity, not as one flattened string per side.
-- Correctly detect added, modified, deleted, and renamed files.
+- Find the innermost function/class/method definition that encloses each changed line, via Python AST parsing.
+- Retrieve direct call sites of each changed definition elsewhere in the repo.
+- Respect a configurable budget cap (files scanned, call sites per definition); mark results truncated when the cap is hit rather than scanning unbounded.
 
 ## Completion expectations
 - Implementation
