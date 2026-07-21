@@ -1,0 +1,6 @@
+{
+  "scenario": 7,
+  "name": "declaration-mismatch",
+  "intended_pytest": "pass",
+  "summary": "The builder declaration claims get_user raises KeyError with a clear message when the id is missing, but the implementation returns None on a miss and no test exercises the missing-id path. The declaration overstates what the code does."
+}

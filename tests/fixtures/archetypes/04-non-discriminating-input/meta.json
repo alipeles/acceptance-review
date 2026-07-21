@@ -1,0 +1,6 @@
+{
+  "scenario": 4,
+  "name": "non-discriminating-input",
+  "intended_pytest": "pass",
+  "summary": "Prorate is implemented correctly, but the only test uses a 30-day month, where the correct daily rate (price / days_in_month) and a plausible hard-coded price/30 both give the same answer. The test can't tell a correct implementation from that common bug."
+}

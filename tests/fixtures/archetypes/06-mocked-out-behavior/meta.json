@@ -1,0 +1,6 @@
+{
+  "scenario": 6,
+  "name": "mocked-out-behavior",
+  "intended_pytest": "pass",
+  "summary": "The requirement is that the coupon uses the rate selected for the given date. The test mocks rate_for to return a fixed value regardless of date, then asserts the coupon equals nominal times that value — establishing the multiplication, but nothing about the date-based selection it claims to cover."
+}

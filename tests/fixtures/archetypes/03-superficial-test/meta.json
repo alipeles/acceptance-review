@@ -1,0 +1,6 @@
+{
+  "scenario": 3,
+  "name": "superficial-test",
+  "intended_pytest": "pass",
+  "summary": "The amortization function is implemented, but its only test checks the return is a list of the right length with positive values — never the actual payment amounts or that the loan is paid off. Green, but the test establishes almost nothing."
+}

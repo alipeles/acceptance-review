@@ -1,0 +1,6 @@
+{
+  "scenario": 8,
+  "name": "unrequested-change",
+  "intended_pytest": "pass",
+  "summary": "The task only asked for a new apply_discount function. The change also alters the existing public checkout function — adding a tax_rate parameter and changing its rounding — which the task never mentioned. Tests stay green because checkout's default still returns the old value."
+}

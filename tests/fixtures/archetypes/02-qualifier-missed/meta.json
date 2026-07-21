@@ -1,0 +1,6 @@
+{
+  "scenario": 2,
+  "name": "qualifier-missed",
+  "intended_pytest": "pass",
+  "summary": "The new currency-symbol feature is implemented and tested, but the stated backward-compatibility qualifier (plain numeric strings must keep working and default to USD) is neither implemented nor tested."
+}

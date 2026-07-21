@@ -1,0 +1,6 @@
+{
+  "scenario": 9,
+  "name": "revision-cycle",
+  "intended_pytest": "pass",
+  "summary": "Base is a first pass whose only test (2.3 -> 2) does not exercise a tie, so it can't tell banker's rounding from round-half-up — the gap a prior review would flag. Head is the next iteration: it fixes the implementation to round ties to even and adds a discriminating tie test, so a re-review flips the finding from unsupported to supported."
+}
