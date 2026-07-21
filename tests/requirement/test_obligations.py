@@ -1,11 +1,12 @@
-"""M1.2 acceptance: decompose a task into typed obligations.
+"""M1.2/M1.3 acceptance: decompose a task into typed obligations and the
+material ambiguities that need user judgment.
 
 Decomposition is a schema-constrained model call; per the M0.4/M0.5 replay-first
 invariant these tests inject the recorded model response (a hand-authored
 fixture) via the harness's completion_fn — no live calls. The response is what a
-good model returns for the §9.1 example and archetype #1; the test verifies the
-pipeline turns it into typed Obligations with ids and source spans. The model's
-actual decomposition accuracy is measured separately by the benchmark (M-B*).
+good model returns; the test verifies the pipeline turns it into typed
+Obligations and OpenQuestions with ids and source spans. The model's actual
+decomposition accuracy is measured separately by the benchmark (M-B*).
 """
 
 import json
@@ -14,7 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from acceptance.llm import Mode, ModelClient, TranscriptStore
-from acceptance.requirement.obligations import decompose
+from acceptance.requirement.obligations import Decomposition, decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import ObligationType
 
@@ -97,7 +98,7 @@ def _client_returning(response: dict) -> ModelClient:
 
 def test_floating_rate_example_yields_five_typed_criteria():
     parsed = parse_task_file(FLOATING_RATE_TASK)
-    obligations = decompose(parsed, _client_returning(FLOATING_RATE_RESPONSE))
+    obligations = decompose(parsed, _client_returning(FLOATING_RATE_RESPONSE)).obligations
 
     assert len(obligations) == 5
     types = [o.type for o in obligations]
@@ -114,7 +115,7 @@ def test_floating_rate_example_yields_five_typed_criteria():
 
 def test_each_obligation_links_to_its_source_span():
     parsed = parse_task_file(FLOATING_RATE_TASK)
-    obligations = decompose(parsed, _client_returning(FLOATING_RATE_RESPONSE))
+    obligations = decompose(parsed, _client_returning(FLOATING_RATE_RESPONSE)).obligations
 
     for obligation in obligations:
         assert obligation.source_spans, f"{obligation.id} has no source span"
@@ -168,7 +169,7 @@ def test_archetype_1_includes_the_omitted_obligation():
         ]
     }
 
-    obligations = decompose(parsed, _client_returning(response))
+    obligations = decompose(parsed, _client_returning(response)).obligations
     ids = {o.id for o in obligations}
     assert "returns-in-parentheses" in ids
     returns = next(o for o in obligations if o.id == "returns-in-parentheses")
@@ -200,5 +201,96 @@ def test_duplicate_ids_are_made_unique():
             },
         ]
     }
-    obligations = decompose(parsed, _client_returning(response))
+    obligations = decompose(parsed, _client_returning(response)).obligations
     assert [o.id for o in obligations] == ["dup", "dup-2"]
+
+
+# --- M1.3: explicit / inferred / open questions ---
+
+UNDERSPECIFIED_TASK = """# Task
+Add a retry policy to the API client.
+
+## Constraints
+- Retry failed requests.
+"""
+
+UNDERSPECIFIED_RESPONSE = {
+    "obligations": [
+        {
+            "id": "retry-failed-requests",
+            "description": "Retry failed requests.",
+            "type": "functional",
+            "importance": "critical",
+            "explicit": True,
+            "observable_behavior": "a failed request is retried",
+            "source_quote": "Retry failed requests.",
+        }
+    ],
+    "open_questions": [
+        {
+            "id": "retry-count-unspecified",
+            "question": "How many retries, and with what backoff?",
+            "importance": "critical",
+            "source_quote": "Retry failed requests.",
+        }
+    ],
+}
+
+
+def test_underspecified_qualifier_yields_an_open_question_not_an_obligation():
+    parsed = parse_task_file(UNDERSPECIFIED_TASK)
+    result = decompose(parsed, _client_returning(UNDERSPECIFIED_RESPONSE))
+
+    assert len(result.open_questions) == 1
+    question = result.open_questions[0]
+    assert question.id == "retry-count-unspecified"
+    # The ambiguity is surfaced, not turned into a fabricated obligation.
+    assert all(o.id != question.id for o in result.obligations)
+    assert not any("retry-count" in o.id for o in result.obligations)
+    # It links to the ambiguous source text.
+    assert question.source_spans
+    for span in question.source_spans:
+        assert parsed.source[span.start : span.end] == span.text
+
+
+def test_explicit_and_inferred_flags_are_carried_through():
+    parsed = parse_task_file(FLOATING_RATE_TASK)
+    obligations = decompose(parsed, _client_returning(FLOATING_RATE_RESPONSE)).obligations
+    by_id = {o.id: o for o in obligations}
+
+    assert by_id["coupons-use-index-plus-spread"].explicit is True  # directly stated
+    assert by_id["expose-selected-observation-and-spread"].explicit is False  # inferred
+
+
+def test_ids_are_unique_across_obligations_and_open_questions():
+    parsed = parse_task_file(UNDERSPECIFIED_TASK)
+    response = {
+        "obligations": [
+            {
+                "id": "shared",
+                "description": "An obligation.",
+                "type": "functional",
+                "importance": "normal",
+                "explicit": True,
+                "observable_behavior": "...",
+                "source_quote": "Retry failed requests.",
+            }
+        ],
+        "open_questions": [
+            {
+                "id": "shared",
+                "question": "A colliding id?",
+                "importance": "normal",
+                "source_quote": "Retry failed requests.",
+            }
+        ],
+    }
+    result = decompose(parsed, _client_returning(response))
+    assert result.obligations[0].id == "shared"
+    assert result.open_questions[0].id == "shared-2"  # de-duplicated across both
+
+
+def test_decomposition_round_trips_through_persistence():
+    parsed = parse_task_file(UNDERSPECIFIED_TASK)
+    result = decompose(parsed, _client_returning(UNDERSPECIFIED_RESPONSE))
+    assert Decomposition.from_dict(result.to_dict()) == result

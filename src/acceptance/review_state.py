@@ -34,6 +34,7 @@ __all__ = [
     "BuilderDeclaration",
     "ChangeSet",
     "Obligation",
+    "OpenQuestion",
     "TestEvidence",
     "ExecutionEvidence",
     "Link",
@@ -125,6 +126,19 @@ class Obligation(_Model):
     source_spans: list[TextSpan] = Field(default_factory=list)
     achieved_evidence_tier: EvidenceTier | None = None
     test_evidence: list[str] = Field(default_factory=list)
+
+
+class OpenQuestion(_Model):
+    """A material ambiguity in the task that needs user judgment (§7.3, §9.3).
+
+    Surfaced instead of silently inventing an obligation — uncertainty is a
+    first-class, expected output. `source_spans` link to the underspecified
+    task text."""
+
+    id: str
+    question: str
+    importance: Literal["critical", "normal"] = "normal"
+    source_spans: list[TextSpan] = Field(default_factory=list)
 
 
 class TestEvidence(_Model):
