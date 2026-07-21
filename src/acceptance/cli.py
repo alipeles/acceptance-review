@@ -1,11 +1,15 @@
 """`acceptance` CLI entrypoint.
 
-Parses `check --task --base --head` plus the M0.5 determinism controls
-(`--model`, `--mode`, `--seed`, `--temperature`), validates its inputs, and
-runs the M0.6 walking-skeleton pipeline: ingest task + revisions → write an
-empty but well-formed Review to the state store → render the §16 report.
-Requirement interpretation, real diffing, and test analysis land in later
-milestones; the sections render present-and-empty until then.
+`check --task --base --head` runs the M0.6 walking-skeleton pipeline: ingest
+task + revisions → write an empty but well-formed Review → render the §16
+report. Its sections render present-and-empty until the capabilities that
+fill them (M1-M7) are assembled into the pipeline.
+
+`decompose` and `diff` are standalone dogfooding entry points for those
+capabilities as they land — `decompose` runs the real M1.2/M1.3 obligation
+decomposition against a task file (live model call); `diff` runs the real
+M2.1 change-set extraction against two revisions. Neither is wired into
+`check` yet; that assembly happens later (M7).
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from acceptance.change.diff import extract_change_set
 from acceptance.config import DEFAULT_MODEL, RunConfig
 from acceptance.llm import LLMError, Mode
 from acceptance.report import render_report
@@ -81,7 +86,8 @@ def run_check(
         mode="local",
         reviewed_revision=head_sha,
         provenance=config.provenance(),
-        # Diff endpoints only; real change extraction (files, diffs) is M2.
+        # Diff endpoints only; real extraction exists (change/diff.py, dogfooded
+        # via `acceptance diff`) but isn't wired into this pipeline yet (M7).
         change_set=ChangeSet(base_revision=base_sha, head_revision=head_sha),
     )
     store.write(review)
@@ -112,6 +118,28 @@ def render_decomposition(result: Decomposition) -> str:
             lines.append(f"  ? {q.id}: {q.question}")
     else:
         lines.append("  (none)")
+    return "\n".join(lines)
+
+
+def run_diff(repo: str, base: str, head: str) -> ChangeSet:
+    """Extract the structural change set between two revisions (M2.1)."""
+    repo_path = Path(repo)
+    base_sha = _resolve_revision(base, repo=repo_path)
+    head_sha = _resolve_revision(head, repo=repo_path)
+    return extract_change_set(repo_path, base_sha, head_sha)
+
+
+def render_change_set(change_set: ChangeSet) -> str:
+    lines = [f"Files changed ({len(change_set.files)}):"]
+    if not change_set.files:
+        lines.append("  (none)")
+    for f in change_set.files:
+        origin = f" (from {f.old_path})" if f.old_path else ""
+        hunk_count = len(f.hunks)
+        lines.append(
+            f"  [{f.category}/{f.status}] {f.path}{origin}  "
+            f"({hunk_count} hunk{'' if hunk_count == 1 else 's'})"
+        )
     return "\n".join(lines)
 
 
@@ -159,6 +187,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Emit the structured Decomposition as JSON.",
     )
 
+    diff = subparsers.add_parser(
+        "diff", help="Extract the structural change set between two revisions."
+    )
+    diff.add_argument("--repo", default=".", help="Path to the Git repo (default: here).")
+    diff.add_argument("--base", required=True, help="Base Git revision.")
+    diff.add_argument("--head", required=True, help="Head Git revision.")
+    diff.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the structured ChangeSet as JSON.",
+    )
+
     return parser
 
 
@@ -203,6 +243,18 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result.to_dict(), indent=2))
         else:
             print(render_decomposition(result))
+        return 0
+
+    if args.command == "diff":
+        try:
+            change_set = run_diff(args.repo, args.base, args.head)
+        except CliError as exc:
+            print(f"acceptance: error: {exc}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps(change_set.to_dict(), indent=2))
+        else:
+            print(render_change_set(change_set))
         return 0
 
     parser.error(f"unknown command: {args.command}")

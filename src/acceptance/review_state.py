@@ -32,6 +32,8 @@ __all__ = [
     "TaskSource",
     "MandateInterpretation",
     "BuilderDeclaration",
+    "DiffHunk",
+    "FileChange",
     "ChangeSet",
     "Obligation",
     "OpenQuestion",
@@ -100,13 +102,31 @@ class BuilderDeclaration(_Model):
     additional_behavioral_changes: str
 
 
+class DiffHunk(_Model):
+    """One `@@ -a,b +c,d @@` unified-diff hunk."""
+
+    header: str
+    old_start: int
+    old_lines: int
+    new_start: int
+    new_lines: int
+    content: str
+
+
+class FileChange(_Model):
+    """One changed file between base and head (M2.1, §13.3 Git change analysis)."""
+
+    path: str
+    status: Literal["added", "modified", "deleted", "renamed"]
+    category: Literal["source", "test", "config", "other"]
+    old_path: str | None = None  # set when status == "renamed"
+    hunks: list[DiffHunk] = Field(default_factory=list)
+
+
 class ChangeSet(_Model):
     base_revision: str
     head_revision: str
-    changed_files: list[str] = Field(default_factory=list)
-    source_diff: str = ""
-    test_diff: str = ""
-    config_dependency_changes: list[str] = Field(default_factory=list)
+    files: list[FileChange] = Field(default_factory=list)
 
 
 class Obligation(_Model):

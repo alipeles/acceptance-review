@@ -21,7 +21,7 @@ def test_check_json_emits_empty_structured_review(git_repo, fixture_task_path, c
     # Diff endpoints are ingested; file-level diffing is still M2.
     assert review["change_set"]["base_revision"] == git_repo["base"]
     assert review["change_set"]["head_revision"] == git_repo["head"]
-    assert review["change_set"]["changed_files"] == []
+    assert review["change_set"]["files"] == []
     assert review["obligation_map"] == []
     assert review["findings"] == []
     assert review["limitations"] == []
