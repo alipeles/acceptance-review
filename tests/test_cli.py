@@ -237,9 +237,10 @@ def test_classify_replay_without_transcript_fails_cleanly(
     assert "model error" in capsys.readouterr().err
 
 
-def test_render_coverage_output():
-    from acceptance.cli import render_coverage
+def test_render_classify_output():
+    from acceptance.cli import render_classify
     from acceptance.coverage.classify import CoverageStatus, DiffRef, ImplementationCoverage
+    from acceptance.coverage.unrequested import UnrequestedChange, UnrequestedChangeKind
     from acceptance.review_state import Obligation, ObligationType
 
     obligations = [
@@ -257,9 +258,19 @@ def test_render_coverage_output():
             obligation_id="ob-2", status=CoverageStatus.NOT_ADDRESSED, rationale="missing",
         ),
     ]
+    unrequested = [
+        UnrequestedChange(
+            kind=UnrequestedChangeKind.PUBLIC_INTERFACE,
+            rationale="checkout signature changed",
+            diff_refs=[DiffRef(file="cart.py", hunk_header="@@ -1 +1 @@")],
+        )
+    ]
 
-    rendered = render_coverage(obligations, coverages)
+    rendered = render_classify(obligations, coverages, unrequested)
     assert "[addressed] ob-1: Do the thing." in rendered
     assert "pkg.py" in rendered
     assert "[not_addressed] ob-2: Handle the edge." in rendered
     assert "no corresponding change" in rendered
+    assert "Unrequested changes" in rendered
+    assert "[public_interface] checkout signature changed" in rendered
+    assert "cart.py" in rendered

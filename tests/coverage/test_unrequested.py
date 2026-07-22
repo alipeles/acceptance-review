@@ -1,0 +1,123 @@
+"""M3.2 acceptance: archetype #8 -> the unmentioned public-interface change is
+flagged as an unrequested change.
+
+Detection is a schema-constrained model call; per the replay-first invariant
+these tests inject the recorded response via completion_fn — no live calls.
+Detection *accuracy* is measured by the benchmark (M3.3)."""
+
+import json
+import tempfile
+from pathlib import Path
+from types import SimpleNamespace
+
+from acceptance.benchmark.fixtures import materialize_archetype
+from acceptance.change.diff import extract_change_set
+from acceptance.coverage.unrequested import (
+    UnrequestedChange,
+    UnrequestedChangeKind,
+    detect_unrequested_changes,
+)
+from acceptance.llm import Mode, ModelClient, TranscriptStore
+from acceptance.review_state import ChangeSet, Obligation, ObligationType
+
+ARCHETYPES = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
+
+
+def _client_returning(response: dict) -> ModelClient:
+    def completion_fn(**kwargs):
+        content = json.dumps(response)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
+            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+        )
+
+    return ModelClient(
+        model="anthropic/claude-sonnet-5",
+        mode=Mode.RECORD,
+        store=TranscriptStore(tempfile.mkdtemp()),
+        completion_fn=completion_fn,
+    )
+
+
+def _obligation(obligation_id: str, description: str, typ: ObligationType) -> Obligation:
+    return Obligation(
+        id=obligation_id,
+        description=description,
+        type=typ,
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
+    )
+
+
+def _archetype_change_set(name: str, tmp_path: Path) -> ChangeSet:
+    fixture = materialize_archetype(ARCHETYPES / name, tmp_path / "repo")
+    return extract_change_set(fixture.repo_path, fixture.base_sha, fixture.head_sha)
+
+
+def _source_file(change_set: ChangeSet, suffix: str) -> str:
+    return next(f.path for f in change_set.files if f.path.endswith(suffix))
+
+
+def test_archetype_8_public_interface_change_is_flagged(tmp_path):
+    change_set = _archetype_change_set("08-unrequested-change", tmp_path)
+    cart = _source_file(change_set, "cart.py")
+
+    # The task only asked for apply_discount; leave-existing forbids changing
+    # unrelated behavior. checkout's signature change is unrequested.
+    obligations = [
+        _obligation("apply-discount", "Add apply_discount(total, percent)", ObligationType.FUNCTIONAL),
+        _obligation("leave-existing", "Leave existing behavior as-is", ObligationType.COMPATIBILITY),
+    ]
+    response = {
+        "unrequested_changes": [
+            {
+                "kind": "public_interface",
+                "rationale": "checkout gained a tax_rate parameter and rounding; not requested.",
+                "diff_refs": [f"{cart}#0"],
+            }
+        ]
+    }
+
+    changes = detect_unrequested_changes(obligations, change_set, _client_returning(response))
+
+    assert len(changes) == 1
+    assert changes[0].kind == UnrequestedChangeKind.PUBLIC_INTERFACE
+    assert changes[0].diff_refs
+    assert changes[0].diff_refs[0].file == cart
+    assert changes[0].diff_refs[0].hunk_header.startswith("@@")
+
+
+def test_nothing_flagged_when_all_changes_are_requested(tmp_path):
+    change_set = _archetype_change_set("01-missed-obligation", tmp_path)
+    obligations = [_obligation("x", "obligation", ObligationType.FUNCTIONAL)]
+
+    changes = detect_unrequested_changes(
+        obligations, change_set, _client_returning({"unrequested_changes": []})
+    )
+    assert changes == []
+
+
+def test_unknown_hunk_labels_are_dropped(tmp_path):
+    change_set = _archetype_change_set("08-unrequested-change", tmp_path)
+    obligations = [_obligation("x", "obligation", ObligationType.FUNCTIONAL)]
+    response = {
+        "unrequested_changes": [
+            {"kind": "dependency", "rationale": "...", "diff_refs": ["ghost.py#9"]}
+        ]
+    }
+    changes = detect_unrequested_changes(obligations, change_set, _client_returning(response))
+    assert changes[0].diff_refs == []  # unknown label dropped, not crashed
+
+
+def test_unrequested_change_round_trips_through_persistence(tmp_path):
+    change_set = _archetype_change_set("08-unrequested-change", tmp_path)
+    cart = _source_file(change_set, "cart.py")
+    obligations = [_obligation("apply-discount", "Add apply_discount", ObligationType.FUNCTIONAL)]
+    response = {
+        "unrequested_changes": [
+            {"kind": "public_interface", "rationale": "checkout signature changed", "diff_refs": [f"{cart}#0"]}
+        ]
+    }
+    change = detect_unrequested_changes(obligations, change_set, _client_returning(response))[0]
+    assert UnrequestedChange.from_dict(change.to_dict()) == change
