@@ -20,7 +20,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from acceptance.change.diff import extract_change_set
+from acceptance.change.diff import extract_change_set, extract_working_tree_change_set
 from acceptance.config import DEFAULT_MODEL, RunConfig
 from acceptance.llm import LLMError, Mode
 from acceptance.report import render_report
@@ -121,16 +121,22 @@ def render_decomposition(result: Decomposition) -> str:
     return "\n".join(lines)
 
 
-def run_diff(repo: str, base: str, head: str) -> ChangeSet:
-    """Extract the structural change set between two revisions (M2.1)."""
+def run_diff(repo: str, base: str, head: str | None) -> ChangeSet:
+    """Extract the structural change set (M2.1), or against the working tree
+    when `head` is omitted (M2.3, §5.1 — works before a PR/commit exists)."""
     repo_path = Path(repo)
     base_sha = _resolve_revision(base, repo=repo_path)
+    if head is None:
+        return extract_working_tree_change_set(repo_path, base_sha)
     head_sha = _resolve_revision(head, repo=repo_path)
     return extract_change_set(repo_path, base_sha, head_sha)
 
 
 def render_change_set(change_set: ChangeSet) -> str:
-    lines = [f"Files changed ({len(change_set.files)}):"]
+    lines = [
+        f"Base: {change_set.base_revision}  Head: {change_set.head_revision}",
+        f"Files changed ({len(change_set.files)}):",
+    ]
     if not change_set.files:
         lines.append("  (none)")
     for f in change_set.files:
@@ -192,7 +198,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     diff.add_argument("--repo", default=".", help="Path to the Git repo (default: here).")
     diff.add_argument("--base", required=True, help="Base Git revision.")
-    diff.add_argument("--head", required=True, help="Head Git revision.")
+    diff.add_argument(
+        "--head",
+        default=None,
+        help="Head Git revision. Omit to diff against the working tree (§5.1).",
+    )
     diff.add_argument(
         "--json",
         action="store_true",
