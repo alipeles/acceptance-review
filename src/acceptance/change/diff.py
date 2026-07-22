@@ -1,9 +1,19 @@
-"""Revision & diff extraction (M2.1).
+"""Revision & diff extraction (M2.1) and working-tree mode (M2.3, §5.1).
 
-Extracts the structural Git change set between two revisions: which files
-changed, how (added/modified/deleted/renamed), what they are (source/test/
-config/other), and their hunk-level diffs. Pure `git` plumbing — no LLM call,
-since this is structural, not semantic (§13.3 Git change analysis).
+Extracts the structural Git change set between two revisions — or between a
+base revision and the current working tree, so the checker works before a PR
+or commit exists — into the same shape: which files changed, how (added/
+modified/deleted/renamed), what they are (source/test/config/other), and
+their hunk-level diffs. Pure `git` plumbing — no LLM call, since this is
+structural, not semantic (§13.3 Git change analysis).
+
+Working-tree mode limitation: `git diff` never shows untracked files, so they
+are detected separately (`git ls-files --others`) and read directly rather
+than diffed. This means a rename done via plain `mv` (not staged with
+`git mv`) is seen as a deletion plus a separate untracked addition, not a
+rename — untracked files can't participate in git's similarity-based rename
+detection. A staged rename (`git mv`, or `mv` + `git add`) is detected
+correctly, same as a committed one.
 """
 
 from __future__ import annotations
@@ -13,6 +23,8 @@ import subprocess
 from pathlib import Path
 
 from acceptance.review_state import ChangeSet, DiffHunk, FileChange
+
+WORKING_TREE_SENTINEL = "<working-tree>"
 
 _TEST_PATH_RE = re.compile(r"(^|/)tests?/|(^|/)test_[^/]+\.py$|_test\.py$")
 _CONFIG_NAMES = {
@@ -42,8 +54,22 @@ def extract_change_set(repo: Path, base: str, head: str) -> ChangeSet:
     """Extract the structural change set between `base` and `head` in `repo`."""
     entries = _parse_name_status(_git(repo, "diff", "--name-status", "-M", base, head))
     blocks = _split_file_blocks(_git(repo, "diff", "-U3", base, head))
+    return ChangeSet(
+        base_revision=base, head_revision=head, files=_build_files(entries, blocks)
+    )
 
-    files = [
+
+def extract_working_tree_change_set(repo: Path, base: str) -> ChangeSet:
+    """Extract the change set between `base` and the current working tree
+    (staged + unstaged + untracked) — no head commit required (§5.1)."""
+    entries = _parse_name_status(_git(repo, "diff", "--name-status", "-M", base))
+    blocks = _split_file_blocks(_git(repo, "diff", "-U3", base))
+    files = _build_files(entries, blocks) + _untracked_file_changes(repo)
+    return ChangeSet(base_revision=base, head_revision=WORKING_TREE_SENTINEL, files=files)
+
+
+def _build_files(entries: list[dict], blocks: dict[str, str]) -> list[FileChange]:
+    return [
         FileChange(
             path=entry["path"],
             status=entry["status"],
@@ -53,7 +79,44 @@ def extract_change_set(repo: Path, base: str, head: str) -> ChangeSet:
         )
         for entry in entries
     ]
-    return ChangeSet(base_revision=base, head_revision=head, files=files)
+
+
+def _untracked_file_changes(repo: Path) -> list[FileChange]:
+    """Untracked files as synthetic all-added FileChanges — git diff can't
+    diff a file it doesn't know about, so these are read directly."""
+    changes = []
+    for path in _git(repo, "ls-files", "--others", "--exclude-standard").splitlines():
+        if not path.strip():
+            continue
+        try:
+            content = (repo / path).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        changes.append(
+            FileChange(
+                path=path,
+                status="added",
+                category=_categorize(path),
+                hunks=_whole_file_hunk(content),
+            )
+        )
+    return changes
+
+
+def _whole_file_hunk(content: str) -> list[DiffHunk]:
+    lines = content.splitlines()
+    if not lines:
+        return []
+    return [
+        DiffHunk(
+            header=f"@@ -0,0 +1,{len(lines)} @@",
+            old_start=0,
+            old_lines=0,
+            new_start=1,
+            new_lines=len(lines),
+            content="\n".join(f"+{line}" for line in lines),
+        )
+    ]
 
 
 def _categorize(path: str) -> str:
