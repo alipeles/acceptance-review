@@ -22,9 +22,10 @@ from pathlib import Path
 
 from acceptance.change.diff import extract_change_set, extract_working_tree_change_set
 from acceptance.config import DEFAULT_MODEL, RunConfig
+from acceptance.coverage.classify import ImplementationCoverage, classify_coverage
 from acceptance.llm import LLMError, Mode
 from acceptance.report import render_report
-from acceptance.requirement.obligations import Decomposition, decompose
+from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import ChangeSet, Review
 from acceptance.review_store import ReviewStore
@@ -149,6 +150,40 @@ def render_change_set(change_set: ChangeSet) -> str:
     return "\n".join(lines)
 
 
+def run_classify(
+    task: str, base: str, head: str | None, config: RunConfig, repo: str = "."
+) -> tuple[list[Obligation], list[ImplementationCoverage]]:
+    """Decompose a task, extract its change set, and classify each obligation
+    against the diff — a live end-to-end dogfood of M1 + M2 + M3.1."""
+    repo_path = Path(repo)
+    parsed = parse_task_file(_read_task(task))
+    obligations = decompose(parsed, config.build_client()).obligations
+
+    base_sha = _resolve_revision(base, repo=repo_path)
+    if head is None:
+        change_set = extract_working_tree_change_set(repo_path, base_sha)
+    else:
+        head_sha = _resolve_revision(head, repo=repo_path)
+        change_set = extract_change_set(repo_path, base_sha, head_sha)
+
+    coverages = classify_coverage(obligations, change_set, config.build_client())
+    return obligations, coverages
+
+
+def render_coverage(
+    obligations: list[Obligation], coverages: list[ImplementationCoverage]
+) -> str:
+    descriptions = {o.id: o.description for o in obligations}
+    lines = ["Implementation coverage (code only — not test evidence):"]
+    if not coverages:
+        lines.append("  (none)")
+    for cov in coverages:
+        refs = ", ".join(f"{r.file}" for r in cov.diff_refs) or "no corresponding change"
+        lines.append(f"  [{cov.status.value}] {cov.obligation_id}: {descriptions.get(cov.obligation_id, '')}")
+        lines.append(f"      -> {refs}")
+    return "\n".join(lines)
+
+
 def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None:
     parser.add_argument(
         "--model",
@@ -209,6 +244,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Emit the structured ChangeSet as JSON.",
     )
 
+    classify = subparsers.add_parser(
+        "classify",
+        help="Decompose a task, diff a change, and classify each obligation "
+        "against the diff (implementation coverage, live).",
+    )
+    classify.add_argument("--task", required=True, help="Path to the task file.")
+    classify.add_argument("--repo", default=".", help="Path to the Git repo (default: here).")
+    classify.add_argument("--base", required=True, help="Base Git revision.")
+    classify.add_argument(
+        "--head",
+        default=None,
+        help="Head Git revision. Omit to use the working tree (§5.1).",
+    )
+    _add_model_flags(classify, default_mode=Mode.RECORD.value)
+    classify.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the structured coverage classifications as JSON.",
+    )
+
     return parser
 
 
@@ -265,6 +320,29 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(change_set.to_dict(), indent=2))
         else:
             print(render_change_set(change_set))
+        return 0
+
+    if args.command == "classify":
+        config = RunConfig(
+            model=args.model,
+            mode=Mode(args.mode),
+            seed=args.seed,
+            temperature=args.temperature,
+        )
+        try:
+            obligations, coverages = run_classify(
+                args.task, args.base, args.head, config, args.repo
+            )
+        except CliError as exc:
+            print(f"acceptance: error: {exc}", file=sys.stderr)
+            return 1
+        except LLMError as exc:
+            print(f"acceptance: model error: {exc}", file=sys.stderr)
+            return 1
+        if args.json:
+            print(json.dumps([c.to_dict() for c in coverages], indent=2))
+        else:
+            print(render_coverage(obligations, coverages))
         return 0
 
     parser.error(f"unknown command: {args.command}")

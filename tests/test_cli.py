@@ -220,3 +220,46 @@ def test_render_decomposition_lists_obligations_and_open_questions():
     rendered = render_decomposition(result)
     assert "[functional/explicit] ob-1: Do the thing." in rendered
     assert "? q-1: How many?" in rendered
+
+
+# --- classify subcommand (M3.1 dogfood path) ---
+
+def test_classify_replay_without_transcript_fails_cleanly(
+    fixture_task_path, git_repo, monkeypatch, capsys
+):
+    # REPLAY with no transcript: the first live call (decompose) can't replay.
+    monkeypatch.chdir(git_repo["path"])
+    exit_code = main(
+        ["classify", "--task", fixture_task_path, "--base", git_repo["base"],
+         "--head", git_repo["head"], "--mode", "replay"]
+    )
+    assert exit_code == 1
+    assert "model error" in capsys.readouterr().err
+
+
+def test_render_coverage_output():
+    from acceptance.cli import render_coverage
+    from acceptance.coverage.classify import CoverageStatus, DiffRef, ImplementationCoverage
+    from acceptance.review_state import Obligation, ObligationType
+
+    obligations = [
+        Obligation(id="ob-1", description="Do the thing.", type=ObligationType.FUNCTIONAL,
+                   importance="critical", explicit=True, observable_behavior="..."),
+        Obligation(id="ob-2", description="Handle the edge.", type=ObligationType.BOUNDARY,
+                   importance="normal", explicit=True, observable_behavior="..."),
+    ]
+    coverages = [
+        ImplementationCoverage(
+            obligation_id="ob-1", status=CoverageStatus.ADDRESSED, rationale="done",
+            diff_refs=[DiffRef(file="pkg.py", hunk_header="@@ -1 +1 @@")],
+        ),
+        ImplementationCoverage(
+            obligation_id="ob-2", status=CoverageStatus.NOT_ADDRESSED, rationale="missing",
+        ),
+    ]
+
+    rendered = render_coverage(obligations, coverages)
+    assert "[addressed] ob-1: Do the thing." in rendered
+    assert "pkg.py" in rendered
+    assert "[not_addressed] ob-2: Handle the edge." in rendered
+    assert "no corresponding change" in rendered
