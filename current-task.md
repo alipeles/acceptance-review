@@ -1,10 +1,10 @@
 # Task
-For each changed code region, retrieve the enclosing definition and its direct in-repo call sites, within a bounded retrieval budget.
+Analyze uncommitted working-tree changes against a base revision, so the checker works before a PR or commit exists (§5.1).
 
 ## Constraints
-- Find the innermost function/class/method definition that encloses each changed line, via Python AST parsing.
-- Retrieve direct call sites of each changed definition elsewhere in the repo.
-- Respect a configurable budget cap (files scanned, call sites per definition); mark results truncated when the cap is hit rather than scanning unbounded.
+- A dirty working tree (staged and/or unstaged changes, no head commit required) must produce the same ChangeSet shape M2.1 produces for a committed diff.
+- Untracked new files must be detected as added files, not silently ignored.
+- Do not require a head commit to exist.
 
 ## Completion expectations
 - Implementation
