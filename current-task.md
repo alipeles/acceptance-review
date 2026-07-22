@@ -1,10 +1,10 @@
 # Task
-Analyze uncommitted working-tree changes against a base revision, so the checker works before a PR or commit exists (§5.1).
+Classify each obligation against the diff — Addressed / Partially addressed / Not addressed / Unclear / Requires-non-code-evidence — linking each to the specific diff regions that address it, or explicitly recording that none do.
 
 ## Constraints
-- A dirty working tree (staged and/or unstaged changes, no head commit required) must produce the same ChangeSet shape M2.1 produces for a committed diff.
-- Untracked new files must be detected as added files, not silently ignored.
-- Do not require a head commit to exist.
+- This is implementation-coverage only: whether the code changed to address the obligation. It does not prove the obligation works; passing-test evidence is a separate axis (M4/M5) and must not be conflated here.
+- Every classification links to exact diff regions (file + hunk) or explicitly records "no corresponding change."
+- Produce classifications through a schema-constrained model call recorded for replay; capability tests run off the recorded transcript with no live calls.
 
 ## Completion expectations
 - Implementation
