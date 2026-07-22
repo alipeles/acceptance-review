@@ -64,6 +64,10 @@ def test_dirty_working_tree_matches_committed_diff_shape(tmp_path, repo):
 
     committed_repo = tmp_path / "committed"
     subprocess.run(["git", "clone", "-q", str(repo), str(committed_repo)], check=True, capture_output=True)
+    # `git clone` does not copy local config, so the clone has no commit
+    # identity — set one explicitly (CI has no global/auto-detectable identity).
+    _git(committed_repo, "config", "user.email", "test@example.com")
+    _git(committed_repo, "config", "user.name", "Test")
     _git(committed_repo, "checkout", "-q", base)
     (committed_repo / "pkg.py").write_text("def f():\n    return 2\n")
     (committed_repo / "tests" / "test_pkg.py").write_text(
