@@ -20,9 +20,12 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_prompt, resolve_refs
 from acceptance.llm import ModelClient
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation
+
+__all__ = ["CoverageStatus", "DiffRef", "ImplementationCoverage", "classify_coverage"]
 
 
 class CoverageStatus(str, Enum):
@@ -33,13 +36,6 @@ class CoverageStatus(str, Enum):
     NOT_ADDRESSED = "not_addressed"
     UNCLEAR = "unclear"
     REQUIRES_NON_CODE_EVIDENCE = "requires_non_code_evidence"
-
-
-class DiffRef(PersistableModel):
-    """A link to a specific changed region (file + hunk header)."""
-
-    file: str
-    hunk_header: str
 
 
 class ImplementationCoverage(PersistableModel):
@@ -90,10 +86,10 @@ def classify_coverage(
     obligations: list[Obligation], change_set: ChangeSet, client: ModelClient
 ) -> list[ImplementationCoverage]:
     """Classify each obligation against the change set (implementation coverage)."""
-    label_to_ref = _hunk_labels(change_set)
+    label_to_ref = hunk_labels(change_set)
     messages = [
         {"role": "system", "content": _SYSTEM_PROMPT},
-        {"role": "user", "content": _render_prompt(obligations, change_set, label_to_ref)},
+        {"role": "user", "content": render_diff_prompt(obligations, change_set)},
     ]
     result = client.complete(messages, _Coverage)
 
@@ -110,7 +106,7 @@ def classify_coverage(
                 )
             )
             continue
-        refs = [label_to_ref[label] for label in classification.diff_refs if label in label_to_ref]
+        refs = resolve_refs(classification.diff_refs, label_to_ref)
         coverages.append(
             ImplementationCoverage(
                 obligation_id=obligation.id,
@@ -120,34 +116,3 @@ def classify_coverage(
             )
         )
     return coverages
-
-
-def _hunk_labels(change_set: ChangeSet) -> dict[str, DiffRef]:
-    labels: dict[str, DiffRef] = {}
-    for file_change in change_set.files:
-        for index, hunk in enumerate(file_change.hunks):
-            labels[f"{file_change.path}#{index}"] = DiffRef(
-                file=file_change.path, hunk_header=hunk.header
-            )
-    return labels
-
-
-def _render_prompt(
-    obligations: list[Obligation], change_set: ChangeSet, label_to_ref: dict[str, DiffRef]
-) -> str:
-    lines = ["## Obligations", ""]
-    for obligation in obligations:
-        lines.append(f"- id={obligation.id} [{obligation.type.value}]: {obligation.description}")
-    lines.append("")
-    lines.append("## Diff")
-    if not change_set.files:
-        lines.append("(no changes)")
-    for file_change in change_set.files:
-        lines.append("")
-        lines.append(f"### {file_change.path} ({file_change.status}, {file_change.category})")
-        if not file_change.hunks:
-            lines.append("(no hunks)")
-        for index, hunk in enumerate(file_change.hunks):
-            lines.append(f"[{file_change.path}#{index}] {hunk.header}")
-            lines.append(hunk.content)
-    return "\n".join(lines)
