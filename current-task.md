@@ -1,11 +1,11 @@
 # Task
-Flag diff regions that no obligation calls for as candidate unrequested changes, giving extra weight to public-interface, dependency, and adjacent-behavior changes.
+Feed M3.1's implementation-coverage classifications and M3.2's unrequested-change detections into the M-B0.3 gap-detection (recall) and false-alarm (precision) scoring.
 
 ## Constraints
-- Report changes not required by any obligation as candidate unrequested changes, each linked to the specific diff regions.
-- Categorize each by nature (public-interface / dependency / adjacent-behavior / internal / other) so the notable ones stand out.
-- Produce the detection through a schema-constrained model call recorded for replay; capability tests run off the recorded transcript with no live calls.
+- Reuse the existing §11.1 gap metric (`scoring.py`); do not redefine it.
+- A non-addressed coverage classification becomes a Finding linked to the obligation it concerns, so it is matchable against ground-truth gaps.
+- Keep the hook lighter than the full checker pipeline (M-B0.2's run_case) — no test execution, same shape as M1.4's decompose_case.
 
 ## Completion expectations
 - Implementation
-- Unit tests
+- Unit tests: archetypes #1, #2, and #8 each contribute a real, hand-calculable gap_recall/gap_precision figure.
