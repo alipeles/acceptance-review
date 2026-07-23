@@ -60,6 +60,7 @@ Per the chosen tech depth, this plan fixes **constraints and the decisions each 
 - **Mutation targeting** — how a named plausible defect maps to exact lines and a concrete code mutation (§8.2). *(M8)*
 - **Feasibility probe** — what signals declare a suite "hermetic and fast enough" (§8.3). *(M8)*
 - **Benchmark dataset selection & licensing** — *resolved; see §10.* Primary base layer is **SWE-bench Verified** (500 human-validated instances); **BugsInPy** (~500 reproducible bugs) backs the offline-mutant and execution layers. Remaining action is confirming per-repo licenses and BugsInPy's licensing status before any redistribution. *(M-B1)*
+- **Unrequested-change scoring & disposition** — *resolved; see DR-081.* Score unrequested-change detection as its own precision/recall axis (not folded into the gap metric), on the archetype layer in Stage 1 with real-change scoring deferred; model an explicit disposition (in-service / separable / risky) with a strict/loose policy knob; present findings as advisory. *(M3.5)*
 
 ---
 
@@ -113,6 +114,7 @@ Two tracks — the **Checker (M)** and the **Benchmark (M-B)** — are interleav
 | 4 | **M1** Requirement interpretation | M0 | First real capability; obligations are the spine everything maps to. |
 | 5 | **M2** Git change analysis | M0 | Provides the diff/source context M3–M5 consume. |
 | 6 | **M3** Implementation-coverage analysis | M1, M2 | Needs obligations + change set. |
+| 6.5 | **M3.5** Unrequested-change scoring & disposition | M3, #81 | Dogfood follow-up (DR-081); pre-M4 cleanup — scores the unrequested-change axis and adds dispositions before M4/M5 build on the state model. |
 | 7 | **M4** Test discovery & mapping | M2, M1 | Needs change set + obligations. |
 | 8 | **M5** Test-semantic analysis | M4 | The core hard capability; consumes the test↔obligation map. |
 | 9 | **M6** Builder-declaration comparison (optional input) | M1, M3, M5 | Compares declaration against obligations/diff/tests. |
@@ -135,7 +137,7 @@ Rationale for the two most load-bearing ordering choices: (a) **benchmark-before
 | 5 | Circular expected result | M5 |
 | 6 | Critical behavior mocked out | M5 |
 | 7 | Declaration mismatch | M6 |
-| 8 | Unrequested change | M3 |
+| 8 | Unrequested change | M3 + M3.5 |
 | 9 | Local revision cycle (rerun) | M7 (incremental re-run over M0 state) |
 | 14 | Execution-confirmed weak test | M8 |
 
@@ -186,6 +188,17 @@ Each task lists **inputs → deliverable → acceptance check**. Tasks within a 
 - **M3.1 Obligation-to-diff classification.** *Inputs:* M1 obligations, M2 change set, §9.2. *Deliverable:* classify each obligation Addressed / Partially addressed / Not addressed / Unclear / Requires-non-code-evidence, each linked to specific diff regions or explicitly none. *Acceptance:* archetype #1 → the missing instruction classified Not addressed; #2 → the missing qualifier classified Partially addressed; both link to exact code or record "no corresponding change."
 - **M3.2 Unrequested-change detection.** *Inputs:* M2 change set, M1 obligations, §9.2. *Deliverable:* flag diff regions with no corresponding obligation as candidate unrequested changes, especially public-interface/dependency/adjacent-behavior changes. *Acceptance:* archetype #8 → the unmentioned public-interface change is flagged.
 - **M3.3 Coverage scoring hook.** *Inputs:* M-B0.3. *Deliverable:* feed classifications into gap-detection/false-alarm scoring. *Acceptance:* archetypes #1, #2, #8 contribute to recall/precision figures.
+
+### M3.5 — Unrequested-change scoring & disposition (dogfood follow-up)
+
+*Resolves #81 and the DR-081 decisions; runs as the pre-M4 cleanup pass. Surfaced by the M3.3 dogfood run (`acceptance classify`) flagging the scoring hook as only partially addressed. Deferred to Stage 2 (tracked separately): per-disposition scoring accuracy, real-change unrequested-change labeling, and the strongest "own backlog item" finding (needs PR↔issue linkage).*
+
+- **M3.5.1 Unrequested-change scoring metric.** *Inputs:* #81, §11.1, `scoring.py`, M3.2/M3.3. *Deliverable:* an `unrequested_precision` / `unrequested_recall` pair matching obligation-less findings against obligation-less ground-truth changes, reported separately from the gap metric; archetype #8 ground truth updated. *Acceptance:* archetype #8's unrequested-change detection contributes a precision/recall number that does **not** route through its leave-existing obligation's coverage classification.
+- **M3.5.2 Disposition on the Finding schema.** *Inputs:* §9.2, §15, DR-081. *Deliverable:* a `disposition` field on unrequested-change findings (in-service / separable / risky), obligation-less by construction; a strict/loose scope-expansion policy setting. *Acceptance:* an unrequested-change finding round-trips with a disposition and no `related_obligation`; the finding invariant permits obligation-less findings only for this type.
+- **M3.5.3 Separability classification.** *Inputs:* M3.5.2, M3.1 coverage, §9.2. *Deliverable:* classify each unrequested change via the removability litmus (would the task still be complete without it?) plus signals (new public surface, own tests, disjoint modules); emit an advisory "consider splitting into its own PR/backlog item" recommendation for `separable`. *Acceptance:* a planted separable feature → `separable` with the split recommendation; an in-service refactor an obligation depends on → `in_service`.
+- **M3.5.4 Archetype expansion.** *Inputs:* M-B5a, §13.5 #8. *Deliverable:* unrequested-change archetypes beyond #8 — a separable extra feature, an in-service refactor, and a risky adjacent-behavior change — with ground-truth dispositions. *Acceptance:* each new fixture builds and its disposition label validates `[human]`.
+- **M3.5.5 Advisory presentation.** *Inputs:* §16, DR-081, §9.2. *Deliverable:* render unrequested-change findings prominently but as advisory, separating certainty from importance; no defect-claim language. *Acceptance:* CLI shows unrequested changes with disposition, framed "no obligation explains this — your call." *(Lands with M7 CLI output; specified here.)*
+- **M3.5.6 Spec + plan documentation.** *Inputs:* DR-081. *Deliverable:* §9.2, §9.3, §11.1, §15 updated with the two-axis frame, disposition taxonomy, and confidence-vs-importance framing. *Acceptance:* `[human]` review confirms the two axes and disposition model are recorded.
 
 ### M4 — Test discovery & mapping
 

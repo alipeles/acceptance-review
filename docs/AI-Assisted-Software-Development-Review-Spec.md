@@ -200,7 +200,11 @@ Convert the mandate into discrete, observable criteria. Example mandate: *"Add f
 
 ### 9.2 Implementation-coverage review
 
-Classify each obligation against the diff: **Addressed** (credible implementation response); **Partially addressed** (relevant behavior present but a qualifier/branch/condition missing); **Not addressed**; **Unclear** (may be indirect; static evidence insufficient); **Requires non-code evidence** (docs, visual behavior, deploy config, usability). This finds likely incompleteness before acceptance; it does not prove runtime correctness. It also flags likely **unrequested** behavior changes.
+Classify each obligation against the diff: **Addressed** (credible implementation response); **Partially addressed** (relevant behavior present but a qualifier/branch/condition missing); **Not addressed**; **Unclear** (may be indirect; static evidence insufficient); **Requires non-code evidence** (docs, visual behavior, deploy config, usability). This finds likely incompleteness before acceptance; it does not prove runtime correctness. It also flags likely **unrequested** behavior changes — diff regions that correspond to no obligation. Unrequested-change detection is the **dual** of gap detection: a gap is an obligation with no matching code (obligation → code); an unrequested change is code with no matching obligation (code → obligation). It is therefore obligation-*less* by construction and is scored on its own axis (§11.1), never folded into the gap metric.
+
+Every unrequested-change finding carries a **disposition**: **in service** (a refactor/interface edit needed to deliver an obligation — accept, optionally note), **separable** (a coherent, possibly valuable, but distinct unit of work — recommend splitting into its own PR/backlog item), or **risky** (touches public surface, dependencies, or adjacent behavior in a way that could hide a regression — scrutinize). `separable` and `risky` are not exclusive, and separability is orthogonal to value: high-value extra work is still flagged when it does not belong in this change. The separability test reuses coverage — *would the task still be complete if this change were removed?* — sharpened by whether the change adds new self-contained public surface, ships its own tests, and lives in files disjoint from the obligation-mapped ones. Disposition thresholds are a **policy setting** (strict vs. loose scope expansion), since where the acceptable-expansion line sits is a shop norm; the strongest "own backlog item" phrasing sharpens once the backlog is available as an input (Mode B).
+
+Because the tool sees a change with no obligation but not the author's *intent*, unrequested-change findings are **high importance, low certainty**: surfaced prominently but framed as advisory ("here is what changed that no obligation explains — your call"), not as defect claims. Detection is deliberately recall-forward — surface everything unexplained, let the user dismiss the incidental ones — which is safe precisely because the advisory framing makes false positives cheap. (Rationale and scoring in DR-081 / §11.1.)
 
 ### 9.3 Test-evidence analysis
 
@@ -286,7 +290,7 @@ Because the reviewer is itself an AI (§2.5), its credibility depends on measure
 
 ### 11.1 What is measured
 
-Against a labeled set of changes with known gaps: **gap detection (recall)** — of known material gaps, how many are found; **false-alarm rate (precision)** — of reported gaps, how many are spurious (a noisy reviewer is ignored, so this matters as much as recall); **obligation-decomposition accuracy** vs. a human-verified decomposition; **test-to-obligation mapping accuracy**; **evidence-classification agreement** with executed ground truth where execution is available.
+Against a labeled set of changes with known gaps: **gap detection (recall)** — of known material gaps, how many are found; **false-alarm rate (precision)** — of reported gaps, how many are spurious (a noisy reviewer is ignored, so this matters as much as recall); **obligation-decomposition accuracy** vs. a human-verified decomposition; **test-to-obligation mapping accuracy**; **evidence-classification agreement** with executed ground truth where execution is available. Because the review has two axes, gap detection (obligation → code) is complemented by **unrequested-change detection — precision and recall** — on the code → obligation axis: obligation-less findings scored against obligation-less ground-truth changes, a separate metric rather than part of the gap number. Precision matters here (legitimate incidental edits are the false positives) but detection is tuned recall-forward and kept advisory; this is scored on the hand-built archetype layer in Stage 1, with real-change scoring deferred because labeling a change "unrequested" is a judgment about intent (see DR-081).
 
 ### 11.2 Sourcing the benchmark without fabrication
 
@@ -353,7 +357,7 @@ Each verifies a capability and seeds the archetype benchmark layer (§11.2):
 5. **Circular expected result** — expected value from the same production logic; assessment lowered.
 6. **Critical behavior mocked out** — mocks the component whose behavior it claims to establish.
 7. **Declaration mismatch** — claims an error condition implemented; no code path/test found.
-8. **Unrequested change** — diff changes a public interface/dependency/adjacent behavior unmentioned.
+8. **Unrequested change** — diff changes a public interface/dependency/adjacent behavior unmentioned; flagged with a disposition (in-service / separable / risky) and scored on the unrequested-change axis (§11.1). Sibling archetypes cover a separable extra feature and an in-service refactor.
 9. **Local revision cycle** — checker's next instruction is addressed; checker reruns and updates.
 10. **Issue mismatch** — Issue specifies a contractual date convention; PR/declaration/tests use calendar.
 11. **CI-confirmed evidence** — a relevant test identified; Actions confirms it passed against head.
@@ -390,7 +394,7 @@ Will not: require/privilege a specific agent; read full agent prompt histories; 
 - **Test evidence** — identifier; location; inputs; fixtures; assertions; expected-value provenance; mocks; relevant path; mapped obligations; static assessment.
 - **Execution evidence** — run id; command; result (pass/fail/skip); coverage of the obligation's lines; mutation descriptor (injected defect); outcome (killed/survived); reviewed revision.
 - **CI evidence** — workflow; run id; commit; result; status; timestamp; report artifact.
-- **Finding** — type; severity; related obligation; description; supporting evidence; evidence tier; uncertainty; recommended action.
+- **Finding** — type; severity; related obligation (*absent for unrequested-change findings — obligation-less by construction, §9.2*); disposition (*unrequested-change findings only: in-service / separable / risky*); description; supporting evidence; evidence tier; uncertainty; recommended action.
 - **Review** — mode; mandate; declaration; change set; obligation map; findings; evidence tiers; limitations; recommendation; reviewed revision.
 - **Benchmark case** — source (dataset / real PR / mutant / agent run / archetype); inputs; ground-truth labels; reviewer output; scored result.
 
