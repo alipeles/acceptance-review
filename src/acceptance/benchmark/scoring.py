@@ -1,9 +1,18 @@
-"""Benchmark scoring & report (M-B0.3, §11.1; ground-truth tree revised M-B5a.2).
+"""Benchmark scoring & report (M-B0.3, §11.1; ground-truth tree revised M-B5a.2;
+unrequested-change axis added M3.5.1/DR-081).
 
 The §11.1 metrics fall out of the obligation tree (case.py): decomposition
 accuracy from the obligations, mapping accuracy from each obligation's
 candidate_tests edges, evidence agreement from each obligation's evidence
 class, and gap recall/precision from the gaps.
+
+Unrequested-change precision/recall is a separate, obligation-*less* axis
+(DR-081): a gap is an obligation with no matching code; an unrequested change
+is code with no matching obligation. It is scored the same way (labeled refs
+vs. reported refs, pooled by raw counts) but never folded into the gap
+numbers — matching on the obligation-linked `related_obligation` field would
+silently exclude every unrequested-change finding, which by construction
+carries no obligation link at all.
 
 Ground truth identifies obligations by a stable id; the reviewer's Review
 (review_state.py) does not yet — its obligations are identified only by
@@ -87,6 +96,23 @@ def _gap_counts(case: BenchmarkCase) -> _MatchCounts:
     return _counts(ground_truth_refs, reported_refs)
 
 
+def _unrequested_counts(case: BenchmarkCase) -> _MatchCounts:
+    """Code→obligation axis (DR-081): matched by file, not by obligation —
+    an unrequested-change finding never carries `related_obligation` (§9.2,
+    obligation-less by construction), so this never routes through any
+    obligation's coverage classification."""
+    review = case.reviewer_output
+    ground_truth_refs = {u.file for u in case.ground_truth.unrequested_changes}
+    reported_refs = {
+        link.ref.split("#", 1)[0]
+        for finding in review.findings
+        if finding.type == "unrequested_change"
+        for link in finding.links
+        if link.kind == "code"
+    }
+    return _counts(ground_truth_refs, reported_refs)
+
+
 def _decomposition_counts(case: BenchmarkCase) -> _MatchCounts:
     review = case.reviewer_output
     ground_truth_refs = {o.description for o in case.ground_truth.obligations}
@@ -120,7 +146,9 @@ def _evidence_counts(case: BenchmarkCase) -> _MatchCounts:
     return _MatchCounts(matched=0, ground_truth_total=len(ground_truth_refs), reported_total=0)
 
 
-def _all_counts(case: BenchmarkCase) -> tuple[_MatchCounts, _MatchCounts, _MatchCounts, _MatchCounts]:
+def _all_counts(
+    case: BenchmarkCase,
+) -> tuple[_MatchCounts, _MatchCounts, _MatchCounts, _MatchCounts, _MatchCounts]:
     if case.reviewer_output is None:
         raise ValueError(f"case {case.case_id!r} has no reviewer_output; run it first")
     return (
@@ -128,6 +156,7 @@ def _all_counts(case: BenchmarkCase) -> tuple[_MatchCounts, _MatchCounts, _Match
         _decomposition_counts(case),
         _mapping_counts(case),
         _evidence_counts(case),
+        _unrequested_counts(case),
     )
 
 
@@ -136,6 +165,7 @@ def _score_from_counts(
     decomposition: _MatchCounts,
     mapping: _MatchCounts,
     evidence: _MatchCounts,
+    unrequested: _MatchCounts,
 ) -> BenchmarkScore:
     return BenchmarkScore(
         gap_recall=gap.recall(),
@@ -143,6 +173,8 @@ def _score_from_counts(
         decomposition_accuracy=decomposition.recall(),
         mapping_accuracy=mapping.recall(),
         evidence_agreement=evidence.recall(),
+        unrequested_precision=unrequested.precision(),
+        unrequested_recall=unrequested.recall(),
     )
 
 
@@ -161,6 +193,8 @@ class BenchmarkReport(PersistableModel):
     decomposition_accuracy: float | None = None
     mapping_accuracy: float | None = None
     evidence_agreement: float | None = None
+    unrequested_precision: float | None = None
+    unrequested_recall: float | None = None
     per_case: list[BenchmarkScore] = Field(default_factory=list)
 
 
@@ -187,16 +221,18 @@ def score_case_set(cases: list[BenchmarkCase]) -> BenchmarkReport:
     decomposition_total = _MatchCounts.zero()
     mapping_total = _MatchCounts.zero()
     evidence_total = _MatchCounts.zero()
+    unrequested_total = _MatchCounts.zero()
     per_case: list[BenchmarkScore] = []
     modes: set[str] = set()
 
     for case in cases:
-        gap, decomposition, mapping, evidence = _all_counts(case)
+        gap, decomposition, mapping, evidence, unrequested = _all_counts(case)
         gap_total += gap
         decomposition_total += decomposition
         mapping_total += mapping
         evidence_total += evidence
-        per_case.append(_score_from_counts(gap, decomposition, mapping, evidence))
+        unrequested_total += unrequested
+        per_case.append(_score_from_counts(gap, decomposition, mapping, evidence, unrequested))
         modes.add(_case_determinism_mode(case))
 
     return BenchmarkReport(
@@ -207,6 +243,8 @@ def score_case_set(cases: list[BenchmarkCase]) -> BenchmarkReport:
         decomposition_accuracy=decomposition_total.recall(),
         mapping_accuracy=mapping_total.recall(),
         evidence_agreement=evidence_total.recall(),
+        unrequested_precision=unrequested_total.precision(),
+        unrequested_recall=unrequested_total.recall(),
         per_case=per_case,
     )
 
@@ -217,6 +255,8 @@ _METRIC_FIELDS = (
     "decomposition_accuracy",
     "mapping_accuracy",
     "evidence_agreement",
+    "unrequested_precision",
+    "unrequested_recall",
 )
 
 
@@ -239,6 +279,8 @@ class SampledBenchmarkReport(PersistableModel):
     decomposition_accuracy: MetricStats
     mapping_accuracy: MetricStats
     evidence_agreement: MetricStats
+    unrequested_precision: MetricStats
+    unrequested_recall: MetricStats
     runs: list[BenchmarkReport] = Field(default_factory=list)
 
 

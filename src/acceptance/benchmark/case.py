@@ -23,6 +23,12 @@ test ids in `candidate_tests` are validated to resolve, so ground truth can't
 carry a dangling reference, an obligation with no evidence class, or a weak
 result with no stated reason.
 
+`unrequested_changes` is the code→obligation dual of `gaps` (a gap is an
+obligation with no matching code; an unrequested change is code with no
+matching obligation) and is therefore obligation-*less* by construction —
+scored as its own precision/recall pair (DR-081), never folded into the gap
+metric (M3.5.1).
+
 `reviewer_output` and `score` start empty and are filled in by the runner
 (M-B0.2) and scorer (M-B0.3) — a case is valid the moment it carries real
 ground truth, before it has ever been run.
@@ -107,9 +113,28 @@ class GroundTruthGap(PersistableModel):
     severity: str | None = None
 
 
+class GroundTruthUnrequestedChange(PersistableModel):
+    """A diff region the ground truth says no obligation calls for — the
+    code→obligation dual of a gap (§9.2, DR-081). Obligation-less by
+    construction, so it is *not* linked to an obligation id the way a
+    `GroundTruthGap` can be.
+
+    `file` identifies the diff region at file granularity (matching the
+    checker's `Finding.links`, not an exact hunk header — a hand-authored
+    exact hunk header would be brittle to keep in sync with the fixture's
+    real diff). Coarser than line-level, but matches the granularity the
+    existing gap metric already scores at (by obligation, not by line
+    range)."""
+
+    id: str
+    description: str
+    file: str
+
+
 class GroundTruthLabels(PersistableModel):
     obligations: list[GroundTruthObligation] = Field(default_factory=list)
     gaps: list[GroundTruthGap] = Field(default_factory=list)
+    unrequested_changes: list[GroundTruthUnrequestedChange] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _check_tree_integrity(self) -> "GroundTruthLabels":
@@ -143,6 +168,14 @@ class GroundTruthLabels(PersistableModel):
                 raise ValueError(
                     f"obligation {obligation.id!r} must have a non-empty evidence_rationale"
                 )
+
+        unrequested_ids = [u.id for u in self.unrequested_changes]
+        if any(not uid.strip() for uid in unrequested_ids):
+            raise ValueError("every unrequested-change id must be a non-empty string")
+        if len(set(unrequested_ids)) != len(unrequested_ids):
+            raise ValueError("unrequested-change ids must be unique")
+        if any(not u.file.strip() for u in self.unrequested_changes):
+            raise ValueError("every unrequested change must name a non-empty file")
         return self
 
 
@@ -154,6 +187,8 @@ class BenchmarkScore(PersistableModel):
     decomposition_accuracy: float | None = None
     mapping_accuracy: float | None = None
     evidence_agreement: float | None = None
+    unrequested_precision: float | None = None
+    unrequested_recall: float | None = None
 
 
 class BenchmarkCase(PersistableModel):
