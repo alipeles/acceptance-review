@@ -42,6 +42,7 @@ from pydantic import Field
 
 from acceptance.benchmark.case import BenchmarkCase, BenchmarkScore
 from acceptance.model_base import PersistableModel
+from acceptance.review_state import UNREQUESTED_CHANGE
 
 
 @dataclass(frozen=True)
@@ -106,7 +107,7 @@ def _unrequested_counts(case: BenchmarkCase) -> _MatchCounts:
     reported_refs = {
         link.ref.split("#", 1)[0]
         for finding in review.findings
-        if finding.type == "unrequested_change"
+        if finding.type == UNREQUESTED_CHANGE
         for link in finding.links
         if link.kind == "code"
     }

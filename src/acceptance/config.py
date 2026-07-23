@@ -15,6 +15,7 @@ the review so a reader can tell how it was produced.
 
 from __future__ import annotations
 
+from enum import Enum
 from pathlib import Path
 from typing import Any, Callable
 
@@ -25,6 +26,17 @@ from acceptance.review_state import ReviewProvenance
 
 # LiteLLM model string. Provider-agnostic: swap freely via --model / RunConfig.
 DEFAULT_MODEL = "openai/gpt-5.4-mini"
+
+
+class ScopeExpansionPolicy(str, Enum):
+    """How tolerant the review is of changes beyond the mandate (DR-081
+    decision 4). Where the acceptable-expansion line sits is a shop norm, so
+    it is a policy knob, not a hardcoded verdict — it tunes the separability
+    classifier (M3.5.3), not detection. Default is `strict`, matching DR-081's
+    recall-forward stance (surface more, let the user dismiss)."""
+
+    STRICT = "strict"  # flag more expansion as separable/risky
+    LOOSE = "loose"  # tolerate more bundled work
 
 
 class RunConfig(BaseModel):
@@ -41,6 +53,11 @@ class RunConfig(BaseModel):
     temperature: float = 0.0
     seed: int | None = None
     transcript_root: Path = Field(default=DEFAULT_TRANSCRIPT_ROOT)
+    # A review-interpretation knob (consumed by the M3.5.3 separability
+    # classifier), not a determinism control — so it deliberately does not
+    # feed build_client() or provenance(). If we later want it recorded for
+    # traceability, that is a deliberate addition to ReviewProvenance.
+    scope_expansion_policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT
 
     def build_client(self, completion_fn: Callable[..., Any] | None = None) -> ModelClient:
         return ModelClient(

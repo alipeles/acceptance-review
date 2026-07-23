@@ -28,6 +28,8 @@ __all__ = [
     "EvidenceTier",
     "TextSpan",
     "ObligationType",
+    "UnrequestedChangeDisposition",
+    "UNREQUESTED_CHANGE",
     "Project",
     "TaskSource",
     "MandateInterpretation",
@@ -58,6 +60,31 @@ class ObligationType(str, Enum):
     EXPLANATION_OBSERVABILITY = "explanation_observability"
     DOCS_CONFIG = "docs_config"
     HUMAN_REVIEW = "human_review"
+
+
+# The canonical `Finding.type` string for a §9.2 unrequested-change finding.
+# Single-sourced here because the obligation-less Finding invariant keys on it
+# and the M3 producers (benchmark/coverage.py) and scorer (benchmark/scoring.py)
+# must agree on the exact spelling.
+UNREQUESTED_CHANGE = "unrequested_change"
+
+# Finding types allowed to be obligation-less (related_obligation is None).
+# Almost every finding is *about* an obligation and must name it; an
+# unrequested change is the code→obligation dual and is obligation-less by
+# construction (§9.2, DR-081). M6 (builder-declaration comparison) adds
+# `declaration_mismatch` here: a claim of undone work outside the mandate is
+# obligation-less too, and advisory — see issue #31.
+_OBLIGATION_LESS_TYPES = frozenset({UNREQUESTED_CHANGE})
+
+
+class UnrequestedChangeDisposition(str, Enum):
+    """How to treat a §9.2 unrequested change (DR-081 decision 4). Set only on
+    unrequested-change findings; `separable` and `risky` are not exclusive and
+    `separable` is orthogonal to value. The classifier is M3.5.3."""
+
+    IN_SERVICE = "in_service"  # a refactor/interface edit made to deliver an obligation
+    SEPARABLE = "separable"  # coherent but distinct work — recommend its own PR/backlog item
+    RISKY = "risky"  # touches public surface/deps/adjacent behavior; scrutinize
 
 
 class Project(_Model):
@@ -197,7 +224,13 @@ class Link(_Model):
 class Finding(_Model):
     """Typed and linked (CLAUDE.md invariant): cannot be built without an
     evidence tier and at least one link target, and the producing component
-    must be authorized for the claimed tier (§8.1, M0.3)."""
+    must be authorized for the claimed tier (§8.1, M0.3).
+
+    Findings are *about* an obligation and must name it in `related_obligation`;
+    the only exception is a finding whose type is in `_OBLIGATION_LESS_TYPES`
+    (an unrequested change, §9.2, which is obligation-less by construction).
+    A `disposition` — how to treat an unrequested change — may be set only on
+    an unrequested-change finding (DR-081)."""
 
     type: str
     severity: str
@@ -206,6 +239,7 @@ class Finding(_Model):
     produced_by: Component
     links: list[Link]
     related_obligation: str | None = None
+    disposition: UnrequestedChangeDisposition | None = None
     supporting_evidence: list[str] = Field(default_factory=list)
     uncertainty: str | None = None
     recommended_action: str | None = None
@@ -220,6 +254,30 @@ class Finding(_Model):
     @model_validator(mode="after")
     def _require_authorized_tier(self) -> "Finding":
         authorize_tier(self.produced_by, self.evidence_tier)
+        return self
+
+    @model_validator(mode="after")
+    def _obligation_less_only_for_allowed_types(self) -> "Finding":
+        obligation_less_ok = self.type in _OBLIGATION_LESS_TYPES
+        if self.related_obligation is None and not obligation_less_ok:
+            raise ValueError(
+                f"Finding of type {self.type!r} must name a related_obligation; "
+                f"only {sorted(_OBLIGATION_LESS_TYPES)} may be obligation-less"
+            )
+        if self.related_obligation is not None and self.type == UNREQUESTED_CHANGE:
+            raise ValueError(
+                "an unrequested_change finding is obligation-less by construction; "
+                "it must not carry a related_obligation"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _disposition_only_for_unrequested_change(self) -> "Finding":
+        if self.disposition is not None and self.type != UNREQUESTED_CHANGE:
+            raise ValueError(
+                f"disposition is only valid on an {UNREQUESTED_CHANGE!r} finding, "
+                f"not {self.type!r}"
+            )
         return self
 
 

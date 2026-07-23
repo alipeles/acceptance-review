@@ -51,6 +51,7 @@ def test_populated_review_lists_obligations_and_findings():
                 evidence_tier=EvidenceTier.STATIC,
                 produced_by=Component.STATIC_ANALYZER,
                 links=[Link(kind="test", ref="tests/t.py:1")],
+                related_obligation="Active filters are applied",
             )
         ],
         recommendation=".acceptance/next-instruction.md",
