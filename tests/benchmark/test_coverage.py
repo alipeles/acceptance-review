@@ -89,6 +89,7 @@ def test_archetype_1_missed_obligation_yields_full_recall_and_precision(tmp_path
     ]
     client = _client_dispatching(
         {
+            "_Mappings": {"mappings": []},
             "_Decomposition": _decomposition_response(obligations),
             "_Coverage": _classification_response(
                 [
@@ -138,6 +139,7 @@ def test_archetype_2_missed_qualifier_yields_full_recall_and_precision(tmp_path)
     ]
     client = _client_dispatching(
         {
+            "_Mappings": {"mappings": []},
             "_Decomposition": _decomposition_response(obligations),
             "_Coverage": _classification_response(
                 [
@@ -188,6 +190,7 @@ def test_archetype_8_unrequested_change_gap_matches_via_its_obligation(tmp_path)
     ]
     client = _client_dispatching(
         {
+            "_Mappings": {"mappings": []},
             "_Decomposition": _decomposition_response(obligations),
             "_Coverage": _classification_response(
                 [
@@ -262,6 +265,7 @@ def test_archetype_8_unrequested_change_metric_does_not_route_through_coverage(t
     ]
     client = _client_dispatching(
         {
+            "_Mappings": {"mappings": []},
             "_Decomposition": _decomposition_response(obligations),
             "_Coverage": _classification_response(
                 [
@@ -304,6 +308,7 @@ def test_classify_case_does_not_mutate_the_input_case(tmp_path):
     case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
     client = _client_dispatching(
         {
+            "_Mappings": {"mappings": []},
             "_Decomposition": _decomposition_response([]),
             "_Coverage": {"classifications": []},
             "_Detections": {"unrequested_changes": []},

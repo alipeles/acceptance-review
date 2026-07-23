@@ -61,11 +61,14 @@ class DiscoveryReason(str, Enum):
 
 
 class DiscoveredTest(PersistableModel):
-    """A candidate test, and why it was discovered — never zero reasons."""
+    """A candidate test, why it was discovered (never zero reasons), and its
+    source (so M4.2 mapping and M5 analysis judge its assertions without
+    re-parsing — discovery already has the AST node in hand)."""
 
     test_id: str  # pytest nodeid: "path/test_x.py::test_fn" or "...::TestC::test_m"
     file: str
     reasons: list[DiscoveryReason] = Field(default_factory=list)
+    source: str = ""
 
 
 class TestDiscoveryResult(PersistableModel):
@@ -106,6 +109,12 @@ def _node_id(path: str, item: _TestItem) -> str:
     if item.class_name:
         return f"{path}::{item.class_name}::{item.name}"
     return f"{path}::{item.name}"
+
+
+def _node_source(source: str, item: _TestItem) -> str:
+    lines = source.splitlines()
+    end = getattr(item.node, "end_lineno", item.node.lineno)
+    return "\n".join(lines[item.node.lineno - 1 : end])
 
 
 def _is_test_file(path: Path) -> bool:
@@ -173,6 +182,7 @@ def _added_or_modified_tests(repo: Path, change_set: ChangeSet) -> dict[str, Dis
                 test_id=test_id,
                 file=file_change.path,
                 reasons=[DiscoveryReason.ADDED_OR_MODIFIED],
+                source=_node_source(source, item),
             )
     return discovered
 
@@ -228,7 +238,9 @@ def discover_tests(
 
             if reasons:
                 test_id = _node_id(rel, item)
-                discovered[test_id] = DiscoveredTest(test_id=test_id, file=rel, reasons=reasons)
+                discovered[test_id] = DiscoveredTest(
+                    test_id=test_id, file=rel, reasons=reasons, source=_node_source(source, item)
+                )
 
     return TestDiscoveryResult(
         tests=sorted(discovered.values(), key=lambda t: t.test_id),
