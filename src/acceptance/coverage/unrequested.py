@@ -53,6 +53,16 @@ Give extra weight to (classify each `kind`):
 - internal: a purely internal refactor with no external effect.
 - other: anything else unrequested.
 
+Before reporting a change, check it against the FULL text of EVERY obligation.
+An obligation may explicitly call for an ARTIFACT — a fixture, test, example, or
+sample — whose content is deliberately meant to look like a change a reviewer
+would question: a planted bug, an odd edit to existing code, a deprecated call,
+an intentionally weak test. Content an obligation asked for AS such an artifact
+is REQUESTED by that obligation, even though in isolation it resembles scope
+creep — do NOT report it. Only report a change when NO obligation, read in full,
+calls for it. (When you are genuinely unsure whether any obligation covers a
+change, still report it — bias toward surfacing the unexplained.)
+
 For each unrequested change return its `kind`, a short `rationale`, and
 `diff_refs`: the labels (like `path#0`) of the hunks it concerns. Do not report
 changes that a listed obligation requires. If every change is requested, return

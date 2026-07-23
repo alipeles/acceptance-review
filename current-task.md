@@ -1,11 +1,12 @@
 # Task
-Auto-exclude the CLI's --task file from the reviewed diff, and make extra ignore patterns additive to the repo's own .acceptance/ignore rather than replacing it.
+Fix obligation-attribution so a diff region that literally delivers an obligation — including obligations that ask for fixture/test/example artifact content whose content resembles a questionable change — is no longer misclassified as an unrequested or not-addressed change.
 
 ## Constraints
-- The task file must never appear as a coverage claim or an unrequested-change flag in `classify` output, regardless of its name or location within the repo.
-- A task file outside the reviewed repo must be handled gracefully (nothing to exclude).
-- Ignore patterns from the repo's own `.acceptance/ignore` file and any caller-supplied extra patterns must both apply together — adding an extra pattern must not silently disable the repo's own ignore configuration.
+- Sharpen the classify_coverage and detect_unrequested_changes system prompts so a region is checked against the full text of every obligation, including obligations phrased as "add/include a fixture/test/example representing X", before being classified not_addressed or unrequested.
+- A region whose content is literally what such an artifact obligation asks for must classify as addressed coverage, and must not be flagged as an unrequested change.
+- Recall must not drop: a genuinely unrequested change that no obligation explains must still be flagged (bias toward surfacing the unexplained).
+- File category may feed the prompt as a hint, but the fix is the model's attribution reasoning, not a structural filter.
 
 ## Completion expectations
-- Implementation
-- Unit tests: a task file inside the repo is excluded from the diff; a task file outside the repo is unaffected; extra patterns and the ignore file combine rather than override.
+- The two sharpened prompts
+- Live before/after verification, since prompt quality cannot be asserted by injected-response unit tests
