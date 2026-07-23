@@ -7,26 +7,33 @@ description, mappings by (obligation description, test id), gaps by the
 description of the obligation they concern, evidence agreement always
 reported_total=0 (no reviewer §9.3 classification yet).
 
-Case A ground truth: obligations {Alpha [T1], Beta []}, gap on Beta.
-       reviewer: reports obligation Alpha (but not its T1 mapping); flags Beta.
+Case A ground truth: obligations {Alpha [T1], Beta []}, gap on Beta,
+       unrequested change in x.py.
+       reviewer: reports obligation Alpha (but not its T1 mapping); flags Beta;
+                 flags an unrequested change in x.py.
   gap:           matched 1, gt 1, reported 1
   decomposition: matched 1 (Alpha), gt 2, reported 1
   mapping:       matched 0, gt 1 (Alpha,T1), reported 0
   evidence:      gt 2, reported 0
+  unrequested:   matched 1 (x.py), gt 1, reported 1
 
-Case B ground truth: obligations {Gamma [T2]}, no gaps (true negative).
+Case B ground truth: obligations {Gamma [T2]}, no gaps (true negative), no
+       unrequested changes.
        reviewer: reports Gamma with its T2 mapping + a spurious Delta;
-                 raises a spurious Epsilon finding.
+                 raises a spurious Epsilon finding; flags a spurious
+                 unrequested change in y.py.
   gap:           matched 0, gt 0, reported 1
   decomposition: matched 1 (Gamma), gt 1, reported 2 (Gamma, Delta)
   mapping:       matched 1 (Gamma,T2), gt 1, reported 1
   evidence:      gt 1, reported 0
+  unrequested:   matched 0, gt 0, reported 1 (y.py)
 
 Pooled:
   gap_recall    = 1/1 = 1.0     gap_precision = 1/2 = 0.5
   decomposition = 2/3
   mapping       = 1/2 = 0.5
   evidence      = 0/3 = 0.0
+  unrequested_recall = 1/1 = 1.0     unrequested_precision = 1/2 = 0.5
 """
 
 import pytest
@@ -38,6 +45,7 @@ from acceptance.benchmark.case import (
     GroundTruthGap,
     GroundTruthLabels,
     GroundTruthObligation,
+    GroundTruthUnrequestedChange,
 )
 from acceptance.benchmark.scoring import score_case_set
 from acceptance.evidence_tier import Component, EvidenceTier
@@ -90,6 +98,17 @@ def _finding(related_obligation: str) -> Finding:
     )
 
 
+def _unrequested_finding(file: str) -> Finding:
+    return Finding(
+        type="unrequested_change",
+        severity="medium",
+        description=f"unrequested change in {file}",
+        evidence_tier=EvidenceTier.STATIC,
+        produced_by=Component.STATIC_ANALYZER,
+        links=[Link(kind="code", ref=f"{file}#@@ -1 +1 @@")],
+    )
+
+
 def _case_a() -> BenchmarkCase:
     return BenchmarkCase(
         case_id="synthetic-a",
@@ -109,13 +128,16 @@ def _case_a() -> BenchmarkCase:
                 ),
             ],
             gaps=[GroundTruthGap(id="gap-beta", description="Beta missing", obligation_id="beta")],
+            unrequested_changes=[
+                GroundTruthUnrequestedChange(id="u-x", description="x.py changed", file="x.py")
+            ],
         ),
         reviewer_output=Review(
             mode="local",
             reviewed_revision="def456",
             provenance=_provenance(),
             obligation_map=[_reviewer_obligation("Alpha", test_evidence=[])],
-            findings=[_finding("Beta")],
+            findings=[_finding("Beta"), _unrequested_finding("x.py")],
         ),
     )
 
@@ -143,7 +165,7 @@ def _case_b() -> BenchmarkCase:
                 _reviewer_obligation("Gamma", test_evidence=["T2"]),
                 _reviewer_obligation("Delta", test_evidence=[]),
             ],
-            findings=[_finding("Epsilon")],
+            findings=[_finding("Epsilon"), _unrequested_finding("y.py")],
         ),
     )
 
@@ -158,6 +180,8 @@ def test_pooled_report_matches_hand_calculated_values():
     assert report.decomposition_accuracy == 2 / 3
     assert report.mapping_accuracy == 0.5
     assert report.evidence_agreement == 0.0
+    assert report.unrequested_recall == 1.0
+    assert report.unrequested_precision == 0.5
 
 
 def test_report_includes_per_case_scores():
@@ -169,11 +193,17 @@ def test_report_includes_per_case_scores():
     assert report.per_case[0].gap_precision == 1.0
     assert report.per_case[0].decomposition_accuracy == 0.5
     assert report.per_case[0].mapping_accuracy == 0.0
+    assert report.per_case[0].unrequested_recall == 1.0
+    assert report.per_case[0].unrequested_precision == 1.0
     # Case B: no gaps -> recall None, precision 0/1; decomposition 1/2; mapping 1/1.
     assert report.per_case[1].gap_recall is None
     assert report.per_case[1].gap_precision == 0.0
     assert report.per_case[1].decomposition_accuracy == 1.0
     assert report.per_case[1].mapping_accuracy == 1.0
+    # No unrequested-change ground truth in B -> recall None; the spurious
+    # y.py finding still counts against precision (0/1).
+    assert report.per_case[1].unrequested_recall is None
+    assert report.per_case[1].unrequested_precision == 0.0
 
 
 def test_empty_case_set_yields_no_metrics():
@@ -186,6 +216,8 @@ def test_empty_case_set_yields_no_metrics():
     assert report.decomposition_accuracy is None
     assert report.mapping_accuracy is None
     assert report.evidence_agreement is None
+    assert report.unrequested_precision is None
+    assert report.unrequested_recall is None
     assert report.per_case == []
 
 

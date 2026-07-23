@@ -109,6 +109,13 @@ def test_declaration_mismatch_case_carries_the_declaration(tmp_path):
     assert case.ground_truth.gaps[0].obligation_id is None
 
 
+def test_unrequested_change_case_labels_the_changed_file(tmp_path):
+    fixture_dir = ARCHETYPES_DIR / "08-unrequested-change"
+    case = build_benchmark_case(fixture_dir, tmp_path / "repo")
+    assert case.ground_truth.unrequested_changes
+    assert case.ground_truth.unrequested_changes[0].file == "cart.py"
+
+
 def test_revision_cycle_is_a_true_negative(tmp_path):
     """#9 head closes the earlier gap, so its ground truth has no gap — a
     precision (false-alarm) check for the checker, not a recall check."""
@@ -137,6 +144,7 @@ def test_full_loop_scores_the_noop_checker_as_all_miss(tmp_path):
 
     assert report.case_count == len(FIXTURE_DIRS)
     assert report.gap_recall == 0.0  # eight fixtures label a gap; none found
+    assert report.unrequested_recall == 0.0  # archetype 8 labels an unrequested change; none found
     assert report.decomposition_accuracy == 0.0  # obligations labeled everywhere; none found
     assert report.mapping_accuracy == 0.0  # coverage edges labeled; none found
     assert report.evidence_agreement == 0.0

@@ -24,5 +24,12 @@
       "obligation_id": "leave-existing",
       "severity": "medium"
     }
+  ],
+  "unrequested_changes": [
+    {
+      "id": "unrequested-checkout-change",
+      "description": "checkout gained a tax_rate parameter and rounding; no obligation asked for a checkout change, only apply_discount",
+      "file": "cart.py"
+    }
   ]
 }

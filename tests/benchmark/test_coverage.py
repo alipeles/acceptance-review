@@ -4,6 +4,12 @@ metric. Archetypes #1 (missed obligation), #2 (missed qualifier), and #8
 (unrequested change) each contribute a real, hand-calculable gap_recall/
 gap_precision figure.
 
+M3.5.1 (DR-081) adds the unrequested-change axis: archetype #8 also
+contributes an unrequested_precision/unrequested_recall figure, scored by
+file against `unrequested_changes` ground truth — never via any obligation's
+coverage classification, since an unrequested-change finding carries no
+`related_obligation` at all.
+
 classify_case makes three schema-constrained calls per case (decompose,
 classify_coverage, detect_unrequested_changes); per the replay-first
 invariant the test client dispatches a fixed, hand-authored response per
@@ -214,6 +220,72 @@ def test_archetype_8_unrequested_change_gap_matches_via_its_obligation(tmp_path)
     # matching the ground-truth gap that is itself linked to leave-existing.
     assert scored.score.gap_recall == 1.0
     assert scored.score.gap_precision == 1.0
+    # The unrequested-change axis is scored independently, by file, from the
+    # unrequested_change finding itself.
+    assert scored.score.unrequested_recall == 1.0
+    assert scored.score.unrequested_precision == 1.0
+
+
+def test_archetype_8_unrequested_change_metric_does_not_route_through_coverage(tmp_path):
+    """M3.5.1 acceptance: even if leave-existing's coverage classification
+    finds nothing wrong (addressed, not partially_addressed — so the gap
+    metric misses it entirely), the unrequested-change axis still catches
+    the unrequested change on its own, because it is scored from the
+    unrequested_change finding directly, never through any obligation."""
+    fixture_dir = ARCHETYPES_DIR / "08-unrequested-change"
+    case = build_benchmark_case(fixture_dir, tmp_path / "repo")
+    change_set = extract_change_set(
+        Path(case.inputs.repo), case.inputs.base_revision, case.inputs.head_revision
+    )
+    cart = next(f for f in change_set.files if f.path.endswith("cart.py"))
+    cart_ref = f"{cart.path}#0"
+
+    obligations = [
+        {
+            "id": "apply-discount",
+            "description": "Add apply_discount(total, percent) reducing the total by the given percentage, rounded to two decimals",
+            "type": "functional",
+            "source_quote": "Add `apply_discount(total, percent)` to `cart.py`",
+        },
+        {
+            "id": "leave-existing",
+            "description": "Leave existing behavior as-is; only apply_discount was requested",
+            "type": "compatibility",
+            "source_quote": "existing behavior should be left as-is",
+        },
+    ]
+    client = _client_dispatching(
+        {
+            "_Decomposition": _decomposition_response(obligations),
+            "_Coverage": _classification_response(
+                [
+                    {"obligation_id": "apply-discount", "status": "addressed"},
+                    # Deliberately wrong/optimistic: a checker that missed the
+                    # regression in its coverage classification entirely.
+                    {"obligation_id": "leave-existing", "status": "addressed"},
+                ]
+            ),
+            "_Detections": {
+                "unrequested_changes": [
+                    {
+                        "kind": "public_interface",
+                        "rationale": "checkout gained a tax_rate parameter and rounding; not requested.",
+                        "diff_refs": [cart_ref],
+                    }
+                ]
+            },
+        }
+    )
+
+    scored = classify_case(case, client)
+
+    # No coverage_gap finding at all — leave-existing was (wrongly) addressed.
+    assert not [f for f in scored.reviewer_output.findings if f.type == "coverage_gap"]
+    assert scored.score.gap_recall == 0.0
+    # But the unrequested-change axis still scores full recall/precision,
+    # entirely independent of the (wrong) coverage classification.
+    assert scored.score.unrequested_recall == 1.0
+    assert scored.score.unrequested_precision == 1.0
 
 
 def test_classify_case_does_not_mutate_the_input_case(tmp_path):
