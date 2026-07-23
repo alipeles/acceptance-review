@@ -10,34 +10,14 @@ invariant the test client dispatches a fixed, hand-authored response per
 call by its response schema name — no live calls.
 """
 
-import json
-import tempfile
 from pathlib import Path
-from types import SimpleNamespace
 
 from acceptance.benchmark.coverage import classify_case
 from acceptance.benchmark.fixtures import build_benchmark_case
 from acceptance.change.diff import extract_change_set
-from acceptance.llm import Mode, ModelClient, TranscriptStore
+from tests.support import client_dispatching as _client_dispatching
 
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
-
-
-def _client_dispatching(responses_by_schema: dict) -> ModelClient:
-    def completion_fn(**kwargs):
-        schema_name = kwargs["response_format"]["json_schema"]["name"]
-        content = json.dumps(responses_by_schema[schema_name])
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
-            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
-        )
-
-    return ModelClient(
-        model="anthropic/claude-sonnet-5",
-        mode=Mode.RECORD,
-        store=TranscriptStore(tempfile.mkdtemp()),
-        completion_fn=completion_fn,
-    )
 
 
 def _decomposition_response(obligations: list[dict]) -> dict:

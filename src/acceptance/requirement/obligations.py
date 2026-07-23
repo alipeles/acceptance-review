@@ -14,9 +14,9 @@ obligations — uncertainty is a first-class, expected result (M1.3).
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from acceptance.llm import ModelClient
+from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
 from acceptance.requirement.task_file import ParsedTaskFile
 from acceptance.review_state import Obligation, ObligationType, OpenQuestion
@@ -44,13 +44,8 @@ ambiguous text.
 Do not merge distinct requirements. Prefer the smallest faithful set."""
 
 
-# The model-response schemas must be OpenAI strict-mode compatible: every object
-# forbids extra properties (additionalProperties:false) and every field is
-# required (no defaults). extra="forbid" yields the former; listing all fields
-# without defaults yields the latter. Empty arrays are returned explicitly.
-class _DecomposedObligation(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+# Empty arrays are returned explicitly (StrictResponseModel: no defaults).
+class _DecomposedObligation(StrictResponseModel):
     id: str
     description: str
     type: ObligationType
@@ -60,18 +55,14 @@ class _DecomposedObligation(BaseModel):
     source_quote: str
 
 
-class _OpenQuestion(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class _OpenQuestion(StrictResponseModel):
     id: str
     question: str
     importance: str
     source_quote: str
 
 
-class _Decomposition(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class _Decomposition(StrictResponseModel):
     obligations: list[_DecomposedObligation]
     open_questions: list[_OpenQuestion]
 

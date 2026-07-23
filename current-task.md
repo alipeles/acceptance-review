@@ -1,11 +1,12 @@
 # Task
-Feed M3.1's implementation-coverage classifications and M3.2's unrequested-change detections into the M-B0.3 gap-detection (recall) and false-alarm (precision) scoring.
+Pre-M4 cleanup pass: reconcile the M3.5/M7.6 backlog mirror with the real GitHub issues, and remove duplicated code the M3.1–M3.3 capabilities accumulated before it repeats again in M3.5/M4/M5.
 
 ## Constraints
-- Reuse the existing §11.1 gap metric (`scoring.py`); do not redefine it.
-- A non-addressed coverage classification becomes a Finding linked to the obligation it concerns, so it is matchable against ground-truth gaps.
-- Keep the hook lighter than the full checker pipeline (M-B0.2's run_case) — no test execution, same shape as M1.4's decompose_case.
+- Reconcile `planning/backlog/` (issues.tsv, milestones.tsv, per-task markdown files) and the plan doc's M3.5 section with the actual GitHub issue numbering (M3.5.5 renumbered from "Advisory presentation" to the docs task; the advisory-presentation task moved to M7.6).
+- Extract the duplicated schema-constrained-model-call test double (`_client_returning`/`_client_dispatching`) out of five test files into a shared helper.
+- Extract the duplicated `ReviewProvenance`-from-`ModelClient` and "copy case, attach review, attach score" pattern out of the two existing benchmark scoring hooks (M1.4, M3.3) before a third one repeats it.
+- Behavior must not change: all existing tests keep passing unmodified in intent, just de-duplicated.
 
 ## Completion expectations
 - Implementation
-- Unit tests: archetypes #1, #2, and #8 each contribute a real, hand-calculable gap_recall/gap_precision figure.
+- Unit tests (existing suite stays green; no new behavior to test)

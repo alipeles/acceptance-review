@@ -18,10 +18,10 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
 from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_prompt, resolve_refs
-from acceptance.llm import ModelClient
+from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation
 
@@ -67,18 +67,14 @@ the hunks that address the obligation. For not_addressed, `diff_refs` MUST be
 empty. Link only hunks that genuinely respond to the obligation."""
 
 
-class _Classification(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class _Classification(StrictResponseModel):
     obligation_id: str
     status: CoverageStatus
     rationale: str
     diff_refs: list[str]
 
 
-class _Coverage(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class _Coverage(StrictResponseModel):
     classifications: list[_Classification]
 
 

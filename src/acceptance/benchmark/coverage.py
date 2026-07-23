@@ -22,7 +22,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from acceptance.benchmark.case import BenchmarkCase
-from acceptance.benchmark.scoring import score_case
+from acceptance.benchmark.hooks import provenance_from, scored_copy
 from acceptance.change.diff import extract_change_set
 from acceptance.coverage.classify import CoverageStatus, ImplementationCoverage, classify_coverage
 from acceptance.coverage.unrequested import UnrequestedChange, detect_unrequested_changes
@@ -30,7 +30,7 @@ from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import Finding, Link, Obligation, Review, ReviewProvenance
+from acceptance.review_state import Finding, Link, Obligation, Review
 
 _SEVERITY_BY_STATUS = {
     CoverageStatus.NOT_ADDRESSED: "high",
@@ -105,15 +105,9 @@ def classify_case(case: BenchmarkCase, client: ModelClient) -> BenchmarkCase:
     review = Review(
         mode="local",
         reviewed_revision=case.inputs.head_revision,
-        provenance=ReviewProvenance(
-            determinism_mode=client.mode.value,
-            model=client.model,
-            temperature=client.temperature,
-            seed=client.seed,
-        ),
+        provenance=provenance_from(client),
         obligation_map=obligations,
         change_set=change_set,
         findings=findings,
     )
-    scored_case = case.model_copy(update={"reviewer_output": review})
-    return scored_case.model_copy(update={"score": score_case(scored_case)})
+    return scored_copy(case, review)

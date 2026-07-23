@@ -5,34 +5,15 @@ these tests inject a recorded model response directly — replay-first, no live
 calls, same pattern as M1.2/M1.3's tests.
 """
 
-import json
-import tempfile
 from pathlib import Path
-from types import SimpleNamespace
 
 from acceptance.benchmark.decomposition import decompose_case
 from acceptance.benchmark.fixtures import build_benchmark_case
 from acceptance.benchmark.scoring import score_case_set
-from acceptance.llm import Mode, ModelClient, TranscriptStore
+from tests.support import client_returning as _client_returning
 
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 FIXTURE_DIRS = sorted(p for p in ARCHETYPES_DIR.iterdir() if p.is_dir())
-
-
-def _client_returning(response: dict) -> ModelClient:
-    def completion_fn(**kwargs):
-        content = json.dumps(response)
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
-            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
-        )
-
-    return ModelClient(
-        model="anthropic/claude-sonnet-5",
-        mode=Mode.RECORD,
-        store=TranscriptStore(tempfile.mkdtemp()),
-        completion_fn=completion_fn,
-    )
 
 
 def _obligation_response(descriptions: list[str]) -> dict:

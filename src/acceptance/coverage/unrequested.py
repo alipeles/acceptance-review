@@ -16,10 +16,10 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
 from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_prompt, resolve_refs
-from acceptance.llm import ModelClient
+from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation
 
@@ -59,17 +59,13 @@ changes that a listed obligation requires. If every change is requested, return
 an empty list."""
 
 
-class _Detected(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class _Detected(StrictResponseModel):
     kind: UnrequestedChangeKind
     rationale: str
     diff_refs: list[str]
 
 
-class _Detections(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
+class _Detections(StrictResponseModel):
     unrequested_changes: list[_Detected]
 
 
