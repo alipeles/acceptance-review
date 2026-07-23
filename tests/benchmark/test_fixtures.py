@@ -1,9 +1,12 @@
 """M-B5a.1 acceptance: each archetype fixture builds, has a non-empty
 base->head diff, and its pytest suite runs with the intended outcome.
 
-The nine archetypes are the §13.5 #1-9 demonstration scenarios; each embodies
-a plausible mistake a capable coding agent could actually make, hidden behind
-a green test suite — which is exactly what the checker must learn to catch.
+The nine numbered archetypes are the §13.5 #1-9 demonstration scenarios; each
+embodies a plausible mistake a capable coding agent could actually make,
+hidden behind a green test suite — which is exactly what the checker must
+learn to catch. M3.5.4 adds three **sibling** archetypes to #8 (DR-081): they
+share its scenario number (8) but a distinct `name`, one per unrequested-change
+disposition (in_service / separable / risky) that #8 alone doesn't cover.
 """
 
 import subprocess
@@ -30,9 +33,17 @@ EXPECTED_NAMES = {
     "09-revision-cycle",
 }
 
+# The three #8 siblings (M3.5.4/DR-081): one archetype per unrequested-change
+# disposition #8 alone doesn't demonstrate.
+EXPECTED_SIBLING_NAMES = {
+    "08-unrequested-change-in-service",
+    "08-unrequested-change-separable",
+    "08-unrequested-change-risky-adjacent",
+}
 
-def test_all_nine_archetypes_are_present():
-    assert {p.name for p in FIXTURE_DIRS} == EXPECTED_NAMES
+
+def test_all_expected_archetypes_are_present():
+    assert {p.name for p in FIXTURE_DIRS} == EXPECTED_NAMES | EXPECTED_SIBLING_NAMES
 
 
 @pytest.fixture(params=FIXTURE_DIRS, ids=lambda p: p.name)

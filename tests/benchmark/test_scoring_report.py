@@ -129,7 +129,9 @@ def _case_a() -> BenchmarkCase:
             ],
             gaps=[GroundTruthGap(id="gap-beta", description="Beta missing", obligation_id="beta")],
             unrequested_changes=[
-                GroundTruthUnrequestedChange(id="u-x", description="x.py changed", file="x.py")
+                GroundTruthUnrequestedChange(
+                    id="u-x", description="x.py changed", file="x.py", disposition="separable"
+                )
             ],
         ),
         reviewer_output=Review(

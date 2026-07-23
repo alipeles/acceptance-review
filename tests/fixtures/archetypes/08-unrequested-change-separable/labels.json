@@ -1,0 +1,21 @@
+{
+  "obligations": [
+    {
+      "id": "restock",
+      "description": "Increase the item's qty by the given amount and return the new quantity",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "The test asserts restock({'qty':5},3)==8 and that the item's qty is mutated to 8; a wrong increment or missing mutation would fail.",
+      "candidate_tests": ["test_inventory.py::test_restock_increases_quantity"]
+    }
+  ],
+  "gaps": [],
+  "unrequested_changes": [
+    {
+      "id": "unrequested-low-stock-report",
+      "description": "low_stock_report was added in a new file (report.py) with its own test; nothing in the task asked for a reporting feature. It is self-contained -- restock's obligation is fully satisfied without it -- so it belongs in its own PR/backlog item.",
+      "file": "report.py",
+      "disposition": "separable"
+    }
+  ]
+}

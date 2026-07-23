@@ -159,7 +159,8 @@ def test_unrequested_change_round_trips():
     labels = _labels(
         unrequested_changes=[
             GroundTruthUnrequestedChange(
-                id="u1", description="an extra helper nobody asked for", file="cart.py"
+                id="u1", description="an extra helper nobody asked for", file="cart.py",
+                disposition="separable",
             )
         ]
     )
@@ -171,7 +172,9 @@ def test_unrequested_change_is_not_an_obligation_reference():
     # field at all, so it can never be validated against `known` obligations.
     labels = _labels(
         unrequested_changes=[
-            GroundTruthUnrequestedChange(id="u1", description="drive-by refactor", file="cart.py")
+            GroundTruthUnrequestedChange(
+                id="u1", description="drive-by refactor", file="cart.py", disposition="in_service"
+            )
         ]
     )
     assert not hasattr(labels.unrequested_changes[0], "obligation_id")
@@ -182,8 +185,12 @@ def test_duplicate_unrequested_change_ids_fail_validation():
         GroundTruthLabels(
             obligations=[_obligation()],
             unrequested_changes=[
-                GroundTruthUnrequestedChange(id="u1", description="a", file="cart.py"),
-                GroundTruthUnrequestedChange(id="u1", description="b", file="pricing.py"),
+                GroundTruthUnrequestedChange(
+                    id="u1", description="a", file="cart.py", disposition="separable"
+                ),
+                GroundTruthUnrequestedChange(
+                    id="u1", description="b", file="pricing.py", disposition="risky"
+                ),
             ],
         )
 
@@ -193,9 +200,16 @@ def test_empty_unrequested_change_file_fails_validation():
         GroundTruthLabels(
             obligations=[_obligation()],
             unrequested_changes=[
-                GroundTruthUnrequestedChange(id="u1", description="a", file="  ")
+                GroundTruthUnrequestedChange(
+                    id="u1", description="a", file="  ", disposition="risky"
+                )
             ],
         )
+
+
+def test_unrequested_change_requires_a_disposition():
+    with pytest.raises(ValueError):
+        GroundTruthUnrequestedChange(id="u1", description="a", file="cart.py")
 
 
 def test_benchmark_case_source_round_trips():

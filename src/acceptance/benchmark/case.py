@@ -27,7 +27,8 @@ result with no stated reason.
 obligation with no matching code; an unrequested change is code with no
 matching obligation) and is therefore obligation-*less* by construction —
 scored as its own precision/recall pair (DR-081), never folded into the gap
-metric (M3.5.1).
+metric (M3.5.1). Each carries a required `disposition` (M3.5.4): in_service /
+separable / risky, human-labeled the same way `evidence_class` is.
 
 `reviewer_output` and `score` start empty and are filled in by the runner
 (M-B0.2) and scorer (M-B0.3) — a case is valid the moment it carries real
@@ -41,7 +42,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from acceptance.model_base import PersistableModel
-from acceptance.review_state import Review
+from acceptance.review_state import Review, UnrequestedChangeDisposition
 
 # §9.3 test-evidence strength classifications. Distinct from EvidenceTier
 # (evidence_tier.py), which grades *how* evidence was produced, not how strong
@@ -124,11 +125,19 @@ class GroundTruthUnrequestedChange(PersistableModel):
     exact hunk header would be brittle to keep in sync with the fixture's
     real diff). Coarser than line-level, but matches the granularity the
     existing gap metric already scores at (by obligation, not by line
-    range)."""
+    range).
+
+    `disposition` is required (M3.5.4): every unrequested change in the
+    ground truth is labeled in_service / separable / risky by a human, the
+    same "no result without a reason" discipline `evidence_rationale`
+    already enforces on obligations. Per-disposition scoring accuracy is
+    deferred to Stage 2 (DR-081); the label exists now for human validation
+    and to seed that future metric."""
 
     id: str
     description: str
     file: str
+    disposition: UnrequestedChangeDisposition
 
 
 class GroundTruthLabels(PersistableModel):
