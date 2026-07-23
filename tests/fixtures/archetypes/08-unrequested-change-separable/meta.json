@@ -1,0 +1,6 @@
+{
+  "scenario": 8,
+  "name": "unrequested-change-separable",
+  "intended_pytest": "pass",
+  "summary": "The task only asked for restock(). The change also adds a wholly separate low_stock_report feature in a new file, with its own tests -- coherent, possibly valuable, but a distinct unit of work that belongs in its own PR/backlog item."
+}

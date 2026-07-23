@@ -1,0 +1,6 @@
+{
+  "scenario": 8,
+  "name": "unrequested-change-risky-adjacent",
+  "intended_pytest": "pass",
+  "summary": "The task only asked for cancel_order(). The change also silently alters the unrelated, pre-existing ship_order() -- adding shipped_count tracking -- with no test covering the new behavior. Not load-bearing for cancel_order, not a new file: an edit to existing adjacent behavior that could hide a regression."
+}

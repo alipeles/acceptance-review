@@ -1,0 +1,32 @@
+{
+  "obligations": [
+    {
+      "id": "apply-discount",
+      "description": "Reduce the cart's subtotal by the given percentage",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "The test asserts apply_discount reduces a $100 subtotal by 10% to $90; a wrong discount computation would fail.",
+      "candidate_tests": ["test_cart.py::test_apply_discount_formats_as_money"]
+    },
+    {
+      "id": "format-as-money",
+      "description": "Return the result formatted as money (e.g. \"$90.00\")",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Both tests assert the exact formatted string (\"$90.00\", \"EUR 90.00\"); wrong or missing formatting would fail.",
+      "candidate_tests": [
+        "test_cart.py::test_apply_discount_formats_as_money",
+        "test_cart.py::test_apply_discount_supports_other_currency"
+      ]
+    }
+  ],
+  "gaps": [],
+  "unrequested_changes": [
+    {
+      "id": "in-service-format-total-widening",
+      "description": "format_total's signature was widened with a currency parameter so apply_discount could format its result consistently with checkout's existing formatting. Nothing in the task asked for format_total to change, but apply_discount cannot format its result without it -- removing the widening breaks the apply_discount obligation, not just tidiness. checkout is unaffected since the parameter defaults to USD.",
+      "file": "cart.py",
+      "disposition": "in_service"
+    }
+  ]
+}

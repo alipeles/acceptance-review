@@ -29,7 +29,8 @@
     {
       "id": "unrequested-checkout-change",
       "description": "checkout gained a tax_rate parameter and rounding; no obligation asked for a checkout change, only apply_discount",
-      "file": "cart.py"
+      "file": "cart.py",
+      "disposition": "risky"
     }
   ]
 }

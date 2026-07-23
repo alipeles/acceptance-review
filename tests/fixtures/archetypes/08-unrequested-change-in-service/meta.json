@@ -1,0 +1,6 @@
+{
+  "scenario": 8,
+  "name": "unrequested-change-in-service",
+  "intended_pytest": "pass",
+  "summary": "Delivering apply_discount requires widening the existing format_total() helper with a currency parameter (defaulted, so checkout is unaffected). The task never asked for format_total to change, but apply_discount cannot work without it -- the widening is in service of the requested obligation, not scope creep."
+}
