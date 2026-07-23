@@ -16,11 +16,14 @@ detection. A staged rename (`git mv`, or `mv` + `git add`) is detected
 correctly, same as a committed one.
 
 Ignore patterns (#105): the reviewed repo's own `.acceptance/ignore` (gitignore
-syntax) is read once per extraction and applied here, the lowest layer, so a
-matched path is structurally invisible to every downstream capability —
-decomposition, coverage classification, unrequested-change detection,
-disposition — with no per-capability special-casing. Matched paths are
-excluded from `ChangeSet.files` but listed in `ignored_paths` for
+syntax) is always read and applied here, the lowest layer, so a matched path
+is structurally invisible to every downstream capability — decomposition,
+coverage classification, unrequested-change detection, disposition — with no
+per-capability special-casing. Callers may add `extra_ignore_patterns` on top
+of the file (additive, never a replacement) — the CLI uses this to
+auto-exclude the `--task` file itself, since the task is the specification
+being reviewed against, not part of the reviewed deliverable. Matched paths
+are excluded from `ChangeSet.files` but listed in `ignored_paths` for
 auditability (no silent caps, same spirit as `RetrievalResult`'s truncation
 flags in change/context.py).
 """
@@ -71,19 +74,24 @@ def read_ignore_patterns(repo: Path) -> list[str]:
     return ignore_path.read_text(encoding="utf-8").splitlines()
 
 
-def _build_spec(ignore_patterns: list[str] | None, repo: Path) -> pathspec.PathSpec:
-    patterns = ignore_patterns if ignore_patterns is not None else read_ignore_patterns(repo)
+def _build_spec(extra_patterns: list[str] | None, repo: Path) -> pathspec.PathSpec:
+    """The repo's own `.acceptance/ignore` (#105), plus any caller-supplied
+    `extra_patterns` (e.g. the CLI's `--task` file, added automatically —
+    the task is the specification being reviewed against, not part of the
+    reviewed deliverable). Additive, never a replacement: a caller can add
+    to the repo's standing ignore config but not silently disable it."""
+    patterns = read_ignore_patterns(repo) + list(extra_patterns or [])
     return pathspec.PathSpec.from_lines("gitignore", patterns)
 
 
 def extract_change_set(
-    repo: Path, base: str, head: str, ignore_patterns: list[str] | None = None
+    repo: Path, base: str, head: str, extra_ignore_patterns: list[str] | None = None
 ) -> ChangeSet:
     """Extract the structural change set between `base` and `head` in `repo`.
 
-    `ignore_patterns` defaults to the repo's own `.acceptance/ignore` (#105);
-    pass `[]` explicitly to disable ignoring."""
-    spec = _build_spec(ignore_patterns, repo)
+    Always applies the repo's own `.acceptance/ignore` (#105);
+    `extra_ignore_patterns` adds caller-supplied patterns on top of it."""
+    spec = _build_spec(extra_ignore_patterns, repo)
     entries = _parse_name_status(_git(repo, "diff", "--name-status", "-M", base, head))
     blocks = _split_file_blocks(_git(repo, "diff", "-U3", base, head))
     files, ignored = _build_files(entries, blocks, spec)
@@ -91,14 +99,14 @@ def extract_change_set(
 
 
 def extract_working_tree_change_set(
-    repo: Path, base: str, ignore_patterns: list[str] | None = None
+    repo: Path, base: str, extra_ignore_patterns: list[str] | None = None
 ) -> ChangeSet:
     """Extract the change set between `base` and the current working tree
     (staged + unstaged + untracked) — no head commit required (§5.1).
 
-    `ignore_patterns` defaults to the repo's own `.acceptance/ignore` (#105);
-    pass `[]` explicitly to disable ignoring."""
-    spec = _build_spec(ignore_patterns, repo)
+    Always applies the repo's own `.acceptance/ignore` (#105);
+    `extra_ignore_patterns` adds caller-supplied patterns on top of it."""
+    spec = _build_spec(extra_ignore_patterns, repo)
     entries = _parse_name_status(_git(repo, "diff", "--name-status", "-M", base))
     blocks = _split_file_blocks(_git(repo, "diff", "-U3", base))
     files, ignored = _build_files(entries, blocks, spec)
