@@ -31,3 +31,7 @@ testpaths = ["tests"]
 # tests/fixtures holds archetype fixture data (its own task/base/head trees and
 # test_*.py files) that materialize into throwaway repos — never our own suite.
 addopts = "--ignore=tests/fixtures"
+# Repo root on sys.path so `tests/*` modules can import shared test helpers
+# (tests.support) as `tests.support` regardless of invocation style — bare
+# `pytest` (CI) doesn't add cwd to sys.path the way `python -m pytest` does.
+pythonpath = ["."]
