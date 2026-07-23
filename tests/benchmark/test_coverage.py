@@ -208,6 +208,12 @@ def test_archetype_8_unrequested_change_gap_matches_via_its_obligation(tmp_path)
                     }
                 ]
             },
+            # cart.py is modified (not a pure addition) and leave-existing is not
+            # `addressed`, so the disposition escalates to a model judgment.
+            "_DispositionJudgment": {
+                "disposition": "risky",
+                "rationale": "edits checkout's existing public signature; could hide a regression.",
+            },
         }
     )
 
@@ -273,6 +279,12 @@ def test_archetype_8_unrequested_change_metric_does_not_route_through_coverage(t
                         "diff_refs": [cart_ref],
                     }
                 ]
+            },
+            # cart.py is modified (not a pure addition) and leave-existing is not
+            # `addressed`, so the disposition escalates to a model judgment.
+            "_DispositionJudgment": {
+                "disposition": "risky",
+                "rationale": "edits checkout's existing public signature; could hide a regression.",
             },
         }
     )

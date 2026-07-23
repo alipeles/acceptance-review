@@ -240,8 +240,9 @@ def test_classify_replay_without_transcript_fails_cleanly(
 def test_render_classify_output():
     from acceptance.cli import render_classify
     from acceptance.coverage.classify import CoverageStatus, DiffRef, ImplementationCoverage
+    from acceptance.coverage.disposition import DispositionedChange
     from acceptance.coverage.unrequested import UnrequestedChange, UnrequestedChangeKind
-    from acceptance.review_state import Obligation, ObligationType
+    from acceptance.review_state import Obligation, ObligationType, UnrequestedChangeDisposition
 
     obligations = [
         Obligation(id="ob-1", description="Do the thing.", type=ObligationType.FUNCTIONAL,
@@ -258,19 +259,27 @@ def test_render_classify_output():
             obligation_id="ob-2", status=CoverageStatus.NOT_ADDRESSED, rationale="missing",
         ),
     ]
-    unrequested = [
-        UnrequestedChange(
-            kind=UnrequestedChangeKind.PUBLIC_INTERFACE,
-            rationale="checkout signature changed",
-            diff_refs=[DiffRef(file="cart.py", hunk_header="@@ -1 +1 @@")],
+    dispositioned = [
+        DispositionedChange(
+            change=UnrequestedChange(
+                kind=UnrequestedChangeKind.PUBLIC_INTERFACE,
+                rationale="checkout signature changed",
+                diff_refs=[DiffRef(file="cart.py", hunk_header="@@ -1 +1 @@")],
+            ),
+            disposition=UnrequestedChangeDisposition.RISKY,
+            rationale="edits an existing public signature",
+            recommendation="Scrutinize: this could hide a regression.",
         )
     ]
 
-    rendered = render_classify(obligations, coverages, unrequested)
+    rendered = render_classify(obligations, coverages, dispositioned)
     assert "[addressed] ob-1: Do the thing." in rendered
     assert "pkg.py" in rendered
     assert "[not_addressed] ob-2: Handle the edge." in rendered
     assert "no corresponding change" in rendered
     assert "Unrequested changes" in rendered
-    assert "[public_interface] checkout signature changed" in rendered
+    # Each unrequested change now leads with its disposition, keeps its kind,
+    # and carries any recommendation.
+    assert "[risky] (public_interface) checkout signature changed" in rendered
     assert "cart.py" in rendered
+    assert "Scrutinize" in rendered
