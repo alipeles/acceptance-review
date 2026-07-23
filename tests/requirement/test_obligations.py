@@ -9,15 +9,12 @@ Obligations and OpenQuestions with ids and source spans. The model's actual
 decomposition accuracy is measured separately by the benchmark (M-B*).
 """
 
-import json
-import tempfile
 from pathlib import Path
-from types import SimpleNamespace
 
-from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.requirement.obligations import Decomposition, decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import ObligationType
+from tests.support import client_returning as _client_returning
 
 ARCHETYPES = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 
@@ -77,24 +74,6 @@ FLOATING_RATE_RESPONSE = {
     ],
     "open_questions": [],
 }
-
-
-def _client_returning(response: dict) -> ModelClient:
-    def completion_fn(**kwargs):
-        content = json.dumps(response)
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
-            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
-        )
-
-    # Isolated ephemeral store so the injected response is always used and no
-    # transcript leaks into the repo's .acceptance/ cache.
-    return ModelClient(
-        model="anthropic/claude-sonnet-5",
-        mode=Mode.RECORD,
-        store=TranscriptStore(tempfile.mkdtemp()),
-        completion_fn=completion_fn,
-    )
 
 
 def test_floating_rate_example_yields_five_typed_criteria():

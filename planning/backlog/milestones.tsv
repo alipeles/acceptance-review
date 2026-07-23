@@ -4,6 +4,7 @@
 4	M1 — Requirement interpretation (task → obligations)	Depends on: M0. First real capability; obligations are the spine everything maps to.
 5	M2 — Git change analysis	Depends on: M0. Provides the diff/source context M3–M5 consume.
 6	M3 — Implementation-coverage analysis	Depends on: M1, M2. Needs obligations + change set.
+6.5	M3.5 — Unrequested-change scoring & disposition	Depends on: M3, #81. Dogfood follow-up (DR-081); pre-M4 cleanup — scores the unrequested-change axis and adds dispositions before M4/M5 build on the state model.
 7	M4 — Test discovery & mapping	Depends on: M2, M1. Needs change set + obligations.
 8	M5 — Test-semantic analysis (core)	Depends on: M4. The core hard capability; consumes the test↔obligation map.
 9	M6 — Builder-declaration comparison (optional input)	Depends on: M1, M3, M5. Compares declaration against obligations/diff/tests.

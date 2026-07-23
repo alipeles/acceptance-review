@@ -20,6 +20,11 @@ M2.3	M2.3: Working-tree mode	M2 — Git change analysis	stage-1,track:checker	M2
 M3.1	M3.1: Obligation-to-diff classification	M3 — Implementation-coverage analysis	stage-1,track:checker	M3.1.md
 M3.2	M3.2: Unrequested-change detection	M3 — Implementation-coverage analysis	stage-1,track:checker	M3.2.md
 M3.3	M3.3: Coverage scoring hook	M3 — Implementation-coverage analysis	stage-1,track:checker	M3.3.md
+M3.5.1	M3.5.1: Unrequested-change scoring metric	M3.5 — Unrequested-change scoring & disposition	stage-1,track:benchmark	M3.5.1.md
+M3.5.2	M3.5.2: Disposition on the Finding schema	M3.5 — Unrequested-change scoring & disposition	stage-1,track:checker	M3.5.2.md
+M3.5.3	M3.5.3: Separability classification for unrequested changes	M3.5 — Unrequested-change scoring & disposition	stage-1,track:checker	M3.5.3.md
+M3.5.4	M3.5.4: Expand unrequested-change archetypes beyond #8	M3.5 — Unrequested-change scoring & disposition	stage-1,track:benchmark	M3.5.4.md
+M3.5.5	M3.5.5: Record two-axis scoring + disposition in spec/plan	M3.5 — Unrequested-change scoring & disposition	stage-1,documentation	M3.5.5.md
 M4.1	M4.1: Test discovery	M4 — Test discovery & mapping	stage-1,track:checker	M4.1.md
 M4.2	M4.2: Test-to-obligation mapping	M4 — Test discovery & mapping	stage-1,track:checker	M4.2.md
 M5.1	M5.1: Per-test structural extraction	M5 — Test-semantic analysis (core)	stage-1,track:checker	M5.1.md
@@ -34,6 +39,7 @@ M7.2	M7.2: Completion verdict	M7 — Completion result, recommendations, CLI out
 M7.3	M7.3: Next-instruction generator	M7 — Completion result, recommendations, CLI output	stage-1,track:checker	M7.3.md
 M7.4	M7.4: CLI report	M7 — Completion result, recommendations, CLI output	stage-1,track:checker	M7.4.md
 M7.5	M7.5: Incremental re-run	M7 — Completion result, recommendations, CLI output	stage-1,track:checker	M7.5.md
+M7.6	M7.6: Advisory presentation of unrequested-change findings	M7 — Completion result, recommendations, CLI output	stage-1,track:checker	M7.6.md
 M-B1	M-B1: Ready-made labeled instances	M-B1…M-B4 — Real-change benchmark datasets + accuracy report	stage-1,track:benchmark,human-gate	M-B1.md
 M-B2	M-B2: Real merged PRs + follow-up-fix labels	M-B1…M-B4 — Real-change benchmark datasets + accuracy report	stage-1,track:benchmark,human-gate	M-B2.md
 M-B3	M-B3: Offline mutants for test-strength labels	M-B1…M-B4 — Real-change benchmark datasets + accuracy report	stage-1,track:benchmark	M-B3.md

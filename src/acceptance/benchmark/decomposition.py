@@ -11,11 +11,11 @@ resulting obligation_map, ready for score_case/score_case_set.
 from __future__ import annotations
 
 from acceptance.benchmark.case import BenchmarkCase
-from acceptance.benchmark.scoring import score_case
+from acceptance.benchmark.hooks import provenance_from, scored_copy
 from acceptance.llm import ModelClient
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import Review, ReviewProvenance
+from acceptance.review_state import Review
 
 
 def decompose_case(case: BenchmarkCase, client: ModelClient) -> BenchmarkCase:
@@ -26,13 +26,7 @@ def decompose_case(case: BenchmarkCase, client: ModelClient) -> BenchmarkCase:
     review = Review(
         mode="local",
         reviewed_revision=case.inputs.head_revision,
-        provenance=ReviewProvenance(
-            determinism_mode=client.mode.value,
-            model=client.model,
-            temperature=client.temperature,
-            seed=client.seed,
-        ),
+        provenance=provenance_from(client),
         obligation_map=result.obligations,
     )
-    scored_case = case.model_copy(update={"reviewer_output": review})
-    return scored_case.model_copy(update={"score": score_case(scored_case)})
+    return scored_copy(case, review)

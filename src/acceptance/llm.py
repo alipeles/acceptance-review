@@ -31,13 +31,26 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 from acceptance.serialization import canonical_json
 
 DEFAULT_TRANSCRIPT_ROOT = Path(".acceptance/cache/transcripts")
 
 ResponseModelT = TypeVar("ResponseModelT", bound=BaseModel)
+
+
+class StrictResponseModel(BaseModel):
+    """Base for a `response_model` passed to `ModelClient.complete`.
+
+    OpenAI strict mode requires every object in the schema to forbid extra
+    properties; `extra="forbid"` yields that. Every field must also be
+    required (no defaults) — strict mode has no notion of an optional field,
+    so a response schema should list one, non-defaulted field per value and
+    return empty lists/None explicitly rather than omitting them.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
 
 class Mode(str, Enum):

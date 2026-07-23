@@ -5,10 +5,7 @@ Detection is a schema-constrained model call; per the replay-first invariant
 these tests inject the recorded response via completion_fn — no live calls.
 Detection *accuracy* is measured by the benchmark (M3.3)."""
 
-import json
-import tempfile
 from pathlib import Path
-from types import SimpleNamespace
 
 from acceptance.benchmark.fixtures import materialize_archetype
 from acceptance.change.diff import extract_change_set
@@ -17,37 +14,11 @@ from acceptance.coverage.unrequested import (
     UnrequestedChangeKind,
     detect_unrequested_changes,
 )
-from acceptance.llm import Mode, ModelClient, TranscriptStore
-from acceptance.review_state import ChangeSet, Obligation, ObligationType
+from acceptance.review_state import ChangeSet, ObligationType
+from tests.support import client_returning as _client_returning
+from tests.support import make_obligation as _obligation
 
 ARCHETYPES = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
-
-
-def _client_returning(response: dict) -> ModelClient:
-    def completion_fn(**kwargs):
-        content = json.dumps(response)
-        return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
-            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
-        )
-
-    return ModelClient(
-        model="anthropic/claude-sonnet-5",
-        mode=Mode.RECORD,
-        store=TranscriptStore(tempfile.mkdtemp()),
-        completion_fn=completion_fn,
-    )
-
-
-def _obligation(obligation_id: str, description: str, typ: ObligationType) -> Obligation:
-    return Obligation(
-        id=obligation_id,
-        description=description,
-        type=typ,
-        importance="critical",
-        explicit=True,
-        observable_behavior="...",
-    )
 
 
 def _archetype_change_set(name: str, tmp_path: Path) -> ChangeSet:
