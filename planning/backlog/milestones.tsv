@@ -13,3 +13,4 @@
 12	M8 — Optional execution tier	Depends on: M5, M7. Elevates tiers; can only confirm what the static pipeline already maps.
 13	M-B5b + M-B6 — Execution archetype + user-correction capture	Depends on: M8. Execution-confirmed archetype; capture corrections as labeled cases.
 14	M9 — Hardening & Stage-1 exit	Depends on: all. Meet the Stage-1 quality bar; gate to Stage 2.
+15	M10 — Persistent assurance history & surfaces	Depends on: M9. Post-Stage-1 (spec P7): durable cross-review history behind three parity surfaces — CLI, REST, dashboard. Anything the dashboard shows is reachable via REST and CLI (one shared read model).
