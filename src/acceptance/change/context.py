@@ -78,12 +78,11 @@ _EXCLUDED_DIRS = {
 }
 
 
-def retrieve_context(
-    repo: Path, change_set: ChangeSet, budget: RetrievalBudget | None = None
-) -> RetrievalResult:
-    """Retrieve enclosing definitions of changed regions and their callers."""
-    budget = budget or RetrievalBudget()
-
+def changed_definitions(repo: Path, change_set: ChangeSet) -> list[CodeDefinition]:
+    """The innermost function/class/method enclosing each changed line, across
+    every changed source file — the structural anchor both for surrounding-code
+    retrieval (this module) and test discovery (evidence/discovery.py, M4.1),
+    which reuses this to find the symbols a candidate test should reference."""
     definitions: dict[str, CodeDefinition] = {}
     for file_change in change_set.files:
         if file_change.category != "source" or file_change.status == "deleted":
@@ -100,7 +99,16 @@ def retrieve_context(
             enclosing = _innermost_enclosing(index, changed_lines)
             if enclosing is not None:
                 definitions[enclosing.qualname] = enclosing
+    return list(definitions.values())
 
+
+def retrieve_context(
+    repo: Path, change_set: ChangeSet, budget: RetrievalBudget | None = None
+) -> RetrievalResult:
+    """Retrieve enclosing definitions of changed regions and their callers."""
+    budget = budget or RetrievalBudget()
+
+    definitions = {defn.qualname: defn for defn in changed_definitions(repo, change_set)}
     target_names = {defn.qualname.rsplit(".", 1)[-1]: defn for defn in definitions.values()}
     call_sites: dict[str, list[CallSite]] = {q: [] for q in definitions}
     truncated: dict[str, bool] = {q: False for q in definitions}
