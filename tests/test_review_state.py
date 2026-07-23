@@ -3,6 +3,7 @@ import json
 import pytest
 
 from acceptance.review_state import (
+    UNREQUESTED_CHANGE,
     BuilderDeclaration,
     ChangeSet,
     Component,
@@ -20,6 +21,7 @@ from acceptance.review_state import (
     TaskSource,
     TestEvidence,
     TextSpan,
+    UnrequestedChangeDisposition,
 )
 
 
@@ -234,7 +236,71 @@ def test_finding_requires_authorized_producer():
             evidence_tier=EvidenceTier.DEFECT_KILLED,
             produced_by=Component.STATIC_ANALYZER,
             links=[Link(kind="test", ref="tests/test_bond.py:42")],
+            related_obligation="Coupons use index + contractual spread.",
         )
+
+
+def _unrequested_finding(**overrides) -> Finding:
+    defaults = dict(
+        type=UNREQUESTED_CHANGE,
+        severity="medium",
+        description="checkout signature changed; not requested.",
+        evidence_tier=EvidenceTier.STATIC,
+        produced_by=Component.STATIC_ANALYZER,
+        links=[Link(kind="code", ref="cart.py:4")],
+        disposition=UnrequestedChangeDisposition.SEPARABLE,
+    )
+    defaults.update(overrides)
+    return Finding(**defaults)
+
+
+def test_unrequested_change_finding_round_trips_with_disposition_and_no_obligation():
+    finding = _unrequested_finding()
+    assert finding.related_obligation is None
+    assert finding.disposition is UnrequestedChangeDisposition.SEPARABLE
+    assert _round_trip(finding) == finding
+
+
+def test_obligation_less_finding_of_another_type_is_rejected():
+    # Only unrequested_change may be obligation-less; a coverage gap must name one.
+    with pytest.raises(ValueError):
+        Finding(
+            type="coverage_gap",
+            severity="high",
+            description="...",
+            evidence_tier=EvidenceTier.STATIC,
+            produced_by=Component.STATIC_ANALYZER,
+            links=[Link(kind="requirement", ref="task.md:1")],
+            related_obligation=None,
+        )
+
+
+def test_unrequested_change_finding_with_a_related_obligation_is_rejected():
+    # Obligation-less by construction: it must NOT carry an obligation link.
+    with pytest.raises(ValueError):
+        _unrequested_finding(related_obligation="Some obligation")
+
+
+def test_disposition_on_a_non_unrequested_finding_is_rejected():
+    with pytest.raises(ValueError):
+        Finding(
+            type="coverage_gap",
+            severity="high",
+            description="...",
+            evidence_tier=EvidenceTier.STATIC,
+            produced_by=Component.STATIC_ANALYZER,
+            links=[Link(kind="requirement", ref="task.md:1")],
+            related_obligation="Some obligation",
+            disposition=UnrequestedChangeDisposition.RISKY,
+        )
+
+
+def test_unrequested_change_finding_without_a_disposition_is_allowed():
+    # M3.5.2 introduces the field; M3.5.3's classifier populates it. Until then
+    # an unrequested-change finding may carry disposition=None.
+    finding = _unrequested_finding(disposition=None)
+    assert finding.disposition is None
+    assert _round_trip(finding) == finding
 
 
 def test_review_round_trips_empty():
@@ -259,6 +325,7 @@ def test_review_round_trips_populated():
         evidence_tier=EvidenceTier.STATIC,
         produced_by=Component.STATIC_ANALYZER,
         links=[Link(kind="code", ref="src/bond.py:10")],
+        related_obligation="Coupons use index + contractual spread.",
     )
     review = Review(
         mode="local",
@@ -291,6 +358,7 @@ def test_review_evidence_tier_summary_is_derived_not_stored():
         evidence_tier=EvidenceTier.STATIC,
         produced_by=Component.STATIC_ANALYZER,
         links=[Link(kind="code", ref="src/bond.py:10")],
+        related_obligation="...",
     )
     review = Review(
         mode="local",

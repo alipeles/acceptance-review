@@ -30,7 +30,7 @@ from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import Finding, Link, Obligation, Review
+from acceptance.review_state import UNREQUESTED_CHANGE, Finding, Link, Obligation, Review
 
 _SEVERITY_BY_STATUS = {
     CoverageStatus.NOT_ADDRESSED: "high",
@@ -66,7 +66,7 @@ def _unrequested_finding(change: UnrequestedChange) -> Finding | None:
     if not change.diff_refs:
         return None
     return Finding(
-        type="unrequested_change",
+        type=UNREQUESTED_CHANGE,
         severity="low" if change.kind.value == "internal" else "medium",
         description=change.rationale,
         evidence_tier=EvidenceTier.STATIC,

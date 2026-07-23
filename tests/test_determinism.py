@@ -56,6 +56,7 @@ def _produce_review(config: RunConfig, completion_fn) -> Review:
         evidence_tier=EvidenceTier.STATIC,
         produced_by=Component.STATIC_ANALYZER,
         links=[Link(kind="requirement", ref="task.md:1")],
+        related_obligation="Bonds accrue using the index curve.",
     )
     return Review(
         mode="local",

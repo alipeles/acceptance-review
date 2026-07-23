@@ -1,13 +1,11 @@
 # Task
-Score unrequested-change detection as its own precision/recall pair on the code→obligation axis, separate from the gap metric (DR-081 decision 1).
+Add a `disposition` field to unrequested-change findings (in_service / separable / risky), and a strict/loose scope-expansion policy setting.
 
 ## Constraints
-- Ground truth: obligation-less unrequested-change entries matched against obligation-less findings; do not attempt to link them to obligations.
-- Report the metric separately from `gap_recall`/`gap_precision`, never folded into it.
-- Update archetype #8's ground truth.
-- Detection stays recall-forward; precision is reported, not optimized against.
-- Archetype layer only in Stage 1; real-change scoring is deferred (DR-081).
+- Disposition is obligation-less by construction: it appears only on unrequested-change findings.
+- The Finding invariant permits obligation-less findings only for unrequested_change (strict), expressed via a named allow-set that M6 can extend for declaration mismatches.
+- The scope-expansion policy is a strict-vs-loose run setting; it is introduced now and consumed by the separability classifier (M3.5.3).
 
 ## Completion expectations
 - Implementation
-- Unit tests: archetype #8 contributes an `unrequested_precision`/`unrequested_recall` number that does not route through its `leave-existing` obligation's coverage classification.
+- Unit tests: an unrequested-change finding round-trips with a disposition and no related_obligation; the invariant rejects an obligation-less finding of any other type, an unrequested-change finding that carries a related_obligation, and a disposition on any non-unrequested finding.
