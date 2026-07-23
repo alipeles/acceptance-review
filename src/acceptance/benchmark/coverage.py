@@ -24,19 +24,36 @@ from pathlib import Path
 from acceptance.benchmark.case import BenchmarkCase
 from acceptance.benchmark.hooks import provenance_from, scored_copy
 from acceptance.change.diff import extract_change_set
+from acceptance.config import ScopeExpansionPolicy
 from acceptance.coverage.classify import CoverageStatus, ImplementationCoverage, classify_coverage
-from acceptance.coverage.unrequested import UnrequestedChange, detect_unrequested_changes
+from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
+from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import UNREQUESTED_CHANGE, Finding, Link, Obligation, Review
+from acceptance.review_state import (
+    UNREQUESTED_CHANGE,
+    Finding,
+    Link,
+    Obligation,
+    Review,
+    UnrequestedChangeDisposition,
+)
 
 _SEVERITY_BY_STATUS = {
     CoverageStatus.NOT_ADDRESSED: "high",
     CoverageStatus.PARTIALLY_ADDRESSED: "medium",
     CoverageStatus.UNCLEAR: "low",
     CoverageStatus.REQUIRES_NON_CODE_EVIDENCE: "low",
+}
+
+# An in_service change is accepted; separable should be split; risky demands
+# scrutiny — so severity tracks disposition, not the change's raw kind.
+_SEVERITY_BY_DISPOSITION = {
+    UnrequestedChangeDisposition.IN_SERVICE: "low",
+    UnrequestedChangeDisposition.SEPARABLE: "medium",
+    UnrequestedChangeDisposition.RISKY: "high",
 }
 
 
@@ -59,7 +76,8 @@ def _coverage_finding(obligation: Obligation, coverage: ImplementationCoverage) 
     )
 
 
-def _unrequested_finding(change: UnrequestedChange) -> Finding | None:
+def _unrequested_finding(dispositioned: DispositionedChange) -> Finding | None:
+    change = dispositioned.change
     # No diff location to point to means nothing a human can act on; the
     # required-link invariant (Finding._require_at_least_one_link) would
     # reject it anyway, so skip rather than fabricate a link.
@@ -67,7 +85,7 @@ def _unrequested_finding(change: UnrequestedChange) -> Finding | None:
         return None
     return Finding(
         type=UNREQUESTED_CHANGE,
-        severity="low" if change.kind.value == "internal" else "medium",
+        severity=_SEVERITY_BY_DISPOSITION[dispositioned.disposition],
         description=change.rationale,
         evidence_tier=EvidenceTier.STATIC,
         produced_by=Component.STATIC_ANALYZER,
@@ -75,12 +93,18 @@ def _unrequested_finding(change: UnrequestedChange) -> Finding | None:
             Link(kind="code", ref=f"{ref.file}#{ref.hunk_header}", text=change.rationale)
             for ref in change.diff_refs
         ],
+        disposition=dispositioned.disposition,
+        recommended_action=dispositioned.recommendation,
     )
 
 
-def classify_case(case: BenchmarkCase, client: ModelClient) -> BenchmarkCase:
-    """Decompose, classify coverage, and detect unrequested changes for a
-    case's diff; return a scored copy of `case`."""
+def classify_case(
+    case: BenchmarkCase,
+    client: ModelClient,
+    policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
+) -> BenchmarkCase:
+    """Decompose, classify coverage, detect unrequested changes and their
+    dispositions for a case's diff; return a scored copy of `case`."""
     parsed = parse_task_file(case.inputs.task_text)
     obligations = decompose(parsed, client).obligations
     change_set = extract_change_set(
@@ -89,6 +113,9 @@ def classify_case(case: BenchmarkCase, client: ModelClient) -> BenchmarkCase:
 
     coverages = classify_coverage(obligations, change_set, client)
     unrequested = detect_unrequested_changes(obligations, change_set, client)
+    dispositioned = classify_dispositions(
+        unrequested, obligations, coverages, change_set, policy, client
+    )
 
     obligations_by_id = {obligation.id: obligation for obligation in obligations}
     findings = [
@@ -98,7 +125,7 @@ def classify_case(case: BenchmarkCase, client: ModelClient) -> BenchmarkCase:
     ]
     findings.extend(
         finding
-        for finding in (_unrequested_finding(change) for change in unrequested)
+        for finding in (_unrequested_finding(change) for change in dispositioned)
         if finding is not None
     )
 

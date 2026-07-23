@@ -23,7 +23,8 @@ from pathlib import Path
 from acceptance.change.diff import extract_change_set, extract_working_tree_change_set
 from acceptance.config import DEFAULT_MODEL, RunConfig
 from acceptance.coverage.classify import ImplementationCoverage, classify_coverage
-from acceptance.coverage.unrequested import UnrequestedChange, detect_unrequested_changes
+from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
+from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode
 from acceptance.report import render_report
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
@@ -153,10 +154,10 @@ def render_change_set(change_set: ChangeSet) -> str:
 
 def run_classify(
     task: str, base: str, head: str | None, config: RunConfig, repo: str = "."
-) -> tuple[list[Obligation], list[ImplementationCoverage], list[UnrequestedChange]]:
+) -> tuple[list[Obligation], list[ImplementationCoverage], list[DispositionedChange]]:
     """Decompose a task, extract its change set, classify each obligation against
-    the diff, and flag unrequested changes — a live end-to-end dogfood of
-    M1 + M2 + M3.1 + M3.2."""
+    the diff, flag unrequested changes and classify their dispositions — a live
+    end-to-end dogfood of M1 + M2 + M3.1 + M3.2 + M3.5.3."""
     repo_path = Path(repo)
     parsed = parse_task_file(_read_task(task))
     obligations = decompose(parsed, config.build_client()).obligations
@@ -170,13 +171,17 @@ def run_classify(
 
     coverages = classify_coverage(obligations, change_set, config.build_client())
     unrequested = detect_unrequested_changes(obligations, change_set, config.build_client())
-    return obligations, coverages, unrequested
+    dispositioned = classify_dispositions(
+        unrequested, obligations, coverages, change_set,
+        config.scope_expansion_policy, config.build_client(),
+    )
+    return obligations, coverages, dispositioned
 
 
 def render_classify(
     obligations: list[Obligation],
     coverages: list[ImplementationCoverage],
-    unrequested: list[UnrequestedChange],
+    dispositioned: list[DispositionedChange],
 ) -> str:
     descriptions = {o.id: o.description for o in obligations}
     lines = ["Implementation coverage (code only — not test evidence):"]
@@ -187,13 +192,16 @@ def render_classify(
         lines.append(f"  [{cov.status.value}] {cov.obligation_id}: {descriptions.get(cov.obligation_id, '')}")
         lines.append(f"      -> {refs}")
     lines.append("")
-    lines.append("Unrequested changes (no obligation calls for these):")
-    if not unrequested:
+    lines.append("Unrequested changes (no obligation calls for these — your call):")
+    if not dispositioned:
         lines.append("  (none)")
-    for change in unrequested:
+    for item in dispositioned:
+        change = item.change
         refs = ", ".join(f"{r.file}" for r in change.diff_refs) or "?"
-        lines.append(f"  [{change.kind.value}] {change.rationale}")
+        lines.append(f"  [{item.disposition.value}] ({change.kind.value}) {change.rationale}")
         lines.append(f"      -> {refs}")
+        if item.recommendation:
+            lines.append(f"      recommendation: {item.recommendation}")
     return "\n".join(lines)
 
 
@@ -343,7 +351,7 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
         )
         try:
-            obligations, coverages, unrequested = run_classify(
+            obligations, coverages, dispositioned = run_classify(
                 args.task, args.base, args.head, config, args.repo
             )
         except CliError as exc:
@@ -357,13 +365,13 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps(
                     {
                         "coverage": [c.to_dict() for c in coverages],
-                        "unrequested_changes": [u.to_dict() for u in unrequested],
+                        "unrequested_changes": [d.to_dict() for d in dispositioned],
                     },
                     indent=2,
                 )
             )
         else:
-            print(render_classify(obligations, coverages, unrequested))
+            print(render_classify(obligations, coverages, dispositioned))
         return 0
 
     parser.error(f"unknown command: {args.command}")
