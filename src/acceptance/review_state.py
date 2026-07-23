@@ -154,6 +154,10 @@ class ChangeSet(_Model):
     base_revision: str
     head_revision: str
     files: list[FileChange] = Field(default_factory=list)
+    # Paths matched by the reviewed repo's .acceptance/ignore (#105) —
+    # excluded from `files` (and therefore from every downstream capability),
+    # kept here for auditability rather than dropped silently.
+    ignored_paths: list[str] = Field(default_factory=list)
 
 
 class Obligation(_Model):

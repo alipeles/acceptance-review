@@ -170,3 +170,89 @@ def test_categorization_by_filename(repo, filename, expected_category):
 
     change_set = extract_change_set(repo, base, head)
     assert change_set.files[0].category == expected_category
+
+
+# --- ignore patterns (#105) ---
+
+
+def test_no_ignore_file_leaves_behavior_unchanged(repo):
+    (repo / "pkg.py").write_text("x = 1\n")
+    base = _commit(repo, "base")
+    (repo / "pkg.py").write_text("x = 2\n")
+    head = _commit(repo, "head")
+
+    change_set = extract_change_set(repo, base, head)
+    assert change_set.ignored_paths == []
+    assert len(change_set.files) == 1
+
+
+def test_acceptance_ignore_file_excludes_matching_paths(repo):
+    (repo / "vendor").mkdir()
+    (repo / "vendor" / "lib.py").write_text("x = 1\n")
+    (repo / "pkg.py").write_text("x = 1\n")
+    base = _commit(repo, "base")
+
+    (repo / ".acceptance").mkdir()
+    (repo / ".acceptance" / "ignore").write_text("vendor/\n")
+    (repo / "vendor" / "lib.py").write_text("x = 2\n")
+    (repo / "pkg.py").write_text("x = 2\n")
+    head = _commit(repo, "head")
+
+    change_set = extract_change_set(repo, base, head)
+
+    by_path = {f.path: f for f in change_set.files}
+    assert "vendor/lib.py" not in by_path
+    assert "pkg.py" in by_path
+    assert "vendor/lib.py" in change_set.ignored_paths
+    assert "pkg.py" not in change_set.ignored_paths
+    # The ignore file itself is a change too, and isn't self-excluded.
+    assert ".acceptance/ignore" in by_path
+
+
+def test_explicit_ignore_patterns_override_the_ignore_file(repo):
+    (repo / "pkg.py").write_text("x = 1\n")
+    (repo / "other.py").write_text("x = 1\n")
+    base = _commit(repo, "base")
+    (repo / "pkg.py").write_text("x = 2\n")
+    (repo / "other.py").write_text("x = 2\n")
+    head = _commit(repo, "head")
+
+    change_set = extract_change_set(repo, base, head, ignore_patterns=["pkg.py"])
+
+    by_path = {f.path: f for f in change_set.files}
+    assert "pkg.py" not in by_path
+    assert "other.py" in by_path
+    assert change_set.ignored_paths == ["pkg.py"]
+
+
+def test_ignore_patterns_apply_to_untracked_working_tree_files(repo):
+    from acceptance.change.diff import extract_working_tree_change_set
+
+    (repo / "pkg.py").write_text("x = 1\n")
+    base = _commit(repo, "base")
+
+    (repo / "vendor").mkdir()
+    (repo / "vendor" / "lib.py").write_text("x = 1\n")  # untracked
+    (repo / "new_module.py").write_text("y = 1\n")  # untracked
+
+    change_set = extract_working_tree_change_set(repo, base, ignore_patterns=["vendor/"])
+
+    by_path = {f.path: f for f in change_set.files}
+    assert "vendor/lib.py" not in by_path
+    assert "new_module.py" in by_path
+    assert "vendor/lib.py" in change_set.ignored_paths
+
+
+def test_read_ignore_patterns_returns_empty_when_file_absent(repo):
+    from acceptance.change.diff import read_ignore_patterns
+
+    assert read_ignore_patterns(repo) == []
+
+
+def test_read_ignore_patterns_reads_the_file(repo):
+    from acceptance.change.diff import read_ignore_patterns
+
+    (repo / ".acceptance").mkdir()
+    (repo / ".acceptance" / "ignore").write_text("# a comment\nvendor/\n*.log\n")
+
+    assert read_ignore_patterns(repo) == ["# a comment", "vendor/", "*.log"]

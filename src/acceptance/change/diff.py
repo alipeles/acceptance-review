@@ -14,6 +14,15 @@ than diffed. This means a rename done via plain `mv` (not staged with
 rename — untracked files can't participate in git's similarity-based rename
 detection. A staged rename (`git mv`, or `mv` + `git add`) is detected
 correctly, same as a committed one.
+
+Ignore patterns (#105): the reviewed repo's own `.acceptance/ignore` (gitignore
+syntax) is read once per extraction and applied here, the lowest layer, so a
+matched path is structurally invisible to every downstream capability —
+decomposition, coverage classification, unrequested-change detection,
+disposition — with no per-capability special-casing. Matched paths are
+excluded from `ChangeSet.files` but listed in `ignored_paths` for
+auditability (no silent caps, same spirit as `RetrievalResult`'s truncation
+flags in change/context.py).
 """
 
 from __future__ import annotations
@@ -22,9 +31,12 @@ import re
 import subprocess
 from pathlib import Path
 
+import pathspec
+
 from acceptance.review_state import ChangeSet, DiffHunk, FileChange
 
 WORKING_TREE_SENTINEL = "<working-tree>"
+IGNORE_FILE = ".acceptance/ignore"
 
 _TEST_PATH_RE = re.compile(r"(^|/)tests?/|(^|/)test_[^/]+\.py$|_test\.py$")
 _CONFIG_NAMES = {
@@ -50,43 +62,90 @@ _HUNK_HEADER_RE = re.compile(
 )
 
 
-def extract_change_set(repo: Path, base: str, head: str) -> ChangeSet:
-    """Extract the structural change set between `base` and `head` in `repo`."""
+def read_ignore_patterns(repo: Path) -> list[str]:
+    """Gitignore-syntax patterns from the reviewed repo's `.acceptance/ignore`,
+    or `[]` if the file is absent."""
+    ignore_path = repo / IGNORE_FILE
+    if not ignore_path.is_file():
+        return []
+    return ignore_path.read_text(encoding="utf-8").splitlines()
+
+
+def _build_spec(ignore_patterns: list[str] | None, repo: Path) -> pathspec.PathSpec:
+    patterns = ignore_patterns if ignore_patterns is not None else read_ignore_patterns(repo)
+    return pathspec.PathSpec.from_lines("gitignore", patterns)
+
+
+def extract_change_set(
+    repo: Path, base: str, head: str, ignore_patterns: list[str] | None = None
+) -> ChangeSet:
+    """Extract the structural change set between `base` and `head` in `repo`.
+
+    `ignore_patterns` defaults to the repo's own `.acceptance/ignore` (#105);
+    pass `[]` explicitly to disable ignoring."""
+    spec = _build_spec(ignore_patterns, repo)
     entries = _parse_name_status(_git(repo, "diff", "--name-status", "-M", base, head))
     blocks = _split_file_blocks(_git(repo, "diff", "-U3", base, head))
+    files, ignored = _build_files(entries, blocks, spec)
+    return ChangeSet(base_revision=base, head_revision=head, files=files, ignored_paths=ignored)
+
+
+def extract_working_tree_change_set(
+    repo: Path, base: str, ignore_patterns: list[str] | None = None
+) -> ChangeSet:
+    """Extract the change set between `base` and the current working tree
+    (staged + unstaged + untracked) — no head commit required (§5.1).
+
+    `ignore_patterns` defaults to the repo's own `.acceptance/ignore` (#105);
+    pass `[]` explicitly to disable ignoring."""
+    spec = _build_spec(ignore_patterns, repo)
+    entries = _parse_name_status(_git(repo, "diff", "--name-status", "-M", base))
+    blocks = _split_file_blocks(_git(repo, "diff", "-U3", base))
+    files, ignored = _build_files(entries, blocks, spec)
+    untracked_files, untracked_ignored = _untracked_file_changes(repo, spec)
     return ChangeSet(
-        base_revision=base, head_revision=head, files=_build_files(entries, blocks)
+        base_revision=base,
+        head_revision=WORKING_TREE_SENTINEL,
+        files=files + untracked_files,
+        ignored_paths=ignored + untracked_ignored,
     )
 
 
-def extract_working_tree_change_set(repo: Path, base: str) -> ChangeSet:
-    """Extract the change set between `base` and the current working tree
-    (staged + unstaged + untracked) — no head commit required (§5.1)."""
-    entries = _parse_name_status(_git(repo, "diff", "--name-status", "-M", base))
-    blocks = _split_file_blocks(_git(repo, "diff", "-U3", base))
-    files = _build_files(entries, blocks) + _untracked_file_changes(repo)
-    return ChangeSet(base_revision=base, head_revision=WORKING_TREE_SENTINEL, files=files)
-
-
-def _build_files(entries: list[dict], blocks: dict[str, str]) -> list[FileChange]:
-    return [
-        FileChange(
-            path=entry["path"],
-            status=entry["status"],
-            category=_categorize(entry["path"]),
-            old_path=entry["old_path"],
-            hunks=_parse_hunks(blocks.get(entry["path"]) or blocks.get(entry["old_path"]) or ""),
+def _build_files(
+    entries: list[dict], blocks: dict[str, str], spec: pathspec.PathSpec
+) -> tuple[list[FileChange], list[str]]:
+    files: list[FileChange] = []
+    ignored: list[str] = []
+    for entry in entries:
+        if spec.match_file(entry["path"]):
+            ignored.append(entry["path"])
+            continue
+        files.append(
+            FileChange(
+                path=entry["path"],
+                status=entry["status"],
+                category=_categorize(entry["path"]),
+                old_path=entry["old_path"],
+                hunks=_parse_hunks(
+                    blocks.get(entry["path"]) or blocks.get(entry["old_path"]) or ""
+                ),
+            )
         )
-        for entry in entries
-    ]
+    return files, ignored
 
 
-def _untracked_file_changes(repo: Path) -> list[FileChange]:
+def _untracked_file_changes(
+    repo: Path, spec: pathspec.PathSpec
+) -> tuple[list[FileChange], list[str]]:
     """Untracked files as synthetic all-added FileChanges — git diff can't
     diff a file it doesn't know about, so these are read directly."""
-    changes = []
+    changes: list[FileChange] = []
+    ignored: list[str] = []
     for path in _git(repo, "ls-files", "--others", "--exclude-standard").splitlines():
         if not path.strip():
+            continue
+        if spec.match_file(path):
+            ignored.append(path)
             continue
         try:
             content = (repo / path).read_text(encoding="utf-8")
@@ -100,7 +159,7 @@ def _untracked_file_changes(repo: Path) -> list[FileChange]:
                 hunks=_whole_file_hunk(content),
             )
         )
-    return changes
+    return changes, ignored
 
 
 def _whole_file_hunk(content: str) -> list[DiffHunk]:

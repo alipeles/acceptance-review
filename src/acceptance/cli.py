@@ -149,6 +149,10 @@ def render_change_set(change_set: ChangeSet) -> str:
             f"  [{f.category}/{f.status}] {f.path}{origin}  "
             f"({hunk_count} hunk{'' if hunk_count == 1 else 's'})"
         )
+    if change_set.ignored_paths:
+        lines.append(f"Ignored by .acceptance/ignore ({len(change_set.ignored_paths)}):")
+        for path in change_set.ignored_paths:
+            lines.append(f"  {path}")
     return "\n".join(lines)
 
 
