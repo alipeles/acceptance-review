@@ -28,6 +28,8 @@ from acceptance.config import ScopeExpansionPolicy
 from acceptance.coverage.classify import CoverageStatus, ImplementationCoverage, classify_coverage
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
 from acceptance.coverage.unrequested import detect_unrequested_changes
+from acceptance.evidence.discovery import discover_tests
+from acceptance.evidence.mapping import apply_test_mapping, map_tests_to_obligations
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.obligations import decompose
@@ -103,13 +105,20 @@ def classify_case(
     client: ModelClient,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
 ) -> BenchmarkCase:
-    """Decompose, classify coverage, detect unrequested changes and their
-    dispositions for a case's diff; return a scored copy of `case`."""
+    """Decompose; discover and map candidate tests; classify coverage, detect
+    unrequested changes and their dispositions for a case's diff; return a
+    scored copy of `case`. The benchmark's assembled static pipeline — each
+    capability lands here as it ships so its §11.1 metric is scored (M3-M5)."""
     parsed = parse_task_file(case.inputs.task_text)
     obligations = decompose(parsed, client).obligations
+    repo = Path(case.inputs.repo)
     change_set = extract_change_set(
-        Path(case.inputs.repo), case.inputs.base_revision, case.inputs.head_revision
+        repo, case.inputs.base_revision, case.inputs.head_revision
     )
+
+    discovered = discover_tests(repo, change_set)
+    mapping = map_tests_to_obligations(obligations, discovered.tests, client)
+    obligations = apply_test_mapping(obligations, mapping)
 
     coverages = classify_coverage(obligations, change_set, client)
     unrequested = detect_unrequested_changes(obligations, change_set, client)

@@ -1,13 +1,14 @@
 # Task
-Collect added/modified tests plus relevant existing tests (by touched symbols, imports, naming, and call graph).
+Map each candidate test to the obligation(s) it purports to evidence, and flag obligations with no mapped test.
 
 ## Constraints
-- Structural only, no LLM call — Python AST, matching the M2 change/diff extraction and M2.2 context retrieval.
-- Every added/modified test in the change set is discovered directly.
-- An existing, untouched test is discovered when it calls a changed symbol, references a changed symbol without calling it, imports a changed module, or is named after a changed symbol.
-- Every discovered test records why it was discovered (never zero reasons).
-- Bound the repo-wide scan with a budget, flagged (not silently dropped) when the cap is hit.
+- Candidate tests come from M4.1 discovery; obligations from M1.
+- Mapping is the precision step over recall-forward discovery: judge which obligation(s), if any, a test's assertions are actually aimed at — not merely that it touches changed code.
+- A test may map to zero, one, or several obligations; obligations with no mapped test are flagged unmapped.
+- "Purports to evidence" is weaker than "proves" — do not judge test strength here; that is a later step.
+- The mapping is a schema-constrained model call recorded for replay; capability tests run off the recorded transcript with no live calls.
+- Populate each obligation's test_evidence so the §11.1 mapping-accuracy metric scores a real number against archetype labels.
 
 ## Completion expectations
 - Implementation
-- Unit tests: on a fixture where an existing untouched test covers a changed function, that test is discovered.
+- Unit tests: on the §9.1-style example each derived criterion is either mapped to a test or flagged unmapped, and mapping-accuracy reports a number vs archetype labels.
