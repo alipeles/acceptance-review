@@ -62,6 +62,26 @@ def _read_task(task_path: str, repo: Path | None = None) -> str:
     return path.read_text()
 
 
+def _task_ignore_pattern(task_path: str, repo: Path) -> str | None:
+    """The `--task` file's path relative to `repo`, as a root-anchored
+    gitignore pattern, if the file lives inside the repo — `None` otherwise
+    (e.g. the benchmark runner's temp task files, which live outside any
+    reviewed repo and can never appear in its diff regardless).
+
+    The task is the specification being reviewed against, not part of the
+    reviewed deliverable, so it must never appear in its own diff — not as
+    a coverage claim, and never as an "unrequested change" (it always
+    changes; that would be absurd to flag)."""
+    resolved = Path(task_path)
+    if not resolved.is_absolute():
+        resolved = Path.cwd() / resolved
+    try:
+        relative = resolved.resolve().relative_to(repo.resolve())
+    except ValueError:
+        return None
+    return "/" + relative.as_posix()
+
+
 def run_check(
     task: str,
     base: str,
@@ -91,6 +111,9 @@ def run_check(
         provenance=config.provenance(),
         # Diff endpoints only; real extraction exists (change/diff.py, dogfooded
         # via `acceptance diff`) but isn't wired into this pipeline yet (M7).
+        # When it is, pass extra_ignore_patterns=[_task_ignore_pattern(task,
+        # repo)] the same way run_classify does — the task file must never
+        # appear in its own diff.
         change_set=ChangeSet(base_revision=base_sha, head_revision=head_sha),
     )
     store.write(review)
@@ -166,12 +189,19 @@ def run_classify(
     parsed = parse_task_file(_read_task(task))
     obligations = decompose(parsed, config.build_client()).obligations
 
+    task_ignore = _task_ignore_pattern(task, repo_path)
+    extra_patterns = [task_ignore] if task_ignore else []
+
     base_sha = _resolve_revision(base, repo=repo_path)
     if head is None:
-        change_set = extract_working_tree_change_set(repo_path, base_sha)
+        change_set = extract_working_tree_change_set(
+            repo_path, base_sha, extra_ignore_patterns=extra_patterns
+        )
     else:
         head_sha = _resolve_revision(head, repo=repo_path)
-        change_set = extract_change_set(repo_path, base_sha, head_sha)
+        change_set = extract_change_set(
+            repo_path, base_sha, head_sha, extra_ignore_patterns=extra_patterns
+        )
 
     coverages = classify_coverage(obligations, change_set, config.build_client())
     unrequested = detect_unrequested_changes(obligations, change_set, config.build_client())

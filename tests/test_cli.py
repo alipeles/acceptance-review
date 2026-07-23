@@ -237,6 +237,81 @@ def test_classify_replay_without_transcript_fails_cleanly(
     assert "model error" in capsys.readouterr().err
 
 
+# --- task-file auto-ignore (a change must never appear in its own diff) ---
+
+
+def test_task_ignore_pattern_for_a_file_inside_the_repo(git_repo):
+    from acceptance.cli import _task_ignore_pattern
+
+    task_path = git_repo["path"] / "current-task.md"
+    task_path.write_text("# Task\n")
+
+    pattern = _task_ignore_pattern(str(task_path), git_repo["path"])
+    assert pattern == "/current-task.md"
+
+
+def test_task_ignore_pattern_for_a_relative_path(git_repo, monkeypatch):
+    from acceptance.cli import _task_ignore_pattern
+
+    (git_repo["path"] / "current-task.md").write_text("# Task\n")
+    monkeypatch.chdir(git_repo["path"])
+
+    assert _task_ignore_pattern("current-task.md", git_repo["path"]) == "/current-task.md"
+
+
+def test_task_ignore_pattern_is_none_outside_the_repo(git_repo, tmp_path):
+    from acceptance.cli import _task_ignore_pattern
+
+    outside = tmp_path / "elsewhere" / "task.md"
+    outside.parent.mkdir()
+    outside.write_text("# Task\n")
+
+    assert _task_ignore_pattern(str(outside), git_repo["path"]) is None
+
+
+def test_run_classify_auto_ignores_the_task_file(git_repo, monkeypatch):
+    """The --task file must never appear in its own diff — not as a
+    coverage claim, and never as an absurd "unrequested change" (it always
+    changes). Verified by capturing the ignore pattern actually passed to
+    change-set extraction; the capability calls themselves are stubbed out
+    since their real behavior is tested elsewhere and would otherwise need
+    a live model call."""
+    import acceptance.cli as cli_module
+    from acceptance.requirement.obligations import Decomposition
+
+    task_path = git_repo["path"] / "current-task.md"
+    task_path.write_text("# Task\nDo the thing.\n")
+
+    captured = {}
+
+    def fake_extract_working_tree_change_set(repo, base, extra_ignore_patterns=None):
+        captured["extra_ignore_patterns"] = extra_ignore_patterns
+        from acceptance.review_state import ChangeSet
+        return ChangeSet(base_revision=base, head_revision="<working-tree>")
+
+    monkeypatch.setattr(
+        cli_module, "extract_working_tree_change_set", fake_extract_working_tree_change_set
+    )
+    monkeypatch.setattr(
+        cli_module, "decompose", lambda parsed, client: Decomposition(obligations=[])
+    )
+    monkeypatch.setattr(cli_module, "classify_coverage", lambda obligations, cs, client: [])
+    monkeypatch.setattr(
+        cli_module, "detect_unrequested_changes", lambda obligations, cs, client: []
+    )
+    monkeypatch.setattr(
+        cli_module,
+        "classify_dispositions",
+        lambda changes, obligations, coverages, cs, policy, client: [],
+    )
+
+    cli_module.run_classify(
+        str(task_path), git_repo["base"], None, RunConfig(), repo=str(git_repo["path"])
+    )
+
+    assert captured["extra_ignore_patterns"] == ["/current-task.md"]
+
+
 def test_render_classify_output():
     from acceptance.cli import render_classify
     from acceptance.coverage.classify import CoverageStatus, DiffRef, ImplementationCoverage

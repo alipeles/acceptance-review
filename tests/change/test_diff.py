@@ -209,7 +209,7 @@ def test_acceptance_ignore_file_excludes_matching_paths(repo):
     assert ".acceptance/ignore" in by_path
 
 
-def test_explicit_ignore_patterns_override_the_ignore_file(repo):
+def test_extra_ignore_patterns_are_applied(repo):
     (repo / "pkg.py").write_text("x = 1\n")
     (repo / "other.py").write_text("x = 1\n")
     base = _commit(repo, "base")
@@ -217,12 +217,37 @@ def test_explicit_ignore_patterns_override_the_ignore_file(repo):
     (repo / "other.py").write_text("x = 2\n")
     head = _commit(repo, "head")
 
-    change_set = extract_change_set(repo, base, head, ignore_patterns=["pkg.py"])
+    change_set = extract_change_set(repo, base, head, extra_ignore_patterns=["pkg.py"])
 
     by_path = {f.path: f for f in change_set.files}
     assert "pkg.py" not in by_path
     assert "other.py" in by_path
     assert change_set.ignored_paths == ["pkg.py"]
+
+
+def test_extra_ignore_patterns_add_to_not_replace_the_ignore_file(repo):
+    (repo / "vendor").mkdir()
+    (repo / "vendor" / "lib.py").write_text("x = 1\n")
+    (repo / "pkg.py").write_text("x = 1\n")
+    (repo / "task.md").write_text("v1\n")
+    base = _commit(repo, "base")
+
+    (repo / ".acceptance").mkdir()
+    (repo / ".acceptance" / "ignore").write_text("vendor/\n")
+    (repo / "vendor" / "lib.py").write_text("x = 2\n")
+    (repo / "pkg.py").write_text("x = 2\n")
+    (repo / "task.md").write_text("v2\n")
+    head = _commit(repo, "head")
+
+    change_set = extract_change_set(repo, base, head, extra_ignore_patterns=["/task.md"])
+
+    by_path = {f.path: f for f in change_set.files}
+    # Both the file-based pattern (vendor/) and the extra pattern (task.md)
+    # apply together — extra patterns don't disable the repo's own config.
+    assert "vendor/lib.py" not in by_path
+    assert "task.md" not in by_path
+    assert "pkg.py" in by_path
+    assert set(change_set.ignored_paths) == {"vendor/lib.py", "task.md"}
 
 
 def test_ignore_patterns_apply_to_untracked_working_tree_files(repo):
@@ -235,7 +260,7 @@ def test_ignore_patterns_apply_to_untracked_working_tree_files(repo):
     (repo / "vendor" / "lib.py").write_text("x = 1\n")  # untracked
     (repo / "new_module.py").write_text("y = 1\n")  # untracked
 
-    change_set = extract_working_tree_change_set(repo, base, ignore_patterns=["vendor/"])
+    change_set = extract_working_tree_change_set(repo, base, extra_ignore_patterns=["vendor/"])
 
     by_path = {f.path: f for f in change_set.files}
     assert "vendor/lib.py" not in by_path
