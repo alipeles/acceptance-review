@@ -283,3 +283,37 @@ def test_render_classify_output():
     assert "[risky] (public_interface) checkout signature changed" in rendered
     assert "cart.py" in rendered
     assert "Scrutinize" in rendered
+
+
+# --- ignore patterns (#105) ---
+
+
+def test_render_change_set_shows_ignored_paths():
+    from acceptance.cli import render_change_set
+    from acceptance.review_state import ChangeSet, FileChange
+
+    change_set = ChangeSet(
+        base_revision="abc123",
+        head_revision="def456",
+        files=[FileChange(path="pkg.py", status="modified", category="source")],
+        ignored_paths=["vendor/lib.py"],
+    )
+
+    rendered = render_change_set(change_set)
+    assert "pkg.py" in rendered
+    assert "Ignored by .acceptance/ignore (1):" in rendered
+    assert "vendor/lib.py" in rendered
+
+
+def test_render_change_set_omits_ignored_section_when_empty():
+    from acceptance.cli import render_change_set
+    from acceptance.review_state import ChangeSet, FileChange
+
+    change_set = ChangeSet(
+        base_revision="abc123",
+        head_revision="def456",
+        files=[FileChange(path="pkg.py", status="modified", category="source")],
+    )
+
+    rendered = render_change_set(change_set)
+    assert "Ignored" not in rendered

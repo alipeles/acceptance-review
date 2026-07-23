@@ -1,11 +1,14 @@
 # Task
-Expand the unrequested-change archetypes beyond #8 with three sibling fixtures — a separable extra feature, an in-service refactor, and a risky adjacent-behavior change — each with ground-truth disposition labels.
+Add user-configurable ignore patterns for reviewed paths, so an excluded path is invisible to every downstream capability, not just special-cased per capability.
 
 ## Constraints
-- Each fixture must materialize as a real two-commit git repo with a non-empty base->head diff and a pytest suite that runs with its declared intended outcome.
-- Ground truth must label each unrequested change's disposition (in_service / separable / risky), backed by a plausible rationale under the removability litmus.
-- The separable and in-service scenarios must be genuinely distinct: the in-service change must be load-bearing for the requested obligation (removing it breaks completion), not merely tidier.
+- Gitignore-syntax patterns, read from a `.acceptance/ignore` file in the reviewed repo.
+- Applied once at change-set extraction (the lowest layer), so decomposition, coverage classification, unrequested-change detection, and disposition all see the same already-filtered change set.
+- A file matching a configured ignore pattern does not appear in the extracted ChangeSet's files at all.
+- Ignoring a path must be visible/auditable in CLI output — no silent caps.
+- Must work in both committed-revision mode and working-tree mode (including untracked files).
+- Existing callers with no `.acceptance/ignore` file must behave exactly as before (full backward compatibility).
 
 ## Completion expectations
-- Fixtures (task.md, base/, head/, meta.json, labels.json) for each of the three dispositions
-- Ground truth validated against the existing generic archetype test suite
+- Implementation
+- Unit tests: ignore file present vs. absent, working-tree/untracked files respect it, CLI renders the ignored-paths section
