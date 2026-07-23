@@ -62,6 +62,17 @@ For each obligation return a `status`:
 - requires_non_code_evidence: satisfying it needs docs, visual behavior, or
   deploy config rather than code.
 
+Judge each region against the FULL text of the obligation, not against a fixed
+idea of "correct production code." An obligation may ask for an ARTIFACT — a
+fixture, test, example, sample, or data file — whose content is deliberately
+meant to resemble something a reviewer would otherwise question: a planted bug,
+an odd edit to existing code, a deprecated call, an intentionally weak test.
+When an obligation calls for such an artifact and the diff delivers exactly
+that content, it is `addressed` — judge it by whether it contains what the
+obligation says the artifact should show, NOT by whether it is correct runtime
+behavior. Each file is tagged `(status, category)`; treat a `test`-category
+file as a deliverable artifact, not as production code held to correctness.
+
 Also return a short `rationale` and `diff_refs`: the labels (like `path#0`) of
 the hunks that address the obligation. For not_addressed, `diff_refs` MUST be
 empty. Link only hunks that genuinely respond to the obligation."""
