@@ -21,6 +21,11 @@ The classifier is a **hybrid** (chosen deliberately, not for cheapness):
      coverage-mapped region is never a bare unrequested flag.) Only `addressed`
      counts — a `partially_addressed` region can be the one that *violates* a
      leave-as-is obligation, which is ambiguous and escalates.
+   - a comment/docstring-only hunk in a file that also has an `addressed`
+     hunk elsewhere → documentation OF that in-service change → **in_service**
+     (#122). `separable` means "a coherent DISTINCT unit of work"; a docstring
+     update describing the very change under review is not distinct work, and
+     recommending it split into its own PR is actively bad advice.
    - a pure new-file addition that no obligation's coverage claims → new,
      self-contained work → **separable**.
 2. Everything else — edits to existing code with no clean coverage attribution —
@@ -86,7 +91,10 @@ for — into exactly one disposition, using the removability litmus:
 
 - in_service: NO — some obligation depends on this change (e.g. a refactor or
   helper the requested feature needs), even though nothing requested it
-  directly. Removing it would leave an obligation incomplete.
+  directly. Removing it would leave an obligation incomplete. A comment or
+  docstring update that describes an in-service code edit in the SAME file is
+  itself in_service — it is not distinct work, and it should never be
+  recommended for splitting into its own PR.
 - separable: YES, and it is coherent, self-contained work — valuable but a
   DISTINCT unit that belongs in its own PR / backlog item.
 - risky: YES, but it edits existing public interface, dependencies, or adjacent
@@ -120,6 +128,73 @@ def _addressed_regions(coverages: list[ImplementationCoverage]) -> set[tuple[str
 
 def _is_load_bearing(change: UnrequestedChange, addressed: set[tuple[str, str]]) -> bool:
     return any(_region_key(ref) in addressed for ref in change.diff_refs)
+
+
+def _addressed_files(coverages: list[ImplementationCoverage]) -> set[str]:
+    return {
+        ref.file
+        for coverage in coverages
+        if coverage.status == CoverageStatus.ADDRESSED
+        for ref in coverage.diff_refs
+    }
+
+
+def _hunk_content(ref: DiffRef, change_set: ChangeSet) -> str | None:
+    for file_change in change_set.files:
+        if file_change.path != ref.file:
+            continue
+        for hunk in file_change.hunks:
+            if hunk.header == ref.hunk_header:
+                return hunk.content
+    return None
+
+
+def _is_documentation_only_hunk(content: str) -> bool:
+    """True if every changed (+/-) line is blank, a `#` comment, or inside a
+    triple-quoted string — the hunk touches no executable code. Triple-quote
+    state is tracked from the hunk's own start: a hunk that opens partway
+    through an existing docstring (its opening `\"\"\"` outside the hunk's
+    context window) is a known heuristic limitation, not a silent gap."""
+    in_double = False
+    in_single = False
+    for line in content.splitlines():
+        if not line:
+            continue
+        prefix, text = line[0], line[1:]
+        stripped = text.strip()
+        was_in_string = in_double or in_single
+        if stripped.count('"""') % 2:
+            in_double = not in_double
+        if stripped.count("'''") % 2:
+            in_single = not in_single
+        if prefix not in "+-":
+            continue
+        is_doc_line = (
+            not stripped
+            or stripped.startswith("#")
+            or was_in_string
+            or '"""' in stripped
+            or "'''" in stripped
+        )
+        if not is_doc_line:
+            return False
+    return True
+
+
+def _is_documentation_of_in_service_change(
+    change: UnrequestedChange, addressed_files: set[str], change_set: ChangeSet
+) -> bool:
+    """A comment/docstring-only change, co-located in a file that also has an
+    `addressed` (in-service) hunk, is documentation OF that change (#122)."""
+    if not change.diff_refs:
+        return False
+    for ref in change.diff_refs:
+        if ref.file not in addressed_files:
+            return False
+        content = _hunk_content(ref, change_set)
+        if content is None or not _is_documentation_only_hunk(content):
+            return False
+    return True
 
 
 def _is_pure_addition(change: UnrequestedChange, change_set: ChangeSet) -> bool:
@@ -203,6 +278,7 @@ def classify_dispositions(
     """Classify each unrequested change's disposition (hybrid: deterministic
     fast-paths, model judgment for the ambiguous rest)."""
     addressed = _addressed_regions(coverages)
+    addressed_files = _addressed_files(coverages)
     results: list[DispositionedChange] = []
     for change in changes:
         if _is_load_bearing(change, addressed):
@@ -212,6 +288,17 @@ def classify_dispositions(
                     UnrequestedChangeDisposition.IN_SERVICE,
                     "The change's region is where an obligation is addressed; it is "
                     "load-bearing for that obligation.",
+                    decided_by="structural",
+                )
+            )
+        elif _is_documentation_of_in_service_change(change, addressed_files, change_set):
+            results.append(
+                _dispositioned(
+                    change,
+                    UnrequestedChangeDisposition.IN_SERVICE,
+                    "A comment/docstring-only change describing an in-service change "
+                    "in the same file; documentation of in-service work is itself "
+                    "in-service, not distinct work.",
                     decided_by="structural",
                 )
             )

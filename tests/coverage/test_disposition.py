@@ -95,6 +95,87 @@ def test_pure_new_file_addition_is_separable_without_a_model_call():
     assert "splitting" in result[0].recommendation
 
 
+def test_docstring_update_of_in_service_change_is_in_service_without_a_model_call():
+    # #122: a PR edits a function (in-service, addressed) AND updates a
+    # module docstring describing it, in a separate hunk. The docstring hunk
+    # must classify in_service, not separable-with-a-split-recommendation.
+    code_hunk = _hunk(header="@@ -10,3 +10,3 @@")
+    doc_hunk = DiffHunk(
+        header="@@ -1,2 +1,4 @@", old_start=1, old_lines=2, new_start=1, new_lines=4,
+        content='+"""Module docstring.\n+\n+Now also describes the new behavior.\n+"""',
+    )
+    change_set = ChangeSet(base_revision="a", head_revision="b", files=[
+        FileChange(path="pkg.py", status="modified", category="source", hunks=[code_hunk, doc_hunk]),
+    ])
+    coverages = [ImplementationCoverage(
+        obligation_id="ob-1", status=CoverageStatus.ADDRESSED, rationale="here",
+        diff_refs=[DiffRef(file="pkg.py", hunk_header=code_hunk.header)],
+    )]
+    changes = [_change("pkg.py", header=doc_hunk.header, kind=UnrequestedChangeKind.OTHER)]
+
+    result = classify_dispositions(
+        changes, [_obligation("ob-1")], coverages, change_set,
+        ScopeExpansionPolicy.STRICT, _exploding_client(),
+    )
+
+    assert result[0].disposition is UnrequestedChangeDisposition.IN_SERVICE
+    assert result[0].decided_by == "structural"
+    assert result[0].recommendation is None
+
+
+def test_comment_only_hunk_in_unaddressed_file_still_escalates_to_the_model():
+    # The docstring heuristic only fires when the SAME file also has an
+    # addressed hunk (#122's "documentation OF an in-service change"); a
+    # comment-only change with no in-service sibling in that file is still
+    # genuinely ambiguous and escalates.
+    doc_hunk = DiffHunk(
+        header="@@ -1 +1 @@", old_start=1, old_lines=1, new_start=1, new_lines=1,
+        content="+# just a comment, no addressed code in this file",
+    )
+    change_set = ChangeSet(base_revision="a", head_revision="b", files=[
+        FileChange(path="notes.py", status="modified", category="source", hunks=[doc_hunk]),
+    ])
+    changes = [_change("notes.py", header=doc_hunk.header, kind=UnrequestedChangeKind.OTHER)]
+    client = client_dispatching({"_DispositionJudgment": {
+        "disposition": "separable", "rationale": "unrelated comment",
+    }})
+
+    result = classify_dispositions(
+        changes, [_obligation("ob-1")], [], change_set,
+        ScopeExpansionPolicy.STRICT, client,
+    )
+
+    assert result[0].decided_by == "model"
+
+
+def test_hunk_mixing_code_and_comments_does_not_shortcut_to_in_service():
+    # A hunk that changes real code (not just comments/docstring) must not be
+    # mistaken for documentation, even if co-located with an addressed hunk.
+    code_hunk = _hunk(header="@@ -10,3 +10,3 @@")
+    mixed_hunk = DiffHunk(
+        header="@@ -20,2 +20,3 @@", old_start=20, old_lines=2, new_start=20, new_lines=3,
+        content="+# a helpful comment\n+result = compute(x) + 1",
+    )
+    change_set = ChangeSet(base_revision="a", head_revision="b", files=[
+        FileChange(path="pkg.py", status="modified", category="source", hunks=[code_hunk, mixed_hunk]),
+    ])
+    coverages = [ImplementationCoverage(
+        obligation_id="ob-1", status=CoverageStatus.ADDRESSED, rationale="here",
+        diff_refs=[DiffRef(file="pkg.py", hunk_header=code_hunk.header)],
+    )]
+    changes = [_change("pkg.py", header=mixed_hunk.header, kind=UnrequestedChangeKind.OTHER)]
+    client = client_dispatching({"_DispositionJudgment": {
+        "disposition": "separable", "rationale": "extra computation",
+    }})
+
+    result = classify_dispositions(
+        changes, [_obligation("ob-1")], coverages, change_set,
+        ScopeExpansionPolicy.STRICT, client,
+    )
+
+    assert result[0].decided_by == "model"
+
+
 def test_partially_addressed_overlap_does_not_shortcut_to_in_service():
     # A partially_addressed region can be the one that *violates* a leave-as-is
     # obligation (archetype #8), so it must NOT deterministically become
