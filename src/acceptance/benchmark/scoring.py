@@ -28,6 +28,15 @@ Aggregation pools raw match counts across cases before dividing
 figures; a macro-averaged variant may be added later. A ratio is None when
 undefined (no ground truth, or nothing reported) rather than a misleading 0.0.
 
+Semantic matching (#118): the obligation-keyed joins (gap, decomposition,
+mapping) match reviewer criteria to ground truth by description. Pass a
+`client` to score_case/score_case_set and an LLM aligns semantically-equivalent
+criteria first (alignment.py), so a correct-but-reworded criterion counts as
+matched; the reviewer-side descriptions are remapped through that alignment
+before the set intersection. With no client the alignment is empty — identity
+remap, i.e. exact-string match, the original behavior — so hand-aligned fixtures
+score unchanged.
+
 Variance disclosure: every BenchmarkReport discloses its determinism_mode
 (from the cases' ReviewProvenance); disclose_variance() computes a mean and
 spread per metric across N runs of the same case set.
@@ -40,7 +49,9 @@ from typing import Literal
 
 from pydantic import Field
 
+from acceptance.benchmark.alignment import align_obligations
 from acceptance.benchmark.case import BenchmarkCase, BenchmarkScore
+from acceptance.llm import ModelClient
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import UNREQUESTED_CHANGE
 
@@ -81,7 +92,13 @@ def _counts(ground_truth_refs: set, reported_refs: set) -> _MatchCounts:
     )
 
 
-def _gap_counts(case: BenchmarkCase) -> _MatchCounts:
+def _remap(description: str, alignment: dict[str, str]) -> str:
+    """Reviewer description -> its aligned ground-truth description (or itself
+    if unmatched / no alignment). Empty alignment = identity = exact match."""
+    return alignment.get(description, description)
+
+
+def _gap_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _MatchCounts:
     review = case.reviewer_output
     obligation_desc = {o.id: o.description for o in case.ground_truth.obligations}
     # A gap is keyed by the obligation it concerns (so "found" means the checker
@@ -92,7 +109,9 @@ def _gap_counts(case: BenchmarkCase) -> _MatchCounts:
         obligation_desc.get(gap.obligation_id, gap.id) for gap in case.ground_truth.gaps
     }
     reported_refs = {
-        f.related_obligation for f in review.findings if f.related_obligation is not None
+        _remap(f.related_obligation, alignment)
+        for f in review.findings
+        if f.related_obligation is not None
     }
     return _counts(ground_truth_refs, reported_refs)
 
@@ -114,14 +133,14 @@ def _unrequested_counts(case: BenchmarkCase) -> _MatchCounts:
     return _counts(ground_truth_refs, reported_refs)
 
 
-def _decomposition_counts(case: BenchmarkCase) -> _MatchCounts:
+def _decomposition_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _MatchCounts:
     review = case.reviewer_output
     ground_truth_refs = {o.description for o in case.ground_truth.obligations}
-    reported_refs = {o.description for o in review.obligation_map}
+    reported_refs = {_remap(o.description, alignment) for o in review.obligation_map}
     return _counts(ground_truth_refs, reported_refs)
 
 
-def _mapping_counts(case: BenchmarkCase) -> _MatchCounts:
+def _mapping_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _MatchCounts:
     review = case.reviewer_output
     ground_truth_refs = {
         (obligation.description, test_id)
@@ -129,7 +148,7 @@ def _mapping_counts(case: BenchmarkCase) -> _MatchCounts:
         for test_id in obligation.candidate_tests
     }
     reported_refs = {
-        (obligation.description, test_id)
+        (_remap(obligation.description, alignment), test_id)
         for obligation in review.obligation_map
         for test_id in obligation.test_evidence
     }
@@ -147,15 +166,28 @@ def _evidence_counts(case: BenchmarkCase) -> _MatchCounts:
     return _MatchCounts(matched=0, ground_truth_total=len(ground_truth_refs), reported_total=0)
 
 
+def _alignment(case: BenchmarkCase, client: ModelClient | None) -> dict[str, str]:
+    """Reviewer->ground-truth description remap for this case. Empty (identity /
+    exact match) when no client is given; an LLM semantic alignment otherwise."""
+    if client is None:
+        return {}
+    return align_obligations(
+        [o.description for o in case.ground_truth.obligations],
+        [o.description for o in case.reviewer_output.obligation_map],
+        client,
+    )
+
+
 def _all_counts(
-    case: BenchmarkCase,
+    case: BenchmarkCase, client: ModelClient | None = None
 ) -> tuple[_MatchCounts, _MatchCounts, _MatchCounts, _MatchCounts, _MatchCounts]:
     if case.reviewer_output is None:
         raise ValueError(f"case {case.case_id!r} has no reviewer_output; run it first")
+    alignment = _alignment(case, client)
     return (
-        _gap_counts(case),
-        _decomposition_counts(case),
-        _mapping_counts(case),
+        _gap_counts(case, alignment),
+        _decomposition_counts(case, alignment),
+        _mapping_counts(case, alignment),
         _evidence_counts(case),
         _unrequested_counts(case),
     )
@@ -179,8 +211,10 @@ def _score_from_counts(
     )
 
 
-def score_case(case: BenchmarkCase) -> BenchmarkScore:
-    return _score_from_counts(*_all_counts(case))
+def score_case(case: BenchmarkCase, client: ModelClient | None = None) -> BenchmarkScore:
+    """Score one case. Pass a `client` for semantic obligation matching (#118);
+    with none, the obligation-keyed metrics fall back to exact-string match."""
+    return _score_from_counts(*_all_counts(case, client))
 
 
 class BenchmarkReport(PersistableModel):
@@ -217,7 +251,9 @@ def _reconcile_determinism_modes(modes: set[str]) -> str | None:
     return next(iter(modes))
 
 
-def score_case_set(cases: list[BenchmarkCase]) -> BenchmarkReport:
+def score_case_set(
+    cases: list[BenchmarkCase], client: ModelClient | None = None
+) -> BenchmarkReport:
     gap_total = _MatchCounts.zero()
     decomposition_total = _MatchCounts.zero()
     mapping_total = _MatchCounts.zero()
@@ -227,7 +263,7 @@ def score_case_set(cases: list[BenchmarkCase]) -> BenchmarkReport:
     modes: set[str] = set()
 
     for case in cases:
-        gap, decomposition, mapping, evidence, unrequested = _all_counts(case)
+        gap, decomposition, mapping, evidence, unrequested = _all_counts(case, client)
         gap_total += gap
         decomposition_total += decomposition
         mapping_total += mapping
