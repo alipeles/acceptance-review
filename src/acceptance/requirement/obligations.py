@@ -41,7 +41,27 @@ an obligation for it. Instead return an `open_question` with a stable `id`, the
 `question` to put to the user, an `importance`, and a `source_quote` for the
 ambiguous text.
 
-Do not merge distinct requirements. Prefer the smallest faithful set."""
+Granularity — isolate distinct computations, keep cohesive behaviors whole:
+
+- Isolate a sub-clause that defines a DISTINCT COMPUTATION or derived value — a
+  formula or calculation with its own logic, embedded via "where ...",
+  "using ...", "based on ..." — that could be computed wrongly on its own,
+  independently of the step that uses it. E.g. "charge for the hours worked at
+  the overtime rate, where the overtime rate is 1.5x base pay" is TWO
+  obligations: charging for the hours, and the overtime-rate formula (the rate
+  can be wrong independently of the multiplication). Do not fold such a
+  computation into its host clause.
+
+- Keep as ONE obligation a single cohesive behavior — a parse, a
+  lookup/mapping, a formatting or display rule — even when it spans several
+  inputs, fields, or cases. "Parse the token into its type and value" is one
+  obligation, not a separate 'read the token' and 'classify it'; "render each
+  column right-aligned" is one display rule, not one per column.
+
+The test: is the sub-clause a SEPARATE calculation that could be individually
+wrong, or one behavior applied across cases? Separate the former; keep the
+latter whole. Prefer the smallest set that still isolates every distinct
+computation."""
 
 
 # Empty arrays are returned explicitly (StrictResponseModel: no defaults).
