@@ -1,12 +1,12 @@
 # Task
-Feed the M5.1-M5.3 test-evidence classifications into the evidence-classification-agreement metric, so the archetype set reports a real figure.
+Detect the §9.4 weak-evidence anti-patterns and flag each with its matching pattern name: assert-not-none/result-exists, circular expected value, incomplete error assertion, requirement-not-exercised, critical-behavior-mocked, unvalidated snapshot.
 
 ## Constraints
-- Wire test discovery, mapping, extraction, discrimination, and strength classification into the benchmark's static pipeline (classify_case), ahead of coverage classification.
-- Add a field on the reviewer's Obligation for the §9.3 evidence class, populated by the strength classifier's output.
-- Update the evidence-classification-agreement metric to score real matched/reported counts instead of always reporting zero reported.
-- The metric must use the same semantic-alignment mechanism as the other obligation-keyed metrics, so it isn't defeated by reworded reviewer criteria.
+- Structural detection, no model call.
+- Reuse what M5.1-M5.3 already compute rather than recomputing: circular expected value from M5.1's expected-value provenance; requirement-not-exercised and critical-behavior-mocked from M5.3's nominal classification, distinguished by whether mocks are involved.
+- The remaining three patterns (non-discriminating assertion, incomplete error assertion, unvalidated snapshot) need new structural detection over a test's raw source.
+- An incomplete error assertion may be checked either inside the raises block or in the statements immediately following it — both are valid pytest style.
 
 ## Completion expectations
 - Implementation
-- Unit tests: on an archetype, the checker's own classification of its real candidate tests agrees with ground truth and evidence_agreement reports a real, non-trivial number.
+- Unit tests: each §9.4 code example is correctly flagged with the matching pattern name; a genuinely strong test is not flagged.

@@ -66,7 +66,7 @@ def extract_test_evidence(
             production_by_file[test.file] = _production_import_names(
                 repo / test.file, changed_modules
             )
-        func = _parse_test_function(test.source)
+        func = parse_test_function(test.source)
         if func is None:
             continue
         evidence.append(
@@ -97,7 +97,9 @@ def _production_import_names(file_path: Path, changed_modules: set[str]) -> set[
     return names
 
 
-def _parse_test_function(source: str) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+def parse_test_function(source: str) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    """Parse a `DiscoveredTest.source` snippet back into its function AST node —
+    shared with weak_patterns.py (M5.4), which needs the raw body too."""
     try:
         module = ast.parse(textwrap.dedent(source))  # dedent: class methods are indented
     except SyntaxError:
