@@ -1,8 +1,7 @@
-"""Coverage scoring hook (M3.3).
+"""Coverage & evidence scoring hook (M3.3, extended M5.5).
 
-Wires M3.1's implementation-coverage classification and M3.2's
-unrequested-change detection into the M-B0.3 gap-detection/false-alarm
-metric. Like M1.4's decompose_case (decomposition.py), this stays lighter
+Wires the checker's static-analysis capabilities into the M-B0.3 §11.1
+metrics. Like M1.4's decompose_case (decomposition.py), this stays lighter
 than the full checker pipeline (M-B0.2's run_case) — it only needs a case's
 task text and its materialized repo's diff, no test execution.
 
@@ -15,6 +14,11 @@ covered, so it becomes a Finding linked to that obligation. An
 about code that shouldn't have changed, not about an obligation going
 unmet — so it becomes an unlinked Finding: reported for a human to read, but
 not yet counted by a metric that only scores obligation-linked gaps.
+
+M5.5 adds the test-evidence chain (discover -> map -> extract -> discriminate
+-> classify strength) ahead of coverage classification, so `Obligation.
+evidence_class` is set from real analysis of the case's own tests before
+`scoring.py`'s evidence-classification-agreement metric reads it.
 """
 
 from __future__ import annotations
@@ -29,7 +33,10 @@ from acceptance.coverage.classify import CoverageStatus, ImplementationCoverage,
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.evidence.discovery import discover_tests
+from acceptance.evidence.discrimination import judge_discrimination
+from acceptance.evidence.extraction import extract_test_evidence
 from acceptance.evidence.mapping import apply_test_mapping, map_tests_to_obligations
+from acceptance.evidence.strength import apply_evidence_strength, classify_strength
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.obligations import decompose
@@ -105,10 +112,11 @@ def classify_case(
     client: ModelClient,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
 ) -> BenchmarkCase:
-    """Decompose; discover and map candidate tests; classify coverage, detect
-    unrequested changes and their dispositions for a case's diff; return a
-    scored copy of `case`. The benchmark's assembled static pipeline — each
-    capability lands here as it ships so its §11.1 metric is scored (M3-M5)."""
+    """Decompose; discover and map candidate tests; extract, discriminate, and
+    classify their evidence strength; classify coverage, detect unrequested
+    changes and their dispositions for a case's diff; return a scored copy of
+    `case`. The benchmark's assembled static pipeline — each capability lands
+    here as it ships so its §11.1 metric is scored (M3-M5)."""
     parsed = parse_task_file(case.inputs.task_text)
     obligations = decompose(parsed, client).obligations
     repo = Path(case.inputs.repo)
@@ -119,6 +127,11 @@ def classify_case(
     discovered = discover_tests(repo, change_set)
     mapping = map_tests_to_obligations(obligations, discovered.tests, client)
     obligations = apply_test_mapping(obligations, mapping)
+
+    test_evidence = extract_test_evidence(repo, discovered.tests, change_set, mapping)
+    discriminations = judge_discrimination(obligations, test_evidence, change_set, client)
+    strengths = classify_strength(obligations, test_evidence, discriminations)
+    obligations = apply_evidence_strength(obligations, strengths)
 
     coverages = classify_coverage(obligations, change_set, client)
     unrequested = detect_unrequested_changes(obligations, change_set, client)

@@ -22,12 +22,15 @@ explains itself — for a nominal test that bypasses the behavior via a mock, th
 mock is cited (from M5.1's extracted `TestEvidence.mocks`), per §9.4.
 
 Classification is at the `static` evidence tier: these are static predictions;
-M8 execution can later confirm them and raise the tier.
+M8 execution can later confirm them and raise the tier. `apply_evidence_strength`
+(M5.5) writes each obligation's class into `Obligation.evidence_class` — the
+field the §11.1 evidence-classification-agreement metric (scoring.py) reads.
 """
 
 from __future__ import annotations
 
 from acceptance.evidence.discrimination import ObligationDiscrimination
+from acceptance.evidence_tier import EvidenceTier
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import EvidenceClassification, Obligation, TestEvidence
 
@@ -144,3 +147,27 @@ def classify_strength(
             )
         )
     return results
+
+
+def apply_evidence_strength(
+    obligations: list[Obligation], results: list[EvidenceStrength]
+) -> list[Obligation]:
+    """Return copies of `obligations` with `evidence_class` (and the `static`
+    achieved tier) set from the classification — the join the §11.1
+    evidence-classification-agreement metric scores (M5.5)."""
+    by_id = {r.obligation_id: r for r in results}
+    updated = []
+    for obligation in obligations:
+        result = by_id.get(obligation.id)
+        if result is None:
+            updated.append(obligation)
+            continue
+        updated.append(
+            obligation.model_copy(
+                update={
+                    "evidence_class": result.evidence_class,
+                    "achieved_evidence_tier": EvidenceTier.STATIC,
+                }
+            )
+        )
+    return updated

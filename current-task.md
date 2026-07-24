@@ -1,12 +1,12 @@
 # Task
-Classify each criterion's test-evidence strength into the §9.3 classes — strongly / partially / nominally / unsupported / indeterminate — at the static tier, with a linked, self-justifying explanation.
+Feed the M5.1-M5.3 test-evidence classifications into the evidence-classification-agreement metric, so the archetype set reports a real figure.
 
 ## Constraints
-- Consume M5.2's per-criterion discrimination verdicts; this is a deterministic reduce, not a fresh model judgment.
-- Map on the single bright line: all named plausible defects caught is strongly supported; at least one but not all is partially supported; a mapped test that catches none is nominally supported; no mapped test at all is unsupported; a mapped test with no defect judged is indeterminate.
-- Do not invent requires_other_evidence from discrimination alone — there is no such signal in the verdicts.
-- Each classification links to the exact mapped tests, and a nominal test that bypasses the behavior via a mock cites the mock (from M5.1's extracted mocks).
+- Wire test discovery, mapping, extraction, discrimination, and strength classification into the benchmark's static pipeline (classify_case), ahead of coverage classification.
+- Add a field on the reviewer's Obligation for the §9.3 evidence class, populated by the strength classifier's output.
+- Update the evidence-classification-agreement metric to score real matched/reported counts instead of always reporting zero reported.
+- The metric must use the same semantic-alignment mechanism as the other obligation-keyed metrics, so it isn't defeated by reworded reviewer criteria.
 
 ## Completion expectations
 - Implementation
-- Unit tests: archetype #3's superficial test yields nominal for the rules it never checks; archetype #6's mocked-out core behavior is nominal with the mock cited; each classification links to the exact mapped tests.
+- Unit tests: on an archetype, the checker's own classification of its real candidate tests agrees with ground truth and evidence_agreement reports a real, non-trivial number.

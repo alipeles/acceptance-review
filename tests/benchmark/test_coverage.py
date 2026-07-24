@@ -10,8 +10,14 @@ file against `unrequested_changes` ground truth — never via any obligation's
 coverage classification, since an unrequested-change finding carries no
 `related_obligation` at all.
 
-classify_case makes three schema-constrained calls per case (decompose,
-classify_coverage, detect_unrequested_changes); per the replay-first
+M5.5 adds the test-evidence chain (discover -> map -> extract -> discriminate
+-> classify strength) ahead of coverage: archetype #1 also contributes a real
+evidence_agreement figure, backed by the checker's own classification of its
+real candidate tests.
+
+classify_case makes several schema-constrained calls per case (decompose,
+test mapping, discrimination when a criterion has a mapped test, coverage
+classification, unrequested-change detection); per the replay-first
 invariant the test client dispatches a fixed, hand-authored response per
 call by its response schema name — no live calls.
 """
@@ -112,6 +118,73 @@ def test_archetype_1_missed_obligation_yields_full_recall_and_precision(tmp_path
     )
     assert scored.score.gap_recall == 1.0
     assert scored.score.gap_precision == 1.0
+
+
+def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
+    """M5.5 acceptance: the checker's own evidence-strength classification —
+    fed by real M4.1 discovery + M4.2 mapping + M5.1 extraction + M5.2
+    discrimination — agrees with archetype #1's ground truth."""
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+
+    obligations = [
+        {"id": "show-fields", "description": "Show the item name, quantity, and unit price",
+         "type": "functional", "source_quote": "Show the item name, the quantity, and the unit price."},
+        {"id": "line-total", "description": "Include the line total (quantity times unit price)",
+         "type": "functional", "source_quote": "Include the line total (quantity × unit price)."},
+        {"id": "money-format", "description": "Format money as USD with two decimals and a leading $",
+         "type": "functional", "source_quote": "Format every money value as USD with exactly two decimals"},
+        {"id": "returns-in-parens",
+         "description": "Show negative-quantity returns with the quantity and total in parentheses",
+         "type": "boundary", "source_quote": "For returns (a negative quantity)"},
+    ]
+    pos = "test_receipt.py::test_positive_line"
+    two = "test_receipt.py::test_two_decimal_formatting"
+    client = _client_dispatching(
+        {
+            "_Decomposition": _decomposition_response(obligations),
+            "_Mappings": {
+                "mappings": [
+                    {"test_id": pos, "obligation_ids": ["show-fields", "line-total", "money-format"], "rationale": "."},
+                    {"test_id": two, "obligation_ids": ["show-fields", "line-total", "money-format"], "rationale": "."},
+                ]
+            },
+            "_Discrimination": {
+                "obligations": [
+                    {"obligation_id": "show-fields", "defects": [
+                        {"description": "wrong/omitted field", "would_be_caught": True, "reason": "exact line string asserted"},
+                    ]},
+                    {"obligation_id": "line-total", "defects": [
+                        {"description": "wrong total formula", "would_be_caught": True, "reason": "exact total asserted"},
+                    ]},
+                    {"obligation_id": "money-format", "defects": [
+                        {"description": "wrong currency formatting", "would_be_caught": True, "reason": "exact $ format asserted"},
+                    ]},
+                    # returns-in-parens has no mapped test, so it's never sent here.
+                ]
+            },
+            "_Coverage": _classification_response(
+                [
+                    {"obligation_id": "show-fields", "status": "addressed"},
+                    {"obligation_id": "line-total", "status": "addressed"},
+                    {"obligation_id": "money-format", "status": "addressed"},
+                    {"obligation_id": "returns-in-parens", "status": "not_addressed"},
+                ]
+            ),
+            "_Detections": {"unrequested_changes": []},
+        }
+    )
+
+    scored = classify_case(case, client)
+
+    by_id = {o.id: o for o in scored.reviewer_output.obligation_map}
+    assert by_id["show-fields"].evidence_class == "strongly_supported"
+    assert by_id["line-total"].evidence_class == "strongly_supported"
+    assert by_id["money-format"].evidence_class == "strongly_supported"
+    assert by_id["returns-in-parens"].evidence_class == "unsupported"  # no mapped test
+
+    # Reviewer descriptions match ground truth exactly by construction here, so
+    # exact-string scoring (no alignment client) already agrees fully: 4/4.
+    assert scored.score.evidence_agreement == 1.0
 
 
 def test_archetype_2_missed_qualifier_yields_full_recall_and_precision(tmp_path):

@@ -161,38 +161,6 @@ class ChangeSet(_Model):
     ignored_paths: list[str] = Field(default_factory=list)
 
 
-class Obligation(_Model):
-    """A discrete, typed obligation derived from the task (§7.3, §9.1; M1.2).
-
-    `id` is a stable slug so a reviewer obligation joins to the benchmark's
-    ground-truth obligation by id. `source_spans` link it to the exact task
-    text it derives from (M1.1). `explicit` is refined into explicit /
-    reasonable-inferred / open-question by M1.3."""
-
-    id: str
-    description: str
-    type: ObligationType
-    importance: Literal["critical", "normal"]
-    explicit: bool
-    observable_behavior: str
-    source_spans: list[TextSpan] = Field(default_factory=list)
-    achieved_evidence_tier: EvidenceTier | None = None
-    test_evidence: list[str] = Field(default_factory=list)
-
-
-class OpenQuestion(_Model):
-    """A material ambiguity in the task that needs user judgment (§7.3, §9.3).
-
-    Surfaced instead of silently inventing an obligation — uncertainty is a
-    first-class, expected output. `source_spans` link to the underspecified
-    task text."""
-
-    id: str
-    question: str
-    importance: Literal["critical", "normal"] = "normal"
-    source_spans: list[TextSpan] = Field(default_factory=list)
-
-
 # §9.3 test-evidence strength classifications. Distinct from EvidenceTier
 # (evidence_tier.py), which grades *how* evidence was produced, not how strong
 # it is. Defined over the plausible-violation space — the §8.2 mapped mutants —
@@ -216,6 +184,42 @@ EvidenceClassification = Literal[
     "requires_other_evidence",
     "indeterminate",
 ]
+
+
+class Obligation(_Model):
+    """A discrete, typed obligation derived from the task (§7.3, §9.1; M1.2).
+
+    `id` is a stable slug so a reviewer obligation joins to the benchmark's
+    ground-truth obligation by id. `source_spans` link it to the exact task
+    text it derives from (M1.1). `explicit` is refined into explicit /
+    reasonable-inferred / open-question by M1.3. `evidence_class` is the §9.3
+    strength classification (M5.3); `achieved_evidence_tier` is separate — how
+    that classification was produced (static prediction vs. executed), not how
+    strong it is."""
+
+    id: str
+    description: str
+    type: ObligationType
+    importance: Literal["critical", "normal"]
+    explicit: bool
+    observable_behavior: str
+    source_spans: list[TextSpan] = Field(default_factory=list)
+    achieved_evidence_tier: EvidenceTier | None = None
+    test_evidence: list[str] = Field(default_factory=list)
+    evidence_class: EvidenceClassification | None = None
+
+
+class OpenQuestion(_Model):
+    """A material ambiguity in the task that needs user judgment (§7.3, §9.3).
+
+    Surfaced instead of silently inventing an obligation — uncertainty is a
+    first-class, expected output. `source_spans` link to the underspecified
+    task text."""
+
+    id: str
+    question: str
+    importance: Literal["critical", "normal"] = "normal"
+    source_spans: list[TextSpan] = Field(default_factory=list)
 
 
 class TestEvidence(_Model):
