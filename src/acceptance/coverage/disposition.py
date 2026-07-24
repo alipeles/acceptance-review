@@ -26,6 +26,11 @@ The classifier is a **hybrid** (chosen deliberately, not for cheapness):
      (#122). `separable` means "a coherent DISTINCT unit of work"; a docstring
      update describing the very change under review is not distinct work, and
      recommending it split into its own PR is actively bad advice.
+   - a symbol a change defines/renames/exports in one file is imported by
+     ANOTHER file changed in the same diff → **in_service** for that other
+     file's changes (#126). This is direct structural evidence sitting in the
+     diff itself (the import statement), not something requiring semantic
+     judgment — reverting the change would break the file that imports it.
    - a pure new-file addition that no obligation's coverage claims → new,
      self-contained work → **separable**.
 2. Everything else — edits to existing code with no clean coverage attribution —
@@ -47,6 +52,7 @@ governs how it is *treated*, not whether it was found.
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from acceptance.config import ScopeExpansionPolicy
@@ -94,7 +100,10 @@ for — into exactly one disposition, using the removability litmus:
   directly. Removing it would leave an obligation incomplete. A comment or
   docstring update that describes an in-service code edit in the SAME file is
   itself in_service — it is not distinct work, and it should never be
-  recommended for splitting into its own PR.
+  recommended for splitting into its own PR. A symbol this change defines or
+  renames that is imported and used by ANOTHER file changed in this SAME diff
+  is also in_service for that usage — removing it would break the file that
+  imports it.
 - separable: YES, and it is coherent, self-contained work — valuable but a
   DISTINCT unit that belongs in its own PR / backlog item.
 - risky: YES, but it edits existing public interface, dependencies, or adjacent
@@ -195,6 +204,85 @@ def _is_documentation_of_in_service_change(
         if content is None or not _is_documentation_only_hunk(content):
             return False
     return True
+
+
+def _module_name(path: str) -> str:
+    return path.rsplit("/", 1)[-1].removesuffix(".py")
+
+
+_DEF_RE = re.compile(r"^(?:async\s+)?def\s+(\w+)\s*\(")
+_CLASS_RE = re.compile(r"^class\s+(\w+)\s*[:(]")
+_ASSIGN_RE = re.compile(r"^(\w+)\s*(?::[^=]+)?=(?!=)")
+_IMPORT_RE = re.compile(r"^from\s+([\w.]+)\s+import\s+(.+)$")
+
+
+def _defined_symbols(content: str) -> set[str]:
+    """Top-level names a hunk's added lines define, rename, or (re-)export —
+    a `def`/`class`/simple assignment at column 0. A structural heuristic over
+    the diff text itself, no full-file parse needed."""
+    names: set[str] = set()
+    for line in content.splitlines():
+        if not line or line[0] != "+":
+            continue
+        rest = line[1:]
+        if rest[:1] in (" ", "\t"):
+            continue  # indented -- not top-level (e.g. a nested def/assignment)
+        stripped = rest.strip()
+        for pattern in (_DEF_RE, _CLASS_RE, _ASSIGN_RE):
+            if match := pattern.match(stripped):
+                names.add(match.group(1))
+                break
+    return names
+
+
+def _imported_names(content: str, module: str) -> set[str]:
+    """Names a hunk's added lines import via `from <module> import ...`,
+    matched against the LEAF module component (`acceptance.evidence.extraction`
+    matches module="extraction"). Known limitation, shared with extraction.py's
+    `_production_import_names`: a plain `import module; module.f()` isn't
+    traced, only from-imports."""
+    names: set[str] = set()
+    for line in content.splitlines():
+        if not line or line[0] != "+":
+            continue
+        match = _IMPORT_RE.match(line[1:].strip())
+        if not match or match.group(1).rsplit(".", 1)[-1] != module:
+            continue
+        for name in match.group(2).split(","):
+            name = name.strip().strip("()").split(" as ")[0].strip()
+            if name:
+                names.add(name)
+    return names
+
+
+def _is_load_bearing_via_cross_file_import(
+    change: UnrequestedChange, change_set: ChangeSet
+) -> bool:
+    """A symbol this change defines/renames/exports in one file, imported by
+    ANOTHER file changed in the same diff, is load-bearing for that other
+    file's changes (#126) -- direct structural evidence sitting in the diff,
+    no semantic judgment required."""
+    changed_files = {ref.file for ref in change.diff_refs}
+    if len(changed_files) != 1:
+        return False  # scope to the common case: a rename/export in one file
+    (file_path,) = changed_files
+    module = _module_name(file_path)
+
+    defined: set[str] = set()
+    for ref in change.diff_refs:
+        content = _hunk_content(ref, change_set)
+        if content:
+            defined |= _defined_symbols(content)
+    if not defined:
+        return False
+
+    for file_change in change_set.files:
+        if file_change.path == file_path:
+            continue
+        for hunk in file_change.hunks:
+            if _imported_names(hunk.content, module) & defined:
+                return True
+    return False
 
 
 def _is_pure_addition(change: UnrequestedChange, change_set: ChangeSet) -> bool:
@@ -299,6 +387,17 @@ def classify_dispositions(
                     "A comment/docstring-only change describing an in-service change "
                     "in the same file; documentation of in-service work is itself "
                     "in-service, not distinct work.",
+                    decided_by="structural",
+                )
+            )
+        elif _is_load_bearing_via_cross_file_import(change, change_set):
+            results.append(
+                _dispositioned(
+                    change,
+                    UnrequestedChangeDisposition.IN_SERVICE,
+                    "A symbol this change defines or renames is imported by another "
+                    "file changed in the same diff; reverting it would break that "
+                    "file's changes.",
                     decided_by="structural",
                 )
             )
