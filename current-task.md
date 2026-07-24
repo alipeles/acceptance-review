@@ -1,12 +1,11 @@
 # Task
-Fix unrequested-change detection (`detect_unrequested_changes`, M3.2) so it no longer emits spurious, location-less findings (diff_ref "?") whose rationale concludes the change IS requested. Surfaced dogfooding #118: `acceptance classify` on that PR's own diff emitted an unrequested-change finding whose rationale ended "...so this is not unrequested" — yet it was still reported as unrequested — with empty `diff_refs`, rendered by the CLI as a bare `?`.
+Fix the disposition classifier (`classify_dispositions`, `coverage/disposition.py`, M3.5.3) so it stops labeling a change's own doc/comment updates as `separable`. Surfaced dogfooding #118: `acceptance classify` flagged a docstring update that accompanies an in-service code change as `separable`, with a recommendation to "split into its own PR" — actively bad advice, since updating documentation to describe the change you are making is in service of that change, not a distinct unit of work.
 
 ## Constraints
-- The benchmark path already drops empty-`diff_refs` unrequested changes (`benchmark/coverage.py::_unrequested_finding` returns `None`); the CLI path (`run_classify` -> `render_classify`) must behave consistently — a finding with no location a human can act on is noise.
-- The M3.2 prompt already says "Do not report changes that a listed obligation requires" — the fix must address why the detector still emitted a change whose own rationale concludes it is requested, not just paper over the symptom.
-- Prefer fixing this once at the source (`detect_unrequested_changes`) over duplicating a drop-check in every consumer.
+- `classify_dispositions` treats a change as `separable` when it isn't load-bearing for an obligation's coverage and looks self-contained; a docstring/comment change co-located with and describing a code change that IS load-bearing should inherit `in_service` instead.
+- `separable` should mean "a coherent DISTINCT unit of work" — a docstring for the very change under review is not distinct work.
+- Prefer a deterministic structural fast-path over a new model call where the signal is checkable without semantic judgment, consistent with the classifier's existing hybrid design (structural fast-paths for the unambiguous cases, model judgment for the genuinely ambiguous rest).
 
 ## Completion expectations
 - Implementation
-- An unrequested change whose model-returned hunk labels don't resolve does not appear as a bare `?` finding in CLI output.
-- A synthetic check that a change the model itself judges "requested" is not emitted as unrequested.
+- A synthetic case where a PR edits a function AND updates its docstring/comments to match classifies the doc change as `in_service`, not `separable` with a "split into its own PR" recommendation.
