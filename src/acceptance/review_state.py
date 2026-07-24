@@ -28,6 +28,7 @@ __all__ = [
     "EvidenceTier",
     "TextSpan",
     "ObligationType",
+    "EvidenceClassification",
     "UnrequestedChangeDisposition",
     "UNREQUESTED_CHANGE",
     "Project",
@@ -190,6 +191,31 @@ class OpenQuestion(_Model):
     question: str
     importance: Literal["critical", "normal"] = "normal"
     source_spans: list[TextSpan] = Field(default_factory=list)
+
+
+# §9.3 test-evidence strength classifications. Distinct from EvidenceTier
+# (evidence_tier.py), which grades *how* evidence was produced, not how strong
+# it is. Defined over the plausible-violation space — the §8.2 mapped mutants —
+# with one bright line: does the mapped test catch at least one plausible
+# violation? These are static PREDICTIONS of which mutants a mapped test would
+# kill, validated against executed ground truth (§8.2); that agreement is what
+# §11.1 scores. Keep in sync with spec §9.3 (the full definitions live there):
+#   strongly_supported      - kills all mapped mutants
+#   partially_supported     - kills at least one, but not all, mapped mutants
+#   nominally_supported     - a present, relevant-looking test survives all
+#                             mapped mutants (zero discriminating power); with
+#                             no relevant test it is unsupported, not nominal
+#   unsupported             - no mapped, obligation-relevant test at all
+#   requires_other_evidence - needs non-test evidence (docs, visual, deploy)
+#   indeterminate           - cannot run / cannot decide statically
+EvidenceClassification = Literal[
+    "strongly_supported",
+    "partially_supported",
+    "nominally_supported",
+    "unsupported",
+    "requires_other_evidence",
+    "indeterminate",
+]
 
 
 class TestEvidence(_Model):
