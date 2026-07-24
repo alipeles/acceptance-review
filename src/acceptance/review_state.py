@@ -337,6 +337,7 @@ class Review(_Model):
     declaration: BuilderDeclaration | None = None
     change_set: ChangeSet | None = None
     obligation_map: list[Obligation] = Field(default_factory=list)
+    open_questions: list[OpenQuestion] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
     recommendation: str | None = None

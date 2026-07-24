@@ -118,7 +118,8 @@ def classify_case(
     `case`. The benchmark's assembled static pipeline — each capability lands
     here as it ships so its §11.1 metric is scored (M3-M5)."""
     parsed = parse_task_file(case.inputs.task_text)
-    obligations = decompose(parsed, client).obligations
+    decomposition = decompose(parsed, client)
+    obligations = decomposition.obligations
     repo = Path(case.inputs.repo)
     change_set = extract_change_set(
         repo, case.inputs.base_revision, case.inputs.head_revision
@@ -156,6 +157,7 @@ def classify_case(
         reviewed_revision=case.inputs.head_revision,
         provenance=provenance_from(client),
         obligation_map=obligations,
+        open_questions=decomposition.open_questions,
         change_set=change_set,
         findings=findings,
     )
