@@ -1,12 +1,12 @@
 # Task
-Detect the §9.4 weak-evidence anti-patterns and flag each with its matching pattern name: assert-not-none/result-exists, circular expected value, incomplete error assertion, requirement-not-exercised, critical-behavior-mocked, unvalidated snapshot.
+Fix unrequested-change detection (`detect_unrequested_changes`, M3.2) so it no longer emits spurious, location-less findings (diff_ref "?") whose rationale concludes the change IS requested. Surfaced dogfooding #118: `acceptance classify` on that PR's own diff emitted an unrequested-change finding whose rationale ended "...so this is not unrequested" — yet it was still reported as unrequested — with empty `diff_refs`, rendered by the CLI as a bare `?`.
 
 ## Constraints
-- Structural detection, no model call.
-- Reuse what M5.1-M5.3 already compute rather than recomputing: circular expected value from M5.1's expected-value provenance; requirement-not-exercised and critical-behavior-mocked from M5.3's nominal classification, distinguished by whether mocks are involved.
-- The remaining three patterns (non-discriminating assertion, incomplete error assertion, unvalidated snapshot) need new structural detection over a test's raw source.
-- An incomplete error assertion may be checked either inside the raises block or in the statements immediately following it — both are valid pytest style.
+- The benchmark path already drops empty-`diff_refs` unrequested changes (`benchmark/coverage.py::_unrequested_finding` returns `None`); the CLI path (`run_classify` -> `render_classify`) must behave consistently — a finding with no location a human can act on is noise.
+- The M3.2 prompt already says "Do not report changes that a listed obligation requires" — the fix must address why the detector still emitted a change whose own rationale concludes it is requested, not just paper over the symptom.
+- Prefer fixing this once at the source (`detect_unrequested_changes`) over duplicating a drop-check in every consumer.
 
 ## Completion expectations
 - Implementation
-- Unit tests: each §9.4 code example is correctly flagged with the matching pattern name; a genuinely strong test is not flagged.
+- An unrequested change whose model-returned hunk labels don't resolve does not appear as a bare `?` finding in CLI output.
+- A synthetic check that a change the model itself judges "requested" is not emitted as unrequested.

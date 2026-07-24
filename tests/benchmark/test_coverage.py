@@ -281,6 +281,7 @@ def test_archetype_8_unrequested_change_gap_matches_via_its_obligation(tmp_path)
                         "kind": "public_interface",
                         "rationale": "checkout gained a tax_rate parameter and rounding; not requested.",
                         "diff_refs": [cart_ref],
+                        "requested_by_obligation": False,
                     }
                 ]
             },
@@ -354,6 +355,7 @@ def test_archetype_8_unrequested_change_metric_does_not_route_through_coverage(t
                         "kind": "public_interface",
                         "rationale": "checkout gained a tax_rate parameter and rounding; not requested.",
                         "diff_refs": [cart_ref],
+                        "requested_by_obligation": False,
                     }
                 ]
             },
