@@ -16,12 +16,12 @@ carries no obligation link at all.
 
 Ground truth identifies obligations by a stable id; the reviewer's Review
 (review_state.py) does not yet — its obligations are identified only by
-description, and its Findings carry no §9.3 classification (that is the M1
-obligation-schema and M5.3 strength-classification work). So the cross-join
-to reviewer output is by description for now, and evidence agreement scores
-with reported_total=0 until a reviewer can express a classification. When M1
-gives reviewer obligations ids, these joins move to ids; the ground-truth
-tree is already the anchor for that.
+description. So the cross-join to reviewer output is by description for now
+(sharpened to semantic matching by #118's alignment, below); when M1 gives
+reviewer obligations ids, these joins move to ids; the ground-truth tree is
+already the anchor for that. Evidence agreement reads `Obligation.evidence_class`,
+set by M5.3's strength classifier via `apply_evidence_strength` (M5.5); an
+obligation the reviewer hasn't classified yet contributes no reported ref.
 
 Aggregation pools raw match counts across cases before dividing
 (micro-averaging), so small or no-op-heavy cases can't dilute the headline
@@ -155,15 +155,22 @@ def _mapping_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _MatchCou
     return _counts(ground_truth_refs, reported_refs)
 
 
-def _evidence_counts(case: BenchmarkCase) -> _MatchCounts:
+def _evidence_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _MatchCounts:
     # Every obligation carries an evidence class, so the denominator is the full
-    # decomposition. reported_total is 0 until a reviewer Obligation can express
-    # a §9.3 classification (M5.3); matched is therefore 0 for now.
+    # decomposition. A reviewer Obligation expresses its §9.3 classification via
+    # `evidence_class` (M5.3/M5.5); one with none set (not yet classified)
+    # contributes no reported ref, same as any other unreported obligation.
+    review = case.reviewer_output
     ground_truth_refs = {
         (obligation.description, obligation.evidence_class)
         for obligation in case.ground_truth.obligations
     }
-    return _MatchCounts(matched=0, ground_truth_total=len(ground_truth_refs), reported_total=0)
+    reported_refs = {
+        (_remap(obligation.description, alignment), obligation.evidence_class)
+        for obligation in review.obligation_map
+        if obligation.evidence_class is not None
+    }
+    return _counts(ground_truth_refs, reported_refs)
 
 
 def _alignment(case: BenchmarkCase, client: ModelClient | None) -> dict[str, str]:
@@ -188,7 +195,7 @@ def _all_counts(
         _gap_counts(case, alignment),
         _decomposition_counts(case, alignment),
         _mapping_counts(case, alignment),
-        _evidence_counts(case),
+        _evidence_counts(case, alignment),
         _unrequested_counts(case),
     )
 
