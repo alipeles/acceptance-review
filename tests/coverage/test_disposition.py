@@ -176,6 +176,72 @@ def test_hunk_mixing_code_and_comments_does_not_shortcut_to_in_service():
     assert result[0].decided_by == "model"
 
 
+def test_symbol_renamed_and_imported_by_another_changed_file_is_in_service():
+    # #126: file A renames/exports a symbol; file B (changed in the same diff)
+    # imports and uses it. The rename in file A must classify in_service, not
+    # separable -- reverting it would break file B's changes.
+    rename_hunk = DiffHunk(
+        header="@@ -100,3 +100,3 @@", old_start=100, old_lines=3, new_start=100, new_lines=3,
+        content="+def parse_test_function(source: str):\n+    ...",
+    )
+    import_hunk = DiffHunk(
+        header="@@ -1,2 +1,3 @@", old_start=1, old_lines=2, new_start=1, new_lines=3,
+        content="+from acceptance.evidence.extraction import parse_test_function\n+\n+detect_weak_patterns()",
+    )
+    change_set = ChangeSet(base_revision="a", head_revision="b", files=[
+        FileChange(
+            path="src/acceptance/evidence/extraction.py", status="modified",
+            category="source", hunks=[rename_hunk],
+        ),
+        FileChange(
+            path="src/acceptance/evidence/weak_patterns.py", status="added",
+            category="source", hunks=[import_hunk],
+        ),
+    ])
+    changes = [_change(
+        "src/acceptance/evidence/extraction.py", header=rename_hunk.header,
+        kind=UnrequestedChangeKind.INTERNAL,
+    )]
+
+    result = classify_dispositions(
+        changes, [_obligation("ob-1")], [], change_set,
+        ScopeExpansionPolicy.STRICT, _exploding_client(),
+    )
+
+    assert result[0].disposition is UnrequestedChangeDisposition.IN_SERVICE
+    assert result[0].decided_by == "structural"
+    assert result[0].recommendation is None
+
+
+def test_defined_symbol_not_imported_elsewhere_still_escalates_to_the_model():
+    # A renamed symbol that nothing else in the diff imports is genuinely
+    # ambiguous (could still be in_service via coverage, or a distinct helper)
+    # and must still escalate rather than false-positive to in_service.
+    rename_hunk = DiffHunk(
+        header="@@ -100,2 +100,2 @@", old_start=100, old_lines=2, new_start=100, new_lines=2,
+        content="+def unused_helper():\n+    ...",
+    )
+    other_hunk = DiffHunk(
+        header="@@ -1,1 +1,1 @@", old_start=1, old_lines=1, new_start=1, new_lines=1,
+        content="+x = 1",
+    )
+    change_set = ChangeSet(base_revision="a", head_revision="b", files=[
+        FileChange(path="a.py", status="modified", category="source", hunks=[rename_hunk]),
+        FileChange(path="b.py", status="modified", category="source", hunks=[other_hunk]),
+    ])
+    changes = [_change("a.py", header=rename_hunk.header, kind=UnrequestedChangeKind.INTERNAL)]
+    client = client_dispatching({"_DispositionJudgment": {
+        "disposition": "separable", "rationale": "unused new helper",
+    }})
+
+    result = classify_dispositions(
+        changes, [_obligation("ob-1")], [], change_set,
+        ScopeExpansionPolicy.STRICT, client,
+    )
+
+    assert result[0].decided_by == "model"
+
+
 def test_partially_addressed_overlap_does_not_shortcut_to_in_service():
     # A partially_addressed region can be the one that *violates* a leave-as-is
     # obligation (archetype #8), so it must NOT deterministically become
