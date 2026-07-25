@@ -10,7 +10,7 @@
     },
     {
       "id": "leave-existing",
-      "description": "Leave existing behavior as-is; only apply_discount was requested",
+      "description": "Preserve the existing checkout behavior; only apply_discount was requested",
       "explicit": true,
       "evidence_class": "partially_supported",
       "evidence_rationale": "The test asserts checkout's default still returns 5.0, so a mutant that changes the default output is killed; but the actual unrequested change (added tax_rate parameter and rounding) leaves the default path unchanged, so that mutant survives - kills some, misses some.",

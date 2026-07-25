@@ -41,6 +41,20 @@ an obligation for it. Instead return an `open_question` with a stable `id`, the
 `question` to put to the user, an `importance`, and a `source_quote` for the
 ambiguous text.
 
+State every obligation as a POSITIVE invariant — the property the delivered
+code must HOLD — never as a prohibition. A requirement phrased as "don't ...",
+"never ...", or "leave X unchanged" describes a property to PRESERVE; restate
+it as that property:
+- "Don't change the existing checkout behavior" -> "Preserve the existing
+  checkout behavior."
+- "Don't add new dependencies" -> "Keep the dependency set unchanged."
+- "Don't slow down the report" -> "Keep the report's runtime within its
+  current bound."
+A prohibition and the invariant it protects are the same obligation; emit the
+positive form, because it states what must be TRUE rather than what must be
+absent — an obligation that only says what must be absent can never be shown
+addressed by looking at what the diff contains.
+
 Granularity — isolate distinct computations, keep cohesive behaviors whole:
 
 - Isolate a sub-clause that defines a DISTINCT COMPUTATION or derived value — a
