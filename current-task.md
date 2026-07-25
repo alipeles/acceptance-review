@@ -11,4 +11,4 @@ Open questions from decomposition are silently dropped downstream of `decompose`
 
 ## Completion expectations
 - Implementation: open questions threaded through `Review`, `run_classify`, and `classify_case`; a judgment step decides, per open question, whether the diff resolves it, and records that judgment (not just displays it transiently); `classify`'s CLI output shows resolved questions (with the answer and its source) separately from still-open ones.
-- Unit tests: resolved and still-open cases, including a question the model doesn't return a judgment for (must stay open, not vanish); existing coverage/disposition/CLI tests unaffected.
+- Unit tests: resolved and still-open cases, including a question the model doesn't return a judgment for (must stay open, not vanish); coverage/disposition tests are untouched by this change; existing CLI rendering tests are updated to match the new open-question output format and continue to pass.
