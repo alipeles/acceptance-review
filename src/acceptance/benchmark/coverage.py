@@ -40,6 +40,7 @@ from acceptance.evidence.mapping import apply_test_mapping, map_tests_to_obligat
 from acceptance.evidence.strength import apply_evidence_strength, classify_strength
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
+from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import (
@@ -155,6 +156,12 @@ def classify_case(
         if finding is not None
     )
 
+    if case.inputs.declaration_text is not None:
+        declaration = parse_declaration(case.inputs.declaration_text)
+    else:
+        declaration = None
+        findings.append(declaration_absent_finding())
+
     review = Review(
         mode="local",
         reviewed_revision=case.inputs.head_revision,
@@ -162,6 +169,7 @@ def classify_case(
         obligation_map=obligations,
         open_questions=open_questions,
         change_set=change_set,
+        declaration=declaration,
         findings=findings,
     )
     return scored_copy(case, review)

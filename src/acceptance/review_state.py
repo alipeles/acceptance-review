@@ -31,6 +31,7 @@ __all__ = [
     "EvidenceClassification",
     "UnrequestedChangeDisposition",
     "UNREQUESTED_CHANGE",
+    "DECLARATION_ABSENT",
     "Project",
     "TaskSource",
     "MandateInterpretation",
@@ -69,13 +70,18 @@ class ObligationType(str, Enum):
 # must agree on the exact spelling.
 UNREQUESTED_CHANGE = "unrequested_change"
 
+# The canonical `Finding.type` for §7.4's "declaration absent" minor finding
+# (M6.1) — single-sourced for the same reason as UNREQUESTED_CHANGE.
+DECLARATION_ABSENT = "declaration_absent"
+
 # Finding types allowed to be obligation-less (related_obligation is None).
 # Almost every finding is *about* an obligation and must name it; an
 # unrequested change is the code→obligation dual and is obligation-less by
-# construction (§9.2, DR-081). M6 (builder-declaration comparison) adds
-# `declaration_mismatch` here: a claim of undone work outside the mandate is
-# obligation-less too, and advisory — see issue #31.
-_OBLIGATION_LESS_TYPES = frozenset({UNREQUESTED_CHANGE})
+# construction (§9.2, DR-081). A declaration-absent finding is about the
+# review's inputs, not any one obligation (M6.1). M6.2 (builder-declaration
+# comparison) adds `declaration_mismatch` here too: a claim of undone work
+# outside the mandate is obligation-less as well, and advisory — see issue #31.
+_OBLIGATION_LESS_TYPES = frozenset({UNREQUESTED_CHANGE, DECLARATION_ABSENT})
 
 
 class UnrequestedChangeDisposition(str, Enum):
@@ -210,13 +216,14 @@ class Obligation(_Model):
 
 
 class Link(_Model):
-    """A link to exact requirement text / code lines / test locations —
-    used by both `Finding` and `OpenQuestion.resolution_refs`. Defined here
-    (ahead of `OpenQuestion`) rather than by `Finding` alone, since both need
-    it and forward references don't resolve for pydantic model fields even
-    under `from __future__ import annotations`."""
+    """A link to exact requirement text / code lines / test locations / a
+    builder declaration — used by both `Finding` and
+    `OpenQuestion.resolution_refs`. Defined here (ahead of `OpenQuestion`)
+    rather than by `Finding` alone, since both need it and forward references
+    don't resolve for pydantic model fields even under
+    `from __future__ import annotations`."""
 
-    kind: Literal["requirement", "code", "test"]
+    kind: Literal["requirement", "code", "test", "declaration"]
     ref: str
     text: str | None = None
 
