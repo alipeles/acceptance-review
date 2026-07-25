@@ -24,6 +24,7 @@ from acceptance.change.diff import extract_change_set, extract_working_tree_chan
 from acceptance.config import DEFAULT_MODEL, RunConfig
 from acceptance.coverage.classify import ImplementationCoverage, classify_coverage
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
+from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode
 from acceptance.report import render_report
@@ -216,7 +217,11 @@ def run_classify(
         unrequested, obligations, coverages, change_set,
         config.scope_expansion_policy, config.build_client(),
     )
-    return obligations, decomposition.open_questions, coverages, dispositioned
+    resolutions = resolve_open_questions(
+        decomposition.open_questions, change_set, config.build_client()
+    )
+    open_questions = apply_open_question_resolutions(decomposition.open_questions, resolutions)
+    return obligations, open_questions, coverages, dispositioned
 
 
 def render_classify(
@@ -226,10 +231,19 @@ def render_classify(
     dispositioned: list[DispositionedChange],
 ) -> str:
     descriptions = {o.id: o.description for o in obligations}
-    lines = ["Open questions (unresolved — may block judging whether obligations are met):"]
+    lines = ["Open questions:"]
     if open_questions:
         for q in open_questions:
-            lines.append(f"  ? {q.id}: {q.question}")
+            if q.resolved:
+                lines.append(f"  [resolved] {q.id}: {q.question}")
+                lines.append(f"      answer: {q.resolution_rationale}")
+                refs = ", ".join(link.ref for link in q.resolution_refs)
+                if refs:
+                    lines.append(f"      -> {refs}")
+            else:
+                lines.append(f"  [open] {q.id}: {q.question}")
+                if q.resolution_rationale:
+                    lines.append(f"      {q.resolution_rationale}")
     else:
         lines.append("  (none)")
     lines.append("")

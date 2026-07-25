@@ -318,6 +318,7 @@ def test_render_classify_output():
     from acceptance.coverage.disposition import DispositionedChange
     from acceptance.coverage.unrequested import UnrequestedChange, UnrequestedChangeKind
     from acceptance.review_state import (
+        Link,
         Obligation,
         ObligationType,
         OpenQuestion,
@@ -352,11 +353,21 @@ def test_render_classify_output():
         )
     ]
 
-    open_questions = [OpenQuestion(id="q-1", question="Minus sign or parentheses?")]
+    open_questions = [
+        OpenQuestion(id="q-1", question="Minus sign or parentheses?"),
+        OpenQuestion(
+            id="q-2", question="Should the total be tax-inclusive?",
+            resolved=True, resolution_rationale="The diff always adds tax after the subtotal.",
+            resolution_refs=[Link(kind="code", ref="pkg.py#@@ -1 +1 @@")],
+        ),
+    ]
 
     rendered = render_classify(obligations, open_questions, coverages, dispositioned)
     assert "Open questions" in rendered
-    assert "? q-1: Minus sign or parentheses?" in rendered
+    assert "[open] q-1: Minus sign or parentheses?" in rendered
+    assert "[resolved] q-2: Should the total be tax-inclusive?" in rendered
+    assert "answer: The diff always adds tax after the subtotal." in rendered
+    assert "pkg.py#@@ -1 +1 @@" in rendered
     assert "[addressed] ob-1: Do the thing." in rendered
     assert "pkg.py" in rendered
     assert "[not_addressed] ob-2: Handle the edge." in rendered

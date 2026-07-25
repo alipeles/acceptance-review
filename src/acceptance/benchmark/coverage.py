@@ -31,6 +31,7 @@ from acceptance.change.diff import extract_change_set
 from acceptance.config import ScopeExpansionPolicy
 from acceptance.coverage.classify import CoverageStatus, ImplementationCoverage, classify_coverage
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
+from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.evidence.discovery import discover_tests
 from acceptance.evidence.discrimination import judge_discrimination
@@ -139,6 +140,8 @@ def classify_case(
     dispositioned = classify_dispositions(
         unrequested, obligations, coverages, change_set, policy, client
     )
+    resolutions = resolve_open_questions(decomposition.open_questions, change_set, client)
+    open_questions = apply_open_question_resolutions(decomposition.open_questions, resolutions)
 
     obligations_by_id = {obligation.id: obligation for obligation in obligations}
     findings = [
@@ -157,7 +160,7 @@ def classify_case(
         reviewed_revision=case.inputs.head_revision,
         provenance=provenance_from(client),
         obligation_map=obligations,
-        open_questions=decomposition.open_questions,
+        open_questions=open_questions,
         change_set=change_set,
         findings=findings,
     )
