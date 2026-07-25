@@ -34,11 +34,11 @@ def test_archetype_8_public_interface_change_is_flagged(tmp_path):
     change_set = _archetype_change_set("08-unrequested-change", tmp_path)
     cart = _source_file(change_set, "cart.py")
 
-    # The task only asked for apply_discount; leave-existing forbids changing
+    # The task only asked for apply_discount; leave-existing requires preserving
     # unrelated behavior. checkout's signature change is unrequested.
     obligations = [
         _obligation("apply-discount", "Add apply_discount(total, percent)", ObligationType.FUNCTIONAL),
-        _obligation("leave-existing", "Leave existing behavior as-is", ObligationType.COMPATIBILITY),
+        _obligation("leave-existing", "Preserve the existing checkout behavior", ObligationType.COMPATIBILITY),
     ]
     response = {
         "unrequested_changes": [

@@ -1,14 +1,12 @@
 # Task
-Open questions from decomposition are silently dropped downstream of `decompose`, and never gate the verdict. Surfaced dogfooding M4.1: `run_classify` (`cli.py`) and `classify_case` (`benchmark/coverage.py`) both call `decompose(...).obligations` — only the obligations are kept; `.open_questions` is computed and then discarded. Only `render_decomposition` (the standalone `decompose` command's renderer) ever shows open questions to a human at all.
+`classify_coverage` cannot positively confirm a prohibition-style obligation ("leave X unchanged") — it always reads as a gap. Root cause: a negatively-phrased obligation has no positive response by construction, so the coverage classifier, whose frame is "does the diff respond to this?", is structurally doomed to classify it `not_addressed`. Fix it at the source by having `decompose` state obligations as positive invariants, and having `classify_coverage` treat a preserve/maintain obligation as addressed when the diff does not violate it.
 
 ## Constraints
-- `Review`/the `classify` pipeline must carry open questions through from decomposition to CLI output, not drop them at the first `.obligations`-only call site.
-- When the diff itself makes the answer to an open question clear, that must be noted and the question recorded as resolved — not shown as perpetually "unresolved" on every re-run regardless of whether the diff already answers it. When the diff doesn't answer it, it stays flagged open.
-- What counts as "resolved" beyond "the diff itself makes the answer clear" is reviewer judgment; the tool's job is to make and record that specific judgment, not to build a separate manual sign-off mechanism.
-
-## Scope exclusions
-- The completion verdict itself (M7.2, #33) — whether an unresolved open question blocks a `no-material-gaps` result — is out of scope for this task; that milestone hasn't been reached yet in the plan sequence. #33's own scope has already been updated separately (outside this diff) to carry that requirement forward.
+- Keep the existing `CoverageStatus` set; introduce no new status value and no rename. There must be one positive indicator (`addressed`), meaning the evidence was reviewed and the obligation is confirmed handled.
+- `decompose` must state every obligation as a positive invariant — the property the code must hold — converting any prohibition ("don't do X", "leave X unchanged") into the property it protects ("maintain X"). A prohibition and the invariant it protects are the same obligation.
+- `classify_coverage` must treat a preserve/maintain obligation as addressed when it is not violated, including when no diff region touches it (empty diff references are valid for a satisfied invariant); when the diff violates such an obligation, it is not addressed and should cite the violating change.
+- Reframing fixes how obligations are filed, not what evidence exists: an invariant that genuinely needs runtime or non-code evidence still routes to the appropriate status; this change lowers no bar on what counts as confirmed.
 
 ## Completion expectations
-- Implementation: open questions threaded through `Review`, `run_classify`, and `classify_case`; a judgment step decides, per open question, whether the diff resolves it, and records that judgment (not just displays it transiently); `classify`'s CLI output shows resolved questions (with the answer and its source) separately from still-open ones.
-- Unit tests: resolved and still-open cases, including a question the model doesn't return a judgment for (must stay open, not vanish); coverage/disposition tests are untouched by this change; existing CLI rendering tests are updated to match the new open-question output format and continue to pass.
+- Implementation: decompose prompt emits positive invariants; classify prompt handles preserve/maintain obligations and permits a violated invariant to cite the breach; archetype #8's ground-truth obligation rephrased positively for consistency.
+- Unit tests: a preserve obligation not violated classifies addressed with no diff references; a violated preserve obligation classifies not addressed and cites the violating hunk.

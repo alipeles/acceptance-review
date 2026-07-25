@@ -256,7 +256,7 @@ def test_archetype_8_unrequested_change_gap_matches_via_its_obligation(tmp_path)
         },
         {
             "id": "leave-existing",
-            "description": "Leave existing behavior as-is; only apply_discount was requested",
+            "description": "Preserve the existing checkout behavior; only apply_discount was requested",
             "type": "compatibility",
             "source_quote": "existing behavior should be left as-is",
         },
@@ -332,7 +332,7 @@ def test_archetype_8_unrequested_change_metric_does_not_route_through_coverage(t
         },
         {
             "id": "leave-existing",
-            "description": "Leave existing behavior as-is; only apply_discount was requested",
+            "description": "Preserve the existing checkout behavior; only apply_discount was requested",
             "type": "compatibility",
             "source_quote": "existing behavior should be left as-is",
         },

@@ -117,6 +117,65 @@ def test_archetype_2_missing_qualifier_is_partially_addressed(tmp_path):
     assert by_id["backward-compat"].diff_refs[0].file == pricing
 
 
+def test_preserve_obligation_not_violated_is_addressed_with_no_refs(tmp_path):
+    # #133: a preserve/maintain obligation is "addressed" (evidence reviewed,
+    # invariant confirmed not violated) even when nothing in the diff responds
+    # to it -- empty diff_refs. Under the old rubric this could only be
+    # `not_addressed`, which every consumer reads as a gap.
+    change_set = _archetype_change_set("01-missed-obligation", tmp_path)
+    obligations = [
+        _obligation(
+            "preserve-auth", "Preserve the existing authentication behavior",
+            ObligationType.COMPATIBILITY,
+        ),
+    ]
+    response = {
+        "classifications": [
+            {
+                "obligation_id": "preserve-auth",
+                "status": "addressed",
+                "rationale": "No diff region touches authentication; the invariant is not violated.",
+                "diff_refs": [],
+            }
+        ]
+    }
+
+    coverages = classify_coverage(obligations, change_set, _client_returning(response))
+
+    assert coverages[0].status == CoverageStatus.ADDRESSED
+    assert coverages[0].diff_refs == []  # satisfied by the absence of a violating change
+
+
+def test_violated_preserve_obligation_is_not_addressed_but_cites_the_breach(tmp_path):
+    # #133: a preserve obligation the diff VIOLATES is not_addressed AND cites
+    # the offending hunk -- the old rubric forbade this ("not_addressed MUST be
+    # empty"), leaving a reviewer no pointer to the breach.
+    change_set = _archetype_change_set("08-unrequested-change", tmp_path)
+    cart = _source_file(change_set, "cart.py")
+    obligations = [
+        _obligation(
+            "preserve-checkout", "Preserve the existing checkout behavior",
+            ObligationType.COMPATIBILITY,
+        ),
+    ]
+    response = {
+        "classifications": [
+            {
+                "obligation_id": "preserve-checkout",
+                "status": "not_addressed",
+                "rationale": "checkout gained a tax_rate parameter; the existing behavior was changed.",
+                "diff_refs": [f"{cart}#0"],
+            }
+        ]
+    }
+
+    coverages = classify_coverage(obligations, change_set, _client_returning(response))
+
+    assert coverages[0].status == CoverageStatus.NOT_ADDRESSED
+    assert coverages[0].diff_refs  # cites the violating change, not empty
+    assert coverages[0].diff_refs[0].file == cart
+
+
 def test_missing_classification_defaults_to_unclear(tmp_path):
     change_set = _archetype_change_set("01-missed-obligation", tmp_path)
     obligations = [_obligation("only", "Some obligation", ObligationType.FUNCTIONAL)]

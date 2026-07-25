@@ -54,13 +54,26 @@ obligation. Do NOT judge whether it is tested or correct; that is assessed
 separately.
 
 For each obligation return a `status`:
-- addressed: the diff contains a credible, complete code response.
+- addressed: the evidence in the diff confirms the obligation is handled —
+  either the diff contains a credible, complete code response, OR (for an
+  obligation to PRESERVE or MAINTAIN an existing property — "keep X working",
+  "preserve behavior Y", "keep the dependency set unchanged") the diff does
+  not violate that property. A preserve/maintain obligation can be addressed
+  with NO relevant change at all: if nothing in the diff touches or endangers
+  the property, it is preserved — return `addressed` with empty `diff_refs`
+  and a rationale saying the invariant is not violated. "Addressed" means the
+  evidence was reviewed and the obligation is confirmed handled, not that a
+  change was necessarily made for it.
 - partially_addressed: relevant behavior is present in the diff but a
-  qualifier, branch, condition, or case is missing.
-- not_addressed: no diff region responds to the obligation at all.
+  qualifier, branch, condition, or case is missing; or a preserve/maintain
+  obligation is only partly upheld.
+- not_addressed: a positive obligation has no responding diff region, or a
+  preserve/maintain obligation is clearly VIOLATED by the diff.
 - unclear: the change may be indirect and static evidence is insufficient.
-- requires_non_code_evidence: satisfying it needs docs, visual behavior, or
-  deploy config rather than code.
+- requires_non_code_evidence: confirming it needs evidence the diff alone
+  can't give — e.g. runtime behavior, visual output, or deploy config. (Some
+  invariants, like a latency bound, CAN be confirmed by a suitable test; use
+  this status only when no code-level evidence could settle it.)
 
 Judge each region against the FULL text of the obligation, not against a fixed
 idea of "correct production code." An obligation may ask for an ARTIFACT — a
@@ -74,8 +87,12 @@ behavior. Each file is tagged `(status, category)`; treat a `test`-category
 file as a deliverable artifact, not as production code held to correctness.
 
 Also return a short `rationale` and `diff_refs`: the labels (like `path#0`) of
-the hunks that address the obligation. For not_addressed, `diff_refs` MUST be
-empty. Link only hunks that genuinely respond to the obligation."""
+the hunks the status concerns. Link only hunks that genuinely bear on the
+obligation. `diff_refs` is empty when there is nothing to point at — a
+positive obligation that is not_addressed (no responding region), or a
+preserve/maintain obligation that is addressed by the ABSENCE of any relevant
+change. When a preserve/maintain obligation is not_addressed because the diff
+VIOLATES it, cite the violating hunk(s) so a reviewer can see the breach."""
 
 
 class _Classification(StrictResponseModel):
