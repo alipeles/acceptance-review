@@ -24,12 +24,13 @@ from acceptance.change.diff import extract_change_set, extract_working_tree_chan
 from acceptance.config import DEFAULT_MODEL, RunConfig
 from acceptance.coverage.classify import ImplementationCoverage, classify_coverage
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
+from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode
 from acceptance.report import render_report
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import ChangeSet, Review
+from acceptance.review_state import ChangeSet, OpenQuestion, Review
 from acceptance.review_store import ReviewStore
 
 
@@ -181,13 +182,20 @@ def render_change_set(change_set: ChangeSet) -> str:
 
 def run_classify(
     task: str, base: str, head: str | None, config: RunConfig, repo: str = "."
-) -> tuple[list[Obligation], list[ImplementationCoverage], list[DispositionedChange]]:
+) -> tuple[
+    list[Obligation], list[OpenQuestion], list[ImplementationCoverage], list[DispositionedChange]
+]:
     """Decompose a task, extract its change set, classify each obligation against
     the diff, flag unrequested changes and classify their dispositions — a live
-    end-to-end dogfood of M1 + M2 + M3.1 + M3.2 + M3.5.3."""
+    end-to-end dogfood of M1 + M2 + M3.1 + M3.2 + M3.5.3.
+
+    Open questions from decomposition are carried through (not dropped at
+    `.obligations`) so a reviewer sees them here too, not only when running
+    `decompose` standalone (#113)."""
     repo_path = Path(repo)
     parsed = parse_task_file(_read_task(task))
-    obligations = decompose(parsed, config.build_client()).obligations
+    decomposition = decompose(parsed, config.build_client())
+    obligations = decomposition.obligations
 
     task_ignore = _task_ignore_pattern(task, repo_path)
     extra_patterns = [task_ignore] if task_ignore else []
@@ -209,16 +217,37 @@ def run_classify(
         unrequested, obligations, coverages, change_set,
         config.scope_expansion_policy, config.build_client(),
     )
-    return obligations, coverages, dispositioned
+    resolutions = resolve_open_questions(
+        decomposition.open_questions, change_set, config.build_client()
+    )
+    open_questions = apply_open_question_resolutions(decomposition.open_questions, resolutions)
+    return obligations, open_questions, coverages, dispositioned
 
 
 def render_classify(
     obligations: list[Obligation],
+    open_questions: list[OpenQuestion],
     coverages: list[ImplementationCoverage],
     dispositioned: list[DispositionedChange],
 ) -> str:
     descriptions = {o.id: o.description for o in obligations}
-    lines = ["Implementation coverage (code only — not test evidence):"]
+    lines = ["Open questions:"]
+    if open_questions:
+        for q in open_questions:
+            if q.resolved:
+                lines.append(f"  [resolved] {q.id}: {q.question}")
+                lines.append(f"      answer: {q.resolution_rationale}")
+                refs = ", ".join(link.ref for link in q.resolution_refs)
+                if refs:
+                    lines.append(f"      -> {refs}")
+            else:
+                lines.append(f"  [open] {q.id}: {q.question}")
+                if q.resolution_rationale:
+                    lines.append(f"      {q.resolution_rationale}")
+    else:
+        lines.append("  (none)")
+    lines.append("")
+    lines.append("Implementation coverage (code only — not test evidence):")
     if not coverages:
         lines.append("  (none)")
     for cov in coverages:
@@ -385,7 +414,7 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
         )
         try:
-            obligations, coverages, dispositioned = run_classify(
+            obligations, open_questions, coverages, dispositioned = run_classify(
                 args.task, args.base, args.head, config, args.repo
             )
         except CliError as exc:
@@ -398,6 +427,7 @@ def main(argv: list[str] | None = None) -> int:
             print(
                 json.dumps(
                     {
+                        "open_questions": [q.to_dict() for q in open_questions],
                         "coverage": [c.to_dict() for c in coverages],
                         "unrequested_changes": [d.to_dict() for d in dispositioned],
                     },
@@ -405,7 +435,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
         else:
-            print(render_classify(obligations, coverages, dispositioned))
+            print(render_classify(obligations, open_questions, coverages, dispositioned))
         return 0
 
     parser.error(f"unknown command: {args.command}")

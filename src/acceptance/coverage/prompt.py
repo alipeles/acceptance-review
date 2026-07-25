@@ -35,13 +35,11 @@ def hunk_labels(change_set: ChangeSet) -> dict[str, DiffRef]:
     return labels
 
 
-def render_diff_prompt(obligations: list[Obligation], change_set: ChangeSet) -> str:
-    """Render obligations + the labeled diff for the model to reason over."""
-    lines = ["## Obligations", ""]
-    for obligation in obligations:
-        lines.append(f"- id={obligation.id} [{obligation.type.value}]: {obligation.description}")
-    lines.append("")
-    lines.append("## Diff")
+def render_diff_section(change_set: ChangeSet) -> list[str]:
+    """The `## Diff` block (labeled hunks), shared by every prompt that shows
+    the model a diff — factored out so each caller only supplies what comes
+    before it (obligations, open questions, ...)."""
+    lines = ["## Diff"]
     if not change_set.files:
         lines.append("(no changes)")
     for file_change in change_set.files:
@@ -52,6 +50,16 @@ def render_diff_prompt(obligations: list[Obligation], change_set: ChangeSet) -> 
         for index, hunk in enumerate(file_change.hunks):
             lines.append(f"[{hunk_label(file_change.path, index)}] {hunk.header}")
             lines.append(hunk.content)
+    return lines
+
+
+def render_diff_prompt(obligations: list[Obligation], change_set: ChangeSet) -> str:
+    """Render obligations + the labeled diff for the model to reason over."""
+    lines = ["## Obligations", ""]
+    for obligation in obligations:
+        lines.append(f"- id={obligation.id} [{obligation.type.value}]: {obligation.description}")
+    lines.append("")
+    lines.extend(render_diff_section(change_set))
     return "\n".join(lines)
 
 

@@ -209,17 +209,38 @@ class Obligation(_Model):
     evidence_class: EvidenceClassification | None = None
 
 
+class Link(_Model):
+    """A link to exact requirement text / code lines / test locations —
+    used by both `Finding` and `OpenQuestion.resolution_refs`. Defined here
+    (ahead of `OpenQuestion`) rather than by `Finding` alone, since both need
+    it and forward references don't resolve for pydantic model fields even
+    under `from __future__ import annotations`."""
+
+    kind: Literal["requirement", "code", "test"]
+    ref: str
+    text: str | None = None
+
+
 class OpenQuestion(_Model):
     """A material ambiguity in the task that needs user judgment (§7.3, §9.3).
 
     Surfaced instead of silently inventing an obligation — uncertainty is a
     first-class, expected output. `source_spans` link to the underspecified
-    task text."""
+    task text.
+
+    `resolved`/`resolution_rationale`/`resolution_refs` are set by
+    `coverage/open_questions.py`'s `apply_open_question_resolutions` (#113):
+    when the diff itself makes the answer clear, that judgment is recorded
+    here rather than left as something a conversation concluded and the tool
+    immediately forgets on the next run."""
 
     id: str
     question: str
     importance: Literal["critical", "normal"] = "normal"
     source_spans: list[TextSpan] = Field(default_factory=list)
+    resolved: bool = False
+    resolution_rationale: str | None = None
+    resolution_refs: list[Link] = Field(default_factory=list)
 
 
 class TestEvidence(_Model):
@@ -245,14 +266,6 @@ class ExecutionEvidence(_Model):
     coverage_of_obligation_lines: bool | None = None
     mutation_descriptor: str | None = None
     outcome: Literal["killed", "survived"] | None = None
-
-
-class Link(_Model):
-    """A finding's link to exact requirement text / code lines / test locations."""
-
-    kind: Literal["requirement", "code", "test"]
-    ref: str
-    text: str | None = None
 
 
 class Finding(_Model):
@@ -337,6 +350,7 @@ class Review(_Model):
     declaration: BuilderDeclaration | None = None
     change_set: ChangeSet | None = None
     obligation_map: list[Obligation] = Field(default_factory=list)
+    open_questions: list[OpenQuestion] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
     recommendation: str | None = None

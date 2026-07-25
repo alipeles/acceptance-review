@@ -317,7 +317,13 @@ def test_render_classify_output():
     from acceptance.coverage.classify import CoverageStatus, DiffRef, ImplementationCoverage
     from acceptance.coverage.disposition import DispositionedChange
     from acceptance.coverage.unrequested import UnrequestedChange, UnrequestedChangeKind
-    from acceptance.review_state import Obligation, ObligationType, UnrequestedChangeDisposition
+    from acceptance.review_state import (
+        Link,
+        Obligation,
+        ObligationType,
+        OpenQuestion,
+        UnrequestedChangeDisposition,
+    )
 
     obligations = [
         Obligation(id="ob-1", description="Do the thing.", type=ObligationType.FUNCTIONAL,
@@ -347,7 +353,21 @@ def test_render_classify_output():
         )
     ]
 
-    rendered = render_classify(obligations, coverages, dispositioned)
+    open_questions = [
+        OpenQuestion(id="q-1", question="Minus sign or parentheses?"),
+        OpenQuestion(
+            id="q-2", question="Should the total be tax-inclusive?",
+            resolved=True, resolution_rationale="The diff always adds tax after the subtotal.",
+            resolution_refs=[Link(kind="code", ref="pkg.py#@@ -1 +1 @@")],
+        ),
+    ]
+
+    rendered = render_classify(obligations, open_questions, coverages, dispositioned)
+    assert "Open questions" in rendered
+    assert "[open] q-1: Minus sign or parentheses?" in rendered
+    assert "[resolved] q-2: Should the total be tax-inclusive?" in rendered
+    assert "answer: The diff always adds tax after the subtotal." in rendered
+    assert "pkg.py#@@ -1 +1 @@" in rendered
     assert "[addressed] ob-1: Do the thing." in rendered
     assert "pkg.py" in rendered
     assert "[not_addressed] ob-2: Handle the edge." in rendered
@@ -358,6 +378,14 @@ def test_render_classify_output():
     assert "[risky] (public_interface) checkout signature changed" in rendered
     assert "cart.py" in rendered
     assert "Scrutinize" in rendered
+
+
+def test_render_classify_shows_none_for_no_open_questions():
+    from acceptance.cli import render_classify
+
+    rendered = render_classify([], [], [], [])
+    assert "Open questions" in rendered
+    assert "(none)" in rendered
 
 
 # --- ignore patterns (#105) ---
