@@ -297,8 +297,9 @@ def test_archetype_8_unrequested_change_gap_matches_via_its_obligation(tmp_path)
     scored = classify_case(case, client)
     findings_by_type = {f.type for f in scored.reviewer_output.findings}
 
-    # Both M3.1 and M3.2 output are fed in as findings...
-    assert findings_by_type == {"coverage_gap", "unrequested_change"}
+    # Both M3.1 and M3.2 output are fed in as findings, plus M6.1's
+    # declaration-absent finding (this archetype ships no declaration.md)...
+    assert findings_by_type == {"coverage_gap", "unrequested_change", "declaration_absent"}
     # ...but only the obligation-linked coverage gap moves the gap metric,
     # matching the ground-truth gap that is itself linked to leave-existing.
     assert scored.score.gap_recall == 1.0
@@ -377,6 +378,43 @@ def test_archetype_8_unrequested_change_metric_does_not_route_through_coverage(t
     # entirely independent of the (wrong) coverage classification.
     assert scored.score.unrequested_recall == 1.0
     assert scored.score.unrequested_precision == 1.0
+
+
+def test_declaration_present_is_parsed_onto_the_review(tmp_path):
+    # M6.1: archetype #7 ships a real (partial, 4-of-9-section) declaration.md
+    # -- it must be parsed onto Review.declaration, and NO declaration_absent
+    # finding should appear since one was actually supplied.
+    case = build_benchmark_case(ARCHETYPES_DIR / "07-declaration-mismatch", tmp_path / "repo")
+
+    obligations = [
+        {
+            "id": "get-user",
+            "description": "Return the user record matching user_id from the users mapping",
+            "type": "functional",
+            "source_quote": "returning the user record (a dict) that matches `user_id`",
+        },
+    ]
+    client = _client_dispatching(
+        {
+            "_Mappings": {"mappings": []},
+            "_Decomposition": _decomposition_response(obligations),
+            "_Coverage": _classification_response(
+                [{"obligation_id": "get-user", "status": "addressed"}]
+            ),
+            "_Detections": {"unrequested_changes": []},
+        }
+    )
+
+    scored = classify_case(case, client)
+    review = scored.reviewer_output
+
+    assert review.declaration is not None
+    assert review.declaration.mandate_as_understood == (
+        "Provide a lookup that returns a user record by its id."
+    )
+    # Sections the fixture omits are empty, not missing.
+    assert review.declaration.scope_exclusions == ""
+    assert "declaration_absent" not in {f.type for f in review.findings}
 
 
 def test_classify_case_does_not_mutate_the_input_case(tmp_path):
