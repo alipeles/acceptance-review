@@ -23,6 +23,7 @@ from acceptance.benchmark.runner import run_case
 from acceptance.benchmark.scoring import score_case_set
 from acceptance.config import RunConfig
 from acceptance.review_store import ReviewStore
+from tests.support import client_finding_nothing
 
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 FIXTURE_DIRS = sorted(p for p in ARCHETYPES_DIR.iterdir() if p.is_dir())
@@ -137,6 +138,7 @@ def test_full_loop_scores_the_noop_checker_as_all_miss(tmp_path):
                 case,
                 config=RunConfig(),
                 review_store=ReviewStore(tmp_path / f"reviews-{i}"),
+                client=client_finding_nothing(),
             )
         )
 

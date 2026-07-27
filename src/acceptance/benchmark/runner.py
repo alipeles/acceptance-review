@@ -15,6 +15,7 @@ from acceptance.benchmark.case import BenchmarkCase
 from acceptance.benchmark.scoring import score_case
 from acceptance.cli import run_check
 from acceptance.config import RunConfig
+from acceptance.llm import ModelClient
 from acceptance.review_store import ReviewStore
 
 
@@ -22,6 +23,7 @@ def run_case(
     case: BenchmarkCase,
     config: RunConfig | None = None,
     review_store: ReviewStore | None = None,
+    client: ModelClient | None = None,
 ) -> BenchmarkCase:
     """Run the checker over `case.inputs` and return a scored copy of `case`."""
     config = config if config is not None else RunConfig()
@@ -42,6 +44,7 @@ def run_case(
             config=config,
             store=review_store,
             repo=repo,
+            client=client,
         )
     finally:
         task_path.unlink(missing_ok=True)

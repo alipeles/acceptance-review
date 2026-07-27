@@ -68,3 +68,27 @@ def client_dispatching(responses_by_schema: dict, model: str = _DEFAULT_MODEL) -
         store=TranscriptStore(tempfile.mkdtemp()),
         completion_fn=completion_fn,
     )
+
+
+# An empty result per pipeline response schema (schemas are strict, so each
+# needs exactly its own field). A client returning these finds nothing at every
+# step — the "no-op checker" stand-in for tests that exercise the harness loop
+# (fixture -> case -> run -> score) or CLI plumbing rather than any model
+# judgment. Since M7.4's shared pipeline, `run_check` makes real model calls, so
+# these tests must inject a client instead of relying on an empty skeleton.
+_EMPTY_BY_SCHEMA = {
+    "_Decomposition": {"obligations": [], "open_questions": []},
+    "_Mappings": {"mappings": []},
+    "_Discrimination": {"discriminations": []},
+    "_Coverage": {"classifications": []},
+    "_Detections": {"unrequested_changes": []},
+    "_Judgments": {"resolutions": []},
+    "_Recommendations": {"recommendations": []},
+    "_Mismatches": {"mismatches": []},
+}
+
+
+def client_finding_nothing(model: str = _DEFAULT_MODEL) -> ModelClient:
+    """A client whose every pipeline call returns an empty result — the
+    checker runs end to end and reports nothing found."""
+    return client_dispatching(_EMPTY_BY_SCHEMA, model=model)

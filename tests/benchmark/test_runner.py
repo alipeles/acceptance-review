@@ -9,6 +9,7 @@ from acceptance.benchmark.case import (
 from acceptance.benchmark.runner import run_case
 from acceptance.config import RunConfig
 from acceptance.review_store import ReviewStore
+from tests.support import client_finding_nothing
 
 
 def _labels() -> GroundTruthLabels:
@@ -53,6 +54,7 @@ def test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_sc
         case,
         config=RunConfig(),
         review_store=ReviewStore(tmp_path / "reviews"),
+        client=client_finding_nothing(),
     )
 
     assert result.reviewer_output is not None
@@ -75,7 +77,10 @@ def test_run_case_does_not_mutate_the_input_case(git_repo_elsewhere, tmp_path):
         ground_truth=_labels(),
     )
 
-    run_case(case, config=RunConfig(), review_store=ReviewStore(tmp_path / "reviews"))
+    run_case(
+        case, config=RunConfig(), review_store=ReviewStore(tmp_path / "reviews"),
+        client=client_finding_nothing(),
+    )
 
     assert case.reviewer_output is None
     assert case.score is None

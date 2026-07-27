@@ -27,7 +27,11 @@ from pathlib import Path
 from acceptance.benchmark.coverage import classify_case
 from acceptance.benchmark.fixtures import build_benchmark_case
 from acceptance.change.diff import extract_change_set
+from acceptance.cli import run_check
+from acceptance.config import RunConfig
+from acceptance.review_store import ReviewStore
 from tests.support import client_dispatching as _client_dispatching
+from tests.support import client_finding_nothing
 
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 
@@ -488,3 +492,44 @@ def test_classify_case_does_not_mutate_the_input_case(tmp_path):
 
     assert case.reviewer_output is None
     assert case.score is None
+
+
+def test_cli_and_benchmark_share_one_pipeline(tmp_path, monkeypatch):
+    """Regression guard for the divergence M7.4 fixed: the CLI and the
+    benchmark must derive their Review from the SAME pipeline function.
+
+    They drifted for several milestones — every capability from M4 on reached
+    only `classify_case`, so `acceptance check` silently ran a shorter chain
+    and could not report test evidence or a verdict. Asserting both paths call
+    `pipeline.run_review` makes a future re-divergence fail loudly instead of
+    quietly under-reporting.
+    """
+    import acceptance.benchmark.coverage as benchmark_coverage
+    import acceptance.cli as cli_module
+
+    calls: list[str] = []
+    real_run_review = benchmark_coverage.run_review
+
+    def tracking_run_review(**kwargs):
+        calls.append("called")
+        return real_run_review(**kwargs)
+
+    monkeypatch.setattr(benchmark_coverage, "run_review", tracking_run_review)
+    monkeypatch.setattr(cli_module, "run_review", tracking_run_review)
+
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+    classify_case(case, client_finding_nothing())
+    assert len(calls) == 1  # the benchmark path routes through run_review
+
+    task_file = tmp_path / "task.md"
+    task_file.write_text(case.inputs.task_text)
+    run_check(
+        task=str(task_file),
+        base=case.inputs.base_revision,
+        head=case.inputs.head_revision,
+        config=RunConfig(),
+        store=ReviewStore(tmp_path / "reviews"),
+        repo=Path(case.inputs.repo),
+        client=client_finding_nothing(),
+    )
+    assert len(calls) == 2  # ...and so does the CLI path

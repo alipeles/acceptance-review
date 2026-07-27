@@ -1,13 +1,15 @@
 # Task
-Derive an overall completion result — no-material-gaps, incomplete, needs-clarification, needs-non-code-review, or unable-to-determine — from the review's findings, with stated confidence limitations. A positive (no-material-gaps) result renders the §3.7 caveat that it means no material gaps at the achievable evidence tier, not proof of correctness. An unresolved open question cannot render a positive result.
+Produce the §16 CLI output — obligation coverage, test evidence with per-line evidence tier tags, unrequested changes, and a recommended-next-instruction pointer. The `check` command must run the full assembled review pipeline so the report reflects everything the checker computes.
 
 ## Constraints
-- The verdict is a deterministic, pure function of the findings — never a model call — so the headline result is auditable and traces to the exact obligations and findings that produced it, not a free-text conclusion.
-- Any coverage gap or any non-strong test evidence blocks a positive result (positive results are bounded); severity or importance weighted materiality is a deliberate future refinement, not built now.
-- Advisory findings — an unrequested change or a declaration mismatch — never move the verdict; a change whose obligations are all strongly supported is no-material-gaps even alongside an advisory finding.
-- Obligations whose evidence is indeterminate are surfaced as escalation candidates: the set where deeper retrieval or execution could move the verdict, so a future try-harder loop attaches there while this rollup stays a stable function.
+- One shared pipeline serves both the CLI and the benchmark. Previously every capability from test discovery onward reached only the benchmark path, so the command used to dogfood the tool ran an older, shorter chain and could not show test evidence or a verdict at all; sharing one function keeps the two consumers identical by construction.
+- Implementation coverage and test evidence are two distinct axes and render as separate sections: coverage answers whether the code responds to an obligation, evidence answers whether the tests discriminate.
+- Every test-evidence line shows its evidence tier, so a static inference is never presented as execution-confirmed.
+- The headline verdict is the computed completion result; a review with no computed verdict renders as indeterminate rather than assumed good.
+- Unrequested changes render as advisory, each showing its disposition.
 
 ## Completion expectations
 - Implementation
-- Each verdict state is produced for its corresponding finding pattern; a coverage gap or weak evidence yields incomplete, an unresolved open question yields needs-clarification, and all-strong yields no-material-gaps with the §3.7 caveat.
-- An indeterminate obligation yields unable-to-determine and is listed as an escalation candidate.
+- Rendered output matches the §16 layout, with every test-evidence line showing its evidence tier.
+- The benchmark and the CLI produce their reviews from the same pipeline function.
+- `check` accepts an optional builder declaration and reviews the working tree when no head revision is given.

@@ -5,9 +5,12 @@ import pytest
 from acceptance.cli import main, run_check
 from acceptance.config import RunConfig
 from acceptance.review_store import ReviewStore
+from tests.support import client_finding_nothing
 
 
-def test_check_json_emits_empty_structured_review(git_repo, fixture_task_path, capsys):
+def test_check_json_emits_a_structured_review(git_repo, fixture_task_path, capsys, stub_model):
+    """--json emits the full structured Review. With a checker that finds
+    nothing, the analysis fields are empty but the shape is complete."""
     exit_code = main(
         ["check", "--json", "--task", fixture_task_path, "--base", git_repo["base"], "--head", git_repo["head"]]
     )
@@ -17,18 +20,18 @@ def test_check_json_emits_empty_structured_review(git_repo, fixture_task_path, c
     assert review["mode"] == "local"
     assert review["reviewed_revision"] == git_repo["head"]
     assert review["mandate"] is None
-    assert review["declaration"] is None
-    # Diff endpoints are ingested; file-level diffing is still M2.
     assert review["change_set"]["base_revision"] == git_repo["base"]
     assert review["change_set"]["head_revision"] == git_repo["head"]
-    assert review["change_set"]["files"] == []
     assert review["obligation_map"] == []
-    assert review["findings"] == []
-    assert review["limitations"] == []
     assert review["recommendation"] is None
+    # No declaration was supplied, so §7.4's minor finding is recorded (M6.1)
+    # and the verdict is honestly unable-to-determine with nothing analyzed.
+    assert review["declaration"] is None
+    assert [f["type"] for f in review["findings"]] == ["declaration_absent"]
+    assert review["completion"]["verdict"] == "unable_to_determine"
 
 
-def test_check_defaults_to_replay_mode_provenance(git_repo, fixture_task_path, capsys):
+def test_check_defaults_to_replay_mode_provenance(git_repo, fixture_task_path, capsys, stub_model):
     exit_code = main(
         ["check", "--json", "--task", fixture_task_path, "--base", git_repo["base"], "--head", git_repo["head"]]
     )
@@ -41,7 +44,7 @@ def test_check_defaults_to_replay_mode_provenance(git_repo, fixture_task_path, c
     assert review["provenance"]["seed"] is None
 
 
-def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_path, capsys):
+def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_path, capsys, stub_model):
     exit_code = main(
         [
             "check", "--json",
@@ -78,7 +81,7 @@ def test_check_rejects_unknown_mode(git_repo, fixture_task_path):
         )
 
 
-def test_two_runs_over_the_same_input_are_byte_identical(git_repo, fixture_task_path, capsys):
+def test_two_runs_over_the_same_input_are_byte_identical(git_repo, fixture_task_path, capsys, stub_model):
     args = [
         "check", "--task", fixture_task_path, "--base", git_repo["base"], "--head", git_repo["head"]
     ]
@@ -91,7 +94,7 @@ def test_two_runs_over_the_same_input_are_byte_identical(git_repo, fixture_task_
     assert first == second
 
 
-def test_report_shell_renders_all_sections_present_and_empty(git_repo, fixture_task_path, capsys):
+def test_report_shell_renders_all_sections_present_and_empty(git_repo, fixture_task_path, capsys, stub_model):
     exit_code = main(
         ["check", "--task", fixture_task_path, "--base", git_repo["base"], "--head", git_repo["head"]]
     )
@@ -99,16 +102,16 @@ def test_report_shell_renders_all_sections_present_and_empty(git_repo, fixture_t
     assert exit_code == 0
     out = capsys.readouterr().out
     # Every §16 section present...
-    assert "Task completion: INDETERMINATE" in out
+    assert "Task completion: UNABLE-TO-DETERMINE" in out  # the real M7.2 verdict
     assert "Obligation coverage:" in out
     assert "Test evidence:" in out
     assert "Unrequested changes:" in out
     assert "Recommended next instruction: (none)" in out
-    # ...and empty in the walking skeleton.
+    # ...and empty when the checker finds nothing.
     assert out.count("(none)") == 4  # 3 list sections + the next-instruction line
 
 
-def test_check_persists_the_review_to_the_store(git_repo, fixture_task_path):
+def test_check_persists_the_review_to_the_store(git_repo, fixture_task_path, stub_model):
     from acceptance.review_store import ReviewStore
 
     assert main(
@@ -156,6 +159,7 @@ def test_run_check_accepts_an_explicit_repo_independent_of_cwd(
         config=RunConfig(),
         store=ReviewStore(tmp_path / "reviews"),
         repo=git_repo_elsewhere["path"],
+        client=client_finding_nothing(),
     )
 
     assert review.reviewed_revision == git_repo_elsewhere["head"]
