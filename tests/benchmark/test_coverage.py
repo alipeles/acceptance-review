@@ -402,6 +402,7 @@ def test_declaration_present_is_parsed_onto_the_review(tmp_path):
                 [{"obligation_id": "get-user", "status": "addressed"}]
             ),
             "_Detections": {"unrequested_changes": []},
+            "_Mismatches": {"mismatches": []},
         }
     )
 
@@ -415,6 +416,51 @@ def test_declaration_present_is_parsed_onto_the_review(tmp_path):
     # Sections the fixture omits are empty, not missing.
     assert review.declaration.scope_exclusions == ""
     assert "declaration_absent" not in {f.type for f in review.findings}
+
+
+def test_archetype_7_declaration_overclaim_produces_a_mismatch_finding(tmp_path):
+    # M6.2 acceptance: archetype #7's declaration claims get_user raises
+    # KeyError on a missing id, but the code returns None and no test exercises
+    # it -- a declaration_mismatch finding, obligation-less and advisory.
+    case = build_benchmark_case(ARCHETYPES_DIR / "07-declaration-mismatch", tmp_path / "repo")
+
+    obligations = [
+        {
+            "id": "get-user",
+            "description": "Return the user record matching user_id from the users mapping",
+            "type": "functional",
+            "source_quote": "returning the user record (a dict) that matches `user_id`",
+        },
+    ]
+    client = _client_dispatching(
+        {
+            "_Mappings": {"mappings": []},
+            "_Decomposition": _decomposition_response(obligations),
+            "_Coverage": _classification_response(
+                [{"obligation_id": "get-user", "status": "addressed"}]
+            ),
+            "_Detections": {"unrequested_changes": []},
+            "_Mismatches": {
+                "mismatches": [
+                    {
+                        "claim": "get_user raises KeyError with a clear message on a missing id",
+                        "rationale": (
+                            "The implementation returns None on a missing id and no test "
+                            "exercises the missing-id path."
+                        ),
+                    }
+                ]
+            },
+        }
+    )
+
+    scored = classify_case(case, client)
+    findings = scored.reviewer_output.findings
+    mismatch_findings = [f for f in findings if f.type == "declaration_mismatch"]
+
+    assert len(mismatch_findings) == 1
+    assert mismatch_findings[0].related_obligation is None  # obligation-less
+    assert mismatch_findings[0].severity == "low"  # advisory, not acceptance-blocking
 
 
 def test_classify_case_does_not_mutate_the_input_case(tmp_path):

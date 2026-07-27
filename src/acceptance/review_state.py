@@ -32,6 +32,7 @@ __all__ = [
     "UnrequestedChangeDisposition",
     "UNREQUESTED_CHANGE",
     "DECLARATION_ABSENT",
+    "DECLARATION_MISMATCH",
     "Project",
     "TaskSource",
     "MandateInterpretation",
@@ -74,14 +75,23 @@ UNREQUESTED_CHANGE = "unrequested_change"
 # (M6.1) — single-sourced for the same reason as UNREQUESTED_CHANGE.
 DECLARATION_ABSENT = "declaration_absent"
 
+# The canonical `Finding.type` for a §7.4 declaration-vs-evidence discrepancy
+# (M6.2): a declaration claim matching neither the task nor the code/tests —
+# e.g. a claimed behavior the code doesn't implement and no test exercises.
+DECLARATION_MISMATCH = "declaration_mismatch"
+
 # Finding types allowed to be obligation-less (related_obligation is None).
 # Almost every finding is *about* an obligation and must name it; an
 # unrequested change is the code→obligation dual and is obligation-less by
 # construction (§9.2, DR-081). A declaration-absent finding is about the
-# review's inputs, not any one obligation (M6.1). M6.2 (builder-declaration
-# comparison) adds `declaration_mismatch` here too: a claim of undone work
-# outside the mandate is obligation-less as well, and advisory — see issue #31.
-_OBLIGATION_LESS_TYPES = frozenset({UNREQUESTED_CHANGE, DECLARATION_ABSENT})
+# review's inputs, not any one obligation (M6.1). A declaration-mismatch is a
+# claim matching neither the task nor the code — obligation-less too, and
+# advisory / low-weight on the verdict, since nothing was actually mis-delivered
+# in the code (M6.2, issue #31); distinct from an unrequested change, which is
+# real code that *was* changed.
+_OBLIGATION_LESS_TYPES = frozenset(
+    {UNREQUESTED_CHANGE, DECLARATION_ABSENT, DECLARATION_MISMATCH}
+)
 
 
 class UnrequestedChangeDisposition(str, Enum):
