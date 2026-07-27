@@ -119,6 +119,8 @@ def test_archetype_1_missed_obligation_yields_full_recall_and_precision(tmp_path
     )
     assert scored.score.gap_recall == 1.0
     assert scored.score.gap_precision == 1.0
+    # M7.2: a real coverage gap yields an `incomplete` verdict.
+    assert scored.reviewer_output.completion.verdict.value == "incomplete"
 
 
 def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
