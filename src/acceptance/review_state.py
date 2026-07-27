@@ -47,6 +47,8 @@ __all__ = [
     "Link",
     "Finding",
     "TestRecommendation",
+    "CompletionVerdict",
+    "CompletionResult",
     "ReviewProvenance",
     "Review",
 ]
@@ -366,6 +368,33 @@ class TestRecommendation(_Model):
     repo_conventions: str
 
 
+class CompletionVerdict(str, Enum):
+    """§10.1 step 11 overall completion result. A positive verdict
+    (`no_material_gaps`) is bounded — "no material gaps at the achievable
+    evidence tier," never proof of correctness (§3.7)."""
+
+    NO_MATERIAL_GAPS = "no_material_gaps"
+    INCOMPLETE = "incomplete"
+    NEEDS_CLARIFICATION = "needs_clarification"
+    NEEDS_NON_CODE_REVIEW = "needs_non_code_review"
+    UNABLE_TO_DETERMINE = "unable_to_determine"
+
+
+class CompletionResult(_Model):
+    """The overall completion verdict, derived deterministically from the
+    findings (M7.2). Kept a pure rollup so the headline result is auditable —
+    it traces to the exact findings that produced it, never a free-text model
+    conclusion (§13.6). `escalation_candidates` names the obligations whose
+    evidence is indeterminate — the set where spending more effort (deeper
+    retrieval, execution, §8/M8) could move the verdict; the seam a future
+    "try harder" loop attaches to, re-deriving this same function afterward."""
+
+    verdict: CompletionVerdict
+    rationale: str
+    limitations: list[str] = Field(default_factory=list)
+    escalation_candidates: list[str] = Field(default_factory=list)
+
+
 class ReviewProvenance(_Model):
     """How a review was produced (§13.6 trustworthiness). Stored so a reader
     can tell what determinism controls were in force — a fixed-seed replay is
@@ -391,6 +420,7 @@ class Review(_Model):
     open_questions: list[OpenQuestion] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[TestRecommendation] = Field(default_factory=list)
+    completion: CompletionResult | None = None
     limitations: list[str] = Field(default_factory=list)
     recommendation: str | None = None
 

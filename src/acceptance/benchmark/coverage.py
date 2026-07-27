@@ -48,6 +48,7 @@ from acceptance.llm import ModelClient
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
+from acceptance.verdict import derive_verdict
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     Finding,
@@ -172,6 +173,8 @@ def classify_case(
         declaration = None
         findings.append(declaration_absent_finding())
 
+    completion = derive_verdict(obligations, findings, open_questions)
+
     review = Review(
         mode="local",
         reviewed_revision=case.inputs.head_revision,
@@ -182,5 +185,6 @@ def classify_case(
         declaration=declaration,
         findings=findings,
         recommendations=recommendations,
+        completion=completion,
     )
     return scored_copy(case, review)
