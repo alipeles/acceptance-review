@@ -106,6 +106,7 @@ def test_archetype_1_missed_obligation_yields_full_recall_and_precision(tmp_path
                 ]
             ),
             "_Detections": {"unrequested_changes": []},
+            "_Recommendations": {"recommendations": []},
         }
     )
 
@@ -171,6 +172,7 @@ def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
                 ]
             ),
             "_Detections": {"unrequested_changes": []},
+            "_Recommendations": {"recommendations": []},
         }
     )
 
@@ -222,6 +224,7 @@ def test_archetype_2_missed_qualifier_yields_full_recall_and_precision(tmp_path)
                 ]
             ),
             "_Detections": {"unrequested_changes": []},
+            "_Recommendations": {"recommendations": []},
         }
     )
 
@@ -291,6 +294,7 @@ def test_archetype_8_unrequested_change_gap_matches_via_its_obligation(tmp_path)
                 "disposition": "risky",
                 "rationale": "edits checkout's existing public signature; could hide a regression.",
             },
+            "_Recommendations": {"recommendations": []},
         }
     )
 
@@ -366,6 +370,7 @@ def test_archetype_8_unrequested_change_metric_does_not_route_through_coverage(t
                 "disposition": "risky",
                 "rationale": "edits checkout's existing public signature; could hide a regression.",
             },
+            "_Recommendations": {"recommendations": []},
         }
     )
 
@@ -402,6 +407,7 @@ def test_declaration_present_is_parsed_onto_the_review(tmp_path):
                 [{"obligation_id": "get-user", "status": "addressed"}]
             ),
             "_Detections": {"unrequested_changes": []},
+            "_Recommendations": {"recommendations": []},
             "_Mismatches": {"mismatches": []},
         }
     )
@@ -440,6 +446,7 @@ def test_archetype_7_declaration_overclaim_produces_a_mismatch_finding(tmp_path)
                 [{"obligation_id": "get-user", "status": "addressed"}]
             ),
             "_Detections": {"unrequested_changes": []},
+            "_Recommendations": {"recommendations": []},
             "_Mismatches": {
                 "mismatches": [
                     {
@@ -471,6 +478,7 @@ def test_classify_case_does_not_mutate_the_input_case(tmp_path):
             "_Decomposition": _decomposition_response([]),
             "_Coverage": {"classifications": []},
             "_Detections": {"unrequested_changes": []},
+            "_Recommendations": {"recommendations": []},
         }
     )
 

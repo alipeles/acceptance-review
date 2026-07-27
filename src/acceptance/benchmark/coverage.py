@@ -36,6 +36,7 @@ from acceptance.coverage.declaration_comparison import (
 )
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
 from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
+from acceptance.coverage.recommendations import recommend_tests
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.evidence.discovery import discover_tests
 from acceptance.evidence.discrimination import judge_discrimination
@@ -147,6 +148,7 @@ def classify_case(
     )
     resolutions = resolve_open_questions(decomposition.open_questions, change_set, client)
     open_questions = apply_open_question_resolutions(decomposition.open_questions, resolutions)
+    recommendations = recommend_tests(obligations, discriminations, change_set, client)
 
     obligations_by_id = {obligation.id: obligation for obligation in obligations}
     findings = [
@@ -179,5 +181,6 @@ def classify_case(
         change_set=change_set,
         declaration=declaration,
         findings=findings,
+        recommendations=recommendations,
     )
     return scored_copy(case, review)
