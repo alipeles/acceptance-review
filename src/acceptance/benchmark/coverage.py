@@ -30,6 +30,10 @@ from acceptance.benchmark.hooks import provenance_from, scored_copy
 from acceptance.change.diff import extract_change_set
 from acceptance.config import ScopeExpansionPolicy
 from acceptance.coverage.classify import CoverageStatus, ImplementationCoverage, classify_coverage
+from acceptance.coverage.declaration_comparison import (
+    compare_declaration,
+    declaration_mismatch_finding,
+)
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
 from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
 from acceptance.coverage.unrequested import detect_unrequested_changes
@@ -158,6 +162,10 @@ def classify_case(
 
     if case.inputs.declaration_text is not None:
         declaration = parse_declaration(case.inputs.declaration_text)
+        mismatches = compare_declaration(
+            declaration, obligations, change_set, test_evidence, client
+        )
+        findings.extend(declaration_mismatch_finding(m) for m in mismatches)
     else:
         declaration = None
         findings.append(declaration_absent_finding())
