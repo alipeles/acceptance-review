@@ -46,6 +46,7 @@ __all__ = [
     "ExecutionEvidence",
     "Link",
     "Finding",
+    "TestRecommendation",
     "ReviewProvenance",
     "Review",
 ]
@@ -345,6 +346,26 @@ class Finding(_Model):
         return self
 
 
+class TestRecommendation(_Model):
+    """A §9.5 structured recommendation for additional test evidence (M7.1).
+
+    Emitted for a criterion whose evidence is missing/weak, in a
+    machine-readable form a coding agent can pick up and implement in a single
+    iteration. The product recommends — it never modifies code (§9.5). Each
+    field is one of §9.5's discrete prescriptions; `plausible_defect` is the
+    surviving §8.2 defect the recommended test must catch, so a green run
+    demonstrably closes the gap rather than nominally addressing it (§8.4)."""
+
+    obligation_id: str
+    criterion: str  # the obligation's observable behavior, restated
+    required_inputs: str
+    boundary_conditions: str
+    expected_output: str
+    required_assertions: list[str] = Field(default_factory=list)
+    plausible_defect: str
+    repo_conventions: str
+
+
 class ReviewProvenance(_Model):
     """How a review was produced (§13.6 trustworthiness). Stored so a reader
     can tell what determinism controls were in force — a fixed-seed replay is
@@ -369,6 +390,7 @@ class Review(_Model):
     obligation_map: list[Obligation] = Field(default_factory=list)
     open_questions: list[OpenQuestion] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
+    recommendations: list[TestRecommendation] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
     recommendation: str | None = None
 
