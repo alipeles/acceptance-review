@@ -28,7 +28,7 @@ from acceptance.coverage.open_questions import apply_open_question_resolutions, 
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode, ModelClient
 from acceptance.pipeline import run_review
-from acceptance.report import render_report
+from acceptance.report import render_next_instruction, render_report
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import ChangeSet, OpenQuestion, Review
@@ -148,8 +148,26 @@ def run_check(
         policy=config.scope_expansion_policy,
         provenance=config.provenance(),
     )
+    # §10.1 step 12: when gaps exist, hand the agent a next instruction. The
+    # file is a CLI side effect, not part of the pipeline — the benchmark runs
+    # the same review over fixture repos and must not write into them.
+    instruction_path = _write_next_instruction(review, repo_path)
+    if instruction_path is not None:
+        review = review.model_copy(update={"recommendation": str(instruction_path)})
     store.write(review)
     return review
+
+
+def _write_next_instruction(review: Review, repo: Path) -> Path | None:
+    """Write `.acceptance/next-instruction.md` when the review has gaps to
+    close; return its path, or None when there is nothing to instruct."""
+    instruction = render_next_instruction(review)
+    if instruction is None:
+        return None
+    path = repo / ".acceptance" / "next-instruction.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(instruction + "\n", encoding="utf-8")
+    return path.relative_to(repo) if path.is_relative_to(repo) else path
 
 
 def run_decompose(task: str, config: RunConfig) -> Decomposition:

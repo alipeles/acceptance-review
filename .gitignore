@@ -22,6 +22,10 @@ htmlcov/
 
 # Recorded model transcripts / local run artifacts (plan M0.4/M0.5)
 .acceptance/cache/
+# The checker's own output when dogfooding this repo (M7.3) — a per-run
+# artifact regenerated from the current review, not a source file to commit.
+.acceptance/next-instruction.md
+.acceptance/reviews/
 *.local
 
 # OS / editor
