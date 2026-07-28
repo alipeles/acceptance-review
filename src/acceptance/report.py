@@ -16,7 +16,12 @@ Status is stated in words, not symbols, and every evidence line carries its
 
 from __future__ import annotations
 
-from acceptance.review_state import UNREQUESTED_CHANGE, Obligation, Review
+from acceptance.review_state import (
+    UNREQUESTED_CHANGE,
+    CompletionVerdict,
+    Obligation,
+    Review,
+)
 
 _EMPTY = "  (none)"
 _NO_CODE = "(no corresponding change)"
@@ -77,6 +82,72 @@ def render_report(review: Review) -> str:
 
     lines.append(f"Recommended next instruction: {review.recommendation or '(none)'}")
 
+    return "\n".join(lines)
+
+
+def render_next_instruction(review: Review) -> str | None:
+    """The §10.1 step-12 next instruction, or None when there is nothing to do.
+
+    A deliberately thin projection of the same Review `render_report` renders —
+    no new judgment, no model call, every line traced to a finding, an M7.1
+    recommendation, or an unresolved open question. What it adds over the §16
+    report is SELECTION and mood: the report says "here is everything I found,
+    you judge"; this says "here is what to do next", addressed to the coding
+    agent rather than the human reviewer. So it drops satisfied obligations,
+    advisory unrequested changes, and evidence limitations.
+
+    Kept beside `render_report` rather than in its own module because both are
+    the same concern (render a Review for a consumer) — and kept a SEPARATE
+    function because the two audiences diverge: terminal styling (M7.6) must
+    never reach a file on disk, and reviewer-facing explanations (#143) are
+    noise in an agent handoff.
+
+    Produced only when gaps exist (§10.1 step 12), keyed off M7.2's verdict so
+    there is no second definition of what counts as material.
+    """
+    if review.completion is not None and review.completion.verdict is CompletionVerdict.NO_MATERIAL_GAPS:
+        return None
+
+    gaps = [
+        f.related_obligation
+        for f in review.findings
+        if f.type == "coverage_gap" and f.related_obligation is not None
+    ]
+    unresolved = [q.question for q in review.open_questions if not q.resolved]
+    if not gaps and not review.recommendations and not unresolved:
+        return None
+
+    lines = ["# Next instruction", ""]
+    if review.completion is not None:
+        lines += [f"Review verdict: **{review.completion.verdict.value}**.", ""]
+
+    if unresolved:
+        lines.append("## Answer these first")
+        lines += [f"{i}. {q}" for i, q in enumerate(unresolved, start=1)]
+        lines += ["", "These are unresolved ambiguities in the task; the work cannot be "
+                  "judged complete until they are settled.", ""]
+
+    if gaps:
+        lines.append("## Implement")
+        lines += [f"{i}. {g}" for i, g in enumerate(gaps, start=1)]
+        lines.append("")
+
+    if review.recommendations:
+        lines.append("## Add these tests")
+        for i, rec in enumerate(review.recommendations, start=1):
+            lines.append(f"{i}. **{rec.criterion}**")
+            lines.append(f"   - Inputs: {rec.required_inputs}")
+            if rec.boundary_conditions:
+                lines.append(f"   - Boundaries: {rec.boundary_conditions}")
+            lines.append(f"   - Expected: {rec.expected_output}")
+            for assertion in rec.required_assertions:
+                lines.append(f"   - Assert: {assertion}")
+            lines.append(f"   - Must fail if: {rec.plausible_defect}")
+            if rec.repo_conventions:
+                lines.append(f"   - Conventions: {rec.repo_conventions}")
+        lines.append("")
+
+    lines.append("Update the builder declaration after the changes.")
     return "\n".join(lines)
 
 

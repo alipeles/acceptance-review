@@ -1,16 +1,17 @@
 # Task
-The disposition classifier mislabels test-fixture updates that a source change in the same diff requires as `separable`, recommending they be split into their own PR. Wiring a capability into the shared pipeline forces existing tests to add fixture and dispatch entries; removing those entries breaks the suite, so they are load-bearing, not separable. Fix the removability litmus rather than adding another special case.
+Produce a `.acceptance/next-instruction.md` that tells the coding agent what to implement and which discriminating tests to add, so a review with gaps hands back an actionable next step rather than stopping at a findings report.
 
 ## Constraints
-- The litmus must ask both whether every obligation would still be satisfied if the change were removed and whether the rest of the diff would still work — tests still passing, imports still resolving. Asking only about obligations is what let this class of misclassification recur three times.
-- A change confined to test files that adds no new test function and accompanies a source change is test scaffolding the existing tests need; classify it as in service, structurally, with no model call.
-- Adding a new test function is the discriminator: that may be genuinely distinct test work, so it escalates to model judgment instead of being swept into in service.
-- A diff containing only test changes is ordinary test work and must still be judged rather than assumed to be scaffolding for something else.
-- Classifying a change as separable must not require it to be large enough to justify its own pull request. A small opportunistic edit is still unrequested scope the reviewer should see; size governs the recommendation, not the classification.
+- Produce the instruction only when gaps exist. A review with no material gaps has nothing to instruct and must write no file.
+- Derive the instruction entirely from findings and recommendations the review already produced; make no new judgment and no additional model call, so every line traces to something already established.
+- Key the decision to produce an instruction off the computed completion verdict rather than re-deriving what counts as a material gap, so there is only one definition of materiality.
+- Select rather than restate: the instruction is addressed to the coding agent, so it omits satisfied obligations, advisory unrequested changes, and evidence limitations, which belong in the human-facing report.
+- Writing the file is a command-line side effect, not part of the shared review pipeline, so that scoring the same review over fixture repositories never writes into them.
+- Unresolved open questions come first, because a review blocked on an ambiguity cannot be closed by writing code.
 
 ## Completion expectations
 - Implementation
-- A source change accompanied by the test-fixture edits it requires classifies those edits as in service without a model call.
-- A change that adds a new test function still escalates to model judgment.
-- A test-only diff still escalates to model judgment.
-- A small opportunistic edit to an unrelated function is still classified separable.
+- On a review with several gaps, the instruction names each gap and the discriminating test that closes it, including the plausible defect that test must fail on.
+- The instruction closes by asking for the builder declaration to be updated.
+- A review with no material gaps produces no instruction and no file.
+- The rendered report points at the written instruction file instead of reporting none.

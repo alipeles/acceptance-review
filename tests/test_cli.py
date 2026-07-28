@@ -479,3 +479,73 @@ def test_check_without_a_head_reviews_the_working_tree(
     assert review["reviewed_revision"] == "<working-tree>"
     changed = {f["path"] for f in review["change_set"]["files"]}
     assert "uncommitted.py" in changed  # the working tree, not the HEAD commit
+
+
+# --- M7.3: the next-instruction file ---
+
+
+def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+    git_repo, fixture_task_path, capsys, monkeypatch
+):
+    """§10.1 step 12: when the review has gaps, `check` writes
+    .acceptance/next-instruction.md and the §16 report points at it instead of
+    printing "(none)"."""
+    from acceptance.config import RunConfig
+    from tests.support import client_dispatching
+
+    # A checker that finds one obligation, leaves it uncovered, and recommends
+    # a discriminating test for it — i.e. a review with real gaps.
+    monkeypatch.setattr(RunConfig, "build_client", lambda self, completion_fn=None: client_dispatching({
+        "_Decomposition": {"obligations": [{
+            "id": "gap-ob", "description": "Handle the empty case",
+            "type": "functional", "importance": "critical", "explicit": True,
+            "observable_behavior": "...", "source_quote": "Do the thing.",
+        }], "open_questions": []},
+        "_Mappings": {"mappings": []},
+        "_Discrimination": {"discriminations": []},
+        "_Coverage": {"classifications": [{
+            "obligation_id": "gap-ob", "status": "not_addressed",
+            "rationale": "no code handles the empty case", "diff_refs": [],
+        }]},
+        "_Detections": {"unrequested_changes": []},
+        "_Judgments": {"resolutions": []},
+        "_Recommendations": {"recommendations": [{
+            "obligation_id": "gap-ob",
+            "required_inputs": "an empty collection",
+            "boundary_conditions": "zero elements",
+            "expected_output": "an empty result, not an error",
+            "required_assertions": ["assert handle([]) == []"],
+            "plausible_defect": "raises IndexError on an empty input",
+            "repo_conventions": "tests/test_thing.py",
+        }]},
+        "_Mismatches": {"mismatches": []},
+    }))
+
+    assert main([
+        "check", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+    ]) == 0
+
+    instruction_file = git_repo["path"] / ".acceptance" / "next-instruction.md"
+    assert instruction_file.is_file()
+    written = instruction_file.read_text()
+    assert "Handle the empty case" in written  # the gap
+    assert "Must fail if: raises IndexError on an empty input" in written  # its test
+    assert "Update the builder declaration after the changes." in written
+    # The §16 report's pointer now names the file rather than "(none)".
+    out = capsys.readouterr().out
+    assert ".acceptance/next-instruction.md" in out
+
+
+def test_check_writes_no_instruction_file_when_nothing_is_wrong(
+    git_repo, fixture_task_path, capsys, stub_model
+):
+    """A checker that finds nothing has nothing to instruct, so no file is
+    written and the report still reads "(none)"."""
+    assert main([
+        "check", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+    ]) == 0
+
+    assert not (git_repo["path"] / ".acceptance" / "next-instruction.md").exists()
+    assert "Recommended next instruction: (none)" in capsys.readouterr().out
