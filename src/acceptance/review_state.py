@@ -232,6 +232,12 @@ class Obligation(_Model):
     # The two axes are deliberately separate: coverage_status is "does the code
     # respond", evidence_class is "do the tests discriminate" (§9.2 vs §9.3).
     coverage_status: str | None = None
+    # The code regions that satisfy this obligation, as "path#hunk" refs —
+    # symmetric with `test_evidence`'s test node ids, so each obligation
+    # carries BOTH axes' citations. Kept for every status, not just gaps: an
+    # `addressed` obligation produces no finding, so without this the review
+    # could say an obligation was satisfied but never say where (M7.4).
+    coverage_refs: list[str] = Field(default_factory=list)
 
 
 class Link(_Model):

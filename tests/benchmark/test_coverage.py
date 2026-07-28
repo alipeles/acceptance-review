@@ -508,11 +508,14 @@ def test_cli_and_benchmark_share_one_pipeline(tmp_path, monkeypatch):
     import acceptance.cli as cli_module
 
     calls: list[str] = []
+    reviews: list = []
     real_run_review = benchmark_coverage.run_review
 
     def tracking_run_review(**kwargs):
         calls.append("called")
-        return real_run_review(**kwargs)
+        review = real_run_review(**kwargs)
+        reviews.append(review)
+        return review
 
     monkeypatch.setattr(benchmark_coverage, "run_review", tracking_run_review)
     monkeypatch.setattr(cli_module, "run_review", tracking_run_review)
@@ -533,3 +536,75 @@ def test_cli_and_benchmark_share_one_pipeline(tmp_path, monkeypatch):
         client=client_finding_nothing(),
     )
     assert len(calls) == 2  # ...and so does the CLI path
+
+    # Both invocations must run the SAME stages, not merely call the same
+    # helper: a conditional inside run_review that skipped a stage for one
+    # consumer would keep the call count at 2 while silently diverging again.
+    benchmark_review, cli_review = reviews
+    assert benchmark_review.model_dump(exclude={"provenance", "reviewed_revision"}) == (
+        cli_review.model_dump(exclude={"provenance", "reviewed_revision"})
+    )
+
+
+def test_the_shared_pipeline_runs_every_stage(tmp_path):
+    """The divergence guard proves the two consumers AGREE; it cannot prove the
+    shared pipeline is COMPLETE — a stage dropped from run_review would vanish
+    from both callers identically and still compare equal.
+
+    So assert the assembled Review carries an artifact from each stage, using a
+    client that returns non-empty responses for every schema. A pipeline that
+    silently stopped running mapping, strength classification, coverage,
+    recommendations or the verdict would leave its artifact empty here.
+    """
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+    change_set = extract_change_set(
+        Path(case.inputs.repo), case.inputs.base_revision, case.inputs.head_revision
+    )
+    receipt = next(f.path for f in change_set.files if f.path.endswith("receipt.py"))
+    test_file = next(f.path for f in change_set.files if f.path.endswith("test_receipt.py"))
+    test_id = f"{test_file}::test_positive_line"
+
+    client = _client_dispatching({
+        "_Decomposition": _decomposition_response([{
+            "id": "show-fields",
+            "description": "Show the item name, quantity, and unit price",
+            "type": "functional",
+            "source_quote": "Show the item name, the quantity, and the unit price.",
+        }]),
+        "_Mappings": {"mappings": [
+            {"test_id": test_id, "obligation_ids": ["show-fields"], "rationale": "."},
+        ]},
+        "_Discrimination": {"obligations": [
+            {"obligation_id": "show-fields", "defects": [
+                {"description": "omits a field", "would_be_caught": False, "reason": "."},
+            ]},
+        ]},
+        "_Coverage": _classification_response([
+            {"obligation_id": "show-fields", "status": "addressed",
+             "diff_refs": [f"{receipt}#0"]},
+        ]),
+        "_Detections": {"unrequested_changes": []},
+        "_Judgments": {"resolutions": []},
+        "_Recommendations": {"recommendations": [{
+            "obligation_id": "show-fields",
+            "required_inputs": "a receipt line",
+            "boundary_conditions": "none",
+            "expected_output": "all three fields",
+            "required_assertions": ["assert name in line"],
+            "plausible_defect": "omits a field",
+            "repo_conventions": "test_receipt.py",
+        }]},
+        "_Mismatches": {"mismatches": []},
+    })
+
+    review = classify_case(case, client).reviewer_output
+    obligation = review.obligation_map[0]
+
+    assert obligation.description  # decomposition ran
+    assert obligation.test_evidence == [test_id]  # test discovery + mapping ran
+    assert obligation.evidence_class is not None  # discrimination + strength ran
+    assert obligation.achieved_evidence_tier is not None  # strength applied a tier
+    assert obligation.coverage_status == "addressed"  # coverage classification ran
+    assert obligation.coverage_refs  # coverage refs were carried through
+    assert review.recommendations  # recommendation generation ran
+    assert review.completion is not None  # the verdict was derived

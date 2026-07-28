@@ -103,12 +103,11 @@ def test_report_shell_renders_all_sections_present_and_empty(git_repo, fixture_t
     out = capsys.readouterr().out
     # Every §16 section present...
     assert "Task completion: UNABLE-TO-DETERMINE" in out  # the real M7.2 verdict
-    assert "Obligation coverage:" in out
-    assert "Test evidence:" in out
+    assert "Obligations:" in out
     assert "Unrequested changes:" in out
     assert "Recommended next instruction: (none)" in out
     # ...and empty when the checker finds nothing.
-    assert out.count("(none)") == 4  # 3 list sections + the next-instruction line
+    assert out.count("(none)") == 3  # 2 list sections + the next-instruction line
 
 
 def test_check_persists_the_review_to_the_store(git_repo, fixture_task_path, stub_model):
@@ -424,3 +423,59 @@ def test_render_change_set_omits_ignored_section_when_empty():
 
     rendered = render_change_set(change_set)
     assert "Ignored" not in rendered
+
+
+
+# --- check: the M7.4 additions (optional declaration + working-tree review) ---
+
+
+def test_check_threads_an_optional_declaration_into_the_review(
+    git_repo, fixture_task_path, tmp_path, capsys, stub_model
+):
+    """--declaration must actually reach the pipeline: with one supplied, the
+    declaration is parsed onto the Review and §7.4's "absent" minor finding is
+    NOT raised. Guards a flag that parses but silently drops its value."""
+    declaration = tmp_path / "declaration.md"
+    declaration.write_text(
+        "# Builder Declaration\n## Mandate as understood\nAdd the thing.\n"
+    )
+
+    assert main([
+        "check", "--json", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+        "--declaration", str(declaration),
+    ]) == 0
+
+    with_declaration = json.loads(capsys.readouterr().out)
+    assert with_declaration["declaration"] is not None
+    assert with_declaration["declaration"]["mandate_as_understood"] == "Add the thing."
+    assert "declaration_absent" not in {f["type"] for f in with_declaration["findings"]}
+
+    # ...and the same invocation WITHOUT it succeeds too, differing only in the
+    # §7.4 absent finding. Pairing both runs in one test means a --declaration
+    # that parses but is ignored cannot pass: the two outputs would be identical.
+    assert main([
+        "check", "--json", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+    ]) == 0
+    without = json.loads(capsys.readouterr().out)
+    assert without["declaration"] is None
+    assert "declaration_absent" in {f["type"] for f in without["findings"]}
+
+
+def test_check_without_a_head_reviews_the_working_tree(
+    git_repo, fixture_task_path, capsys, stub_model
+):
+    """Omitting --head reviews the working tree (§5.1), so a check can run
+    before a commit exists. The uncommitted file must appear in the change set
+    — a fixture whose tree matched HEAD would pass either way."""
+    (git_repo["path"] / "uncommitted.py").write_text("def added_after_head():\n    return 1\n")
+
+    assert main([
+        "check", "--json", "--task", fixture_task_path, "--base", git_repo["base"],
+    ]) == 0
+
+    review = json.loads(capsys.readouterr().out)
+    assert review["reviewed_revision"] == "<working-tree>"
+    changed = {f["path"] for f in review["change_set"]["files"]}
+    assert "uncommitted.py" in changed  # the working tree, not the HEAD commit

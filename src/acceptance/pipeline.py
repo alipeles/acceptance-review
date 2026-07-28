@@ -112,15 +112,30 @@ def unrequested_finding(dispositioned: DispositionedChange) -> Finding | None:
 def _apply_coverage_status(
     obligations: list[Obligation], coverages: list[ImplementationCoverage]
 ) -> list[Obligation]:
-    """Record each obligation's §9.2 coverage status on it, so the report can
-    render the implementation-coverage axis faithfully (✓/✗/?) instead of
-    inferring it from which findings happen to exist — findings are lossy here
-    (an `addressed` obligation produces none, and so does an unanalyzed one)."""
-    status_by_id = {c.obligation_id: c.status.value for c in coverages}
-    return [
-        obligation.model_copy(update={"coverage_status": status_by_id.get(obligation.id)})
-        for obligation in obligations
-    ]
+    """Record each obligation's §9.2 coverage status AND the code regions that
+    satisfy it, so the report can render the implementation-coverage axis
+    faithfully instead of inferring it from which findings happen to exist —
+    findings are lossy here (an `addressed` obligation produces none, and so
+    does an unanalyzed one, yet they mean opposite things). Carrying the refs
+    is what lets the review say *where* an obligation was satisfied, not just
+    that it was."""
+    coverage_by_id = {c.obligation_id: c for c in coverages}
+    updated = []
+    for obligation in obligations:
+        coverage = coverage_by_id.get(obligation.id)
+        updated.append(
+            obligation.model_copy(
+                update={
+                    "coverage_status": coverage.status.value if coverage else None,
+                    "coverage_refs": (
+                        [f"{ref.file}#{ref.hunk_header}" for ref in coverage.diff_refs]
+                        if coverage
+                        else []
+                    ),
+                }
+            )
+        )
+    return updated
 
 
 def run_review(
