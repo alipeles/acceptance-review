@@ -31,6 +31,27 @@ The classifier is a **hybrid** (chosen deliberately, not for cheapness):
      file's changes (#126). This is direct structural evidence sitting in the
      diff itself (the import statement), not something requiring semantic
      judgment — reverting the change would break the file that imports it.
+   - a change confined to test files that adds no new `def test_...` but
+     accompanies a source change → test fixtures/helpers/harness updates the
+     EXISTING tests need to keep passing → **in_service** (#139). Adding a new
+     test function is the discriminator: that may be distinct test work, so it
+     escalates instead.
+
+The three cases above are one principle, not three exceptions. The litmus is
+"delete only this change, keep the rest of the diff": a change is `separable`
+only if every obligation is still satisfied AND the rest of the diff still
+WORKS (imports resolve, tests pass). Supporting scaffolding for THIS diff —
+docs describing it, tests exercising it, fixtures those tests need — fails the
+second test and is in_service. Earlier revisions asked only about obligations,
+which is why this class of misclassification recurred (#122, #126, #139).
+
+Deliberately NOT part of the litmus: whether the change is big enough to
+deserve its own PR. A one-line opportunistic edit (a stray comment, a
+defensive check on an unrelated function) is still unrequested scope the
+reviewer should see, so it is `separable` even though "split this into its own
+PR" would be silly advice for it. Size governs the RECOMMENDATION, not the
+classification — the taxonomy currently has no home for "unrequested but too
+small to split", which is an open question against DR-081 (#145).
    - a pure new-file addition that no obligation's coverage claims → new,
      self-contained work → **separable**.
 2. Everything else — edits to existing code with no clean coverage attribution —
@@ -91,23 +112,41 @@ class DispositionedChange(PersistableModel):
 
 _SYSTEM_PROMPT = """\
 You classify one UNREQUESTED code change — a change no listed obligation called
-for — into exactly one disposition, using the removability litmus:
+for — into exactly one disposition.
 
-  Would EVERY obligation still be satisfied if this change were removed?
+Apply the removability litmus. Delete ONLY this change, keep the rest of the
+diff, and ask BOTH questions:
 
-- in_service: NO — some obligation depends on this change (e.g. a refactor or
-  helper the requested feature needs), even though nothing requested it
-  directly. Removing it would leave an obligation incomplete. A comment or
-  docstring update that describes an in-service code edit in the SAME file is
-  itself in_service — it is not distinct work, and it should never be
-  recommended for splitting into its own PR. A symbol this change defines or
-  renames that is imported and used by ANOTHER file changed in this SAME diff
-  is also in_service for that usage — removing it would break the file that
-  imports it.
-- separable: YES, and it is coherent, self-contained work — valuable but a
-  DISTINCT unit that belongs in its own PR / backlog item.
-- risky: YES, but it edits existing public interface, dependencies, or adjacent
-  behavior in a way that could hide a regression. Scrutinize.
+  (a) Would every obligation still be satisfied?
+  (b) Would the rest of the diff still WORK — tests still passing, imports
+      still resolving, the delivered change still coherent and self-consistent?
+
+A change is `separable` when BOTH answers are YES. If either answer is NO, it
+is `in_service`. Do not also require the change to be large enough to justify
+its own PR — a tiny opportunistic edit is still separable.
+
+- in_service: the delivered change DEPENDS on this, or this is an artifact OF
+  the delivered change rather than distinct work. Two ways that happens:
+  * Something else in this diff would break without it — a helper or symbol
+    another changed file imports, a test fixture/helper/harness update the
+    existing tests need to keep passing, a signature change its callers
+    require. Answer (b) is NO.
+  * It exists only to describe or exercise this change — a docstring or comment
+    documenting the code being changed, tests covering the new behavior,
+    fixtures supporting those tests. It is not a DISTINCT unit of work, so it
+    should never be recommended for splitting into its own PR, even when the
+    code would technically still run without it.
+- separable: removable per (a) and (b) — work that stands apart from the
+  mandate rather than supporting it. This covers BOTH a substantial unit that
+  belongs in its own PR AND a small opportunistic edit someone made in passing
+  (a stray comment, a defensive check on an unrelated function): both are
+  unrequested scope the reviewer should see. Do NOT require a change to be big
+  enough to justify its own PR before calling it separable — size governs the
+  RECOMMENDATION, not the classification. Supporting scaffolding for THIS diff
+  is never separable; it is in_service.
+- risky: removable per (a) and (b), but it edits existing public interface,
+  dependencies, or adjacent behavior in a way that could hide a regression.
+  Scrutinize.
 
 Policy knob: under a STRICT scope-expansion policy, treat an edit to existing
 adjacent behavior as `risky`; under a LOOSE policy, treat it as merely
@@ -285,6 +324,39 @@ def _is_load_bearing_via_cross_file_import(
     return False
 
 
+_TEST_DEF_RE = re.compile(r"^\+\s*(?:async\s+)?def\s+test_")
+
+
+def _is_test_support_for_a_source_change(
+    change: UnrequestedChange, change_set: ChangeSet
+) -> bool:
+    """Test scaffolding a source change in the SAME diff requires (#139).
+
+    Confined to test files, adds no new test function, and accompanies a source
+    change — i.e. fixtures, helpers, or harness updates the EXISTING tests need
+    to keep passing once the source changed. Removing it breaks the suite, so
+    the removability litmus says in_service; it is also not a distinct unit of
+    work (nobody ships "add a fixture" as its own PR).
+
+    Adding a new `def test_...` is the discriminator: that is plausibly new,
+    independent test work, so it escalates to the model rather than being
+    swept up here."""
+    if not change.diff_refs:
+        return False
+    category_by_path = {f.path: f.category for f in change_set.files}
+    if not all(category_by_path.get(ref.file) == "test" for ref in change.diff_refs):
+        return False
+    # Must accompany a real source change — test-only diffs are ordinary test work.
+    if not any(f.category == "source" for f in change_set.files):
+        return False
+
+    for ref in change.diff_refs:
+        content = _hunk_content(ref, change_set)
+        if content and any(_TEST_DEF_RE.match(line) for line in content.splitlines()):
+            return False  # new test functions: possibly distinct work, let the model judge
+    return True
+
+
 def _is_pure_addition(change: UnrequestedChange, change_set: ChangeSet) -> bool:
     if not change.diff_refs:
         return False
@@ -398,6 +470,17 @@ def classify_dispositions(
                     "A symbol this change defines or renames is imported by another "
                     "file changed in the same diff; reverting it would break that "
                     "file's changes.",
+                    decided_by="structural",
+                )
+            )
+        elif _is_test_support_for_a_source_change(change, change_set):
+            results.append(
+                _dispositioned(
+                    change,
+                    UnrequestedChangeDisposition.IN_SERVICE,
+                    "Test fixtures/helpers the existing tests need to keep passing "
+                    "under this diff's source change; removing it would break the "
+                    "suite, and it is not a distinct unit of work.",
                     decided_by="structural",
                 )
             )
