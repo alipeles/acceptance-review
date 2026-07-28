@@ -26,7 +26,8 @@ from acceptance.coverage.classify import ImplementationCoverage, classify_covera
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
 from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
 from acceptance.coverage.unrequested import detect_unrequested_changes
-from acceptance.llm import LLMError, Mode
+from acceptance.llm import LLMError, Mode, ModelClient
+from acceptance.pipeline import run_review
 from acceptance.report import render_report
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
@@ -63,6 +64,15 @@ def _read_task(task_path: str, repo: Path | None = None) -> str:
     return path.read_text()
 
 
+def _read_declaration(declaration: str | None, repo: Path | None = None) -> str | None:
+    """The optional §7.4 builder declaration's text, or None when not supplied.
+    Optional by default in local mode (§7.4) — its absence is recorded as a
+    minor finding by the pipeline, never an error."""
+    if declaration is None:
+        return None
+    return _read_task(declaration, repo=repo)
+
+
 def _task_ignore_pattern(task_path: str, repo: Path) -> str | None:
     """The `--task` file's path relative to `repo`, as a root-anchored
     gitignore pattern, if the file lives inside the repo — `None` otherwise
@@ -86,10 +96,12 @@ def _task_ignore_pattern(task_path: str, repo: Path) -> str | None:
 def run_check(
     task: str,
     base: str,
-    head: str,
+    head: str | None,
     config: RunConfig,
     store: ReviewStore,
     repo: Path | None = None,
+    declaration: str | None = None,
+    client: ModelClient | None = None,
 ) -> Review:
     """Walking-skeleton pipeline: ingest → build empty Review → persist.
 
@@ -99,23 +111,42 @@ def run_check(
     explicitly instead, since it processes many cases without changing the
     process's working directory.
 
-    The obligation/coverage/test analysis that consumes config.build_client()
-    lands in M1+. What is real here is the end-to-end shape: a task and a
-    revision range in, a well-formed persisted Review out.
+    Since M7.4 this runs the full shared pipeline (`pipeline.run_review`) —
+    the same one the benchmark scores — so the §16 report shows real
+    obligation coverage, test evidence with tiers, unrequested changes, and
+    the computed verdict. `head=None` reviews the working tree (§5.1), so a
+    check can run before a commit exists.
     """
-    _read_task(task, repo=repo)
+    repo_path = repo if repo is not None else Path(".")
+    task_text = _read_task(task, repo=repo)
     base_sha = _resolve_revision(base, repo=repo)
-    head_sha = _resolve_revision(head, repo=repo)
-    review = Review(
-        mode="local",
-        reviewed_revision=head_sha,
+
+    # The task file is the specification, not part of the reviewed deliverable —
+    # it must never appear in its own diff (same rule as run_classify).
+    task_ignore = _task_ignore_pattern(task, repo_path)
+    extra_patterns = [task_ignore] if task_ignore else []
+
+    if head is None:
+        change_set = extract_working_tree_change_set(
+            repo_path, base_sha, extra_ignore_patterns=extra_patterns
+        )
+        reviewed_revision = "<working-tree>"
+    else:
+        reviewed_revision = _resolve_revision(head, repo=repo)
+        change_set = extract_change_set(
+            repo_path, base_sha, reviewed_revision, extra_ignore_patterns=extra_patterns
+        )
+
+    declaration_text = _read_declaration(declaration, repo=repo)
+    review = run_review(
+        task_text=task_text,
+        change_set=change_set,
+        repo=repo_path,
+        client=client if client is not None else config.build_client(),
+        reviewed_revision=reviewed_revision,
+        declaration_text=declaration_text,
+        policy=config.scope_expansion_policy,
         provenance=config.provenance(),
-        # Diff endpoints only; real extraction exists (change/diff.py, dogfooded
-        # via `acceptance diff`) but isn't wired into this pipeline yet (M7).
-        # When it is, pass extra_ignore_patterns=[_task_ignore_pattern(task,
-        # repo)] the same way run_classify does — the task file must never
-        # appear in its own diff.
-        change_set=ChangeSet(base_revision=base_sha, head_revision=head_sha),
     )
     store.write(review)
     return review
@@ -293,7 +324,16 @@ def build_parser() -> argparse.ArgumentParser:
     check = subparsers.add_parser("check", help="Run a local completion check.")
     check.add_argument("--task", required=True, help="Path to the task file.")
     check.add_argument("--base", required=True, help="Base Git revision.")
-    check.add_argument("--head", required=True, help="Head Git revision.")
+    check.add_argument(
+        "--head",
+        default=None,
+        help="Head Git revision. Omit to review the working tree (§5.1).",
+    )
+    check.add_argument(
+        "--declaration",
+        default=None,
+        help="Path to an optional §7.4 builder declaration (absence is a minor finding).",
+    )
     _add_model_flags(check, default_mode=Mode.REPLAY.value)  # never call live unbidden
     check.add_argument(
         "--json",
@@ -363,9 +403,15 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
         )
         try:
-            review = run_check(args.task, args.base, args.head, config, ReviewStore())
+            review = run_check(
+                args.task, args.base, args.head, config, ReviewStore(),
+                declaration=args.declaration,
+            )
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)
+            return 1
+        except LLMError as exc:
+            print(f"acceptance: model error: {exc}", file=sys.stderr)
             return 1
         if args.json:
             print(json.dumps(review.to_dict(), indent=2))

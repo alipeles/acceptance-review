@@ -226,6 +226,18 @@ class Obligation(_Model):
     achieved_evidence_tier: EvidenceTier | None = None
     test_evidence: list[str] = Field(default_factory=list)
     evidence_class: EvidenceClassification | None = None
+    # M3.1 implementation-coverage status, as its string value (the
+    # `CoverageStatus` enum lives in coverage/classify.py, which imports from
+    # here — same reason ReviewProvenance stores determinism_mode as a string).
+    # The two axes are deliberately separate: coverage_status is "does the code
+    # respond", evidence_class is "do the tests discriminate" (§9.2 vs §9.3).
+    coverage_status: str | None = None
+    # The code regions that satisfy this obligation, as "path#hunk" refs —
+    # symmetric with `test_evidence`'s test node ids, so each obligation
+    # carries BOTH axes' citations. Kept for every status, not just gaps: an
+    # `addressed` obligation produces no finding, so without this the review
+    # could say an obligation was satisfied but never say where (M7.4).
+    coverage_refs: list[str] = Field(default_factory=list)
 
 
 class Link(_Model):
@@ -357,6 +369,8 @@ class TestRecommendation(_Model):
     field is one of §9.5's discrete prescriptions; `plausible_defect` is the
     surviving §8.2 defect the recommended test must catch, so a green run
     demonstrably closes the gap rather than nominally addressing it (§8.4)."""
+
+    __test__ = False  # not a pytest test class; name matches §9.5's "recommendation"
 
     obligation_id: str
     criterion: str  # the obligation's observable behavior, restated

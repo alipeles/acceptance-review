@@ -51,3 +51,18 @@ def git_repo_elsewhere(tmp_path):
 @pytest.fixture
 def fixture_task_path():
     return str(Path(__file__).parent / "fixtures" / "tasks" / "minimal_task.md")
+
+
+@pytest.fixture
+def stub_model(monkeypatch):
+    """Make `main()`'s internally-built client a no-op stub.
+
+    Since M7.4 `acceptance check` runs the real shared pipeline, so CLI tests
+    that exercise plumbing (provenance, persistence, determinism, the §16
+    shell) rather than model judgment must not issue live calls. Patching
+    RunConfig.build_client keeps `main()`'s own argument parsing under test.
+    """
+    from acceptance.config import RunConfig
+    from tests.support import client_finding_nothing
+
+    monkeypatch.setattr(RunConfig, "build_client", lambda self, completion_fn=None: client_finding_nothing())

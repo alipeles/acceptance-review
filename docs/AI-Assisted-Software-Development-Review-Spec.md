@@ -407,23 +407,37 @@ Will not: require/privilege a specific agent; read full agent prompt histories; 
 ```
 acceptance check --task .acceptance/current-task.md --base main --head HEAD
 ```
+Output is organized **by obligation**, so a criterion's two axes — code evidence (§9.2) and test evidence (§9.3) — sit together rather than in separate lists the reader must join by eye. Status is stated in words, and every item is numbered (`1.`, `1.1`, …) so a reader can refer to one precisely. Numbering is positional within a report; the durable per-entity ids live in the data model (§15).
+
 ```
 Task completion: INCOMPLETE
 
-Obligation coverage:
-  ✓ CSV generation implemented
-  ✗ Active filters applied
-  ? Displayed column order preserved
-  ✗ 100,000-row limit handled
+2 obligation(s) not fully implemented; 1 with non-discriminating test evidence.
 
-Test evidence:
-  ✓ Basic CSV generation        [execution-confirmed]
-  ✓ Escaping                    [static]
-  ✗ Filter behavior             [unsupported]
-  ✗ Row-limit failure           [unsupported]
+Obligations:
+
+  1. CSV generation implemented
+       code evidence: addressed
+         1.1  export/csv.py#@@ -12,6 +12,28 @@
+       test evidence: strongly supported  [tier: execution-confirmed]
+         1.2  tests/test_export.py::test_generates_csv
+         1.3  tests/test_export.py::test_escaping
+
+  2. Active filters applied to the export
+       code evidence: not addressed
+         (no corresponding change)
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  3. Displayed column order preserved
+       code evidence: unclear
+         3.1  export/csv.py#@@ -40,3 +40,7 @@
+       test evidence: nominally supported  [tier: static]
+         3.2  tests/test_export.py::test_columns
 
 Unrequested changes:
-  ! Export filename behavior changed
+  1. [separable] Export filename behavior changed
+       export/naming.py#@@ -5,2 +5,6 @@
 
 Recommended next instruction: .acceptance/next-instruction.md
 ```

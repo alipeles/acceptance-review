@@ -1,13 +1,23 @@
-from acceptance.report import render_report
+"""M7.4 acceptance: the rendered §16 report shows obligation coverage, test
+evidence with a per-line evidence tier, advisory unrequested changes, and the
+computed verdict."""
+
 from acceptance.review_state import (
+    UNREQUESTED_CHANGE,
+    CompletionResult,
+    CompletionVerdict,
     Component,
     EvidenceTier,
     Finding,
     Link,
     Obligation,
     ObligationType,
+    OpenQuestion,
     Review,
+    TestRecommendation,
+    UnrequestedChangeDisposition,
 )
+from acceptance.report import render_report
 
 
 def test_empty_review_renders_the_full_shell():
@@ -16,10 +26,7 @@ def test_empty_review_renders_the_full_shell():
     assert report == (
         "Task completion: INDETERMINATE\n"
         "\n"
-        "Obligation coverage:\n"
-        "  (none)\n"
-        "\n"
-        "Test evidence:\n"
+        "Obligations:\n"
         "  (none)\n"
         "\n"
         "Unrequested changes:\n"
@@ -29,36 +36,231 @@ def test_empty_review_renders_the_full_shell():
     )
 
 
-def test_populated_review_lists_obligations_and_findings():
+def _obligation(
+    description: str,
+    coverage: str | None,
+    evidence: str | None,
+    coverage_refs: list[str] | None = None,
+    tests: list[str] | None = None,
+) -> Obligation:
+    return Obligation(
+        id=description.lower().replace(" ", "-")[:20],
+        description=description,
+        type=ObligationType.FUNCTIONAL,
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
+        coverage_status=coverage,
+        coverage_refs=coverage_refs or [],
+        evidence_class=evidence,
+        test_evidence=tests or [],
+        achieved_evidence_tier=EvidenceTier.STATIC if evidence else None,
+    )
+
+
+def test_report_renders_each_obligation_with_both_axes_numbered():
     review = Review(
         mode="local",
         reviewed_revision="abc",
         obligation_map=[
-            Obligation(
-                id="coupons-use-spread",
-                description="Coupons use index + spread.",
-                type=ObligationType.FUNCTIONAL,
-                importance="critical",
-                explicit=True,
-                observable_behavior="...",
-            )
+            _obligation(
+                "CSV generation implemented", "addressed", "strongly_supported",
+                coverage_refs=["export.py#@@ -1 +9 @@"],
+                tests=["tests/test_export.py::test_generates_csv"],
+            ),
+            _obligation("Active filters applied", "not_addressed", "unsupported"),
         ],
         findings=[
             Finding(
-                type="weak_test_evidence",
-                severity="high",
-                description="Filter behavior unsupported",
+                type=UNREQUESTED_CHANGE,
+                severity="medium",
+                description="Export filename behavior changed",
                 evidence_tier=EvidenceTier.STATIC,
                 produced_by=Component.STATIC_ANALYZER,
-                links=[Link(kind="test", ref="tests/t.py:1")],
-                related_obligation="Active filters are applied",
+                links=[Link(kind="code", ref="export.py#@@ -1 +1 @@")],
+                disposition=UnrequestedChangeDisposition.SEPARABLE,
             )
         ],
+        completion=CompletionResult(
+            verdict=CompletionVerdict.INCOMPLETE,
+            rationale="1 obligation(s) not fully implemented.",
+            limitations=["Judgments are static inferences unless a higher tier is recorded."],
+        ),
         recommendation=".acceptance/next-instruction.md",
     )
 
     report = render_report(review)
 
-    assert "  ? Coupons use index + spread." in report
-    assert "  - Filter behavior unsupported [static]" in report
+    assert "Task completion: INCOMPLETE" in report
+    # Obligations are numbered, with both axes nested beneath each.
+    assert "  1. CSV generation implemented" in report
+    assert "  2. Active filters applied" in report
+    assert "       code evidence: addressed" in report
+    assert "       test evidence: strongly supported  [tier: static]" in report
+    assert "       code evidence: not addressed" in report
+    # Evidence items are numbered <obligation>.<item>, continuously across axes.
+    assert "         1.1  export.py#@@ -1 +9 @@" in report
+    assert "         1.2  tests/test_export.py::test_generates_csv" in report
+    # An obligation with neither axis satisfied says so explicitly.
+    assert "(no corresponding change)" in report
+    assert "(no mapped test)" in report
+    # Unrequested changes are advisory, numbered, with their disposition.
+    assert "  1. [separable] Export filename behavior changed" in report
+    assert "Evidence limitations:" in report
     assert "Recommended next instruction: .acceptance/next-instruction.md" in report
+
+
+def test_status_is_stated_in_words_not_symbols():
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[
+            _obligation("A", "addressed", "strongly_supported"),
+            _obligation("B", "not_addressed", "unsupported"),
+            _obligation("C", "unclear", "indeterminate"),
+        ],
+    )
+
+    report = render_report(review)
+
+    assert "\u2713" not in report and "\u2717" not in report
+    for word in ("addressed", "not addressed", "unclear", "strongly supported", "unsupported"):
+        assert word in report
+
+
+def test_every_test_evidence_line_shows_a_tier():
+    # M7.4 acceptance: "every test-evidence line shows its evidence tier."
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[
+            _obligation("A", "addressed", "strongly_supported"),
+            _obligation("B", "addressed", "partially_supported"),
+            _obligation("C", "addressed", None),  # unclassified -> tier: none
+        ],
+    )
+
+    report = render_report(review)
+    evidence_lines = [ln for ln in report.splitlines() if "test evidence:" in ln]
+
+    assert len(evidence_lines) == 3
+    assert all("tier: " in line for line in evidence_lines)
+
+
+def test_test_citations_name_the_test_not_just_the_file():
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[
+            _obligation(
+                "A", "addressed", "strongly_supported",
+                tests=["tests/test_billing.py::test_half_of_a_month"],
+            )
+        ],
+    )
+
+    report = render_report(review)
+
+    assert "tests/test_billing.py::test_half_of_a_month" in report
+
+
+def test_unclassified_obligation_renders_as_unclassified():
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[_obligation("Not yet analyzed", None, None)],
+    )
+
+    report = render_report(review)
+
+    assert "  1. Not yet analyzed" in report
+    assert "code evidence: unclassified" in report
+    assert "test evidence: unclassified  [tier: none]" in report
+
+
+def test_open_questions_and_recommendations_are_numbered():
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[_obligation("A", "addressed", "nominally_supported")],
+        open_questions=[
+            OpenQuestion(id="q-1", question="Minus sign or parentheses?"),
+            OpenQuestion(id="q-2", question="Tax inclusive?", resolved=True),
+        ],
+        recommendations=[
+            TestRecommendation(
+                obligation_id="a",
+                criterion="Daily rate uses days_in_month",
+                required_inputs="A non-30-day month",
+                boundary_conditions="0 days",
+                expected_output="price/28*days",
+                required_assertions=["assert prorate(280, 14, 28) == 140.0"],
+                plausible_defect="hard-codes /30",
+                repo_conventions="test_billing.py",
+            )
+        ],
+    )
+
+    report = render_report(review)
+
+    assert "  1. [open] Minus sign or parentheses?" in report
+    assert "  2. [resolved] Tax inclusive?" in report
+    assert "  1. Daily rate uses days_in_month" in report
+    assert "detects: hard-codes /30" in report
+
+
+def test_tier_label_comes_from_the_recorded_tier_not_a_hardcoded_string():
+    """Every other fixture uses STATIC, so a hardcoded "tier: static" would
+    pass. Use a higher tier to prove the label is read from the obligation."""
+    obligation = _obligation("Executed behavior", "addressed", "strongly_supported")
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[
+            obligation.model_copy(update={"achieved_evidence_tier": EvidenceTier.DEFECT_KILLED})
+        ],
+    )
+
+    report = render_report(review)
+
+    assert "[tier: defect-killed]" in report
+    assert "tier: static" not in report
+
+
+def test_multi_word_verdict_renders_as_the_16_headline():
+    """NO_MATERIAL_GAPS is the multi-word case: underscores become hyphens and
+    the whole verdict is upper-cased. Other tests only cover INCOMPLETE."""
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[_obligation("A", "addressed", "strongly_supported")],
+        completion=CompletionResult(
+            verdict=CompletionVerdict.NO_MATERIAL_GAPS,
+            rationale="Every obligation is addressed and strongly supported.",
+            limitations=["No material gaps found at the achievable evidence tier."],
+        ),
+    )
+
+    report = render_report(review)
+
+    assert "Task completion: NO-MATERIAL-GAPS" in report
+    # §3.7: a positive verdict must carry its bounding caveat.
+    assert "achievable evidence tier" in report
+
+
+def test_the_two_axes_render_independently_for_the_same_obligation():
+    """The load-bearing case: code that responds (coverage `addressed`) whose
+    tests do NOT discriminate (`nominally_supported`). A renderer that
+    collapsed the two axes into one label would show this as fine on both."""
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[
+            _obligation("Daily rate uses days_in_month", "addressed", "nominally_supported")
+        ],
+    )
+
+    report = render_report(review)
+
+    assert "code evidence: addressed" in report
+    assert "test evidence: nominally supported" in report
