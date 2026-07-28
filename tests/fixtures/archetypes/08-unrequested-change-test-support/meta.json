@@ -1,0 +1,6 @@
+{
+  "scenario": 8,
+  "name": "unrequested-change-test-support",
+  "intended_pytest": "pass",
+  "summary": "Delivering the per-item discount changes the shape line_total expects, so the existing tests' _item() helper must gain a discount key or every pre-existing test raises KeyError. The task never asked for the test helper to change, but removing that change breaks the suite -- it is in service of the requested obligation, not separable work anyone would split into its own PR."
+}

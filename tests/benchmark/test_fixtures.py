@@ -33,12 +33,15 @@ EXPECTED_NAMES = {
     "09-revision-cycle",
 }
 
-# The three #8 siblings (M3.5.4/DR-081): one archetype per unrequested-change
-# disposition #8 alone doesn't demonstrate.
+# The #8 siblings (M3.5.4/DR-081): one archetype per unrequested-change
+# disposition #8 alone doesn't demonstrate. `-test-support` (#139) covers the
+# case that recurred across #122/#126/#139 — test scaffolding a source change
+# in the same diff requires, which is in_service rather than separable.
 EXPECTED_SIBLING_NAMES = {
     "08-unrequested-change-in-service",
     "08-unrequested-change-separable",
     "08-unrequested-change-risky-adjacent",
+    "08-unrequested-change-test-support",
 }
 
 

@@ -1,0 +1,36 @@
+{
+  "obligations": [
+    {
+      "id": "apply-item-discount",
+      "description": "Apply the item's discount percentage to the line subtotal",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "test_line_total_applies_the_item_discount asserts a 10% discount turns 10.0 into 9.0; an implementation that ignored the discount would return 10.0 and fail.",
+      "candidate_tests": ["test_pricing.py::test_line_total_applies_the_item_discount"]
+    },
+    {
+      "id": "round-to-two-decimals",
+      "description": "Round the discounted line total to two decimals",
+      "explicit": true,
+      "evidence_class": "nominally_supported",
+      "evidence_rationale": "Every asserted result (10.0, 3.25, 9.0) is already exact at two decimals, so a mutant that dropped the rounding would still pass. A present, relevant test that kills zero mapped mutants for this rule.",
+      "candidate_tests": ["test_pricing.py::test_line_total_applies_the_item_discount"]
+    }
+  ],
+  "gaps": [
+    {
+      "id": "gap-rounding-never-exercised",
+      "description": "No input produces a value needing rounding, so the two-decimal rule is never exercised; an implementation that omitted round() would pass every test",
+      "obligation_id": "round-to-two-decimals",
+      "severity": "low"
+    }
+  ],
+  "unrequested_changes": [
+    {
+      "id": "test-support-item-helper-widening",
+      "description": "The _item() test helper gained a discount key/parameter. The task never asked for the test helper to change, but line_total now reads item['discount'], so without it every pre-existing test raises KeyError. Removing this change breaks the suite, and 'split the fixture update into its own PR' is not coherent advice -- it is in service of the requested change, not separable work.",
+      "file": "test_pricing.py",
+      "disposition": "in_service"
+    }
+  ]
+}

@@ -1,18 +1,16 @@
 # Task
-Produce the §16 CLI output — a per-obligation report where each obligation carries its own code evidence and test evidence, plus unrequested changes and a recommended-next-instruction pointer. The `check` command must run the full assembled review pipeline so the report reflects everything the checker computes.
+The disposition classifier mislabels test-fixture updates that a source change in the same diff requires as `separable`, recommending they be split into their own PR. Wiring a capability into the shared pipeline forces existing tests to add fixture and dispatch entries; removing those entries breaks the suite, so they are load-bearing, not separable. Fix the removability litmus rather than adding another special case.
 
 ## Constraints
-- One shared pipeline function serves both the CLI and the benchmark. Previously every capability from test discovery onward reached only the benchmark path, so the command used to dogfood the tool ran an older, shorter chain and could not show test evidence or a verdict at all; sharing one function keeps the two consumers identical by construction.
-- The report is organized by obligation: each obligation is a block carrying both of its evidence axes beneath it, rather than two separate lists the reader must join by eye. Code evidence answers whether the code responds to the obligation; test evidence answers whether the tests discriminate.
-- Every test-evidence line shows its evidence tier, so a static inference is never presented as execution-confirmed.
-- Status is stated in words rather than symbols, and obligations, evidence items, findings, questions and recommendations are numbered so a reader can refer to any one of them precisely.
-- A test citation names the specific test, not merely the file that contains it. A code citation names the specific changed region.
-- An obligation records the code regions that satisfy it whatever its status, so the report can say where an obligation was satisfied and not merely that it was.
-- The headline verdict is the computed completion result; a review with no computed verdict renders as indeterminate rather than assumed good.
-- Unrequested changes render as advisory, each showing its disposition.
+- The litmus must ask both whether every obligation would still be satisfied if the change were removed and whether the rest of the diff would still work — tests still passing, imports still resolving. Asking only about obligations is what let this class of misclassification recur three times.
+- A change confined to test files that adds no new test function and accompanies a source change is test scaffolding the existing tests need; classify it as in service, structurally, with no model call.
+- Adding a new test function is the discriminator: that may be genuinely distinct test work, so it escalates to model judgment instead of being swept into in service.
+- A diff containing only test changes is ordinary test work and must still be judged rather than assumed to be scaffolding for something else.
+- Classifying a change as separable must not require it to be large enough to justify its own pull request. A small opportunistic edit is still unrequested scope the reviewer should see; size governs the recommendation, not the classification.
 
 ## Completion expectations
 - Implementation
-- Rendered output matches the §16 layout, with every test-evidence line showing its evidence tier.
-- The benchmark and the CLI produce their reviews from the same pipeline function.
-- `check` accepts an optional builder declaration and reviews the working tree when no head revision is given.
+- A source change accompanied by the test-fixture edits it requires classifies those edits as in service without a model call.
+- A change that adds a new test function still escalates to model judgment.
+- A test-only diff still escalates to model judgment.
+- A small opportunistic edit to an unrelated function is still classified separable.
