@@ -100,3 +100,27 @@ def test_parses_the_projects_own_current_task_file():
     assert parsed.completion_expectations
     for span in [parsed.behavior, *parsed.constraints, *parsed.completion_expectations]:
         assert parsed.source[span.start : span.end] == span.text
+
+
+def test_a_bullet_wrapped_across_lines_still_has_an_exact_span():
+    """Findings cite requirement text by position, so `source[start:end]` must
+    equal `span.text` for every span — a citation that points a few characters
+    off is a wrong citation.
+
+    A wrapped bullet is the case that breaks it: markdown-it collapses the
+    continuation line's indent, so the parser cannot find the content literally
+    and falls back to the enclosing block. That fallback used to strip the text
+    without narrowing the offsets, leaving the span one newline too long.
+    """
+    text = (
+        "# Task\nDo the thing.\n\n"
+        "## Constraints\n"
+        "- A constraint long enough that it wraps onto a second\n"
+        "  line with continuation indent.\n"
+    )
+
+    parsed = parse_task_file(text)
+
+    (constraint,) = parsed.constraints
+    assert parsed.source[constraint.start : constraint.end] == constraint.text
+    assert constraint.text.endswith("continuation indent.")

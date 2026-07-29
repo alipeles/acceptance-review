@@ -63,25 +63,29 @@ def _adjacent_edit_case(tmp_path: Path):
     return change, obligations, change_set
 
 
+GPT_MINI = "openai/gpt-5.4-mini"
+CLAUDE_SONNET = "anthropic/claude-sonnet-5"
+
+
 @pytest.mark.parametrize(
-    ("policy", "expected"),
+    ("model", "policy", "expected"),
     [
-        pytest.param(
-            ScopeExpansionPolicy.STRICT, "risky",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason=(
-                    "#152: the policy knob does not reach the model's judgment — "
-                    "STRICT currently yields `separable`, same as LOOSE. strict=True "
-                    "so this FAILS the suite the moment the knob starts working, "
-                    "rather than going quietly stale."
-                ),
-            ),
-        ),
-        (ScopeExpansionPolicy.LOOSE, "separable"),
+        # Was xfailed as #152 "the policy knob never reaches the model". It was
+        # not a prompt defect and not a model limitation: the harness hid the
+        # enum behind a schema reference, and inlining it flipped this from
+        # `separable` 3/3 to `risky` 3/3 on the same model and prompt (#158).
+        (GPT_MINI, ScopeExpansionPolicy.STRICT, "risky"),
+        (GPT_MINI, ScopeExpansionPolicy.LOOSE, "separable"),
+        # The provider-agnosticism claim (M0.4), held to the same recorded-
+        # evidence standard as every other capability. Asserting it by hand was
+        # what let the harness sit OpenAI-only behind a provider-agnostic
+        # dependency until #158.
+        (CLAUDE_SONNET, ScopeExpansionPolicy.STRICT, "risky"),
     ],
 )
-def test_the_policy_knob_actually_changes_the_models_disposition(tmp_path, policy, expected):
+def test_the_policy_knob_actually_changes_the_models_disposition(
+    tmp_path, model, policy, expected
+):
     """The prompt says a STRICT policy treats an edit to existing adjacent
     behaviour as `risky`, and a LOOSE one as merely `separable`.
 
@@ -95,7 +99,7 @@ def test_the_policy_knob_actually_changes_the_models_disposition(tmp_path, polic
     change, obligations, change_set = _adjacent_edit_case(tmp_path)
 
     result = classify_dispositions(
-        [change], obligations, [], change_set, policy, recorded_client()
+        [change], obligations, [], change_set, policy, recorded_client(model)
     )[0]
 
     assert result.decided_by == "model"  # no fast-path claimed it

@@ -109,10 +109,73 @@ class TranscriptStore:
 
 
 def _default_completion_fn(**kwargs: Any) -> Any:
-    """Live provider call. Imported lazily so REPLAY never needs LiteLLM."""
+    """Live provider call. Imported lazily so REPLAY never needs LiteLLM.
+
+    `drop_params` lets LiteLLM discard controls a provider rejects instead of
+    raising. Without it the harness is OpenAI-only in practice: Anthropic
+    refuses `seed` outright and accepts only `temperature=1`, so a run against
+    Claude fails before it starts. Dropping is safe *because* we then record
+    what actually survived — see `_litellm_effective_controls`.
+    """
     import litellm
 
-    return litellm.completion(**kwargs)
+    return litellm.completion(drop_params=True, **kwargs)
+
+
+def inline_schema_refs(schema: dict) -> dict:
+    """Resolve every `$ref` against `$defs` and drop the definitions block.
+
+    Pydantic factors enums and nested models out into `$defs` and points at them
+    with `$ref`. Providers handle that badly, and not only by mangling the reply
+    shape — it measurably degrades the judgment itself. With the enum behind a
+    `$ref`, `gpt-5.4-mini` answered `separable` 3/3 on an archetype whose ground
+    truth is `risky`; with the identical prompt, model and determinism controls
+    and the schema inlined, it answered `risky` 3/3 (#158). The allowed values
+    have to be visible at the field, not one indirection away.
+
+    This is why the harness cannot simply forward `model_json_schema()`.
+    """
+
+    def resolve(node: Any, defs: dict) -> Any:
+        if isinstance(node, dict):
+            if "$ref" in node:
+                target = defs[node["$ref"].rsplit("/", 1)[1]]
+                siblings = {k: v for k, v in node.items() if k != "$ref"}
+                # Siblings win: `$ref` alongside overrides is a legal narrowing.
+                return {**resolve(target, defs), **siblings}
+            return {k: resolve(v, defs) for k, v in node.items() if k != "$defs"}
+        if isinstance(node, list):
+            return [resolve(item, defs) for item in node]
+        return node
+
+    return resolve(schema, schema.get("$defs", {}))
+
+
+def _litellm_effective_controls(model: str, **requested: Any) -> dict[str, Any]:
+    """Which determinism controls the provider will actually honour.
+
+    `drop_params` discards silently, so asking afterwards is the only way to
+    avoid a transcript that claims a seed the provider never received. LiteLLM
+    answers this offline, with no call and no billing. A `None` means the
+    provider ignores that control and ran at its own default — the run is not
+    pinned, and the record has to say so.
+    """
+    import litellm
+    from litellm.utils import get_optional_params
+
+    provider, _, bare = model.rpartition("/")
+    applied = get_optional_params(
+        model=bare or model,
+        custom_llm_provider=provider or litellm.get_llm_provider(model)[1],
+        drop_params=True,
+        **requested,
+    )
+    return {name: applied.get(name) for name in requested}
+
+
+# Carried on the function rather than the client so an injected `completion_fn`
+# — every capability test — stays free of the provider stack (M0.4/M0.5).
+_default_completion_fn.effective_controls = _litellm_effective_controls  # type: ignore[attr-defined]
 
 
 def _extract_content(response: Any) -> str:
@@ -180,7 +243,9 @@ class ModelClient:
             "temperature": self.temperature,
             "response_schema": {
                 "name": response_model.__name__,
-                "schema": response_model.model_json_schema(),
+                # Inlined here, inside the HASHED request, because it is what
+                # actually reaches the provider and it changes the answer.
+                "schema": inline_schema_refs(response_model.model_json_schema()),
             },
         }
         if self.seed is not None:
@@ -216,31 +281,53 @@ class ModelClient:
         return self._validate(record["response"], response_model)
 
     def _record_live_call(self, key: str, request: dict) -> dict:
+        requested = {"temperature": request["temperature"]}
+        if "seed" in request:
+            requested["seed"] = request["seed"]
+
         response = self._completion_fn(
             model=request["model"],
             messages=request["messages"],
-            temperature=request["temperature"],
-            # strict mode is the strongest constraint providers offer; response
-            # models must therefore be strict-compatible (every field required,
-            # no open-ended dicts). A model that isn't fails loudly on the live
-            # call rather than degrading to unconstrained text.
+            # LiteLLM's `response_format` is its provider-agnostic interface —
+            # it translates this into each provider's own mechanism (Anthropic
+            # takes structured output as tool use) and normalizes the reply.
+            # We pass the schema rather than the model class only so it can be
+            # ref-inlined first; passing the class would have LiteLLM call
+            # `model_json_schema()` itself and reintroduce the `$defs` that
+            # break Anthropic's reply shape and degrade judgment everywhere.
             response_format={
                 "type": "json_schema",
                 "json_schema": {
                     "name": request["response_schema"]["name"],
                     "schema": request["response_schema"]["schema"],
+                    # Strict is the strongest constraint providers offer, so
+                    # response models must be strict-compatible: every field
+                    # required, no open-ended dicts. One that isn't fails loudly
+                    # on the live call rather than degrading to free text.
                     "strict": True,
                 },
             },
-            **({"seed": request["seed"]} if "seed" in request else {}),
+            **requested,
         )
+
         record = {
             "request": request,
             "response": _extract_content(response),
             "usage": _extract_usage(response),
+            # What the provider honoured, which is not always what we asked for.
+            # Recorded so a transcript never implies a determinism control that
+            # was silently dropped; absent for injected completion functions,
+            # which have no provider to drop anything.
+            "controls_applied": self._effective_controls(request["model"], requested),
         }
         self.store.write(key, record)
         return record
+
+    def _effective_controls(self, model: str, requested: dict) -> dict:
+        reporter = getattr(self._completion_fn, "effective_controls", None)
+        if reporter is None:
+            return dict(requested)
+        return reporter(model, **requested)
 
     @staticmethod
     def _validate(content: str, response_model: type[ResponseModelT]) -> ResponseModelT:

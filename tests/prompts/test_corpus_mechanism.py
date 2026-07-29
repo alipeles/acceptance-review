@@ -17,6 +17,7 @@ from acceptance.coverage.disposition import classify_dispositions
 from acceptance.llm import Mode, ModelClient, TranscriptNotFoundError, TranscriptStore
 from tests.prompts.test_disposition_prompt import _adjacent_edit_case
 from tests.support import (
+    APPROVED_CORPUS_MODELS,
     RECORDED_TRANSCRIPTS,
     empty_corpus_client,
     recorded_client,
@@ -127,10 +128,95 @@ def test_the_corpus_is_recorded_under_production_determinism_controls():
     assert client.temperature == 0.0
 
     for path in sorted(RECORDED_TRANSCRIPTS.glob("*.json")):
-        request = json.loads(path.read_text())["request"]
-        assert request["model"] == DEFAULT_MODEL, path.name
+        record = json.loads(path.read_text())
+        request = record["request"]
+        # A closed set, not "any model": an unlisted model in the corpus means
+        # something recorded that should not have (#158).
+        assert request["model"] in APPROVED_CORPUS_MODELS, path.name
+        # Controls are asserted on the REQUEST, which records what the run asked
+        # for and is what the hash covers — so it is uniform across providers.
         assert request["seed"] == DEFAULT_SEED, path.name
         assert request["temperature"] == 0.0, path.name
+        # What the provider actually honoured is a separate, per-provider fact.
+        # Anthropic refuses `seed` and accepts only `temperature=1`, so a
+        # recording against it is legitimately unpinned — but it must SAY so
+        # rather than let the request's values imply determinism it never had.
+        assert "controls_applied" in record, (
+            f"{path.name} predates provider-honoured control recording (#158); "
+            "re-record it so the corpus cannot imply controls that never applied."
+        )
+
+
+def test_the_corpus_covers_every_approved_model_not_just_one():
+    """Provider-agnosticism has to be demonstrated, not merely permitted.
+
+    The test above checks no UNAPPROVED model is present, which a corpus holding
+    a single provider satisfies trivially. This asserts the other direction:
+    every approved model is actually exercised. Without it, dropping the
+    Anthropic recording and updating the manifest would end provider coverage
+    while the whole suite still passed — and the M0.4 claim that models can be
+    swapped would quietly go back to resting on a hand-run experiment (#158).
+    """
+    recorded = {
+        json.loads(path.read_text())["request"]["model"]
+        for path in RECORDED_TRANSCRIPTS.glob("*.json")
+    }
+
+    assert recorded == set(APPROVED_CORPUS_MODELS), (
+        f"corpus covers {sorted(recorded)} but the approved set is "
+        f"{sorted(APPROVED_CORPUS_MODELS)}; every approved model needs a "
+        "recording, or provider-agnosticism is untested for the ones missing"
+    )
+    assert len(recorded) > 1, "a single-provider corpus cannot show portability"
+
+
+def test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls():
+    """Recorded proof that the live path reaches a non-OpenAI model.
+
+    Anthropic refuses `seed` and accepts only `temperature=1`, so before #158
+    the call raised before contacting the model. Asserting `drop_params=True` is
+    passed only shows what we ASK for; this shows a real call actually completed
+    under those dropped controls and returned a schema-valid answer.
+
+    That is what keeps provider-agnosticism from sliding back to being verified
+    by hand: the evidence is committed, and it replays offline.
+    """
+    completed = {}
+    for path in RECORDED_TRANSCRIPTS.glob("*.json"):
+        record = json.loads(path.read_text())
+        if record["request"]["model"].startswith("anthropic/"):
+            completed[path.name] = record
+
+    assert completed, "no recording proves a call to a control-rejecting provider completed"
+    for name, record in completed.items():
+        # Requested, per the hashed request...
+        assert record["request"]["seed"] == DEFAULT_SEED, name
+        assert record["request"]["temperature"] == 0.0, name
+        # ...refused by the provider, and recorded as refused rather than assumed.
+        assert record["controls_applied"] == {"seed": None, "temperature": None}, name
+        # ...and the call still produced a usable answer.
+        assert json.loads(record["response"])["disposition"] in {
+            "in_service",
+            "separable",
+            "risky",
+        }, name
+
+
+def test_the_default_model_is_one_the_corpus_actually_holds():
+    """Ties the production default to the recorded evidence.
+
+    Every prompt-quality test builds its request from `DEFAULT_MODEL`, so a
+    default that no recording covers turns the whole prompt suite into
+    `TranscriptNotFoundError`. Asserting the link makes a default change a
+    deliberate act — swap it, and you must re-record — rather than silent drift.
+    """
+    assert DEFAULT_MODEL in APPROVED_CORPUS_MODELS
+
+    recorded = {
+        json.loads(path.read_text())["request"]["model"]
+        for path in RECORDED_TRANSCRIPTS.glob("*.json")
+    }
+    assert DEFAULT_MODEL in recorded
 
 
 def test_the_corpus_replays_rather_than_calling_live_by_default():
@@ -159,8 +245,8 @@ def test_the_corpus_holds_exactly_the_transcripts_the_tests_replay():
     """
     corpus = sorted(RECORDED_TRANSCRIPTS.glob("*.json"))
 
-    assert len(corpus) == 2, (
-        f"expected 2 recorded transcripts, found {len(corpus)}: "
+    assert len(corpus) == 3, (
+        f"expected 3 recorded transcripts, found {len(corpus)}: "
         f"{[p.name for p in corpus]}. An unexpected entry usually means "
         "something recorded when it should have replayed."
     )
@@ -213,7 +299,8 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
     that request miss. The hazard is a mechanism that responds to a miss by
     quietly re-recording or falling back to a live call: the known defect would
     then stop failing, and a tracked problem would silently disappear from the
-    suite — the opposite of what `xfail(strict=True)` is protecting.
+    suite. (#152 was exactly such a tracked problem, held by an
+    `xfail(strict=True)` until #158 found and fixed its cause.)
 
     Assert the miss stays a miss: an edited prompt raises rather than healing
     itself, so the failure remains visible until someone re-records
@@ -243,7 +330,7 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
             )
 
     # ...and the committed corpus is untouched by the attempt.
-    assert len(list(RECORDED_TRANSCRIPTS.glob("*.json"))) == 2
+    assert len(list(RECORDED_TRANSCRIPTS.glob("*.json"))) == 3
 
 
 # The exact recordings this suite replays. A count alone is not enough: if an
@@ -251,8 +338,13 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
 # the guard would pass. (Corpus pollution happened twice while building #146,
 # so this is an observed hazard, not a hypothetical one.)
 _APPROVED_TRANSCRIPTS = {
-    "5e6e292efd09a321bb8770e6af7866fa3d4838f6893535d27fbf7d046d5eea9a.json",
-    "afad1fd19f007b4c3aaeccbc977652f1dd9596ac040e912c1becadc11060f133.json",
+    # gpt-5.4-mini, LOOSE -> separable
+    "4b42b8d09463c45c7a7dbcd16e04a81da478e920d86884c725880ade4a616841.json",
+    # gpt-5.4-mini, STRICT -> risky
+    "da0e5bd015e737c58fc0c9171c13f7811d0c093a42cef011ff9868ec3b562b78.json",
+    # claude-sonnet-5, STRICT -> risky. The provider-agnosticism claim (M0.4)
+    # held to recorded evidence rather than a hand-run experiment (#158).
+    "1da205e181df6f1daf95e807191775b81bf73437acf2eec9d2a14fdc32ae2cb5.json",
 }
 
 
