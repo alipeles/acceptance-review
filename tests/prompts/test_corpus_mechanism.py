@@ -170,6 +170,55 @@ def test_the_corpus_covers_every_approved_model_not_just_one():
     assert len(recorded) > 1, "a single-provider corpus cannot show portability"
 
 
+def test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls():
+    """Recorded proof that the live path reaches a non-OpenAI model.
+
+    Anthropic refuses `seed` and accepts only `temperature=1`, so before #158
+    the call raised before contacting the model. Asserting `drop_params=True` is
+    passed only shows what we ASK for; this shows a real call actually completed
+    under those dropped controls and returned a schema-valid answer.
+
+    That is what keeps provider-agnosticism from sliding back to being verified
+    by hand: the evidence is committed, and it replays offline.
+    """
+    completed = {}
+    for path in RECORDED_TRANSCRIPTS.glob("*.json"):
+        record = json.loads(path.read_text())
+        if record["request"]["model"].startswith("anthropic/"):
+            completed[path.name] = record
+
+    assert completed, "no recording proves a call to a control-rejecting provider completed"
+    for name, record in completed.items():
+        # Requested, per the hashed request...
+        assert record["request"]["seed"] == DEFAULT_SEED, name
+        assert record["request"]["temperature"] == 0.0, name
+        # ...refused by the provider, and recorded as refused rather than assumed.
+        assert record["controls_applied"] == {"seed": None, "temperature": None}, name
+        # ...and the call still produced a usable answer.
+        assert json.loads(record["response"])["disposition"] in {
+            "in_service",
+            "separable",
+            "risky",
+        }, name
+
+
+def test_the_default_model_is_one_the_corpus_actually_holds():
+    """Ties the production default to the recorded evidence.
+
+    Every prompt-quality test builds its request from `DEFAULT_MODEL`, so a
+    default that no recording covers turns the whole prompt suite into
+    `TranscriptNotFoundError`. Asserting the link makes a default change a
+    deliberate act — swap it, and you must re-record — rather than silent drift.
+    """
+    assert DEFAULT_MODEL in APPROVED_CORPUS_MODELS
+
+    recorded = {
+        json.loads(path.read_text())["request"]["model"]
+        for path in RECORDED_TRANSCRIPTS.glob("*.json")
+    }
+    assert DEFAULT_MODEL in recorded
+
+
 def test_the_corpus_replays_rather_than_calling_live_by_default():
     """Replay is the default so the ordinary suite needs no API key and makes
     no network call; recording is opt-in via ACCEPTANCE_RECORD."""

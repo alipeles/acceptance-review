@@ -14,7 +14,6 @@ rather than a hand-run experiment.
 
 ## Scope exclusions
 - Carrying the provider-honoured determinism controls through into the review's own provenance is deferred to a follow-up; this change records them in the transcript only.
-- Changing which model the tool runs by default is out of scope.
 
 ## Completion expectations
 - Implementation
@@ -24,3 +23,4 @@ rather than a hand-run experiment.
 - Every recorded transcript states which determinism controls actually applied, and a control the provider discarded reads as not in force rather than as the value requested.
 - The recorded corpus holds transcripts from more than one provider, drawn from a declared set of approved models, so provider-agnosticism rests on recorded evidence like every other capability.
 - A requirement span locates its text exactly, so `source[start:end]` equals the span's own text even when a bullet wraps across lines.
+- The model the tool runs by default is pinned by a guard, so that swapping it becomes a deliberate and visible edit rather than a silent drift that invalidates the recorded corpus.
