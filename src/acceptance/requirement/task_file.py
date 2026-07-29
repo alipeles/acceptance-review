@@ -102,6 +102,19 @@ def _span(text: str, line_offsets: list[int], node: SyntaxTreeNode) -> TextSpan:
     block_end = line_offsets[end_line] if end_line < len(line_offsets) else len(text)
 
     offset = text.find(content, block_start, block_end)
-    if offset < 0:  # fall back to the whole block if content was normalized
-        return TextSpan(text=text[block_start:block_end].strip(), start=block_start, end=block_end)
+    if offset < 0:
+        # Content was normalized and is not literally present — a bullet wrapped
+        # across lines has its continuation indent collapsed, so the search
+        # misses. Fall back to the whole block, but narrow the OFFSETS to match
+        # the stripped text rather than stripping only the text: findings cite
+        # requirement spans by position, so `text[start:end] == span.text` has
+        # to hold or a citation points at the wrong characters.
+        block = text[block_start:block_end]
+        leading = len(block) - len(block.lstrip())
+        trailing = len(block) - len(block.rstrip())
+        return TextSpan(
+            text=block.strip(),
+            start=block_start + leading,
+            end=block_end - trailing,
+        )
     return TextSpan(text=content, start=offset, end=offset + len(content))

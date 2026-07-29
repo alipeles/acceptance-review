@@ -69,3 +69,14 @@ def test_the_seed_is_part_of_the_request_so_changing_it_invalidates_transcripts(
 
     assert seeded["seed"] == 1
     assert request_key(seeded) != request_key(other)
+
+
+def test_the_default_model_is_pinned_so_changing_it_is_deliberate():
+    """The committed corpus is recorded against whatever model the tool runs
+    (tests/prompts), and the benchmark's accuracy numbers are only comparable
+    across runs of the same model. So the default is a pinned fact, not an
+    incidental one — swapping it has to be a visible edit here, not a silent
+    drift that quietly invalidates every recorded judgment.
+    """
+    assert RunConfig().model == "openai/gpt-5.4-mini"
+    assert RunConfig().build_client().model == "openai/gpt-5.4-mini"

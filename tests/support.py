@@ -123,6 +123,19 @@ def client_finding_nothing(model: str = _DEFAULT_MODEL) -> ModelClient:
 # would commit our own diffs and task text into test fixtures.
 RECORDED_TRANSCRIPTS = pathlib.Path(__file__).parent / "fixtures" / "transcripts"
 
+# Models the corpus is allowed to hold recordings for.
+#
+# The tool routes through LiteLLM so the model can be swapped to compare quality
+# and cost (M0.4), and that claim needs the same recorded evidence as every
+# other capability — otherwise provider-agnosticism is the one thing asserted
+# only by hand. So the corpus is deliberately multi-model rather than pinned to
+# the single production model.
+#
+# It stays a CLOSED set, not "any model": a recording's whole value is that it
+# reflects a model the tool actually runs, and an unlisted model in the corpus
+# means something recorded that should not have. Add a model here deliberately.
+APPROVED_CORPUS_MODELS = ("openai/gpt-5.4-mini", "anthropic/claude-sonnet-5")
+
 
 def recording_enabled() -> bool:
     return os.environ.get("ACCEPTANCE_RECORD") == "1"
