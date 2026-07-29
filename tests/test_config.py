@@ -1,6 +1,6 @@
 """RunConfig controls, incl. the M3.5.2 scope-expansion policy (DR-081)."""
 
-from acceptance.config import RunConfig, ScopeExpansionPolicy
+from acceptance.config import RunConfig, ScopeExpansionPolicy, provenance_for
 
 
 def test_scope_expansion_policy_defaults_to_strict():
@@ -25,8 +25,8 @@ def test_scope_expansion_policy_is_not_a_determinism_control():
     # M-B0.4 variance) — two configs differing only in policy are provenance-equal.
     strict = RunConfig(scope_expansion_policy=ScopeExpansionPolicy.STRICT)
     loose = RunConfig(scope_expansion_policy=ScopeExpansionPolicy.LOOSE)
-    assert strict.provenance() == loose.provenance()
-    assert "scope_expansion" not in strict.provenance().model_dump()
+    assert provenance_for(strict.build_client()) == provenance_for(loose.build_client())
+    assert "scope_expansion" not in provenance_for(strict.build_client()).model_dump()
 
 
 # --- determinism: the seed half of "fixed seed/temperature" (#154) ---
@@ -52,7 +52,7 @@ def test_the_default_seed_reaches_both_the_model_call_and_the_provenance():
     config = RunConfig()
 
     assert config.build_client().seed == DEFAULT_SEED
-    assert config.provenance().seed == DEFAULT_SEED
+    assert provenance_for(config.build_client()).controls_requested.seed == DEFAULT_SEED
 
 
 def test_the_seed_is_part_of_the_request_so_changing_it_invalidates_transcripts():
@@ -80,3 +80,92 @@ def test_the_default_model_is_pinned_so_changing_it_is_deliberate():
     """
     assert RunConfig().model == "openai/gpt-5.4-mini"
     assert RunConfig().build_client().model == "openai/gpt-5.4-mini"
+
+
+# --- provenance: what held, not what was asked for (#160) -------------------
+
+
+def _dropping_client(model: str = "anthropic/claude-sonnet-5"):
+    """A client whose provider discards every determinism control, as Anthropic
+    does: it rejects `seed` outright and takes only `temperature=1`."""
+    from tests.support import client_finding_nothing
+
+    client = client_finding_nothing(model=model, temperature=0.0, seed=0)
+    client._completion_fn.effective_controls = lambda model, **requested: {
+        name: None for name in requested
+    }
+    return client
+
+
+def test_provenance_reports_the_controls_the_provider_honoured():
+    """A review that ran against a provider which threw our seed away must not
+    report that seed as in force — that overstates its reproducibility (§13.6),
+    and M-B0.4's variance disclosure reads exactly this field."""
+    from acceptance.requirement.obligations import _Decomposition
+
+    client = _dropping_client()
+    client.complete([{"role": "user", "content": "decompose"}], _Decomposition)
+
+    provenance = provenance_for(client)
+
+    assert provenance.controls_requested.seed == 0
+    assert provenance.controls_in_force.seed is None
+    assert provenance.controls_in_force.temperature is None
+    assert provenance.determinism() == "unpinned"
+
+
+def test_provenance_of_a_run_that_made_no_model_call_is_indeterminate():
+    """Not "the configured controls held". With no call there is no evidence
+    either way, and an indeterminate answer is a valid result (§9.3)."""
+    provenance = provenance_for(RunConfig().build_client())
+
+    assert provenance.controls_in_force is None
+    assert provenance.determinism() == "indeterminate"
+
+
+def test_one_builder_serves_both_the_cli_pipeline_and_the_benchmark():
+    """The CLI and the benchmark each had their own provenance builder, so the
+    benchmark could disagree with the tool it measures about how a review was
+    produced. There is now one, and no config-sourced builder to drift back to."""
+    from acceptance.benchmark import decomposition
+
+    assert decomposition.provenance_for is provenance_for
+    assert not hasattr(RunConfig, "provenance")
+
+
+def test_the_benchmark_hooks_also_report_honoured_controls():
+    """The behavioural half of the above: a benchmark hook's review carries the
+    dropped controls, not the requested ones."""
+    from acceptance.benchmark.case import (
+        BenchmarkCase,
+        BenchmarkCaseInputs,
+        BenchmarkCaseSource,
+        GroundTruthLabels,
+        GroundTruthObligation,
+    )
+    from acceptance.benchmark.decomposition import decompose_case
+
+    case = BenchmarkCase(
+        case_id="provenance-probe",
+        source=BenchmarkCaseSource(kind="archetype", identifier="provenance-probe"),
+        inputs=BenchmarkCaseInputs(
+            repo=".", base_revision="HEAD", head_revision="HEAD", task_text="# Task\nDo a thing.\n"
+        ),
+        ground_truth=GroundTruthLabels(
+            obligations=[
+                GroundTruthObligation(
+                    id="do-a-thing",
+                    description="Do a thing",
+                    explicit=True,
+                    evidence_class="unsupported",
+                    evidence_rationale="Nothing exercises it.",
+                    candidate_tests=[],
+                )
+            ]
+        ),
+    )
+
+    scored = decompose_case(case, _dropping_client())
+
+    assert scored.reviewer_output.provenance.determinism() == "unpinned"
+    assert scored.reviewer_output.provenance.controls_in_force.seed is None

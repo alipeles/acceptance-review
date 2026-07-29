@@ -22,7 +22,7 @@ from typing import Any, Callable
 from pydantic import BaseModel, ConfigDict, Field
 
 from acceptance.llm import DEFAULT_TRANSCRIPT_ROOT, Mode, ModelClient, TranscriptStore
-from acceptance.review_state import ReviewProvenance
+from acceptance.review_state import DeterminismControls, ReviewProvenance
 
 # LiteLLM model string. Provider-agnostic: swap freely via --model / RunConfig.
 DEFAULT_MODEL = "openai/gpt-5.4-mini"
@@ -63,7 +63,7 @@ class RunConfig(BaseModel):
     transcript_root: Path = Field(default=DEFAULT_TRANSCRIPT_ROOT)
     # A review-interpretation knob (consumed by the M3.5.3 separability
     # classifier), not a determinism control — so it deliberately does not
-    # feed build_client() or provenance(). If we later want it recorded for
+    # feed build_client() or provenance_for(). If we later want it recorded for
     # traceability, that is a deliberate addition to ReviewProvenance.
     scope_expansion_policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT
 
@@ -77,10 +77,27 @@ class RunConfig(BaseModel):
             completion_fn=completion_fn,
         )
 
-    def provenance(self) -> ReviewProvenance:
-        return ReviewProvenance(
-            determinism_mode=self.mode.value,
-            model=self.model,
-            temperature=self.temperature,
-            seed=self.seed,
-        )
+
+def provenance_for(client: ModelClient) -> ReviewProvenance:
+    """Stamp provenance from the client that issued the calls.
+
+    Sourced from the client, not from `RunConfig`, because only the client knows
+    which determinism controls the provider actually honoured — configuration
+    knows what was asked for, and on a provider that discards controls those are
+    different (#160). This is the single builder: the CLI pipeline and the
+    benchmark hooks previously each had their own, which could disagree.
+
+    No provider import: the client reads honoured controls off the transcripts
+    it recorded or replayed, so a replay run stays free of the provider stack.
+    """
+    in_force = client.controls_in_force
+    return ReviewProvenance(
+        determinism_mode=client.mode.value,
+        model=client.model,
+        controls_requested=DeterminismControls(
+            temperature=client.temperature, seed=client.seed
+        ),
+        controls_in_force=(
+            None if in_force is None else DeterminismControls(**in_force)
+        ),
+    )

@@ -232,6 +232,11 @@ class ModelClient:
         self.temperature = temperature
         self.seed = seed
         self._completion_fn = completion_fn or _default_completion_fn
+        # One entry per completed call: the controls that call ran under, or
+        # None if nothing is known about them. Accumulated so a review's
+        # provenance can report the controls actually in force rather than the
+        # ones configured (#160) — see `controls_in_force`.
+        self._observed_controls: list[dict | None] = []
 
     def build_request(
         self, messages: list[dict], response_model: type[BaseModel]
@@ -276,11 +281,55 @@ class ModelClient:
                     "Recording makes live calls AND runs the assertions, so a prompt "
                     "that degrades quality fails rather than silently re-recording."
                 )
-            record = self._record_live_call(key, request)
+            record = self._persist_live_call(key, request, response_model)
 
+        # Observed on both paths: a replayed run's reproducibility is exactly
+        # that of the recording it replays, so a transcript recorded against a
+        # provider that discarded a control must not replay as pinned.
+        self._observed_controls.append(record.get("controls_applied"))
         return self._validate(record["response"], response_model)
 
-    def _record_live_call(self, key: str, request: dict) -> dict:
+    @property
+    def controls_in_force(self) -> dict[str, Any] | None:
+        """The determinism controls observed in force across this client's calls.
+
+        `None` means indeterminate: either no call was made, or no call reported
+        anything about its controls (a transcript recorded before this was
+        tracked). That is distinct from a control being *absent*, which is the
+        positive claim that the provider ignored it.
+
+        Otherwise a control counts as in force only if every call agrees on its
+        value. Disagreement, or a call that reported nothing, yields `None` for
+        that control: a run is only as pinned as its least-pinned call, and
+        overstating in the negative direction never claims reproducibility the
+        run does not have (§3.7).
+        """
+        if not any(observed is not None for observed in self._observed_controls):
+            return None
+        per_call = [observed or {} for observed in self._observed_controls]
+        in_force: dict[str, Any] = {}
+        for name in ("temperature", "seed"):
+            values = [call.get(name) for call in per_call]
+            in_force[name] = values[0] if all(v == values[0] for v in values) else None
+        return in_force
+
+    def _persist_live_call(
+        self, key: str, request: dict, response_model: type[BaseModel]
+    ) -> dict:
+        """Make the call, validate the reply, and only then keep the transcript.
+
+        Validating first matters because structured output is best-effort on some
+        providers: Anthropic omitted a required field in 2 of 4 probes of a real
+        response schema. Persisting before validating let one of those replies
+        into the corpus, where replay would serve it forever (#160). A response
+        the harness rejects is not evidence and must not be stored.
+        """
+        record = self._live_call(key, request)
+        self._validate(record["response"], response_model)
+        self.store.write(key, record)
+        return record
+
+    def _live_call(self, key: str, request: dict) -> dict:
         requested = {"temperature": request["temperature"]}
         if "seed" in request:
             requested["seed"] = request["seed"]
@@ -320,7 +369,6 @@ class ModelClient:
             # which have no provider to drop anything.
             "controls_applied": self._effective_controls(request["model"], requested),
         }
-        self.store.write(key, record)
         return record
 
     def _effective_controls(self, model: str, requested: dict) -> dict:

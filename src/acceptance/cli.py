@@ -21,7 +21,7 @@ import sys
 from pathlib import Path
 
 from acceptance.change.diff import extract_change_set, extract_working_tree_change_set
-from acceptance.config import DEFAULT_MODEL, RunConfig
+from acceptance.config import DEFAULT_MODEL, DEFAULT_SEED, RunConfig
 from acceptance.coverage.classify import ImplementationCoverage, classify_coverage
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
 from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
@@ -146,7 +146,6 @@ def run_check(
         reviewed_revision=reviewed_revision,
         declaration_text=declaration_text,
         policy=config.scope_expansion_policy,
-        provenance=config.provenance(),
     )
     # §10.1 step 12: when gaps exist, hand the agent a next instruction. The
     # file is a CLI side effect, not part of the pipeline — the benchmark runs
@@ -329,10 +328,30 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
         default=default_mode,
         help="record (live call on cache miss) or replay (transcripts only).",
     )
-    parser.add_argument("--seed", type=int, default=None, help="Model seed (determinism).")
+    # Defaulted to the configured seed, not to None. argparse always supplies a
+    # value and every command passes it straight into RunConfig, so a `None`
+    # default here silently overrode DEFAULT_SEED and left every CLI run
+    # unseeded — half the determinism strategy #154 wired up was dead on the
+    # only path users invoke (#160).
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
+        help=f"Model seed (determinism; default: {DEFAULT_SEED}).",
+    )
+    parser.add_argument(
+        "--no-seed",
+        action="store_true",
+        help="Send no seed, letting the provider sample freely (variance runs).",
+    )
     parser.add_argument(
         "--temperature", type=float, default=0.0, help="Model temperature (default: 0.0)."
     )
+
+
+def _seed_from(args: argparse.Namespace) -> int | None:
+    """`--no-seed` is the deliberate way to run unpinned; absence means pinned."""
+    return None if args.no_seed else args.seed
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -417,7 +436,7 @@ def main(argv: list[str] | None = None) -> int:
         config = RunConfig(
             model=args.model,
             mode=Mode(args.mode),
-            seed=args.seed,
+            seed=_seed_from(args),
             temperature=args.temperature,
         )
         try:
@@ -441,7 +460,7 @@ def main(argv: list[str] | None = None) -> int:
         config = RunConfig(
             model=args.model,
             mode=Mode(args.mode),
-            seed=args.seed,
+            seed=_seed_from(args),
             temperature=args.temperature,
         )
         try:
@@ -474,7 +493,7 @@ def main(argv: list[str] | None = None) -> int:
         config = RunConfig(
             model=args.model,
             mode=Mode(args.mode),
-            seed=args.seed,
+            seed=_seed_from(args),
             temperature=args.temperature,
         )
         try:

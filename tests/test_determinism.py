@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 from pydantic import BaseModel
 
-from acceptance.config import RunConfig
+from acceptance.config import RunConfig, provenance_for
 from acceptance.llm import Mode
 from acceptance.review_state import Component, EvidenceTier, Finding, Link, Review
 
@@ -61,7 +61,8 @@ def _produce_review(config: RunConfig, completion_fn) -> Review:
     return Review(
         mode="local",
         reviewed_revision="deadbeef",
-        provenance=config.provenance(),
+        # After the call, so the honoured controls it reports are observed.
+        provenance=provenance_for(client),
         findings=[finding],
     )
 

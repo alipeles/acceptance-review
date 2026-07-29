@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from acceptance.config import ScopeExpansionPolicy
+from acceptance.config import ScopeExpansionPolicy, provenance_for
 from acceptance.coverage.classify import CoverageStatus, ImplementationCoverage, classify_coverage
 from acceptance.coverage.declaration_comparison import (
     compare_declaration,
@@ -47,7 +47,6 @@ from acceptance.review_state import (
     Link,
     Obligation,
     Review,
-    ReviewProvenance,
     UnrequestedChangeDisposition,
 )
 from acceptance.verdict import derive_verdict
@@ -146,7 +145,6 @@ def run_review(
     reviewed_revision: str,
     declaration_text: str | None = None,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
-    provenance: ReviewProvenance | None = None,
 ) -> Review:
     """Run the full static review pipeline and return the assembled Review."""
     parsed = parse_task_file(task_text)
@@ -199,7 +197,10 @@ def run_review(
     return Review(
         mode="local",
         reviewed_revision=reviewed_revision,
-        provenance=provenance,
+        # Stamped here, at the end, rather than accepted from the caller: only
+        # after the calls have run does the client know which determinism
+        # controls the provider honoured (#160).
+        provenance=provenance_for(client),
         obligation_map=obligations,
         open_questions=open_questions,
         change_set=change_set,

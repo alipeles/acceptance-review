@@ -150,4 +150,8 @@ def test_full_loop_scores_the_noop_checker_as_all_miss(tmp_path):
     assert report.decomposition_accuracy == 0.0  # obligations labeled everywhere; none found
     assert report.mapping_accuracy == 0.0  # coverage edges labeled; none found
     assert report.evidence_agreement == 0.0
-    assert report.determinism_mode == "replay"
+    # The mode of the client that actually ran, not of the config that was
+    # requested: the injected no-op stub records. Provenance describing the run
+    # rather than the intent is the point of #160 — before it, a record-mode
+    # stub could produce a review that claimed "replay".
+    assert report.determinism_mode == "record"

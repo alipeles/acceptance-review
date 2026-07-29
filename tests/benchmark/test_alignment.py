@@ -18,6 +18,7 @@ from acceptance.benchmark.case import (
 from acceptance.benchmark.scoring import score_case
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.review_state import (
+    DeterminismControls,
     Finding,
     Link,
     Obligation,
@@ -99,7 +100,10 @@ def _case_with_reworded_reviewer_output() -> BenchmarkCase:
     )
     reviewer = Review(
         mode="local", reviewed_revision="def456",
-        provenance=ReviewProvenance(determinism_mode="replay", model="m", temperature=0.0),
+        provenance=ReviewProvenance(
+            determinism_mode="replay", model="m",
+            controls_requested=DeterminismControls(temperature=0.0),
+        ),
         obligation_map=[
             # Same criterion, different wording, AND its mapped test.
             _reviewer_obligation("Use monthly_price / days_in_month as the daily rate").model_copy(

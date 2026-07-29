@@ -1,26 +1,46 @@
 # Task
-Make the model harness genuinely provider-agnostic. Calls route through LiteLLM
-so the model can be swapped to compare quality and cost, but a run against a
-non-OpenAI model currently fails before it reaches the model, and the schema the
-harness sends hides its enum values behind a reference, which changes the
-answers the model gives. Have LiteLLM perform the per-provider translation,
-send schemas with their values inline, record which determinism controls the
-provider actually honoured, and hold the whole claim to recorded evidence
-rather than a hand-run experiment.
+Make a review's own provenance tell the truth about the determinism controls
+that were in force. The harness records which controls a provider actually
+honoured, but a review still reports the controls that were *configured*, so on
+a provider that discards them the review claims a reproducibility it does not
+have. Source provenance from the client that made the calls rather than from
+configuration, distinguish a control that held from one the provider ignored and
+from one nothing was ever observed about, and stop the store from keeping a
+transcript whose response failed validation.
 
 ## Constraints
-- A completion function injected by a caller must not pull in the provider stack, so capability tests keep running with no provider dependency.
-- The schema sent to the provider must also be the schema inside the hashed request, so a change to how schemas are rendered invalidates recordings instead of replaying judgments made under a different schema.
+- Building provenance must not pull in the provider stack, because provenance is
+  assembled during replay runs that have no provider dependency and no API key.
+- A control the provider discarded must never be reported as the value that was
+  requested.
 
 ## Scope exclusions
-- Carrying the provider-honoured determinism controls through into the review's own provenance is deferred to a follow-up; this change records them in the transcript only.
+- Rendering provenance in the human-readable report is presentation work owned
+  by M7.6; this change corrects the persisted review state and the benchmark's
+  determinism disclosure that reads it.
+- Sampling a provider repeatedly to quantify variance where controls were
+  discarded belongs to the benchmark harness (M-B0.4).
 
 ## Completion expectations
 - Implementation
-- A live call against a provider that rejects a configured determinism control still reaches the model instead of raising first.
-- The structured-output request is expressed through LiteLLM's own response-format interface, so LiteLLM translates it into each provider's native mechanism instead of the harness targeting one provider's API directly.
-- The schema sent to the provider carries its enum values inline, with no `$defs` or `$ref` indirection, because that indirection changes the model's answer.
-- Every recorded transcript states which determinism controls actually applied, and a control the provider discarded reads as not in force rather than as the value requested.
-- The recorded corpus holds transcripts from more than one provider, drawn from a declared set of approved models, so provider-agnosticism rests on recorded evidence like every other capability.
-- A requirement span locates its text exactly, so `source[start:end]` equals the span's own text even when a bullet wraps across lines.
-- The model the tool runs by default is pinned by a guard, so that swapping it becomes a deliberate and visible edit rather than a silent drift that invalidates the recorded corpus.
+- A review's provenance reports the determinism controls the provider actually
+  honoured, separately from the controls that were requested.
+- A control the provider discarded is reported as not in force rather than as
+  the requested value, so a run against a provider that rejects a seed does not
+  claim that seed.
+- A review whose run made no model call at all reports its determinism as
+  indeterminate rather than claiming the configured controls held.
+- Provenance is built from the client that issued the calls, so one builder
+  serves both the CLI pipeline and the benchmark hooks instead of two that can
+  disagree.
+- A replayed run reports the controls recorded in the transcripts it replayed,
+  so replaying a recording made against a provider that discarded a control does
+  not report that control as in force.
+- A transcript recorded from a response that fails schema validation is not left
+  in the store, so a recording session cannot poison the corpus with a response
+  the harness itself rejected.
+- The default model named by the test doubles is the model the tool actually
+  defaults to, so test support does not assert a default that is not real.
+- A run started from the command line carries the configured default seed, so
+  the fixed-seed half of the determinism strategy is in force on the path users
+  actually invoke, with an explicit way to opt out of seeding.

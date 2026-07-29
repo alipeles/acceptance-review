@@ -61,8 +61,20 @@ def stub_model(monkeypatch):
     that exercise plumbing (provenance, persistence, determinism, the §16
     shell) rather than model judgment must not issue live calls. Patching
     RunConfig.build_client keeps `main()`'s own argument parsing under test.
+
+    The stub stands in for the *network*, not for the configuration: it carries
+    the config's own model and determinism controls, so a CLI test can still
+    assert that a flag reaches the review's provenance (#160 sources provenance
+    from the client, so a stub that ignored the config would silently break that
+    link). Its mode is necessarily RECORD — see `client_dispatching`.
     """
     from acceptance.config import RunConfig
     from tests.support import client_finding_nothing
 
-    monkeypatch.setattr(RunConfig, "build_client", lambda self, completion_fn=None: client_finding_nothing())
+    monkeypatch.setattr(
+        RunConfig,
+        "build_client",
+        lambda self, completion_fn=None: client_finding_nothing(
+            model=self.model, temperature=self.temperature, seed=self.seed
+        ),
+    )

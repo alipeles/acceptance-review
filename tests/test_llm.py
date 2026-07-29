@@ -385,3 +385,120 @@ def test_a_transcript_records_which_determinism_controls_actually_applied(store)
     key = request_key(client.build_request(MESSAGES, Verdict))
     record = json.loads(store.path_for(key).read_text())
     assert record["controls_applied"] == {"temperature": 0.0, "seed": 0}
+
+
+def _dropping_completion_fn(content: str):
+    """A completion_fn standing in for a provider that discards our controls.
+
+    Anthropic is the real case: it rejects `seed` outright and `claude-sonnet-5`
+    accepts only `temperature=1`, so LiteLLM's `drop_params` sends neither.
+    """
+    fn = _recorder(content)
+    fn.effective_controls = lambda model, **requested: {
+        name: None for name in requested
+    }
+    return fn
+
+
+def test_a_client_reports_the_controls_the_provider_honoured(store):
+    """Provenance is only worth reading if it describes the run that happened.
+    A client asked for a seed the provider throws away must report the run as
+    unseeded rather than echoing the request back (#160)."""
+    client = ModelClient(
+        model="anthropic/claude-sonnet-5",
+        mode=Mode.RECORD,
+        store=store,
+        temperature=0.0,
+        seed=0,
+        completion_fn=_dropping_completion_fn('{"supported": true, "rationale": "ok"}'),
+    )
+
+    client.complete(MESSAGES, Verdict)
+
+    assert client.controls_in_force == {"temperature": None, "seed": None}
+
+
+def test_a_client_that_made_no_call_reports_nothing_in_force(store):
+    """Indeterminate, not "the configured controls held". A review can make no
+    model call at all, and such a run has no evidence either way (§9.3)."""
+    client = ModelClient(
+        model="openai/gpt-5.4-mini", mode=Mode.RECORD, store=store, temperature=0.0, seed=0
+    )
+
+    assert client.controls_in_force is None
+
+
+def test_a_replayed_run_reports_the_controls_its_transcript_recorded(store):
+    """A replay is exactly as reproducible as the recording it replays. Replaying
+    a transcript recorded against a provider that discarded a control must not
+    report that control as in force."""
+    recorder = ModelClient(
+        model="anthropic/claude-sonnet-5",
+        mode=Mode.RECORD,
+        store=store,
+        temperature=0.0,
+        seed=0,
+        completion_fn=_dropping_completion_fn('{"supported": true, "rationale": "ok"}'),
+    )
+    recorder.complete(MESSAGES, Verdict)
+
+    replayer = ModelClient(
+        model="anthropic/claude-sonnet-5",
+        mode=Mode.REPLAY,
+        store=store,
+        temperature=0.0,
+        seed=0,
+        completion_fn=_exploding_completion_fn,
+    )
+    replayer.complete(MESSAGES, Verdict)
+
+    assert replayer.controls_in_force == {"temperature": None, "seed": None}
+
+
+def test_a_run_is_only_as_pinned_as_its_least_pinned_call(store):
+    """A review makes many calls. If one ran unpinned the run is unpinned, so
+    disagreement collapses to "not in force" — overstating in the negative
+    direction never claims reproducibility the run lacks (§3.7)."""
+    completion_fn = _recorder('{"supported": true, "rationale": "ok"}')
+    # Honoured on the first call, dropped on the second.
+    honoured = [True, False]
+    completion_fn.effective_controls = lambda model, **requested: (
+        dict(requested) if honoured.pop(0) else {name: None for name in requested}
+    )
+    client = ModelClient(
+        model="openai/gpt-5.4-mini",
+        mode=Mode.RECORD,
+        store=store,
+        temperature=0.0,
+        seed=0,
+        completion_fn=completion_fn,
+    )
+
+    client.complete(MESSAGES, Verdict)
+    assert client.controls_in_force == {"temperature": 0.0, "seed": 0}
+
+    client.complete([{"role": "user", "content": "another question"}], Verdict)
+
+    assert client.controls_in_force == {"temperature": None, "seed": None}
+
+
+def test_a_response_that_fails_validation_is_not_left_in_the_store(store):
+    """Structured output is best-effort on some providers — Anthropic omitted a
+    required field in 2 of 4 probes of a real schema. Persisting before
+    validating let such a reply into the corpus, where replay would serve it
+    forever. A response the harness rejects is not evidence (#160)."""
+    client = ModelClient(
+        model="anthropic/claude-sonnet-5",
+        mode=Mode.RECORD,
+        store=store,
+        # `rationale` is required and missing — exactly the observed failure.
+        completion_fn=_recorder('{"supported": true}'),
+    )
+
+    with pytest.raises(SchemaValidationError):
+        client.complete(MESSAGES, Verdict)
+
+    key = request_key(client.build_request(MESSAGES, Verdict))
+    assert not store.path_for(key).exists()
+    # And it contributes no observation: a call that failed is not a data point.
+    assert client.controls_in_force is None

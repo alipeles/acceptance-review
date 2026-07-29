@@ -24,7 +24,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from acceptance.benchmark.case import BenchmarkCase
-from acceptance.benchmark.hooks import provenance_from, scored_copy
+from acceptance.benchmark.hooks import scored_copy
 from acceptance.change.diff import extract_change_set
 from acceptance.config import ScopeExpansionPolicy
 from acceptance.llm import ModelClient
@@ -51,6 +51,5 @@ def classify_case(
         reviewed_revision=case.inputs.head_revision,
         declaration_text=case.inputs.declaration_text,
         policy=policy,
-        provenance=provenance_from(client),
     )
     return scored_copy(case, review)
