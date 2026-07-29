@@ -128,7 +128,7 @@ def recording_enabled() -> bool:
     return os.environ.get("ACCEPTANCE_RECORD") == "1"
 
 
-def replaying_client(model: str | None = None) -> ModelClient:
+def replaying_client(model: str | None = None, completion_fn=None) -> ModelClient:
     """A client pinned to REPLAY against the committed corpus, whatever the
     environment says.
 
@@ -138,28 +138,39 @@ def replaying_client(model: str | None = None) -> ModelClient:
     fixtures — and a stray entry can satisfy a lookup that should have missed,
     silently disabling the very detection being tested. Use this rather than
     relying on an env var being unset."""
-    from acceptance.config import DEFAULT_MODEL
-
-    return ModelClient(
-        model=model or DEFAULT_MODEL,
-        mode=Mode.REPLAY,
-        store=TranscriptStore(RECORDED_TRANSCRIPTS),
-    )
+    return _corpus_config(model, Mode.REPLAY).build_client(completion_fn)
 
 
 def recorded_client(model: str | None = None) -> ModelClient:
     """Replay the committed corpus of real model responses (record with
-    ACCEPTANCE_RECORD=1). A missing transcript means the prompt changed.
+    ACCEPTANCE_RECORD=1). A missing transcript means the prompt changed."""
+    return _corpus_config(
+        model, Mode.RECORD if recording_enabled() else Mode.REPLAY
+    ).build_client()
 
-    Defaults to the project's real DEFAULT_MODEL, not the placeholder name the
-    injected-response helpers carry: this corpus holds genuine responses, so it
-    must be recorded against the model the tool actually runs. Changing
-    DEFAULT_MODEL therefore invalidates the corpus — correctly, since a
-    different model needs its own re-verification."""
-    from acceptance.config import DEFAULT_MODEL
 
-    return ModelClient(
+def empty_corpus_client(root, model: str | None = None) -> ModelClient:
+    """Replay against an EMPTY store, under the same determinism controls as
+    the real corpus — so a lookup differs from `replaying_client()` only in the
+    backing store, and a miss proves the corpus is load-bearing rather than
+    proving the controls happened to differ."""
+    config = _corpus_config(model, Mode.REPLAY)
+    return config.model_copy(update={"transcript_root": root}).build_client()
+
+
+def _corpus_config(model: str | None, mode: Mode):
+    """Build the corpus client from `RunConfig` rather than constructing a
+    `ModelClient` by hand, so it inherits EVERY production determinism control
+    — model, temperature, and seed — from one source of truth.
+
+    Constructing directly silently dropped the seed, so the corpus would not
+    have reflected how the tool actually runs (#154). The same argument as
+    recording against the production model applies to the controls that shape
+    the response."""
+    from acceptance.config import DEFAULT_MODEL, RunConfig
+
+    return RunConfig(
         model=model or DEFAULT_MODEL,
-        mode=Mode.RECORD if recording_enabled() else Mode.REPLAY,
-        store=TranscriptStore(RECORDED_TRANSCRIPTS),
+        mode=mode,
+        transcript_root=RECORDED_TRANSCRIPTS,
     )

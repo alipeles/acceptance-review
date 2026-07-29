@@ -11,12 +11,17 @@ import pathlib
 
 import pytest
 
-from acceptance.config import DEFAULT_MODEL, ScopeExpansionPolicy
+from acceptance.config import DEFAULT_MODEL, DEFAULT_SEED, ScopeExpansionPolicy
 from acceptance.coverage import disposition as disposition_module
 from acceptance.coverage.disposition import classify_dispositions
 from acceptance.llm import Mode, ModelClient, TranscriptNotFoundError, TranscriptStore
 from tests.prompts.test_disposition_prompt import _adjacent_edit_case
-from tests.support import RECORDED_TRANSCRIPTS, recorded_client, replaying_client
+from tests.support import (
+    RECORDED_TRANSCRIPTS,
+    empty_corpus_client,
+    recorded_client,
+    replaying_client,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -108,15 +113,24 @@ def test_the_committed_corpus_holds_only_archetype_content():
             assert marker not in body, f"{path.name} embeds this repo's own content: {marker}"
 
 
-def test_the_corpus_is_recorded_against_the_model_the_tool_actually_runs():
-    """A corpus recorded against some other model would prove nothing about
-    production behaviour. Both the client and every committed transcript must
-    name the tool's real default model."""
-    assert recorded_client().model == DEFAULT_MODEL
+def test_the_corpus_is_recorded_under_production_determinism_controls():
+    """A corpus recorded under different settings would prove nothing about
+    production behaviour — so the client and every committed transcript must
+    carry the real model AND the real determinism controls.
+
+    Seed matters as much as model: it shapes the response, and building the
+    corpus client by hand once silently dropped it (#154). Building from
+    `RunConfig` keeps one source of truth."""
+    client = recorded_client()
+    assert client.model == DEFAULT_MODEL
+    assert client.seed == DEFAULT_SEED
+    assert client.temperature == 0.0
 
     for path in sorted(RECORDED_TRANSCRIPTS.glob("*.json")):
-        record = json.loads(path.read_text())
-        assert record["request"]["model"] == DEFAULT_MODEL, path.name
+        request = json.loads(path.read_text())["request"]
+        assert request["model"] == DEFAULT_MODEL, path.name
+        assert request["seed"] == DEFAULT_SEED, path.name
+        assert request["temperature"] == 0.0, path.name
 
 
 def test_the_corpus_replays_rather_than_calling_live_by_default():
@@ -164,12 +178,7 @@ def test_the_prompt_corpus_replays_with_no_live_call_at_all(tmp_path):
         raise AssertionError("replay made a live call")
 
     change, obligations, change_set = _adjacent_edit_case(tmp_path)
-    client = ModelClient(
-        model=DEFAULT_MODEL,
-        mode=Mode.REPLAY,
-        store=TranscriptStore(RECORDED_TRANSCRIPTS),
-        completion_fn=must_not_be_called,
-    )
+    client = replaying_client(completion_fn=must_not_be_called)
 
     result = classify_dispositions(
         [change], obligations, [], change_set, ScopeExpansionPolicy.LOOSE, client
@@ -188,11 +197,7 @@ def test_the_prompt_quality_test_actually_consumes_a_committed_transcript(tmp_pa
     transcript, which it could not do if it were not reading one.
     """
     change, obligations, change_set = _adjacent_edit_case(tmp_path)
-    empty_store_client = ModelClient(
-        model=DEFAULT_MODEL,
-        mode=Mode.REPLAY,
-        store=TranscriptStore(tmp_path / "empty-corpus"),
-    )
+    empty_store_client = empty_corpus_client(tmp_path / "empty-corpus")
 
     with pytest.raises(TranscriptNotFoundError):
         classify_dispositions(
@@ -246,8 +251,8 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
 # the guard would pass. (Corpus pollution happened twice while building #146,
 # so this is an observed hazard, not a hypothetical one.)
 _APPROVED_TRANSCRIPTS = {
-    "5d4c699ad02e164da251d12c2d0afb109cfca9725f6719b9f01ee3bbbb28edd5.json",
-    "6fc8c23a3f1d1b963f2cd78d8838b9dacd321130022a9dec85530bc0eda1b879.json",
+    "5e6e292efd09a321bb8770e6af7866fa3d4838f6893535d27fbf7d046d5eea9a.json",
+    "afad1fd19f007b4c3aaeccbc977652f1dd9596ac040e912c1becadc11060f133.json",
 }
 
 
@@ -314,3 +319,19 @@ def test_only_the_designated_capability_uses_recorded_responses():
         "prompts/test_corpus_mechanism.py",
         "prompts/test_disposition_prompt.py",
     }, f"recorded responses spread beyond the designated capability: {sorted(users)}"
+
+
+def test_corpus_clients_source_their_controls_rather_than_duplicating_them():
+    """Asserting the controls equal the DEFAULTS is not enough.
+
+    A helper that hardcoded `seed=DEFAULT_SEED` would satisfy that too, and
+    would then silently drift the moment configuration changed — which is
+    exactly the bug this fixed (the helper built a ModelClient by hand and
+    dropped the seed entirely). Pass a NON-DEFAULT override: only a client that
+    genuinely sources its controls from `RunConfig` can honour it."""
+    overridden = replaying_client(model="openai/some-other-model")
+
+    assert overridden.model == "openai/some-other-model"
+    # ...while the controls not overridden still come from the shared config.
+    assert overridden.seed == DEFAULT_SEED
+    assert overridden.temperature == 0.0

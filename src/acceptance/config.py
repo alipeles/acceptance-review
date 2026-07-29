@@ -27,6 +27,14 @@ from acceptance.review_state import ReviewProvenance
 # LiteLLM model string. Provider-agnostic: swap freely via --model / RunConfig.
 DEFAULT_MODEL = "openai/gpt-5.4-mini"
 
+# Fixed by default so the "fixed seed/temperature + cached transcripts"
+# strategy this module documents is actually in force. The value is arbitrary;
+# only its fixedness matters. Leaving it None — as it was — meant half the
+# documented determinism strategy was never wired up (#154). Changing it
+# changes every request hash and so invalidates recorded transcripts, which is
+# correct: a determinism control changed, so recordings must be re-verified.
+DEFAULT_SEED = 0
+
 
 class ScopeExpansionPolicy(str, Enum):
     """How tolerant the review is of changes beyond the mandate (DR-081
@@ -51,7 +59,7 @@ class RunConfig(BaseModel):
     model: str = DEFAULT_MODEL
     mode: Mode = Mode.REPLAY
     temperature: float = 0.0
-    seed: int | None = None
+    seed: int | None = DEFAULT_SEED
     transcript_root: Path = Field(default=DEFAULT_TRANSCRIPT_ROOT)
     # A review-interpretation knob (consumed by the M3.5.3 separability
     # classifier), not a determinism control — so it deliberately does not
