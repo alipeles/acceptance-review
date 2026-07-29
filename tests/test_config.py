@@ -27,3 +27,45 @@ def test_scope_expansion_policy_is_not_a_determinism_control():
     loose = RunConfig(scope_expansion_policy=ScopeExpansionPolicy.LOOSE)
     assert strict.provenance() == loose.provenance()
     assert "scope_expansion" not in strict.provenance().model_dump()
+
+
+# --- determinism: the seed half of "fixed seed/temperature" (#154) ---
+
+
+def test_a_seed_is_fixed_by_default():
+    """`config.py` documents the Stage-1 determinism strategy as "fixed
+    seed/temperature + cached transcripts", but `seed` defaulted to None, so
+    half of it was never in force. A run must carry a seed unless one is
+    deliberately cleared."""
+    from acceptance.config import DEFAULT_SEED, RunConfig
+
+    assert DEFAULT_SEED is not None
+    assert RunConfig().seed == DEFAULT_SEED
+
+
+def test_the_default_seed_reaches_both_the_model_call_and_the_provenance():
+    """A seed that is configured but not sent changes nothing, and a seed that
+    is sent but not recorded leaves a reader unable to tell what determinism
+    controls produced a review (§13.6)."""
+    from acceptance.config import DEFAULT_SEED, RunConfig
+
+    config = RunConfig()
+
+    assert config.build_client().seed == DEFAULT_SEED
+    assert config.provenance().seed == DEFAULT_SEED
+
+
+def test_the_seed_is_part_of_the_request_so_changing_it_invalidates_transcripts():
+    """The seed must be in the hashed request, so changing a determinism
+    control forces re-verification rather than silently replaying responses
+    produced under different settings."""
+    from acceptance.config import RunConfig
+    from acceptance.llm import request_key
+    from acceptance.requirement.obligations import _Decomposition
+
+    messages = [{"role": "system", "content": "x"}, {"role": "user", "content": "y"}]
+    seeded = RunConfig(seed=1).build_client().build_request(messages, _Decomposition)
+    other = RunConfig(seed=2).build_client().build_request(messages, _Decomposition)
+
+    assert seeded["seed"] == 1
+    assert request_key(seeded) != request_key(other)
