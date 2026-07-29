@@ -11,6 +11,8 @@ recording never leaks into the repo's real `.acceptance/` cache.
 from __future__ import annotations
 
 import json
+import os
+import pathlib
 import tempfile
 from types import SimpleNamespace
 
@@ -92,3 +94,72 @@ def client_finding_nothing(model: str = _DEFAULT_MODEL) -> ModelClient:
     """A client whose every pipeline call returns an empty result — the
     checker runs end to end and reports nothing found."""
     return client_dispatching(_EMPTY_BY_SCHEMA, model=model)
+
+
+# --- Recorded prompt-quality corpus (#146) ---------------------------------
+#
+# The helpers above inject a hand-authored response: the test supplies the very
+# answer the code is supposed to obtain, so it verifies plumbing and says
+# nothing about whether the PROMPT elicits that answer. Editing a prompt cannot
+# fail such a test (#138).
+#
+# `recorded_client` closes that gap. It replays a committed corpus of REAL model
+# responses, so an assertion over its output is an assertion about real model
+# behaviour — while still replaying byte-identically, with no API key and no
+# live call in CI.
+#
+# The enforcement is free: `request_key` hashes the whole request, including the
+# system prompt, so EDITING A PROMPT IS A CACHE MISS. The test then fails with
+# `TranscriptNotFoundError`, which is exactly the signal that a prompt changed
+# and has not been re-verified.
+#
+# To re-record after an intentional prompt change:
+#     ACCEPTANCE_RECORD=1 pytest tests/prompts -q
+# That makes live calls AND runs the assertions against the real responses, so
+# a prompt that degrades quality fails instead of silently re-recording.
+#
+# Recorded ONLY against archetype fixtures, never against this repo's own
+# dogfood runs: a transcript embeds the full request, so recording a dogfood run
+# would commit our own diffs and task text into test fixtures.
+RECORDED_TRANSCRIPTS = pathlib.Path(__file__).parent / "fixtures" / "transcripts"
+
+
+def recording_enabled() -> bool:
+    return os.environ.get("ACCEPTANCE_RECORD") == "1"
+
+
+def replaying_client(model: str | None = None) -> ModelClient:
+    """A client pinned to REPLAY against the committed corpus, whatever the
+    environment says.
+
+    For tests that deliberately MISS the corpus (e.g. proving a prompt edit is
+    detected). Such a test must never be able to record: under RECORD a miss
+    becomes a live call that writes a junk transcript into the committed
+    fixtures — and a stray entry can satisfy a lookup that should have missed,
+    silently disabling the very detection being tested. Use this rather than
+    relying on an env var being unset."""
+    from acceptance.config import DEFAULT_MODEL
+
+    return ModelClient(
+        model=model or DEFAULT_MODEL,
+        mode=Mode.REPLAY,
+        store=TranscriptStore(RECORDED_TRANSCRIPTS),
+    )
+
+
+def recorded_client(model: str | None = None) -> ModelClient:
+    """Replay the committed corpus of real model responses (record with
+    ACCEPTANCE_RECORD=1). A missing transcript means the prompt changed.
+
+    Defaults to the project's real DEFAULT_MODEL, not the placeholder name the
+    injected-response helpers carry: this corpus holds genuine responses, so it
+    must be recorded against the model the tool actually runs. Changing
+    DEFAULT_MODEL therefore invalidates the corpus — correctly, since a
+    different model needs its own re-verification."""
+    from acceptance.config import DEFAULT_MODEL
+
+    return ModelClient(
+        model=model or DEFAULT_MODEL,
+        mode=Mode.RECORD if recording_enabled() else Mode.REPLAY,
+        store=TranscriptStore(RECORDED_TRANSCRIPTS),
+    )

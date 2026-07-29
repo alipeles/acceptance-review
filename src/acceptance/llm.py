@@ -200,7 +200,16 @@ class ModelClient:
                 raise TranscriptNotFoundError(
                     f"no recorded transcript for request {key} "
                     f"(model={self.model}, response_model={response_model.__name__}); "
-                    "REPLAY mode does not fall back to a live call"
+                    "REPLAY mode does not fall back to a live call.\n"
+                    "\n"
+                    "The request key hashes the whole request, INCLUDING the system "
+                    "prompt — so if this is a prompt-quality test, the most likely "
+                    "cause is that a prompt was edited and has not been re-verified "
+                    "against a real model (#146). Re-record and confirm the "
+                    "assertions still hold:\n"
+                    "    ACCEPTANCE_RECORD=1 pytest tests/prompts -q\n"
+                    "Recording makes live calls AND runs the assertions, so a prompt "
+                    "that degrades quality fails rather than silently re-recording."
                 )
             record = self._record_live_call(key, request)
 
