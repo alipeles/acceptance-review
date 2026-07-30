@@ -709,3 +709,92 @@ def test_a_review_written_under_an_older_schema_is_skipped_not_fatal(tmp_path):
 
     # No prior review usable, but the run continues rather than raising.
     assert find_prior_review(store, second, repo, TASK) is None
+
+
+def test_only_the_affected_obligation_is_re_derived(tmp_path):
+    """Both halves of the split, at the pipeline level.
+
+    The dogfood run reported this obligation unsupported and it was right: the
+    gap-laundering test asserted the UNAFFECTED obligation was carried, but never
+    that the affected one was actually re-derived. A build that carried
+    everything forward would have passed it.
+    """
+    from acceptance.pipeline import run_review
+    from acceptance.change.diff import extract_change_set
+    from tests.support import client_dispatching
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "t@example.com")
+    _git(repo, "config", "user.name", "t")
+    (repo / "alpha.py").write_text("def alpha():\n    return 0\n")
+    (repo / "beta.py").write_text("def beta():\n    return 2\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    base = _git(repo, "rev-parse", "HEAD")
+    (repo / "alpha.py").write_text("def alpha():\n    return 1\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "head")
+    head = _git(repo, "rev-parse", "HEAD")
+
+    prior = Review(
+        mode="local",
+        reviewed_revision=base,
+        task_source=task_source_for(_TWO_FILE_TASK, "task.md"),
+        obligation_map=[
+            _obligation(
+                "alpha",
+                description="Alpha behaves",
+                coverage_refs=["alpha.py#@@ -1 +1 @@"],
+                coverage_status="not_addressed",  # the stale judgment
+                evidence_class="unsupported",
+            ),
+            _obligation(
+                "beta",
+                description="Beta behaves",
+                coverage_refs=["beta.py#@@ -1 +1 @@"],
+            ),
+        ],
+    )
+
+    review = run_review(
+        task_text=_TWO_FILE_TASK,
+        change_set=extract_change_set(repo, base, head),
+        repo=repo,
+        client=client_dispatching(_TWO_FILE_JUDGMENTS),
+        reviewed_revision=head,
+        prior=prior,
+    )
+
+    by_id = {o.id: o for o in review.obligation_map}
+    # alpha.py changed, so alpha was judged again — and the fresh judgment
+    # replaced the stale one rather than the prior verdict surviving.
+    assert by_id["alpha"].carried_forward_from is None
+    assert by_id["alpha"].coverage_status == "addressed"
+    # beta.py did not, so beta was not re-judged.
+    assert by_id["beta"].carried_forward_from == base
+
+
+def test_exactly_one_prior_review_is_used_even_when_several_are_candidates(tmp_path):
+    """One prior review and one new head — the task's stated boundary.
+
+    Two ancestors both have stored reviews. The nearest is used *whole*: the
+    further one contributes nothing, rather than the two being merged into a
+    combined history no reviewer ever produced.
+    """
+    repo, first, second = _repo_with_two_commits(tmp_path)
+    (repo / "rounding.py").write_text("def f():\n    return 3\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "third")
+    third = _git(repo, "rev-parse", "HEAD")
+
+    store = ReviewStore(tmp_path / "reviews")
+    store.write(_review(first, [_obligation("only-in-the-older-review")]))
+    store.write(_review(second, [_obligation("only-in-the-nearer-review")]))
+
+    prior = find_prior_review(store, third, repo, TASK)
+
+    assert prior is not None
+    assert prior.reviewed_revision == second
+    assert [o.id for o in prior.obligation_map] == ["only-in-the-nearer-review"]
