@@ -1,0 +1,206 @@
+Task completion: INCOMPLETE
+
+17 obligation(s) with non-discriminating test evidence (re-run-against-new-head, rederive-only-affected-work, show-delta-since-last-review, carried-forward-judgment-provenance, byte-identical-review-state, deterministic-rerun-ordering, preserve-evidence-tier-for-carried-forward-judgments, no-tier-raise-without-rerun, single-prior-review-single-new-head, task-change-breaks-carry-forward, fallback-to-fresh-derivation-on-unreadable-review, preserve-untouched-obligation-judgment, rederive-affected-obligation, report-carried-forward-revision, report-change-summary, verdict-reflects-new-head, archetype-9-cycle-flips-obligation).
+
+Obligations:
+
+  1. Perform a re-run against a new head build on the previous review instead of starting over.
+       code evidence: addressed
+         1.1  src/acceptance/cli.py#@@ -138,6 +140,21 @@ def run_check(
+         1.2  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+         1.3  src/acceptance/pipeline.py#@@ -145,12 +153,29 @@ def run_review(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  2. Re-derive only the parts of the review that the new work could have affected, while carrying the rest forward.
+       code evidence: addressed
+         2.1  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+         2.2  src/acceptance/pipeline.py#@@ -145,12 +153,29 @@ def run_review(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  3. Show the reader what changed since the last review, including which gaps closed, which obligations flipped, and how the overall verdict moved.
+       code evidence: addressed
+         3.1  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+         3.2  src/acceptance/review_state.py#@@ -467,10 +483,56 @@ class ReviewProvenance(_Model):
+         3.3  src/acceptance/report.py#@@ -57,6 +57,10 @@ def render_report(review: Review) -> str:
+         3.4  src/acceptance/report.py#@@ -151,6 +155,75 @@ def render_next_instruction(review: Review) -> str | None:
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  4. A judgment that was carried forward states that it was carried forward and names the revision it was established against.
+       code evidence: addressed
+         4.1  src/acceptance/review_state.py#@@ -239,6 +249,12 @@ class Obligation(_Model):
+         4.2  src/acceptance/report.py#@@ -159,6 +232,15 @@ def _obligation_block(index: int, obligation: Obligation) -> list[str]:
+         4.3  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  5. Review state remains byte-identical across two runs over the same input.
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  6. The ordering of a re-run does not depend on wall-clock time or on the order reviews were written.
+       code evidence: addressed
+         6.1  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  7. A carried-forward judgment keeps the evidence tier it was originally established at.
+       code evidence: addressed
+         7.1  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  8. A re-run does not raise a judgment's tier unless that judgment is re-derived.
+       code evidence: addressed
+         8.1  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+         8.2  src/acceptance/pipeline.py#@@ -145,12 +153,29 @@ def run_review(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  9. A re-run considers one prior review and one new head.
+       code evidence: addressed
+         9.1  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+         9.2  src/acceptance/cli.py#@@ -138,6 +140,21 @@ def run_check(
+         9.3  src/acceptance/pipeline.py#@@ -145,12 +153,29 @@ def run_review(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  10. A review records the task it was produced from so a re-run can detect task changes and decline to carry earlier judgments forward.
+       code evidence: addressed
+         10.1  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+         10.2  src/acceptance/review_state.py#@@ -467,10 +483,56 @@ class ReviewProvenance(_Model):
+         10.3  src/acceptance/pipeline.py#@@ -145,12 +153,29 @@ def run_review(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  11. If a stored review cannot be read by this build, the re-run falls back to deriving everything fresh rather than failing.
+       code evidence: addressed
+         11.1  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  12. An obligation whose code and tests are untouched by the new work keeps its previous judgment rather than being re-judged.
+       code evidence: addressed
+         12.1  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+         12.2  src/acceptance/pipeline.py#@@ -145,12 +153,29 @@ def run_review(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  13. An obligation the new work could have affected is re-derived from the new head.
+       code evidence: addressed
+         13.1  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+         13.2  src/acceptance/pipeline.py#@@ -145,12 +153,29 @@ def run_review(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  14. A carried-forward judgment is reported as carried forward and names the revision it was established against.
+       code evidence: addressed
+         14.1  src/acceptance/report.py#@@ -151,6 +155,75 @@ def render_next_instruction(review: Review) -> str | None:
+         14.2  src/acceptance/report.py#@@ -159,6 +232,15 @@ def _obligation_block(index: int, obligation: Obligation) -> list[str]:
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  15. The report states what changed since the prior review, including any gap that closed and any obligation whose evidence classification moved.
+       code evidence: addressed
+         15.1  src/acceptance/report.py#@@ -57,6 +57,10 @@ def render_report(review: Review) -> str:
+         15.2  src/acceptance/report.py#@@ -151,6 +155,75 @@ def render_next_instruction(review: Review) -> str | None:
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  16. The overall completion verdict reflects the new head, so addressed gaps are no longer reported.
+       code evidence: addressed
+         16.1  src/acceptance/pipeline.py#@@ -176,6 +201,19 @@ def run_review(
+         16.2  src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  17. In the archetype 9 revision cycle, re-running from the base review against its head flips the previously unsupported obligation to supported and updates the verdict accordingly.
+       code evidence: addressed
+         17.1  tests/test_rerun.py#@@ -0,0 +1,908 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+Unrequested changes:
+  1. [separable] Adding a new .gitignore entry for dogfood run logs is unrelated to the re-run/review-state obligations and changes repository ignore behavior without being required by any listed obligation.
+       .gitignore#@@ -32,3 +32,8 @@ htmlcov/
+  2. [risky] The CLI `run_check` function and parser gained a new `--since`/`since` parameter, which is a public interface change not explicitly required by the obligations as stated.
+       src/acceptance/cli.py#@@ -102,6 +103,7 @@ def run_check(
+       src/acceptance/cli.py#@@ -366,6 +385,11 @@ def build_parser() -> argparse.ArgumentParser:
+       src/acceptance/cli.py#@@ -442,7 +466,7 @@ def main(argv: list[str] | None = None) -> int:
+  3. [in_service] `run_review` gained new parameters (`task_identifier`, `prior`) and now returns reviews with extra delta/task-source state, which is an API surface change beyond the listed obligations.
+       src/acceptance/pipeline.py#@@ -145,12 +153,29 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -193,10 +231,14 @@ def run_review(
+  4. [in_service] `Review` and related exported models gained new fields/classes (`task_source`, `delta`, `ObligationChange`, `ReviewDelta`, `carried_forward_from`), changing the public review-state schema beyond what the obligations explicitly demanded.
+       src/acceptance/review_state.py#@@ -51,6 +51,8 @@ __all__ = [
+       src/acceptance/review_state.py#@@ -239,6 +249,12 @@ class Obligation(_Model):
+       src/acceptance/review_state.py#@@ -467,10 +483,56 @@ class ReviewProvenance(_Model):
+  5. [in_service] The new delta rendering block and carried-forward labels alter report output formatting and content beyond the minimum requirement to preserve/compare review state; this is a user-visible behavior change not directly called for by the obligations.
+       src/acceptance/report.py#@@ -57,6 +57,10 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -151,6 +155,75 @@ def render_next_instruction(review: Review) -> str | None:
+       src/acceptance/report.py#@@ -159,6 +232,15 @@ def _obligation_block(index: int, obligation: Obligation) -> list[str]:
+  6. [in_service] The new rerun-selection logic in `find_prior_review` chooses a prior review by ancestry, task digest, and commit distance, and skips unreadable reviews; these are substantive new behaviors not explicitly specified by the obligations beyond the high-level rerun goal.
+       src/acceptance/rerun.py#@@ -0,0 +1,301 @@
+  7. [in_service] The benchmark test was changed to ignore `task_source.identifier` during equality comparison, which relaxes the test beyond the stated need to keep shared pipeline behavior aligned.
+       tests/benchmark/test_coverage.py#@@ -540,10 +540,20 @@ def test_cli_and_benchmark_share_one_pipeline(tmp_path, monkeypatch):
+
+Recommended tests:
+  1. Given a prior review and a new head, the checker reuses the prior review as the starting point for the run rather than treating the run as a fresh review.
+       inputs:  Use a stored prior review for the same task at an ancestor revision, then invoke the checker on a descendant head with no --since override. The prior review must contain at least one obligation so the run can visibly reuse it rather than starting empty.
+       detects: The checker ignores the stored prior review and treats the rerun as a fresh review, even when a valid ancestor review exists.
+  2. When only some code or tests changed, the checker recomputes judgments for affected obligations and preserves prior judgments for unaffected obligations.
+       inputs:  Construct a prior review with two obligations: one whose cited file is changed in the new head and one whose cited file is untouched. Run against the new head where only the first file changed.
+       detects: The rerun recomputes everything or preserves everything, instead of selectively re-deriving only affected obligations and carrying forward the rest.
+  3. The report includes a comparison section that lists closed gaps, changed obligation statuses, and the verdict transition relative to the previous review.
+       inputs:  Run an incremental rerun where at least one obligation changes from unsupported/nominally_supported to strongly_supported and at least one verdict changes. The prior review must have a visible gap so the delta section has something to report.
+       detects: The report omits the comparison block or only shows a subset of the required delta information, so reruns do not explain what changed since the prior review.
+  4. For each preserved judgment, the output explicitly marks it as carried forward and identifies the revision it originated from.
+       inputs:  Create a review containing at least one obligation with carried_forward_from set to a prior revision, and render the report for that review.
+       detects: Preserved judgments are rendered as if they were freshly derived, with no provenance marker tying them to the revision they came from.
+  5. Running the checker twice on identical inputs produces byte-for-byte identical stored review state.
+       inputs:  Run the checker twice with identical inputs, including the same task text, base/head revisions, and deterministic client behavior, then compare the serialized stored review state bytes.
+       detects: The rerun introduces nondeterministic serialization or state mutation, causing identical inputs to produce different stored review bytes.
+  6. Given the same inputs, the re-run selects the same prior review regardless of timestamps or insertion order in storage.
+       inputs:  Populate the review store with multiple candidate ancestor reviews for the same task, written in different orders and with different timestamps if the store supports them, then rerun against a descendant head.
+       detects: The rerun chooses the prior review by write order, timestamp, or other nondeterministic storage ordering instead of deterministic git ancestry.
+  7. When a judgment is reused from the prior review, its evidence tier in the new run matches the original tier.
+       inputs:  Start from a prior review whose obligation has a specific evidence tier, then rerun on a head where that obligation is unaffected and therefore carried forward.
+       detects: Carried-forward judgments lose or alter their evidence tier during merge, so the new review misrepresents the strength of the original judgment.
+  8. The system never upgrades the evidence tier of a preserved judgment unless it recomputes that judgment from the new head.
+       inputs:  Construct a prior review with a weak evidence tier, then rerun where that obligation is untouched and therefore preserved rather than re-derived.
+       detects: The system upgrades evidence tier on carried-forward judgments without recomputing them from the new head.
+  9. The re-run input model accepts exactly one prior review and one new head for this workflow.
+       inputs:  Exercise the rerun input model or CLI with exactly one prior review and one new head, and also probe a malformed case with multiple prior reviews or multiple heads if the interface allows it.
+       detects: The rerun input model silently accepts multiple prior reviews or multiple heads, enabling ambiguous or merged rerun behavior.
+  10. If the task associated with the stored review differs from the current task, the re-run does not reuse prior judgments.
+       inputs:  Store a prior review for one task text, then rerun on the same code history but with a different task text that would produce different obligations.
+       detects: The rerun reuses judgments across different tasks, even though obligations are task-dependent and should not carry forward.
+  11. When the prior review is unreadable or incompatible, the run completes by recomputing all judgments from the new head instead of terminating with an error.
+       inputs:  Place an unreadable or schema-incompatible review file in the store alongside a valid candidate, then rerun against a head where the unreadable file would otherwise be considered.
+       detects: The rerun aborts when it encounters an unreadable or incompatible stored review instead of falling back to a fresh derivation.
+  12. For obligations unaffected by code or test changes, the checker reuses the prior judgment in the new review.
+       inputs:  Use a prior review with at least two obligations, then change only one cited file in the new head so the other obligation is untouched and should be preserved.
+       detects: The checker fails to preserve judgments for obligations unaffected by the code or test changes, needlessly re-deriving or dropping them.
+  13. For obligations potentially impacted by the new work, the checker recomputes the judgment against the new head.
+       inputs:  Use a prior review with an obligation whose cited file changes in the new head, and ensure another obligation remains untouched for contrast.
+       detects: The checker incorrectly carries forward an obligation that should have been re-derived because the new work could affect it.
+  14. The report labels preserved judgments as carried forward and includes the revision identifier they were established against.
+       inputs:  Render a review containing carried-forward obligations and ensure the report includes both the carried-forward label and the originating revision identifier.
+       detects: The report mentions that a judgment is carried forward but omits the revision it originated from, or vice versa.
+  15. The output includes a summary of deltas from the prior review, covering closed gaps and evidence-classification changes.
+       inputs:  Run an incremental review where at least one obligation changes evidence classification and at least one gap closes, then render the report.
+       detects: The report summary omits either closed gaps or evidence-classification changes, so the delta narrative is incomplete.
+  16. After the gaps are fixed in the new head, the final verdict changes accordingly and no longer includes those gaps.
+       inputs:  Construct a prior review with an open gap, then rerun on a new head where the gap is fixed and the obligation becomes strongly supported.
+       detects: The rerun fails to update the verdict after the new head fixes the gap, leaving stale gaps in the final result.
+  17. For the archetype 9 cycle, the previously unsupported obligation becomes supported on re-run and the final verdict changes to match.
+       inputs:  Use the archetype 9 revision-cycle fixture where the prior review has a weakly supported ties-to-even obligation and the new head adds the discriminating test that proves it.
+       detects: The archetype 9 rerun does not flip the weak obligation to supported, or the verdict fails to update even though the new head fixes the gap.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Recommended next instruction: .acceptance/next-instruction.md
