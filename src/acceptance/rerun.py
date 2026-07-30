@@ -90,9 +90,21 @@ def _commit_distance(ancestor: str, head: str, repo: Path) -> int | None:
 
 
 def find_prior_review(
-    store: ReviewStore, head_revision: str, repo: Path, task_text: str
+    store: ReviewStore,
+    head_revision: str,
+    repo: Path,
+    task_text: str,
+    ancestry_ref: str | None = None,
 ) -> Review | None:
     """The nearest stored review of an ancestor of `head_revision`.
+
+    `ancestry_ref` is the revision git measures ancestry against, when that is
+    not `head_revision` itself. A working-tree review (§5.1) is recorded under
+    `<working-tree>`, which git cannot resolve — so without this the feature is
+    unreachable from the primary local path, where a check runs before a commit
+    exists. The working tree descends from HEAD, so HEAD is the anchor, and a
+    stored review *of* HEAD is a legitimate predecessor: you reviewed the commit,
+    then kept editing.
 
     Nearest by commit distance, not by write time: two reviews written in either
     order over the same history must pick the same predecessor. A review of a
@@ -105,6 +117,7 @@ def find_prior_review(
     if not store.root.is_dir():
         return None
 
+    anchor = ancestry_ref or head_revision
     digest = task_digest(task_text)
     nearest: tuple[int, Review] | None = None
     for path in sorted(store.root.glob("*.json")):
@@ -126,9 +139,9 @@ def find_prior_review(
             continue
         if review.task_source.snapshot != digest:
             continue
-        if not _is_ancestor(revision, head_revision, repo):
+        if not _is_ancestor(revision, anchor, repo):
             continue
-        distance = _commit_distance(revision, head_revision, repo)
+        distance = _commit_distance(revision, anchor, repo)
         if distance is None:
             continue
         if nearest is None or distance < nearest[0]:

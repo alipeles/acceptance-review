@@ -148,7 +148,12 @@ def run_check(
         if prior is None:
             raise CliError(f"no stored review for --since revision: {since!r}")
     else:
-        prior = find_prior_review(store, reviewed_revision, repo_path, task_text)
+        # A working-tree review has no revision git can resolve, so ancestry is
+        # measured against HEAD, which it descends from (§5.1).
+        anchor = None if head is not None else _resolve_revision("HEAD", repo=repo)
+        prior = find_prior_review(
+            store, reviewed_revision, repo_path, task_text, ancestry_ref=anchor
+        )
 
     review = run_review(
         task_text=task_text,

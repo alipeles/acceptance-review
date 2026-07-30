@@ -886,3 +886,23 @@ def test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun(tmp_path)
     assert all(
         "only the FURTHER review" not in finding.description for finding in review.findings
     )
+
+
+def test_a_working_tree_review_builds_on_the_review_of_head(tmp_path):
+    """§5.1's path: a check runs before a commit exists.
+
+    Its `reviewed_revision` is `<working-tree>`, which git cannot resolve, so
+    without an explicit anchor no prior review is ever found and the whole
+    incremental feature is unreachable from the primary local path. Found by
+    dogfooding: this project's own runs silently never used it.
+    """
+    repo, first, second = _repo_with_two_commits(tmp_path)
+    store = ReviewStore(tmp_path / "reviews")
+    store.write(_review(second, [_obligation("a")]))
+
+    prior = find_prior_review(
+        store, "<working-tree>", repo, TASK, ancestry_ref=second
+    )
+
+    # The review OF head is a legitimate predecessor of the working tree.
+    assert prior is not None and prior.reviewed_revision == second
