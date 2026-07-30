@@ -33,6 +33,8 @@ import hashlib
 import subprocess
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from acceptance.review_state import (
     ChangeSet,
     Finding,
@@ -109,7 +111,17 @@ def find_prior_review(
         revision = path.stem
         if revision == head_revision:
             continue  # this head's own earlier review, not a predecessor
-        review = store.read(revision)
+        try:
+            review = store.read(revision)
+        except ValidationError:
+            # A review written under an older schema. The store accumulates
+            # across versions, so scanning it must be best-effort: a review this
+            # build cannot parse is one it cannot build on, and crashing the run
+            # would mean any change to the review schema bricks the tool for
+            # every existing cache. Skipping falls back to a full re-run, which
+            # is the conservative direction — it re-derives rather than carrying
+            # anything forward on a guess.
+            continue
         if review is None or review.task_source is None:
             continue
         if review.task_source.snapshot != digest:

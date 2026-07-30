@@ -28,6 +28,8 @@ say so, and say which revision it was established against.
   reviews were written or on any ordering the store happens to preserve.
 - A review records the task it was produced from, so a re-run can tell that the
   task itself changed and decline to carry any earlier judgment forward.
+- A stored review this build cannot read does not stop the run; the re-run falls
+  back to deriving everything fresh rather than failing.
 - An obligation whose code and tests are untouched by the new work keeps its
   previous judgment rather than being re-judged.
 - An obligation the new work could have affected is re-derived from the new head.

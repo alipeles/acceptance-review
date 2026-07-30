@@ -688,3 +688,24 @@ def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path
     assert [r.obligation_id for r in review.recommendations] == ["beta"]
     assert review.completion is not None
     assert review.completion.verdict.value != "no_material_gaps"
+
+
+def test_a_review_written_under_an_older_schema_is_skipped_not_fatal(tmp_path):
+    """The store accumulates reviews across schema versions, so scanning it must
+    be best-effort. A stored review this build cannot parse is one it cannot
+    build on — crashing would mean any change to the review schema bricks the
+    tool for every existing cache. Found by dogfooding: reviews written before
+    #160 reshaped `ReviewProvenance` made `check` die on startup.
+    """
+    repo, first, second = _repo_with_two_commits(tmp_path)
+    root = tmp_path / "reviews"
+    root.mkdir()
+    (root / f"{first}.json").write_text(
+        '{"mode": "local", "reviewed_revision": "%s",'
+        ' "provenance": {"determinism_mode": "record", "model": "m",'
+        ' "temperature": 0.0, "seed": null}}' % first
+    )
+    store = ReviewStore(root)
+
+    # No prior review usable, but the run continues rather than raising.
+    assert find_prior_review(store, second, repo, TASK) is None
