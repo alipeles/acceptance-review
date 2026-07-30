@@ -32,3 +32,8 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+
+# Dogfood run logs — the tool reviewing its own changes, kept locally so the
+# progression across iterations is inspectable. Not shared: they are large,
+# machine-generated, and specific to one working copy.
+dogfood-logs/
