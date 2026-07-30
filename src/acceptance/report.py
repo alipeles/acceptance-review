@@ -160,6 +160,10 @@ def _short(revision: str) -> str:
     return revision[:8] if len(revision) == 40 and revision.isalnum() else revision
 
 
+def _verdict(value: str | None) -> str:
+    return value.replace("_", "-").upper() if value else "INDETERMINATE"
+
+
 def _movement(previous: str | None, current: str | None) -> str:
     before = (previous or "unclassified").replace("_", " ")
     after = (current or "unclassified").replace("_", " ")
@@ -204,9 +208,11 @@ def _delta_block(delta) -> list[str]:
         lines.append("  no obligation changed status.")
 
     if delta.previous_verdict != delta.verdict:
-        lines.append(
-            f"  verdict: {_movement(delta.previous_verdict, delta.verdict).upper().replace('_', '-')}"
-        )
+        # Same spelling as the §16 headline (`_completion_status`), so the
+        # movement reads as the same vocabulary the reader just saw at the top.
+        before = _verdict(delta.previous_verdict)
+        after = _verdict(delta.verdict)
+        lines.append(f"  verdict: {before} -> {after}")
 
     if delta.carried_forward_obligation_ids:
         count = len(delta.carried_forward_obligation_ids)

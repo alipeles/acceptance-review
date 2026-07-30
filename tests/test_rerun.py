@@ -35,6 +35,7 @@ TASK = "# Task\nRound half to even.\n"
 def _obligation(
     obligation_id: str,
     *,
+    description: str | None = None,
     coverage_refs: list[str] | None = None,
     test_evidence: list[str] | None = None,
     coverage_status: str | None = "addressed",
@@ -43,7 +44,7 @@ def _obligation(
 ) -> Obligation:
     return Obligation(
         id=obligation_id,
-        description=f"obligation {obligation_id}",
+        description=description or f"obligation {obligation_id}",
         type=ObligationType.FUNCTIONAL,
         importance="critical",
         explicit=True,
@@ -95,8 +96,23 @@ def test_an_obligation_whose_code_changed_is_re_derived():
 
 
 def test_an_obligation_whose_test_changed_is_re_derived():
-    """Its code may be untouched while the evidence about it moved."""
-    prior = _review("old", [_obligation("a", test_evidence=["test_rounding.py::test_ties"])])
+    """Its code may be untouched while the evidence about it moved.
+
+    The code citation is deliberately present and untouched: without it the
+    obligation would be stale merely for having no citations at all, and this
+    test would pass whether or not test files are consulted (it did, until a
+    defect injection showed it could not fail).
+    """
+    prior = _review(
+        "old",
+        [
+            _obligation(
+                "a",
+                coverage_refs=["rounding.py#@@ -1 +1 @@"],
+                test_evidence=["test_rounding.py::test_ties"],
+            )
+        ],
+    )
 
     assert stale_obligation_ids(prior, _change_set("test_rounding.py")) == {"a"}
 
@@ -533,3 +549,142 @@ def test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict(tmp
     assert review.delta.verdict == "no_material_gaps"
     assert review.completion is not None
     assert review.completion.verdict.value == "no_material_gaps"
+
+
+# --- the re-run must not launder a gap by not looking (pipeline level) ------
+
+_TWO_FILE_JUDGMENTS = {
+    "_Decomposition": {
+        "obligations": [
+            {
+                "id": "alpha",
+                "description": "Alpha behaves",
+                "type": "functional",
+                "importance": "critical",
+                "explicit": True,
+                "observable_behavior": "alpha() == 1",
+                "source_quote": "Alpha behaves",
+            },
+            {
+                "id": "beta",
+                "description": "Beta behaves",
+                "type": "functional",
+                "importance": "critical",
+                "explicit": True,
+                "observable_behavior": "beta() == 2",
+                "source_quote": "Beta behaves",
+            },
+        ],
+        "open_questions": [],
+    },
+    "_Mappings": {"mappings": []},
+    "_Discrimination": {"obligations": []},
+    "_Coverage": {
+        "classifications": [
+            {
+                "obligation_id": "alpha",
+                "status": "addressed",
+                "rationale": "alpha.py implements it.",
+                "diff_refs": [],
+            }
+        ]
+    },
+    "_Detections": {"unrequested_changes": []},
+    "_Judgments": {"resolutions": []},
+    "_Recommendations": {"recommendations": []},
+    "_Mismatches": {"mismatches": []},
+}
+
+_TWO_FILE_TASK = "# Task\n\n- Alpha behaves\n- Beta behaves\n"
+
+
+def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path):
+    """The guarantee that makes incrementality safe rather than a loophole.
+
+    The verdict reads gaps off findings. If a re-run drops the finding for an
+    obligation it declined to re-examine, an untouched gap silently disappears
+    and the review reports it as resolved — a re-run could then close every gap
+    by changing an unrelated file. A defect injection that removed the
+    carry-forward of prior findings survived the unit tests, which only covered
+    the helper; nothing checked the pipeline actually used it.
+    """
+    from acceptance.pipeline import run_review
+    from acceptance.change.diff import extract_change_set
+    from tests.support import client_dispatching
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "t@example.com")
+    _git(repo, "config", "user.name", "t")
+    (repo / "alpha.py").write_text("def alpha():\n    return 1\n")
+    (repo / "beta.py").write_text("def beta():\n    return 0\n")  # wrong, and untested
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "base")
+    base = _git(repo, "rev-parse", "HEAD")
+    (repo / "alpha.py").write_text("def alpha():\n    return 1  # tidied\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "head")
+    head = _git(repo, "rev-parse", "HEAD")
+
+    beta_gap = Finding(
+        type="coverage_gap",
+        severity="high",
+        description="beta() returns 0, not 2.",
+        evidence_tier=EvidenceTier.STATIC,
+        produced_by=Component.STATIC_ANALYZER,
+        links=[Link(kind="requirement", ref="task.md:1")],
+        related_obligation="Beta behaves",
+    )
+    prior = Review(
+        mode="local",
+        reviewed_revision=base,
+        task_source=task_source_for(_TWO_FILE_TASK, "task.md"),
+        obligation_map=[
+            _obligation(
+                "alpha",
+                description="Alpha behaves",
+                coverage_refs=["alpha.py#@@ -1 +1 @@"],
+            ),
+            _obligation(
+                "beta",
+                description="Beta behaves",
+                coverage_refs=["beta.py#@@ -1 +1 @@"],
+                coverage_status="not_addressed",
+                evidence_class="unsupported",
+            ),
+        ],
+        findings=[beta_gap],
+        recommendations=[
+            TestRecommendation(
+                obligation_id="beta",
+                criterion="beta() returns 2",
+                required_inputs="none",
+                boundary_conditions="n/a",
+                expected_output="2",
+                plausible_defect="returns 0",
+                repo_conventions="pytest",
+            )
+        ],
+    )
+
+    review = run_review(
+        task_text=_TWO_FILE_TASK,
+        change_set=extract_change_set(repo, base, head),
+        repo=repo,
+        client=client_dispatching(_TWO_FILE_JUDGMENTS),
+        reviewed_revision=head,
+        prior=prior,
+    )
+
+    # beta was never re-examined — only alpha.py changed — so it is carried.
+    beta = next(o for o in review.obligation_map if o.id == "beta")
+    assert beta.carried_forward_from == base
+    assert beta.coverage_status == "not_addressed"
+
+    # And its gap is still reported, so the verdict still reflects it —
+    # along with the instruction for closing it, which the agent still needs.
+    assert any(f.related_obligation == "Beta behaves" for f in review.findings)
+    assert [r.obligation_id for r in review.recommendations] == ["beta"]
+    assert review.completion is not None
+    assert review.completion.verdict.value != "no_material_gaps"

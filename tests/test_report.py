@@ -452,3 +452,95 @@ def test_instruction_omits_satisfied_obligations_and_advisory_items():
     assert "A satisfied obligation" not in instruction
     assert "An advisory unrequested change" not in instruction
     assert "An evidence limitation note" not in instruction
+
+
+# --- incremental re-run rendering (M7.5) ------------------------------------
+
+
+def _rerun_obligation(**overrides):
+    from acceptance.review_state import Obligation, ObligationType
+
+    fields = {
+        "id": "ties-to-even",
+        "description": "Ties go to the even neighbour",
+        "type": ObligationType.FUNCTIONAL,
+        "importance": "critical",
+        "explicit": True,
+        "observable_behavior": "...",
+        "coverage_status": "addressed",
+        "evidence_class": "strongly_supported",
+    }
+    fields.update(overrides)
+    return Obligation(**fields)
+
+
+def test_a_carried_forward_obligation_says_so_and_names_the_revision():
+    """A carried judgment is evidence about an older head. Rendering it exactly
+    like a fresh one would present what this run did NOT check as if it had."""
+    from acceptance.review_state import Review
+
+    review = Review(
+        mode="local",
+        reviewed_revision="b" * 40,
+        obligation_map=[_rerun_obligation(carried_forward_from="a" * 40)],
+    )
+
+    output = render_report(review)
+
+    assert "carried forward from aaaaaaaa" in output
+    assert "not re-derived for this head" in output
+
+
+def test_a_fresh_obligation_carries_no_such_label():
+    from acceptance.review_state import Review
+
+    review = Review(
+        mode="local", reviewed_revision="b" * 40, obligation_map=[_rerun_obligation()]
+    )
+
+    assert "carried forward" not in render_report(review)
+
+
+def test_the_report_states_what_closed_since_the_prior_review():
+    """§13.5 #9's payoff: the previous review told the agent what to fix, and
+    this is the answer to whether it did."""
+    from acceptance.review_state import ObligationChange, Review, ReviewDelta
+
+    review = Review(
+        mode="local",
+        reviewed_revision="b" * 40,
+        obligation_map=[_rerun_obligation()],
+        delta=ReviewDelta(
+            prior_reviewed_revision="a" * 40,
+            previous_verdict="incomplete",
+            verdict="no_material_gaps",
+            obligation_changes=[
+                ObligationChange(
+                    obligation_id="ties-to-even",
+                    description="Ties go to the even neighbour",
+                    previous_coverage_status="addressed",
+                    coverage_status="addressed",
+                    previous_evidence_class="nominally_supported",
+                    evidence_class="strongly_supported",
+                )
+            ],
+        ),
+    )
+
+    output = render_report(review)
+
+    assert "Changes since aaaaaaaa" in output
+    assert "closed:" in output
+    assert "nominally supported -> strongly supported" in output
+    assert "INCOMPLETE -> NO-MATERIAL-GAPS" in output
+
+
+def test_a_first_review_renders_no_changes_section():
+    """Nothing to compare against, so the section would be noise."""
+    from acceptance.review_state import Review
+
+    review = Review(
+        mode="local", reviewed_revision="b" * 40, obligation_map=[_rerun_obligation()]
+    )
+
+    assert "Changes since" not in render_report(review)
