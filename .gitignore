@@ -37,3 +37,6 @@ htmlcov/
 # progression across iterations is inspectable. Not shared: they are large,
 # machine-generated, and specific to one working copy.
 dogfood-logs/
+
+# Claude session handoff note
+handoff.md
