@@ -21,6 +21,14 @@ from __future__ import annotations
 from pathlib import Path
 
 from acceptance.config import ScopeExpansionPolicy, provenance_for
+from acceptance.rerun import (
+    carried_findings,
+    carried_recommendations,
+    compute_delta,
+    merge_carried_forward,
+    obligations_to_rederive,
+    task_source_for,
+)
 from acceptance.coverage.classify import CoverageStatus, ImplementationCoverage, classify_coverage
 from acceptance.coverage.declaration_comparison import (
     compare_declaration,
@@ -145,11 +153,28 @@ def run_review(
     reviewed_revision: str,
     declaration_text: str | None = None,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
+    task_identifier: str = "<inline>",
+    prior: Review | None = None,
 ) -> Review:
-    """Run the full static review pipeline and return the assembled Review."""
+    """Run the full static review pipeline and return the assembled Review.
+
+    With `prior`, this is an incremental re-run (M7.5): obligations the new work
+    could not have affected keep their prior judgments and the per-obligation
+    model stages are asked only about the rest. Decomposition is deliberately
+    NOT skipped — the same task text hashes to the same request, so it replays
+    from its transcript at no cost, and re-running it keeps the obligation set
+    derived from one place rather than two.
+    """
     parsed = parse_task_file(task_text)
     decomposition = decompose(parsed, client)
     obligations = decomposition.obligations
+
+    # Whole-diff stages below always run: unrequested-change detection and
+    # open-question resolution are about the change as a whole, not about any one
+    # obligation, so there is no unaffected subset to carry forward.
+    fresh_obligations = obligations
+    if prior is not None:
+        obligations = obligations_to_rederive(fresh_obligations, prior, change_set)
 
     discovered = discover_tests(repo, change_set)
     mapping = map_tests_to_obligations(obligations, discovered.tests, client)
@@ -176,6 +201,19 @@ def run_review(
         for coverage in coverages
         if coverage.status != CoverageStatus.ADDRESSED
     ]
+
+    delta = None
+    if prior is not None:
+        judged = obligations
+        obligations = merge_carried_forward(fresh_obligations, judged, prior)
+        carried = [
+            obligation for obligation in obligations if obligation.carried_forward_from
+        ]
+        # A re-run must not lose the gap it reported last time for code nobody
+        # touched: the verdict reads gaps off findings, so an unaddressed
+        # obligation that was not re-examined would otherwise look resolved.
+        findings.extend(carried_findings(prior, carried))
+        recommendations = recommendations + carried_recommendations(prior, carried)
     findings.extend(
         finding
         for finding in (unrequested_finding(change) for change in dispositioned)
@@ -193,10 +231,14 @@ def run_review(
         findings.append(declaration_absent_finding())
 
     completion = derive_verdict(obligations, findings, open_questions)
+    if prior is not None:
+        delta = compute_delta(prior, obligations, completion.verdict.value)
 
     return Review(
         mode="local",
         reviewed_revision=reviewed_revision,
+        task_source=task_source_for(task_text, task_identifier),
+        delta=delta,
         # Stamped here, at the end, rather than accepted from the caller: only
         # after the calls have run does the client know which determinism
         # controls the provider honoured (#160).

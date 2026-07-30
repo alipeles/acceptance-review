@@ -57,6 +57,10 @@ def render_report(review: Review) -> str:
         lines.append(_EMPTY)
     lines.append("")
 
+    if review.delta is not None:
+        lines.extend(_delta_block(review.delta))
+        lines.append("")
+
     if review.open_questions:
         lines.append("Open questions:")
         for index, question in enumerate(review.open_questions, start=1):
@@ -151,6 +155,69 @@ def render_next_instruction(review: Review) -> str | None:
     return "\n".join(lines)
 
 
+def _short(revision: str) -> str:
+    """Abbreviate a sha; leave a non-sha marker like `<working-tree>` alone."""
+    return revision[:8] if len(revision) == 40 and revision.isalnum() else revision
+
+
+def _movement(previous: str | None, current: str | None) -> str:
+    before = (previous or "unclassified").replace("_", " ")
+    after = (current or "unclassified").replace("_", " ")
+    return f"{before} -> {after}"
+
+
+def _delta_block(delta) -> list[str]:
+    """What moved since the prior review this run built on (M7.5, §13.5 #9).
+
+    Closed gaps lead, because that is the answer to the question the previous
+    review posed — it told the agent what to fix, and this is whether it did.
+    """
+    lines = [f"Changes since {_short(delta.prior_reviewed_revision)}:"]
+
+    closed = delta.closed_gaps()
+    if closed:
+        lines.append("  closed:")
+        for change in closed:
+            lines.append(f"    - {change.description}")
+            lines.append(
+                f"        code evidence: {_movement(change.previous_coverage_status, change.coverage_status)}"
+            )
+            lines.append(
+                f"        test evidence: {_movement(change.previous_evidence_class, change.evidence_class)}"
+            )
+
+    remaining = [change for change in delta.obligation_changes if not change.closed_gap()]
+    if remaining:
+        lines.append("  moved:")
+        for change in remaining:
+            lines.append(f"    - {change.description}")
+            if change.previous_coverage_status != change.coverage_status:
+                lines.append(
+                    f"        code evidence: {_movement(change.previous_coverage_status, change.coverage_status)}"
+                )
+            if change.previous_evidence_class != change.evidence_class:
+                lines.append(
+                    f"        test evidence: {_movement(change.previous_evidence_class, change.evidence_class)}"
+                )
+
+    if not delta.obligation_changes:
+        lines.append("  no obligation changed status.")
+
+    if delta.previous_verdict != delta.verdict:
+        lines.append(
+            f"  verdict: {_movement(delta.previous_verdict, delta.verdict).upper().replace('_', '-')}"
+        )
+
+    if delta.carried_forward_obligation_ids:
+        count = len(delta.carried_forward_obligation_ids)
+        lines.append(
+            f"  {count} obligation(s) carried forward unchanged — "
+            "their code and tests were untouched by this work."
+        )
+
+    return lines
+
+
 def _obligation_block(index: int, obligation: Obligation) -> list[str]:
     """One numbered obligation with both evidence axes nested beneath it.
 
@@ -158,6 +225,15 @@ def _obligation_block(index: int, obligation: Obligation) -> list[str]:
     axes, so every citation in the report has a unique handle."""
     lines = [f"  {index}. {obligation.description}"]
     item = 0
+
+    # A carried-forward judgment is evidence about an OLDER head. Saying so on
+    # the obligation itself, not only in the delta section, is what stops a
+    # reader taking it as something this run checked (M7.5).
+    if obligation.carried_forward_from is not None:
+        lines.append(
+            f"       [carried forward from {_short(obligation.carried_forward_from)}"
+            " — not re-derived for this head]"
+        )
 
     coverage = (obligation.coverage_status or "unclassified").replace("_", " ")
     lines.append(f"       code evidence: {coverage}")

@@ -29,6 +29,7 @@ from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode, ModelClient
 from acceptance.pipeline import run_review
 from acceptance.report import render_next_instruction, render_report
+from acceptance.rerun import find_prior_review
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import ChangeSet, OpenQuestion, Review
@@ -102,6 +103,7 @@ def run_check(
     repo: Path | None = None,
     declaration: str | None = None,
     client: ModelClient | None = None,
+    since: str | None = None,
 ) -> Review:
     """Walking-skeleton pipeline: ingest → build empty Review → persist.
 
@@ -138,6 +140,16 @@ def run_check(
         )
 
     declaration_text = _read_declaration(declaration, repo=repo)
+    # M7.5: build on the nearest prior review of an ancestor of this head, so the
+    # revision cycle (§13.5 #9) re-derives only what the new work could affect.
+    # `since` names one explicitly; otherwise git ancestry finds it.
+    if since is not None:
+        prior = store.read(_resolve_revision(since, repo=repo))
+        if prior is None:
+            raise CliError(f"no stored review for --since revision: {since!r}")
+    else:
+        prior = find_prior_review(store, reviewed_revision, repo_path, task_text)
+
     review = run_review(
         task_text=task_text,
         change_set=change_set,
@@ -146,6 +158,8 @@ def run_check(
         reviewed_revision=reviewed_revision,
         declaration_text=declaration_text,
         policy=config.scope_expansion_policy,
+        task_identifier=task,
+        prior=prior,
     )
     # §10.1 step 12: when gaps exist, hand the agent a next instruction. The
     # file is a CLI side effect, not part of the pipeline — the benchmark runs
@@ -367,6 +381,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Head Git revision. Omit to review the working tree (§5.1).",
     )
     check.add_argument(
+        "--since",
+        default=None,
+        help="Revision whose stored review to build on (default: nearest ancestor with one).",
+    )
+    check.add_argument(
         "--declaration",
         default=None,
         help="Path to an optional §7.4 builder declaration (absence is a minor finding).",
@@ -442,7 +461,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             review = run_check(
                 args.task, args.base, args.head, config, ReviewStore(),
-                declaration=args.declaration,
+                declaration=args.declaration, since=args.since,
             )
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)
