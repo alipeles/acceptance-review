@@ -798,3 +798,91 @@ def test_exactly_one_prior_review_is_used_even_when_several_are_candidates(tmp_p
     assert prior is not None
     assert prior.reviewed_revision == second
     assert [o.id for o in prior.obligation_map] == ["only-in-the-nearer-review"]
+
+
+def test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun(tmp_path):
+    """"One prior review" at the pipeline level, not just at the selector.
+
+    The dogfood run asked for this twice. Its literal phrasing — that the input
+    model take a single review rather than a list — is a type signature, which
+    pytest cannot fail on. The meaningful runtime version is this: with two
+    ancestor reviews stored, nothing from the one NOT selected may appear in the
+    result. A build that merged both would produce a review whose history no
+    single run ever established.
+    """
+    from acceptance.cli import run_check
+    from acceptance.config import RunConfig
+    from tests.support import client_dispatching
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "t@example.com")
+    _git(repo, "config", "user.name", "t")
+    (repo / "alpha.py").write_text("def alpha():\n    return 1\n")
+    (repo / "beta.py").write_text("def beta():\n    return 2\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "first")
+    first = _git(repo, "rev-parse", "HEAD")
+    (repo / "beta.py").write_text("def beta():\n    return 2  # touched\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "second")
+    second = _git(repo, "rev-parse", "HEAD")
+    (repo / "beta.py").write_text("def beta():\n    return 2  # touched again\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "third")
+    third = _git(repo, "rev-parse", "HEAD")
+
+    store = ReviewStore(tmp_path / "reviews")
+    stale_finding = Finding(
+        type="coverage_gap",
+        severity="high",
+        description="a gap only the FURTHER review ever recorded",
+        evidence_tier=EvidenceTier.STATIC,
+        produced_by=Component.STATIC_ANALYZER,
+        links=[Link(kind="requirement", ref="task.md:1")],
+        related_obligation="Alpha behaves",
+    )
+    for revision, findings in ((first, [stale_finding]), (second, [])):
+        store.write(
+            Review(
+                mode="local",
+                reviewed_revision=revision,
+                task_source=task_source_for(_TWO_FILE_TASK, "task.md"),
+                obligation_map=[
+                    _obligation(
+                        "alpha",
+                        description="Alpha behaves",
+                        coverage_refs=["alpha.py#@@ -1 +1 @@"],
+                    ),
+                    _obligation(
+                        "beta",
+                        description="Beta behaves",
+                        coverage_refs=["beta.py#@@ -1 +1 @@"],
+                    ),
+                ],
+                findings=findings,
+            )
+        )
+
+    task_file = tmp_path / "task.md"
+    task_file.write_text(_TWO_FILE_TASK)
+    review = run_check(
+        task=str(task_file),
+        base=second,
+        head=third,
+        config=RunConfig(),
+        store=store,
+        repo=repo,
+        client=client_dispatching(_TWO_FILE_JUDGMENTS),
+    )
+
+    assert review.delta is not None
+    assert review.delta.prior_reviewed_revision == second
+    # alpha is carried — but from the SELECTED review, not the further one...
+    alpha = next(o for o in review.obligation_map if o.id == "alpha")
+    assert alpha.carried_forward_from == second
+    # ...and the finding only the further review held never appears.
+    assert all(
+        "only the FURTHER review" not in finding.description for finding in review.findings
+    )
