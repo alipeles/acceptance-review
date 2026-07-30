@@ -16,10 +16,14 @@ import pathlib
 import tempfile
 from types import SimpleNamespace
 
+from acceptance.config import DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_state import Obligation, ObligationType
 
-_DEFAULT_MODEL = "anthropic/claude-sonnet-5"
+# Sourced from the tool's own default rather than restated, so a double never
+# stands in for a model the tool does not actually run. It had drifted to a
+# hardcoded Anthropic string while the real default was OpenAI.
+_DEFAULT_MODEL = DEFAULT_MODEL
 
 
 def _fake_response(content: str) -> SimpleNamespace:
@@ -56,9 +60,19 @@ def make_obligation(obligation_id: str, description: str, typ: ObligationType) -
     )
 
 
-def client_dispatching(responses_by_schema: dict, model: str = _DEFAULT_MODEL) -> ModelClient:
+def client_dispatching(
+    responses_by_schema: dict,
+    model: str = _DEFAULT_MODEL,
+    temperature: float = 0.0,
+    seed: int | None = None,
+) -> ModelClient:
     """A client for multi-call hooks: each call returns the response keyed by
-    its response schema's class name (e.g. `_Decomposition`, `_Coverage`)."""
+    its response schema's class name (e.g. `_Decomposition`, `_Coverage`).
+
+    Determinism controls are settable because a review's provenance now reports
+    the client that made the calls (#160): a double that hardcoded them would
+    make provenance describe the double instead of the run under test.
+    """
 
     def completion_fn(**kwargs):
         schema_name = kwargs["response_format"]["json_schema"]["name"]
@@ -66,8 +80,12 @@ def client_dispatching(responses_by_schema: dict, model: str = _DEFAULT_MODEL) -
 
     return ModelClient(
         model=model,
+        # RECORD, always: an injected completion_fn is only ever reached on the
+        # live path, so a REPLAY double would find an empty store and raise.
         mode=Mode.RECORD,
         store=TranscriptStore(tempfile.mkdtemp()),
+        temperature=temperature,
+        seed=seed,
         completion_fn=completion_fn,
     )
 
@@ -90,10 +108,16 @@ _EMPTY_BY_SCHEMA = {
 }
 
 
-def client_finding_nothing(model: str = _DEFAULT_MODEL) -> ModelClient:
+def client_finding_nothing(
+    model: str = _DEFAULT_MODEL,
+    temperature: float = 0.0,
+    seed: int | None = None,
+) -> ModelClient:
     """A client whose every pipeline call returns an empty result — the
     checker runs end to end and reports nothing found."""
-    return client_dispatching(_EMPTY_BY_SCHEMA, model=model)
+    return client_dispatching(
+        _EMPTY_BY_SCHEMA, model=model, temperature=temperature, seed=seed
+    )
 
 
 # --- Recorded prompt-quality corpus (#146) ---------------------------------

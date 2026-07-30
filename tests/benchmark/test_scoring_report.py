@@ -50,6 +50,7 @@ from acceptance.benchmark.case import (
 from acceptance.benchmark.scoring import score_case_set
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.review_state import (
+    DeterminismControls,
     Finding,
     Link,
     Obligation,
@@ -70,7 +71,9 @@ def _inputs() -> BenchmarkCaseInputs:
 
 def _provenance() -> ReviewProvenance:
     return ReviewProvenance(
-        determinism_mode="replay", model="anthropic/claude-sonnet-5", temperature=0.0
+        determinism_mode="replay",
+        model="anthropic/claude-sonnet-5",
+        controls_requested=DeterminismControls(temperature=0.0),
     )
 
 

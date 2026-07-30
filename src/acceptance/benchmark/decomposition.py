@@ -11,7 +11,8 @@ resulting obligation_map, ready for score_case/score_case_set.
 from __future__ import annotations
 
 from acceptance.benchmark.case import BenchmarkCase
-from acceptance.benchmark.hooks import provenance_from, scored_copy
+from acceptance.benchmark.hooks import scored_copy
+from acceptance.config import provenance_for
 from acceptance.llm import ModelClient
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
@@ -26,7 +27,9 @@ def decompose_case(case: BenchmarkCase, client: ModelClient) -> BenchmarkCase:
     review = Review(
         mode="local",
         reviewed_revision=case.inputs.head_revision,
-        provenance=provenance_from(client),
+        # Stamped after `decompose` has run, so the honoured controls it reports
+        # reflect calls that actually happened (#160).
+        provenance=provenance_for(client),
         obligation_map=result.obligations,
     )
     return scored_copy(case, review)

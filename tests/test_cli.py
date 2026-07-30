@@ -3,7 +3,7 @@ import json
 import pytest
 
 from acceptance.cli import main, run_check
-from acceptance.config import RunConfig
+from acceptance.config import DEFAULT_SEED, RunConfig
 from acceptance.review_store import ReviewStore
 from tests.support import client_finding_nothing
 
@@ -31,17 +31,43 @@ def test_check_json_emits_a_structured_review(git_repo, fixture_task_path, capsy
     assert review["completion"]["verdict"] == "unable_to_determine"
 
 
-def test_check_defaults_to_replay_mode_provenance(git_repo, fixture_task_path, capsys, stub_model):
+def test_a_default_cli_run_is_seeded(git_repo, fixture_task_path, capsys, stub_model):
+    """A plain `acceptance check` must carry the configured seed.
+
+    `--seed` defaulted to None and every command passed it straight into
+    RunConfig, so argparse silently overrode DEFAULT_SEED and no CLI run was
+    ever seeded — the fixed-seed half of the determinism strategy was dead on
+    the only path a user invokes. The previous version of this test asserted
+    `seed is None`, which locked the defect in (#160).
+    """
     exit_code = main(
         ["check", "--json", "--task", fixture_task_path, "--base", git_repo["base"], "--head", git_repo["head"]]
     )
 
     assert exit_code == 0
     review = json.loads(capsys.readouterr().out)
-    # Default mode is replay so the CLI never issues a live call unbidden.
-    assert review["provenance"]["determinism_mode"] == "replay"
-    assert review["provenance"]["temperature"] == 0.0
-    assert review["provenance"]["seed"] is None
+    assert review["provenance"]["controls_requested"] == {"temperature": 0.0, "seed": DEFAULT_SEED}
+    # What actually held. The stub has no provider to discard anything, so the
+    # two agree here; against a real provider they need not.
+    assert review["provenance"]["controls_in_force"] == {"temperature": 0.0, "seed": DEFAULT_SEED}
+
+
+def test_no_seed_is_the_deliberate_way_to_run_unpinned(git_repo, fixture_task_path, capsys, stub_model):
+    """Seeding by default must still leave a way out: M-B0.4 samples a provider
+    repeatedly to disclose variance, which a fixed seed would suppress."""
+    exit_code = main(
+        [
+            "check", "--json", "--task", fixture_task_path,
+            "--base", git_repo["base"], "--head", git_repo["head"], "--no-seed",
+        ]
+    )
+
+    assert exit_code == 0
+    provenance = json.loads(capsys.readouterr().out)["provenance"]
+    assert provenance["controls_requested"]["seed"] is None
+    # Nothing was asked for, so nothing was dropped: the run is honestly pinned
+    # on temperature and simply unseeded.
+    assert provenance["controls_in_force"]["seed"] is None
 
 
 def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_path, capsys, stub_model):
@@ -63,8 +89,8 @@ def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_pa
     assert provenance == {
         "determinism_mode": "record",
         "model": "openai/gpt-5",
-        "temperature": 0.4,
-        "seed": 7,
+        "controls_requested": {"temperature": 0.4, "seed": 7},
+        "controls_in_force": {"temperature": 0.4, "seed": 7},
     }
 
 

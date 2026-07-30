@@ -7,6 +7,7 @@ from acceptance.review_state import (
     BuilderDeclaration,
     ChangeSet,
     Component,
+    DeterminismControls,
     DiffHunk,
     EvidenceTier,
     ExecutionEvidence,
@@ -18,6 +19,7 @@ from acceptance.review_state import (
     ObligationType,
     Project,
     Review,
+    ReviewProvenance,
     TaskSource,
     TestEvidence,
     TextSpan,
@@ -369,3 +371,60 @@ def test_review_evidence_tier_summary_is_derived_not_stored():
 
     assert review.evidence_tier_summary() == {"COVERAGE_CONFIRMED": 1, "STATIC": 1}
     assert "evidence_tiers" not in review.to_dict()
+
+
+# --- determinism verdict derived from provenance (#160) ----------------------
+
+
+def _provenance(requested: dict, in_force: dict | None) -> ReviewProvenance:
+    return ReviewProvenance(
+        determinism_mode="record",
+        model="anthropic/claude-sonnet-5",
+        controls_requested=DeterminismControls(**requested),
+        controls_in_force=None if in_force is None else DeterminismControls(**in_force),
+    )
+
+
+def test_a_run_whose_controls_all_held_is_pinned():
+    provenance = _provenance({"temperature": 0.0, "seed": 0}, {"temperature": 0.0, "seed": 0})
+
+    assert provenance.determinism() == "pinned"
+
+
+def test_a_run_whose_provider_dropped_a_control_is_unpinned():
+    """The Anthropic case: `seed` is rejected outright, so the run is not
+    reproducible however it was configured."""
+    provenance = _provenance({"temperature": 0.0, "seed": 0}, {"temperature": 0.0, "seed": None})
+
+    assert provenance.determinism() == "unpinned"
+
+
+def test_a_control_honoured_at_a_different_value_is_unpinned():
+    """`claude-sonnet-5` accepts only `temperature=1`. Asking for 0.0 and getting
+    1 is not a dropped control but it is not the requested run either."""
+    provenance = _provenance({"temperature": 0.0, "seed": None}, {"temperature": 1.0, "seed": None})
+
+    assert provenance.determinism() == "unpinned"
+
+
+def test_asking_for_nothing_and_getting_nothing_is_pinned():
+    """`--no-seed` is a deliberate choice, not a broken promise: nothing was
+    requested, so nothing was dropped."""
+    provenance = _provenance({"temperature": 0.0, "seed": None}, {"temperature": 0.0, "seed": None})
+
+    assert provenance.determinism() == "pinned"
+
+
+def test_a_run_with_nothing_observed_is_indeterminate():
+    provenance = _provenance({"temperature": 0.0, "seed": 0}, None)
+
+    assert provenance.determinism() == "indeterminate"
+
+
+def test_the_determinism_verdict_is_derived_rather_than_stored():
+    """A stored copy alongside the controls it summarizes is a second source of
+    truth that can drift — same rule as `evidence_tier_summary`."""
+    provenance = _provenance({"temperature": 0.0, "seed": 0}, {"temperature": 0.0, "seed": 0})
+
+    assert "determinism" not in provenance.to_dict()
+    assert "pinned" not in json.dumps(provenance.to_dict())

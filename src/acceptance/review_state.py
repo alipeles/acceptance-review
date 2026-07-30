@@ -49,6 +49,7 @@ __all__ = [
     "TestRecommendation",
     "CompletionVerdict",
     "CompletionResult",
+    "DeterminismControls",
     "ReviewProvenance",
     "Review",
 ]
@@ -409,18 +410,61 @@ class CompletionResult(_Model):
     escalation_candidates: list[str] = Field(default_factory=list)
 
 
+class DeterminismControls(_Model):
+    """A seed/temperature pair.
+
+    `None` means the control is **not in force**. For requested controls that is
+    "we asked for nothing"; for honoured controls it is the stronger statement
+    that the provider ignored the control and ran at its own default. Both are
+    real: Anthropic rejects `seed` outright and `claude-sonnet-5` accepts only
+    `temperature=1`, so a run there honours neither control (#158).
+    """
+
+    temperature: float | None = None
+    seed: int | None = None
+
+
 class ReviewProvenance(_Model):
     """How a review was produced (§13.6 trustworthiness). Stored so a reader
     can tell what determinism controls were in force — a fixed-seed replay is
     reproducible in a way a live sampled run is not, and M-B0.4's variance
     disclosure reads this. Mode is stored as its string value, not the harness
     `Mode` enum, so the data model stays independent of the LLM harness.
+
+    Requested and honoured controls are separate fields because they diverge.
+    The harness sends determinism controls through LiteLLM with `drop_params`,
+    which lets a provider that rejects a control run anyway rather than failing
+    the review — so what we asked for is intent, and only `controls_in_force`
+    describes the run that actually happened (#160). Reporting a single set
+    would have provenance claim a seed the provider never received.
     """
 
     determinism_mode: Literal["record", "replay"]
     model: str
-    temperature: float
-    seed: int | None = None
+    controls_requested: DeterminismControls
+    # None until some model call is observed. A review can legitimately make no
+    # model call at all, and such a run must not inherit a claim that the
+    # configured controls held — see `determinism`.
+    controls_in_force: DeterminismControls | None = None
+
+    def determinism(self) -> Literal["pinned", "unpinned", "indeterminate"]:
+        """Whether this run is reproducible, derived rather than stored.
+
+        Derived for the same reason as `Review.evidence_tier_summary`: a stored
+        copy alongside the controls it summarizes is a second source of truth
+        that can drift. `indeterminate` is a real answer, not a fallback — with
+        no observed call there is no evidence either way, and the uncertainty is
+        first-class (§9.3).
+        """
+        if self.controls_in_force is None:
+            return "indeterminate"
+        requested = self.controls_requested
+        honoured = self.controls_in_force
+        for name in ("temperature", "seed"):
+            asked = getattr(requested, name)
+            if asked is not None and getattr(honoured, name) != asked:
+                return "unpinned"
+        return "pinned"
 
 
 class Review(_Model):
