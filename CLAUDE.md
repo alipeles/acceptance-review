@@ -171,6 +171,8 @@ We run the tool against our own work in progress. It is the only place the tool'
 own failures become visible, so it is a hard constraint on shipping. Two gates,
 both mandatory, neither skippable because the change looks small.
 
+Always save the output of dogfood runs in the dogfood-logs folder.
+
 ### Gate 1 — before writing any code
 
 **1.** Write `current-task.md` for the issue (its Deliverable and Acceptance),

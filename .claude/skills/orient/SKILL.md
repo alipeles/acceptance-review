@@ -29,10 +29,6 @@ state — the issue is the plan, not any file in the repo (#168).
 
 - **Do not read `.acceptance/`.** It is per-run output, regenerated from the
   current review, and can be stale relative to the report.
-- **Do not edit `current-task.md`** except to reword a genuinely weak
-  obligation — requirement text that is badly worded. Never edit it to change
-  what the review says: suppressing a finding or an open question destroys the
-  only signal that the tool is wrong. Progress notes go in `session-state.md`.
 - **Do not start implementing.** Orienting is the whole job here.
 
 ## 4. Then stop and report
