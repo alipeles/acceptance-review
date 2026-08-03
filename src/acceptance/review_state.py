@@ -51,6 +51,8 @@ __all__ = [
     "CompletionResult",
     "DeterminismControls",
     "ReviewProvenance",
+    "ObligationChange",
+    "ReviewDelta",
     "Review",
 ]
 
@@ -205,6 +207,14 @@ EvidenceClassification = Literal[
     "indeterminate",
 ]
 
+# Evidence states a re-run can meaningfully *improve on* — used by M7.5 to decide
+# whether an obligation's movement counts as a gap closing. `requires_other_evidence`
+# is excluded deliberately: code tests are the wrong instrument for it, so tests
+# appearing is not the gap closing.
+_WEAK_OR_MISSING_EVIDENCE = frozenset(
+    {"partially_supported", "nominally_supported", "unsupported", "indeterminate", None}
+)
+
 
 class Obligation(_Model):
     """A discrete, typed obligation derived from the task (§7.3, §9.1; M1.2).
@@ -239,6 +249,12 @@ class Obligation(_Model):
     # `addressed` obligation produces no finding, so without this the review
     # could say an obligation was satisfied but never say where (M7.4).
     coverage_refs: list[str] = Field(default_factory=list)
+    # Set when an incremental re-run reused this obligation's judgment instead of
+    # re-deriving it (M7.5): the revision the judgment was established against.
+    # Recorded because a reader must be able to tell which parts of a review are
+    # fresh — a carried-forward judgment is evidence about an older head, and
+    # presenting it as current would overstate what this run actually checked.
+    carried_forward_from: str | None = None
 
 
 class Link(_Model):
@@ -472,10 +488,56 @@ class ReviewProvenance(_Model):
         return "pinned"
 
 
+class ObligationChange(_Model):
+    """How one obligation moved between a prior review and this one (M7.5)."""
+
+    obligation_id: str
+    description: str
+    previous_coverage_status: str | None = None
+    coverage_status: str | None = None
+    previous_evidence_class: EvidenceClassification | None = None
+    evidence_class: EvidenceClassification | None = None
+
+    def closed_gap(self) -> bool:
+        """Whether this movement is a gap closing — the §13.5 #9 outcome.
+
+        Derived rather than stored, like `Review.evidence_tier_summary`: a stored
+        flag beside the statuses it summarizes is a second source of truth.
+        """
+        was_gap = self.previous_coverage_status is not None and (
+            self.previous_coverage_status != "addressed"
+        )
+        was_weak = self.previous_evidence_class in _WEAK_OR_MISSING_EVIDENCE
+        now_addressed = self.coverage_status == "addressed"
+        now_supported = self.evidence_class == "strongly_supported"
+        return (was_gap and now_addressed) or (was_weak and now_supported)
+
+
+class ReviewDelta(_Model):
+    """What changed since the prior review this run built on (M7.5).
+
+    Persisted rather than only rendered, so "the gap you were told about is now
+    closed" is inspectable review state and not a sentence in a report that the
+    next run forgets — the same reason open-question resolutions are stored.
+    """
+
+    prior_reviewed_revision: str
+    previous_verdict: str | None = None
+    verdict: str | None = None
+    obligation_changes: list[ObligationChange] = Field(default_factory=list)
+    carried_forward_obligation_ids: list[str] = Field(default_factory=list)
+
+    def closed_gaps(self) -> list[ObligationChange]:
+        return [change for change in self.obligation_changes if change.closed_gap()]
+
+
 class Review(_Model):
     mode: str
     reviewed_revision: str
     provenance: ReviewProvenance | None = None
+    task_source: TaskSource | None = None
+    # Present only on an incremental re-run (M7.5); None on a first review.
+    delta: ReviewDelta | None = None
     mandate: MandateInterpretation | None = None
     declaration: BuilderDeclaration | None = None
     change_set: ChangeSet | None = None

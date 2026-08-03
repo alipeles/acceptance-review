@@ -542,10 +542,20 @@ def test_cli_and_benchmark_share_one_pipeline(tmp_path, monkeypatch):
     # Both invocations must run the SAME stages, not merely call the same
     # helper: a conditional inside run_review that skipped a stage for one
     # consumer would keep the call count at 2 while silently diverging again.
+    #
+    # `task_source.identifier` is excluded for the same reason as
+    # `reviewed_revision`: it is where the input came from, not what the pipeline
+    # did with it. The CLI read a file and names its path; the benchmark holds the
+    # task inline and has no path to name. The digest and text — the parts a
+    # re-run actually compares (M7.5) — are still required to match.
+    ignore = {"provenance", "reviewed_revision"}
     benchmark_review, cli_review = reviews
-    assert benchmark_review.model_dump(exclude={"provenance", "reviewed_revision"}) == (
-        cli_review.model_dump(exclude={"provenance", "reviewed_revision"})
-    )
+    benchmark_state = benchmark_review.model_dump(exclude=ignore)
+    cli_state = cli_review.model_dump(exclude=ignore)
+    assert benchmark_state["task_source"]["snapshot"] == cli_state["task_source"]["snapshot"]
+    for state in (benchmark_state, cli_state):
+        del state["task_source"]["identifier"]
+    assert benchmark_state == cli_state
 
 
 def test_the_shared_pipeline_runs_every_stage(tmp_path):
