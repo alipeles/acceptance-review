@@ -39,4 +39,4 @@ htmlcov/
 dogfood-logs/
 
 # Claude session handoff note
-handoff.md
+handoff*.md
