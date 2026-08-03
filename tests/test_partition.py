@@ -84,6 +84,50 @@ def test_a_size_below_one_is_rejected():
         partition(["a"], 0, key=str)
 
 
+def test_the_mechanism_works_on_a_payload_that_has_nothing_to_do_with_mapping():
+    """Reusability is the obligation, so exercise it on a shape the mapping
+    stage would never produce. A partitioner that had grown mapping-specific
+    assumptions — a `test_id` attribute, an obligation list — could not run this
+    at all, and the next stage to need batching would have to reimplement it."""
+    changed_files = [
+        {"path": "src/b.py", "hunks": 3},
+        {"path": "src/a.py", "hunks": 1},
+        {"path": "src/c.py", "hunks": 7},
+    ]
+
+    batches = partition(changed_files, 2, key=lambda f: f["path"])
+
+    assert [[f["path"] for f in b.items] for b in batches] == [
+        ["src/a.py", "src/b.py"],
+        ["src/c.py"],
+    ]
+    assert batches[0].request_partition() == {"size": 2}
+
+
+def test_the_mechanism_does_not_depend_on_the_stage_that_uses_it():
+    """The one caller today is mapping (DR-164 decision 2). The module must not
+    import it back: a partitioner that reaches into `evidence/` is reusable only
+    in name, and the coupling would not show up in any behavioural test."""
+    import ast
+    import pathlib
+
+    import acceptance.partition as module
+
+    tree = ast.parse(pathlib.Path(module.__file__).read_text())
+    imported = {
+        node.module
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module
+    } | {
+        alias.name
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Import)
+        for alias in node.names
+    }
+
+    assert not [name for name in imported if name.startswith("acceptance.")]
+
+
 def test_a_batch_is_immutable():
     batch = partition(["a", "b"], 2, key=str)[0]
 

@@ -100,3 +100,50 @@ def test_metrics_are_none_when_their_ground_truth_is_empty():
     assert score.mapping_accuracy is None  # no candidate_tests edges
     assert score.decomposition_accuracy == 0.0  # one obligation, none reported
     assert score.evidence_agreement == 0.0  # one obligation with an evidence class
+
+
+# --- #164: the metric carries its own comparability warning ------------------
+
+
+def _text_around(path, anchor: str, before: int = 8) -> str:
+    """The lines immediately preceding `anchor` in `path` — where a field's
+    explanatory comment lives in this codebase."""
+    import pathlib
+
+    lines = pathlib.Path(path).read_text().splitlines()
+    index = next(i for i, line in enumerate(lines) if anchor in line)
+    return "\n".join(lines[max(0, index - before) : index + 1])
+
+
+def test_mapping_accuracy_is_marked_not_comparable_across_the_partitioning_change():
+    """A mapping-accuracy figure from before #164 and one from after measure
+    different questions being asked of the model, so a reader who plots them as
+    a trend draws a conclusion the data cannot support. The warning has to sit
+    where the number is met, not only in the decision record — this test fails
+    if it is deleted, softened, or drifts away from the field."""
+    import acceptance.benchmark.case as case_module
+    import acceptance.benchmark.scoring as scoring_module
+
+    report = _text_around(scoring_module.__file__, "    mapping_accuracy: float | None = None")
+    score = _text_around(case_module.__file__, "    mapping_accuracy: float | None = None")
+    sampled = _text_around(scoring_module.__file__, "    mapping_accuracy: MetricStats")
+
+    for text in (report, score, sampled):
+        assert "not comparable" in text.lower()
+        assert "#164" in text
+
+    # The strong form: not merely "changed", but "do not compare".
+    assert "must not be plotted as a trend" in report
+    assert "regression" in report
+
+
+def test_the_decision_record_states_the_non_comparability_too():
+    """The DR is where someone reading the *change* lands, as opposed to
+    someone reading the *number*. Both entry points have to carry it."""
+    import pathlib
+
+    dr = pathlib.Path(__file__).resolve().parents[2] / "docs"
+    text = (dr / "DR-164-mapping-stage-request-partitioning.md").read_text()
+
+    assert "not comparable" in text.lower()
+    assert "mapping-accuracy" in text.lower()
