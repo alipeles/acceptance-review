@@ -237,9 +237,16 @@ class ModelClient:
         # provenance can report the controls actually in force rather than the
         # ones configured (#160) — see `controls_in_force`.
         self._observed_controls: list[dict | None] = []
+        # One entry per partitioned call. Observed rather than configured, for
+        # the same reason as the controls above: provenance should describe the
+        # run that happened, not the run that was asked for (DR-164).
+        self._observed_partitions: list[dict] = []
 
     def build_request(
-        self, messages: list[dict], response_model: type[BaseModel]
+        self,
+        messages: list[dict],
+        response_model: type[BaseModel],
+        partition: dict[str, Any] | None = None,
     ) -> dict:
         """The recorded, hashed description of a call."""
         request: dict[str, Any] = {
@@ -255,13 +262,22 @@ class ModelClient:
         }
         if self.seed is not None:
             request["seed"] = self.seed
+        if partition is not None:
+            # Inside the hash, like the seed, because it is a determinism
+            # control: changing how work is partitioned changes what is asked of
+            # the model, so recordings made under the old partitioning must be
+            # re-verified rather than silently replayed (DR-164).
+            request["partition"] = partition
         return request
 
     def complete(
-        self, messages: list[dict], response_model: type[ResponseModelT]
+        self,
+        messages: list[dict],
+        response_model: type[ResponseModelT],
+        partition: dict[str, Any] | None = None,
     ) -> ResponseModelT:
         """Return a validated `response_model`, from a live call or a transcript."""
-        request = self.build_request(messages, response_model)
+        request = self.build_request(messages, response_model, partition)
         key = request_key(request)
         record = self.store.read(key)
 
@@ -287,6 +303,8 @@ class ModelClient:
         # that of the recording it replays, so a transcript recorded against a
         # provider that discarded a control must not replay as pinned.
         self._observed_controls.append(record.get("controls_applied"))
+        if partition is not None:
+            self._observed_partitions.append(partition)
         return self._validate(record["response"], response_model)
 
     @property
@@ -312,6 +330,21 @@ class ModelClient:
             values = [call.get(name) for call in per_call]
             in_force[name] = values[0] if all(v == values[0] for v in values) else None
         return in_force
+
+    @property
+    def partition_size_in_force(self) -> int | None:
+        """The partition size observed across this client's partitioned calls.
+
+        `None` means no partitioned call was made — an unpartitioned run, which
+        is a different claim from a partition size of one. As with
+        `controls_in_force`, disagreement between calls yields `None` rather than
+        a value that only some calls ran under.
+        """
+        sizes = {partition.get("size") for partition in self._observed_partitions}
+        if len(sizes) != 1:
+            return None
+        size = sizes.pop()
+        return size if isinstance(size, int) else None
 
     def _persist_live_call(
         self, key: str, request: dict, response_model: type[BaseModel]

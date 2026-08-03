@@ -1,6 +1,6 @@
 # Spec: Independent Completion and Acceptance Review for AI-Assisted Software Development
 
-*Working spec for the author and coding agents. Defines what the product is and why. Milestones, sequencing, and status live in the separate development plan. Each concept is defined once in an authoritative section; other sections cross-reference rather than restate.*
+*Working spec for the author and coding agents. Defines what the product is and why. Milestones, sequencing, and status live in the GitHub backlog (milestones + issues). Each concept is defined once in an authoritative section; other sections cross-reference rather than restate.*
 
 ---
 
@@ -296,7 +296,7 @@ Against a labeled set of changes with known gaps: **gap detection (recall)** —
 
 Layered by source, from real changes:
 
-- **Ready-made labeled instances** — public benchmarks pairing real GitHub issues with gold patches and explicit pass/fail test sets (the SWE-bench family and curated subsets; Python bug datasets such as BugsInPy) give task→implementation→test-evidence tuples from real projects. Base layer. *Exact dataset selection, subset sizing, and licenses are confirmed in the development plan before adoption.*
+- **Ready-made labeled instances** — public benchmarks pairing real GitHub issues with gold patches and explicit pass/fail test sets (the SWE-bench family and curated subsets; Python bug datasets such as BugsInPy) give task→implementation→test-evidence tuples from real projects. Base layer. *Exact dataset selection, subset sizing, and licenses are resolved in `docs/DR-168-benchmark-dataset-selection.md`.*
 - **Real merged PRs** — mining Python repos for PRs that close linked issues and add/modify tests yields abundant real (issue→diff→tests→CI) tuples. Reverted or follow-up-"fix" PRs give natural **missed-obligation** labels — the follow-up documents what the first change missed.
 - **Offline mutants for objective test-strength labels** — inject a mutant into real code with a real passing test; if the test still passes, that is ground-truth "weak evidence," built from real code and a real test with no fabrication. Uses mutation offline to *generate labels*, independent of whether execution ships in the product.
 - **Real agent output (on-thesis layer)** — run actual coding agents on real issues; label their implementations against the known gold patch and tests. Most representative data available, since the product reviews agent work.
@@ -330,7 +330,7 @@ Concretely it decides: what the task requires; which instructions are material; 
 
 ### 13.1 Objective
 
-Show the system can independently identify meaningful completion and test-evidence gaps in AI-assisted changes without depending on a particular coding agent — with **measured accuracy against a real-change benchmark**, not merely plausible output. Complete MVP = a **local completion checker** (static, with optional execution for hermetic repos) + a **validation benchmark and harness** (§11) + a **GitHub-native acceptance review** applying the same analysis. The local checker and its benchmark are the first milestone and independently useful; GitHub completes the product experience. *(Ordering/effort: development plan.)*
+Show the system can independently identify meaningful completion and test-evidence gaps in AI-assisted changes without depending on a particular coding agent — with **measured accuracy against a real-change benchmark**, not merely plausible output. Complete MVP = a **local completion checker** (static, with optional execution for hermetic repos) + a **validation benchmark and harness** (§11) + a **GitHub-native acceptance review** applying the same analysis. The local checker and its benchmark are the first milestone and independently useful; GitHub completes the product experience. *(Ordering/effort: the GitHub backlog.)*
 
 ### 13.2 Scope
 

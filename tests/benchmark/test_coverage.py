@@ -22,16 +22,18 @@ invariant the test client dispatches a fixed, hand-authored response per
 call by its response schema name — no live calls.
 """
 
+import json
 from pathlib import Path
 
 from acceptance.benchmark.coverage import classify_case
 from acceptance.benchmark.fixtures import build_benchmark_case
 from acceptance.change.diff import extract_change_set
 from acceptance.cli import run_check
-from acceptance.config import RunConfig
+from acceptance.config import DEFAULT_MODEL, RunConfig
+from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_store import ReviewStore
 from tests.support import client_dispatching as _client_dispatching
-from tests.support import client_finding_nothing
+from tests.support import _EMPTY_BY_SCHEMA, _fake_response, client_finding_nothing
 
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 
@@ -618,6 +620,47 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
     assert obligation.coverage_refs  # coverage refs were carried through
     assert review.recommendations  # recommendation generation ran
     assert review.completion is not None  # the verdict was derived
+
+
+def test_the_shared_pipeline_partitions_the_mapping_call(tmp_path):
+    """The batching mechanism has its own unit tests; this pins that the
+    pipeline actually *calls* it, and that the batch-size control reaches it
+    rather than stopping at the signature. A partitioner nothing routes through
+    is the exact shape of hole defect injection keeps finding here.
+    """
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+    mapping_prompts: list[str] = []
+
+    def completion_fn(**kwargs):
+        schema_name = kwargs["response_format"]["json_schema"]["name"]
+        if schema_name == "_Mappings":
+            mapping_prompts.append(kwargs["messages"][-1]["content"])
+        return _fake_response(json.dumps(_EMPTY_BY_SCHEMA[schema_name]))
+
+    def run(batch_size):
+        mapping_prompts.clear()
+        client = ModelClient(
+            model=DEFAULT_MODEL,
+            mode=Mode.RECORD,
+            store=TranscriptStore(str(tmp_path / f"transcripts-{batch_size}")),
+            completion_fn=completion_fn,
+        )
+        classify_case(case, client, mapping_batch_size=batch_size)
+        return list(mapping_prompts)
+
+    # This fixture discovers more than one candidate test, so a batch size of
+    # one must produce more than one mapping call.
+    one_per_call = run(1)
+    all_at_once = run(50)
+
+    assert len(all_at_once) == 1
+    assert len(one_per_call) > 1
+    # Same tests judged either way — partitioning changes the asking, not the
+    # question. Each single-test call carries exactly one test.
+    assert all(prompt.count("\n### ") == 1 for prompt in one_per_call)
+    assert sum(prompt.count("\n### ") for prompt in one_per_call) == all_at_once[
+        0
+    ].count("\n### ")
 
 
 def test_the_shared_pipeline_writes_nothing_into_the_reviewed_repo(tmp_path):

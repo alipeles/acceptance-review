@@ -47,6 +47,33 @@ def client_returning(response: dict, model: str = _DEFAULT_MODEL) -> ModelClient
     )
 
 
+def client_answering_per_call(
+    responder, model: str = _DEFAULT_MODEL
+) -> tuple[ModelClient, list[dict]]:
+    """A client that answers each call from the prompt it was given.
+
+    Returns the client and a list that accumulates one entry per call —
+    `{"prompt": ..., "response": ...}` — so a test can assert what was asked as
+    well as what came back. Needed for partitioned stages, where a single fixed
+    response cannot distinguish "every batch was asked" from "one batch was".
+    """
+    calls: list[dict] = []
+
+    def completion_fn(**kwargs):
+        prompt = "\n".join(message["content"] for message in kwargs["messages"])
+        response = responder(prompt)
+        calls.append({"prompt": prompt, "response": response})
+        return _fake_response(json.dumps(response))
+
+    client = ModelClient(
+        model=model,
+        mode=Mode.RECORD,
+        store=TranscriptStore(tempfile.mkdtemp()),
+        completion_fn=completion_fn,
+    )
+    return client, calls
+
+
 def make_obligation(obligation_id: str, description: str, typ: ObligationType) -> Obligation:
     """A minimal but valid Obligation for tests that don't exercise its
     importance/explicitness/observable-behavior fields directly."""

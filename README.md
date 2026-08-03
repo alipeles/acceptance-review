@@ -49,18 +49,20 @@ acceptance classify --task path/to/task.md --base <rev> [--head <rev>]
 | Path | Contents |
 |------|----------|
 | `src/acceptance/` | Checker, evidence analysis, report, benchmark harness |
-| `docs/` | Product spec and Stage-1 development plan (source of truth) |
-| `planning/backlog/` | One Markdown file per plan task |
+| `docs/` | Product spec (source of truth) and Decision Records |
 | `tests/` | Unit tests, fixtures, and archetype cases |
 | `.github/workflows/` | CI (lint + tests) and benchmark report stub |
 
 ## How the work is tracked
 
-- **Milestones** (M0, M-B0, M1 … M9) group the work.
+- **Milestones** (M0, M-B0, M1 … M9) group the work, and carry the sequencing
+  and dependencies between them.
 - **Issues** are individual tasks (Inputs / Deliverable / Acceptance).
 - **Labels**: `track:checker` vs `track:benchmark`, `human-gate`, `decision`.
 
-See `docs/Stage-1-Development-Plan.md` for sequencing and exit criteria, and
+The GitHub backlog is the plan — there is no separate planning document, and
+task detail lives in the issue rather than in a file. Resolved design decisions
+are written up as Decision Records in `docs/DR-<issue>-<slug>.md`. See
 `docs/AI-Assisted-Software-Development-Review-Spec.md` for the full product
 definition.
 

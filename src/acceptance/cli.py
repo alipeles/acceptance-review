@@ -21,7 +21,12 @@ import sys
 from pathlib import Path
 
 from acceptance.change.diff import extract_change_set, extract_working_tree_change_set
-from acceptance.config import DEFAULT_MODEL, DEFAULT_SEED, RunConfig
+from acceptance.config import (
+    DEFAULT_MAPPING_BATCH_SIZE,
+    DEFAULT_MODEL,
+    DEFAULT_SEED,
+    RunConfig,
+)
 from acceptance.coverage.classify import ImplementationCoverage, classify_coverage
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
 from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
@@ -163,6 +168,7 @@ def run_check(
         reviewed_revision=reviewed_revision,
         declaration_text=declaration_text,
         policy=config.scope_expansion_policy,
+        mapping_batch_size=config.mapping_batch_size,
         task_identifier=task,
         prior=prior,
     )
@@ -366,6 +372,16 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
     parser.add_argument(
         "--temperature", type=float, default=0.0, help="Model temperature (default: 0.0)."
     )
+    parser.add_argument(
+        "--mapping-batch-size",
+        type=int,
+        default=DEFAULT_MAPPING_BATCH_SIZE,
+        help=(
+            "Candidate tests per mapping call (determinism; default: "
+            f"{DEFAULT_MAPPING_BATCH_SIZE}). Changing it invalidates recorded "
+            "mapping transcripts."
+        ),
+    )
 
 
 def _seed_from(args: argparse.Namespace) -> int | None:
@@ -462,6 +478,7 @@ def main(argv: list[str] | None = None) -> int:
             mode=Mode(args.mode),
             seed=_seed_from(args),
             temperature=args.temperature,
+            mapping_batch_size=args.mapping_batch_size,
         )
         try:
             review = run_check(
@@ -486,6 +503,7 @@ def main(argv: list[str] | None = None) -> int:
             mode=Mode(args.mode),
             seed=_seed_from(args),
             temperature=args.temperature,
+            mapping_batch_size=args.mapping_batch_size,
         )
         try:
             result = run_decompose(args.task, config)
@@ -519,6 +537,7 @@ def main(argv: list[str] | None = None) -> int:
             mode=Mode(args.mode),
             seed=_seed_from(args),
             temperature=args.temperature,
+            mapping_batch_size=args.mapping_batch_size,
         )
         try:
             obligations, open_questions, coverages, dispositioned = run_classify(

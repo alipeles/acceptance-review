@@ -462,6 +462,11 @@ class ReviewProvenance(_Model):
     # model call at all, and such a run must not inherit a claim that the
     # configured controls held — see `determinism`.
     controls_in_force: DeterminismControls | None = None
+    # How many items one partitioned request covered (DR-164). Observed from the
+    # calls, not read from configuration, so it reports the partitioning that was
+    # actually in force. None means no partitioned call was made — a different
+    # claim from a partition of size one.
+    request_partition_size: int | None = None
 
     def determinism(self) -> Literal["pinned", "unpinned", "indeterminate"]:
         """Whether this run is reproducible, derived rather than stored.

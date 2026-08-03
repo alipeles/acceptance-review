@@ -35,6 +35,13 @@ DEFAULT_MODEL = "openai/gpt-5.4-mini"
 # correct: a determinism control changed, so recordings must be re-verified.
 DEFAULT_SEED = 0
 
+# Candidate tests per mapping call (DR-164). A determinism control in the same
+# sense as the seed: it changes what is asked of the model, so changing it
+# invalidates every recorded mapping transcript. 12 puts ~200 relevance
+# judgments in a call, an order of magnitude under the ~1,000 at which the
+# stage was measured shedding work, at ~1.5x the total input tokens.
+DEFAULT_MAPPING_BATCH_SIZE = 12
+
 
 class ScopeExpansionPolicy(str, Enum):
     """How tolerant the review is of changes beyond the mandate (DR-081
@@ -61,6 +68,10 @@ class RunConfig(BaseModel):
     temperature: float = 0.0
     seed: int | None = DEFAULT_SEED
     transcript_root: Path = Field(default=DEFAULT_TRANSCRIPT_ROOT)
+    # A determinism control, but a stage-level one: it partitions the request
+    # rather than parameterising the provider call, so it reaches the mapping
+    # stage through the pipeline instead of through build_client().
+    mapping_batch_size: int = Field(default=DEFAULT_MAPPING_BATCH_SIZE, ge=1)
     # A review-interpretation knob (consumed by the M3.5.3 separability
     # classifier), not a determinism control — so it deliberately does not
     # feed build_client() or provenance_for(). If we later want it recorded for
@@ -100,4 +111,5 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
         controls_in_force=(
             None if in_force is None else DeterminismControls(**in_force)
         ),
+        request_partition_size=client.partition_size_in_force,
     )
