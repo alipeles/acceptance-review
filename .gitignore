@@ -38,5 +38,6 @@ htmlcov/
 # machine-generated, and specific to one working copy.
 dogfood-logs/
 
-# Claude session handoff note
+# Claude session state / handoff notes — rolling, disposable, never committed
+session-state.md
 handoff*.md
