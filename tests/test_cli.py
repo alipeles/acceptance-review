@@ -91,6 +91,10 @@ def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_pa
         "model": "openai/gpt-5",
         "controls_requested": {"temperature": 0.4, "seed": 7},
         "controls_in_force": {"temperature": 0.4, "seed": 7},
+        # This fixture's diff surfaces no candidate tests, so the mapping stage
+        # makes no call and there is no partitioning to report. None here is
+        # "unpartitioned run", not "partition of size zero".
+        "request_partition_size": None,
     }
 
 

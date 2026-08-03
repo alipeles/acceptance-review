@@ -233,6 +233,12 @@ class BenchmarkReport(PersistableModel):
     gap_recall: float | None = None
     gap_precision: float | None = None
     decomposition_accuracy: float | None = None
+    # NOT COMPARABLE ACROSS #164. The mapping stage now partitions its request
+    # across several calls instead of asking one call for every test-obligation
+    # judgment (DR-164), which changes the prompts and forced the whole mapping
+    # transcript corpus to be re-recorded. A mapping-accuracy figure from before
+    # that change and one from after measure different questions being asked, so
+    # they must not be plotted as a trend or cited as a regression/improvement.
     mapping_accuracy: float | None = None
     evidence_agreement: float | None = None
     unrequested_precision: float | None = None
@@ -321,6 +327,9 @@ class SampledBenchmarkReport(PersistableModel):
     gap_recall: MetricStats
     gap_precision: MetricStats
     decomposition_accuracy: MetricStats
+    # Not comparable across #164 — see BenchmarkReport.mapping_accuracy. Spread
+    # pooled across that boundary would read as model variance when it is the
+    # partitioning change.
     mapping_accuracy: MetricStats
     evidence_agreement: MetricStats
     unrequested_precision: MetricStats

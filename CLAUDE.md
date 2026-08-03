@@ -171,6 +171,11 @@ cases:
 | **Implementation detail** deliberately left to the coding agent | **No action.** It is a correct observation about a decision that is yours to make; silencing it would be dishonest. |
 | **Wrong question** — answerable from the task file plus the repo | **Stop and tell the human. Do not proceed.** State why it is answerable, and whether you believe the cause is already accounted for in the backlog (e.g. a known decomposition or mapping defect). Never fix it silently, never work around it. |
 
+**Tie-break on rewriting:** rewrite when the tool's response makes you regret
+your wording; otherwise leave it. This is independent of whether to escalate — a
+question can be both worth rewording and worth reporting. Report it either way;
+the rewrite is not the report.
+
 **4. Record in `session-state.md`** that Gate 1 passed, at which SHA, and who
 confirmed the decomposition. That confirmation is a human judgement — unwritten,
 the next session either repeats it or assumes it.
@@ -231,8 +236,11 @@ continuously, reset at the cheap moments.**
 1. `session-state.md` — rolling state of the task in flight.
 2. `current-task.md` — the task itself.
 3. `git log --oneline -10` and `git status`.
-4. `.acceptance/next-instruction.md` if it exists — the checker writes it when a
-   review has gaps, so it is the tool's own account of what to do next.
+
+Do **not** read `.acceptance/next-instruction.md` at startup. It is a single
+fixed path overwritten by whichever `check` run last found gaps, keyed to no task
+and no SHA, and never cleaned up — so it routinely describes a different task on
+a different branch. #167 (M7.3.r1) replaces it with on-demand retrieval.
 
 Then start work. Do **not** "get oriented" by reading the source tree; the
 `src/acceptance/` map above exists so you don't have to.
