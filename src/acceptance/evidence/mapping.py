@@ -19,9 +19,11 @@ the field the §11.1 mapping-accuracy metric (scoring.py) already scores.
 
 from __future__ import annotations
 
+from acceptance.config import DEFAULT_MAPPING_BATCH_SIZE
 from acceptance.evidence.discovery import DiscoveredTest
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
+from acceptance.partition import partition
 from acceptance.review_state import Obligation
 
 _SYSTEM_PROMPT = """\
@@ -89,36 +91,61 @@ def _render_prompt(obligations: list[Obligation], tests: list[DiscoveredTest]) -
 
 
 def map_tests_to_obligations(
-    obligations: list[Obligation], tests: list[DiscoveredTest], client: ModelClient
+    obligations: list[Obligation],
+    tests: list[DiscoveredTest],
+    client: ModelClient,
+    batch_size: int = DEFAULT_MAPPING_BATCH_SIZE,
 ) -> MappingResult:
-    """Map each candidate test to the obligation(s) it purports to evidence."""
+    """Map each candidate test to the obligation(s) it purports to evidence.
+
+    The tests are partitioned across several calls, with every obligation
+    repeated in each call, because one call asking for tests x obligations
+    judgments sheds work silently past roughly a thousand of them (DR-164).
+    Recall is unaffected: every test is still judged against every obligation,
+    just not all in one response.
+    """
     valid_obligation_ids = {o.id for o in obligations}
     if not tests:
         # No candidates to map — every obligation is unmapped. No model call.
         return MappingResult(mappings=[], unmapped_obligation_ids=sorted(valid_obligation_ids))
 
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {"role": "user", "content": _render_prompt(obligations, tests)},
-    ]
-    result = client.complete(messages, _Mappings)
-
-    valid_test_ids = {t.test_id for t in tests}
     mapped_obligation_ids: set[str] = set()
     mappings: list[TestMapping] = []
-    for mapping in result.mappings:
-        if mapping.test_id not in valid_test_ids:
-            continue  # a returned id that isn't a real candidate — drop it
-        obligation_ids = [oid for oid in mapping.obligation_ids if oid in valid_obligation_ids]
-        mapped_obligation_ids.update(obligation_ids)
-        mappings.append(
-            TestMapping(
-                test_id=mapping.test_id,
-                obligation_ids=obligation_ids,
-                rationale=mapping.rationale,
-            )
-        )
+    seen_test_ids: set[str] = set()
 
+    for batch in partition(tests, batch_size, key=lambda test: test.test_id):
+        messages = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": _render_prompt(obligations, list(batch.items))},
+        ]
+        result = client.complete(messages, _Mappings, batch.request_partition())
+
+        # A batch may only speak for its own tests. Without this, a model that
+        # echoes tests from a neighbouring batch would have its duplicate
+        # judgment merged in alongside the real one, and the merged mapping
+        # would depend on which batch answered last.
+        batch_test_ids = {test.test_id for test in batch.items}
+        for mapping in result.mappings:
+            if mapping.test_id not in batch_test_ids:
+                continue  # not a candidate in this batch — drop it
+            if mapping.test_id in seen_test_ids:
+                continue  # already judged, in its own batch
+            seen_test_ids.add(mapping.test_id)
+            obligation_ids = [
+                oid for oid in mapping.obligation_ids if oid in valid_obligation_ids
+            ]
+            mapped_obligation_ids.update(obligation_ids)
+            mappings.append(
+                TestMapping(
+                    test_id=mapping.test_id,
+                    obligation_ids=obligation_ids,
+                    rationale=mapping.rationale,
+                )
+            )
+
+    # Sorted, not left in response order, so the merged result depends only on
+    # which judgments came back and not on the order the batches returned them.
+    mappings.sort(key=lambda mapping: mapping.test_id)
     unmapped = sorted(valid_obligation_ids - mapped_obligation_ids)
     return MappingResult(mappings=mappings, unmapped_obligation_ids=unmapped)
 

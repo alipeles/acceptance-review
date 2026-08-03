@@ -1,8 +1,8 @@
 # Decision Record 164 — Request partitioning for the mapping stage
 
-*Relates to issue #164 (reframing merged in `08d0862`; implementation still
-open) and issue #163. Status: measurement accepted, partitioning accepted,
-implementation pending. Track: checker. Stage: 1, with one item explicitly
+*Relates to issue #164 (reframing merged in `08d0862`) and issue #163. Status:
+measurement accepted, partitioning accepted, **partitioning implemented** —
+see "As built" below. Track: checker. Stage: 1, with one item explicitly
 deferred.*
 
 ---
@@ -107,6 +107,40 @@ closed; do not reopen it.
 each forces a transcript re-record that makes benchmark accuracy figures
 non-comparable across it. Sequencing them pays that cost once. They were kept as
 separate issues rather than merged.
+
+## As built (decision 1)
+
+`partition.py` holds the generic mechanism; `evidence/mapping.py` is its only
+caller, per decision 2. Three things about it are load-bearing and look
+optional:
+
+- **The batch sorts its own input.** Ordering is not trusted from
+  `discover_tests`, even though that is currently stable: batch composition must
+  be a pure function of the input or request keys churn and replay misses, and
+  an upstream ordering guarantee is one refactor away from being untrue.
+- **Only `size` goes into the hashed request, not `index` or `count`.** `size`
+  must be there — it is a run control, and two different sizes can produce
+  identical batches when the input is smaller than both, so without it changing
+  the control would silently replay the old recordings. `index`/`count` must
+  *not* be: the messages already differ per batch, so they would add no
+  distinguishing power while making an early batch's key depend on how many
+  batches follow it, invalidating an unchanged batch's transcript every time a
+  test was appended.
+- **A batch may only answer for its own tests.** A model that echoes a
+  neighbouring batch's test would otherwise have its duplicate judgment merged
+  alongside the real one, making the merged result depend on which batch
+  answered last. The merged mappings are then sorted by test id for the same
+  reason.
+
+The batch size is `RunConfig.mapping_batch_size` (default 12, `--mapping-batch-size`),
+and provenance reports `request_partition_size` **observed from the calls**, not
+read from configuration — the #160 rule. `None` there means no partitioned call
+was made, which is a different claim from a partition of size one.
+
+**Mapping-accuracy figures are not comparable across this change**, stated at
+`BenchmarkScore`/`BenchmarkReport.mapping_accuracy` where a reader meets the
+number. Figures from before and after measure different questions being asked,
+so they must not be plotted as a trend or cited as a regression.
 
 ## Open
 

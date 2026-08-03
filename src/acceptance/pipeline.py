@@ -20,7 +20,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from acceptance.config import ScopeExpansionPolicy, provenance_for
+from acceptance.config import (
+    DEFAULT_MAPPING_BATCH_SIZE,
+    ScopeExpansionPolicy,
+    provenance_for,
+)
 from acceptance.coverage.classify import CoverageStatus, ImplementationCoverage, classify_coverage
 from acceptance.coverage.declaration_comparison import (
     compare_declaration,
@@ -145,6 +149,7 @@ def run_review(
     reviewed_revision: str,
     declaration_text: str | None = None,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
+    mapping_batch_size: int = DEFAULT_MAPPING_BATCH_SIZE,
 ) -> Review:
     """Run the full static review pipeline and return the assembled Review."""
     parsed = parse_task_file(task_text)
@@ -152,7 +157,9 @@ def run_review(
     obligations = decomposition.obligations
 
     discovered = discover_tests(repo, change_set)
-    mapping = map_tests_to_obligations(obligations, discovered.tests, client)
+    mapping = map_tests_to_obligations(
+        obligations, discovered.tests, client, mapping_batch_size
+    )
     obligations = apply_test_mapping(obligations, mapping)
 
     test_evidence = extract_test_evidence(repo, discovered.tests, change_set, mapping)

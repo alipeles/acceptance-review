@@ -175,6 +175,7 @@ class BenchmarkScore(PersistableModel):
     gap_recall: float | None = None
     gap_precision: float | None = None
     decomposition_accuracy: float | None = None
+    # Not comparable across #164 — see BenchmarkReport.mapping_accuracy.
     mapping_accuracy: float | None = None
     evidence_agreement: float | None = None
     unrequested_precision: float | None = None

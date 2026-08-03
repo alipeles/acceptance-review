@@ -1,6 +1,14 @@
 """RunConfig controls, incl. the M3.5.2 scope-expansion policy (DR-081)."""
 
-from acceptance.config import RunConfig, ScopeExpansionPolicy, provenance_for
+import pytest
+from pydantic import ValidationError
+
+from acceptance.config import (
+    DEFAULT_MAPPING_BATCH_SIZE,
+    RunConfig,
+    ScopeExpansionPolicy,
+    provenance_for,
+)
 
 
 def test_scope_expansion_policy_defaults_to_strict():
@@ -121,6 +129,43 @@ def test_provenance_of_a_run_that_made_no_model_call_is_indeterminate():
 
     assert provenance.controls_in_force is None
     assert provenance.determinism() == "indeterminate"
+
+
+def test_the_mapping_batch_size_is_a_run_control_with_a_fixed_default():
+    assert RunConfig().mapping_batch_size == DEFAULT_MAPPING_BATCH_SIZE
+
+    with pytest.raises(ValidationError):
+        RunConfig(mapping_batch_size=0)  # a batch must hold something
+
+
+def test_provenance_reports_the_partition_size_the_run_actually_used():
+    """Read off the calls, not off configuration — the same rule as the other
+    controls (#160). A review that reported a configured partition size while
+    its calls ran unpartitioned would describe a run that did not happen."""
+    from acceptance.requirement.obligations import _Decomposition
+
+    from tests.support import client_finding_nothing
+
+    client = client_finding_nothing()
+    client.complete(
+        [{"role": "user", "content": "batch 1"}], _Decomposition, {"size": 7}
+    )
+
+    assert provenance_for(client).request_partition_size == 7
+
+
+def test_provenance_of_an_unpartitioned_run_reports_no_partition_size():
+    """None means "no partitioned call was made", which is a different claim
+    from a partition of size one — the same distinction controls_in_force draws
+    between "ignored" and "nothing observed"."""
+    from acceptance.requirement.obligations import _Decomposition
+
+    from tests.support import client_finding_nothing
+
+    client = client_finding_nothing()
+    client.complete([{"role": "user", "content": "unpartitioned"}], _Decomposition)
+
+    assert provenance_for(client).request_partition_size is None
 
 
 def test_one_builder_serves_both_the_cli_pipeline_and_the_benchmark():
