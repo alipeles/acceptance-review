@@ -3,8 +3,11 @@
 Read this first. It captures the decisions and conventions for this repo so an
 agent can work productively without re-deriving them. The source of truth for
 scope and detail is `docs/AI-Assisted-Software-Development-Review-Spec.md` (the
-spec) and `docs/Stage-1-Development-Plan.md` (the plan). Section refs (§) point
-at those.
+spec); section refs (§) point at it. **GitHub is authoritative for anything with
+a lifecycle** — tasks, open decisions, milestone sequencing. Files are
+authoritative only for things with no lifecycle: the spec, resolved decisions
+(`docs/DR-*.md`), and the standing invariants below. If a file and an issue
+disagree about what the work is, the issue wins (#168).
 
 ## What this is
 
@@ -72,10 +75,8 @@ whether the checker works. GitHub Acceptance Review is Stage 2 — out of scope.
 
 ## Repo layout
 
-- `docs/` — spec + Stage-1 plan (source of truth), plus Decision Records
-  (`DR-<issue>-<slug>.md`).
-- `planning/backlog/` — one Markdown file per task (M0.1, M-B0.1, …), mirrored as
-  a GitHub Issue. `issues.tsv` / `milestones.tsv` are the machine index.
+- `docs/` — the spec (source of truth for the product), plus Decision Records
+  (`DR-<issue>-<slug>.md`). No task list lives here; tasks are GitHub Issues.
 - `.github/workflows/` — `ci.yml` (lint + tests) and `benchmark.yml` (accuracy
   report stub for M-B*.report).
 - `tests/` — unit tests, plus `tests/fixtures/archetypes/` — the labelled cases
@@ -117,7 +118,31 @@ reruns depend on it), `evidence_tier.py`, `source_ref.py`.
 GitHub **Milestones** (M0 … M9) group tasks; **Issues** are the individual tasks
 (Inputs / Deliverable / Acceptance); labels `track:checker` / `track:benchmark`,
 `human-gate` (needs human sign-off), `decision` (open design decision). The
-Project board has an **Order** number field giving the strict plan sequence.
+Project board has an **Order** number field giving the strict sequence.
+
+**The backlog is the plan.** There is no separate planning document — milestone
+descriptions carry sequencing and dependencies, issue bodies carry task detail.
+Write task detail into the issue, never into a file. A task revised *after* it
+was delivered gets a **superseding issue** (`M7.3.r1` supersedes `M7.3`), not an
+edit in place: the original acceptance check genuinely passed, and that record is
+worth keeping. See #34 → #167.
+
+Which milestone proves which §13.5 demonstration scenario:
+
+| # | Scenario | Proven by |
+|---|---|---|
+| 1 | Missed obligation | M1 + M3 |
+| 2 | Qualifier missed | M3 |
+| 3 | Superficial test (asserts existence) | M5 |
+| 4 | Non-discriminating input | M5 (+ M8 to confirm) |
+| 5 | Circular expected result | M5 |
+| 6 | Critical behavior mocked out | M5 |
+| 7 | Declaration mismatch | M6 |
+| 8 | Unrequested change | M3 + M3.5 + M7 (M7.6 advisory presentation) |
+| 9 | Local revision cycle (rerun) | M7 (incremental re-run over M0 state) |
+| 14 | Execution-confirmed weak test | M8 |
+
+Scenarios 10–13 depend on GitHub/CI and are Stage 2.
 
 ## Working conventions
 
@@ -132,11 +157,9 @@ Project board has an **Order** number field giving the strict plan sequence.
   never actually calls. When you add a helper, test that the pipeline invokes it.
 - **Measure as you build:** each capability milestone ends with a scoring hook
   into the benchmark harness (M-B0) — don't defer measurement to the end.
-- **Surface open decisions, don't silently resolve them.** The plan §3.2 lists
-  decisions owned by specific milestones (LLM orchestration boundary, determinism
-  strategy, obligation schema, request partitioning, test-strength rubric,
-  mutation targeting, feasibility probe). Raise these as `decision` issues/notes
-  rather than picking quietly.
+- **Surface open decisions, don't silently resolve them.** Open design decisions
+  are tracked as `decision`-labeled issues, each owned by a milestone — that
+  label *is* the list. Raise a new one rather than picking quietly.
 - **Write a Decision Record when one is resolved**, or when a non-obvious finding
   changes the design: `docs/DR-<issue>-<slug>.md`, referenced from the issue. A
   decision that lives only in a commit message or a chat session is lost. See
