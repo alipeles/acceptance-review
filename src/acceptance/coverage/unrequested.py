@@ -28,6 +28,7 @@ from pydantic import Field
 
 from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_prompt, resolve_refs
 from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation
 
@@ -47,6 +48,8 @@ class UnrequestedChange(PersistableModel):
     rationale: str
     diff_refs: list[DiffRef] = Field(default_factory=list)
 
+
+_STAGE = "unrequested-change detection"
 
 _SYSTEM_PROMPT = """\
 You find UNREQUESTED changes: diff regions that no listed obligation calls for.
@@ -92,7 +95,10 @@ class _Detections(StrictResponseModel):
 
 
 def detect_unrequested_changes(
-    obligations: list[Obligation], change_set: ChangeSet, client: ModelClient
+    obligations: list[Obligation],
+    change_set: ChangeSet,
+    client: ModelClient,
+    unusable: UnusableAnswerLog | None = None,
 ) -> list[UnrequestedChange]:
     """Flag diff regions no obligation calls for as candidate unrequested changes."""
     label_to_ref = hunk_labels(change_set)
@@ -100,7 +106,12 @@ def detect_unrequested_changes(
         {"role": "system", "content": _SYSTEM_PROMPT},
         {"role": "user", "content": render_diff_prompt(obligations, change_set)},
     ]
-    result = client.complete(messages, _Detections)
+    allowed = {"diff_refs": list(label_to_ref)}
+    result = client.complete(
+        messages, constrain(_Detections, allowed), parse_as=_Detections
+    )
+    if unusable is not None:
+        unusable.record(scan(result, allowed, _STAGE))
 
     changes = []
     for detected in result.unrequested_changes:

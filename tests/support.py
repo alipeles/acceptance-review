@@ -74,6 +74,30 @@ def client_answering_per_call(
     return client, calls
 
 
+def client_capturing_schemas(
+    response: dict, model: str = _DEFAULT_MODEL
+) -> tuple[ModelClient, list[dict]]:
+    """A client returning a fixed response, recording the schema each call sent.
+
+    The response schema is now part of what a stage produces, not just plumbing:
+    the ids a call supplies are constrained there, so "the constraint reached the
+    provider" is only assertable by looking at the schema actually sent (#163).
+    """
+    schemas: list[dict] = []
+
+    def completion_fn(**kwargs):
+        schemas.append(kwargs["response_format"]["json_schema"]["schema"])
+        return _fake_response(json.dumps(response))
+
+    client = ModelClient(
+        model=model,
+        mode=Mode.RECORD,
+        store=TranscriptStore(tempfile.mkdtemp()),
+        completion_fn=completion_fn,
+    )
+    return client, schemas
+
+
 def make_obligation(obligation_id: str, description: str, typ: ObligationType) -> Obligation:
     """A minimal but valid Obligation for tests that don't exercise its
     importance/explicitness/observable-behavior fields directly."""

@@ -122,6 +122,28 @@ def _default_completion_fn(**kwargs: Any) -> Any:
     return litellm.completion(drop_params=True, **kwargs)
 
 
+def _const_to_enum(node: Any) -> Any:
+    """Rewrite `{"const": x}` as `{"enum": [x]}`.
+
+    Pydantic emits `const` for a single-valued `Literal`, which is what a
+    constrained id field collapses to whenever a call supplies exactly one id
+    (#163) — a one-obligation task, or the last partition of a batch. The two
+    are equivalent in JSON Schema, but `enum` is the form providers actually
+    honour under strict decoding, so a one-id call would otherwise be the one
+    case where the constraint quietly stopped binding.
+    """
+    if isinstance(node, dict):
+        rewritten = {
+            key: _const_to_enum(value) for key, value in node.items() if key != "const"
+        }
+        if "const" in node:
+            rewritten["enum"] = [node["const"]]
+        return rewritten
+    if isinstance(node, list):
+        return [_const_to_enum(item) for item in node]
+    return node
+
+
 def inline_schema_refs(schema: dict) -> dict:
     """Resolve every `$ref` against `$defs` and drop the definitions block.
 
@@ -148,7 +170,7 @@ def inline_schema_refs(schema: dict) -> dict:
             return [resolve(item, defs) for item in node]
         return node
 
-    return resolve(schema, schema.get("$defs", {}))
+    return _const_to_enum(resolve(schema, schema.get("$defs", {})))
 
 
 def _litellm_effective_controls(model: str, **requested: Any) -> dict[str, Any]:
@@ -275,8 +297,21 @@ class ModelClient:
         messages: list[dict],
         response_model: type[ResponseModelT],
         partition: dict[str, Any] | None = None,
+        parse_as: type[BaseModel] | None = None,
     ) -> ResponseModelT:
-        """Return a validated `response_model`, from a live call or a transcript."""
+        """Return a validated response, from a live call or a transcript.
+
+        `response_model` is what we *ask* for — it is the schema sent to the
+        provider and hashed into the request key. `parse_as` is what we *accept*,
+        and defaults to the same model.
+
+        The two differ only where a stage constrains id fields to the ids it
+        supplied (#163). There the request carries an enum so a foreign id is
+        unrepresentable, while parsing stays permissive so that a provider which
+        ignored the enum yields one unusable item to record rather than a
+        `SchemaValidationError` that discards every judgment in the batch. The
+        stage then checks the ids itself — see `supplied_ids`.
+        """
         request = self.build_request(messages, response_model, partition)
         key = request_key(request)
         record = self.store.read(key)
@@ -297,7 +332,7 @@ class ModelClient:
                     "Recording makes live calls AND runs the assertions, so a prompt "
                     "that degrades quality fails rather than silently re-recording."
                 )
-            record = self._persist_live_call(key, request, response_model)
+            record = self._persist_live_call(key, request, parse_as or response_model)
 
         # Observed on both paths: a replayed run's reproducibility is exactly
         # that of the recording it replays, so a transcript recorded against a
@@ -305,7 +340,7 @@ class ModelClient:
         self._observed_controls.append(record.get("controls_applied"))
         if partition is not None:
             self._observed_partitions.append(partition)
-        return self._validate(record["response"], response_model)
+        return self._validate(record["response"], parse_as or response_model)  # type: ignore[arg-type]
 
     @property
     def controls_in_force(self) -> dict[str, Any] | None:
@@ -356,6 +391,11 @@ class ModelClient:
         response schema. Persisting before validating let one of those replies
         into the corpus, where replay would serve it forever (#160). A response
         the harness rejects is not evidence and must not be stored.
+
+        The gate is `parse_as` — what we *accept* — not the constrained schema we
+        asked for. Gating on the constraint would refuse to record the very
+        replies that prove a provider ignores it, and would make RECORD and
+        REPLAY disagree about the same response (#163).
         """
         record = self._live_call(key, request)
         self._validate(record["response"], response_model)

@@ -24,8 +24,11 @@ the predictions by execution.
 from __future__ import annotations
 
 from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation, TestEvidence
+
+_STAGE = "discrimination judgment"
 
 _SYSTEM_PROMPT = """\
 You judge whether a criterion's mapped tests would actually FAIL if the
@@ -132,6 +135,7 @@ def judge_discrimination(
     test_evidence: list[TestEvidence],
     change_set: ChangeSet,
     client: ModelClient,
+    unusable: UnusableAnswerLog | None = None,
 ) -> list[ObligationDiscrimination]:
     """Judge, per criterion with mapped tests, whether those tests would fail
     under a plausible defect (§9.3). Criteria with no mapped test are not
@@ -151,7 +155,19 @@ def judge_discrimination(
             "content": _render_prompt(obligations, evidence_by_obligation, change_set),
         },
     ]
-    result = client.complete(messages, _Discrimination)
+    allowed = {"obligation_id": list(evidence_by_obligation)}
+    result = client.complete(
+        messages, constrain(_Discrimination, allowed), parse_as=_Discrimination
+    )
+    if unusable is not None and unusable.record(scan(result, allowed, _STAGE)):
+        # An obligation we asked about but got no usable judgment for is not
+        # "no defect survives" — it is a judgment we never obtained. Saying
+        # otherwise would let a re-run claim discrimination it never assessed.
+        unusable.mark_indeterminate(
+            obligation_id
+            for obligation_id in evidence_by_obligation
+            if obligation_id not in {item.obligation_id for item in result.obligations}
+        )
 
     returned = {
         item.obligation_id: item.defects

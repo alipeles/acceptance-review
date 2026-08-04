@@ -47,6 +47,7 @@ from acceptance.evidence.discrimination import judge_discrimination
 from acceptance.evidence.extraction import extract_test_evidence
 from acceptance.evidence.mapping import apply_test_mapping, map_tests_to_obligations
 from acceptance.evidence.strength import apply_evidence_strength, classify_strength
+from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
@@ -54,6 +55,7 @@ from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
+    UNUSABLE_ANSWER,
     ChangeSet,
     Finding,
     Link,
@@ -95,6 +97,49 @@ def coverage_finding(obligation: Obligation, coverage: ImplementationCoverage) -
         produced_by=Component.STATIC_ANALYZER,
         links=links,
         related_obligation=obligation.description,
+    )
+
+
+def _apply_indeterminate(
+    obligations: list[Obligation], unusable: UnusableAnswerLog
+) -> list[Obligation]:
+    """Mark obligations whose judgment was never obtained as `indeterminate`.
+
+    Only the evidence axis: `indeterminate` says "we did not obtain this
+    judgment", which is exactly what an unusable answer means. `verdict.py`
+    already routes it to `unable_to_determine` and lists it as an escalation
+    candidate, so a review that could not read part of its own reviewer cannot
+    come back clean.
+    """
+    if not unusable.indeterminate_obligations:
+        return obligations
+    return [
+        obligation.model_copy(update={"evidence_class": "indeterminate"})
+        if obligation.id in unusable.indeterminate_obligations
+        else obligation
+        for obligation in obligations
+    ]
+
+
+def unusable_answer_finding(answer: UnusableAnswer) -> Finding:
+    """Name the stage and the id, so a reader can tell which judgment is missing.
+
+    Deliberately not advisory. An unrequested change or a declaration overclaim
+    is about the delivered work and leaves the verdict alone; this is about the
+    review itself failing to answer a question it asked, which is precisely the
+    thing a reader must not mistake for a clean result.
+    """
+    return Finding(
+        type=UNUSABLE_ANSWER,
+        severity="major",
+        description=(
+            f"The {answer.stage} stage returned {answer.returned_id!r} for "
+            f"{answer.field!r}, which was never supplied to that call. The "
+            "judgment it was meant to carry was not obtained."
+        ),
+        evidence_tier=EvidenceTier.STATIC,
+        produced_by=Component.STATIC_ANALYZER,
+        links=[Link(kind="requirement", ref=answer.returned_id, text=answer.stage)],
     )
 
 
@@ -181,26 +226,41 @@ def run_review(
     if prior is not None:
         obligations = obligations_to_rederive(fresh_obligations, prior, change_set)
 
+    # One log for the whole run: every stage that asks the model to echo back an
+    # id we supplied reports the ids it could not honour here (#163).
+    unusable = UnusableAnswerLog()
+
     discovered = discover_tests(repo, change_set)
     mapping = map_tests_to_obligations(
-        obligations, discovered.tests, client, mapping_batch_size
+        obligations, discovered.tests, client, mapping_batch_size, unusable
     )
     obligations = apply_test_mapping(obligations, mapping)
 
     test_evidence = extract_test_evidence(repo, discovered.tests, change_set, mapping)
-    discriminations = judge_discrimination(obligations, test_evidence, change_set, client)
+    discriminations = judge_discrimination(
+        obligations, test_evidence, change_set, client, unusable
+    )
     strengths = classify_strength(obligations, test_evidence, discriminations)
     obligations = apply_evidence_strength(obligations, strengths)
+    # After strength, deliberately: an obligation whose judgment was never
+    # obtained must not carry the strength the classifier inferred from its
+    # absence. A re-run cannot improve a judgment it did not re-examine, and
+    # neither can a first run claim one it never made.
+    obligations = _apply_indeterminate(obligations, unusable)
 
-    coverages = classify_coverage(obligations, change_set, client)
+    coverages = classify_coverage(obligations, change_set, client, unusable)
     obligations = _apply_coverage_status(obligations, coverages)
-    unrequested = detect_unrequested_changes(obligations, change_set, client)
+    unrequested = detect_unrequested_changes(obligations, change_set, client, unusable)
     dispositioned = classify_dispositions(
         unrequested, obligations, coverages, change_set, policy, client
     )
-    resolutions = resolve_open_questions(decomposition.open_questions, change_set, client)
+    resolutions = resolve_open_questions(
+        decomposition.open_questions, change_set, client, unusable
+    )
     open_questions = apply_open_question_resolutions(decomposition.open_questions, resolutions)
-    recommendations = recommend_tests(obligations, discriminations, change_set, client)
+    recommendations = recommend_tests(
+        obligations, discriminations, change_set, client, unusable
+    )
 
     obligations_by_id = {obligation.id: obligation for obligation in obligations}
     findings = [
@@ -226,6 +286,7 @@ def run_review(
         for finding in (unrequested_finding(change) for change in dispositioned)
         if finding is not None
     )
+    findings.extend(unusable_answer_finding(answer) for answer in unusable.answers)
 
     if declaration_text is not None:
         declaration = parse_declaration(declaration_text)
