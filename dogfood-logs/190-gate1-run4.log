@@ -1,0 +1,26 @@
+Obligations:
+  [functional/explicit] turn-corpus-into-regression-cases: Convert the rating-stability corpus into regression cases that the benchmark can score.
+  [compatibility/explicit] use-existing-scoring-path: Run case scoring through the repository's existing benchmark scoring path.
+  [compatibility/explicit] use-existing-ground-truth-shape: Represent ground-truth labels with the existing `benchmark/case.py::GroundTruthLabels` shape used by `tests/fixtures/archetypes/`.
+  [invariant/explicit] replay-mode-no-live-model-calls: Keep the cases runnable in replay mode with no live model calls.
+  [explanation_observability/explicit] traceable-labels-to-judgement-md: Make each case's ground-truth label traceable to the `judgement.md` it was derived from.
+  [functional/explicit] derive-cases-from-corpus-without-copying: Rebuild each case as an input the pipeline can run over, using the same shape that `tests/fixtures/archetypes/` already uses, rather than copying rendered corpus files.
+  [compatibility/explicit] preserve-corpus-fixtures: Keep the files under `tests/fixtures/rating-stability/` unchanged except for its README.
+  [functional/explicit] bidirectional-suite-failure: Make the suite fail when a judge rates everything `strongly supported` and also fail when a judge rates nothing `strongly supported`.
+  [explanation_observability/explicit] scoreboard-for-load-bearing-criterion: Provide a scoreboard for the load-bearing criterion that `strongly supported` is not issued on evidence that does not earn it.
+  [functional/explicit] encode-uneearned-strongly-supported-ratings: Encode the five obligations and seven run-instances where `strongly supported` was issued on evidence that did not earn it.
+  [functional/explicit] encode-real-gaps: Encode the real gaps confirmed by the corpus, including the partly real gap noted for `replace-written-file-with-command`.
+  [functional/explicit] encode-rewritten-judgements: Preserve the corrected readings for runs 3 and 5 where the corpus contains both the original and corrected judgement.
+  [functional/explicit] run3-all-three-findings-real: Treat run 3's three findings as real in the corrected reading.
+  [functional/explicit] run5-partially-supported-wrong-verdict: Treat run 5's `partially supported` rating as the wrong verdict and use run 4's `strongly supported` rating as the corrected reading.
+  [functional/explicit] control-case-nontrivial-assertions: Make the control case `163-gate2-run1` carry assertions of the same kind as the other cases rather than passing trivially.
+  [docs_config/explicit] update-readme-read-status: Revise the corpus README so it no longer states that the corpus is not read by any test, or else states precisely which parts of it are still not read.
+  [compatibility/explicit] preserve-existing-judgement-production: Keep the evidence-judgement stage itself unchanged.
+  [invariant/explicit] preserve-corpus-instability: Keep the instability documented by the corpus intact.
+  [functional/explicit] no-thresholds-for-variance-or-accuracy: Avoid introducing a threshold requirement for any variance figure or accuracy figure.
+  [compatibility/explicit] exclude-decompose-stability-corpus: Leave the decompose-stability corpus out of this task.
+
+Open questions:
+  ? case-count-and-naming: How many regression cases should be created, and what naming convention should they use beyond the required control case `163-gate2-run1`?
+  ? fixture-location: Where exactly should the new regression fixtures live in the repository, and should they mirror the existing `tests/fixtures/archetypes/` directory structure one-for-one?
+  ? run3-run5-preserved-reading-encoding: How should the fixtures for run 3 and run 5 record which of the two preserved readings is ground truth in `judgement.md`—for example, via metadata fields, comments, or separate label files?

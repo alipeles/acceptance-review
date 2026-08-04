@@ -1,0 +1,32 @@
+Obligations:
+  [functional/explicit] harness-runs-review-pipeline: Build a harness that runs the review pipeline over a fixed input repeatedly, across a chosen set of models, and reports how much the resulting evidence judgements move.
+  [functional/explicit] separate-movement-sources: Report resample variance, perturbation sensitivity, and model sensitivity as separate measurements.
+  [functional/explicit] resample-variance-definition: Measure resample variance as the same request drawn N times.
+  [functional/explicit] perturbation-sensitivity-definition: Measure perturbation sensitivity as a semantically irrelevant change to the request for a given obligation.
+  [functional/explicit] model-sensitivity-definition: Measure model sensitivity as the same input judged by different models.
+  [invariant/explicit] report-does-not-decide-acceptability: Preserve the harness as a reporting tool that does not decide whether a figure is acceptable.
+  [boundary/explicit] independent-draws: Measure variance across genuinely independent draws.
+  [error_handling/explicit] replayed-response-not-used-as-judge-variance: Treat replayed responses as recordings rather than as judge measurements.
+  [compatibility/explicit] reuse-existing-variance-path: Source statistics from the benchmark harness's existing variance path.
+  [explanation_observability/explicit] report-measurement-conditions: Record the input, models, number of runs, and seeds that produced each reported measurement.
+  [functional/explicit] caller-chooses-runs-and-models: Let the caller choose the number of runs and the set of models.
+  [boundary/explicit] cheap-default: Provide a default run count and model set that is cheap enough to run without first deciding a budget.
+  [invariant/explicit] no-repository-trace: Leave no trace in the repository the harness reviews.
+  [compatibility/explicit] judge-unchanged: Preserve the existing evidence-judgement production behavior.
+  [functional/explicit] deliberate-live-invocation: Keep harness execution deliberate rather than automatic in CI or on a schedule.
+  [invariant/explicit] no-thresholding: Preserve the harness as a measurement tool that does not interpret figures or set acceptance thresholds.
+  [invariant/explicit] no-variance-reduction: Preserve the measured variance without attempting to reduce it.
+  [functional/explicit] distribution-per-obligation-per-model: For one fixed input, report the distribution of evidence classes per obligation across N runs, separately for each model.
+  [functional/explicit] plausible-defect-verdict-distribution: Report the distribution of each plausible defect's discrimination verdict, not only the obligation's final evidence class.
+  [functional/explicit] perturbation-figure: Report perturbation sensitivity as the proportion of obligations whose evidence class changed for a stated irrelevant perturbation.
+  [functional/explicit] cross-model-agreement: Report cross-model agreement per obligation alongside within-model variance.
+  [explanation_observability/explicit] report-includes-run-metadata: Record the input, model set, run count, and seeds in the report.
+  [functional/explicit] caller-supplied-defaults: Expose the run count and model set as caller-supplied inputs with defaults.
+  [invariant/explicit] no-repo-writes: Ensure a harness run writes nothing into the repository under review.
+
+Open questions:
+  ? default-values-unspecified: What exact default run count and default model set should the harness use?
+  ? report-format-unspecified: What output format should the harness use for the report (for example, JSON, table, or text), and where should it be emitted?
+  ? variance-path-interface-unspecified: How should the harness invoke the benchmark harness's existing variance path, and what interface or API should it reuse?
+  ? fixed-input-unspecified: What fixed input should the harness use, or how is that input selected/configured?
+  ? irrelevant-perturbation-unspecified: Which specific irrelevant perturbation(s) should the harness support for perturbation-sensitivity reporting?

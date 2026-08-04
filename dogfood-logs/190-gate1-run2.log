@@ -1,0 +1,29 @@
+Obligations:
+  [functional/explicit] turn-corpus-into-regression-cases: Convert the rating-stability corpus into regression cases that the benchmark can score.
+  [compatibility/explicit] use-existing-scoring-path: Score the new cases through the repository's existing benchmark scoring path.
+  [compatibility/explicit] use-existing-ground-truth-shape: Represent ground-truth labels with the existing `benchmark/case.py::GroundTruthLabels` shape used by `tests/fixtures/archetypes/`.
+  [functional/explicit] replay-mode-no-live-calls: Run the cases in replay mode with no live model calls.
+  [invariant/explicit] trace-labels-to-judgement-md: Make each case's ground-truth label traceable to the `judgement.md` file it was derived from.
+  [functional/explicit] fail-both-extremes: Ensure the suite fails when a judge always issues `strongly supported` and also fails when a judge never issues `strongly supported`.
+  [regression/explicit] encode-unearned-ratings: Encode the five unearned `strongly supported` ratings from the corpus as regression obligations.
+  [regression/explicit] encode-real-gaps: Encode the corpus-confirmed real gaps so the suite still reports them.
+  [regression/explicit] encode-rewritten-judgements: Preserve the corrected readings for the runs whose original judgements were rewritten.
+  [functional/explicit] rebuild-cases-from-pipeline-inputs: Rebuild each case as an input the pipeline can run over, in the same shape `tests/fixtures/archetypes/` already uses.
+  [compatibility/explicit] avoid-copying-rendered-reports: Derive cases without copying the corpus's rendered report files into the fixtures.
+  [invariant/explicit] preserve-transcript-exclusion-rationale: Preserve the corpus design choice that transcripts are excluded because they would embed the repo's own diffs and task text in `tests/fixtures/`.
+  [functional/explicit] control-case-not-trivial: Make the control case `163-gate2-run1` carry assertions of the same kind as the other cases.
+  [docs_config/explicit] update-readme-status: Update the corpus README so it no longer states that the corpus is not read by any test, or else state precisely which parts are still not read.
+  [regression/explicit] fixed-command-surface: Preserve the real gap that the fixed command surface was found in run 1.
+  [regression/explicit] default-to-most-recent-review-run2: Preserve the real gap that `default-to-most-recent-review` was found in run 2.
+  [regression/explicit] retrieve-from-stored-review-state-run2: Preserve the real gap that `retrieve-from-stored-review-state` was found in run 2.
+  [regression/explicit] remove-stale-next-instruction-file-run3: Preserve the real gap that `remove-stale-next-instruction-file` was found in run 3, including the silent `--json` deletion.
+  [regression/explicit] no-speculative-writing-run3: Preserve the real gap that `no-speculative-writing` was found in run 3.
+  [regression/explicit] spec-no-longer-describes-written-file-run3: Preserve the real gap that `spec-no-longer-describes-written-file` was found in run 3.
+  [regression/explicit] preserve-prose-structured-fields-run4: Preserve the real gap that `preserve-prose-structured-fields` was found in run 4.
+  [regression/explicit] replace-written-file-with-command-partial: Preserve the partly real gap that `replace-written-file-with-command` was found in run 1 for its defaulting-to-JSON clause.
+  [regression/explicit] run3-corrected-reading: Use the corrected run 3 reading in which all three findings were real rather than tool defects.
+  [regression/explicit] run5-corrected-reading: Use the corrected run 5 reading in which the `partially supported` rating was wrong and run 4's `strongly supported` rating is correct.
+
+Open questions:
+  ? scope-corpus-fixtures: Should the implementation add only new regression fixtures, or also modify existing corpus fixture files under `tests/fixtures/rating-stability/` beyond the README?
+  ? fixture-layout-details: What exact file/layout conventions should the rebuilt cases follow within `tests/fixtures/archetypes/`-style inputs, beyond matching the existing archetype shape?

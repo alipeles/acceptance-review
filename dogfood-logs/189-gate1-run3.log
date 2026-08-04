@@ -1,0 +1,24 @@
+Obligations:
+  [functional/explicit] harness-runs-review-pipeline-repeatedly: Run the review pipeline over one input repeatedly across a chosen set of models and report how much the resulting evidence judgements move.
+  [functional/explicit] separate-movement-sources: Measure resampling the same request, perturbing the request in a way irrelevant to the watched obligation, and swapping the model as separate sources of movement.
+  [functional/explicit] report-only-not-decide-acceptability: Produce a report without deciding whether any figure is acceptable.
+  [invariant/explicit] independent-draws: Measure variance across genuinely independent draws.
+  [error_handling/explicit] replay-not-used-as-variance-sample: Treat replayed responses as recordings rather than judge draws when measuring variance.
+  [compatibility/explicit] use-existing-variance-path: Source statistics from the existing benchmark variance path in benchmark/scoring.py::disclose_variance.
+  [compatibility/explicit] judge-unchanged: Preserve how evidence judgements are produced.
+  [functional/explicit] manual-invocation-live-calls: Require deliberate invocation and live model calls rather than automatic CI or scheduled execution.
+  [functional/explicit] no-threshold-or-interpretation: Avoid interpreting the produced figures, setting acceptance thresholds, or reducing the variance found.
+  [functional/explicit] caller-supplies-config: Accept the input under measurement, the model set, the number of runs per model, and the perturbation to apply as caller-supplied inputs.
+  [boundary/explicit] defaults-for-all-caller-inputs: Provide defaults for the input under measurement, the model set, the number of runs per model, and the perturbation to apply.
+  [boundary/explicit] single-default-model-and-small-run-count: Make the default model set a single model and the default run count a small number.
+  [invariant/explicit] opt-in-multi-model-cost: Make measuring more than one model an explicit caller choice rather than the default cost of a run.
+  [functional/explicit] per-obligation-evidence-distribution: Report the distribution of evidence classes per obligation across the configured runs, separately for each model.
+  [functional/explicit] plausible-defect-verdict-distribution: Report the distribution of each plausible defect's discrimination verdict, not only the obligation's final evidence class.
+  [functional/explicit] perturbation-sensitivity-figure: Report perturbation sensitivity as the proportion of obligations whose evidence class changed under the stated perturbation.
+  [functional/explicit] cross-model-agreement-reported: Report cross-model agreement per obligation alongside within-model variance.
+  [invariant/explicit] record-run-provenance: Record the input, model set, run count, and seeds that produced the report.
+  [invariant/explicit] support-later-comparison: Preserve enough provenance in the report for later measurements to be compared against it.
+  [compatibility/explicit] no-repo-writes: Leave the repository under review unchanged when the harness runs.
+
+Open questions:
+  (none)

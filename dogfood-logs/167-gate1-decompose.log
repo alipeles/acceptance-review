@@ -1,0 +1,16 @@
+Obligations:
+  [functional/explicit] retrieve-criterion-recommendation-on-demand: Provide a command that retrieves a criterion's recommendation from stored review state on demand.
+  [functional/explicit] read-state-not-rerun-review: Make recommendation retrieval read stored review state rather than re-running the review.
+  [invariant/explicit] preserve-prose-values-in-structured-fields: Keep the structured recommendation fields as prose values rather than compressing them into terse tokens.
+  [explanation_observability/explicit] make-detail-discoverable-in-review-output: Ensure the review's own output tells a reader how to obtain the recommendation detail.
+  [functional/explicit] remove-stale-recommendation-file-on-clean-run: When an earlier-version recommendation file is present, a clean run removes it and reports that removal.
+  [invariant/explicit] clean-run-leaves-only-review-output: Preserve the state where, after a clean run from a repo that already contains the old file, the review's own output is the only status statement.
+  [regression/explicit] byte-identical-retrieval-output: Keep retrieval output byte-identical across repeated calls when review state is unchanged.
+  [invariant/explicit] no-code-path-writes-recommendation-file: Preserve the property that no code path writes the recommendation file.
+  [functional/explicit] default-to-most-recently-stored-review: Default retrieval to the most recently stored review when the caller does not name one.
+  [error_handling/explicit] empty-result-for-missing-recommendation: Return an empty result when a criterion has no recommendation.
+  [docs_config/explicit] spec-no-longer-describes-written-file: Update the specification so it no longer describes the recommendation as a written file.
+
+Open questions:
+  ? criterion-recommendation-command-interface: What is the exact command interface to expose for retrieving a criterion's recommendation (command name, arguments, and output shape)?
+  ? old-file-path-and-removal-target: What is the exact path/name of the legacy recommendation file that should be removed on clean runs?

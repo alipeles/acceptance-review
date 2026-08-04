@@ -1,0 +1,32 @@
+Obligations:
+  [functional/explicit] harness-runs-review-pipeline: Run the review pipeline over one input repeatedly.
+  [functional/explicit] harness-supports-chosen-model-set: Run the harness across a chosen set of models.
+  [functional/explicit] harness-reports-judgement-movement: Report how much the pipeline's judgements move.
+  [functional/explicit] separate-movement-sources: Measure resampling, irrelevant perturbation, and model swapping as separate sources of movement.
+  [functional/explicit] measure-whole-pipeline: Measure the whole review pipeline rather than only the evidence stages.
+  [functional/explicit] compare-by-content-not-ids: Compare obligations across runs by what they say rather than by their identifiers.
+  [compatibility/explicit] use-existing-obligation-alignment: Use the existing `benchmark/alignment.py::align_obligations` comparison.
+  [compatibility/explicit] use-existing-variance-path: Source statistics from the benchmark harness's existing variance path, `benchmark/scoring.py::disclose_variance`.
+  [boundary/explicit] independent-draws-only: Measure variance across genuinely independent draws.
+  [functional/explicit] report-evidence-class-distribution: Report the distribution of evidence classes per obligation across the configured runs, separately for each model.
+  [functional/explicit] report-discrimination-verdict-distribution: Report the distribution of each plausible defect's discrimination verdict, not only the obligation's final evidence class.
+  [functional/explicit] report-obligation-presence-variance: Report which obligations appear in some runs of one task file but not others.
+  [functional/explicit] report-open-question-presence-variance: Report which open questions appear in some runs of one task file but not others.
+  [functional/explicit] classify-differences-as-content-or-shape: Classify every difference between two runs as either a content difference or a shape difference.
+  [functional/explicit] define-content-difference: Treat a content difference as a requirement, open question, or judgement present in one run and absent in another.
+  [functional/explicit] define-shape-difference: Treat a shape difference as the same content partitioned differently between runs.
+  [functional/explicit] separate-content-and-shape-figures: Report content differences and shape differences as separate figures, never combined into a single variance number.
+  [functional/explicit] report-perturbation-sensitivity: Report perturbation sensitivity as the proportion of watched judgements that changed under the stated perturbation.
+  [functional/explicit] report-cross-model-agreement: Report cross-model agreement per obligation alongside within-model variance.
+  [functional/explicit] record-run-provenance: Record the input, model set, run count, and seeds that produced the report.
+  [functional/explicit] caller-supplies-configurable-input-models-runs-perturbation: Accept caller-supplied input, model set, run count, and perturbation, each with a default.
+  [boundary/explicit] default-single-model-small-run-count: Use a single model and a small run count as the defaults.
+  [functional/explicit] opt-in-multiple-models: Make measuring more than one model something the caller opts into rather than the cost of a default run.
+  [invariant/explicit] no-repository-writes: Leave the repository under review unchanged by harness runs.
+  [compatibility/explicit] no-auto-execution: Keep harness execution deliberate rather than automatic in CI or on a schedule.
+
+Open questions:
+  ? perturbation-definition: What exact perturbation(s) should the harness support, and how should they be represented or applied?
+  ? default-perturbation: What should the default perturbation be?
+  ? small-run-count-value: What numeric run count should count as the default 'small number'?
+  ? report-format: What output format should the report use, and where should it be written or returned?

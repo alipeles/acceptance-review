@@ -1,0 +1,16 @@
+Obligations:
+  [functional/explicit] replace-written-file-with-command: Replace the written file `.acceptance/next-instruction.md` with the `acceptance recommendation --criterion <id> [--format json|text]` command surface for retrieving a criterion's recommendation on demand, defaulting to JSON.
+  [docs_config/explicit] fixed-command-surface: Keep the recommendation retrieval command surface fixed to the specified command name and arguments in the specification.
+  [functional/explicit] no-speculative-writing: Ensure recommendation retrieval performs no speculative writes so nothing can go stale.
+  [functional/explicit] retrieve-from-stored-review-state: Return a recommendation from stored review state on demand without re-running the review.
+  [functional/explicit] preserve-prose-structured-fields: Keep the recommendation's structured fields as discrete keys with their prose values intact.
+  [explanation_observability/explicit] discoverable-retrieval-in-review-output: Make the review's own output tell a reader how to obtain the recommendation detail.
+  [functional/explicit] remove-stale-next-instruction-file: Remove any pre-existing `.acceptance/next-instruction.md` left by an earlier version and report that it was removed.
+  [invariant/explicit] clean-run-leaves-only-review-output: Leave the review's own output as the only statement of status when starting from a repo that already contains `.acceptance/next-instruction.md`.
+  [error_handling/explicit] empty-result-for-missing-criterion-recommendation: Return an empty result when a criterion has no recommendation.
+  [functional/explicit] default-to-most-recent-review: Default retrieval to the most recently stored review when the caller does not name one.
+  [regression/explicit] byte-identical-retrievals: Produce byte-identical output for repeated retrievals over unchanged review state.
+  [docs_config/explicit] spec-no-longer-describes-written-file: Keep the specification from describing the recommendation as a written file.
+
+Open questions:
+  ? format-json-text-output-shape: What exact output shape should `acceptance recommendation --criterion <id> [--format json|text]` use for JSON and text modes, including field names, ordering, and whether empty results are represented as `null`, `{}`, or another form?

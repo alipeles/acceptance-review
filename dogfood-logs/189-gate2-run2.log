@@ -1,0 +1,359 @@
+Task completion: INCOMPLETE
+
+4 obligation(s) with non-discriminating test evidence (separate-movement-sources, decomposition-instability-observed, default-parameters, no-variance-reduction).
+
+Obligations:
+
+  1. Build a harness that runs the review pipeline over one input repeatedly.
+       code evidence: addressed
+         1.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         1.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         1.3  tests/benchmark/test_instability.py::test_a_caller_supplied_model_set_is_actually_measured
+         1.4  tests/benchmark/test_instability.py::test_run_once_drives_the_real_pipeline_and_snapshots_its_output
+
+  2. Support running the harness across a chosen set of models.
+       code evidence: addressed
+         2.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         2.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         2.3  tests/benchmark/test_instability.py::test_a_caller_supplied_model_set_is_actually_measured
+
+  3. Report how much the pipeline's judgements move.
+       code evidence: addressed
+         3.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         3.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         3.3  tests/benchmark/test_instability.py::test_measuring_variance_requires_at_least_two_runs
+
+  4. Measure resampling, irrelevant perturbation, and model swapping as separate sources of movement.
+       code evidence: addressed
+         4.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         4.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  5. Measure the whole review pipeline rather than only the evidence stages.
+       code evidence: addressed
+         5.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         5.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/benchmark/test_instability.py::test_run_once_drives_the_real_pipeline_and_snapshots_its_output
+         5.4  tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces
+
+  6. Treat decomposition instability as an observed phenomenon that the harness can surface.
+       code evidence: addressed
+         6.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         6.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  7. Classify every difference between two runs as either a content difference or a shape difference.
+       code evidence: addressed
+         7.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         7.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/benchmark/test_instability.py::test_a_repartitioned_obligation_is_reported_as_a_shape_difference
+
+  8. Define content differences as requirements, open questions, or judgements present in one run and absent in another.
+       code evidence: addressed
+         8.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         8.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         8.3  tests/benchmark/test_instability.py::test_a_flipped_evidence_class_is_content_and_never_shape
+         8.4  tests/benchmark/test_instability.py::test_a_lost_obligation_is_reported_as_a_content_difference
+         8.5  tests/benchmark/test_instability.py::test_an_oscillating_open_question_is_a_content_difference
+         8.6  tests/benchmark/test_instability.py::test_an_unanswered_subject_counts_as_content_not_shape
+         8.7  tests/benchmark/test_instability.py::test_an_unmatched_statement_covered_by_nothing_is_a_content_difference
+         8.8  tests/benchmark/test_instability.py::test_with_no_counterpart_set_at_all_everything_is_content
+
+  9. Define shape differences as the same content partitioned differently between runs.
+       code evidence: addressed
+         9.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         9.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/benchmark/test_instability.py::test_a_repartitioned_obligation_is_reported_as_a_shape_difference
+         9.4  tests/benchmark/test_instability.py::test_an_unmatched_statement_covered_by_the_other_set_is_a_shape_difference
+
+  10. Report content differences and shape differences as separate figures.
+       code evidence: addressed
+         10.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         10.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/benchmark/test_instability.py::test_content_and_shape_are_reported_as_separate_figures
+         10.4  tests/benchmark/test_instability.py::test_content_and_shape_counts_diverge_when_both_kinds_occur
+
+  11. Keep content and shape differences out of any single combined variance number.
+       code evidence: addressed
+         11.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         11.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         11.3  tests/benchmark/test_instability.py::test_content_and_shape_are_reported_as_separate_figures
+         11.4  tests/benchmark/test_instability.py::test_content_and_shape_counts_diverge_when_both_kinds_occur
+
+  12. Report perturbation sensitivity as the proportion of watched judgements that changed under the stated perturbation.
+       code evidence: addressed
+         12.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         12.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         12.3  tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_a_proportion_of_watched_judgements
+         12.4  tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_none_when_nothing_was_watched
+         12.5  tests/benchmark/test_instability.py::test_the_perturbation_adds_a_test_that_asserts_nothing_about_the_change
+
+  13. Report cross-model agreement per obligation alongside within-model variance.
+       code evidence: addressed
+         13.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         13.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         13.3  tests/benchmark/test_instability.py::test_cross_model_agreement_is_none_with_a_single_model
+         13.4  tests/benchmark/test_instability.py::test_cross_model_agreement_is_reported_alongside_within_model_variance
+
+  14. Record the input, model set, run count, and seeds that produced the report.
+       code evidence: addressed
+         14.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         14.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         14.3  tests/benchmark/test_instability.py::test_a_perturbation_run_is_included_when_one_is_supplied
+         14.4  tests/benchmark/test_instability.py::test_measure_instability_records_the_conditions_that_produced_it
+         14.5  tests/benchmark/test_instability.py::test_run_once_drives_the_real_pipeline_and_snapshots_its_output
+         14.6  tests/benchmark/test_instability.py::test_seeds_are_derived_so_a_measurement_is_repeatable_from_its_provenance
+
+  15. Accept caller-provided input, model set, run count, and perturbation.
+       code evidence: addressed
+         15.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         15.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         15.3  tests/benchmark/test_instability.py::test_a_perturbation_run_is_included_when_one_is_supplied
+
+  16. Provide defaults for the input under measurement, model set, run count, and perturbation.
+       code evidence: addressed
+         16.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         16.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  17. Use a single model as the default model set.
+       code evidence: addressed
+         17.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         17.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         17.3  tests/benchmark/test_instability.py::test_the_default_run_is_one_model_and_three_runs
+
+  18. Use three runs per model as the default run count.
+       code evidence: addressed
+         18.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         18.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         18.3  tests/benchmark/test_instability.py::test_the_default_run_count_produces_three_runs_per_model
+         18.4  tests/benchmark/test_instability.py::test_the_default_run_is_one_model_and_three_runs
+
+  19. Report the distribution of evidence classes per obligation across the configured runs, separately for each model.
+       code evidence: addressed
+         19.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         19.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         19.3  tests/benchmark/test_instability.py::test_a_flipped_evidence_class_is_content_and_never_shape
+         19.4  tests/benchmark/test_instability.py::test_evidence_class_distribution_counts_every_draw
+         19.5  tests/benchmark/test_instability.py::test_presence_rows_show_an_obligation_missing_from_some_runs
+
+  20. Report the distribution of each plausible defect's discrimination verdict, not only the final evidence class.
+       code evidence: addressed
+         20.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         20.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         20.3  tests/benchmark/test_instability.py::test_a_flipped_defect_verdict_is_reported_per_defect
+
+  21. Report which obligations appear in some runs of one task file but not others.
+       code evidence: addressed
+         21.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         21.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         21.3  tests/benchmark/test_instability.py::test_a_lost_obligation_is_reported_as_a_content_difference
+         21.4  tests/benchmark/test_instability.py::test_presence_rows_show_an_obligation_missing_from_some_runs
+
+  22. Report which open questions appear in some runs of one task file but not others.
+       code evidence: addressed
+         22.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         22.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         22.3  tests/benchmark/test_instability.py::test_an_oscillating_open_question_is_a_content_difference
+
+  23. Measure variance across genuinely independent draws.
+       code evidence: addressed
+         23.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         23.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         23.3  tests/benchmark/test_instability.py::test_measure_instability_varies_the_seed_across_runs
+         23.4  tests/benchmark/test_instability.py::test_runs_are_recorded_live_and_never_replayed
+
+  24. Treat replayed responses as recordings rather than as variance measurements of the judge.
+       code evidence: addressed
+         24.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         24.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         24.3  tests/benchmark/test_instability.py::test_runs_are_recorded_live_and_never_replayed
+
+  25. Use the existing benchmark variance path, benchmark/scoring.py::disclose_variance, for the statistics.
+       code evidence: addressed
+         25.1  src/acceptance/benchmark/scoring.py#@@ -337,7 +337,13 @@ class SampledBenchmarkReport(PersistableModel):
+         25.2  src/acceptance/benchmark/scoring.py#@@ -359,7 +365,7 @@ def disclose_variance(reports: list[BenchmarkReport]) -> SampledBenchmarkReport:
+         25.3  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         25.4  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         25.5  tests/benchmark/test_instability.py::test_the_harness_uses_the_benchmark_variance_path_and_not_a_second_one
+         25.6  tests/benchmark/test_variance.py::test_a_metric_present_in_only_one_run_has_no_spread
+         25.7  tests/benchmark/test_variance.py::test_disclose_variance_matches_hand_calculated_values
+         25.8  tests/benchmark/test_variance.py::test_disclose_variance_rejects_mixed_determinism_modes
+         25.9  tests/benchmark/test_variance.py::test_disclose_variance_rejects_reports_with_unknown_mode
+         25.10  tests/benchmark/test_variance.py::test_disclose_variance_requires_at_least_one_report
+         25.11  tests/benchmark/test_variance.py::test_single_report_disclosure_has_no_spread_anywhere
+
+  26. Compare obligations across runs using benchmark/alignment.py::align_obligations.
+       code evidence: addressed
+         26.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         26.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         26.3  tests/benchmark/test_instability.py::test_obligations_align_by_content_even_when_their_ids_differ
+
+  27. Compare obligations across runs by what they say rather than by their identifiers.
+       code evidence: addressed
+         27.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         27.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         27.3  tests/benchmark/test_instability.py::test_matching_ids_with_different_text_are_not_treated_as_the_same_obligation
+         27.4  tests/benchmark/test_instability.py::test_obligations_align_by_content_even_when_their_ids_differ
+
+  28. Keep the judgement-producing pipeline unchanged.
+       code evidence: addressed
+         28.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         28.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         28.3  tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces
+
+  29. Make the harness invoked deliberately rather than automatically.
+       code evidence: addressed
+         29.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         29.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         29.3  tests/benchmark/test_instability.py::test_no_ci_workflow_invokes_the_instability_harness
+
+  30. Leave acceptability decisions to the task that changes the judge.
+       code evidence: addressed
+         30.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         30.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         30.3  tests/benchmark/test_instability.py::test_the_report_carries_no_pass_fail_or_threshold_field
+
+  31. Keep threshold-setting and rating interpretation out of the harness.
+       code evidence: addressed
+         31.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         31.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         31.3  tests/benchmark/test_instability.py::test_the_report_carries_no_pass_fail_or_threshold_field
+
+  32. Preserve the measured variance without attempting to reduce it.
+       code evidence: addressed
+         32.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         32.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  33. Ensure a harness run writes nothing into the repository under review.
+       code evidence: addressed
+         33.1  src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+         33.2  tests/benchmark/test_instability.py#@@ -0,0 +1,693 @@
+       test evidence: strongly supported  [tier: static]
+         33.3  tests/benchmark/test_instability.py::test_the_perturbation_never_writes_into_the_repository_under_review
+
+Unrequested changes:
+  1. [in_service] `metric_stats` was made public and `disclose_variance` now calls it. The task required using the existing variance path, but did not require exporting a new helper symbol or changing the scoring module's public API.
+       src/acceptance/benchmark/scoring.py#@@ -337,7 +337,13 @@ class SampledBenchmarkReport(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -359,7 +365,7 @@ def disclose_variance(reports: list[BenchmarkReport]) -> SampledBenchmarkReport:
+  2. [in_service] The new harness writes an unrelated test file into a copied repository and commits it as part of perturbation setup. The obligations require a perturbation source and no writes to the reviewed repo, but they do not require adding a synthetic test artifact to the copy.
+       src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+  3. [in_service] `measure_instability` defaults to applying `DEFAULT_PERTURBATION`, so a plain harness run will always create and measure a perturbation unless the caller explicitly disables it. The obligations require a default perturbation parameter, but not that perturbation be enabled by default.
+       src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+  4. [in_service] The harness introduces a new `Mode.RECORD` requirement for measurement runs and explicitly rejects replay as the measurement mode. The obligations require independent draws and recording provenance, but they do not require changing the measurement mode semantics or asserting that replay is never used.
+       src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+  5. [in_service] `measure_instability` now enforces `runs_per_model >= 2`. The task asks for a default of three runs and variance measurement, but it does not explicitly require rejecting a single-run invocation.
+       src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+  6. [in_service] The harness computes and reports cross-model agreement only for evidence-class distributions, not for every obligation or every reported figure. The obligation asks for cross-model agreement per obligation alongside within-model variance, but this implementation narrows it to one specific axis.
+       src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+  7. [in_service] The perturbation implementation appends a new unrelated test to the copied repository and commits it. The obligations require an irrelevant perturbation source and no writes to the reviewed repository, but they do not call for a git commit or a specific synthetic test payload.
+       src/acceptance/benchmark/instability.py#@@ -0,0 +1,771 @@
+
+Changes since c4c0506f:
+  closed:
+    - Build a harness that runs the review pipeline over one input repeatedly.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Support running the harness across a chosen set of models.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - Report how much the pipeline's judgements move.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - Keep content and shape differences out of any single combined variance number.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Accept caller-provided input, model set, run count, and perturbation.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Use three runs per model as the default run count.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Measure variance across genuinely independent draws.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Treat replayed responses as recordings rather than as variance measurements of the judge.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Compare obligations across runs using benchmark/alignment.py::align_obligations.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - Compare obligations across runs by what they say rather than by their identifiers.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - Keep the judgement-producing pipeline unchanged.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - Make the harness invoked deliberately rather than automatically.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - Leave acceptability decisions to the task that changes the judge.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - Keep threshold-setting and rating interpretation out of the harness.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+  moved:
+    - Treat decomposition instability as an observed phenomenon that the harness can surface.
+        test evidence: nominally supported -> unsupported
+
+Open questions:
+  1. [resolved] What should the default perturbation be when the caller does not supply one?
+       The diff sets an explicit default for the `perturbation` parameter in `measure_instability` to `DEFAULT_PERTURBATION`, and defines that constant as `Perturbation(name="add-unrelated-test", apply=add_unrelated_test)`. The docstring also says the perturbation is part of the default measurement setup unless the caller opts out by passing `None`.
+
+Recommended tests:
+  1. The report contains distinct figures for repeated-run variation, perturbation sensitivity, and cross-model variation.
+       inputs:  Use one report input where all three movement sources are simultaneously non-empty but distinguishable: (1) repeated-run variation across at least 3 runs of the same model, (2) a perturbation that changes only an irrelevant part of the repo/input, and (3) at least 2 different models with differing outputs on the same case. The case should produce at least one repeated-run difference, one perturbation difference, and one cross-model disagreement so the report must populate all three figures independently.
+       detects: The implementation merges multiple movement sources into one blended figure or otherwise fails to keep repeated-run variation, perturbation sensitivity, and cross-model variation distinct.
+       full detail: acceptance recommendation --criterion separate-movement-sources
+  2. The harness can report instability in decomposition outputs across runs.
+       inputs:  Use a case and client setup that forces the decomposition stage to produce different outputs across two or more live runs of the same model/seed-variant combination, ideally one where a scope exclusion or obligation partition changes between runs. The input must be one that can yield a decomposition difference without requiring downstream evidence-class or defect-verdict changes.
+       detects: The harness fails to observe or surface decomposition instability across runs, even when the decomposition stage actually changes.
+       full detail: acceptance recommendation --criterion decomposition-instability-observed
+  3. When a caller omits these parameters, the harness uses defaults.
+       inputs:  Call `measure_instability` with only the required case argument, omitting `models`, `runs_per_model`, and `perturbation`. Use a case that can be measured successfully under the defaults so the test can inspect the actual executed configuration rather than a failure path.
+       detects: The harness ignores omitted parameters and does not actually fall back to its documented defaults at runtime.
+       full detail: acceptance recommendation --criterion default-parameters
+  4. The harness only measures and reports variance; it does not include mitigation behavior.
+       inputs:  Use an input where variance is present and measurable, then inspect the report/API surface for any mitigation or reduction behavior. The test should exercise the harness end-to-end with multiple runs and a perturbation so any hidden smoothing, averaging-away, thresholding, or corrective action would be visible.
+       detects: The harness includes mitigation behavior or reduction logic instead of only measuring and reporting variance.
+       full detail: acceptance recommendation --criterion no-variance-reduction
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

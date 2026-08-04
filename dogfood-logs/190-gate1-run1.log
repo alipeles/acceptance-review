@@ -1,0 +1,20 @@
+Obligations:
+  [functional/explicit] turn-corpus-into-regression-cases: The rating-stability corpus is converted into regression cases that the benchmark can score.
+  [compatibility/explicit] use-existing-scoring-path: Cases are scored through the repository's existing benchmark scoring path.
+  [compatibility/explicit] use-existing-ground-truth-shape: Ground-truth labels use the existing `benchmark/case.py::GroundTruthLabels` shape already used by `tests/fixtures/archetypes/`.
+  [invariant/explicit] replay-mode-no-live-calls: Cases run in replay mode and issue no live model calls.
+  [invariant/explicit] traceable-labels-to-judgement-md: Each case's ground-truth label is traceable to the `judgement.md` it was derived from.
+  [functional/explicit] preserve-decision-carrying-cases: The rebuilt suite includes the cases the corpus records as unearned `strongly supported` issuances and the three named real findings that must remain reported.
+  [functional/explicit] fail-both-extremes: The suite fails for a judge that always issues `strongly supported` and also fails for a judge that never issues `strongly supported`.
+  [regression/explicit] preserve-real-findings: The suite requires the three named real findings to still be reported.
+  [regression/explicit] remove-unearned-strongly-supported: The suite requires the unearned `strongly supported` ratings to no longer be issued.
+  [regression/explicit] control-case-nontrivial-assertions: The control case `163-gate2-run1` carries assertions of the same kind as the other cases rather than passing trivially.
+  [docs_config/explicit] update-corpus-readme-status: The corpus README no longer states that the corpus is not read by any test, or it states precisely which parts of it are still not read.
+  [functional/explicit] rebuild-from-rendered-reports: The regression cases are rebuilt as runnable pipeline inputs in the same shape used by `tests/fixtures/archetypes/`, rather than copied from the rendered report files.
+  [functional/explicit] derive-labels-from-judgement-md: Each rebuilt case takes its ground-truth label from the contemporaneous `judgement.md`.
+  [boundary/explicit] select-decision-carrying-runs: Only the decision-carrying cases are rebuilt; runs with no decision are not rebuilt.
+  [functional/explicit] preserve-two-readings: For the two judgements that were written wrong and then rewritten, each affected case records which reading is ground truth.
+
+Open questions:
+  ? which-corpus-cases-to-rebuild: Which specific corpus runs/cases should be committed as fixtures beyond the named decision-carrying cases and the control case, especially for the unearned `strongly supported` judgments?
+  ? which-two-readings-are-ground-truth: For the two judgements that were written wrong and then rewritten, which of the two preserved readings should be treated as ground truth for each affected case?

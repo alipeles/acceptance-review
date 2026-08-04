@@ -1,0 +1,14 @@
+Obligations:
+  [functional/explicit] constrain-id-bearing-response-fields-to-supplied-ids: Each model stage that echoes back a supplied id constrains that response field to the ids supplied for that call.
+  [functional/explicit] per-call-supplied-id-set: The allowed-id set for a call is built from the ids that call itself supplied.
+  [invariant/explicit] reject-foreign-ids-as-judgments: An id outside the supplied set is never accepted as a judgment about anything.
+  [functional/explicit] record-unhonored-answers-as-unobtained: An answer that could not be honoured is recorded as an answer not obtained rather than as a negative judgment.
+  [invariant/explicit] distinguish-unhonored-from-negative-answer: An answer that could not be honoured does not read as a substantive negative answer.
+  [invariant/explicit] retain-usable-judgments-with-unhonored-one: Usable judgments returned alongside an unhonored answer are retained.
+  [functional/explicit] partitioned-call-uses-own-supplied-ids: When a stage request is partitioned, each call constrains its response to the ids in its own partition.
+  [functional/explicit] indeterminate-judgment-for-unhonored-obligation: An obligation whose judgment could not be honoured is left indeterminate rather than reported as lacking evidence.
+  [invariant/explicit] review-not-clean-with-indeterminate: A review holding an indeterminate judgment does not reach a clean completion verdict.
+  [explanation_observability/explicit] review-names-stage-and-id-for-unhonored: The review names the stage and the id that could not be honoured.
+
+Open questions:
+  ? honorability-criteria-for-returned-id: What exact conditions make a returned id 'cannot be honoured' versus simply invalid or empty, so the implementation can decide when to mark an answer as not obtained?

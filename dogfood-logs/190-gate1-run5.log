@@ -1,0 +1,36 @@
+Obligations:
+  [functional/explicit] turn-corpus-into-regression-cases: Convert the rating-stability corpus into regression cases that the benchmark can score.
+  [compatibility/explicit] use-existing-scoring-path: Score cases through the repository's existing benchmark scoring path.
+  [compatibility/explicit] use-existing-ground-truth-shape: Represent ground-truth labels with the existing `benchmark/case.py::GroundTruthLabels` shape used by `tests/fixtures/archetypes/`.
+  [functional/explicit] case-inputs-from-corpus-and-revisions: Use each run's own `current-task.md` together with the base and head revisions the run judged as the case inputs.
+  [invariant/explicit] no-source-file-copy-into-case: Keep source files out of the case payload; the case references the corpus inputs instead of copying them.
+  [functional/explicit] analyze-tree-at-judged-revision: Analyze the tree at the revision each case judged, not the current working tree.
+  [error_handling/explicit] fail-on-unresolvable-revision: Treat a case that names a revision that no longer resolves as a failing case that names the run.
+  [functional/explicit] no-live-model-calls: Run cases without live model calls.
+  [invariant/explicit] no-recorded-transcript-committed: Keep recorded model transcripts out of the committed test data.
+  [explanation_observability/explicit] trace-labels-to-judgement-md: Make each case's ground-truth label traceable to the `judgement.md` it was derived from.
+  [compatibility/explicit] preserve-rating-stability-readme-only: Limit modifications under `tests/fixtures/rating-stability/` to the README.
+  [regression/explicit] do-not-change-judgement-production: Leave the judgement-production stage untouched.
+  [regression/explicit] do-not-reduce-instability: Preserve the instability documented by the corpus.
+  [boundary/explicit] do-not-set-thresholds: Avoid introducing a required variance threshold or accuracy threshold.
+  [regression/explicit] do-not-rebuild-unlisted-runs: Leave untouched the corpus runs that establish none of the listed ground truth.
+  [compatibility/explicit] do-not-touch-decompose-stability: Keep the decompose-stability corpus out of this task.
+  [invariant/explicit] preserve-corpus-evidence-record: Preserve the rating-stability corpus as the evidence record the assertions are derived from.
+  [functional/explicit] do-not-restore-incremental-state: Keep the incremental re-run path's carried-forward stored review state out of the case inputs.
+  [docs_config/explicit] scoreboard-committed-as-fixtures: Commit the regression cases derived from the corpus as test fixtures.
+  [functional/explicit] strongly-supported-always-fails: A judge that always issues `strongly supported` fails the suite.
+  [functional/explicit] never-strongly-supported-fails: A judge that never issues `strongly supported` fails the suite.
+  [functional/explicit] real-gaps-remain-required: Require every gap listed as real to still be reported by the suite.
+  [functional/explicit] unearned-ratings-no-longer-issued: Require every rating listed as unearned to no longer be issued.
+  [human_review/explicit] run3-preserved-reading-ground-truth: Mark run 3's preserved reading as the ground truth for its case.
+  [human_review/explicit] run5-preserved-reading-ground-truth: Mark run 5's preserved reading as the ground truth for its case.
+  [functional/explicit] control-case-nontrivial-assertions: Give control case `163-gate2-run1` assertions of the same kind as the other cases.
+  [docs_config/explicit] readme-updated-about-test-coverage: Update the corpus README so it no longer says the corpus is not read by any test, or else states precisely which parts are still not read.
+  [human_review/explicit] run3-corrected-reading-real-findings: Record run 3's corrected reading that all three findings were real and the original reading called them tool defects.
+  [human_review/explicit] run5-corrected-reading-verdict: Record run 5's corrected reading that the `partially supported` rating was a wrong verdict and run 4's `strongly supported` is correct.
+
+Open questions:
+  ? which-corpus-files-to-add: Which specific fixture files should be created or updated under `tests/fixtures/rating-stability/` to represent the regression cases, and what naming/layout should they use?
+  ? how-to-map-runs-to-cases: How should the six runs in the corpus map to benchmark cases, especially for runs with multiple preserved readings or multiple run-instances per obligation?
+  ? what-to-do-with-partly-real-gap: How should the suite represent the note that `replace-written-file-with-command` is only partly real, with only its defaulting-to-JSON clause confirmed?
+  ? what-readme-wording-to-use: What exact README wording should replace the current statement about the corpus not being read by any test?

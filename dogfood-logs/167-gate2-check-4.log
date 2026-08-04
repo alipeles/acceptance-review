@@ -1,0 +1,220 @@
+Task completion: INCOMPLETE
+
+3 obligation(s) with non-discriminating test evidence (no-speculative-writing, preserve-prose-structured-fields, empty-result-for-missing-criterion-recommendation).
+
+Obligations:
+
+  1. Replace the written file `.acceptance/next-instruction.md` with the `acceptance recommendation --criterion <id> [--format json|text]` command surface for retrieving a criterion's recommendation on demand, defaulting to JSON.
+       code evidence: addressed
+         1.1  src/acceptance/cli.py#@@ -33,7 +33,9 @@ from acceptance.coverage.open_questions import apply_open_question_resolutions,
+         1.2  src/acceptance/cli.py#@@ -172,26 +174,33 @@ def run_check(
+         1.3  src/acceptance/cli.py#@@ -412,6 +421,23 @@ def build_parser() -> argparse.ArgumentParser:
+         1.4  src/acceptance/cli.py#@@ -491,12 +517,38 @@ def main(argv: list[str] | None = None) -> int:
+         1.5  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+         1.6  src/acceptance/report.py#@@ -84,75 +91,39 @@ def render_report(review: Review) -> str:
+         1.7  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -71,7 +71,7 @@ Used during development, before/while preparing a PR.
+         1.8  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -256,7 +256,7 @@ When evidence is missing/weak, prescribe a test obligation: the criterion; requi
+         1.9  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -264,7 +264,7 @@ Recommendations are emitted in a **structured, machine-readable form** — each
+         1.10  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -439,7 +439,8 @@ Unrequested changes:
+       test evidence: strongly supported  [tier: static]
+         1.11  tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps
+         1.12  tests/test_cli.py::test_json_is_the_default_format_when_none_is_requested
+         1.13  tests/test_cli.py::test_the_spec_names_the_command_the_cli_actually_accepts
+
+  2. Keep the recommendation retrieval command surface fixed to the specified command name and arguments in the specification.
+       code evidence: addressed
+         2.1  src/acceptance/cli.py#@@ -412,6 +421,23 @@ def build_parser() -> argparse.ArgumentParser:
+         2.2  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -256,7 +256,7 @@ When evidence is missing/weak, prescribe a test obligation: the criterion; requi
+         2.3  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -264,7 +264,7 @@ Recommendations are emitted in a **structured, machine-readable form** — each
+         2.4  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -439,7 +439,8 @@ Unrequested changes:
+       test evidence: strongly supported  [tier: static]
+         2.5  tests/test_cli.py::test_a_command_name_the_spec_does_not_document_is_rejected
+         2.6  tests/test_cli.py::test_an_undocumented_format_is_rejected
+         2.7  tests/test_cli.py::test_criterion_is_required
+         2.8  tests/test_cli.py::test_render_decomposition_lists_obligations_and_open_questions
+         2.9  tests/test_cli.py::test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact
+         2.10  tests/test_cli.py::test_the_spec_names_the_command_the_cli_actually_accepts
+
+  3. Ensure recommendation retrieval performs no speculative writes so nothing can go stale.
+       code evidence: addressed
+         3.1  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+         3.2  src/acceptance/cli.py#@@ -172,26 +174,33 @@ def run_check(
+         3.3  src/acceptance/cli.py#@@ -491,12 +517,38 @@ def main(argv: list[str] | None = None) -> int:
+         3.4  tests/test_cli.py#@@ -511,21 +511,15 @@ def test_check_without_a_head_reviews_the_working_tree(
+         3.5  tests/test_cli.py#@@ -549,33 +543,390 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: partially supported  [tier: static]
+         3.6  tests/benchmark/test_coverage.py::test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo
+         3.7  tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps
+         3.8  tests/test_cli.py::test_retrieval_makes_no_model_call
+         3.9  tests/test_cli.py::test_retrieval_writes_nothing_into_the_repo
+
+  4. Return a recommendation from stored review state on demand without re-running the review.
+       code evidence: addressed
+         4.1  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+         4.2  src/acceptance/review_store.py#@@ -37,3 +37,18 @@ class ReviewStore:
+         4.3  src/acceptance/cli.py#@@ -491,12 +517,38 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: strongly supported  [tier: static]
+         4.4  tests/test_cli.py::test_check_persists_the_review_to_the_store
+         4.5  tests/test_cli.py::test_recommendation_returns_the_stored_prescription_for_a_criterion
+         4.6  tests/test_cli.py::test_retrieval_makes_no_model_call
+         4.7  tests/test_cli.py::test_retrieval_reads_the_named_revision_and_not_a_recomputation
+         4.8  tests/test_cli.py::test_retrieval_without_a_revision_uses_the_newest_stored_review
+         4.9  tests/test_cli.py::test_the_newest_review_wins_regardless_of_filename_order
+         4.10  tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical
+         4.11  tests/test_review_store.py::test_rerun_over_the_same_head_overwrites_in_place
+         4.12  tests/test_review_store.py::test_review_round_trips_through_the_store
+
+  5. Keep the recommendation's structured fields as discrete keys with their prose values intact.
+       code evidence: addressed
+         5.1  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+       test evidence: partially supported  [tier: static]
+         5.2  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         5.3  tests/test_cli.py::test_recommendation_returns_the_stored_prescription_for_a_criterion
+         5.4  tests/test_report.py::test_every_test_evidence_line_shows_a_tier
+         5.5  tests/test_report.py::test_open_questions_and_recommendations_are_numbered
+
+  6. Make the review's own output tell a reader how to obtain the recommendation detail.
+       code evidence: addressed
+         6.1  src/acceptance/report.py#@@ -76,6 +76,13 @@ def render_report(review: Review) -> str:
+         6.2  src/acceptance/report.py#@@ -84,75 +91,39 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps
+         6.4  tests/test_cli.py::test_render_classify_output
+         6.5  tests/test_cli.py::test_report_shell_renders_all_sections_present_and_empty
+         6.6  tests/test_report.py::test_a_carried_forward_obligation_says_so_and_names_the_revision
+         6.7  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  7. Remove any pre-existing `.acceptance/next-instruction.md` left by an earlier version and report that it was removed.
+       code evidence: addressed
+         7.1  src/acceptance/cli.py#@@ -172,26 +174,33 @@ def run_check(
+         7.2  src/acceptance/cli.py#@@ -491,12 +517,38 @@ def main(argv: list[str] | None = None) -> int:
+         7.3  tests/test_cli.py#@@ -511,21 +511,15 @@ def test_check_without_a_head_reviews_the_working_tree(
+         7.4  tests/test_cli.py#@@ -549,33 +543,390 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: strongly supported  [tier: static]
+         7.5  tests/benchmark/test_coverage.py::test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo
+         7.6  tests/test_cli.py::test_a_stale_instruction_file_is_removed_and_the_removal_reported
+         7.7  tests/test_cli.py::test_the_removal_is_reported_in_json_mode_too
+         7.8  tests/test_cli.py::test_the_removal_leaves_the_report_as_the_only_statement_of_status
+         7.9  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  8. Leave the review's own output as the only statement of status when starting from a repo that already contains `.acceptance/next-instruction.md`.
+       code evidence: addressed
+         8.1  src/acceptance/cli.py#@@ -172,26 +174,33 @@ def run_check(
+         8.2  src/acceptance/cli.py#@@ -491,12 +517,38 @@ def main(argv: list[str] | None = None) -> int:
+         8.3  src/acceptance/report.py#@@ -84,75 +91,39 @@ def render_report(review: Review) -> str:
+         8.4  tests/test_cli.py#@@ -549,33 +543,390 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: strongly supported  [tier: static]
+         8.5  tests/benchmark/test_coverage.py::test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo
+         8.6  tests/test_cli.py::test_a_stale_instruction_file_is_removed_and_the_removal_reported
+         8.7  tests/test_cli.py::test_report_shell_renders_all_sections_present_and_empty
+         8.8  tests/test_cli.py::test_the_removal_is_reported_in_json_mode_too
+         8.9  tests/test_cli.py::test_the_removal_leaves_the_report_as_the_only_statement_of_status
+         8.10  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  9. Return an empty result when a criterion has no recommendation.
+       code evidence: addressed
+         9.1  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+         9.2  src/acceptance/cli.py#@@ -491,12 +517,38 @@ def main(argv: list[str] | None = None) -> int:
+         9.3  tests/test_cli.py#@@ -511,21 +511,15 @@ def test_check_without_a_head_reviews_the_working_tree(
+       test evidence: partially supported  [tier: static]
+         9.4  tests/test_cli.py::test_recommendation_for_an_unknown_criterion_is_empty_not_an_error
+         9.5  tests/test_report.py::test_empty_review_renders_the_full_shell
+         9.6  tests/test_review_store.py::test_read_missing_revision_returns_none
+
+  10. Default retrieval to the most recently stored review when the caller does not name one.
+       code evidence: addressed
+         10.1  src/acceptance/review_store.py#@@ -37,3 +37,18 @@ class ReviewStore:
+         10.2  src/acceptance/cli.py#@@ -491,12 +517,38 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/test_cli.py::test_retrieval_without_a_revision_uses_the_newest_stored_review
+         10.4  tests/test_cli.py::test_the_newest_review_wins_regardless_of_filename_order
+         10.5  tests/test_review_store.py::test_rerun_over_the_same_head_overwrites_in_place
+
+  11. Produce byte-identical output for repeated retrievals over unchanged review state.
+       code evidence: addressed
+         11.1  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+       test evidence: strongly supported  [tier: static]
+         11.2  tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical
+         11.3  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         11.4  tests/test_review_store.py::test_rerun_over_the_same_head_overwrites_in_place
+
+  12. Keep the specification from describing the recommendation as a written file.
+       code evidence: addressed
+         12.1  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -71,7 +71,7 @@ Used during development, before/while preparing a PR.
+         12.2  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -256,7 +256,7 @@ When evidence is missing/weak, prescribe a test obligation: the criterion; requi
+         12.3  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -264,7 +264,7 @@ Recommendations are emitted in a **structured, machine-readable form** — each
+         12.4  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -439,7 +439,8 @@ Unrequested changes:
+       test evidence: strongly supported  [tier: static]
+         12.5  tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps
+         12.6  tests/test_cli.py::test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact
+         12.7  tests/test_cli.py::test_the_spec_no_longer_names_a_written_file
+         12.8  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+Unrequested changes:
+  1. [in_service] The CLI now deletes `.acceptance/next-instruction.md` during `check` and emits a removal notice on stderr. The obligations require removing the stale file and making retrieval on-demand, but they do not require changing the normal `check` command to perform this deletion as part of its output path or to add a new status message.
+       src/acceptance/cli.py#@@ -172,26 +174,33 @@ def run_check(
+       src/acceptance/cli.py#@@ -491,12 +517,38 @@ def main(argv: list[str] | None = None) -> int:
+       tests/test_cli.py#@@ -511,21 +511,15 @@ def test_check_without_a_head_reviews_the_working_tree(
+       tests/test_cli.py#@@ -549,33 +543,390 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+  2. [in_service] `src/acceptance/recommendation.py` introduces a new helper module with `_FIELDS`, `lookup`, `render_json`, `render_text`, and `render` helpers. The retrieval command is requested, but this specific module split and helper factoring are implementation choices not explicitly required by the obligations.
+       src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+       src/acceptance/cli.py#@@ -33,7 +33,9 @@ from acceptance.coverage.open_questions import apply_open_question_resolutions,
+       src/acceptance/cli.py#@@ -412,6 +421,23 @@ def build_parser() -> argparse.ArgumentParser:
+       src/acceptance/cli.py#@@ -491,12 +517,38 @@ def main(argv: list[str] | None = None) -> int:
+  3. [in_service] `ReviewStore.latest()` selects the newest review by filesystem mtime. The task requires defaulting to the most recently stored review, but it does not specify mtime-based selection or require adding this method; that is an extra internal policy choice.
+       src/acceptance/review_store.py#@@ -37,3 +37,18 @@ class ReviewStore:
+       src/acceptance/cli.py#@@ -412,6 +421,23 @@ def build_parser() -> argparse.ArgumentParser:
+       src/acceptance/cli.py#@@ -491,12 +517,38 @@ def main(argv: list[str] | None = None) -> int:
+       tests/test_cli.py#@@ -549,33 +543,390 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+  4. [in_service] `render_report` now appends a per-criterion `full detail: acceptance recommendation --criterion <id>` line for each recommendation entry. The obligations require the review output to tell readers how to obtain recommendation detail, but not to add this extra command line to every recommendation item.
+       src/acceptance/report.py#@@ -76,6 +76,13 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -84,75 +91,39 @@ def render_report(review: Review) -> str:
+  5. [separable] The benchmark test was rewritten from asserting the old pipeline/CLI write boundary to asserting that neither path writes into the reviewed repo. The obligations require no speculative writes and stale-file cleanup, but not this broader benchmark behavior change or the removal of the old contrast assertion.
+       tests/benchmark/test_coverage.py#@@ -663,32 +663,32 @@ def test_the_shared_pipeline_partitions_the_mapping_call(tmp_path):
+       tests/benchmark/test_coverage.py#@@ -714,19 +714,5 @@ def test_the_shared_pipeline_writes_nothing_into_the_reviewed_repo(tmp_path):
+  6. [in_service] `tests/test_cli.py` adds many new cases around parser rejection, default format, byte-identical output, named revision selection, and no-model-call behavior. Some retrieval tests are requested, but several of these specific parser-surface and stability assertions go beyond the stated obligations.
+       tests/test_cli.py#@@ -511,21 +511,15 @@ def test_check_without_a_head_reviews_the_working_tree(
+       tests/test_cli.py#@@ -549,33 +543,390 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+  7. [in_service] `tests/test_report.py` removes the old next-instruction rendering coverage and changes report expectations to the new command hint. The obligations require discoverability and spec updates, but not the wholesale deletion of the prior instruction-rendering tests or the exact new report assertions.
+       tests/test_report.py#@@ -17,9 +17,8 @@ from acceptance.review_state import (
+       tests/test_report.py#@@ -88,7 +87,6 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
+       tests/test_report.py#@@ -109,7 +107,10 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
+       tests/test_report.py#@@ -268,192 +269,6 @@ def test_the_two_axes_render_independently_for_the_same_obligation():
+
+Changes since 95b880a8:
+  closed:
+    - Remove any pre-existing `.acceptance/next-instruction.md` left by an earlier version and report that it was removed.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Keep the specification from describing the recommendation as a written file.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+  moved:
+    - Keep the recommendation's structured fields as discrete keys with their prose values intact.
+        test evidence: strongly supported -> partially supported
+    - Return an empty result when a criterion has no recommendation.
+        test evidence: strongly supported -> partially supported
+
+Open questions:
+  1. [resolved] What exact output shape should `acceptance recommendation --criterion <id> [--format json|text]` use for JSON and text modes, including field names, ordering, and whether empty results are represented as `null`, `{}`, or another form?
+       The diff adds `src/acceptance/recommendation.py` with explicit JSON and text renderers. JSON output is built from a fixed `_FIELDS` tuple and `canonical_json`, and missing recommendations render as `{}`. Text output is defined as `Criterion: ...` followed by the remaining fields in `_FIELDS` order, with list values expanded as bullet lines. The CLI wiring in `src/acceptance/cli.py` sets `--format` to `json|text` with default `json`, making the shape unambiguous.
+
+Recommended tests:
+  1. Running recommendation retrieval does not create or update any recommendation file or other speculative artifact.
+       inputs:  Use a stored review that contains at least one real recommendation, then invoke the on-demand retrieval command (`acceptance recommendation --criterion <id>`) against that stored review while snapshotting the reviewed repo before and after the command. The input must make a hidden write observable by ensuring the correct implementation only reads stored review state, while the defective implementation would create or update a recommendation file or other repo artifact.
+       detects: The command makes a model call during retrieval but does not write anything, or otherwise mutates repo state speculatively without leaving an obvious file artifact.
+       full detail: acceptance recommendation --criterion no-speculative-writing
+  2. The retrieved recommendation includes separate fields for required inputs, boundary conditions, expected output, required assertions, plausible defect, and repo conventions, and each field retains prose text rather than a compressed token.
+       inputs:  Use a stored recommendation whose fields are all populated with distinctive prose sentences, not short codes, and retrieve it via `acceptance recommendation --criterion <id>`. The chosen recommendation should include multi-word text in `required_inputs`, `boundary_conditions`, `expected_output`, `required_assertions`, `plausible_defect`, and `repo_conventions` so a terse-token regression is detectable.
+       detects: Developer preserves the keys but converts prose values into terse tokens or codes, losing the actionable explanation in one or more fields.
+       full detail: acceptance recommendation --criterion preserve-prose-structured-fields
+  3. Querying a criterion without a recommendation yields an empty result instead of an error.
+       inputs:  Use a stored review that exists, but query a criterion id that is definitely absent from that review’s recommendations. The input should exercise the empty-result path of the retrieval command, not the missing-review error path, so the review store is populated and only the criterion lookup is missing.
+       detects: The command returns an empty object for unknown criteria but the report rendering for an empty review is wrong, or the empty-result path is mishandled as an error instead of an ordinary empty answer.
+       full detail: acceptance recommendation --criterion empty-result-for-missing-criterion-recommendation
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

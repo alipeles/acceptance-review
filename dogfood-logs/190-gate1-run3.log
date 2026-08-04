@@ -1,0 +1,22 @@
+Obligations:
+  [functional/explicit] turn-corpus-into-regression-cases: Convert the rating-stability corpus into regression cases that the benchmark can score.
+  [compatibility/explicit] use-existing-scoring-path: Score the new cases through the repository's existing benchmark scoring path.
+  [compatibility/explicit] use-existing-ground-truth-shape: Represent ground-truth labels with the existing GroundTruthLabels shape used by archetype fixtures.
+  [invariant/explicit] replay-mode-no-live-calls: Run the cases in replay mode with no live model calls.
+  [invariant/explicit] traceable-labels-to-judgements: Keep each case's ground-truth label traceable to the judgement.md it was derived from.
+  [functional/explicit] rebuild-cases-not-copy-corpus-files: Rebuild each case as an input the pipeline can run over, using the same shape that tests/fixtures/archetypes/ already uses.
+  [invariant/explicit] preserve-corpus-files: Keep the files under tests/fixtures/rating-stability/ unchanged except for its README.
+  [functional/explicit] suite-fails-both-directions: Make the suite fail when a judge rates everything strongly supported and also fail when a judge rates nothing strongly supported.
+  [functional/explicit] detect-unearned-strongly-supported: Require the suite to reject the ratings listed as strongly supported on evidence that did not earn them.
+  [functional/explicit] detect-real-gaps: Require the suite to continue reporting every gap listed as real, including the partly real gap noted in the corpus.
+  [regression/explicit] control-case-not-trivial: Give the control case 163-gate2-run1 assertions of the same kind as the other cases.
+  [docs_config/explicit] update-readme-status: Revise the corpus README so it no longer says the corpus is not read by any test, or else states precisely which parts are still not read.
+  [compatibility/explicit] no-live-judgement-changes: Leave the evidence-judgement stage unchanged.
+  [invariant/explicit] no-instability-reduction: Preserve the instability documented by the corpus.
+  [boundary/explicit] no-threshold-setting: Avoid introducing a required variance threshold or accuracy threshold for completion.
+  [compatibility/explicit] no-decompose-corpus-changes: Leave the decompose-stability corpus untouched.
+
+Open questions:
+  ? case-file-layout: What exact fixture files and directory layout should the rebuilt rating-stability cases use under tests/fixtures/ so they match the archetypes shape?
+  ? label-mapping-for-partly-real-case: How should the partly real `replace-written-file-with-command` case be encoded in GroundTruthLabels so the suite asserts only its defaulting-to-JSON clause?
+  ? which-parts-of-readme-are-still-unread: If the README should state precisely which parts are still not read, which parts are those?
