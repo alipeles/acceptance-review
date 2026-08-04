@@ -84,9 +84,11 @@ whether the checker works. GitHub Acceptance Review is Stage 2 — out of scope.
 - `current-task.md` — the task being worked right now, in the tool's own input
   format.
 - `session-state.md` — rolling state of the task in flight, carried across
-  context resets. Gitignored and disposable.
-- `dogfood-logs/`, `.acceptance/` — local run artifacts. Gitignored, never
-  committed.
+  context resets. Committed, but still a scratch record: **the issue remains
+  authoritative** (#168), and this file never becomes the plan.
+- `dogfood-logs/` — one directory per dogfood run, holding its inputs, output
+  and judgement. Committed; see *Dogfooding* below for the layout and why.
+- `.acceptance/` — local run artifacts. Gitignored, never committed.
 
 ### `src/acceptance/` — the review pipeline
 
@@ -191,7 +193,27 @@ We run the tool against our own work in progress. It is the only place the tool'
 own failures become visible, so it is a hard constraint on shipping. Two gates,
 both mandatory, neither skippable because the change looks small.
 
-Always save the output of dogfood runs in the dogfood-logs folder.
+Always save each dogfood run as a self-contained, committed directory under
+`dogfood-logs/`, in the shape `tests/fixtures/rating-stability/` already uses —
+so any run can later become a benchmark case:
+
+```
+dogfood-logs/<issue>-gate<n>-run<m>/
+  current-task.md   the exact task file the run was given
+  output.log        the full command output
+  revisions.txt     base and head SHAs — `check` runs only
+  judgement.md      which findings were real vs tool defects, and the triage
+```
+
+Two parts are easy to skip and both are load-bearing. **The revisions**: a task
+file without its SHAs is not a reconstructable input, and `revisions.txt` is the
+only reason #190's cases could use real inputs instead of invented ones. **The
+judgement**: it cannot be reconstructed from the output later, and without it the
+pair is a recording rather than a labelled fixture.
+
+This does not conflict with the no-committed-transcripts rule. That rule is about
+*transcripts*, which embed the full request as sent to the model; rendered reports
+and task files are already committed under `tests/fixtures/rating-stability/`.
 
 ### Gate 1 — before writing any code
 

@@ -32,11 +32,10 @@ htmlcov/
 .idea/
 .vscode/
 
-# Dogfood run logs — the tool reviewing its own changes, kept locally so the
-# progression across iterations is inspectable. Not shared: they are large,
-# machine-generated, and specific to one working copy.
-dogfood-logs/
+# Dogfood runs (`dogfood-logs/`) and `session-state.md` are COMMITTED, not
+# ignored. A dogfood run saved with its inputs and its judgement is a candidate
+# benchmark case — that is exactly what `tests/fixtures/rating-stability/` is,
+# and it could only be turned into one (#190) because those inputs survived.
 
-# Claude session state / handoff notes — rolling, disposable, never committed
-session-state.md
+# Claude handoff notes — rolling, disposable, never committed
 handoff*.md
