@@ -1,0 +1,239 @@
+Task completion: NO-MATERIAL-GAPS
+
+Every obligation is addressed and strongly supported by discriminating tests.
+
+Obligations:
+
+  1. Each model stage that echoes back a supplied id constrains that response field to the ids supplied for that call.
+       code evidence: addressed
+         1.1  src/acceptance/supplied_ids.py#@@ -0,0 +1,207 @@
+         1.2  src/acceptance/coverage/classify.py#@@ -115,7 +121,13 @@ def classify_coverage(
+         1.3  src/acceptance/coverage/open_questions.py#@@ -89,7 +95,15 @@ def resolve_open_questions(
+         1.4  src/acceptance/coverage/recommendations.py#@@ -125,7 +129,15 @@ def recommend_tests(
+         1.5  src/acceptance/coverage/unrequested.py#@@ -100,7 +106,12 @@ def detect_unrequested_changes(
+         1.6  src/acceptance/evidence/discrimination.py#@@ -151,7 +155,19 @@ def judge_discrimination(
+         1.7  src/acceptance/evidence/mapping.py#@@ -112,22 +121,39 @@ def map_tests_to_obligations(
+         1.8  src/acceptance/llm.py#@@ -122,6 +122,28 @@ def _default_completion_fn(**kwargs: Any) -> Any:
+         1.9  src/acceptance/llm.py#@@ -148,7 +170,7 @@ def inline_schema_refs(schema: dict) -> dict:
+         1.10  tests/test_supplied_ids.py#@@ -0,0 +1,408 @@
+       test evidence: strongly supported  [tier: static]
+         1.11  tests/coverage/test_recommendations.py::test_weak_criterion_gets_a_fully_populated_recommendation
+         1.12  tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating
+         1.13  tests/evidence/test_discrimination.py::test_discriminating_is_true_if_any_defect_is_caught
+         1.14  tests/evidence/test_discrimination.py::test_non_discriminating_input_is_judged_non_discriminating_with_a_reason
+         1.15  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         1.16  tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations
+         1.17  tests/evidence/test_mapping.py::test_unknown_ids_are_dropped
+         1.18  tests/test_llm.py::test_the_schema_sent_to_the_provider_has_no_ref_indirection
+         1.19  tests/test_supplied_ids.py::test_a_foreign_id_does_not_validate_against_the_constrained_schema
+         1.20  tests/test_supplied_ids.py::test_a_list_valued_id_field_constrains_its_items
+         1.21  tests/test_supplied_ids.py::test_a_single_supplied_id_is_still_sent_as_an_enum
+         1.22  tests/test_supplied_ids.py::test_each_partition_constrains_test_ids_to_its_own_batch
+         1.23  tests/test_supplied_ids.py::test_supplied_ids_become_an_enum_on_the_field_the_model_sees
+         1.24  tests/test_supplied_ids.py::test_the_schema_asked_for_differs_from_the_shape_parsed
+
+  2. The allowed-id set for a call is built from the ids that call itself supplied.
+       code evidence: addressed
+         2.1  src/acceptance/coverage/classify.py#@@ -115,7 +121,13 @@ def classify_coverage(
+         2.2  src/acceptance/coverage/open_questions.py#@@ -89,7 +95,15 @@ def resolve_open_questions(
+         2.3  src/acceptance/coverage/recommendations.py#@@ -125,7 +129,15 @@ def recommend_tests(
+         2.4  src/acceptance/coverage/unrequested.py#@@ -100,7 +106,12 @@ def detect_unrequested_changes(
+         2.5  src/acceptance/evidence/discrimination.py#@@ -151,7 +155,19 @@ def judge_discrimination(
+         2.6  src/acceptance/evidence/mapping.py#@@ -112,22 +121,39 @@ def map_tests_to_obligations(
+         2.7  src/acceptance/supplied_ids.py#@@ -0,0 +1,207 @@
+       test evidence: strongly supported  [tier: static]
+         2.8  tests/coverage/test_recommendations.py::test_weak_criterion_gets_a_fully_populated_recommendation
+         2.9  tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating
+         2.10  tests/evidence/test_discrimination.py::test_discriminating_is_true_if_any_defect_is_caught
+         2.11  tests/evidence/test_discrimination.py::test_non_discriminating_input_is_judged_non_discriminating_with_a_reason
+         2.12  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         2.13  tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations
+         2.14  tests/evidence/test_mapping.py::test_unknown_ids_are_dropped
+         2.15  tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived
+         2.16  tests/test_supplied_ids.py::test_an_empty_supplied_set_leaves_the_field_unconstrained
+
+  3. An id outside the supplied set is never accepted as a judgment about anything.
+       code evidence: addressed
+         3.1  src/acceptance/supplied_ids.py#@@ -0,0 +1,207 @@
+         3.2  src/acceptance/coverage/classify.py#@@ -115,7 +121,13 @@ def classify_coverage(
+         3.3  src/acceptance/coverage/open_questions.py#@@ -89,7 +95,15 @@ def resolve_open_questions(
+         3.4  src/acceptance/coverage/recommendations.py#@@ -125,7 +129,15 @@ def recommend_tests(
+         3.5  src/acceptance/coverage/unrequested.py#@@ -100,7 +106,12 @@ def detect_unrequested_changes(
+         3.6  src/acceptance/evidence/discrimination.py#@@ -151,7 +155,19 @@ def judge_discrimination(
+         3.7  src/acceptance/evidence/mapping.py#@@ -112,22 +121,39 @@ def map_tests_to_obligations(
+         3.8  src/acceptance/pipeline.py#@@ -98,6 +100,49 @@ def coverage_finding(obligation: Obligation, coverage: ImplementationCoverage) -
+         3.9  src/acceptance/pipeline.py#@@ -226,6 +286,7 @@ def run_review(
+         3.10  tests/test_supplied_ids.py#@@ -0,0 +1,408 @@
+       test evidence: strongly supported  [tier: static]
+         3.11  tests/coverage/test_open_questions.py::test_unknown_question_id_in_response_is_dropped
+         3.12  tests/coverage/test_unrequested.py::test_change_the_model_judges_requested_is_not_emitted
+         3.13  tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating
+         3.14  tests/evidence/test_discrimination.py::test_discriminating_is_true_if_any_defect_is_caught
+         3.15  tests/evidence/test_discrimination.py::test_non_discriminating_input_is_judged_non_discriminating_with_a_reason
+         3.16  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         3.17  tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations
+         3.18  tests/evidence/test_mapping.py::test_unknown_ids_are_dropped
+         3.19  tests/test_supplied_ids.py::test_a_foreign_id_does_not_validate_against_the_constrained_schema
+         3.20  tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped
+         3.21  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+         3.22  tests/test_supplied_ids.py::test_scan_finds_ids_that_were_never_supplied
+         3.23  tests/test_supplied_ids.py::test_scan_reports_each_unusable_id_once
+         3.24  tests/test_supplied_ids.py::test_the_schema_asked_for_differs_from_the_shape_parsed
+
+  4. An answer that could not be honoured is recorded as an answer not obtained rather than as a negative judgment.
+       code evidence: addressed
+         4.1  src/acceptance/supplied_ids.py#@@ -0,0 +1,207 @@
+         4.2  src/acceptance/evidence/mapping.py#@@ -147,6 +173,23 @@ def map_tests_to_obligations(
+         4.3  src/acceptance/evidence/discrimination.py#@@ -151,7 +155,19 @@ def judge_discrimination(
+         4.4  src/acceptance/pipeline.py#@@ -98,6 +100,49 @@ def coverage_finding(obligation: Obligation, coverage: ImplementationCoverage) -
+         4.5  src/acceptance/pipeline.py#@@ -181,26 +226,41 @@ def run_review(
+         4.6  src/acceptance/pipeline.py#@@ -226,6 +286,7 @@ def run_review(
+         4.7  src/acceptance/review_state.py#@@ -86,6 +86,13 @@ DECLARATION_ABSENT = "declaration_absent"
+         4.8  tests/test_supplied_ids.py#@@ -0,0 +1,408 @@
+       test evidence: strongly supported  [tier: static]
+         4.9  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         4.10  tests/test_config.py::test_provenance_reports_the_controls_the_provider_honoured
+         4.11  tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers
+         4.12  tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped
+         4.13  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+         4.14  tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id
+
+  5. An answer that could not be honoured does not read as a substantive negative answer.
+       code evidence: addressed
+         5.1  src/acceptance/evidence/mapping.py#@@ -147,6 +173,23 @@ def map_tests_to_obligations(
+         5.2  src/acceptance/evidence/discrimination.py#@@ -151,7 +155,19 @@ def judge_discrimination(
+         5.3  src/acceptance/pipeline.py#@@ -98,6 +100,49 @@ def coverage_finding(obligation: Obligation, coverage: ImplementationCoverage) -
+         5.4  src/acceptance/review_state.py#@@ -86,6 +86,13 @@ DECLARATION_ABSENT = "declaration_absent"
+         5.5  tests/test_supplied_ids.py#@@ -0,0 +1,408 @@
+       test evidence: strongly supported  [tier: static]
+         5.6  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         5.7  tests/test_config.py::test_provenance_reports_the_controls_the_provider_honoured
+         5.8  tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers
+         5.9  tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
+         5.10  tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id
+
+  6. Usable judgments returned alongside an unhonored answer are retained.
+       code evidence: addressed
+         6.1  src/acceptance/llm.py#@@ -275,8 +297,21 @@ class ModelClient:
+         6.2  src/acceptance/llm.py#@@ -297,7 +332,7 @@ class ModelClient:
+         6.3  src/acceptance/llm.py#@@ -305,7 +340,7 @@ class ModelClient:
+         6.4  src/acceptance/evidence/mapping.py#@@ -112,22 +121,39 @@ def map_tests_to_obligations(
+         6.5  src/acceptance/evidence/mapping.py#@@ -147,6 +173,23 @@ def map_tests_to_obligations(
+         6.6  tests/test_supplied_ids.py#@@ -0,0 +1,408 @@
+       test evidence: strongly supported  [tier: static]
+         6.7  tests/evidence/test_discrimination.py::test_an_obligation_the_model_omits_is_conservatively_non_discriminating
+         6.8  tests/evidence/test_mapping.py::test_the_per_call_results_are_merged
+         6.9  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         6.10  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+
+  7. When a stage request is partitioned, each call constrains its response to the ids in its own partition.
+       code evidence: addressed
+         7.1  src/acceptance/evidence/mapping.py#@@ -112,22 +121,39 @@ def map_tests_to_obligations(
+         7.2  tests/test_supplied_ids.py#@@ -0,0 +1,408 @@
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         7.4  tests/evidence/test_mapping.py::test_changing_the_batch_size_changes_every_request_key
+         7.5  tests/evidence/test_mapping.py::test_each_batch_is_recorded_as_its_own_request
+         7.6  tests/evidence/test_mapping.py::test_every_test_is_judged_against_every_obligation_across_the_calls
+         7.7  tests/evidence/test_mapping.py::test_repeating_a_run_reuses_the_recorded_batches
+         7.8  tests/evidence/test_mapping.py::test_the_per_call_results_are_merged
+         7.9  tests/evidence/test_mapping.py::test_the_tests_are_split_across_several_calls
+         7.10  tests/test_config.py::test_provenance_of_an_unpartitioned_run_reports_no_partition_size
+         7.11  tests/test_config.py::test_provenance_reports_the_partition_size_the_run_actually_used
+         7.12  tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived
+         7.13  tests/test_supplied_ids.py::test_each_partition_constrains_test_ids_to_its_own_batch
+
+  8. An obligation whose judgment could not be honoured is left indeterminate rather than reported as lacking evidence.
+       code evidence: addressed
+         8.1  src/acceptance/evidence/mapping.py#@@ -147,6 +173,23 @@ def map_tests_to_obligations(
+         8.2  src/acceptance/evidence/discrimination.py#@@ -151,7 +155,19 @@ def judge_discrimination(
+         8.3  src/acceptance/pipeline.py#@@ -98,6 +100,49 @@ def coverage_finding(obligation: Obligation, coverage: ImplementationCoverage) -
+         8.4  src/acceptance/pipeline.py#@@ -181,26 +226,41 @@ def run_review(
+         8.5  tests/test_supplied_ids.py#@@ -0,0 +1,408 @@
+       test evidence: strongly supported  [tier: static]
+         8.6  tests/evidence/test_discrimination.py::test_an_obligation_the_model_omits_is_conservatively_non_discriminating
+         8.7  tests/test_config.py::test_provenance_of_a_run_that_made_no_model_call_is_indeterminate
+         8.8  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         8.9  tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
+         8.10  tests/test_supplied_ids.py::test_an_unusable_answer_leaves_the_obligation_indeterminate
+         8.11  tests/test_verdict.py::test_coverage_gap_is_incomplete
+         8.12  tests/test_verdict.py::test_unresolved_open_question_blocks_positive_and_needs_clarification
+
+  9. A review holding an indeterminate judgment does not reach a clean completion verdict.
+       code evidence: addressed
+         9.1  src/acceptance/pipeline.py#@@ -98,6 +100,49 @@ def coverage_finding(obligation: Obligation, coverage: ImplementationCoverage) -
+         9.2  src/acceptance/pipeline.py#@@ -226,6 +286,7 @@ def run_review(
+         9.3  tests/test_supplied_ids.py#@@ -0,0 +1,408 @@
+       test evidence: strongly supported  [tier: static]
+         9.4  tests/evidence/test_discrimination.py::test_an_obligation_the_model_omits_is_conservatively_non_discriminating
+         9.5  tests/test_config.py::test_provenance_of_a_run_that_made_no_model_call_is_indeterminate
+         9.6  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         9.7  tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean
+         9.8  tests/test_verdict.py::test_coverage_gap_is_incomplete
+         9.9  tests/test_verdict.py::test_unresolved_open_question_blocks_positive_and_needs_clarification
+
+  10. The review names the stage and the id that could not be honoured.
+       code evidence: addressed
+         10.1  src/acceptance/pipeline.py#@@ -98,6 +100,49 @@ def coverage_finding(obligation: Obligation, coverage: ImplementationCoverage) -
+         10.2  tests/test_supplied_ids.py#@@ -0,0 +1,408 @@
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         10.4  tests/test_report.py::test_unresolved_open_questions_lead_the_instruction
+         10.5  tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped
+         10.6  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+         10.7  tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
+         10.8  tests/test_supplied_ids.py::test_scan_finds_ids_that_were_never_supplied
+         10.9  tests/test_supplied_ids.py::test_scan_reports_each_unusable_id_once
+         10.10  tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id
+
+Unrequested changes:
+  1. [in_service] Added a new helper module for constraining/scanning supplied ids, but the task only required behavior around supplied ids and indeterminate handling; the module-level documentation and generic utilities (`unsupplied`, schema rewriting helpers) are extra implementation surface not directly called for by any obligation.
+       src/acceptance/supplied_ids.py#@@ -0,0 +1,207 @@
+  2. [in_service] `ModelClient.complete` now accepts a new `parse_as` parameter and changes replay/live validation behavior to parse against a different model than the requested schema. That is a broad API and behavior change beyond the stated obligations, which only require supplied-id constraints and recording unusable answers.
+       src/acceptance/llm.py#@@ -275,8 +297,21 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -297,7 +332,7 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -305,7 +340,7 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -356,6 +391,11 @@ class ModelClient:
+  3. [in_service] `run_review` now creates and threads a global unusable-answer log through every stage, adds a new finding type to the review output, and marks obligations indeterminate after strength classification. The obligations require indeterminate handling for unhonored judgments, but not this specific cross-stage accumulator design or the new finding emission path.
+       src/acceptance/pipeline.py#@@ -54,6 +55,7 @@ from acceptance.requirement.obligations import decompose
+       src/acceptance/pipeline.py#@@ -98,6 +100,49 @@ def coverage_finding(obligation: Obligation, coverage: ImplementationCoverage) -
+       src/acceptance/pipeline.py#@@ -181,26 +226,41 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -226,6 +286,7 @@ def run_review(
+       src/acceptance/review_state.py#@@ -86,6 +86,13 @@ DECLARATION_ABSENT = "declaration_absent"
+       src/acceptance/review_state.py#@@ -94,9 +101,11 @@ DECLARATION_MISMATCH = "declaration_mismatch"
+  4. [in_service] `map_tests_to_obligations` now changes its return type semantics by adding `indeterminate_obligation_ids` and `unusable_answers`, and returns indeterminate instead of unmapped when any unusable answer exists. The obligations require indeterminate treatment for unhonored judgments, but not this new result-shape expansion or the specific all-or-nothing return branching.
+       src/acceptance/evidence/mapping.py#@@ -63,6 +66,11 @@ class TestMapping(PersistableModel):
+       src/acceptance/evidence/mapping.py#@@ -95,6 +103,7 @@ def map_tests_to_obligations(
+       src/acceptance/evidence/mapping.py#@@ -112,22 +121,39 @@ def map_tests_to_obligations(
+       src/acceptance/evidence/mapping.py#@@ -147,6 +173,23 @@ def map_tests_to_obligations(
+  5. [in_service] The coverage/open-question/discrimination/recommendation stages now all accept an optional unusable-answer accumulator and perform schema constraining plus local scanning. The obligations require per-call supplied-id constraints and recording unhonored answers, but not changing every stage signature to thread an accumulator through the pipeline.
+       src/acceptance/coverage/classify.py#@@ -22,6 +22,7 @@ from pydantic import Field
+       src/acceptance/coverage/classify.py#@@ -107,7 +110,10 @@ class _Coverage(StrictResponseModel):
+       src/acceptance/coverage/classify.py#@@ -115,7 +121,13 @@ def classify_coverage(
+       src/acceptance/coverage/open_questions.py#@@ -23,9 +23,12 @@ from pydantic import Field
+       src/acceptance/coverage/open_questions.py#@@ -77,7 +80,10 @@ def _render_prompt(open_questions: list[OpenQuestion], change_set: ChangeSet) ->
+       src/acceptance/coverage/open_questions.py#@@ -89,7 +95,15 @@ def resolve_open_questions(
+       src/acceptance/coverage/recommendations.py#@@ -25,6 +25,7 @@ from __future__ import annotations
+       src/acceptance/coverage/recommendations.py#@@ -32,6 +33,8 @@ from acceptance.review_state import ChangeSet, Obligation, TestRecommendation
+       src/acceptance/coverage/recommendations.py#@@ -110,6 +113,7 @@ def recommend_tests(
+       src/acceptance/coverage/recommendations.py#@@ -125,7 +129,15 @@ def recommend_tests(
+       src/acceptance/coverage/unrequested.py#@@ -28,6 +28,7 @@ from pydantic import Field
+       src/acceptance/coverage/unrequested.py#@@ -92,7 +95,10 @@ class _Detections(StrictResponseModel):
+       src/acceptance/coverage/unrequested.py#@@ -100,7 +106,12 @@ def detect_unrequested_changes(
+       src/acceptance/evidence/discrimination.py#@@ -24,9 +24,12 @@ the predictions by execution.
+       src/acceptance/evidence/discrimination.py#@@ -132,6 +135,7 @@ def judge_discrimination(
+       src/acceptance/evidence/mapping.py#@@ -25,6 +25,9 @@ from acceptance.llm import ModelClient, StrictResponseModel
+       src/acceptance/evidence/mapping.py#@@ -95,6 +103,7 @@ def map_tests_to_obligations(
+       src/acceptance/evidence/mapping.py#@@ -112,22 +121,39 @@ def map_tests_to_obligations(
+  6. [in_service] The new tests add extensive coverage for schema-shaping, helper utilities, pipeline wiring, and a specific defect narrative. While tests are requested in general only insofar as they verify the obligations, several of these cases exercise implementation details and new helper behavior that no obligation explicitly requires.
+       tests/support.py#@@ -74,6 +74,30 @@ def client_answering_per_call(
+       tests/test_supplied_ids.py#@@ -0,0 +1,408 @@
+
+Open questions:
+  1. [resolved] What exact conditions make a returned id 'cannot be honoured' versus simply invalid or empty, so the implementation can decide when to mark an answer as not obtained?
+       The diff defines the distinction in `supplied_ids.py` and applies it in the stages: a returned id is 'cannot be honoured' when it was never supplied to that call, detected by `scan(...)` and recorded as `UnusableAnswer`; empty supplied sets are explicitly left unconstrained in `constrain(...)`, so they are not treated as unusable. The mapping stage comments also state that an unusable id is 'not merely unmatched' and that an unmapped obligation becomes indeterminate when any answer was unusable, which clarifies the implementation rule for marking an answer as not obtained.
+
+Evidence limitations:
+  1. No material gaps found at the achievable evidence tier — not proof of correctness. The full application was not independently executed (§3.7).
+
+Recommended next instruction: (none)

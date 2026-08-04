@@ -1,0 +1,211 @@
+Task completion: INCOMPLETE
+
+4 obligation(s) with non-discriminating test evidence (retrieve-from-stored-review-state, default-to-most-recent-review, byte-identical-retrievals, spec-no-longer-describes-written-file).
+
+Obligations:
+
+  1. Replace the written file `.acceptance/next-instruction.md` with the `acceptance recommendation --criterion <id> [--format json|text]` command surface for retrieving a criterion's recommendation on demand, defaulting to JSON.
+       code evidence: addressed
+         1.1  src/acceptance/cli.py#@@ -33,7 +33,9 @@ from acceptance.coverage.open_questions import apply_open_question_resolutions,
+         1.2  src/acceptance/cli.py#@@ -172,26 +174,33 @@ def run_check(
+         1.3  src/acceptance/cli.py#@@ -412,6 +421,23 @@ def build_parser() -> argparse.ArgumentParser:
+         1.4  src/acceptance/cli.py#@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
+         1.5  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+       test evidence: strongly supported  [tier: static]
+         1.6  tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps
+         1.7  tests/test_cli.py::test_json_is_the_default_format_when_none_is_requested
+
+  2. Keep the recommendation retrieval command surface fixed to the specified command name and arguments in the specification.
+       code evidence: addressed
+         2.1  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -71,7 +71,7 @@ Used during development, before/while preparing a PR.
+         2.2  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -264,7 +264,7 @@ Recommendations are emitted in a **structured, machine-readable form** — each
+         2.3  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -338,7 +338,7 @@ Show the system can independently identify meaningful completion and test-eviden
+         2.4  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -439,7 +439,8 @@ Unrequested changes:
+         2.5  src/acceptance/cli.py#@@ -412,6 +421,23 @@ def build_parser() -> argparse.ArgumentParser:
+         2.6  tests/test_cli.py#@@ -511,21 +511,15 @@ def test_check_without_a_head_reviews_the_working_tree(
+         2.7  tests/test_cli.py#@@ -549,33 +543,231 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: strongly supported  [tier: static]
+         2.8  tests/test_cli.py::test_a_command_name_the_spec_does_not_document_is_rejected
+         2.9  tests/test_cli.py::test_an_undocumented_format_is_rejected
+         2.10  tests/test_cli.py::test_criterion_is_required
+         2.11  tests/test_cli.py::test_json_is_the_default_format_when_none_is_requested
+         2.12  tests/test_cli.py::test_the_spec_names_the_command_the_cli_actually_accepts
+
+  3. Ensure recommendation retrieval performs no speculative writes so nothing can go stale.
+       code evidence: addressed
+         3.1  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+         3.2  src/acceptance/cli.py#@@ -172,26 +174,33 @@ def run_check(
+         3.3  src/acceptance/cli.py#@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: strongly supported  [tier: static]
+         3.4  tests/benchmark/test_coverage.py::test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo
+         3.5  tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps
+
+  4. Return a recommendation from stored review state on demand without re-running the review.
+       code evidence: addressed
+         4.1  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+         4.2  src/acceptance/review_store.py#@@ -37,3 +37,18 @@ class ReviewStore:
+         4.3  src/acceptance/cli.py#@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: partially supported  [tier: static]
+         4.4  tests/test_cli.py::test_check_persists_the_review_to_the_store
+         4.5  tests/test_cli.py::test_recommendation_defaults_to_the_most_recently_stored_review
+         4.6  tests/test_cli.py::test_recommendation_returns_the_stored_prescription_for_a_criterion
+         4.7  tests/test_review_store.py::test_review_round_trips_through_the_store
+
+  5. Keep the recommendation's structured fields as discrete keys with their prose values intact.
+       code evidence: addressed
+         5.1  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+         5.2  tests/test_cli.py#@@ -549,33 +543,231 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         5.4  tests/test_cli.py::test_recommendation_defaults_to_the_most_recently_stored_review
+         5.5  tests/test_cli.py::test_recommendation_returns_the_stored_prescription_for_a_criterion
+         5.6  tests/test_report.py::test_open_questions_and_recommendations_are_numbered
+
+  6. Make the review's own output tell a reader how to obtain the recommendation detail.
+       code evidence: addressed
+         6.1  src/acceptance/report.py#@@ -76,6 +76,13 @@ def render_report(review: Review) -> str:
+         6.2  src/acceptance/report.py#@@ -84,75 +91,39 @@ def render_report(review: Review) -> str:
+         6.3  tests/test_report.py#@@ -109,7 +107,10 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
+       test evidence: strongly supported  [tier: static]
+         6.4  tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps
+         6.5  tests/test_cli.py::test_render_classify_output
+         6.6  tests/test_report.py::test_multi_word_verdict_renders_as_the_16_headline
+         6.7  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         6.8  tests/test_report.py::test_unclassified_obligation_renders_as_unclassified
+
+  7. Remove any pre-existing `.acceptance/next-instruction.md` left by an earlier version and report that it was removed.
+       code evidence: addressed
+         7.1  src/acceptance/cli.py#@@ -172,26 +174,33 @@ def run_check(
+         7.2  src/acceptance/cli.py#@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
+         7.3  tests/test_cli.py#@@ -549,33 +543,231 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: strongly supported  [tier: static]
+         7.4  tests/benchmark/test_coverage.py::test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo
+         7.5  tests/test_cli.py::test_a_stale_instruction_file_is_removed_and_the_removal_reported
+         7.6  tests/test_cli.py::test_the_removal_leaves_the_report_as_the_only_statement_of_status
+
+  8. Leave the review's own output as the only statement of status when starting from a repo that already contains `.acceptance/next-instruction.md`.
+       code evidence: addressed
+         8.1  src/acceptance/cli.py#@@ -172,26 +174,33 @@ def run_check(
+         8.2  src/acceptance/cli.py#@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
+         8.3  tests/test_cli.py#@@ -549,33 +543,231 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: strongly supported  [tier: static]
+         8.4  tests/benchmark/test_coverage.py::test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo
+         8.5  tests/test_cli.py::test_a_stale_instruction_file_is_removed_and_the_removal_reported
+         8.6  tests/test_cli.py::test_the_removal_leaves_the_report_as_the_only_statement_of_status
+
+  9. Return an empty result when a criterion has no recommendation.
+       code evidence: addressed
+         9.1  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+         9.2  src/acceptance/cli.py#@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
+         9.3  tests/test_cli.py#@@ -549,33 +543,231 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: strongly supported  [tier: static]
+         9.4  tests/test_cli.py::test_recommendation_for_an_unknown_criterion_is_empty_not_an_error
+         9.5  tests/test_review_store.py::test_read_missing_revision_returns_none
+
+  10. Default retrieval to the most recently stored review when the caller does not name one.
+       code evidence: addressed
+         10.1  src/acceptance/review_store.py#@@ -37,3 +37,18 @@ class ReviewStore:
+         10.2  src/acceptance/cli.py#@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
+         10.3  tests/test_cli.py#@@ -549,33 +543,231 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: nominally supported  [tier: static]
+         10.4  tests/test_cli.py::test_recommendation_defaults_to_the_most_recently_stored_review
+
+  11. Produce byte-identical output for repeated retrievals over unchanged review state.
+       code evidence: addressed
+         11.1  src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+         11.2  tests/test_cli.py#@@ -549,33 +543,231 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: partially supported  [tier: static]
+         11.3  tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical
+         11.4  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         11.5  tests/test_review_store.py::test_rerun_over_the_same_head_overwrites_in_place
+
+  12. Keep the specification from describing the recommendation as a written file.
+       code evidence: addressed
+         12.1  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -71,7 +71,7 @@ Used during development, before/while preparing a PR.
+         12.2  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -264,7 +264,7 @@ Recommendations are emitted in a **structured, machine-readable form** — each
+         12.3  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -338,7 +338,7 @@ Show the system can independently identify meaningful completion and test-eviden
+         12.4  docs/AI-Assisted-Software-Development-Review-Spec.md#@@ -439,7 +439,8 @@ Unrequested changes:
+         12.5  tests/test_cli.py#@@ -549,33 +543,231 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+       test evidence: partially supported  [tier: static]
+         12.6  tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps
+         12.7  tests/test_cli.py::test_the_spec_no_longer_names_a_written_file
+         12.8  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+Unrequested changes:
+  1. [in_service] The CLI now removes `.acceptance/next-instruction.md` during `check` and prints a removal notice. The obligations require removing the stale file and making retrieval on-demand, but they do not call for changing the check command to emit this extra status text or to perform file deletion as part of normal review output beyond reporting the removal.
+       src/acceptance/cli.py#@@ -172,26 +174,33 @@ def run_check(
+       src/acceptance/cli.py#@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
+       tests/benchmark/test_coverage.py#@@ -663,32 +663,32 @@ def test_the_shared_pipeline_partitions_the_mapping_call(tmp_path):
+       tests/benchmark/test_coverage.py#@@ -714,19 +714,5 @@ def test_the_shared_pipeline_writes_nothing_into_the_reviewed_repo(tmp_path):
+       tests/test_cli.py#@@ -511,21 +511,15 @@ def test_check_without_a_head_reviews_the_working_tree(
+       tests/test_cli.py#@@ -549,33 +543,231 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+  2. [in_service] `src/acceptance/recommendation.py` introduces a new helper module and rendering logic for recommendation retrieval. The retrieval command itself is requested, but the specific module split, `_FIELDS` constant, and helper functions are implementation choices not explicitly required by the obligations.
+       src/acceptance/recommendation.py#@@ -0,0 +1,87 @@
+       src/acceptance/cli.py#@@ -33,7 +33,9 @@ from acceptance.coverage.open_questions import apply_open_question_resolutions,
+       src/acceptance/cli.py#@@ -412,6 +421,23 @@ def build_parser() -> argparse.ArgumentParser:
+       src/acceptance/cli.py#@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
+  3. [in_service] `ReviewStore.latest()` selects the most recently modified JSON file by filesystem mtime. The obligations require defaulting to the most recently stored review, but they do not specify mtime-based selection; this adds a concrete ordering policy that may differ from other plausible notions of 'most recent'.
+       src/acceptance/review_store.py#@@ -37,3 +37,18 @@ class ReviewStore:
+       src/acceptance/cli.py#@@ -412,6 +421,23 @@ def build_parser() -> argparse.ArgumentParser:
+       src/acceptance/cli.py#@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
+  4. [in_service] The report now prints a per-recommendation 'full detail' command line for each criterion, in addition to the overall next-step command. The obligations require the review output to tell a reader how to obtain the recommendation detail, but not to add this extra per-item command text to every recommendation entry.
+       src/acceptance/report.py#@@ -76,6 +76,13 @@ def render_report(review: Review) -> str:
+  5. [in_service] `render_report` now suppresses the old 'Recommended next instruction: (none)' line whenever `_has_gaps(review)` is true, replacing it with a command hint. The obligations require discoverability of retrieval and removal of the file-based instruction, but they do not specify this new gap-detection gate or the exact report wording change.
+       src/acceptance/report.py#@@ -84,75 +91,39 @@ def render_report(review: Review) -> str:
+  6. [separable] The benchmark test was rewritten from asserting the CLI writes a next-instruction file to asserting it never writes into the repo and that the file is absent. The obligations require removing the stale file and leaving only review output, but not this broader benchmark behavior change or the new assertion structure.
+       tests/benchmark/test_coverage.py#@@ -663,32 +663,32 @@ def test_the_shared_pipeline_partitions_the_mapping_call(tmp_path):
+       tests/benchmark/test_coverage.py#@@ -714,19 +714,5 @@ def test_the_shared_pipeline_writes_nothing_into_the_reviewed_repo(tmp_path):
+  7. [in_service] The CLI test suite adds many new cases around the new recommendation command, default format, error handling, and spec-string checks. While some of these are requested by the obligations, the added parser-surface assertions about the exact documented command string and rejection of undocumented aliases go beyond the stated requirements.
+       tests/test_cli.py#@@ -511,21 +511,15 @@ def test_check_without_a_head_reviews_the_working_tree(
+       tests/test_cli.py#@@ -549,33 +543,231 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
+  8. [in_service] `tests/test_report.py` removes the old `render_next_instruction` coverage and changes report expectations to the new command hint. The obligations require the spec and output to stop describing a written file, but not the full deletion of the prior instruction-rendering tests or the exact new report assertions.
+       tests/test_report.py#@@ -17,9 +17,8 @@ from acceptance.review_state import (
+       tests/test_report.py#@@ -88,7 +87,6 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
+       tests/test_report.py#@@ -109,7 +107,10 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
+       tests/test_report.py#@@ -268,192 +269,6 @@ def test_the_two_axes_render_independently_for_the_same_obligation():
+
+Changes since 07075a6d:
+  closed:
+    - Replace the written file `.acceptance/next-instruction.md` with the `acceptance recommendation --criterion <id> [--format json|text]` command surface for retrieving a criterion's recommendation on demand, defaulting to JSON.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - Keep the recommendation retrieval command surface fixed to the specified command name and arguments in the specification.
+        code evidence: addressed -> addressed
+        test evidence: nominally supported -> strongly supported
+  moved:
+    - Return a recommendation from stored review state on demand without re-running the review.
+        test evidence: strongly supported -> partially supported
+    - Default retrieval to the most recently stored review when the caller does not name one.
+        test evidence: strongly supported -> nominally supported
+    - Produce byte-identical output for repeated retrievals over unchanged review state.
+        test evidence: strongly supported -> partially supported
+    - Keep the specification from describing the recommendation as a written file.
+        test evidence: strongly supported -> partially supported
+
+Open questions:
+  1. [resolved] What exact output shape should `acceptance recommendation --criterion <id> [--format json|text]` use for JSON and text modes, including field names, ordering, and whether empty results are represented as `null`, `{}`, or another form?
+       The diff adds a dedicated recommendation renderer that defines both modes: JSON uses `canonical_json` over a fixed `_FIELDS` tuple, and empty results render as `{}`; text mode prints `Criterion: ...` followed by the remaining fields in `_FIELDS` order, with list values expanded as bullet lines and empty results as `(no recommendation for this criterion)`. The CLI wires `--format` to these renderers and defaults to JSON.
+
+Recommended tests:
+  1. The command reads persisted review state and produces the stored recommendation for the requested criterion without invoking the review pipeline again.
+       inputs:  Create a stored review state where the requested criterion exists in one revision, and a different revision either lacks that criterion or contains a different recommendation; invoke `acceptance recommendation --criterion <id>` against the stored review without any live/replay pipeline hooks enabled. The input must make a recomputation or wrong-revision read observable by producing a different recommendation or no recommendation at all.
+       detects: `recommendation` recomputes the review by rerunning the pipeline instead of reading stored review state, or reads the wrong stored revision but happens to return the same recommendation for the fixture.
+       full detail: acceptance recommendation --criterion retrieve-from-stored-review-state
+  2. Invoking recommendation retrieval without naming a review uses the latest stored review as the source.
+       inputs:  Populate the review store with at least two stored reviews for different revisions, written in a known order where the older review and the newest review have different recommendations for the same criterion. Invoke `acceptance recommendation --criterion <id>` without `--revision`. The inputs must make oldest-vs-newest selection observable.
+       detects: When no revision is named, `recommendation` reads the oldest stored review instead of the newest, or chooses an arbitrary stored review based on filesystem order.
+       full detail: acceptance recommendation --criterion default-to-most-recent-review
+  3. Two invocations against the same unchanged stored review state emit exactly the same bytes.
+       inputs:  Use one unchanged stored review state and invoke `acceptance recommendation --criterion <id>` twice in separate calls with identical arguments and environment. The stored recommendation should include enough structured fields to expose any nondeterministic serialization or formatting differences.
+       detects: The store overwrites the same revision in place but retrieval output remains stable; current tests do not catch byte-level drift or nondeterministic rendering across repeated reads.
+       full detail: acceptance recommendation --criterion byte-identical-retrievals
+  4. The spec text refers to recommendation retrieval via command rather than describing the recommendation as a file written to disk.
+       inputs:  Read the spec document text directly and assert against the exact wording around recommendation retrieval. The input should be the current `docs/AI-Assisted-Software-Development-Review-Spec.md` content, with no reliance on runtime behavior.
+       detects: The spec describes retrieval only as a command surface and never as a written file; the current tests may miss a regression where the spec still omits the file-vs-command distinction or fails to pin the new wording.
+       full detail: acceptance recommendation --criterion spec-no-longer-describes-written-file
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
