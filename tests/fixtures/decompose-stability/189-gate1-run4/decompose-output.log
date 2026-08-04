@@ -1,0 +1,24 @@
+Obligations:
+  [functional/explicit] harness-runs-review-pipeline-repeatedly: The harness runs the review pipeline repeatedly over one input.
+  [functional/explicit] harness-supports-chosen-model-set: The harness runs across a chosen set of models.
+  [functional/explicit] harness-reports-judgement-movement: The harness reports how much the pipeline's judgements move.
+  [functional/explicit] separate-movement-sources: The harness measures resampling, irrelevant perturbation, and model swapping as separate sources of movement.
+  [invariant/explicit] measure-whole-pipeline: The measured surface is the whole review pipeline.
+  [functional/explicit] decomposition-instability-observed: The harness reports decomposition instability as an observed phenomenon across runs of one task file.
+  [invariant/explicit] report-only-no-acceptance-decision: The harness reports figures without deciding whether they are acceptable.
+  [invariant/explicit] independent-draws-for-variance: Variance is measured across genuinely independent draws.
+  [compatibility/explicit] use-existing-variance-path: The statistics come from the existing benchmark variance path.
+  [compatibility/explicit] use-existing-obligation-alignment: Obligations are compared across runs using the existing alignment function.
+  [functional/explicit] caller-supplies-measurement-parameters: The caller supplies the input, model set, run count, and perturbation to apply.
+  [boundary/explicit] defaults-for-input-models-runs-perturbation: Each caller-supplied measurement parameter has a default.
+  [boundary/explicit] default-model-set-single-model: The default model set contains a single model.
+  [boundary/explicit] default-run-count-small: The default run count is small.
+  [functional/explicit] distribution-of-evidence-classes-per-obligation: For one input, the harness reports the distribution of evidence classes per obligation across the configured runs, separately for each model.
+  [functional/explicit] distribution-of-discrimination-verdicts: The harness reports the distribution of each plausible defect's discrimination verdict.
+  [functional/explicit] perturbation-sensitivity-figure: Perturbation sensitivity is reported as the proportion of watched judgements that changed under the stated perturbation.
+  [functional/explicit] cross-model-agreement-reported: Cross-model agreement per obligation is reported alongside within-model variance.
+  [functional/explicit] report-records-run-provenance: The report records the input, model set, run count, and seeds used to produce it.
+  [invariant/explicit] no-repository-writes: A run of the harness writes nothing into the repository under review.
+
+Open questions:
+  (none)

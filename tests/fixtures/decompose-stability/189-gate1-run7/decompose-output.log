@@ -1,0 +1,37 @@
+Obligations:
+  [functional/explicit] harness-runs-review-pipeline: Build a harness that runs the review pipeline over one input repeatedly.
+  [functional/explicit] chosen-model-set: Support running the harness across a chosen set of models.
+  [functional/explicit] reports-judgement-movement: Report how much the pipeline's judgements move.
+  [functional/explicit] separate-movement-sources: Measure resampling, irrelevant perturbation, and model swapping as separate sources of movement.
+  [functional/explicit] whole-pipeline-surface: Measure the whole review pipeline rather than only the evidence stages.
+  [functional/explicit] decomposition-instability-observed: Treat decomposition instability as an observed phenomenon that the harness can surface.
+  [functional/explicit] distinguish-content-vs-shape-differences: Classify every difference between two runs as either a content difference or a shape difference.
+  [functional/explicit] content-difference-definition: Define content differences as requirements, open questions, or judgements present in one run and absent in another.
+  [functional/explicit] shape-difference-definition: Define shape differences as the same content partitioned differently between runs.
+  [functional/explicit] separate-content-and-shape-figures: Report content differences and shape differences as separate figures.
+  [invariant/explicit] no-blended-variance-number: Keep content and shape differences out of any single combined variance number.
+  [functional/explicit] perturbation-sensitivity-figure: Report perturbation sensitivity as the proportion of watched judgements that changed under the stated perturbation.
+  [functional/explicit] cross-model-agreement: Report cross-model agreement per obligation alongside within-model variance.
+  [functional/explicit] record-run-provenance: Record the input, model set, run count, and seeds that produced the report.
+  [functional/explicit] caller-supplies-parameters: Accept caller-provided input, model set, run count, and perturbation.
+  [boundary/explicit] default-parameters: Provide defaults for the input under measurement, model set, run count, and perturbation.
+  [boundary/explicit] default-model-set-single-model: Use a single model as the default model set.
+  [boundary/explicit] default-run-count-three: Use three runs per model as the default run count.
+  [functional/explicit] report-distribution-of-evidence-classes: Report the distribution of evidence classes per obligation across the configured runs, separately for each model.
+  [functional/explicit] report-distribution-of-discrimination-verdicts: Report the distribution of each plausible defect's discrimination verdict, not only the final evidence class.
+  [functional/explicit] report-obligations-appearing-and-disappearing: Report which obligations appear in some runs of one task file but not others.
+  [functional/explicit] report-open-questions-appearing-and-disappearing: Report which open questions appear in some runs of one task file but not others.
+  [boundary/explicit] measure-independent-draws: Measure variance across genuinely independent draws.
+  [boundary/explicit] replay-is-recording-not-measurement: Treat replayed responses as recordings rather than as variance measurements of the judge.
+  [compatibility/explicit] use-existing-disclose-variance-path: Use the existing benchmark variance path, benchmark/scoring.py::disclose_variance, for the statistics.
+  [compatibility/explicit] use-existing-align-obligations: Compare obligations across runs using benchmark/alignment.py::align_obligations.
+  [functional/explicit] compare-by-content-not-identifier: Compare obligations across runs by what they say rather than by their identifiers.
+  [compatibility/explicit] preserve-pipeline-unchanged: Keep the judgement-producing pipeline unchanged.
+  [boundary/explicit] manual-invocation-only: Make the harness invoked deliberately rather than automatically.
+  [human_review/explicit] no-acceptability-threshold: Leave acceptability decisions to the task that changes the judge.
+  [human_review/explicit] no-threshold-or-rating: Keep threshold-setting and rating interpretation out of the harness.
+  [human_review/explicit] no-variance-reduction: Preserve the measured variance without attempting to reduce it.
+  [invariant/explicit] write-nothing-to-reviewed-repository: Ensure a harness run writes nothing into the repository under review.
+
+Open questions:
+  ? perturbation-default-value: What should the default perturbation be when the caller does not supply one?
