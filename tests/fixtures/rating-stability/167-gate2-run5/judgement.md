@@ -4,23 +4,47 @@ Verdict: **INCOMPLETE**. **1** obligation below `strongly supported`.
 
 | obligation | run 1 → 5 | judgement |
 |---|---|---|
-| `replace-written-file-with-command` | UNSUP → STRONG → STRONG → STRONG → `partial` | **Not real — a decomposition artifact, attributed to #144.** |
+| `replace-written-file-with-command` | UNSUP → STRONG → STRONG → STRONG → `partial` | **A wrong verdict from M5.2. Attributed to #180.** |
+
+> **This file was rewritten.** I first attributed this to #144 (compound umbrella
+> obligation), reasoning that no single test could target the conjunction. That
+> reasoning does not survive checking — see below. It is the **second** time in
+> this corpus I concluded "not a real defect" too quickly.
+
+## The isolation
+
+Runs 4 and 5 are one commit apart and the obligation's mapped tests are
+**byte-identical**. The discrimination stage named the same plausible defect in
+both and judged it oppositely:
+
+| run | `would_be_caught` | reason given |
+|---|---|---|
+| 4 | **true** | "The test explicitly checks that the file does not exist after `check`, so any implementation that still writes it would fail." |
+| 5 | **false** | "The mapped tests mostly check that the command exists and that the file is absent in the exercised run… could slip past." |
+
+**Run 4 is correct.** `test_check_writes_no_instruction_file_even_when_the_review_has_gaps`
+invokes `check` on a review *with gaps* — exactly the case that previously wrote
+the file — and asserts its absence. Run 5's verdict is not a defensible
+difference of judgement; it is wrong about what the test does.
+
+Because M5.3 is a pure deterministic reduce, that single flipped boolean is the
+entire cause of the `partially supported` rating and of the run's verdict.
+
+**What this exonerates:** mapping (identical set both runs, so not #150/#173) and
+the strength reduce (a pure function). The variance is entirely in M5.2's
+per-defect verdict — the sharpest localization in this corpus.
+
+The runs also *worded* the defect differently, so defect enumeration is unstable
+too: pinning verdicts is insufficient if the defect set they range over moves.
 
 The obligation is a compound umbrella ("replace the file *with* the command
 surface, *defaulting to JSON*") emitted **alongside** the individual obligations
 covering each of its parts. Every constituent is strongly supported.
 
-Checked rather than assumed, given this corpus's record: the defect the
-recommendation names — a build that keeps writing `next-instruction.md` *and*
-adds the command — **is** caught, by
-`test_check_writes_no_instruction_file_even_when_the_review_has_gaps` and
-`test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo`. The
-evidence exists; it is distributed across three tests because the obligation
-bundles three claims, and no single test targets the conjunction.
-
-Satisfying it would mean writing an artificial test asserting the union of what
-five other tests already prove — fitting the suite to a decomposition artifact.
-Recorded against **#144** instead.
+The obligation is also a compound umbrella emitted alongside obligations covering
+each of its parts, which is a genuine #144 instance and makes the judge's job
+harder. But it is **not** what produced this finding, and attributing it there
+closed the question prematurely.
 
 ## Where the five rounds landed
 
