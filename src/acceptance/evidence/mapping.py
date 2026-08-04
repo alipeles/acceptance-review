@@ -25,6 +25,9 @@ from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
 from acceptance.partition import partition
 from acceptance.review_state import Obligation
+from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
+
+_STAGE = "test-to-obligation mapping"
 
 _SYSTEM_PROMPT = """\
 You map each candidate test to the acceptance obligation(s) it PURPORTS to
@@ -63,6 +66,11 @@ class TestMapping(PersistableModel):
 class MappingResult(PersistableModel):
     mappings: list[TestMapping]
     unmapped_obligation_ids: list[str]  # obligations no test purports to evidence
+    # Obligations whose mapping could not be honoured. Disjoint from
+    # `unmapped_obligation_ids` in meaning: unmapped is a substantive negative
+    # answer, this is the absence of an answer.
+    indeterminate_obligation_ids: list[str] = []
+    unusable_answers: list[UnusableAnswer] = []
 
 
 class _TestMapping(StrictResponseModel):
@@ -95,6 +103,7 @@ def map_tests_to_obligations(
     tests: list[DiscoveredTest],
     client: ModelClient,
     batch_size: int = DEFAULT_MAPPING_BATCH_SIZE,
+    unusable: UnusableAnswerLog | None = None,
 ) -> MappingResult:
     """Map each candidate test to the obligation(s) it purports to evidence.
 
@@ -112,22 +121,39 @@ def map_tests_to_obligations(
     mapped_obligation_ids: set[str] = set()
     mappings: list[TestMapping] = []
     seen_test_ids: set[str] = set()
+    unusable_answers: list[UnusableAnswer] = []
 
     for batch in partition(tests, batch_size, key=lambda test: test.test_id):
+        batch_test_ids = [test.test_id for test in batch.items]
         messages = [
             {"role": "system", "content": _SYSTEM_PROMPT},
             {"role": "user", "content": _render_prompt(obligations, list(batch.items))},
         ]
-        result = client.complete(messages, _Mappings, batch.request_partition())
+        # Asked for with the ids of THIS batch: every obligation (each batch
+        # judges all of them) but only this batch's tests. Parsed permissively so
+        # one unusable id costs one judgment, not the whole batch — see
+        # `supplied_ids`.
+        allowed = {
+            "test_id": batch_test_ids,
+            "obligation_ids": sorted(valid_obligation_ids),
+        }
+        result = client.complete(
+            messages,
+            constrain(_Mappings, allowed),
+            batch.request_partition(),
+            parse_as=_Mappings,
+        )
 
-        # A batch may only speak for its own tests. Without this, a model that
-        # echoes tests from a neighbouring batch would have its duplicate
-        # judgment merged in alongside the real one, and the merged mapping
-        # would depend on which batch answered last.
-        batch_test_ids = {test.test_id for test in batch.items}
+        unusable_answers.extend(scan(result, allowed, _STAGE))
+
+        batch_test_id_set = set(batch_test_ids)
         for mapping in result.mappings:
-            if mapping.test_id not in batch_test_ids:
-                continue  # not a candidate in this batch — drop it
+            # A batch may only speak for its own tests. Without this, a model that
+            # echoes tests from a neighbouring batch would have its duplicate
+            # judgment merged in alongside the real one, and the merged mapping
+            # would depend on which batch answered last.
+            if mapping.test_id not in batch_test_id_set:
+                continue
             if mapping.test_id in seen_test_ids:
                 continue  # already judged, in its own batch
             seen_test_ids.add(mapping.test_id)
@@ -147,6 +173,23 @@ def map_tests_to_obligations(
     # which judgments came back and not on the order the batches returned them.
     mappings.sort(key=lambda mapping: mapping.test_id)
     unmapped = sorted(valid_obligation_ids - mapped_obligation_ids)
+
+    # An obligation that ended up unmapped, in a run where some answer could not
+    # be honoured, is INDETERMINATE rather than unmapped. Every batch judges every
+    # obligation, so the answer that would have mapped it may be exactly the one
+    # we could not read — and "no test evidences this" is a substantive claim we
+    # are no longer entitled to make. An obligation that WAS mapped keeps its
+    # judgment: that is a positive answer we could honour.
+    if unusable_answers:
+        if unusable is not None:
+            unusable.record(unusable_answers)
+            unusable.mark_indeterminate(unmapped)
+        return MappingResult(
+            mappings=mappings,
+            unmapped_obligation_ids=[],
+            indeterminate_obligation_ids=unmapped,
+            unusable_answers=unusable_answers,
+        )
     return MappingResult(mappings=mappings, unmapped_obligation_ids=unmapped)
 
 

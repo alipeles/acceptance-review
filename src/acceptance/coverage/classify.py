@@ -22,6 +22,7 @@ from pydantic import Field
 
 from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_prompt, resolve_refs
 from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation
 
@@ -46,6 +47,8 @@ class ImplementationCoverage(PersistableModel):
     rationale: str
     diff_refs: list[DiffRef] = Field(default_factory=list)
 
+
+_STAGE = "coverage classification"
 
 _SYSTEM_PROMPT = """\
 You classify how a code diff addresses each acceptance obligation. This is
@@ -107,7 +110,10 @@ class _Coverage(StrictResponseModel):
 
 
 def classify_coverage(
-    obligations: list[Obligation], change_set: ChangeSet, client: ModelClient
+    obligations: list[Obligation],
+    change_set: ChangeSet,
+    client: ModelClient,
+    unusable: UnusableAnswerLog | None = None,
 ) -> list[ImplementationCoverage]:
     """Classify each obligation against the change set (implementation coverage)."""
     label_to_ref = hunk_labels(change_set)
@@ -115,7 +121,13 @@ def classify_coverage(
         {"role": "system", "content": _SYSTEM_PROMPT},
         {"role": "user", "content": render_diff_prompt(obligations, change_set)},
     ]
-    result = client.complete(messages, _Coverage)
+    allowed = {
+        "obligation_id": [obligation.id for obligation in obligations],
+        "diff_refs": list(label_to_ref),
+    }
+    result = client.complete(messages, constrain(_Coverage, allowed), parse_as=_Coverage)
+    if unusable is not None:
+        unusable.record(scan(result, allowed, _STAGE))
 
     by_id = {c.obligation_id: c for c in result.classifications}
     coverages = []

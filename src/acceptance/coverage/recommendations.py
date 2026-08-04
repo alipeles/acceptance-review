@@ -25,12 +25,15 @@ from __future__ import annotations
 from acceptance.coverage.prompt import render_diff_section
 from acceptance.evidence.discrimination import ObligationDiscrimination
 from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.review_state import ChangeSet, Obligation, TestRecommendation
 
 # §9.3 classes that represent a real evidence gap — anything short of
 # strongly_supported earns a recommendation (the M7.1 trigger). An obligation
 # with no evidence_class set yet (not classified) is not recommended for here.
 _STRONG = "strongly_supported"
+
+_STAGE = "test recommendation"
 
 _SYSTEM_PROMPT = """\
 You prescribe ADDITIONAL TESTS for criteria whose current test evidence is
@@ -110,6 +113,7 @@ def recommend_tests(
     discriminations: list[ObligationDiscrimination],
     change_set: ChangeSet,
     client: ModelClient,
+    unusable: UnusableAnswerLog | None = None,
 ) -> list[TestRecommendation]:
     """Prescribe a §9.5 test recommendation for each not-strongly-supported
     obligation. No weak obligations -> no model call."""
@@ -125,7 +129,15 @@ def recommend_tests(
             "content": _render_prompt(weak, discriminations_by_obligation, change_set),
         },
     ]
-    result = client.complete(messages, _Recommendations)
+    # Only the WEAK obligations are supplied — those are the ones the call is
+    # about, so a recommendation for any other obligation is unusable by
+    # construction, not merely unmatched.
+    allowed = {"obligation_id": [obligation.id for obligation in weak]}
+    result = client.complete(
+        messages, constrain(_Recommendations, allowed), parse_as=_Recommendations
+    )
+    if unusable is not None:
+        unusable.record(scan(result, allowed, _STAGE))
 
     criterion_by_id = {
         obligation.id: (obligation.observable_behavior or obligation.description)

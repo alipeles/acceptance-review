@@ -23,8 +23,11 @@ from pydantic import Field
 
 from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_section, resolve_refs
 from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Link, OpenQuestion
+
+_STAGE = "open-question judgment"
 
 _SYSTEM_PROMPT = """\
 You judge whether a code diff resolves an OPEN QUESTION raised about a task —
@@ -77,7 +80,10 @@ def _render_prompt(open_questions: list[OpenQuestion], change_set: ChangeSet) ->
 
 
 def resolve_open_questions(
-    open_questions: list[OpenQuestion], change_set: ChangeSet, client: ModelClient
+    open_questions: list[OpenQuestion],
+    change_set: ChangeSet,
+    client: ModelClient,
+    unusable: UnusableAnswerLog | None = None,
 ) -> list[OpenQuestionResolution]:
     """Judge each open question against the diff: resolved (with citation) or
     still open. No open questions -> no model call."""
@@ -89,7 +95,15 @@ def resolve_open_questions(
         {"role": "system", "content": _SYSTEM_PROMPT},
         {"role": "user", "content": _render_prompt(open_questions, change_set)},
     ]
-    result = client.complete(messages, _Judgments)
+    allowed = {
+        "question_id": [question.id for question in open_questions],
+        "diff_refs": list(label_to_ref),
+    }
+    result = client.complete(
+        messages, constrain(_Judgments, allowed), parse_as=_Judgments
+    )
+    if unusable is not None:
+        unusable.record(scan(result, allowed, _STAGE))
 
     valid_ids = {q.id for q in open_questions}
     judged_ids: set[str] = set()

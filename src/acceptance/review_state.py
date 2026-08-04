@@ -86,6 +86,13 @@ DECLARATION_ABSENT = "declaration_absent"
 # e.g. a claimed behavior the code doesn't implement and no test exercises.
 DECLARATION_MISMATCH = "declaration_mismatch"
 
+# The canonical `Finding.type` for a model answer that named an id we never
+# supplied (#163). It is a fact about the review's own machinery, not about the
+# delivered code — but it is never advisory: it means a judgment we asked for was
+# not obtained, and the affected obligation is left `indeterminate` so the
+# verdict cannot come back clean on a question that was never actually answered.
+UNUSABLE_ANSWER = "unusable_answer"
+
 # Finding types allowed to be obligation-less (related_obligation is None).
 # Almost every finding is *about* an obligation and must name it; an
 # unrequested change is the code→obligation dual and is obligation-less by
@@ -94,9 +101,11 @@ DECLARATION_MISMATCH = "declaration_mismatch"
 # claim matching neither the task nor the code — obligation-less too, and
 # advisory / low-weight on the verdict, since nothing was actually mis-delivered
 # in the code (M6.2, issue #31); distinct from an unrequested change, which is
-# real code that *was* changed.
+# real code that *was* changed. An unusable answer is obligation-less when the id
+# the model returned belongs to no obligation we supplied — which is the whole
+# point of the finding, so it cannot be required to name one (#163).
 _OBLIGATION_LESS_TYPES = frozenset(
-    {UNREQUESTED_CHANGE, DECLARATION_ABSENT, DECLARATION_MISMATCH}
+    {UNREQUESTED_CHANGE, DECLARATION_ABSENT, DECLARATION_MISMATCH, UNUSABLE_ANSWER}
 )
 
 

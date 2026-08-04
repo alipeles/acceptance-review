@@ -1,43 +1,51 @@
 # Task
-Make a second review of the same task cheaper and more honest than starting
-over. Today every run is a first run: the checker re-derives every judgment
-from scratch even when the new work could not have touched most of them, and it
-says nothing about what changed since it last looked. Let a review be re-run
-against a new head, starting from the previous review of the same task —
-re-judging the obligations the new work could have affected, keeping the
-judgments it could not have affected, and reporting what closed since last time.
+Make the ids a model hands back verifiable against the ids it was given. Every
+stage that asks the model to echo back an id we supplied types that id as
+free-form text, so an id that does not exist is valid output. Four of those
+stages then discard a foreign id without trace, leaving a result
+indistinguishable from a substantive negative answer — the review reports that
+nothing evidences an obligation when the truth is that the reviewer answered a
+different question. Constrain each id-bearing response field to the ids actually
+supplied for that call, and where an answer still cannot be honoured, record it
+as an answer not obtained rather than as a negative judgment.
 
 ## Constraints
-- A preserved judgment must never be presented as though it were re-derived
-  against the new head. It carries a standing invariant of this tool: a reader
-  can tell what each conclusion rests on.
-- A re-run must not be able to improve a judgment it did not actually
-  re-examine.
+- The set of allowed ids is built per call, from the ids that call itself
+  supplied — not from a fixed list.
+- An id outside the supplied set is never accepted as a judgment about anything.
+- An answer that could not be honoured must not read as a substantive negative
+  answer — "no test evidences this obligation", "no hunk answers this question".
+- One answer that cannot be honoured must not discard the usable judgments
+  returned alongside it.
 
 ## Scope exclusions
-- The checker's inputs are unchanged by this task; it reads what it already
-  reads.
-- The file the checker writes when a review has gaps is superseded by #167 and
-  is not part of this task.
+- Ids the model invents rather than echoes back — the ids assigned to newly
+  decomposed obligations — have no supplied set to constrain them to and are
+  unchanged by this task.
+- Verifying that a quoted span really appears in the task text is a different
+  check against supplied input, and is not part of this task.
+- An empty answer — a model that returns no ids at all — is schema-valid and
+  indistinguishable from a correct negative judgment. No change is attempted
+  here, and none is proposed.
+- Prompt wording is unchanged except where the constraint itself requires it.
 
 ## Completion expectations
 - Implementation
-- A re-run against a new head starts from the previous review of the same task
-  rather than treating the run as a first review.
-- An obligation the new work could not have affected keeps the judgment the
-  previous review reached, instead of being re-derived.
-- An obligation the new work could have affected is judged again against the new
-  head, so a fix made since the previous review is seen.
-- A preserved judgment is marked as carried forward and names the revision it
-  was established against, so a reader can tell it was not re-examined here.
-- The evidence strength of a preserved judgment is the strength the previous
-  review recorded, so a re-run cannot raise a claim it did not re-examine.
-- The review reports what changed since the previous review, including the gaps
-  that closed and the obligations whose status moved.
-- A first review — one with no previous review to build on — reports no such
-  comparison, rather than an empty or misleading one.
-- When no usable previous review exists, the run completes as a first review
-  rather than failing.
-- On the archetype #9 revision cycle, an obligation that the previous review
-  found weakly supported becomes strongly supported once the discriminating
-  test is added, and the completion verdict moves with it.
+- Each model stage that echoes back a supplied id constrains that response field
+  to the ids supplied for that call: test-to-obligation mapping, test
+  recommendation, unrequested-change detection, coverage classification,
+  open-question judgment, and discrimination judgment.
+- The allowed-id set a call carries reflects that call's own supplied ids, so a
+  stage whose request is partitioned constrains each call to its own partition.
+- An id outside the supplied set is not accepted as a judgment, at every one of
+  those stages.
+- An item whose returned id cannot be honoured is recorded as having no usable
+  answer, distinguishably from an item the model judged negatively.
+- An obligation whose judgment could not be honoured is left indeterminate,
+  rather than reported as an obligation lacking evidence.
+- A review holding an indeterminate judgment does not reach a clean completion
+  verdict.
+- The usable judgments returned in the same response as one that cannot be
+  honoured are retained.
+- The review names the stage and the id that could not be honoured, so a reader
+  can tell which judgment was not obtained and why.
