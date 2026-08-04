@@ -187,8 +187,24 @@ class PerturbationResult(PersistableModel):
         return self.changed_judgements / self.watched_judgements
 
 
+class AgreementAxis(str, Enum):
+    """Which judgement two models are being compared on.
+
+    Agreement is reported on every axis, not only evidence classes. The axis
+    where this corpus found the worst instability is open-question presence
+    (#193) — a model comparison blind to it would miss the finding that prompted
+    the measurement.
+    """
+
+    EVIDENCE_CLASS = "evidence_class"
+    DEFECT_VERDICT = "defect_verdict"
+    OBLIGATION_PRESENCE = "obligation_presence"
+    OPEN_QUESTION_PRESENCE = "open_question_presence"
+
+
 class CrossModelAgreement(PersistableModel):
     subject: str
+    axis: AgreementAxis = AgreementAxis.EVIDENCE_CLASS
     modal_class_by_model: dict[str, str | None] = Field(default_factory=dict)
     agreeing_pairs: int = 0
     total_pairs: int = 0
@@ -523,35 +539,72 @@ def summarize_model(
     )
 
 
-def cross_model_agreement(per_model: Sequence[ModelInstability]) -> list[CrossModelAgreement]:
-    """How far models agree on each obligation's evidence class.
+def _presence_label(row: PresenceRow) -> str:
+    """A presence row reduced to what a model can be compared on.
 
-    Reported alongside within-model variance, never instead of it: a rating that
-    every model reproduces but that no two models agree on is a different problem
-    from one that a single model cannot reproduce.
+    Deliberately three-valued. Collapsing "sometimes" into either present or
+    absent would let a model that cannot make up its mind agree with one that is
+    consistent — which is the disagreement most worth seeing.
     """
-    subjects: set[str] = set()
-    modal_by_model: dict[str, dict[str, str | None]] = {}
-    for report in per_model:
-        modal_by_model[report.model] = {
+    if row.runs_present == 0:
+        return "absent"
+    if row.runs_present == row.runs_total:
+        return "present"
+    return f"unstable ({row.runs_present}/{row.runs_total})"
+
+
+def _axis_values(report: ModelInstability) -> dict[AgreementAxis, dict[str, str | None]]:
+    return {
+        AgreementAxis.EVIDENCE_CLASS: {
             dist.subject: dist.modal() for dist in report.evidence_class_distribution
-        }
-        subjects.update(modal_by_model[report.model])
+        },
+        AgreementAxis.DEFECT_VERDICT: {
+            dist.subject: dist.modal() for dist in report.defect_verdict_distribution
+        },
+        AgreementAxis.OBLIGATION_PRESENCE: {
+            row.subject: _presence_label(row) for row in report.obligation_presence
+        },
+        AgreementAxis.OPEN_QUESTION_PRESENCE: {
+            row.subject: _presence_label(row) for row in report.open_question_presence
+        },
+    }
+
+
+def cross_model_agreement(per_model: Sequence[ModelInstability]) -> list[CrossModelAgreement]:
+    """How far models agree, on every judgement axis rather than one.
+
+    Reported alongside within-model variance, never instead of it: a judgement
+    that each model reproduces but that no two models share is a different
+    problem from one a single model cannot reproduce, and only having both
+    figures distinguishes them.
+
+    All four axes are covered because the axis that exposed the worst instability
+    in `tests/fixtures/decompose-stability/` is open-question presence, not
+    evidence class. Comparing models on evidence classes alone would have been
+    blind to the finding that motivated this harness.
+    """
+    by_model = {report.model: _axis_values(report) for report in per_model}
+    models = sorted(by_model)
+    pairs = list(combinations(models, 2))
 
     rows: list[CrossModelAgreement] = []
-    for subject in sorted(subjects):
-        per = {model: modal_by_model[model].get(subject) for model in modal_by_model}
-        models = sorted(per)
-        pairs = list(combinations(models, 2))
-        agreeing = sum(1 for a, b in pairs if per[a] is not None and per[a] == per[b])
-        rows.append(
-            CrossModelAgreement(
-                subject=subject,
-                modal_class_by_model=per,
-                agreeing_pairs=agreeing,
-                total_pairs=len(pairs),
+    for axis in AgreementAxis:
+        subjects: set[str] = set()
+        for values in by_model.values():
+            subjects.update(values[axis])
+
+        for subject in sorted(subjects):
+            per = {model: by_model[model][axis].get(subject) for model in models}
+            agreeing = sum(1 for a, b in pairs if per[a] is not None and per[a] == per[b])
+            rows.append(
+                CrossModelAgreement(
+                    subject=subject,
+                    axis=axis,
+                    modal_class_by_model=per,
+                    agreeing_pairs=agreeing,
+                    total_pairs=len(pairs),
+                )
             )
-        )
     return rows
 
 

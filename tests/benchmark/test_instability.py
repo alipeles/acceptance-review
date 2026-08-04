@@ -691,3 +691,150 @@ def test_the_observing_client_does_not_change_what_the_pipeline_produces(tmp_pat
         o.description for o in observed.reviewer_output.obligation_map
     ]
     assert plain.reviewer_output.completion is not None
+
+
+# --------------------------------------------------------------------------
+# Gate 2 run 2: the last four obligations
+# --------------------------------------------------------------------------
+
+
+def test_cross_model_agreement_covers_every_judgement_axis():
+    """Evidence classes alone would be blind to open-question presence, which is
+    the axis where the decompose-stability corpus found the worst instability."""
+    from acceptance.benchmark.instability import AgreementAxis, PresenceRow
+
+    a = ModelInstability(
+        model="model-a",
+        evidence_class_distribution=[ClassDistribution(subject="ob", counts={"strongly_supported": 3})],
+        defect_verdict_distribution=[ClassDistribution(subject="ob :: d", counts={"true": 3})],
+        obligation_presence=[PresenceRow(subject="ob", runs_present=3, runs_total=3)],
+        open_question_presence=[PresenceRow(subject="what format?", runs_present=3, runs_total=3)],
+    )
+    b = ModelInstability(
+        model="model-b",
+        evidence_class_distribution=[ClassDistribution(subject="ob", counts={"strongly_supported": 3})],
+        defect_verdict_distribution=[ClassDistribution(subject="ob :: d", counts={"false": 3})],
+        obligation_presence=[PresenceRow(subject="ob", runs_present=3, runs_total=3)],
+        open_question_presence=[PresenceRow(subject="what format?", runs_present=0, runs_total=3)],
+    )
+
+    rows = cross_model_agreement([a, b])
+    by_axis = {(row.axis, row.subject): row for row in rows}
+
+    assert set(AgreementAxis) == {axis for axis, _ in by_axis}
+    assert by_axis[(AgreementAxis.EVIDENCE_CLASS, "ob")].agreement() == 1.0
+    assert by_axis[(AgreementAxis.DEFECT_VERDICT, "ob :: d")].agreement() == 0.0
+    # The finding this harness exists for: one model raises the question every
+    # run, the other never does.
+    assert by_axis[(AgreementAxis.OPEN_QUESTION_PRESENCE, "what format?")].agreement() == 0.0
+
+
+def test_a_model_that_cannot_make_up_its_mind_does_not_count_as_agreeing():
+    """A three-valued presence label. Collapsing 'sometimes' into present or
+    absent would let an unstable model agree with a consistent one."""
+    from acceptance.benchmark.instability import AgreementAxis, PresenceRow
+
+    steady = ModelInstability(
+        model="steady",
+        open_question_presence=[PresenceRow(subject="q", runs_present=3, runs_total=3)],
+    )
+    wobbly = ModelInstability(
+        model="wobbly",
+        open_question_presence=[PresenceRow(subject="q", runs_present=2, runs_total=3)],
+    )
+
+    rows = {(r.axis, r.subject): r for r in cross_model_agreement([steady, wobbly])}
+    row = rows[(AgreementAxis.OPEN_QUESTION_PRESENCE, "q")]
+
+    assert row.agreement() == 0.0
+    assert row.modal_class_by_model == {"steady": "present", "wobbly": "unstable (2/3)"}
+
+
+def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
+    """One report where all three sources are simultaneously non-empty and land
+    in different fields. A blended figure could not keep them apart."""
+    from acceptance.benchmark.instability import AgreementAxis
+
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+
+    report = measure_instability(
+        case,
+        models=["model-a", "model-b"],
+        runs_per_model=2,
+        perturbation=Perturbation(name="noop", apply=lambda c: c),
+        comparison_client=client_finding_nothing(),
+        client_factory=_recording_factory([]),
+    )
+
+    # 1. resample — per model, from repeated runs
+    assert [m.model for m in report.per_model] == ["model-a", "model-b"]
+    assert all(m.content_difference_count is not None for m in report.per_model)
+    # 2. perturbation — its own field, with its own figure
+    assert report.perturbation is not None
+    assert report.perturbation.sensitivity() is not None or report.perturbation.watched_judgements == 0
+    # 3. model — its own field, keyed by axis
+    assert {row.axis for row in report.cross_model_agreement} <= set(AgreementAxis)
+    # and no field carries their sum
+    assert not hasattr(report, "total_movement")
+
+
+def test_decomposition_variation_is_surfaced_and_not_only_evidence_variation():
+    """The whole-pipeline surface has to reach the report. An obligation that
+    appears in one run and not another is decompose moving, and it must show up
+    distinctly from an evidence-class flip."""
+    left = _snapshot(0, {"a": "kept", "b": "obligation only this run produced"})
+    right = _snapshot(1, {"a": "kept"})
+    client = _coverage_client(
+        {"obligation only this run produced": False},
+        alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}],
+    )
+
+    summary = summarize_model("m", [left, right], client)
+
+    presence = {row.subject: row for row in summary.obligation_presence}
+    assert presence["obligation only this run produced"].runs_present == 1
+    assert not presence["obligation only this run produced"].stable()
+    decompose_differences = [
+        d for d in summary.content_differences if d.kind is DifferenceKind.OBLIGATION
+    ]
+    assert decompose_differences, "decompose movement must reach the report on its own axis"
+    assert all(d.kind is not DifferenceKind.EVIDENCE_CLASS for d in decompose_differences)
+
+
+def test_omitted_parameters_fall_back_to_the_declared_defaults(tmp_path):
+    """Defaults must be used when the caller omits them, not merely declared."""
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+    calls: list = []
+
+    report = measure_instability(
+        case,
+        comparison_client=client_finding_nothing(),
+        client_factory=_recording_factory(calls),
+    )
+
+    assert report.provenance.models == list(DEFAULT_MODELS)
+    assert report.provenance.runs_per_model == DEFAULT_RUNS_PER_MODEL
+    assert report.provenance.seeds == seeds_for(DEFAULT_RUNS_PER_MODEL)
+    assert report.provenance.perturbation == "add-unrelated-test"
+    assert {model for model, _, _ in calls} == set(DEFAULT_MODELS)
+
+
+def test_the_harness_reports_variance_without_reducing_it():
+    """No smoothing, damping or discarding of outliers: every draw survives into
+    the distribution. Stability bought by blunting the measurement would hide the
+    defect this exists to find."""
+    snapshots = [
+        _snapshot(0, {"a": "x"}, evidence={"a": "strongly_supported"}),
+        _snapshot(1, {"a": "x"}, evidence={"a": "unsupported"}),
+        _snapshot(2, {"a": "x"}, evidence={"a": "strongly_supported"}),
+    ]
+    client = _coverage_client({}, alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}])
+
+    summary = summarize_model("m", snapshots, client)
+    distribution = {d.subject: d for d in summary.evidence_class_distribution}["x"]
+
+    # The lone outlier is still there; a mitigating harness would have dropped it.
+    assert distribution.counts == {"strongly_supported": 2, "unsupported": 1}
+    assert sum(distribution.counts.values()) == len(snapshots)
+    # Every pairwise difference is retained, not averaged away.
+    assert len(summary.content_differences) == 2
