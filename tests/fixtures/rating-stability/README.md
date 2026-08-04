@@ -1,8 +1,14 @@
 # Rating-stability corpus
 
 Captured dogfood iterations, kept as **test data for fixing the instability they
-document** (#180). Not currently read by any test — it is the evidence a fix has
-to be measured against, recorded while the judgements were still fresh.
+document** (#180, umbrella #183). Not currently read by any test — it is the
+evidence a fix has to be measured against, recorded while the judgements were
+still fresh.
+
+**The reasoning lives in `docs/DR-180-evidence-judgement-instability.md`**; this
+README covers the layout and how to read the runs. The DR owns the analysis — the
+asymmetry, the M5.2 localization, and the constraint on any fix — so the two do
+not drift.
 
 ## Why it is checked in
 
