@@ -592,8 +592,9 @@ def test_a_stale_instruction_file_is_removed_and_the_removal_reported(
     ]) == 0
 
     assert not stale.exists()
-    # Visible, not silent — it touched a file in the user's repo.
-    assert "Removed a stale" in capsys.readouterr().out
+    # Visible, not silent — it touched a file in the user's repo. On stderr so
+    # the notice appears in every output mode, `--json` included.
+    assert "Removed a stale" in capsys.readouterr().err
 
 
 def test_the_removal_leaves_the_report_as_the_only_statement_of_status(
@@ -868,3 +869,64 @@ def build_parser_parse(argv):
     from acceptance.cli import build_parser
 
     return build_parser().parse_args(argv)
+
+
+def test_the_removal_is_reported_in_json_mode_too(
+    git_repo, fixture_task_path, capsys, stub_model
+):
+    """Deleting a file in the user's repo must never be silent, in any mode.
+
+    The first version printed the notice only on the text branch, so `--json`
+    deleted the file and said nothing — found by the tool's own Gate 2 run. The
+    notice goes to stderr so stdout stays parseable for the agent.
+    """
+    import json
+
+    stale = git_repo["path"] / ".acceptance" / "next-instruction.md"
+    stale.parent.mkdir(parents=True, exist_ok=True)
+    stale.write_text("# Next instruction\n\nStale.\n")
+
+    assert main([
+        "check", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"], "--json",
+    ]) == 0
+
+    captured = capsys.readouterr()
+    assert not stale.exists()
+    assert "Removed a stale" in captured.err
+    json.loads(captured.out)  # stdout is still pure JSON
+
+
+def test_retrieval_writes_nothing_into_the_repo(monkeypatch, tmp_path, capsys):
+    """`no-speculative-writing` covers retrieval, not just `check`.
+
+    Nothing is written speculatively, so nothing can go stale — the premise of
+    the whole pull model. Snapshotting the tree around the command is the only
+    way to assert it; proving no model call happens is a weaker claim.
+    """
+    monkeypatch.chdir(tmp_path)
+    _store_review_with(tmp_path, "a" * 40, "ob-1", "a defect")
+
+    def snapshot():
+        return {p.relative_to(tmp_path): p.stat().st_mtime for p in tmp_path.rglob("*")}
+
+    before = snapshot()
+    assert main(["recommendation", "--criterion", "ob-1"]) == 0
+    capsys.readouterr()
+
+    assert snapshot() == before
+
+
+def test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact():
+    """Stronger than asserting the old filename is gone.
+
+    The spec kept "the recommendation may surface in ... a Markdown file" long
+    after `next-instruction.md` was removed from it, so a filename check passed
+    while the file-writing framing survived — found by the tool's own Gate 2 run.
+    """
+    spec = _spec_text()
+
+    assert "Markdown file" not in spec
+    assert "acceptance recommendation --criterion <id>" in spec
+    # The §10.1 step-12 wording that replaced the pushed artifact.
+    assert "never pushed to a file that outlives the run that wrote it" in spec

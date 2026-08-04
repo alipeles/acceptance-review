@@ -519,16 +519,21 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         # The CLI's §16 invocation has no --repo flag and always means "here".
         removed = remove_legacy_instruction_file(Path("."))
+        if removed is not None:
+            # On stderr, and so in BOTH modes. Deleting a file in the user's repo
+            # must never be silent, and the first version reported it only in
+            # text mode — `--json` deleted and said nothing. stderr keeps stdout
+            # parseable for the agent consuming the JSON.
+            print(
+                f"Removed a stale {removed} left by an earlier version; "
+                "recommendations are now retrieved with\n"
+                "  acceptance recommendation --criterion <id>",
+                file=sys.stderr,
+            )
         if args.json:
             print(json.dumps(review.to_dict(), indent=2))
         else:
             print(render_report(review))
-            if removed is not None:
-                print(
-                    f"\nRemoved a stale {removed} left by an earlier version; "
-                    "recommendations are now retrieved with\n"
-                    "  acceptance recommendation --criterion <id>"
-                )
         return 0
 
     if args.command == "recommendation":

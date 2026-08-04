@@ -256,7 +256,7 @@ When evidence is missing/weak, prescribe a test obligation: the criterion; requi
 
 > Add a case where calendar-month and contractual-period logic select different index observations: accrual period Jan 26 → Feb 25. Assert both the selected fixing date and the resulting coupon. This test should fail if the implementation uses calendar-month boundaries.
 
-Recommendations are emitted in a **structured, machine-readable form** — each tied to a criterion, with the fields above as discrete data — so a coding agent or harness can pick them up and add the test directly, and each is complete enough that the gap can typically be closed in a **single iteration**. The product recommends rather than modifies code; the recommendation may surface in the CLI, a Markdown file, the coding agent, a PR comment, or the GitHub check. Where execution is available, a subsequently added test is confirmed via §8.4 before its gap counts as closed.
+Recommendations are emitted in a **structured, machine-readable form** — each tied to a criterion, with the fields above as discrete data — so a coding agent or harness can pick them up and add the test directly, and each is complete enough that the gap can typically be closed in a **single iteration**. The product recommends rather than modifies code; the recommendation is retrieved on demand per criterion (`acceptance recommendation --criterion <id>`) and may surface in the CLI, the coding agent, a PR comment, or the GitHub check. It is never written to a file that outlives the run that produced it. Where execution is available, a subsequently added test is confirmed via §8.4 before its gap counts as closed.
 
 ---
 
