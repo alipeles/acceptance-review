@@ -682,3 +682,92 @@ def test_recommendation_without_a_stored_review_fails_cleanly(
 
     assert main(["recommendation", "--criterion", "anything"]) == 1
     assert "no stored review" in capsys.readouterr().err
+
+
+def test_json_is_the_default_format_when_none_is_requested(
+    git_repo, fixture_task_path, capsys, monkeypatch
+):
+    """JSON by default because the consumer is a coding agent, not a human.
+
+    Asserted by name rather than left implicit in a test that happens to
+    `json.loads` the output: a change of default is the kind of thing that
+    slips through when nothing states the guarantee.
+    """
+    import json
+
+    _run_check_with_gaps(git_repo, fixture_task_path, monkeypatch)
+    capsys.readouterr()
+
+    assert main(["recommendation", "--criterion", "gap-ob"]) == 0
+    default = capsys.readouterr().out
+
+    assert main(["recommendation", "--criterion", "gap-ob", "--format", "json"]) == 0
+    explicit = capsys.readouterr().out
+
+    assert default == explicit
+    assert json.loads(default)["obligation_id"] == "gap-ob"
+
+
+# --- the command surface the spec names must be the one the CLI accepts ------
+#
+# #167 fixed the surface up front precisely so §16 could name a specific
+# command. A doc written against a command that later changes would recreate the
+# two-artifacts-drifting failure the whole task exists to remove — so the spec
+# string and the parser are pinned to each other here.
+
+_DOCUMENTED_COMMAND = "acceptance recommendation --criterion <id>"
+
+
+def _spec_text():
+    from pathlib import Path
+
+    spec = Path(__file__).resolve().parents[1] / "docs" / (
+        "AI-Assisted-Software-Development-Review-Spec.md"
+    )
+    return spec.read_text()
+
+
+def test_the_spec_names_the_command_the_cli_actually_accepts():
+    from acceptance.cli import build_parser
+
+    assert _DOCUMENTED_COMMAND in _spec_text()
+
+    _, _, flags = _DOCUMENTED_COMMAND.partition("acceptance ")
+    command, criterion_flag, _ = flags.split()
+    args = build_parser().parse_args([command, criterion_flag, "some-id"])
+
+    assert args.command == "recommendation"
+    assert args.criterion == "some-id"
+    assert args.format == "json"
+
+
+def test_the_spec_no_longer_names_a_written_file():
+    assert "next-instruction.md" not in _spec_text()
+
+
+def test_a_command_name_the_spec_does_not_document_is_rejected(capsys):
+    import pytest
+
+    for wrong in ("recommend", "recommendations"):
+        with pytest.raises(SystemExit):
+            build_parser_parse([wrong, "--criterion", "x"])
+
+
+def test_criterion_is_required(capsys):
+    import pytest
+
+    with pytest.raises(SystemExit):
+        build_parser_parse(["recommendation"])
+
+
+def test_an_undocumented_format_is_rejected(capsys):
+    import pytest
+
+    with pytest.raises(SystemExit):
+        build_parser_parse(["recommendation", "--criterion", "x", "--format", "yaml"])
+
+
+def build_parser_parse(argv):
+    from acceptance.cli import build_parser
+
+    return build_parser().parse_args(argv)
