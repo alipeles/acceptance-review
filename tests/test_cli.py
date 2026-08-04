@@ -540,7 +540,7 @@ def _gap_client():
             "expected_output": "an empty result, not an error",
             "required_assertions": ["assert handle([]) == []"],
             "plausible_defect": "raises IndexError on an empty input",
-            "repo_conventions": "tests/test_thing.py",
+            "repo_conventions": "follow the fixtures in tests/test_thing.py",
         }]},
         "_Mismatches": {"mismatches": []},
     })
@@ -628,11 +628,23 @@ def test_recommendation_returns_the_stored_prescription_for_a_criterion(
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["obligation_id"] == "gap-ob"
-    # Prose values, not flattened tokens: the reasoning is what makes it usable.
-    assert payload["plausible_defect"] == "raises IndexError on an empty input"
-    assert payload["required_assertions"] == ["assert handle([]) == []"]
+    # Every §9.5 field, each holding its prose rather than a flattened token —
+    # the reasoning inside them is what makes a recommendation actionable, and a
+    # regression that compressed only the unasserted ones would otherwise pass.
+    assert payload["required_inputs"] == "an empty collection"
     assert payload["boundary_conditions"] == "zero elements"
     assert payload["expected_output"] == "an empty result, not an error"
+    assert payload["required_assertions"] == ["assert handle([]) == []"]
+    assert payload["plausible_defect"] == "raises IndexError on an empty input"
+    assert payload["repo_conventions"] == "follow the fixtures in tests/test_thing.py"
+    # Prose, not codes: multi-word text survives the round trip.
+    assert all(
+        len(str(payload[field]).split()) > 1
+        for field in (
+            "required_inputs", "boundary_conditions", "expected_output",
+            "plausible_defect", "repo_conventions",
+        )
+    )
 
 
 def test_recommendation_for_an_unknown_criterion_is_empty_not_an_error(
