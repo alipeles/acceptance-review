@@ -33,7 +33,9 @@ from acceptance.coverage.open_questions import apply_open_question_resolutions, 
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode, ModelClient
 from acceptance.pipeline import run_review
-from acceptance.report import render_next_instruction, render_report
+from acceptance.recommendation import lookup as lookup_recommendation
+from acceptance.recommendation import render as render_recommendation
+from acceptance.report import render_report
 from acceptance.rerun import find_prior_review
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
@@ -172,26 +174,33 @@ def run_check(
         task_identifier=task,
         prior=prior,
     )
-    # §10.1 step 12: when gaps exist, hand the agent a next instruction. The
-    # file is a CLI side effect, not part of the pipeline — the benchmark runs
-    # the same review over fixture repos and must not write into them.
-    instruction_path = _write_next_instruction(review, repo_path)
-    if instruction_path is not None:
-        review = review.model_copy(update={"recommendation": str(instruction_path)})
     store.write(review)
     return review
 
 
-def _write_next_instruction(review: Review, repo: Path) -> Path | None:
-    """Write `.acceptance/next-instruction.md` when the review has gaps to
-    close; return its path, or None when there is nothing to instruct."""
-    instruction = render_next_instruction(review)
-    if instruction is None:
+# The artifact M7.3 used to write. Nothing writes it now (M7.3.r1) — a run only
+# clears one left behind by an older version.
+_LEGACY_INSTRUCTION_PATH = Path(".acceptance") / "next-instruction.md"
+
+
+def remove_legacy_instruction_file(repo: Path) -> Path | None:
+    """Delete a `next-instruction.md` left by an older version; return its path.
+
+    Migration, run once per repo in effect: nothing recreates the file, so the
+    second run finds nothing. Deleting rather than leaving it is the point of the
+    task — the file is stale by construction, and a stale file that still asserts
+    gaps while the report says none contradicts the review. Both cannot be true
+    and only the report is entitled to speak.
+
+    Safe to delete without asking: it sits in `.acceptance/`, which the tool owns
+    and gitignores, and it was never authored by the user. The caller reports the
+    removal so it is visible rather than silent.
+    """
+    path = repo / _LEGACY_INSTRUCTION_PATH
+    if not path.is_file():
         return None
-    path = repo / ".acceptance" / "next-instruction.md"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(instruction + "\n", encoding="utf-8")
-    return path.relative_to(repo) if path.is_relative_to(repo) else path
+    path.unlink()
+    return _LEGACY_INSTRUCTION_PATH
 
 
 def run_decompose(task: str, config: RunConfig) -> Decomposition:
@@ -412,6 +421,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to an optional §7.4 builder declaration (absence is a minor finding).",
     )
     _add_model_flags(check, default_mode=Mode.REPLAY.value)  # never call live unbidden
+    rec = subparsers.add_parser(
+        "recommendation",
+        help="Retrieve a criterion's §9.5 test recommendation from stored review state.",
+    )
+    rec.add_argument("--criterion", required=True, help="The obligation id to look up.")
+    rec.add_argument(
+        "--format",
+        choices=("json", "text"),
+        default="json",
+        help="Output form (default: json, for pickup by a coding agent).",
+    )
+    rec.add_argument(
+        "--revision",
+        default=None,
+        help="Reviewed revision to read (default: the most recently stored review).",
+    )
+
     check.add_argument(
         "--json",
         action="store_true",
@@ -491,10 +517,31 @@ def main(argv: list[str] | None = None) -> int:
         except LLMError as exc:
             print(f"acceptance: model error: {exc}", file=sys.stderr)
             return 1
+        # The CLI's §16 invocation has no --repo flag and always means "here".
+        removed = remove_legacy_instruction_file(Path("."))
         if args.json:
             print(json.dumps(review.to_dict(), indent=2))
         else:
             print(render_report(review))
+            if removed is not None:
+                print(
+                    f"\nRemoved a stale {removed} left by an earlier version; "
+                    "recommendations are now retrieved with\n"
+                    "  acceptance recommendation --criterion <id>"
+                )
+        return 0
+
+    if args.command == "recommendation":
+        store = ReviewStore()
+        review = store.read(args.revision) if args.revision else store.latest()
+        if review is None:
+            where = f"revision {args.revision}" if args.revision else "the review store"
+            print(f"acceptance: error: no stored review found for {where}", file=sys.stderr)
+            return 1
+        # A criterion with no recommendation is an ordinary answer, not an
+        # error: a strongly-supported obligation earns none, and asking is a
+        # reasonable thing for an agent to do.
+        print(render_recommendation(lookup_recommendation(review, args.criterion), args.format))
         return 0
 
     if args.command == "decompose":

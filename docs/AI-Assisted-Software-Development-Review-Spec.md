@@ -71,7 +71,7 @@ Used during development, before/while preparing a PR.
 
 **Inputs:** task file; base and current (or working-tree) revisions; source and test changes; relevant existing tests; optional builder declaration; optional project config (including the test command that enables execution).
 
-**Outputs:** interpreted obligations; implementation-coverage classification; test-to-obligation mapping; test-evidence assessment *with evidence tier*; missing/weak obligations; potential unrequested changes; builder-declaration discrepancies; **recommended new tests (structured for automated pickup, §9.5)**; a recommended next instruction; explicit confidence limitations.
+**Outputs:** interpreted obligations; implementation-coverage classification; test-to-obligation mapping; test-evidence assessment *with evidence tier*; missing/weak obligations; potential unrequested changes; builder-declaration discrepancies; **recommended new tests (structured for automated pickup, §9.5)**; a next instruction, retrieved on demand per criterion rather than written to a file; explicit confidence limitations.
 
 ```
 Developer writes task → agent implements → agent reports complete
@@ -264,7 +264,7 @@ Recommendations are emitted in a **structured, machine-readable form** — each 
 
 ### 10.1 Local Completion Check
 
-1. Capture the task file. 2. Coding work occurs (any agent/human). 3. Optional builder declaration produced. 4. Checker reads task, base revision, diff, relevant source/tests, and declaration if present. 5. Decompose into obligations; flag material ambiguities. 6. Implementation-coverage review (§9.2). 7. Test-evidence review (§9.3). 8. **Execution confirmation where feasible** — run mapped tests with coverage and targeted mutation to elevate tiers (§8); otherwise proceed statically. 9. Identify additional/unrequested changes. 10. Compare builder declaration against requirement/code/tests. 11. Produce completion result: *no material gaps / incomplete / needs clarification / needs non-code review / unable to determine.* 12. Produce a next instruction when gaps exist, e.g.:
+1. Capture the task file. 2. Coding work occurs (any agent/human). 3. Optional builder declaration produced. 4. Checker reads task, base revision, diff, relevant source/tests, and declaration if present. 5. Decompose into obligations; flag material ambiguities. 6. Implementation-coverage review (§9.2). 7. Test-evidence review (§9.3). 8. **Execution confirmation where feasible** — run mapped tests with coverage and targeted mutation to elevate tiers (§8); otherwise proceed statically. 9. Identify additional/unrequested changes. 10. Compare builder declaration against requirement/code/tests. 11. Produce completion result: *no material gaps / incomplete / needs clarification / needs non-code review / unable to determine.* 12. Make the next instruction available when gaps exist — pulled per criterion via `acceptance recommendation --criterion <id>`, never pushed to a file that outlives the run that wrote it, e.g.:
 
 > Apply active filters to CSV exports and add explicit handling for exports over 100,000 rows. Add tests that distinguish filtered from unfiltered output, verify displayed column order, and assert the row-limit error. Update the builder declaration after the changes.
 
@@ -338,7 +338,7 @@ Show the system can independently identify meaningful completion and test-eviden
 
 ### 13.3 Stage 1 — Local Completion Checker
 
-Capabilities: **task ingestion** (read `current-task.md`; extract behavior/constraints/exclusions/expectations; flag ambiguity; produce structured obligations); **Git change analysis** (base↔head; read changed source/tests; config/dependency changes; retrieve surrounding code); **builder-declaration ingestion, optional** (compare declared mandate/implementation/tests/exclusions/assumptions/limitations with task and diff); **implementation-coverage analysis** (§9.2, incl. unrequested-change detection); **test discovery** (added/modified and relevant existing; map to obligations); **test semantic analysis** (per candidate test: what's exercised/asserted, fixtures/mocks, input discrimination, expected-value provenance, undetected plausible defects, strength classification); **optional execution tier** (§8: coverage + targeted mutation; confirm recommended tests); **completion result** (obligation findings, test-evidence findings with tiers, declaration discrepancies, confidence limitations, overall result, next instruction).
+Capabilities: **task ingestion** (read `current-task.md`; extract behavior/constraints/exclusions/expectations; flag ambiguity; produce structured obligations); **Git change analysis** (base↔head; read changed source/tests; config/dependency changes; retrieve surrounding code); **builder-declaration ingestion, optional** (compare declared mandate/implementation/tests/exclusions/assumptions/limitations with task and diff); **implementation-coverage analysis** (§9.2, incl. unrequested-change detection); **test discovery** (added/modified and relevant existing; map to obligations); **test semantic analysis** (per candidate test: what's exercised/asserted, fixtures/mocks, input discrimination, expected-value provenance, undetected plausible defects, strength classification); **optional execution tier** (§8: coverage + targeted mutation; confirm recommended tests); **completion result** (obligation findings, test-evidence findings with tiers, declaration discrepancies, confidence limitations, overall result, next instruction retrieved on demand).
 
 *Stage 1 non-goals:* GitHub access; agent sessions; modifying code; writing production-ready tests; managing tasks; provisioning environments; proving runtime correctness. Running the project's *own hermetic tests* for targeted confirmation is in scope (§8); standing up environments the project doesn't already support is not.
 
@@ -439,7 +439,8 @@ Unrequested changes:
   1. [separable] Export filename behavior changed
        export/naming.py#@@ -5,2 +5,6 @@
 
-Recommended next instruction: .acceptance/next-instruction.md
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
 ```
 
 **GitHub PR** — primary team interface: Checks, PR comments, file/line annotations, links to issue text and tests. No separate web app required for routine review. **Optional web app (later)** — installation/config, review-policy settings, historical reviews, user corrections, evidence exploration, cross-PR analysis, usage/quality reporting; secondary to CLI and GitHub-native.

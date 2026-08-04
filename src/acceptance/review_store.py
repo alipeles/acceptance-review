@@ -37,3 +37,18 @@ class ReviewStore:
         if not path.is_file():
             return None
         return Review.from_dict(json.loads(path.read_text()))
+
+    def latest(self) -> Review | None:
+        """The most recently written review, or None when the store is empty.
+
+        Keyed on the file's own mtime rather than anything inside the review:
+        reviews are keyed by revision, and revisions carry no order the store
+        can see — a re-run against an older head is legitimately the newest
+        review. What a caller who names no review means is "the one I just
+        produced", which is exactly write order (M7.3.r1).
+        """
+        paths = [path for path in self.root.glob("*.json") if path.is_file()]
+        if not paths:
+            return None
+        newest = max(paths, key=lambda path: path.stat().st_mtime)
+        return Review.from_dict(json.loads(newest.read_text()))

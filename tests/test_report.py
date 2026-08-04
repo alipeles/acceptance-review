@@ -17,9 +17,8 @@ from acceptance.review_state import (
     TestRecommendation,
     UnrequestedChangeDisposition,
 )
-import re
 
-from acceptance.report import render_next_instruction, render_report
+from acceptance.report import render_report
 
 
 def test_empty_review_renders_the_full_shell():
@@ -88,7 +87,6 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
             rationale="1 obligation(s) not fully implemented.",
             limitations=["Judgments are static inferences unless a higher tier is recorded."],
         ),
-        recommendation=".acceptance/next-instruction.md",
     )
 
     report = render_report(review)
@@ -109,7 +107,10 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
     # Unrequested changes are advisory, numbered, with their disposition.
     assert "  1. [separable] Export filename behavior changed" in report
     assert "Evidence limitations:" in report
-    assert "Recommended next instruction: .acceptance/next-instruction.md" in report
+    # A command, not a file (M7.3.r1): the file was written speculatively by
+    # whichever run last found gaps and outlived it.
+    assert "acceptance recommendation --criterion" in report
+    assert "next-instruction.md" not in report
 
 
 def test_status_is_stated_in_words_not_symbols():
@@ -266,192 +267,6 @@ def test_the_two_axes_render_independently_for_the_same_obligation():
 
     assert "code evidence: addressed" in report
     assert "test evidence: nominally supported" in report
-
-
-# --- M7.3: the §10.1 step-12 next instruction ---
-
-
-def _gap_finding(obligation_description: str) -> Finding:
-    return Finding(
-        type="coverage_gap", severity="high", description="missing",
-        evidence_tier=EvidenceTier.STATIC, produced_by=Component.STATIC_ANALYZER,
-        links=[Link(kind="requirement", ref="x", text="x")],
-        related_obligation=obligation_description,
-    )
-
-
-def _recommendation(criterion: str, defect: str) -> TestRecommendation:
-    return TestRecommendation(
-        obligation_id=criterion.lower().replace(" ", "-")[:20],
-        criterion=criterion,
-        required_inputs="a non-30-day month",
-        boundary_conditions="0 days used, a full month",
-        expected_output="price/days_in_month * days, rounded",
-        required_assertions=["assert prorate(280, 14, 28) == 140.0"],
-        plausible_defect=defect,
-        repo_conventions="test_billing.py",
-    )
-
-
-def test_multi_gap_review_names_each_gap_and_its_distinguishing_test():
-    """M7.3 acceptance: on a multi-gap review the instruction names each gap
-    and the discriminating test that closes it (§10.1 style)."""
-    review = Review(
-        mode="local",
-        reviewed_revision="abc",
-        obligation_map=[_obligation("Daily rate", "not_addressed", "unsupported")],
-        findings=[
-            _gap_finding("Daily rate is monthly_price divided by days_in_month"),
-            _gap_finding("Round the result to two decimals"),
-        ],
-        recommendations=[
-            _recommendation("Daily rate uses days_in_month", "hard-codes price/30"),
-            _recommendation("Rounding to two decimals", "drops the round() call"),
-        ],
-        completion=CompletionResult(
-            verdict=CompletionVerdict.INCOMPLETE, rationale="2 gaps.",
-        ),
-    )
-
-    instruction = render_next_instruction(review)
-
-    # Each gap is named...
-    assert "Daily rate is monthly_price divided by days_in_month" in instruction
-    assert "Round the result to two decimals" in instruction
-    # ...and each distinguishing test, with the defect it must catch.
-    assert "Daily rate uses days_in_month" in instruction
-    assert "Must fail if: hard-codes price/30" in instruction
-    assert "Must fail if: drops the round() call" in instruction
-    assert "assert prorate(280, 14, 28) == 140.0" in instruction
-    # §10.1 closes by asking for the declaration to be refreshed.
-    assert "Update the builder declaration after the changes." in instruction
-
-
-def test_no_instruction_when_there_are_no_material_gaps():
-    """§10.1 step 12 produces an instruction only WHEN GAPS EXIST.
-
-    Carries leftover recommendations deliberately: with an empty review the
-    "nothing actionable" guard would return None on its own and the verdict
-    gate would never be exercised. Recommendations present + a positive
-    verdict isolates the gate as the only thing that can suppress output.
-    """
-    review = Review(
-        mode="local",
-        reviewed_revision="abc",
-        obligation_map=[_obligation("A", "addressed", "strongly_supported")],
-        recommendations=[_recommendation("Some criterion", "some defect")],
-        completion=CompletionResult(
-            verdict=CompletionVerdict.NO_MATERIAL_GAPS, rationale="all good",
-        ),
-    )
-
-    assert render_next_instruction(review) is None
-
-
-def test_unresolved_open_questions_lead_the_instruction():
-    """A needs-clarification review can't be closed by writing code, so the
-    questions come first (#113)."""
-    review = Review(
-        mode="local",
-        reviewed_revision="abc",
-        open_questions=[
-            OpenQuestion(id="q-1", question="Minus sign or parentheses?"),
-            OpenQuestion(id="q-2", question="Already answered", resolved=True),
-        ],
-        completion=CompletionResult(
-            verdict=CompletionVerdict.NEEDS_CLARIFICATION, rationale="1 open question.",
-        ),
-    )
-
-    instruction = render_next_instruction(review)
-
-    assert "Answer these first" in instruction
-    assert "Minus sign or parentheses?" in instruction
-    assert "Already answered" not in instruction  # resolved questions are not asked again
-
-
-def test_no_instruction_when_a_non_positive_verdict_has_nothing_actionable():
-    """unable-to-determine with no gaps, recommendations or open questions has
-    nothing to instruct — better silence than an empty template."""
-    review = Review(
-        mode="local",
-        reviewed_revision="abc",
-        completion=CompletionResult(
-            verdict=CompletionVerdict.UNABLE_TO_DETERMINE, rationale="nothing analyzed",
-        ),
-    )
-
-    assert render_next_instruction(review) is None
-
-
-def test_instruction_contains_only_review_content_and_invents_nothing():
-    """Obligation 4's real test: the instruction is a PROJECTION, so it must
-    contain exactly the review's own gaps and recommendations and nothing more.
-
-    Compares the FULL SET of rendered items against the review's own content.
-    An earlier version enumerated expected prefixes ("1. ", "2. ") and so
-    missed an injected "0. " line -- a superset check that could not detect a
-    superset. Set equality is what actually closes that."""
-    review = Review(
-        mode="local",
-        reviewed_revision="abc",
-        findings=[_gap_finding("Only gap A")],
-        recommendations=[_recommendation("Only criterion A", "defect A")],
-        completion=CompletionResult(
-            verdict=CompletionVerdict.INCOMPLETE, rationale="1 gap.",
-        ),
-    )
-
-    instruction = render_next_instruction(review)
-
-    def numbered_items(section: str) -> set[str]:
-        """Every `<n>. <text>` item in a section, regardless of its number."""
-        return {
-            re.sub(r"\*\*", "", m.group(1)).strip()
-            for m in (re.match(r"^\d+\.\s+(.*)$", ln) for ln in section.splitlines())
-            if m
-        }
-
-    implement = instruction.split("## Implement")[1].split("## ")[0]
-    tests_section = instruction.split("## Add these tests")[1]
-
-    # EXACTLY the review's own content -- nothing invented, nothing dropped.
-    assert numbered_items(implement) == {"Only gap A"}
-    assert numbered_items(tests_section) == {"Only criterion A"}
-
-
-def test_instruction_omits_satisfied_obligations_and_advisory_items():
-    """Obligation 6: the instruction SELECTS. A review deliberately mixing an
-    actionable gap with a satisfied obligation, an advisory unrequested change
-    and an evidence limitation must surface only the gap."""
-    review = Review(
-        mode="local",
-        reviewed_revision="abc",
-        obligation_map=[
-            _obligation("A satisfied obligation", "addressed", "strongly_supported"),
-        ],
-        findings=[
-            _gap_finding("A real remaining gap"),
-            Finding(
-                type=UNREQUESTED_CHANGE, severity="medium",
-                description="An advisory unrequested change",
-                evidence_tier=EvidenceTier.STATIC, produced_by=Component.STATIC_ANALYZER,
-                links=[Link(kind="code", ref="x.py#@@ -1 +1 @@")],
-                disposition=UnrequestedChangeDisposition.SEPARABLE,
-            ),
-        ],
-        completion=CompletionResult(
-            verdict=CompletionVerdict.INCOMPLETE, rationale="1 gap.",
-            limitations=["An evidence limitation note"],
-        ),
-    )
-
-    instruction = render_next_instruction(review)
-
-    assert "A real remaining gap" in instruction
-    assert "A satisfied obligation" not in instruction
-    assert "An advisory unrequested change" not in instruction
-    assert "An evidence limitation note" not in instruction
 
 
 # --- incremental re-run rendering (M7.5) ------------------------------------

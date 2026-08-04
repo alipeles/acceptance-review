@@ -511,21 +511,15 @@ def test_check_without_a_head_reviews_the_working_tree(
     assert "uncommitted.py" in changed  # the working tree, not the HEAD commit
 
 
-# --- M7.3: the next-instruction file ---
+# --- M7.3.r1 (#167): on-demand recommendation retrieval, no pushed file ---
 
 
-def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
-    git_repo, fixture_task_path, capsys, monkeypatch
-):
-    """§10.1 step 12: when the review has gaps, `check` writes
-    .acceptance/next-instruction.md and the §16 report points at it instead of
-    printing "(none)"."""
-    from acceptance.config import RunConfig
+def _gap_client():
+    """A checker that finds one uncovered obligation and recommends a test for
+    it — i.e. a review with real gaps, and so a real recommendation to pull."""
     from tests.support import client_dispatching
 
-    # A checker that finds one obligation, leaves it uncovered, and recommends
-    # a discriminating test for it — i.e. a review with real gaps.
-    monkeypatch.setattr(RunConfig, "build_client", lambda self, completion_fn=None: client_dispatching({
+    return client_dispatching({
         "_Decomposition": {"obligations": [{
             "id": "gap-ob", "description": "Handle the empty case",
             "type": "functional", "importance": "critical", "explicit": True,
@@ -549,33 +543,142 @@ def test_check_writes_a_next_instruction_file_and_points_the_report_at_it(
             "repo_conventions": "tests/test_thing.py",
         }]},
         "_Mismatches": {"mismatches": []},
-    }))
+    })
 
+
+def _run_check_with_gaps(git_repo, fixture_task_path, monkeypatch):
+    from acceptance.config import RunConfig
+
+    monkeypatch.setattr(
+        RunConfig, "build_client", lambda self, completion_fn=None: _gap_client()
+    )
     assert main([
         "check", "--task", fixture_task_path,
         "--base", git_repo["base"], "--head", git_repo["head"],
     ]) == 0
 
-    instruction_file = git_repo["path"] / ".acceptance" / "next-instruction.md"
-    assert instruction_file.is_file()
-    written = instruction_file.read_text()
-    assert "Handle the empty case" in written  # the gap
-    assert "Must fail if: raises IndexError on an empty input" in written  # its test
-    assert "Update the builder declaration after the changes." in written
-    # The §16 report's pointer now names the file rather than "(none)".
-    out = capsys.readouterr().out
-    assert ".acceptance/next-instruction.md" in out
 
-
-def test_check_writes_no_instruction_file_when_nothing_is_wrong(
-    git_repo, fixture_task_path, capsys, stub_model
+def test_check_writes_no_instruction_file_even_when_the_review_has_gaps(
+    git_repo, fixture_task_path, capsys, monkeypatch
 ):
-    """A checker that finds nothing has nothing to instruct, so no file is
-    written and the report still reads "(none)"."""
-    assert main([
-        "check", "--task", fixture_task_path,
-        "--base", git_repo["base"], "--head", git_repo["head"],
-    ]) == 0
+    """The push is gone. This is exactly the case that used to write the file."""
+    _run_check_with_gaps(git_repo, fixture_task_path, monkeypatch)
 
     assert not (git_repo["path"] / ".acceptance" / "next-instruction.md").exists()
+    out = capsys.readouterr().out
+    assert "acceptance recommendation --criterion gap-ob" in out
+    assert "next-instruction.md" not in out
+
+
+def test_a_stale_instruction_file_is_removed_and_the_removal_reported(
+    git_repo, fixture_task_path, capsys, stub_model
+):
+    """The case the old `test_cli.py:565` missed, and the point of the migration.
+
+    That test asserted the file was absent after a clean run, but passed only
+    because the fixture repo was fresh — it never had one. Here the repo ALREADY
+    contains a stale file, which is the state every repo that ran the previous
+    version is in. Left alone it keeps asserting gaps that no longer exist,
+    contradicting a clean report; both cannot be true and only the report is
+    entitled to speak.
+    """
+    stale = git_repo["path"] / ".acceptance" / "next-instruction.md"
+    stale.parent.mkdir(parents=True, exist_ok=True)
+    stale.write_text("# Next instruction\n\nSomething that is no longer true.\n")
+
+    assert main([
+        "check", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+    ]) == 0
+
+    assert not stale.exists()
+    # Visible, not silent — it touched a file in the user's repo.
+    assert "Removed a stale" in capsys.readouterr().out
+
+
+def test_the_removal_leaves_the_report_as_the_only_statement_of_status(
+    git_repo, fixture_task_path, capsys, stub_model
+):
+    """A clean run starting from a repo that already contains the file: nothing
+    is left on disk to contradict the report."""
+    stale = git_repo["path"] / ".acceptance" / "next-instruction.md"
+    stale.parent.mkdir(parents=True, exist_ok=True)
+    stale.write_text("# Next instruction\n\nStale gaps.\n")
+
+    assert main([
+        "check", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+    ]) == 0
+
+    assert not stale.exists()
     assert "Recommended next instruction: (none)" in capsys.readouterr().out
+
+
+def test_recommendation_returns_the_stored_prescription_for_a_criterion(
+    git_repo, fixture_task_path, capsys, monkeypatch
+):
+    """Retrieval reads review state — no re-run, no model call."""
+    import json
+
+    _run_check_with_gaps(git_repo, fixture_task_path, monkeypatch)
+    capsys.readouterr()
+
+    assert main(["recommendation", "--criterion", "gap-ob"]) == 0
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["obligation_id"] == "gap-ob"
+    # Prose values, not flattened tokens: the reasoning is what makes it usable.
+    assert payload["plausible_defect"] == "raises IndexError on an empty input"
+    assert payload["required_assertions"] == ["assert handle([]) == []"]
+    assert payload["boundary_conditions"] == "zero elements"
+    assert payload["expected_output"] == "an empty result, not an error"
+
+
+def test_recommendation_for_an_unknown_criterion_is_empty_not_an_error(
+    git_repo, fixture_task_path, capsys, monkeypatch
+):
+    """A strongly-supported obligation earns no recommendation, and asking about
+    one is a reasonable thing for an agent to do."""
+    _run_check_with_gaps(git_repo, fixture_task_path, monkeypatch)
+    capsys.readouterr()
+
+    assert main(["recommendation", "--criterion", "no-such-obligation"]) == 0
+    assert capsys.readouterr().out.strip() == "{}"
+
+
+def test_two_retrievals_over_unchanged_state_are_byte_identical(
+    git_repo, fixture_task_path, capsys, monkeypatch
+):
+    _run_check_with_gaps(git_repo, fixture_task_path, monkeypatch)
+    capsys.readouterr()
+
+    assert main(["recommendation", "--criterion", "gap-ob"]) == 0
+    first = capsys.readouterr().out
+    assert main(["recommendation", "--criterion", "gap-ob"]) == 0
+    second = capsys.readouterr().out
+
+    assert first == second
+
+
+def test_recommendation_defaults_to_the_most_recently_stored_review(
+    git_repo, fixture_task_path, capsys, monkeypatch
+):
+    """The no-argument form has to be the useful one: run check, then pull the
+    detail on a criterion it just reported."""
+    _run_check_with_gaps(git_repo, fixture_task_path, monkeypatch)
+    capsys.readouterr()
+
+    assert main(["recommendation", "--criterion", "gap-ob", "--format", "text"]) == 0
+
+    out = capsys.readouterr().out
+    assert "raises IndexError on an empty input" in out
+    assert "assert handle([]) == []" in out
+
+
+def test_recommendation_without_a_stored_review_fails_cleanly(
+    monkeypatch, tmp_path, capsys
+):
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["recommendation", "--criterion", "anything"]) == 1
+    assert "no stored review" in capsys.readouterr().err
