@@ -233,11 +233,12 @@ class ObservingClient(ModelClient):
     keying and determinism controls are untouched.
     """
 
-    observed: list[Any] = []
-
-    def model_post_init(self, __context: Any) -> None:  # pragma: no cover - pydantic hook
-        super().model_post_init(__context)
-        object.__setattr__(self, "observed", [])
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        # Per instance, never a class attribute: a shared mutable default would
+        # leak one run's observations into the next one's snapshot and make every
+        # run look identical — stability faked by the measuring instrument.
+        self.observed: list[Any] = []
 
     def complete(self, messages, response_model, partition=None, parse_as=None):
         result = super().complete(messages, response_model, partition, parse_as)
