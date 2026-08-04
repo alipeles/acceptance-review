@@ -660,19 +660,116 @@ def test_two_retrievals_over_unchanged_state_are_byte_identical(
     assert first == second
 
 
-def test_recommendation_defaults_to_the_most_recently_stored_review(
-    git_repo, fixture_task_path, capsys, monkeypatch
+def _store_review_with(tmp_path, revision, criterion, defect):
+    """Write a review straight into the store, so a test can control what is
+    stored and in what order without running a review to get it there."""
+    from acceptance.review_state import Review, TestRecommendation
+    from acceptance.review_store import ReviewStore
+
+    review = Review(
+        mode="local",
+        reviewed_revision=revision,
+        recommendations=[
+            TestRecommendation(
+                obligation_id=criterion,
+                criterion="A criterion",
+                required_inputs="inputs",
+                boundary_conditions="edges",
+                expected_output="output",
+                required_assertions=["assert True"],
+                plausible_defect=defect,
+                repo_conventions="conventions",
+            )
+        ],
+    )
+    return ReviewStore(tmp_path / ".acceptance" / "cache" / "reviews").write(review)
+
+
+def test_retrieval_reads_the_named_revision_and_not_a_recomputation(
+    monkeypatch, tmp_path, capsys
 ):
-    """The no-argument form has to be the useful one: run check, then pull the
-    detail on a criterion it just reported."""
-    _run_check_with_gaps(git_repo, fixture_task_path, monkeypatch)
-    capsys.readouterr()
+    """Two stored reviews disagree about the same criterion, so reading the
+    wrong one — or recomputing instead of reading — is observable.
 
-    assert main(["recommendation", "--criterion", "gap-ob", "--format", "text"]) == 0
+    The previous version of this test stored a single review, which cannot
+    distinguish "read the stored state" from "recomputed and happened to agree".
+    """
+    import json
 
-    out = capsys.readouterr().out
-    assert "raises IndexError on an empty input" in out
-    assert "assert handle([]) == []" in out
+    monkeypatch.chdir(tmp_path)
+    _store_review_with(tmp_path, "a" * 40, "ob-1", "the OLDER defect")
+    _store_review_with(tmp_path, "b" * 40, "ob-1", "the NEWER defect")
+
+    assert main(["recommendation", "--criterion", "ob-1", "--revision", "a" * 40]) == 0
+    assert json.loads(capsys.readouterr().out)["plausible_defect"] == "the OLDER defect"
+
+    assert main(["recommendation", "--criterion", "ob-1", "--revision", "b" * 40]) == 0
+    assert json.loads(capsys.readouterr().out)["plausible_defect"] == "the NEWER defect"
+
+
+def test_retrieval_makes_no_model_call(monkeypatch, tmp_path, capsys):
+    """Retrieval reads state; it never re-runs the review. That is the whole
+    reason the pull is cheap, so it is asserted rather than assumed."""
+    from acceptance import cli
+    from acceptance.config import RunConfig
+
+    monkeypatch.chdir(tmp_path)
+    _store_review_with(tmp_path, "a" * 40, "ob-1", "a defect")
+
+    def explode(self, completion_fn=None):
+        raise AssertionError("retrieval built a model client")
+
+    monkeypatch.setattr(RunConfig, "build_client", explode)
+    monkeypatch.setattr(
+        cli, "run_review", lambda *a, **k: (_ for _ in ()).throw(
+            AssertionError("retrieval re-ran the review pipeline")
+        )
+    )
+
+    assert main(["recommendation", "--criterion", "ob-1"]) == 0
+    assert "a defect" in capsys.readouterr().out
+
+
+def test_retrieval_without_a_revision_uses_the_newest_stored_review(
+    monkeypatch, tmp_path, capsys
+):
+    """Oldest-vs-newest has to be observable, so the store holds two reviews
+    that disagree, written in a known order."""
+    import json
+    import os
+
+    monkeypatch.chdir(tmp_path)
+    older = _store_review_with(tmp_path, "a" * 40, "ob-1", "the OLDER defect")
+    newer = _store_review_with(tmp_path, "b" * 40, "ob-1", "the NEWER defect")
+    # Pin write order explicitly rather than trusting filesystem timestamp
+    # resolution, which is coarse enough on some platforms to make two writes
+    # in the same test look simultaneous.
+    os.utime(older, (1_000_000, 1_000_000))
+    os.utime(newer, (2_000_000, 2_000_000))
+
+    assert main(["recommendation", "--criterion", "ob-1"]) == 0
+
+    assert json.loads(capsys.readouterr().out)["plausible_defect"] == "the NEWER defect"
+
+
+def test_the_newest_review_wins_regardless_of_filename_order(
+    monkeypatch, tmp_path, capsys
+):
+    """Reviews are keyed by revision, and revisions carry no order. A store that
+    sorted by name would pass the test above by accident, so here the newest
+    review is the alphabetically FIRST filename."""
+    import json
+    import os
+
+    monkeypatch.chdir(tmp_path)
+    older = _store_review_with(tmp_path, "z" * 40, "ob-1", "the OLDER defect")
+    newer = _store_review_with(tmp_path, "a" * 40, "ob-1", "the NEWER defect")
+    os.utime(older, (1_000_000, 1_000_000))
+    os.utime(newer, (2_000_000, 2_000_000))
+
+    assert main(["recommendation", "--criterion", "ob-1"]) == 0
+
+    assert json.loads(capsys.readouterr().out)["plausible_defect"] == "the NEWER defect"
 
 
 def test_recommendation_without_a_stored_review_fails_cleanly(
