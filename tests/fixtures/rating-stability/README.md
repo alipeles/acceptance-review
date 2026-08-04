@@ -42,23 +42,44 @@ Only 4 of 12 held the same rating throughout.
 
 ## How to read it
 
-Ratings moved in both directions, and the corpus separates three distinct causes.
-A fix must handle all three, and must not collapse them:
+Ratings moved in both directions, but the corpus's central finding is that the
+movement is **not symmetric noise**:
 
-1. **Real gaps the tool found correctly.** `fixed-command-surface` (run 1) and
-   `default-to-most-recent-review` (run 2) were genuine — the second caught a
-   test that did not verify its own name. The tool earned these. **A fix that
-   stabilises ratings by making the judge less sensitive would lose them.**
-2. **False negatives.** Run 1 rated `default-to-most-recent-review` STRONG on
-   the evidence run 2 correctly called `nominal`. Instability is not only noise
-   around a true value; at least one run was simply wrong.
-3. **Movement with no change in evidence.** `remove-stale-next-instruction-file`
-   fell STRONG → partial in run 3 while neither the behaviour nor its test
-   changed — only *other* tests in the same file did. `no-speculative-writing`
-   fell in the very run that added a test supporting it.
+> **In 7 of the 8 unstable obligations, the LOW rating was the correct one.**
 
-The cleanest reproduction is run 2 → run 3: the diff is one test file, the
-stale-removal test within it is untouched, and its obligation still moves.
+Every case where a rating fell turned out to be the judge finally noticing a hole
+that had been there all along — including a `--json` code path that deleted a
+file in the user's repo and reported nothing. The `strongly supported` ratings
+are the unreliable ones. The tool errs toward "looks fine", which is far more
+dangerous than noise and is the opposite of what the churn suggests at a glance.
+
+This matters for how a fix is judged. The tempting reading — "ratings bounce
+around, damp them down" — is backwards. Three distinct causes, which a fix must
+not collapse:
+
+1. **Real gaps, correctly found, on both the up and down moves.** `fixed-command-surface`
+   (run 1), `default-to-most-recent-review` (run 2), and all three of run 3's.
+   The second caught a test that stored a single review while claiming to verify
+   "the most recent" — a test that did not verify its own name. **A fix that
+   stabilises ratings by making the judge less sensitive would lose every one of
+   these.**
+2. **False negatives, which are the real defect.** Run 1 rated
+   `default-to-most-recent-review` STRONG on the evidence run 2 correctly called
+   `nominal`; runs 1 and 2 both rated `remove-stale-next-instruction-file` STRONG
+   while a silent deletion sat in the code. The bug is not that ratings move — it
+   is that STRONG is issued when it has not been earned.
+3. **Possible genuine noise.** Only `byte-identical-retrievals` survives as a
+   candidate, and given the record above it should be treated as unsettled
+   rather than as an established example.
+
+### The trap this corpus exists to record
+
+Each run's `judgement.md` holds what I concluded *at the time*, including where I
+was wrong. Run 3's was rewritten: I first dismissed all three findings as noise,
+reasoning that the diff was purely additive and added tests cannot weaken
+evidence. Both premises are true; **the conclusion does not follow**, and acting
+on it would have shipped the silent deletion. That inference is the thing most
+likely to be repeated by whoever picks this up.
 
 ## Caveats
 
