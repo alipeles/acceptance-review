@@ -127,6 +127,26 @@ was delivered gets a **superseding issue** (`M7.3.r1` supersedes `M7.3`), not an
 edit in place: the original acceptance check genuinely passed, and that record is
 worth keeping. See #34 → #167.
 
+**Tool defects found by dogfooding hang off a subsystem umbrella**, one per area
+of `src/acceptance/`, labelled `umbrella` and holding its children as GitHub
+sub-issues. Dogfooding generates defects faster than they can be fixed, and they
+cluster: several children of one umbrella touch the same file, share one prompt,
+and force the same transcript re-record, so they are sequenced together rather
+than independently.
+
+| umbrella | area |
+|---|---|
+| #181 | decomposition — `requirement/` |
+| #182 | test discovery & mapping — `evidence/discovery.py`, `mapping.py` |
+| #183 | evidence judgement — `evidence/discrimination.py`, `strength.py` |
+| #184 | determinism & reproducibility — `llm.py`, `serialization.py`, `partition.py` |
+| #185 | findings model, verdict & presentation — `coverage/`, `verdict.py`, `report.py` |
+| #186 | benchmark — `benchmark/` |
+
+File a new defect **as a child of its umbrella**, not standalone. Mapping and
+evidence judgement are deliberately separate umbrellas: #167's Gate 2 showed they
+fail independently — a byte-identical mapped set with a flipped judgement over it.
+
 Which milestone proves which §13.5 demonstration scenario:
 
 | # | Scenario | Proven by |
