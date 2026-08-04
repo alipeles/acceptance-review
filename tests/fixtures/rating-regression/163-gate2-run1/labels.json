@@ -1,0 +1,179 @@
+{
+  "obligations": [
+    {
+      "id": "constrain-echoed-ids",
+      "description": "Each model stage that echoes back a supplied id constrains that response field to the ids supplied for that call.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/coverage/test_recommendations.py::test_weak_criterion_gets_a_fully_populated_recommendation",
+        "tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating",
+        "tests/evidence/test_discrimination.py::test_discriminating_is_true_if_any_defect_is_caught",
+        "tests/evidence/test_discrimination.py::test_non_discriminating_input_is_judged_non_discriminating_with_a_reason",
+        "tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it",
+        "tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations",
+        "tests/evidence/test_mapping.py::test_unknown_ids_are_dropped",
+        "tests/test_llm.py::test_the_schema_sent_to_the_provider_has_no_ref_indirection",
+        "tests/test_supplied_ids.py::test_a_foreign_id_does_not_validate_against_the_constrained_schema",
+        "tests/test_supplied_ids.py::test_a_list_valued_id_field_constrains_its_items",
+        "tests/test_supplied_ids.py::test_a_single_supplied_id_is_still_sent_as_an_enum",
+        "tests/test_supplied_ids.py::test_each_partition_constrains_test_ids_to_its_own_batch",
+        "tests/test_supplied_ids.py::test_supplied_ids_become_an_enum_on_the_field_the_model_sees",
+        "tests/test_supplied_ids.py::test_the_schema_asked_for_differs_from_the_shape_parsed"
+      ]
+    },
+    {
+      "id": "allowed-set-from-supplied-ids",
+      "description": "The allowed-id set for a call is built from the ids that call itself supplied.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/coverage/test_recommendations.py::test_weak_criterion_gets_a_fully_populated_recommendation",
+        "tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating",
+        "tests/evidence/test_discrimination.py::test_discriminating_is_true_if_any_defect_is_caught",
+        "tests/evidence/test_discrimination.py::test_non_discriminating_input_is_judged_non_discriminating_with_a_reason",
+        "tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it",
+        "tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations",
+        "tests/evidence/test_mapping.py::test_unknown_ids_are_dropped",
+        "tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived",
+        "tests/test_supplied_ids.py::test_an_empty_supplied_set_leaves_the_field_unconstrained"
+      ]
+    },
+    {
+      "id": "reject-foreign-id",
+      "description": "An id outside the supplied set is never accepted as a judgment about anything.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/coverage/test_open_questions.py::test_unknown_question_id_in_response_is_dropped",
+        "tests/coverage/test_unrequested.py::test_change_the_model_judges_requested_is_not_emitted",
+        "tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating",
+        "tests/evidence/test_discrimination.py::test_discriminating_is_true_if_any_defect_is_caught",
+        "tests/evidence/test_discrimination.py::test_non_discriminating_input_is_judged_non_discriminating_with_a_reason",
+        "tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it",
+        "tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations",
+        "tests/evidence/test_mapping.py::test_unknown_ids_are_dropped",
+        "tests/test_supplied_ids.py::test_a_foreign_id_does_not_validate_against_the_constrained_schema",
+        "tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped",
+        "tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response",
+        "tests/test_supplied_ids.py::test_scan_finds_ids_that_were_never_supplied",
+        "tests/test_supplied_ids.py::test_scan_reports_each_unusable_id_once",
+        "tests/test_supplied_ids.py::test_the_schema_asked_for_differs_from_the_shape_parsed"
+      ]
+    },
+    {
+      "id": "record-as-answer-not-obtained",
+      "description": "An answer that could not be honoured is recorded as an answer not obtained rather than as a negative judgment.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls",
+        "tests/test_config.py::test_provenance_reports_the_controls_the_provider_honoured",
+        "tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers",
+        "tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped",
+        "tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response",
+        "tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id"
+      ]
+    },
+    {
+      "id": "unhonored-is-not-a-negative-answer",
+      "description": "An answer that could not be honoured does not read as a substantive negative answer.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls",
+        "tests/test_config.py::test_provenance_reports_the_controls_the_provider_honoured",
+        "tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers",
+        "tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable",
+        "tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id"
+      ]
+    },
+    {
+      "id": "retain-usable-judgments",
+      "description": "Usable judgments returned alongside an unhonored answer are retained.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/evidence/test_discrimination.py::test_an_obligation_the_model_omits_is_conservatively_non_discriminating",
+        "tests/evidence/test_mapping.py::test_the_per_call_results_are_merged",
+        "tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched",
+        "tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response"
+      ]
+    },
+    {
+      "id": "partitioned-calls-constrain-their-own-ids",
+      "description": "When a stage request is partitioned, each call constrains its response to the ids in its own partition.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it",
+        "tests/evidence/test_mapping.py::test_changing_the_batch_size_changes_every_request_key",
+        "tests/evidence/test_mapping.py::test_each_batch_is_recorded_as_its_own_request",
+        "tests/evidence/test_mapping.py::test_every_test_is_judged_against_every_obligation_across_the_calls",
+        "tests/evidence/test_mapping.py::test_repeating_a_run_reuses_the_recorded_batches",
+        "tests/evidence/test_mapping.py::test_the_per_call_results_are_merged",
+        "tests/evidence/test_mapping.py::test_the_tests_are_split_across_several_calls",
+        "tests/test_config.py::test_provenance_of_an_unpartitioned_run_reports_no_partition_size",
+        "tests/test_config.py::test_provenance_reports_the_partition_size_the_run_actually_used",
+        "tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived",
+        "tests/test_supplied_ids.py::test_each_partition_constrains_test_ids_to_its_own_batch"
+      ]
+    },
+    {
+      "id": "unhonored-leaves-indeterminate",
+      "description": "An obligation whose judgment could not be honoured is left indeterminate rather than reported as lacking evidence.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/evidence/test_discrimination.py::test_an_obligation_the_model_omits_is_conservatively_non_discriminating",
+        "tests/test_config.py::test_provenance_of_a_run_that_made_no_model_call_is_indeterminate",
+        "tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched",
+        "tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable",
+        "tests/test_supplied_ids.py::test_an_unusable_answer_leaves_the_obligation_indeterminate",
+        "tests/test_verdict.py::test_coverage_gap_is_incomplete",
+        "tests/test_verdict.py::test_unresolved_open_question_blocks_positive_and_needs_clarification"
+      ]
+    },
+    {
+      "id": "indeterminate-blocks-clean-verdict",
+      "description": "A review holding an indeterminate judgment does not reach a clean completion verdict.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/evidence/test_discrimination.py::test_an_obligation_the_model_omits_is_conservatively_non_discriminating",
+        "tests/test_config.py::test_provenance_of_a_run_that_made_no_model_call_is_indeterminate",
+        "tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched",
+        "tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean",
+        "tests/test_verdict.py::test_coverage_gap_is_incomplete",
+        "tests/test_verdict.py::test_unresolved_open_question_blocks_positive_and_needs_clarification"
+      ]
+    },
+    {
+      "id": "name-the-stage-and-id",
+      "description": "The review names the stage and the id that could not be honoured.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls",
+        "tests/test_report.py::test_unresolved_open_questions_lead_the_instruction",
+        "tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped",
+        "tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response",
+        "tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable",
+        "tests/test_supplied_ids.py::test_scan_finds_ids_that_were_never_supplied",
+        "tests/test_supplied_ids.py::test_scan_reports_each_unusable_id_once",
+        "tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id"
+      ]
+    }
+  ],
+  "gaps": []
+}

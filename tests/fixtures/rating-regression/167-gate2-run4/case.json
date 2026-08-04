@@ -1,0 +1,7 @@
+{
+  "corpus_run": "167-gate2-run4",
+  "base_revision": "839ea47",
+  "head_revision": "52c52b8",
+  "judgement": "tests/fixtures/rating-stability/167-gate2-run4/judgement.md for the three flagged obligations, plus run 5's rewritten judgement.md, which establishes that this run's strongly supported for replace-written-file-with-command is correct.",
+  "summary": "The first clear evidence of the false-positive direction: three obligations flagged, only one real. Also the run whose strongly supported rating run 5 wrongly overturned, which makes it the corpus's strongest positive anchor for a STRONG label."
+}

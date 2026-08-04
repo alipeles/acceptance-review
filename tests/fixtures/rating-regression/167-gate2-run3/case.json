@@ -1,0 +1,7 @@
+{
+  "corpus_run": "167-gate2-run3",
+  "base_revision": "839ea47",
+  "head_revision": "95b880a",
+  "judgement": "tests/fixtures/rating-stability/167-gate2-run3/judgement.md — REWRITTEN. The corrected reading is ground truth: all three findings were real gaps. The original reading, kept at the bottom of that file, called them tool defects ('movement with no change in evidence') and would have shipped the silent --json deletion. Where the two readings disagree, the corrected one governs this case.",
+  "summary": "Run 3 of #167's Gate 2. Three of twelve obligations fell below `strongly supported`, and the corpus confirms all three were real gaps — including `remove-stale-next-instruction-file`, which it calls the most serious finding in the corpus: `--json` mode deleted a file in the user's repo and printed nothing, because the removal notice sat on the text branch only. The remaining nine are recorded as strongly supported and are not disputed by the judgement, which is what lets this single case bound a permissive judge and a pessimistic one at the same time."
+}

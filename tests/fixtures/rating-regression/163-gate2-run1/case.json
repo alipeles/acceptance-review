@@ -1,0 +1,7 @@
+{
+  "corpus_run": "163-gate2-run1",
+  "base_revision": "4d13ba1",
+  "head_revision": "41cd0da",
+  "judgement": "tests/fixtures/rating-stability/163-gate2-run1/judgement.md \u2014 a clean run, all ten obligations addressed and strongly supported, open question resolved, no recommended tests.",
+  "summary": "The negative control. It carries no gaps at all, which is exactly what makes it bite: a pessimistic judge that flags obligations here has nothing to match against and loses gap precision. Kept as a control because one clean run is not evidence of stability \u2014 it was never re-run."
+}

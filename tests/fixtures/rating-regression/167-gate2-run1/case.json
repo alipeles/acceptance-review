@@ -1,0 +1,7 @@
+{
+  "corpus_run": "167-gate2-run1",
+  "base_revision": "839ea47",
+  "head_revision": "07075a6",
+  "judgement": "tests/fixtures/rating-stability/167-gate2-run1/judgement.md, including the retrospective added after run 3, which records that this run's strongly supported for default-to-most-recent-review was a false negative \u2014 the rating was wrong, not merely unstable.",
+  "summary": "The first #167 Gate 2 run. Two obligations were flagged and both findings were real; five more carried strongly supported ratings the corpus later established were unearned, making this the run with the most false negatives."
+}

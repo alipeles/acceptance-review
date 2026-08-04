@@ -1,0 +1,170 @@
+{
+  "obligations": [
+    {
+      "id": "replace-written-file-with-command",
+      "description": "Replace the written file `.acceptance/next-instruction.md` with the `acceptance recommendation --criterion <id> [--format json|text]` command surface for retrieving a criterion's recommendation on demand, defaulting to JSON.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "A WRONG VERDICT, corrected. Run 5's judgement.md was rewritten; its corrected reading is ground truth and states that run 5's partially supported is 'not a defensible difference of judgement; it is wrong about what the test does', and that run 4's strongly supported is correct. Runs 4 and 5 are one commit apart with byte-identical mapped tests, and the discrimination stage named the same defect in both and judged it oppositely \u2014 so a single flipped boolean produced the whole rating. This label deliberately contradicts the run's own output.",
+      "candidate_tests": [
+        "tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps",
+        "tests/test_cli.py::test_json_is_the_default_format_when_none_is_requested",
+        "tests/test_cli.py::test_the_spec_names_the_command_the_cli_actually_accepts"
+      ]
+    },
+    {
+      "id": "fixed-command-surface",
+      "description": "Keep the recommendation retrieval command surface fixed to the specified command name and arguments in the specification.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/test_cli.py::test_a_command_name_the_spec_does_not_document_is_rejected",
+        "tests/test_cli.py::test_an_undocumented_format_is_rejected",
+        "tests/test_cli.py::test_criterion_is_required",
+        "tests/test_cli.py::test_json_is_the_default_format_when_none_is_requested",
+        "tests/test_cli.py::test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact",
+        "tests/test_cli.py::test_the_spec_names_the_command_the_cli_actually_accepts"
+      ]
+    },
+    {
+      "id": "no-speculative-writing",
+      "description": "Ensure recommendation retrieval performs no speculative writes so nothing can go stale.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/benchmark/test_coverage.py::test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo",
+        "tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps",
+        "tests/test_cli.py::test_retrieval_makes_no_model_call",
+        "tests/test_cli.py::test_retrieval_writes_nothing_into_the_repo"
+      ]
+    },
+    {
+      "id": "retrieve-from-stored-review-state",
+      "description": "Return a recommendation from stored review state on demand without re-running the review.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/test_cli.py::test_check_persists_the_review_to_the_store",
+        "tests/test_cli.py::test_recommendation_returns_the_stored_prescription_for_a_criterion",
+        "tests/test_cli.py::test_recommendation_without_a_stored_review_fails_cleanly",
+        "tests/test_cli.py::test_retrieval_makes_no_model_call",
+        "tests/test_cli.py::test_retrieval_reads_the_named_revision_and_not_a_recomputation",
+        "tests/test_cli.py::test_retrieval_without_a_revision_uses_the_newest_stored_review",
+        "tests/test_cli.py::test_the_newest_review_wins_regardless_of_filename_order",
+        "tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical",
+        "tests/test_review_store.py::test_rerun_over_the_same_head_overwrites_in_place",
+        "tests/test_review_store.py::test_review_round_trips_through_the_store"
+      ]
+    },
+    {
+      "id": "preserve-prose-structured-fields",
+      "description": "Keep the recommendation's structured fields as discrete keys with their prose values intact.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage",
+        "tests/test_cli.py::test_recommendation_returns_the_stored_prescription_for_a_criterion",
+        "tests/test_report.py::test_every_test_evidence_line_shows_a_tier",
+        "tests/test_report.py::test_open_questions_and_recommendations_are_numbered"
+      ]
+    },
+    {
+      "id": "discoverable-retrieval-in-output",
+      "description": "Make the review's own output tell a reader how to obtain the recommendation detail.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps",
+        "tests/test_cli.py::test_render_classify_output",
+        "tests/test_cli.py::test_report_shell_renders_all_sections_present_and_empty",
+        "tests/test_report.py::test_a_carried_forward_obligation_says_so_and_names_the_revision",
+        "tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered"
+      ]
+    },
+    {
+      "id": "remove-stale-next-instruction-file",
+      "description": "Remove any pre-existing `.acceptance/next-instruction.md` left by an earlier version and report that it was removed.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/benchmark/test_coverage.py::test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo",
+        "tests/test_cli.py::test_a_stale_instruction_file_is_removed_and_the_removal_reported",
+        "tests/test_cli.py::test_the_removal_is_reported_in_json_mode_too",
+        "tests/test_cli.py::test_the_removal_leaves_the_report_as_the_only_statement_of_status",
+        "tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered"
+      ]
+    },
+    {
+      "id": "removal-leaves-report-as-only-status",
+      "description": "Leave the review's own output as the only statement of status when starting from a repo that already contains `.acceptance/next-instruction.md`.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/benchmark/test_coverage.py::test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo",
+        "tests/test_cli.py::test_a_stale_instruction_file_is_removed_and_the_removal_reported",
+        "tests/test_cli.py::test_report_shell_renders_all_sections_present_and_empty",
+        "tests/test_cli.py::test_the_removal_is_reported_in_json_mode_too",
+        "tests/test_cli.py::test_the_removal_leaves_the_report_as_the_only_statement_of_status",
+        "tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered"
+      ]
+    },
+    {
+      "id": "empty-result-for-missing-recommendation",
+      "description": "Return an empty result when a criterion has no recommendation.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/test_cli.py::test_recommendation_for_an_unknown_criterion_is_empty_not_an_error",
+        "tests/test_report.py::test_empty_review_renders_the_full_shell",
+        "tests/test_review_store.py::test_read_missing_revision_returns_none"
+      ]
+    },
+    {
+      "id": "default-to-most-recent-review",
+      "description": "Default retrieval to the most recently stored review when the caller does not name one.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/test_cli.py::test_retrieval_without_a_revision_uses_the_newest_stored_review",
+        "tests/test_cli.py::test_the_newest_review_wins_regardless_of_filename_order",
+        "tests/test_review_store.py::test_rerun_over_the_same_head_overwrites_in_place"
+      ]
+    },
+    {
+      "id": "byte-identical-retrievals",
+      "description": "Produce byte-identical output for repeated retrievals over unchanged review state.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/test_cli.py::test_recommendation_returns_the_stored_prescription_for_a_criterion",
+        "tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical",
+        "tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical",
+        "tests/test_review_store.py::test_rerun_over_the_same_head_overwrites_in_place"
+      ]
+    },
+    {
+      "id": "spec-no-longer-describes-written-file",
+      "description": "Keep the specification from describing the recommendation as a written file.",
+      "explicit": true,
+      "evidence_class": "strongly_supported",
+      "evidence_rationale": "Rated strongly supported by this run, and its judgement.md does not dispute it. Recorded as the run's reading rather than as a separately established fact.",
+      "candidate_tests": [
+        "tests/test_cli.py::test_check_writes_no_instruction_file_even_when_the_review_has_gaps",
+        "tests/test_cli.py::test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact",
+        "tests/test_cli.py::test_the_spec_no_longer_names_a_written_file",
+        "tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered"
+      ]
+    }
+  ],
+  "gaps": []
+}
