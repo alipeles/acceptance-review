@@ -24,7 +24,6 @@ htmlcov/
 .acceptance/cache/
 # The checker's own output when dogfooding this repo (M7.3) — a per-run
 # artifact regenerated from the current review, not a source file to commit.
-.acceptance/next-instruction.md
 .acceptance/reviews/
 *.local
 

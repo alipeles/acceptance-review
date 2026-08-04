@@ -76,6 +76,13 @@ def render_report(review: Review) -> str:
             lines.append(f"  {index}. {rec.criterion}")
             lines.append(f"       inputs:  {rec.required_inputs}")
             lines.append(f"       detects: {rec.plausible_defect}")
+            # §9.5's single-iteration goal depends on the agent KNOWING the full
+            # prescription exists. Naming the command per recommendation — rather
+            # than once at the foot of the report — is what makes the pull happen
+            # at the moment the reader decides to act on this criterion.
+            lines.append(
+                f"       full detail: acceptance recommendation --criterion {rec.obligation_id}"
+            )
         lines.append("")
 
     if completion is not None and completion.limitations:
@@ -84,75 +91,39 @@ def render_report(review: Review) -> str:
             lines.append(f"  {index}. {limitation}")
         lines.append("")
 
-    lines.append(f"Recommended next instruction: {review.recommendation or '(none)'}")
+    # A command, never a file (M7.3.r1). The artifact this used to name was
+    # written speculatively and never cleaned up, so a clean run printed
+    # "(none)" while a stale file on disk still asserted gaps. Pointing at a
+    # command that reads current review state cannot go out of date.
+    if _has_gaps(review):
+        lines.append(
+            "Next: retrieve a criterion's full recommendation with\n"
+            "  acceptance recommendation --criterion <id>"
+        )
+    else:
+        lines.append("Recommended next instruction: (none)")
 
     return "\n".join(lines)
 
 
-def render_next_instruction(review: Review) -> str | None:
-    """The §10.1 step-12 next instruction, or None when there is nothing to do.
+def _has_gaps(review: Review) -> bool:
+    """Whether there is anything for the next iteration to act on.
 
-    A deliberately thin projection of the same Review `render_report` renders —
-    no new judgment, no model call, every line traced to a finding, an M7.1
-    recommendation, or an unresolved open question. What it adds over the §16
-    report is SELECTION and mood: the report says "here is everything I found,
-    you judge"; this says "here is what to do next", addressed to the coding
-    agent rather than the human reviewer. So it drops satisfied obligations,
-    advisory unrequested changes, and evidence limitations.
-
-    Kept beside `render_report` rather than in its own module because both are
-    the same concern (render a Review for a consumer) — and kept a SEPARATE
-    function because the two audiences diverge: terminal styling (M7.6) must
-    never reach a file on disk, and reviewer-facing explanations (#143) are
-    noise in an agent handoff.
-
-    Produced only when gaps exist (§10.1 step 12), keyed off M7.2's verdict so
-    there is no second definition of what counts as material.
+    Keyed off M7.2's verdict so there is no second definition of what counts as
+    material — but a non-positive verdict is not sufficient on its own. A review
+    with no obligations is `unable_to_determine` and has nothing to pull, so
+    pointing it at the retrieval command would advertise detail that does not
+    exist. Both conditions, exactly as the pushed instruction required them
+    before it was removed.
     """
-    if review.completion is not None and review.completion.verdict is CompletionVerdict.NO_MATERIAL_GAPS:
-        return None
-
-    gaps = [
-        f.related_obligation
-        for f in review.findings
-        if f.type == "coverage_gap" and f.related_obligation is not None
-    ]
-    unresolved = [q.question for q in review.open_questions if not q.resolved]
-    if not gaps and not review.recommendations and not unresolved:
-        return None
-
-    lines = ["# Next instruction", ""]
-    if review.completion is not None:
-        lines += [f"Review verdict: **{review.completion.verdict.value}**.", ""]
-
-    if unresolved:
-        lines.append("## Answer these first")
-        lines += [f"{i}. {q}" for i, q in enumerate(unresolved, start=1)]
-        lines += ["", "These are unresolved ambiguities in the task; the work cannot be "
-                  "judged complete until they are settled.", ""]
-
-    if gaps:
-        lines.append("## Implement")
-        lines += [f"{i}. {g}" for i, g in enumerate(gaps, start=1)]
-        lines.append("")
-
-    if review.recommendations:
-        lines.append("## Add these tests")
-        for i, rec in enumerate(review.recommendations, start=1):
-            lines.append(f"{i}. **{rec.criterion}**")
-            lines.append(f"   - Inputs: {rec.required_inputs}")
-            if rec.boundary_conditions:
-                lines.append(f"   - Boundaries: {rec.boundary_conditions}")
-            lines.append(f"   - Expected: {rec.expected_output}")
-            for assertion in rec.required_assertions:
-                lines.append(f"   - Assert: {assertion}")
-            lines.append(f"   - Must fail if: {rec.plausible_defect}")
-            if rec.repo_conventions:
-                lines.append(f"   - Conventions: {rec.repo_conventions}")
-        lines.append("")
-
-    lines.append("Update the builder declaration after the changes.")
-    return "\n".join(lines)
+    if review.completion is None:
+        return False
+    if review.completion.verdict is CompletionVerdict.NO_MATERIAL_GAPS:
+        return False
+    # A review with no obligations is `unable_to_determine` because there was
+    # nothing to assess, not because something is wrong — the one non-positive
+    # verdict with nothing to pull.
+    return bool(review.obligation_map)
 
 
 def _short(revision: str) -> str:

@@ -663,32 +663,32 @@ def test_the_shared_pipeline_partitions_the_mapping_call(tmp_path):
     ].count("\n### ")
 
 
-def test_the_shared_pipeline_writes_nothing_into_the_reviewed_repo(tmp_path):
-    """The next-instruction file (M7.3) is a CLI side effect, deliberately NOT
-    part of `run_review`. The benchmark runs the same review over fixture
+def test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo(tmp_path):
+    """The reviewed repo is an input, never an output.
+
+    This mattered for the benchmark first: it runs the same review over fixture
     repos, so a write inside the pipeline would mutate the very fixtures the
     scores are computed from.
 
-    Asserts BOTH halves of that boundary in one test: the pipeline writes
-    nothing, AND the CLI over the same repo does write. Checking only the
-    first half would pass just as well if the feature were broken and nothing
-    ever wrote anywhere -- isolation that is trivially true proves nothing.
+    It used to assert both halves of a boundary — pipeline writes nothing, CLI
+    writes `next-instruction.md` — because an isolation that is trivially true
+    proves nothing. M7.3.r1 removed that write entirely, so the contrast is gone
+    and the claim is now the stronger one: NOTHING writes into the repo, on
+    either path. The CLI's one remaining repo-touching behaviour is *removing* a
+    legacy file, covered in `tests/test_cli.py`.
     """
     case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
     repo = Path(case.inputs.repo)
-    instruction = repo / ".acceptance" / "next-instruction.md"
 
     def snapshot() -> set:
         return {p.relative_to(repo) for p in repo.rglob("*") if ".git" not in p.parts}
 
-    # The pipeline leaves the reviewed repo untouched...
     before = snapshot()
     classify_case(case, client_finding_nothing())
     assert snapshot() == before
-    assert not instruction.exists()
 
-    # ...while the CLI, over that same repo and a review with a real gap,
-    # does write the instruction. The boundary is real, not vacuous.
+    # The same repo through the CLI, with a review that has a real gap — the
+    # case that used to write a file.
     task_file = tmp_path / "task.md"
     task_file.write_text(case.inputs.task_text)
     run_check(
@@ -714,19 +714,5 @@ def test_the_shared_pipeline_writes_nothing_into_the_reviewed_repo(tmp_path):
             "_Mismatches": {"mismatches": []},
         }),
     )
-    assert instruction.is_file()
-
-    # ...and SKIPS that branch when the review has nothing to instruct, over
-    # the same repo. Without this, a CLI that wrote unconditionally would pass:
-    # the write would be a side effect, just not a conditional one.
-    instruction.unlink()
-    run_check(
-        task=str(task_file),
-        base=case.inputs.base_revision,
-        head=case.inputs.head_revision,
-        config=RunConfig(),
-        store=ReviewStore(tmp_path / "reviews-2"),
-        repo=repo,
-        client=client_finding_nothing(),
-    )
-    assert not instruction.exists()
+    assert snapshot() == before
+    assert not (repo / ".acceptance" / "next-instruction.md").exists()
