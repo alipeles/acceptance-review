@@ -337,7 +337,13 @@ class SampledBenchmarkReport(PersistableModel):
     runs: list[BenchmarkReport] = Field(default_factory=list)
 
 
-def _metric_stats(values: list[float | None]) -> MetricStats:
+def metric_stats(values: list[float | None]) -> MetricStats:
+    """Mean and spread over the present samples.
+
+    Public because the instability harness (#189) measures over its own figures
+    and must not grow a second variance path — the constraint is that statistics
+    come from here, and a private helper would have forced a copy.
+    """
     present = [v for v in values if v is not None]
     if not present:
         return MetricStats(mean=None, spread=None)
@@ -359,7 +365,7 @@ def disclose_variance(reports: list[BenchmarkReport]) -> SampledBenchmarkReport:
         )
     (mode,) = modes
 
-    stats = {field: _metric_stats([getattr(r, field) for r in reports]) for field in _METRIC_FIELDS}
+    stats = {field: metric_stats([getattr(r, field) for r in reports]) for field in _METRIC_FIELDS}
 
     return SampledBenchmarkReport(
         sample_count=len(reports),

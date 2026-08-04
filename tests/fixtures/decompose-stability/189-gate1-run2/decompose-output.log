@@ -1,0 +1,24 @@
+Obligations:
+  [functional/explicit] harness-runs-review-pipeline-repeatedly: The harness runs the review pipeline over one input repeatedly across a chosen set of models and reports how much the resulting evidence judgements move.
+  [functional/explicit] measure-three-movement-sources-separately: The harness measures resampling the same request, perturbing the request in a way irrelevant to the watched obligation, and swapping the model as three separate sources of movement.
+  [functional/explicit] report-only-does-not-decide-acceptability: The harness reports figures without deciding whether any figure is acceptable.
+  [invariant/explicit] use-genuinely-independent-draws: Variance is measured across genuinely independent draws.
+  [invariant/explicit] avoid-replayed-response-as-measurement-source: A measurement over replayed draws reflects the recording rather than the judge, so the harness's variance measurement is based on live independent draws.
+  [compatibility/explicit] reuse-benchmark-disclose-variance-path: The statistics come from the existing benchmark variance path `benchmark/scoring.py::disclose_variance`.
+  [compatibility/explicit] preserve-evidence-judgement-production: The harness measures evidence judgements without changing how any evidence judgement is produced.
+  [compatibility/explicit] manual-deliberate-invocation: The harness is invoked deliberately and does not run automatically in CI or on a schedule.
+  [functional/explicit] report-distribution-per-obligation-per-model: For one input, the harness reports the distribution of evidence classes per obligation across the configured runs, separately for each model.
+  [functional/explicit] report-discrimination-verdict-distributions: The harness reports the distribution of each plausible defect's discrimination verdict, not only the obligation's final evidence class.
+  [functional/explicit] report-perturbation-sensitivity-figure: Perturbation sensitivity is reported as the proportion of obligations whose evidence class changed under the stated perturbation.
+  [functional/explicit] report-cross-model-agreement-within-model-variance: Cross-model agreement per obligation is reported alongside within-model variance.
+  [functional/explicit] record-input-models-runs-and-seeds: The report records the input, the model set, the run count, and the seeds that produced it.
+  [invariant/explicit] support-later-comparison: The recorded report is suitable for comparing a later measurement against it.
+  [compatibility/explicit] write-no-repository-output: A run of the harness writes nothing into the repository under review.
+  [functional/explicit] caller-supplies-configured-input-models-runs-perturbation: The caller supplies the input under measurement, the set of models, the number of runs per model, and the perturbation to apply.
+  [boundary/explicit] defaults-are-present-for-all-callersupplied-parameters: Each caller-supplied parameter has a default.
+  [human_review/explicit] defaults-are-cheap-to-run: The defaults together are cheap enough to run without first deciding a budget.
+
+Open questions:
+  ? oq-default-values: What should the defaults be for the input under measurement, model set, runs per model, and perturbation?
+  ? oq-perturbation-definition: What exact perturbation(s) should the harness support, and how should the caller specify the perturbation to apply?
+  ? oq-output-format: What output format should the report use (CLI text, JSON, file artifact, or something else)?

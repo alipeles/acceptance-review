@@ -1,0 +1,29 @@
+Obligations:
+  [functional/explicit] harness-runs-review-pipeline-repeatedly: Build a harness that runs the review pipeline repeatedly over one input.
+  [functional/explicit] harness-supports-chosen-model-set: Build a harness that runs across a chosen set of models.
+  [functional/explicit] harness-reports-judgement-movement: Build a harness that reports how much judgements move.
+  [functional/explicit] separate-movement-sources: Measure resampling, irrelevant perturbation, and model swapping as separate sources of movement.
+  [functional/explicit] whole-pipeline-surface: Measure the whole review pipeline rather than only the evidence stages.
+  [invariant/explicit] decomposition-instability-observed: Treat decomposition instability as an observed property of the pipeline.
+  [functional/explicit] report-only-no-acceptance-decision: Keep the harness as a reporting tool that does not decide acceptability.
+  [invariant/explicit] independent-draws: Measure variance only across genuinely independent draws.
+  [functional/explicit] use-live-model-calls: Use live model calls rather than replayed responses for measurement.
+  [compatibility/explicit] reuse-existing-variance-path: Compute statistics through the existing benchmark variance path.
+  [compatibility/explicit] reuse-existing-obligation-alignment: Compare obligations across runs using the existing alignment function.
+  [invariant/explicit] compare-by-obligation-content: Compare obligations across runs by what they say rather than by their identifiers.
+  [functional/explicit] caller-supplies-input-models-runs-perturbation: Accept the measured input, model set, run count, and perturbation from the caller.
+  [functional/explicit] defaults-for-input-models-runs-perturbation: Provide defaults for the input, model set, run count, and perturbation parameters.
+  [boundary/explicit] single-default-model: Use a single model as the default model set.
+  [boundary/explicit] small-default-run-count: Use a small number of runs as the default run count.
+  [functional/explicit] distribution-of-evidence-classes-per-obligation: Report the distribution of evidence classes per obligation across configured runs, separately for each model.
+  [functional/explicit] distribution-of-discrimination-verdicts: Report the distribution of each plausible defect's discrimination verdict.
+  [functional/explicit] report-obligations-present-in-some-runs-only: Report obligations that appear in some runs of one task file but not others.
+  [functional/explicit] report-open-questions-present-in-some-runs-only: Report open questions that appear in some runs of one task file but not others.
+  [functional/explicit] perturbation-sensitivity-figure: Report perturbation sensitivity as the proportion of watched judgements that changed under the stated perturbation.
+  [functional/explicit] cross-model-agreement-reported: Report cross-model agreement per obligation alongside within-model variance.
+  [docs_config/explicit] record-run-provenance: Record the input, model set, run count, and seeds used to produce the report.
+  [invariant/explicit] no-repository-writes: Keep harness execution from writing into the repository under review.
+
+Open questions:
+  ? perturbation-input-shape: What exact form should the caller-supplied perturbation take, and how should the harness apply it to the input under measurement?
+  ? report-format: What output format should the harness use for the report, and where should it be written or returned?

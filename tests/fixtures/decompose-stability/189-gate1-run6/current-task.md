@@ -50,9 +50,9 @@ belongs to the task that changes the judge.
 - Implementation
 - The caller supplies the input under measurement, the set of models, the number
   of runs per model, and the perturbation to apply. Each has a default.
-- The default model set is a single model and the default run count is three, so
-  that measuring more than one model is something the caller opts into rather
-  than the cost of a default run.
+- The default model set is a single model and the default run count is a small
+  number, so that measuring more than one model is something the caller opts
+  into rather than the cost of a default run.
 - For one input, the harness reports the distribution of evidence classes per
   obligation across the configured runs, separately for each model.
 - The harness reports the distribution of each plausible defect's discrimination

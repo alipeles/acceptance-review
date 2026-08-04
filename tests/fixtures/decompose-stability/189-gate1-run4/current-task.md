@@ -16,14 +16,6 @@ run of this very task showed the decompose stage dropping two open questions in
 response to an edit that touched neither, so decomposition instability is observed
 rather than hypothetical.
 
-Not every difference between two runs is a defect of the same kind, and the
-harness must not blur them. A run that loses a requirement is failing at its job.
-A run that states the same requirements as three obligations where another stated
-them as one is merely shaped differently. These have different fixes — the first
-is a quality problem in the judge and has to be fixed on its own terms, the second
-is what a determinism layer exists to pin down — so a single blended variance
-figure would send both to the wrong place.
-
 The harness reports. It does not decide whether a figure is acceptable; that
 belongs to the task that changes the judge.
 
@@ -50,25 +42,16 @@ belongs to the task that changes the judge.
 - Implementation
 - The caller supplies the input under measurement, the set of models, the number
   of runs per model, and the perturbation to apply. Each has a default.
-- The default model set is a single model and the default run count is three, so
-  that measuring more than one model is something the caller opts into rather
-  than the cost of a default run.
+- The default model set is a single model and the default run count is a small
+  number, so that measuring more than one model is something the caller opts
+  into rather than the cost of a default run.
 - For one input, the harness reports the distribution of evidence classes per
   obligation across the configured runs, separately for each model.
 - The harness reports the distribution of each plausible defect's discrimination
   verdict, not only the obligation's final evidence class.
-- The harness reports which obligations appear in some runs of one task file but
-  not others.
-- The harness reports which open questions appear in some runs of one task file
-  but not others.
-- Every difference the harness finds between two runs is classified as either a
-  content difference or a shape difference.
-- A content difference is a requirement, open question or judgement present in one
-  run and absent in another.
-- A shape difference is the same content partitioned differently between runs,
-  such as one obligation in one run and two in another.
-- Content differences and shape differences are reported as separate figures, and
-  are never combined into a single variance number.
+- The harness reports how the decomposition itself varies across runs of one task
+  file: which obligations appear in some runs but not others, and which open
+  questions do.
 - Perturbation sensitivity is reported as its own figure: the proportion of
   watched judgements that changed under the stated perturbation.
 - Cross-model agreement per obligation is reported alongside within-model

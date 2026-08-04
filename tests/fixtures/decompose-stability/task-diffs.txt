@@ -1,0 +1,225 @@
+=== run1 -> run2 ===
+--- 189-gate1-run1/current-task.md	2026-08-04 13:49:56
++++ 189-gate1-run2/current-task.md	2026-08-04 13:50:06
+@@ -2,19 +2,15 @@
+ Every claim we hold about evidence-judgement instability is a hand-judged
+ anecdote that cost a full `check` run plus a manual verdict on each finding. The
+ discrimination stage is about to change, and nothing today can tell us whether
+-that change helped. Build a harness that runs the review pipeline over a fixed
+-input repeatedly, across a chosen set of models, and reports how much the
+-resulting evidence judgements move.
++that change helped.
+ 
+-Three sources of movement are measured and reported separately, because they are
+-different defects and one blended figure would hide all three:
++Build a harness that runs the review pipeline over one input repeatedly, across a
++chosen set of models, and reports how much the resulting evidence judgements
++move. It measures three sources of movement separately — resampling the same
++request, perturbing the request in a way that is irrelevant to the obligation
++being watched, and swapping the model — because they are different defects and
++one blended figure would hide all three.
+ 
+-- **resample variance** — the same request drawn N times;
+-- **perturbation sensitivity** — a change to the request that is semantically
+-  irrelevant to a given obligation, such as adding a test that maps to a
+-  different obligation;
+-- **model sensitivity** — the same input judged by different models.
+-
+ The harness reports. It does not decide whether a figure is acceptable; that
+ belongs to the task that changes the judge.
+ 
+@@ -23,34 +19,30 @@
+   response is a recording, so a measurement taken over replayed draws measures
+   the recording rather than the judge.
+ - The statistics come from the variance path the benchmark harness already has,
+-  rather than a second one written for this task.
+-- A reported measurement states the conditions that produced it — the input, the
+-  models, the number of runs, the seeds — so that a later measurement can be
+-  compared against it.
+-- The number of runs and the set of models are chosen by the caller, and the
+-  default is cheap enough to run without first deciding a budget.
+-- The harness leaves no trace in the repository it reviews.
++  `benchmark/scoring.py::disclose_variance`, rather than a second one written for
++  this task.
+ 
+ ## Scope exclusions
+ - Changing how any evidence judgement is produced. This task measures; the judge
+   is untouched.
+ - Running the harness automatically, in CI or on a schedule. It issues live model
+   calls and is invoked deliberately.
+-- Interpreting the figures it produces, or setting a threshold a rating must meet.
+-- Reducing the variance it finds.
++- Interpreting the figures it produces, setting a threshold a rating must meet,
++  or reducing the variance it finds.
+ 
+ ## Completion expectations
+ - Implementation
+-- For one fixed input, the harness reports the distribution of evidence classes
+-  per obligation across N runs, separately for each model.
++- The caller supplies the input under measurement, the set of models, the number
++  of runs per model, and the perturbation to apply. Each has a default, and the
++  defaults together are cheap enough to run without first deciding a budget.
++- For one input, the harness reports the distribution of evidence classes per
++  obligation across the configured runs, separately for each model.
+ - The harness reports the distribution of each plausible defect's discrimination
+   verdict, not only the obligation's final evidence class.
+-- Perturbation sensitivity is reported as its own figure: given a stated
+-  irrelevant perturbation, the proportion of obligations whose evidence class
+-  changed.
++- Perturbation sensitivity is reported as its own figure: the proportion of
++  obligations whose evidence class changed under the stated perturbation.
+ - Cross-model agreement per obligation is reported alongside within-model
+   variance.
+ - The report records the input, the model set, the run count and the seeds that
+-  produced it.
+-- The run count and the model set are supplied by the caller and have a default.
++  produced it, so that a later measurement can be compared against it.
+ - A run of the harness writes nothing into the repository under review.
+
+=== run2 -> run3 ===
+--- 189-gate1-run2/current-task.md	2026-08-04 13:50:06
++++ 189-gate1-run3/current-task.md	2026-08-04 13:49:43
+@@ -33,8 +33,10 @@
+ ## Completion expectations
+ - Implementation
+ - The caller supplies the input under measurement, the set of models, the number
+-  of runs per model, and the perturbation to apply. Each has a default, and the
+-  defaults together are cheap enough to run without first deciding a budget.
++  of runs per model, and the perturbation to apply. Each has a default.
++- The default model set is a single model and the default run count is a small
++  number, so that measuring more than one model is something the caller opts
++  into rather than the cost of a default run.
+ - For one input, the harness reports the distribution of evidence classes per
+   obligation across the configured runs, separately for each model.
+ - The harness reports the distribution of each plausible defect's discrimination
+
+=== run3 -> run4 ===
+--- 189-gate1-run3/current-task.md	2026-08-04 13:49:43
++++ 189-gate1-run4/current-task.md	2026-08-04 13:56:33
+@@ -1,16 +1,21 @@
+ # Task
+-Every claim we hold about evidence-judgement instability is a hand-judged
+-anecdote that cost a full `check` run plus a manual verdict on each finding. The
++Every claim we hold about the review's judgement instability is a hand-judged
++anecdote that cost a full run plus a manual verdict on each finding. The
+ discrimination stage is about to change, and nothing today can tell us whether
+ that change helped.
+ 
+ Build a harness that runs the review pipeline over one input repeatedly, across a
+-chosen set of models, and reports how much the resulting evidence judgements
+-move. It measures three sources of movement separately — resampling the same
+-request, perturbing the request in a way that is irrelevant to the obligation
+-being watched, and swapping the model — because they are different defects and
+-one blended figure would hide all three.
++chosen set of models, and reports how much its judgements move. It measures three
++sources of movement separately — resampling the same request, perturbing the
++request in a way that is irrelevant to the judgement being watched, and swapping
++the model — because they are different defects and one blended figure would hide
++all three.
+ 
++The measured surface is the whole pipeline, not only the evidence stages. A Gate 1
++run of this very task showed the decompose stage dropping two open questions in
++response to an edit that touched neither, so decomposition instability is observed
++rather than hypothetical.
++
+ The harness reports. It does not decide whether a figure is acceptable; that
+ belongs to the task that changes the judge.
+ 
+@@ -21,10 +26,13 @@
+ - The statistics come from the variance path the benchmark harness already has,
+   `benchmark/scoring.py::disclose_variance`, rather than a second one written for
+   this task.
++- Obligations are compared across runs by what they say rather than by their
++  identifiers, which decompose assigns afresh on every run. The comparison used is
++  the existing `benchmark/alignment.py::align_obligations`.
+ 
+ ## Scope exclusions
+-- Changing how any evidence judgement is produced. This task measures; the judge
+-  is untouched.
++- Changing how any judgement is produced. This task measures; the pipeline is
++  untouched.
+ - Running the harness automatically, in CI or on a schedule. It issues live model
+   calls and is invoked deliberately.
+ - Interpreting the figures it produces, setting a threshold a rating must meet,
+@@ -41,8 +49,11 @@
+   obligation across the configured runs, separately for each model.
+ - The harness reports the distribution of each plausible defect's discrimination
+   verdict, not only the obligation's final evidence class.
++- The harness reports how the decomposition itself varies across runs of one task
++  file: which obligations appear in some runs but not others, and which open
++  questions do.
+ - Perturbation sensitivity is reported as its own figure: the proportion of
+-  obligations whose evidence class changed under the stated perturbation.
++  watched judgements that changed under the stated perturbation.
+ - Cross-model agreement per obligation is reported alongside within-model
+   variance.
+ - The report records the input, the model set, the run count and the seeds that
+
+=== run4 -> run5 ===
+--- 189-gate1-run4/current-task.md	2026-08-04 13:56:33
++++ 189-gate1-run5/current-task.md	2026-08-04 13:58:58
+@@ -49,9 +49,10 @@
+   obligation across the configured runs, separately for each model.
+ - The harness reports the distribution of each plausible defect's discrimination
+   verdict, not only the obligation's final evidence class.
+-- The harness reports how the decomposition itself varies across runs of one task
+-  file: which obligations appear in some runs but not others, and which open
+-  questions do.
++- The harness reports which obligations appear in some runs of one task file but
++  not others.
++- The harness reports which open questions appear in some runs of one task file
++  but not others.
+ - Perturbation sensitivity is reported as its own figure: the proportion of
+   watched judgements that changed under the stated perturbation.
+ - Cross-model agreement per obligation is reported alongside within-model
+
+=== run5 -> run6 ===
+--- 189-gate1-run5/current-task.md	2026-08-04 13:58:58
++++ 189-gate1-run6/current-task.md	2026-08-04 14:12:09
+@@ -16,6 +16,14 @@
+ response to an edit that touched neither, so decomposition instability is observed
+ rather than hypothetical.
+ 
++Not every difference between two runs is a defect of the same kind, and the
++harness must not blur them. A run that loses a requirement is failing at its job.
++A run that states the same requirements as three obligations where another stated
++them as one is merely shaped differently. These have different fixes — the first
++is a quality problem in the judge and has to be fixed on its own terms, the second
++is what a determinism layer exists to pin down — so a single blended variance
++figure would send both to the wrong place.
++
+ The harness reports. It does not decide whether a figure is acceptable; that
+ belongs to the task that changes the judge.
+ 
+@@ -53,6 +61,14 @@
+   not others.
+ - The harness reports which open questions appear in some runs of one task file
+   but not others.
++- Every difference the harness finds between two runs is classified as either a
++  content difference or a shape difference.
++- A content difference is a requirement, open question or judgement present in one
++  run and absent in another.
++- A shape difference is the same content partitioned differently between runs,
++  such as one obligation in one run and two in another.
++- Content differences and shape differences are reported as separate figures, and
++  are never combined into a single variance number.
+ - Perturbation sensitivity is reported as its own figure: the proportion of
+   watched judgements that changed under the stated perturbation.
+ - Cross-model agreement per obligation is reported alongside within-model
+
+=== run6 -> run7 ===
+--- 189-gate1-run6/current-task.md	2026-08-04 14:12:09
++++ 189-gate1-run7/current-task.md	2026-08-04 14:29:43
+@@ -50,9 +50,9 @@
+ - Implementation
+ - The caller supplies the input under measurement, the set of models, the number
+   of runs per model, and the perturbation to apply. Each has a default.
+-- The default model set is a single model and the default run count is a small
+-  number, so that measuring more than one model is something the caller opts
+-  into rather than the cost of a default run.
++- The default model set is a single model and the default run count is three, so
++  that measuring more than one model is something the caller opts into rather
++  than the cost of a default run.
+ - For one input, the harness reports the distribution of evidence classes per
+   obligation across the configured runs, separately for each model.
+ - The harness reports the distribution of each plausible defect's discrimination
