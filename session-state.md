@@ -15,8 +15,17 @@ Clear it out when the task lands rather than letting it accrete.
 ## Task in flight
 
 **#195** — the decompose-stability corpus as a regression suite. Branch
-`195-decompose-regression-suite`, three commits, **Gate 2 clean at `ac3a71d`**.
-Not yet pushed, no PR open. Then #193, #191, #192.
+`195-decompose-regression-suite`, pushed, **PR #200 open, CI green, Gate 2 clean
+at `ac3a71d`**. Awaiting human review/merge. Then #193, #191, #192.
+
+**CI failed once on the first attempt and passed on re-run of the identical
+commit** — `test_materialization_ignores_compiled_python`, recorded against #129
+with the sharpened diagnosis: two *different* tests now fail the same way on the
+same fixture, so the flake is in `materialize_archetype` for
+`07-declaration-mismatch`, not in either test. Ruled out the `__pycache__`
+exclusion and local state (pristine clone passes, 734 tests). CI is Python 3.12,
+local is 3.10 — unexplained and worth checking whether 3.12 writes something into
+the fixture tree that `ignore_patterns` misses.
 
 **Gate 1 failed and the human directed proceeding past it** (option 2 of three:
 fix #178 first / proceed / re-run). Reasoning: a decompose fix judged before its
