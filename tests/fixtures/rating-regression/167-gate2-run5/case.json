@@ -1,0 +1,7 @@
+{
+  "corpus_run": "167-gate2-run5",
+  "base_revision": "839ea47",
+  "head_revision": "dd0a6a5",
+  "judgement": "tests/fixtures/rating-stability/167-gate2-run5/judgement.md \u2014 REWRITTEN. The corrected reading is ground truth: the single partially supported rating was a wrong M5.2 verdict, not a #144 compound-obligation artifact as first concluded. Where the two readings disagree, the corrected one governs.",
+  "summary": "The sharpest localization in the corpus. One commit from run 4 with byte-identical mapped tests, the discrimination stage named the same defect and judged it oppositely, and because the strength reduce is a pure function that one flipped boolean caused the whole rating. Ground truth is that every obligation here is strongly supported."
+}

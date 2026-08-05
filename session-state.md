@@ -12,6 +12,34 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
+## STATUS: PR #197 is open and CI is green. Awaiting human review/merge.
+
+Seven commits on `190-rating-corpus-regression-suite`, plus two on `main`
+(`c5cc707`, `7e337f7` — committing dogfood runs and session state).
+
+**Gate 2 ran three rounds and never came back clean**, for two tracked reasons,
+both recorded and neither a defect in this change:
+
+- **#153** — six scope exclusions demand test evidence that cannot exist in
+  principle. Writing tests moved them `unsupported` → `partially supported` and
+  no further. An exclusion cannot be discharged by testing.
+- **#191** — round 3 fell 20 → 3 `strongly supported` on a diff that only added
+  tests. Isolated to M5.2's per-defect verdict: mapping had *more* links (36→40)
+  and defect enumeration was identical (2.04/obligation), while `would_be_caught`
+  went 87% → 57%. Cleaner isolation than the corpus's own run-5 case.
+
+**Do not read round 3's fall as proof the tests are fine.** DR-180's named
+fallacy is exactly this, and the corpus says the LOW rating was correct in 7 of 8
+unstable obligations. The lower ratings may be right.
+
+### The two CI findings — the design's real cost
+
+1. CI needs `fetch-depth: 0`; the default shallow clone has no corpus history.
+2. **All six head revisions are squash-orphaned** — unreachable from `main`, and
+   resolving locally only because this working copy still had the branch objects.
+   Fixed by pushing `corpus/<run>` tags. **Those tags are load-bearing**;
+   deleting one removes a case. Guarded by a test.
+
 ## Task in flight
 
 **#190 — turn the rating-stability corpus into an executable regression suite.**
@@ -99,12 +127,52 @@ the real diff, with `7de7d71` as a negative control (missed all 4 hunks):
 ## The plan
 
 1. `current-task.md` rewrite + Gate 1 re-run — **done** (run 5).
-2. Materializer: corpus run dir → worktree at head → `BenchmarkCase`. The
-   analogue of `materialize_archetype`.
-3. `labels.json` per run from its `judgement.md`.
-4. Stub judges (always-STRONG, never-STRONG) + per-case assertions.
-5. `163-gate2-run1` control carries the same assertion kinds.
-6. Corpus README updated.
+2. Materializer — **done**. `src/acceptance/benchmark/corpus.py`,
+   `tests/benchmark/test_corpus.py` (6 passing). Full suite 628 passed, lint
+   clean, no leaked worktrees.
+3. `labels.json` per run — **done, all 6**. Generated from each run's own log
+   (descriptions + candidate tests) with the judgements applied as overrides;
+   generator was throwaway, in the scratchpad.
+4. Stub judges + assertions — **done**. `tests/benchmark/degenerate_judges.py`,
+   `tests/benchmark/test_rating_regression.py`.
+5. `163-gate2-run1` control — **done**, carries the precision direction.
+6. Corpus README — **done**, now states exactly what is and is not read.
+
+**Implementation complete. 661 passed (was 628), lint clean, no leaked
+worktrees. Gate 2 is the remaining step, then a PR.**
+
+### The figures that prove the suite is not vacuous
+
+| judge | classes produced | evidence_agreement | gap_recall | gap_precision |
+|---|---|---|---|---|
+| always-STRONG | 70 × `strongly_supported` | 0.771 (= 54/70) | **0.0** | None |
+| never-STRONG | 70 × `nominally_supported` | 0.043 (= 3/70) | 1.0 | **0.229** |
+
+Each direction is caught by a *different* metric — the permissive judge by gap
+recall, the pessimistic one by gap precision. 0.771 is exactly the 54
+strongly-supported labels over 70 obligations, so the agreement figure is doing
+real arithmetic rather than landing on a coincidence.
+
+**Uncommitted.** Nothing on the branch is committed yet; main is at `7e337f7`.
+
+### Stub-judge design, worked out but not yet built
+
+`strength.py` returns `unsupported` when an obligation has no mapped test, so a
+degenerate judge cannot just answer the discrimination call — it must also
+return mappings, and #163 constrains id-bearing response fields to the ids
+actually supplied. **The robust way is to read the allowed ids out of the
+request schema** (`kwargs["response_format"]["json_schema"]["schema"]`, as
+`client_capturing_schemas` in `tests/support.py` does) and answer for exactly
+those, rather than parsing the prompt text. Verify this before building on it.
+
+### Known epistemic weakness in the labels — raise with the human
+
+The nine non-gap obligations in `167-gate2-run3` are labelled
+`strongly_supported` because run 3's judgement *does not dispute* them, not
+because the corpus positively establishes them. The pessimistic-judge direction
+leans on those labels. Run 5 is the one case with a positive STRONG ground truth
+(it says run 4's `strongly supported` for `preserve-prose-structured-fields` is
+correct), so that case anchors the direction properly and should carry weight.
 
 ## Gate 1 run 5 — open-question triage
 

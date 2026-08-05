@@ -1,0 +1,7 @@
+{
+  "corpus_run": "167-gate2-run2",
+  "base_revision": "839ea47",
+  "head_revision": "7de7d71",
+  "judgement": "tests/fixtures/rating-stability/167-gate2-run2/judgement.md, with two corrections from later runs: spec-no-longer-describes-written-file was real (established by run 3) though run 2 called it noise, and byte-identical-retrievals was noise (confirmed when it returned to strongly supported in run 3 with no change).",
+  "summary": "An incremental re-run over a purely additive diff. Four obligations fell, a different four from run 1 \u2014 the observation that started #180. Two of the four were real gaps, one was noise, and one run 2 misjudged as noise."
+}

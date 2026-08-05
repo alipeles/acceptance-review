@@ -1,9 +1,29 @@
 # Rating-stability corpus
 
 Captured dogfood iterations, kept as **test data for fixing the instability they
-document** (#180, umbrella #183). Not currently read by any test — it is the
-evidence a fix has to be measured against, recorded while the judgements were
-still fresh.
+document** (#180, umbrella #183) — the evidence a fix has to be measured
+against, recorded while the judgements were still fresh.
+
+## What is read by a test, and what is not (#190)
+
+Every run here now backs a regression case in `tests/fixtures/rating-regression/`,
+scored by `tests/benchmark/test_rating_regression.py`. A case reads two files
+from its run:
+
+| file | read? | by what |
+|---|---|---|
+| `current-task.md` | **yes** — verbatim, as the case's task input | `benchmark/corpus.py` |
+| `revisions.txt` | **yes**, indirectly — each case pins the same head SHA, plus the base this file does not record | `tests/fixtures/rating-regression/*/case.json` |
+| `judgement.md` | **no, not mechanically.** Its conclusions were transcribed into `labels.json` by hand; each case's `case.json` names the judgement it came from, and for runs 3 and 5 which of the two preserved readings is ground truth | — |
+| `check-output.log` | **no.** Obligation text and candidate tests were transcribed from it once, when the labels were built | — |
+
+So the judgements are asserted, but the corpus files that carry them are still
+prose a human wrote and a human transcribed. **A finding recorded here does not
+reach the suite until someone adds it to a `labels.json`.**
+
+The cases are pinned to real commits in this repository rather than to copies of
+the source, so a rewritten history breaks them by name rather than shrinking the
+suite silently.
 
 **The reasoning lives in `docs/DR-180-evidence-judgement-instability.md`**; this
 README covers the layout and how to read the runs. The DR owns the analysis — the

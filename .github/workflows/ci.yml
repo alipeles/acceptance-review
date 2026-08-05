@@ -14,6 +14,14 @@ jobs:
     steps:
       # 1. Get the code onto the runner.
       - uses: actions/checkout@v4
+        with:
+          # Full history, not the default shallow clone: the #190 rating-regression
+          # cases are pinned to real commits in this repository and materialize a
+          # worktree at each one. Under fetch-depth: 1 those revisions do not exist
+          # and every case fails by name — which is the designed behaviour for a
+          # suite pinned to history, so the fix belongs here rather than in a
+          # skip-if-missing that would let the suite shrink silently.
+          fetch-depth: 0
 
       # 2. Install the Python the project targets (see plan §3.1).
       - uses: actions/setup-python@v5
