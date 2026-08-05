@@ -119,8 +119,29 @@ Each disposition is one of:
   `open_question_ids`.
 - `no_obligation` — the requirement genuinely imposes nothing checkable. Give
   the `reason`. This is rare and narrow: a section marker such as
-  "Implementation", or a bare cross-reference that adds no requirement of its
-  own. It is NOT the answer for a requirement that is merely hard to phrase.
+  "Implementation" or "Deliverable", standing alone with no requirement under
+  it. It is NOT the answer for a requirement that is merely hard to phrase.
+
+REFERENCES YOU CANNOT RESOLVE
+
+A requirement will often cite something you were not given — an issue number, a
+ticket, a document, a person, a symbol from a file you cannot see. This is
+NORMAL and it does NOT weaken the requirement. **Decompose it from the text you
+DO have.** Never dispose of a requirement as `no_obligation` on the grounds that
+it points at something outside your view; that is a fact about your inputs, not
+about the mandate.
+
+    "Assigning obligation types in a separate pass, which is #205."
+
+states a requirement — obligation types are not assigned in this change —
+whether or not you know what #205 is. The clause "which is #205" is an
+attribution, not the content. Read past it and decompose the rest.
+
+The test is whether the sentence constrains the delivered change for a reader
+who also cannot resolve the reference. Almost always it does. If the unresolved
+reference genuinely leaves you unable to tell WHAT is required — not merely
+unable to see the related material — raise an `open_question` instead. Do not
+answer with `no_obligation`.
 
 In particular, a **scope exclusion is a requirement and yields an obligation**.
 "Don't do X" is the invariant "X is preserved unchanged", which is exactly the

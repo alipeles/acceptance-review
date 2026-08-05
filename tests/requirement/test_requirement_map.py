@@ -301,3 +301,71 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
     # The markdown scaffolding the parse consumed does not reappear.
     assert "## Constraints" not in prompt
     assert "## Scope exclusions" not in prompt
+
+
+# --- the CLI renders the mapping as a mapping -------------------------------
+
+
+def _decomposition_with_a_shared_and_a_declined_requirement():
+    parsed = parse_task_file(TASK)
+    response = {
+        "obligations": [
+            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
+            _obligation("usd-format", "Format money as USD.", "Format money as USD"),
+        ],
+        "open_questions": [],
+        "requirement_dispositions": [
+            _disposition("task", "yielded", obligation_ids=["render-lines"]),
+            _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
+            _disposition("constraint-02", "no_obligation", reason="Covered by the CSV suite."),
+            _disposition("exclusion-01", "yielded", obligation_ids=["render-lines"]),
+            _disposition("completion-01", "yielded", obligation_ids=["usd-format"]),
+        ],
+    }
+    return decompose(parsed, _client_returning(response))
+
+
+def test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing():
+    from acceptance.cli import render_decomposition
+
+    output = render_decomposition(_decomposition_with_a_shared_and_a_declined_requirement())
+
+    for requirement_id in ("[task]", "[constraint-01]", "[constraint-02]", "[exclusion-01]"):
+        assert requirement_id in output, f"{requirement_id} is missing from the rendered mapping"
+    assert "NO OBLIGATION" in output
+    assert "Covered by the CSV suite." in output
+
+
+def test_the_cli_says_when_an_obligation_serves_other_requirements():
+    """Without this the same obligation appearing under three requirements reads
+    as three duplicates rather than as one obligation with three links, which is
+    the distinction DR-202 decision 2 turns on."""
+    from acceptance.cli import render_decomposition
+
+    output = render_decomposition(_decomposition_with_a_shared_and_a_declined_requirement())
+
+    assert "also serves exclusion-01" in output
+    assert "also serves completion-01" in output
+    # An obligation is never told it serves the requirement it is listed under.
+    assert "also serves task, exclusion-01" not in output
+
+
+def test_an_obligation_no_requirement_claims_is_still_shown():
+    """An unmapped obligation is an invention or a mapping failure — both are
+    findings. Dropping it would recreate the same invisibility on the other
+    axis."""
+    from acceptance.cli import render_decomposition
+
+    parsed = parse_task_file(TASK)
+    response = {
+        "obligations": [
+            _obligation("orphan", "An obligation no requirement claims.", "Render each invoice line."),
+        ],
+        "open_questions": [],
+        "requirement_dispositions": [],
+    }
+
+    output = render_decomposition(decompose(parsed, _client_returning(response)))
+
+    assert "Obligations mapped to no requirement:" in output
+    assert "orphan" in output
