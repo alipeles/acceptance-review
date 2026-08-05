@@ -121,3 +121,24 @@ def test_every_case_names_a_corpus_run_that_exists(case_dir):
 # `test_rating_regression.py`, not per case. Two cases — `167-gate2-run5` and
 # the `163-gate2-run1` control — are legitimately all-strong, so a per-case
 # version would have forced a label the corpus does not support.
+
+
+@pytest.mark.parametrize("case_dir", CASE_DIRS, ids=lambda p: p.name)
+def test_every_head_revision_is_kept_alive_by_a_tag(case_dir):
+    """Every corpus head was squash-merged, so none is reachable from `main`.
+    The `corpus/*` tags are the only thing keeping those objects alive — delete
+    one and a fresh clone loses the case entirely.
+
+    CI found this the direct way: a working copy had the objects because it had
+    the original branch, and the runner did not.
+    """
+    import subprocess
+
+    meta = load_corpus_meta(case_dir)
+    tag = f"corpus/{meta.corpus_run}"
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{tag}^{{commit}}"],
+        cwd=REPO, capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, f"{tag} is missing; {meta.corpus_run} will not survive a clone"
+    assert result.stdout.strip().startswith(meta.head_revision)

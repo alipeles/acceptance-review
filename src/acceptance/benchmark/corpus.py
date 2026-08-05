@@ -23,6 +23,13 @@ stops resolving fails its case by name (`UnresolvableRevisionError`) rather
 than skipping quietly — a regression suite that silently shrinks is worse than
 one that breaks.
 
+**The `corpus/*` tags are load-bearing. Do not delete them.** Every head
+revision here was squash-merged, so none is reachable from `main` — the tags are
+the only thing keeping those objects alive, and a fresh clone gets them only
+because the tags exist. CI must also check out with `fetch-depth: 0`; the default
+shallow clone has none of this history. Both facts were discovered the direct
+way, by CI failing on a clone that lacked what a working copy happened to have.
+
 ## Why a worktree
 
 `evidence/discovery.py` scans the **filesystem** for `test_*.py`, not the git
