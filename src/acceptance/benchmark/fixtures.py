@@ -118,7 +118,15 @@ def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
 
 def _replace_worktree(repo: Path, tree: Path) -> None:
     """Clear the working tree (keeping .git) and copy `tree` into it, so a
-    file removed between base and head is staged as a deletion by `git add -A`."""
+    file removed between base and head is staged as a deletion by `git add -A`.
+
+    `__pycache__` is excluded because it is build output, not source. It is
+    untracked, so it exists in a working copy only if something imported the
+    fixture's modules first — which made the "same fixture always materializes
+    to the same SHA" guarantee depend on test ordering rather than on content.
+    A fresh clone would materialize one SHA and a clone that had run the suite
+    once would materialize another.
+    """
     for entry in repo.iterdir():
         if entry.name == ".git":
             continue
@@ -126,7 +134,9 @@ def _replace_worktree(repo: Path, tree: Path) -> None:
             shutil.rmtree(entry)
         else:
             entry.unlink()
-    shutil.copytree(tree, repo, dirs_exist_ok=True)
+    shutil.copytree(
+        tree, repo, dirs_exist_ok=True, ignore=shutil.ignore_patterns("__pycache__", "*.py[cod]")
+    )
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:

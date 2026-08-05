@@ -99,3 +99,30 @@ def test_head_pytest_runs_with_the_intended_outcome(fixture_dir, tmp_path):
         assert result.returncode == 0, result.stdout + result.stderr
     else:
         assert result.returncode != 0, result.stdout + result.stderr
+
+
+def test_materialization_ignores_compiled_python(tmp_path):
+    """The same fixture must materialize to the same SHA whether or not its
+    modules have been imported.
+
+    `__pycache__` is untracked build output that appears only once something
+    compiles the fixture's sources, so including it made the determinism
+    guarantee depend on test ordering — a fresh clone and a clone that had run
+    the suite once produced different SHAs. It broke CI on main exactly that way.
+    """
+    import shutil
+
+    fixture = ARCHETYPES_DIR / "07-declaration-mismatch"
+    for cache in list(fixture.rglob("__pycache__")):
+        shutil.rmtree(cache)
+    without = materialize_archetype(fixture, tmp_path / "without").head_sha
+
+    cache_dir = fixture / "head" / "__pycache__"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    (cache_dir / "user_lookup.cpython-310.pyc").write_bytes(b"\x00compiled\x00")
+    try:
+        with_cache = materialize_archetype(fixture, tmp_path / "with").head_sha
+    finally:
+        shutil.rmtree(cache_dir)
+
+    assert with_cache == without
