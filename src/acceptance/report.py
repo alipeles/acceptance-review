@@ -20,6 +20,7 @@ from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     CompletionVerdict,
     Obligation,
+    RequirementMap,
     Review,
 )
 
@@ -40,10 +41,14 @@ def render_report(review: Review) -> str:
     if review.obligation_map:
         for index, obligation in enumerate(review.obligation_map, start=1):
             lines.append("")
-            lines.extend(_obligation_block(index, obligation))
+            lines.extend(_obligation_block(index, obligation, review.requirement_map))
     else:
         lines.append(_EMPTY)
     lines.append("")
+
+    if review.requirement_map is not None:
+        lines.extend(_mandate_coverage_block(review.requirement_map))
+        lines.append("")
 
     lines.append("Unrequested changes:")
     unrequested = [f for f in review.findings if f.type == UNREQUESTED_CHANGE]
@@ -195,13 +200,55 @@ def _delta_block(delta) -> list[str]:
     return lines
 
 
-def _obligation_block(index: int, obligation: Obligation) -> list[str]:
+def _mandate_coverage_block(requirement_map: RequirementMap) -> list[str]:
+    """Which requirements of the mandate produced nothing (M1.2.r1, DR-202).
+
+    This section exists because its absence was the defect. A requirement that
+    yielded no obligation used simply not to appear anywhere in the review, so a
+    breakdown covering 20 of 29 requirements read exactly like one covering all
+    29 — the reader was told nothing was missing because nothing was there to
+    say it. Rendering the empty case is the whole point: an `undisposed`
+    requirement is a claim about the REVIEW, not about the code, and it belongs
+    in front of the person who can act on it.
+    """
+    total = len(requirement_map.requirements)
+    if not total:
+        return []
+
+    unyielding = requirement_map.unyielding()
+    lines = [f"Mandate coverage: {total - len(unyielding)} of {total} requirements yielded obligations"]
+    if not unyielding:
+        lines.append(_EMPTY)
+        return lines
+
+    for index, entry in enumerate(unyielding, start=1):
+        requirement = requirement_map.requirement_for(entry.requirement_id)
+        text = requirement.text if requirement is not None else ""
+        lines.append(f"  {index}. [{entry.disposition.value}] {entry.requirement_id}: {text}")
+        if entry.reason:
+            lines.append(f"       reason: {entry.reason}")
+        if entry.open_question_ids:
+            lines.append(f"       raised: {', '.join(entry.open_question_ids)}")
+    return lines
+
+
+def _obligation_block(
+    index: int, obligation: Obligation, requirement_map: RequirementMap | None = None
+) -> list[str]:
     """One numbered obligation with both evidence axes nested beneath it.
 
     Evidence items are numbered `<obligation>.<item>` continuously across both
     axes, so every citation in the report has a unique handle."""
     lines = [f"  {index}. {obligation.description}"]
     item = 0
+
+    # Which requirements this obligation serves. Before M1.2.r1 the trace ran
+    # one way and only to a character offset, so auditing a breakdown meant
+    # reconciling obligations against the task file by hand.
+    if requirement_map is not None:
+        served = requirement_map.requirements_for_obligation(obligation.id)
+        if served:
+            lines.append(f"       requirements: {', '.join(served)}")
 
     # A carried-forward judgment is evidence about an OLDER head. Saying so on
     # the obligation itself, not only in the delta section, is what stops a

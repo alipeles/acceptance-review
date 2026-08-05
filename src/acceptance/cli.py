@@ -214,10 +214,13 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
 
 def render_decomposition(result: Decomposition) -> str:
     lines = ["Obligations:"]
+    requirement_map = result.requirement_map
     if result.obligations:
         for o in result.obligations:
             flag = "explicit" if o.explicit else "inferred"
-            lines.append(f"  [{o.type.value}/{flag}] {o.id}: {o.description}")
+            served = requirement_map.requirements_for_obligation(o.id)
+            trace = f"  <- {', '.join(served)}" if served else ""
+            lines.append(f"  [{o.type.value}/{flag}] {o.id}: {o.description}{trace}")
     else:
         lines.append("  (none)")
     lines.append("")
@@ -227,7 +230,39 @@ def render_decomposition(result: Decomposition) -> str:
             lines.append(f"  ? {q.id}: {q.question}")
     else:
         lines.append("  (none)")
+    lines.append("")
+    lines.extend(_render_unyielding(requirement_map))
     return "\n".join(lines)
+
+
+def _render_unyielding(requirement_map) -> list[str]:
+    """The requirements that produced no obligation.
+
+    Shown at Gate 1 because this is the number a task-file author acts on: a
+    requirement yielding nothing is usually badly worded rather than
+    unimportant, and until #202 it was invisible — the breakdown simply did not
+    mention it, and the reader had to reconcile 29 obligations against the file
+    by hand to notice.
+    """
+    total = len(requirement_map.requirements)
+    unyielding = requirement_map.unyielding()
+    if not total:
+        return []
+    lines = [
+        f"Requirements yielding no obligation: {len(unyielding)} of {total}",
+    ]
+    if not unyielding:
+        lines.append("  (none)")
+        return lines
+    for entry in unyielding:
+        requirement = requirement_map.requirement_for(entry.requirement_id)
+        text = requirement.text if requirement is not None else ""
+        lines.append(f"  [{entry.disposition.value}] {entry.requirement_id}: {text}")
+        if entry.reason:
+            lines.append(f"      reason: {entry.reason}")
+        if entry.open_question_ids:
+            lines.append(f"      raised: {', '.join(entry.open_question_ids)}")
+    return lines
 
 
 def run_diff(repo: str, base: str, head: str | None) -> ChangeSet:

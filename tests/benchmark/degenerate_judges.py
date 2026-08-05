@@ -80,6 +80,7 @@ def _decomposition(obligations: list[dict]) -> dict:
             for o in obligations
         ],
         "open_questions": [],
+        "requirement_dispositions": [],
     }
 
 

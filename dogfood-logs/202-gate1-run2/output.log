@@ -1,0 +1,48 @@
+Obligations:
+  [functional/explicit] obligation-flat-obligations-and-open-questions: `decompose` returns two flat outputs: a flat list of obligations and a flat list of open questions.  <- task
+  [invariant/explicit] obligation-cover-all-requirements: Every requirement in a task file is represented in the decomposition result through exactly one disposition.  <- task, completion-02
+  [functional/explicit] obligation-requirement-registry-from-parser: The requirement registry is derived from `requirement/task_file.py::parse_task_file`.  <- constraint-01
+  [invariant/explicit] obligation-requirement-ids-assigned-by-code: Requirement ids are assigned by the code rather than by the model.  <- constraint-02, completion-07
+  [functional/explicit] obligation-requirement-id-section-ordinal-parse-order: A requirement id is formed from its section and its ordinal within that section, in parse order.  <- constraint-03, completion-07
+  [functional/explicit] obligation-registry-entry-textspan: Each registry entry carries the `TextSpan` of the requirement it identifies.  <- constraint-04
+  [functional/explicit] obligation-many-to-many-requirement-obligation-link: The requirement-to-obligation relation is many-to-many, and an obligation serving two requirements is linked to both.  <- constraint-05, constraint-06, constraint-07, completion-05, completion-06
+  [invariant/explicit] obligation-single-disposition-per-requirement: Every requirement carries exactly one disposition.  <- constraint-08, completion-03
+  [functional/explicit] obligation-disposition-kinds: The disposition set consists of yielded obligations, deliberately yields none with a reason, or raised an open question instead.  <- constraint-09
+  [functional/explicit] obligation-mapping-persisted-in-review-state: The requirement-to-obligation mapping is persisted in the structured review state defined by `review_state.py` and `review_store.py`.  <- constraint-10, completion-10
+  [functional/explicit] obligation-mapping-rendered-in-section-16-report: The requirement-to-obligation mapping is rendered in the §16 report.  <- constraint-11, completion-04
+  [functional/explicit] obligation-user-prompt-typed-identified-fields: `requirement/obligations.py::_user_prompt` passes typed, identified fields.  <- constraint-12
+  [invariant/explicit] obligation-user-prompt-omits-parsed-source: `_user_prompt` excludes `parsed.source` from the data it passes.  <- constraint-13
+  [compatibility/explicit] obligation-decomposer-no-changeset: The decomposer receives no `ChangeSet`.  <- constraint-14, completion-08
+  [compatibility/explicit] obligation-decomposer-no-repo-path: The decomposer receives no repository path.  <- constraint-15
+  [compatibility/explicit] obligation-decomposer-no-head-revision: The decomposer receives no head revision.  <- constraint-16, completion-09
+  [compatibility/explicit] obligation-typed-schemas-are-pydantic: Typed schemas are implemented as pydantic models.  <- constraint-17
+  [regression/explicit] obligation-tests-no-live-model-calls: Tests issue no live model calls.  <- constraint-18
+  [regression/explicit] obligation-recorded-transcripts-rerecorded-on-prompt-change: Recorded transcripts invalidated by the changed prompt are re-recorded once.  <- constraint-19, completion-11, completion-12
+  [compatibility/explicit] obligation-obligation-content-fixed-representation-changes: The obligation content remains fixed while its representation changes.  <- exclusion-01
+  [human_review/explicit] obligation-open-question-no-citation-required: An open question does not need to cite where the task file fails to answer it.  <- exclusion-04
+  [docs_config/explicit] obligation-docs-record-resolved-requirement-id-decision: `docs/DR-202-decomposition-requirement-mapping.md` records the resolved requirement-id decision in place of listing it as open.  <- completion-13
+  [docs_config/explicit] obligation-docs-mark-accuracy-non-comparable: The decomposition-accuracy figure is marked non-comparable across this change where a reader encounters it.  <- completion-14
+
+Open questions:
+  (none)
+
+Requirements yielding no obligation: 9 of 44
+  [no_obligation] exclusion-02: Partitioning obligation derivation by requirement batch, which is #204.
+      reason: This is a scope note pointing to #204 rather than a standalone requirement.
+  [no_obligation] exclusion-03: Assigning obligation types in a separate pass, which is #205.
+      reason: This is a scope note pointing to #205 rather than a standalone requirement.
+  [no_obligation] exclusion-05: Reading the base revision during open-question resolution, which is #207.
+      reason: This is a scope note pointing to #207 rather than a standalone requirement.
+  [no_obligation] exclusion-06: - Deciding whether the decomposer receives base-revision code context, which is
+  #208.
+      reason: This is a scope note pointing to #208 rather than a standalone requirement.
+  [no_obligation] exclusion-07: De-duplicating semantically duplicate obligations, which is #144.
+      reason: This is a scope note pointing to #144 rather than a standalone requirement.
+  [no_obligation] exclusion-08: Aligning requirement ids across two versions of a task file, which is #209.
+      reason: This is a scope note pointing to #209 rather than a standalone requirement.
+  [no_obligation] exclusion-09: Rebuilding #195's regression suite to bind its labels to the mapping.
+      reason: This is a scope note about #195's regression suite rather than a standalone requirement.
+  [no_obligation] exclusion-10: Measuring whether decomposition recall improves as a result of this change.
+      reason: This is a scope note excluding a measurement goal rather than a checkable implementation requirement.
+  [no_obligation] completion-01: Implementation
+      reason: This is a section marker with no standalone requirement content.

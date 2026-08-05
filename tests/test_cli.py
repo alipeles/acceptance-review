@@ -524,7 +524,7 @@ def _gap_client():
             "id": "gap-ob", "description": "Handle the empty case",
             "type": "functional", "importance": "critical", "explicit": True,
             "observable_behavior": "...", "source_quote": "Do the thing.",
-        }], "open_questions": []},
+        }], "open_questions": [], "requirement_dispositions": []},
         "_Mappings": {"mappings": []},
         "_Discrimination": {"discriminations": []},
         "_Coverage": {"classifications": [{
@@ -942,3 +942,56 @@ def test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact():
     assert "acceptance recommendation --criterion <id>" in spec
     # The §10.1 step-12 wording that replaced the pushed artifact.
     assert "never pushed to a file that outlives the run that wrote it" in spec
+
+
+def test_the_pipeline_persists_the_requirement_map(git_repo, tmp_path, stub_model):
+    """Wiring, not the function (CLAUDE.md).
+
+    `decompose` building a mapping is worth nothing if `run_review` drops it on
+    the floor — the shape of hole defect injection keeps finding here. The stub
+    client accounts for no requirement at all, so every one of them must come
+    back `undisposed`: a review that persisted an empty or absent map would be
+    indistinguishable from one whose decomposer read the whole mandate, which is
+    the exact defect M1.2.r1 exists to close.
+    """
+    task = tmp_path / "task.md"
+    task.write_text(
+        "# Task\nRender each invoice line.\n\n"
+        "## Constraints\n- Format money as USD.\n- Keep the CSV export unchanged.\n\n"
+        "## Scope exclusions\n- Changing the PDF renderer.\n"
+    )
+
+    assert main(
+        ["check", "--task", str(task), "--base", git_repo["base"], "--head", git_repo["head"]]
+    ) == 0
+
+    stored = ReviewStore().read(git_repo["head"])
+    assert stored.requirement_map is not None
+    assert [r.id for r in stored.requirement_map.requirements] == [
+        "task",
+        "constraint-01",
+        "constraint-02",
+        "exclusion-01",
+    ]
+    assert len(stored.requirement_map.undisposed()) == 4
+
+
+def test_a_requirement_that_yielded_nothing_is_visible_in_the_report(
+    git_repo, tmp_path, capsys, stub_model
+):
+    """DR-202's "present in the mapping with a reason, and visible in the
+    rendered report — not absent from it". Rendering the empty case IS the
+    deliverable: previously a requirement that produced no obligation simply did
+    not appear, so the reader was told nothing was missing because there was
+    nothing there to say it."""
+    task = tmp_path / "task.md"
+    task.write_text("# Task\nRender each invoice line.\n\n## Constraints\n- Format money as USD.\n")
+
+    assert main(
+        ["check", "--task", str(task), "--base", git_repo["base"], "--head", git_repo["head"]]
+    ) == 0
+
+    report = capsys.readouterr().out
+    assert "Mandate coverage: 0 of 2 requirements yielded obligations" in report
+    assert "constraint-01" in report
+    assert "Format money as USD." in report

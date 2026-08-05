@@ -248,11 +248,37 @@ passed.
 Two transcript re-records are unavoidable — one for the mapping's schema change,
 one for the quality work (decisions 5–7). Sequence each so the cost is paid once.
 
+## Resolved after acceptance
+
+**Requirement id stability — settled as an interim scheme (#202, deferred to
+#209).** Ids are `section + ordinal` in parse order, zero-padded and assigned by
+the code: `constraint-01`, `exclusion-03`, `completion-07`, and `task` for the
+behavior paragraph.
+
+Neither candidate captures requirement *identity*, and that was the finding.
+Positional ids cannot distinguish "the same requirement, reworded" from "a
+different requirement in the same position"; content-derived ids cannot
+distinguish "the same requirement, reworded" from "a new requirement". Identity
+across versions is semantic — the `align_obligations` problem one level up — and
+is out of scope for a representational change. #209 owns it.
+
+Positional wins the interim on two grounds. It satisfies the acceptance
+criterion as written, which is *within-version* determinism ("stable across two
+runs over byte-identical task text"), and nothing in decision 1–4 needs more.
+And its failure mode is the safe one: a content hash changes on a comma, so the
+commonest edit in the corpus — rewording a bullet — would present as *this
+requirement vanished and a new one appeared*, which is indistinguishable from
+the recall defect this whole change exists to make visible. A positional id
+shifting after an inserted bullet is mechanical, and the registry entry carries
+the `TextSpan`, so a reader always sees the text an id points at.
+
+**What this defers explicitly:** a requirement id is not comparable across two
+versions of a task file. The Sequencing section's rebuild of #195's suite — so
+labels bind to the mapping rather than reconstructing it from `source_quote` —
+is where cross-version identity actually bites, and it is sequenced after #209.
+
 ## Open
 
-- **Requirement id stability.** Content-derived ids change when text is edited;
-  positional ids shift when a bullet is inserted. The corpus task files differ
-  between runs, so this decides whether benchmark labels survive an edit.
 - **Does the decomposer get base-revision context?** Own `decision` issue.
   Decision 9 moves the code-answerable case downstream, which may settle it. If it
   is ever built, the constraint is that grounding may sharpen wording, settle

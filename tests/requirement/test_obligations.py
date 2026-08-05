@@ -73,6 +73,7 @@ FLOATING_RATE_RESPONSE = {
         },
     ],
     "open_questions": [],
+    "requirement_dispositions": [],
 }
 
 
@@ -148,6 +149,7 @@ def test_archetype_1_includes_the_omitted_obligation():
             },
         ],
         "open_questions": [],
+        "requirement_dispositions": [],
     }
 
     obligations = decompose(parsed, _client_returning(response)).obligations
@@ -182,6 +184,7 @@ def test_duplicate_ids_are_made_unique():
             },
         ],
         "open_questions": [],
+        "requirement_dispositions": [],
     }
     obligations = decompose(parsed, _client_returning(response)).obligations
     assert [o.id for o in obligations] == ["dup", "dup-2"]
@@ -216,6 +219,7 @@ UNDERSPECIFIED_RESPONSE = {
             "source_quote": "Retry failed requests.",
         }
     ],
+    "requirement_dispositions": [],
 }
 
 
@@ -266,6 +270,7 @@ def test_ids_are_unique_across_obligations_and_open_questions():
                 "source_quote": "Retry failed requests.",
             }
         ],
+        "requirement_dispositions": [],
     }
     result = decompose(parsed, _client_returning(response))
     assert result.obligations[0].id == "shared"

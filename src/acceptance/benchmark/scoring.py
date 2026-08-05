@@ -310,6 +310,10 @@ class BenchmarkReport(PersistableModel):
     determinism_mode: Literal["record", "replay"] | None = None
     gap_recall: float | None = None
     gap_precision: float | None = None
+    # Not comparable across #202: decomposition is now asked for one
+    # disposition per identified requirement rather than a flat obligation
+    # list, so the question put to the model changed. Same caveat as
+    # mapping_accuracy carries for #164 — do not plot across the boundary.
     decomposition_accuracy: float | None = None
     decomposition_precision: float | None = None
     open_question_recall: float | None = None
@@ -400,6 +404,10 @@ class SampledBenchmarkReport(PersistableModel):
     determinism_mode: Literal["record", "replay"]
     gap_recall: MetricStats
     gap_precision: MetricStats
+    # Not comparable across #202: decomposition is now asked for one
+    # disposition per identified requirement rather than a flat obligation
+    # list, so the question put to the model changed. Same caveat as
+    # mapping_accuracy carries for #164 — do not plot across the boundary.
     decomposition_accuracy: MetricStats
     decomposition_precision: MetricStats
     # Not comparable across #164 — see BenchmarkReport.mapping_accuracy. Spread

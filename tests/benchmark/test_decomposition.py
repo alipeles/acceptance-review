@@ -31,6 +31,7 @@ def _obligation_response(descriptions: list[str]) -> dict:
             for i, desc in enumerate(descriptions)
         ],
         "open_questions": [],
+        "requirement_dispositions": [],
     }
 
 
