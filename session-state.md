@@ -14,29 +14,49 @@ Clear it out when the task lands rather than letting it accrete.
 
 ## Task in flight
 
-**#195** — the decompose-stability corpus as a regression suite, #190's
-counterpart and #193's scoreboard. Then #193, #191, #192. Branch: still `main`,
-nothing coded.
+**#195** — the decompose-stability corpus as a regression suite. Branch
+`195-decompose-regression-suite`, three commits, **Gate 2 clean at `ac3a71d`**.
+Not yet pushed, no PR open. Then #193, #191, #192.
 
-**Gate 1 run 1 FAILED and is a hard stop, not a retry.** `current-task.md` written
-from #195 and decomposed at `dbb342f`; run saved to `dogfood-logs/195-gate1-run1/`.
-29 obligations, 3 open questions, nothing invented — the failure is entirely
-absence:
+**Gate 1 failed and the human directed proceeding past it** (option 2 of three:
+fix #178 first / proceed / re-run). Reasoning: a decompose fix judged before its
+scoreboard exists is judged by eyeball, and a fix may not be buildable at all if
+the cause is model capability rather than prompt structure. Nine requirements
+produced no obligation, three open questions were answerable from the task file,
+two prohibitions typed `human_review`. All recorded against #193, #153, #178,
+#196 — comments posted, each citing the run directory.
 
-- **Nine requirements produced no obligation.** Four Completion expectations,
-  including all three degenerate-decomposer bullets that are #195's most
-  load-bearing requirement; five of eight Scope exclusions. → #181/#193, #153.
-- **All three open questions are the "wrong question" case** — each answered in
-  the task file, two of them by a table written specifically to settle them.
-  → #178, sixth audited recurrence. CLAUDE.md says stop and tell the human; done,
-  awaiting direction.
-- **Two prohibitions typed `human_review`** → #196, the run-7 corpus finding
-  reproducing on the task file that encodes it as ground truth.
-- **One compound bullet lost its second half** — *"No task text is copied into the
-  case."* Mine to fix: split the bullet on the next iteration.
+**Gate 2 took three rounds and is clean.** 23 obligations all strongly supported,
+both questions resolved, no recommended tests, no risky unrequested change. Two
+real gaps found and fixed (README claim unheld; no-live-calls unasserted). Round 2
+fell 22→4 strongly supported on a test-only diff and recovered in round 3 — #191,
+with a mapping audit at 87% populated proving it was not half-blind.
 
-Full triage in that run's `judgement.md`. Do not re-run decompose expecting a
-prettier breakdown — run 7 of the corpus warns against exactly that.
+That failed Gate 1 run **is case `195-gate1-run1` in the suite** — the strongest
+case in it, because its input was authored knowing what the decomposition should
+contain, so the losses are enumerated rather than reconstructed.
+
+## What #195 leaves for the next task
+
+- **The scoreboard is stub-driven.** It proves the ground truth is encoded and
+  that metrics move in both directions. It has **never scored a real
+  decomposer.** The model experiment — re-run these task files on a stronger
+  model and score against the known losses — is the intended next step and is
+  not started. Default model is `openai/gpt-5.4-mini` (`config.py:28`),
+  swappable via `--model`.
+- **`195-gate1-run1` is the best experimental substrate available** for that,
+  for the reason above.
+- **Three shared-model extensions landed**, all additive: `expected_type` /
+  `required_symbols` / `open_questions` on the ground-truth shape,
+  `decomposition_precision` on the score, and `decompose_case` now carries open
+  questions into its Review (it dropped them before — #113's shape).
+- **Open-question matching is by id + observed aliases, not semantics.** Grounded
+  in the three slugs the corpus actually produced for one question. It will not
+  survive a decomposer inventing a new slug — a real limitation, and the reason a
+  semantic open-question aligner is worth having. Not filed yet.
+- **Every PR here will show two `separable` unrequested changes** —
+  `session-state.md` and `dogfood-logs/` — because CLAUDE.md mandates them and no
+  task file does. Correctly labelled, not a defect; possibly an input to #88.
 
 ## What #190 left behind that the next task needs
 
