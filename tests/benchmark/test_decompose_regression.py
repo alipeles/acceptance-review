@@ -397,6 +397,26 @@ def test_a_case_reads_its_task_file_from_the_run_rather_than_a_copy(case_dir):
     assert (REPO / meta.run_dir / "current-task.md").is_file()
 
 
+def test_the_corpus_readme_no_longer_claims_it_is_unread():
+    """The old blanket claim is gone, and what replaced it is precise.
+
+    Both halves matter. A README that adds a coverage table while leaving "Not
+    yet read by any test" standing above it is worse than one that says nothing,
+    because the two statements contradict each other and a reader has no way to
+    tell which is current.
+
+    Asserting the absence of a string is normally self-referential — the
+    assertion contains the string it searches for — but the subject here is the
+    README, a different file, so the check is real.
+    """
+    readme = (CORPUS_DIR / "README.md").read_text()
+    assert "Not yet read by any test" not in readme
+    assert "tests/benchmark/test_decompose_regression.py" in readme
+    # The parts that remain unread are named rather than left to inference.
+    for unread in ("decompose-output.log", "task-diffs.txt", "prediction.md"):
+        assert unread in readme
+
+
 def test_the_corpus_runs_are_all_represented():
     """Seven corpus runs plus this task's own Gate 1 run. A case set that
     silently lost one would still pass every other test in this file."""
