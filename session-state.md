@@ -12,6 +12,34 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
+## STATUS: PR #197 is open and CI is green. Awaiting human review/merge.
+
+Seven commits on `190-rating-corpus-regression-suite`, plus two on `main`
+(`c5cc707`, `7e337f7` — committing dogfood runs and session state).
+
+**Gate 2 ran three rounds and never came back clean**, for two tracked reasons,
+both recorded and neither a defect in this change:
+
+- **#153** — six scope exclusions demand test evidence that cannot exist in
+  principle. Writing tests moved them `unsupported` → `partially supported` and
+  no further. An exclusion cannot be discharged by testing.
+- **#191** — round 3 fell 20 → 3 `strongly supported` on a diff that only added
+  tests. Isolated to M5.2's per-defect verdict: mapping had *more* links (36→40)
+  and defect enumeration was identical (2.04/obligation), while `would_be_caught`
+  went 87% → 57%. Cleaner isolation than the corpus's own run-5 case.
+
+**Do not read round 3's fall as proof the tests are fine.** DR-180's named
+fallacy is exactly this, and the corpus says the LOW rating was correct in 7 of 8
+unstable obligations. The lower ratings may be right.
+
+### The two CI findings — the design's real cost
+
+1. CI needs `fetch-depth: 0`; the default shallow clone has no corpus history.
+2. **All six head revisions are squash-orphaned** — unreachable from `main`, and
+   resolving locally only because this working copy still had the branch objects.
+   Fixed by pushing `corpus/<run>` tags. **Those tags are load-bearing**;
+   deleting one removes a case. Guarded by a test.
+
 ## Task in flight
 
 **#190 — turn the rating-stability corpus into an executable regression suite.**
