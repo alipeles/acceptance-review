@@ -1,0 +1,475 @@
+Task completion: NEEDS-CLARIFICATION
+
+1 open question(s) remain unresolved by the diff; the delivered behavior cannot be judged until they are answered.
+
+Obligations:
+
+  1. Convert the rating-stability corpus into regression cases that the benchmark can score.
+       code evidence: addressed
+         1.1  src/acceptance/benchmark/corpus.py#@@ -0,0 +1,195 @@
+         1.2  tests/benchmark/test_corpus.py#@@ -0,0 +1,123 @@
+         1.3  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+         1.4  tests/fixtures/rating-regression/163-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         1.5  tests/fixtures/rating-regression/163-gate2-run1/labels.json#@@ -0,0 +1,179 @@
+         1.6  tests/fixtures/rating-regression/167-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         1.7  tests/fixtures/rating-regression/167-gate2-run1/labels.json#@@ -0,0 +1,190 @@
+         1.8  tests/fixtures/rating-regression/167-gate2-run2/case.json#@@ -0,0 +1,7 @@
+         1.9  tests/fixtures/rating-regression/167-gate2-run2/labels.json#@@ -0,0 +1,181 @@
+         1.10  tests/fixtures/rating-regression/167-gate2-run3/case.json#@@ -0,0 +1,7 @@
+         1.11  tests/fixtures/rating-regression/167-gate2-run3/labels.json#@@ -0,0 +1,173 @@
+         1.12  tests/fixtures/rating-regression/167-gate2-run4/case.json#@@ -0,0 +1,7 @@
+         1.13  tests/fixtures/rating-regression/167-gate2-run4/labels.json#@@ -0,0 +1,175 @@
+         1.14  tests/fixtures/rating-regression/167-gate2-run5/case.json#@@ -0,0 +1,7 @@
+         1.15  tests/fixtures/rating-regression/167-gate2-run5/labels.json#@@ -0,0 +1,170 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  2. Score cases through the repository's existing benchmark scoring path.
+       code evidence: addressed
+         2.1  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+       test evidence: partially supported  [tier: static]
+         2.2  tests/benchmark/test_rating_regression.py::test_each_case_is_scored_through_score_case_itself
+         2.3  tests/benchmark/test_rating_regression.py::test_scoring_goes_through_the_shared_benchmark_path
+
+  3. Represent ground-truth labels with the existing `benchmark/case.py::GroundTruthLabels` shape used by `tests/fixtures/archetypes/`.
+       code evidence: addressed
+         3.1  src/acceptance/benchmark/corpus.py#@@ -0,0 +1,195 @@
+         3.2  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+         3.3  tests/fixtures/rating-regression/163-gate2-run1/labels.json#@@ -0,0 +1,179 @@
+         3.4  tests/fixtures/rating-regression/167-gate2-run1/labels.json#@@ -0,0 +1,190 @@
+         3.5  tests/fixtures/rating-regression/167-gate2-run2/labels.json#@@ -0,0 +1,181 @@
+         3.6  tests/fixtures/rating-regression/167-gate2-run3/labels.json#@@ -0,0 +1,173 @@
+         3.7  tests/fixtures/rating-regression/167-gate2-run4/labels.json#@@ -0,0 +1,175 @@
+         3.8  tests/fixtures/rating-regression/167-gate2-run5/labels.json#@@ -0,0 +1,170 @@
+       test evidence: partially supported  [tier: static]
+         3.9  tests/benchmark/test_rating_regression.py::test_labels_load_against_the_shared_ground_truth_schema
+
+  4. Use each run's own `current-task.md` together with the base and head revisions the run judged as the case inputs.
+       code evidence: addressed
+         4.1  src/acceptance/benchmark/corpus.py#@@ -0,0 +1,195 @@
+         4.2  tests/benchmark/test_corpus.py#@@ -0,0 +1,123 @@
+         4.3  tests/fixtures/rating-regression/163-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         4.4  tests/fixtures/rating-regression/167-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         4.5  tests/fixtures/rating-regression/167-gate2-run2/case.json#@@ -0,0 +1,7 @@
+         4.6  tests/fixtures/rating-regression/167-gate2-run3/case.json#@@ -0,0 +1,7 @@
+         4.7  tests/fixtures/rating-regression/167-gate2-run4/case.json#@@ -0,0 +1,7 @@
+         4.8  tests/fixtures/rating-regression/167-gate2-run5/case.json#@@ -0,0 +1,7 @@
+       test evidence: strongly supported  [tier: static]
+         4.9  tests/benchmark/test_corpus.py::test_every_case_names_a_corpus_run_that_exists
+         4.10  tests/benchmark/test_corpus.py::test_every_case_names_a_revision_this_repository_still_has
+         4.11  tests/benchmark/test_corpus.py::test_the_case_carries_the_task_file_the_run_was_actually_given
+         4.12  tests/benchmark/test_rating_regression.py::test_cases_carry_only_their_run_input_not_resumed_state
+
+  5. Keep source files out of the case payload; the case references the corpus inputs instead of copying them.
+       code evidence: addressed
+         5.1  src/acceptance/benchmark/corpus.py#@@ -0,0 +1,195 @@
+         5.2  tests/benchmark/test_corpus.py#@@ -0,0 +1,123 @@
+       test evidence: partially supported  [tier: static]
+         5.3  tests/benchmark/test_corpus.py::test_the_case_carries_the_task_file_the_run_was_actually_given
+
+  6. Analyze the tree at the revision each case judged, not the current working tree.
+       code evidence: addressed
+         6.1  src/acceptance/benchmark/corpus.py#@@ -0,0 +1,195 @@
+         6.2  tests/benchmark/test_corpus.py#@@ -0,0 +1,123 @@
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/benchmark/test_corpus.py::test_every_case_names_a_revision_this_repository_still_has
+         6.4  tests/benchmark/test_corpus.py::test_the_worktree_holds_the_tree_as_it_was_not_as_it_is
+
+  7. Treat a case that names a revision that no longer resolves as a failing case that names the run.
+       code evidence: addressed
+         7.1  src/acceptance/benchmark/corpus.py#@@ -0,0 +1,195 @@
+         7.2  tests/benchmark/test_corpus.py#@@ -0,0 +1,123 @@
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/benchmark/test_corpus.py::test_a_revision_that_no_longer_resolves_fails_by_name
+
+  8. Run cases without live model calls.
+       code evidence: addressed
+         8.1  tests/benchmark/degenerate_judges.py#@@ -0,0 +1,156 @@
+         8.2  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+       test evidence: partially supported  [tier: static]
+         8.3  tests/benchmark/test_rating_regression.py::test_no_case_issues_a_live_model_call
+         8.4  tests/benchmark/test_rating_regression.py::test_no_provider_is_ever_contacted
+
+  9. Keep recorded model transcripts out of the committed test data.
+       code evidence: addressed
+         9.1  tests/fixtures/rating-stability/README.md#@@ -1,9 +1,29 @@
+         9.2  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+       test evidence: partially supported  [tier: static]
+         9.3  tests/benchmark/test_rating_regression.py::test_no_model_transcript_is_committed_into_the_fixtures
+         9.4  tests/benchmark/test_rating_regression.py::test_no_transcript_lives_anywhere_under_the_fixture_tree
+
+  10. Make each case's ground-truth label traceable to the `judgement.md` it was derived from.
+       code evidence: addressed
+         10.1  tests/fixtures/rating-regression/163-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         10.2  tests/fixtures/rating-regression/167-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         10.3  tests/fixtures/rating-regression/167-gate2-run2/case.json#@@ -0,0 +1,7 @@
+         10.4  tests/fixtures/rating-regression/167-gate2-run3/case.json#@@ -0,0 +1,7 @@
+         10.5  tests/fixtures/rating-regression/167-gate2-run4/case.json#@@ -0,0 +1,7 @@
+         10.6  tests/fixtures/rating-regression/167-gate2-run5/case.json#@@ -0,0 +1,7 @@
+         10.7  tests/fixtures/rating-stability/README.md#@@ -1,9 +1,29 @@
+       test evidence: partially supported  [tier: static]
+         10.8  tests/benchmark/test_corpus.py::test_every_case_is_traceable_to_the_judgement_it_came_from
+
+  11. Limit modifications under `tests/fixtures/rating-stability/` to the README.
+       code evidence: addressed
+         11.1  tests/fixtures/rating-stability/README.md#@@ -1,9 +1,29 @@
+       test evidence: partially supported  [tier: static]
+         11.2  tests/benchmark/test_rating_regression.py::test_the_corpus_itself_is_untouched_apart_from_its_readme
+
+  12. Leave the judgement-production stage untouched.
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: partially supported  [tier: static]
+         12.1  tests/benchmark/test_rating_regression.py::test_running_the_suite_does_not_alter_the_judgement_stage
+
+  13. Preserve the instability documented by the corpus.
+       code evidence: addressed
+         13.1  tests/fixtures/rating-regression/167-gate2-run1/labels.json#@@ -0,0 +1,190 @@
+         13.2  tests/fixtures/rating-regression/167-gate2-run2/labels.json#@@ -0,0 +1,181 @@
+         13.3  tests/fixtures/rating-regression/167-gate2-run3/labels.json#@@ -0,0 +1,173 @@
+         13.4  tests/fixtures/rating-regression/167-gate2-run4/labels.json#@@ -0,0 +1,175 @@
+         13.5  tests/fixtures/rating-regression/167-gate2-run5/labels.json#@@ -0,0 +1,170 @@
+         13.6  tests/fixtures/rating-stability/README.md#@@ -1,9 +1,29 @@
+       test evidence: partially supported  [tier: static]
+         13.7  tests/benchmark/test_rating_regression.py::test_the_labels_still_show_the_instability_rather_than_smoothing_it
+
+  14. Avoid introducing a required variance threshold or accuracy threshold.
+       code evidence: addressed
+         14.1  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  15. Leave untouched the corpus runs that establish none of the listed ground truth.
+       code evidence: addressed
+         15.1  tests/fixtures/rating-regression/163-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         15.2  tests/fixtures/rating-regression/167-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         15.3  tests/fixtures/rating-regression/167-gate2-run2/case.json#@@ -0,0 +1,7 @@
+         15.4  tests/fixtures/rating-regression/167-gate2-run3/case.json#@@ -0,0 +1,7 @@
+         15.5  tests/fixtures/rating-regression/167-gate2-run4/case.json#@@ -0,0 +1,7 @@
+         15.6  tests/fixtures/rating-regression/167-gate2-run5/case.json#@@ -0,0 +1,7 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  16. Keep the decompose-stability corpus out of this task.
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  17. Preserve the rating-stability corpus as the evidence record the assertions are derived from.
+       code evidence: addressed
+         17.1  tests/fixtures/rating-stability/README.md#@@ -1,9 +1,29 @@
+         17.2  tests/fixtures/rating-regression/163-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         17.3  tests/fixtures/rating-regression/167-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         17.4  tests/fixtures/rating-regression/167-gate2-run2/case.json#@@ -0,0 +1,7 @@
+         17.5  tests/fixtures/rating-regression/167-gate2-run3/case.json#@@ -0,0 +1,7 @@
+         17.6  tests/fixtures/rating-regression/167-gate2-run4/case.json#@@ -0,0 +1,7 @@
+         17.7  tests/fixtures/rating-regression/167-gate2-run5/case.json#@@ -0,0 +1,7 @@
+       test evidence: partially supported  [tier: static]
+         17.8  tests/benchmark/test_corpus.py::test_the_case_carries_the_task_file_the_run_was_actually_given
+         17.9  tests/benchmark/test_rating_regression.py::test_every_real_gap_is_required_to_still_be_reported
+         17.10  tests/benchmark/test_rating_regression.py::test_every_unearned_rating_is_required_to_no_longer_be_issued
+         17.11  tests/benchmark/test_rating_regression.py::test_the_corpus_itself_is_untouched_apart_from_its_readme
+
+  18. Keep the incremental re-run path's carried-forward stored review state out of the case inputs.
+       code evidence: addressed
+         18.1  src/acceptance/benchmark/corpus.py#@@ -0,0 +1,195 @@
+         18.2  tests/benchmark/test_corpus.py#@@ -0,0 +1,123 @@
+         18.3  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+       test evidence: partially supported  [tier: static]
+         18.4  tests/benchmark/test_rating_regression.py::test_cases_carry_only_their_run_input_not_resumed_state
+
+  19. Commit the regression cases derived from the corpus as test fixtures.
+       code evidence: addressed
+         19.1  tests/fixtures/rating-regression/163-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         19.2  tests/fixtures/rating-regression/163-gate2-run1/labels.json#@@ -0,0 +1,179 @@
+         19.3  tests/fixtures/rating-regression/167-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         19.4  tests/fixtures/rating-regression/167-gate2-run1/labels.json#@@ -0,0 +1,190 @@
+         19.5  tests/fixtures/rating-regression/167-gate2-run2/case.json#@@ -0,0 +1,7 @@
+         19.6  tests/fixtures/rating-regression/167-gate2-run2/labels.json#@@ -0,0 +1,181 @@
+         19.7  tests/fixtures/rating-regression/167-gate2-run3/case.json#@@ -0,0 +1,7 @@
+         19.8  tests/fixtures/rating-regression/167-gate2-run3/labels.json#@@ -0,0 +1,173 @@
+         19.9  tests/fixtures/rating-regression/167-gate2-run4/case.json#@@ -0,0 +1,7 @@
+         19.10  tests/fixtures/rating-regression/167-gate2-run4/labels.json#@@ -0,0 +1,175 @@
+         19.11  tests/fixtures/rating-regression/167-gate2-run5/case.json#@@ -0,0 +1,7 @@
+         19.12  tests/fixtures/rating-regression/167-gate2-run5/labels.json#@@ -0,0 +1,170 @@
+       test evidence: partially supported  [tier: static]
+         19.13  tests/benchmark/test_rating_regression.py::test_the_scoreboard_is_committed_as_fixtures_for_every_run
+
+  20. A judge that always issues `strongly supported` fails the suite.
+       code evidence: addressed
+         20.1  tests/benchmark/degenerate_judges.py#@@ -0,0 +1,156 @@
+         20.2  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+       test evidence: partially supported  [tier: static]
+         20.3  tests/benchmark/test_rating_regression.py::test_a_judge_that_always_issues_strongly_supported_fails_the_suite
+         20.4  tests/benchmark/test_rating_regression.py::test_the_case_set_can_catch_a_judge_erring_either_way
+
+  21. A judge that never issues `strongly supported` fails the suite.
+       code evidence: addressed
+         21.1  tests/benchmark/degenerate_judges.py#@@ -0,0 +1,156 @@
+         21.2  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+       test evidence: partially supported  [tier: static]
+         21.3  tests/benchmark/test_rating_regression.py::test_a_judge_that_never_issues_strongly_supported_fails_the_suite
+         21.4  tests/benchmark/test_rating_regression.py::test_the_case_set_can_catch_a_judge_erring_either_way
+
+  22. Require every gap listed as real to still be reported by the suite.
+       code evidence: addressed
+         22.1  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+         22.2  tests/fixtures/rating-regression/167-gate2-run1/labels.json#@@ -0,0 +1,190 @@
+         22.3  tests/fixtures/rating-regression/167-gate2-run2/labels.json#@@ -0,0 +1,181 @@
+         22.4  tests/fixtures/rating-regression/167-gate2-run3/labels.json#@@ -0,0 +1,173 @@
+         22.5  tests/fixtures/rating-regression/167-gate2-run4/labels.json#@@ -0,0 +1,175 @@
+       test evidence: partially supported  [tier: static]
+         22.6  tests/benchmark/test_rating_regression.py::test_a_judge_that_always_issues_strongly_supported_fails_the_suite
+         22.7  tests/benchmark/test_rating_regression.py::test_every_real_gap_is_required_to_still_be_reported
+
+  23. Require every rating listed as unearned to no longer be issued.
+       code evidence: addressed
+         23.1  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+         23.2  tests/fixtures/rating-regression/163-gate2-run1/labels.json#@@ -0,0 +1,179 @@
+         23.3  tests/fixtures/rating-regression/167-gate2-run1/labels.json#@@ -0,0 +1,190 @@
+         23.4  tests/fixtures/rating-regression/167-gate2-run2/labels.json#@@ -0,0 +1,181 @@
+       test evidence: partially supported  [tier: static]
+         23.5  tests/benchmark/test_rating_regression.py::test_a_judge_that_never_issues_strongly_supported_fails_the_suite
+         23.6  tests/benchmark/test_rating_regression.py::test_every_unearned_rating_is_required_to_no_longer_be_issued
+
+  24. Mark run 3's preserved reading as the ground truth for its case.
+       code evidence: addressed
+         24.1  tests/fixtures/rating-regression/167-gate2-run3/case.json#@@ -0,0 +1,7 @@
+         24.2  tests/fixtures/rating-regression/167-gate2-run3/labels.json#@@ -0,0 +1,173 @@
+       test evidence: partially supported  [tier: static]
+         24.3  tests/benchmark/test_rating_regression.py::test_run3_encodes_the_corrected_reading_that_all_three_findings_were_real
+
+  25. Mark run 5's preserved reading as the ground truth for its case.
+       code evidence: addressed
+         25.1  tests/fixtures/rating-regression/167-gate2-run5/case.json#@@ -0,0 +1,7 @@
+         25.2  tests/fixtures/rating-regression/167-gate2-run5/labels.json#@@ -0,0 +1,170 @@
+       test evidence: partially supported  [tier: static]
+         25.3  tests/benchmark/test_rating_regression.py::test_run5_encodes_the_corrected_reading_that_run4s_strong_was_right
+
+  26. Give control case `163-gate2-run1` assertions of the same kind as the other cases.
+       code evidence: addressed
+         26.1  tests/fixtures/rating-regression/163-gate2-run1/case.json#@@ -0,0 +1,7 @@
+         26.2  tests/fixtures/rating-regression/163-gate2-run1/labels.json#@@ -0,0 +1,179 @@
+         26.3  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+       test evidence: partially supported  [tier: static]
+         26.4  tests/benchmark/test_rating_regression.py::test_no_case_passes_trivially
+         26.5  tests/benchmark/test_rating_regression.py::test_the_two_degenerate_judges_disagree_about_the_ratings
+
+  27. Update the corpus README so it no longer says the corpus is not read by any test, or else states precisely which parts are still not read.
+       code evidence: addressed
+         27.1  tests/fixtures/rating-stability/README.md#@@ -1,9 +1,29 @@
+       test evidence: partially supported  [tier: static]
+         27.2  tests/benchmark/test_rating_regression.py::test_the_readme_states_what_is_and_is_not_read
+
+  28. Record run 3's corrected reading that all three findings were real and the original reading called them tool defects.
+       code evidence: addressed
+         28.1  tests/fixtures/rating-regression/167-gate2-run3/case.json#@@ -0,0 +1,7 @@
+         28.2  tests/fixtures/rating-regression/167-gate2-run3/labels.json#@@ -0,0 +1,173 @@
+         28.3  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+       test evidence: partially supported  [tier: static]
+         28.4  tests/benchmark/test_rating_regression.py::test_run3_encodes_the_corrected_reading_that_all_three_findings_were_real
+
+  29. Record run 5's corrected reading that the `partially supported` rating was a wrong verdict and run 4's `strongly supported` is correct.
+       code evidence: addressed
+         29.1  tests/fixtures/rating-regression/167-gate2-run5/case.json#@@ -0,0 +1,7 @@
+         29.2  tests/fixtures/rating-regression/167-gate2-run5/labels.json#@@ -0,0 +1,170 @@
+         29.3  tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+       test evidence: partially supported  [tier: static]
+         29.4  tests/benchmark/test_rating_regression.py::test_run5_encodes_the_corrected_reading_that_run4s_strong_was_right
+
+Unrequested changes:
+  1. [separable] The session-state note adds a long implementation-status section, metrics table, and design commentary that are not required by any obligation; the only docs obligation is to update the corpus README, not this planning log.
+       session-state.md#@@ -99,12 +99,52 @@ the real diff, with `7de7d71` as a negative control (missed all 4 hunks):
+  2. [in_service] `src/acceptance/benchmark/corpus.py` introduces a new corpus materializer and helpers, but it also adds extra explanatory docstrings and helper structure beyond what the obligations require. The core file is requested, yet these specific internal design details are not separately called for.
+       src/acceptance/benchmark/corpus.py#@@ -0,0 +1,195 @@
+  3. [in_service] `tests/benchmark/degenerate_judges.py` includes a custom enum-walking helper and schema-inspection logic that are implementation choices, not something any obligation explicitly requires. The suite needs stub judges, but not this particular internal mechanism.
+       tests/benchmark/degenerate_judges.py#@@ -0,0 +1,156 @@
+  4. [in_service] The new corpus tests assert extra filesystem details such as the absence of `src/acceptance/benchmark/corpus.py` in the worktree and the nonexistence of `current-task.md` under the case directory. Those checks go beyond the stated requirements to analyze the judged revision and keep source files out of the case payload.
+       tests/benchmark/test_corpus.py#@@ -0,0 +1,123 @@
+  5. [in_service] `tests/benchmark/test_rating_regression.py` hard-codes specific sets of unearned ratings and real gaps, plus extra scoring assertions about degenerate judges. The obligations require regression cases and suite behavior, but not these additional enumerations and metric-specific checks in this form.
+       tests/benchmark/test_rating_regression.py#@@ -0,0 +1,492 @@
+  6. [in_service] The new `case.json` for `163-gate2-run1` adds a detailed summary and judgement prose beyond the required ground-truth label shape and traceability. The case fixture itself is requested, but this extra narrative content is not explicitly required.
+       tests/fixtures/rating-regression/163-gate2-run1/case.json#@@ -0,0 +1,7 @@
+       tests/fixtures/rating-regression/163-gate2-run1/labels.json#@@ -0,0 +1,179 @@
+  7. [in_service] The `labels.json` fixture for `163-gate2-run1` contains a large number of obligation entries and candidate tests, including control-case assertions and detailed rationale text. While labels are requested, this specific expanded content is not directly mandated by the obligations as written.
+       tests/fixtures/rating-regression/163-gate2-run1/labels.json#@@ -0,0 +1,179 @@
+  8. [in_service] The `case.json` for `167-gate2-run1` includes extra explanatory summary text and retrospective commentary. The obligations require regression cases and traceability, but not this additional narrative detail.
+       tests/fixtures/rating-regression/167-gate2-run1/case.json#@@ -0,0 +1,7 @@
+  9. [in_service] The `labels.json` for `167-gate2-run1` encodes a very specific decomposition of obligations, gaps, and retrospective commentary. The task requires labels in the existing shape, but not this particular expanded set of narrative annotations and gap IDs.
+       tests/fixtures/rating-regression/167-gate2-run1/labels.json#@@ -0,0 +1,190 @@
+  10. [in_service] The `case.json` for `167-gate2-run2` adds summary prose and retrospective notes beyond the requested case metadata. Those additions are not separately required by any obligation.
+       tests/fixtures/rating-regression/167-gate2-run2/case.json#@@ -0,0 +1,7 @@
+  11. [in_service] The `labels.json` for `167-gate2-run2` contains detailed rationale text and gap records that go beyond merely representing ground-truth labels in the existing shape. The obligations do not specifically require this level of narrative expansion.
+       tests/fixtures/rating-regression/167-gate2-run2/labels.json#@@ -0,0 +1,181 @@
+  12. [in_service] The `case.json` for `167-gate2-run3` adds a long summary and corrected-reading commentary. The obligations require preserving the corrected reading, but not this extra prose in the case metadata.
+       tests/fixtures/rating-regression/167-gate2-run3/case.json#@@ -0,0 +1,7 @@
+  13. [in_service] The `labels.json` for `167-gate2-run3` includes extensive rationale and gap descriptions, including explicit claims about later runs. The obligations require traceability and corrected readings, but not this much additional annotation.
+       tests/fixtures/rating-regression/167-gate2-run3/labels.json#@@ -0,0 +1,173 @@
+  14. [in_service] The `case.json` for `167-gate2-run4` adds summary commentary about false positives and anchors. That narrative is not required by the listed obligations.
+       tests/fixtures/rating-regression/167-gate2-run4/case.json#@@ -0,0 +1,7 @@
+  15. [in_service] The `labels.json` for `167-gate2-run4` contains detailed verdict commentary and a gap record that are more specific than the obligations require. The task asks for regression cases and labels, not this particular explanatory framing.
+       tests/fixtures/rating-regression/167-gate2-run4/labels.json#@@ -0,0 +1,175 @@
+  16. [in_service] The `case.json` for `167-gate2-run5` adds summary prose about the sharpest localization and byte-identical mapped tests. The obligations require the corrected ground truth, but not this extra narrative in the fixture.
+       tests/fixtures/rating-regression/167-gate2-run5/case.json#@@ -0,0 +1,7 @@
+  17. [in_service] The `labels.json` for `167-gate2-run5` includes detailed corrected-verdict commentary and extra candidate-test lists. The obligations require the existing label shape and corrected reading, but not this expanded explanatory content.
+       tests/fixtures/rating-regression/167-gate2-run5/labels.json#@@ -0,0 +1,170 @@
+  18. [in_service] The rating-stability README now adds a detailed matrix of what files are read by tests and what are not, plus a strong statement about when findings reach the suite. The README update is requested, but this specific level of detail and wording is not explicitly required and may go beyond the obligation to state precisely what is still not read.
+       tests/fixtures/rating-stability/README.md#@@ -1,9 +1,29 @@
+
+Changes since e8e8755e:
+  moved:
+    - Convert the rating-stability corpus into regression cases that the benchmark can score.
+        test evidence: strongly supported -> unsupported
+    - Represent ground-truth labels with the existing `benchmark/case.py::GroundTruthLabels` shape used by `tests/fixtures/archetypes/`.
+        test evidence: strongly supported -> partially supported
+    - Keep source files out of the case payload; the case references the corpus inputs instead of copying them.
+        test evidence: strongly supported -> partially supported
+    - Make each case's ground-truth label traceable to the `judgement.md` it was derived from.
+        test evidence: strongly supported -> partially supported
+    - Limit modifications under `tests/fixtures/rating-stability/` to the README.
+        test evidence: strongly supported -> partially supported
+    - Preserve the instability documented by the corpus.
+        test evidence: strongly supported -> partially supported
+    - Keep the decompose-stability corpus out of this task.
+        test evidence: partially supported -> unsupported
+    - Commit the regression cases derived from the corpus as test fixtures.
+        test evidence: strongly supported -> partially supported
+    - A judge that always issues `strongly supported` fails the suite.
+        test evidence: strongly supported -> partially supported
+    - A judge that never issues `strongly supported` fails the suite.
+        test evidence: strongly supported -> partially supported
+    - Require every gap listed as real to still be reported by the suite.
+        test evidence: strongly supported -> partially supported
+    - Require every rating listed as unearned to no longer be issued.
+        test evidence: strongly supported -> partially supported
+    - Mark run 3's preserved reading as the ground truth for its case.
+        test evidence: strongly supported -> partially supported
+    - Mark run 5's preserved reading as the ground truth for its case.
+        test evidence: strongly supported -> partially supported
+    - Give control case `163-gate2-run1` assertions of the same kind as the other cases.
+        test evidence: strongly supported -> partially supported
+    - Update the corpus README so it no longer says the corpus is not read by any test, or else states precisely which parts are still not read.
+        test evidence: strongly supported -> partially supported
+    - Record run 3's corrected reading that all three findings were real and the original reading called them tool defects.
+        test evidence: strongly supported -> partially supported
+    - Record run 5's corrected reading that the `partially supported` rating was a wrong verdict and run 4's `strongly supported` is correct.
+        test evidence: strongly supported -> partially supported
+  verdict: INCOMPLETE -> NEEDS-CLARIFICATION
+
+Open questions:
+  1. [open] Which specific fixture files should be created or updated under `tests/fixtures/rating-stability/` to represent the regression cases, and what naming/layout should they use?
+  2. [resolved] How should the six runs in the corpus map to benchmark cases, especially for runs with multiple preserved readings or multiple run-instances per obligation?
+       The added regression fixtures map each corpus run to one case directory named after the run (`163-gate2-run1`, `167-gate2-run1` through `run5`), and the tests iterate those case dirs directly. The run-3 and run-5 fixtures also explicitly encode the preserved/corrected readings in `case.json` and labels, showing how multi-reading runs are handled.
+  3. [resolved] How should the suite represent the note that `replace-written-file-with-command` is only partly real, with only its defaulting-to-JSON clause confirmed?
+       The labels explicitly encode `replace-written-file-with-command` as `unsupported` in run 1 with rationale saying only the defaulting-to-JSON clause is the real finding, and the README/test fixtures carry that same partial-real interpretation. That makes the intended representation unambiguous in the diff.
+  4. [resolved] What exact README wording should replace the current statement about the corpus not being read by any test?
+       The README is rewritten to a specific section titled `What is read by a test, and what is not (#190)` with a table spelling out what is read and what is not, replacing the old `Not currently read by any test` wording. The exact replacement wording is therefore shown directly in the diff.
+
+Recommended tests:
+  1. Case evaluation flows through `benchmark/scoring.py::score_case` rather than a separate scoring implementation.
+       inputs:  A regression test that exercises case scoring through the public benchmark entrypoint with a spy/monkeypatch on `benchmark/scoring.py::score_case`, using at least one nontrivial corpus case whose final report would still look correct even if a separate scorer were used. The input must make the invoked function observable, not just the aggregate result.
+       detects: Developer routes case evaluation through a new helper that computes per-case scores directly, bypassing `benchmark/scoring.py::score_case`, but still returns the same aggregate report object.
+       full detail: acceptance recommendation --criterion use-existing-scoring-path
+  2. Generated fixtures serialize ground-truth labels in the same structure as the archetype fixtures, and the benchmark can load them without schema changes.
+       inputs:  A fixture round-trip test over one of the generated `labels.json` files that contains multiple obligations, gaps, and rationale text, so a schema mismatch in field names or nesting becomes visible when loading with `GroundTruthLabels`. Use a case whose labels include both obligations and gaps, not a minimal empty fixture.
+       detects: Developer serializes labels with a slightly different field name or nesting than `GroundTruthLabels` expects, but still includes non-empty obligations and evidence rationales in the same logical places.
+       full detail: acceptance recommendation --criterion use-existing-ground-truth-shape
+  3. Generated case fixtures do not duplicate repository source files into the case data.
+       inputs:  A case fixture inspection that compares the case payload against the corpus run directory and verifies the case references the corpus task input rather than embedding repository source files. Use a run whose payload could plausibly include extra copied files if the implementation were wrong.
+       detects: Developer stores the task text from the corpus but also duplicates source files elsewhere in the case payload.
+       full detail: acceptance recommendation --criterion no-source-file-copy-into-case
+  4. Test execution completes using only recorded fixture data and repository state, with no outbound model invocation.
+       inputs:  A regression-suite execution using the degenerate judges from `tests/benchmark/degenerate_judges.py`, with a stubbed client that raises on any real provider access and records every completion request. Use a case set that exercises decomposition, mapping, discrimination, and coverage so a hidden live call cannot hide behind an unexercised branch.
+       detects: Developer leaves a code path that contacts the model provider when scoring certain cases, but the recorded fixtures used in the test happen to avoid that path.
+       full detail: acceptance recommendation --criterion no-live-model-calls
+  5. The repository changes for the task do not add committed model transcripts to the fixtures.
+       inputs:  A repository-tree scan over `tests/fixtures/` that looks for transcript-like artifacts in committed fixture files, including JSON fields that might embed transcript content rather than separate files. Use both the rating-stability corpus and the new regression fixtures so the scan covers the relevant fixture subtree.
+       detects: Developer stores transcript content inside an existing JSON field rather than as a separate file.
+       full detail: acceptance recommendation --criterion no-recorded-transcript-committed
+  6. A case fixture can be traced back to the specific `judgement.md` file that supplied its label.
+       inputs:  A generated case fixture whose `case.json` explicitly names the source `judgement.md`, plus a test that cross-checks that the named judgement file exists in the corresponding corpus run directory. Use a run with rewritten judgement text so the traceability link matters.
+       detects: Developer points to a `judgement.md` from the same run directory but not the specific one that supplied the label.
+       full detail: acceptance recommendation --criterion trace-labels-to-judgement-md
+  7. The corpus files remain unchanged except for README edits.
+       inputs:  A diff-level filesystem comparison of `tests/fixtures/rating-stability/` before and after the task, allowing only README edits. Use the full corpus tree so any non-README file change is visible even if filenames stay the same.
+       detects: Developer changes README.md only, but also updates generated fixture contents in a way that leaves filenames unchanged.
+       full detail: acceptance recommendation --criterion preserve-rating-stability-readme-only
+  8. The implementation adds scoreboard coverage without altering how judgements are generated.
+       inputs:  A before/after comparison that exercises the scoreboard/coverage path while separately verifying the judgement-production source tree remains unchanged in behavior, not just byte-for-byte on a narrow subset of files. Use a representative case whose judgement is stable under the current corpus.
+       detects: Developer changes internal judgement logic but the specific stage directories hashed by the test remain byte-for-byte identical.
+       full detail: acceptance recommendation --criterion do-not-change-judgement-production
+  9. The new tests do not mask or normalize the corpus's documented instability.
+       inputs:  A pair of corpus runs that are documented as unstable or contradictory, especially the preserved run 3/run 5 readings, so the test can observe the disagreement rather than smoothing it away. Use obligations known to move across runs.
+       detects: Developer preserves the number of moved obligations but changes a different unstable obligation not named in the assertion.
+       full detail: acceptance recommendation --criterion do-not-reduce-instability
+  10. The suite does not depend on a minimum variance or accuracy cutoff.
+       inputs:  A suite run with deliberately varied but valid corpus cases spanning both strong and non-strong labels, so any hidden minimum variance or accuracy cutoff would become observable. The test should not rely on a specific numeric threshold value.
+       detects: The suite depends on a minimum variance or accuracy cutoff.
+       full detail: acceptance recommendation --criterion do-not-set-thresholds
+  11. Only the runs named in the task are turned into scored regression cases.
+       inputs:  A corpus selection containing both the task’s named runs and at least one extra run directory that should not be converted into a regression case. The test must distinguish listed from unlisted runs by name.
+       detects: Additional corpus runs beyond those named in the task are turned into scored regression cases.
+       full detail: acceptance recommendation --criterion do-not-rebuild-unlisted-runs
+  12. No fixtures or logic under `tests/fixtures/decompose-stability/` are modified for this task.
+       inputs:  A filesystem snapshot that includes `tests/fixtures/decompose-stability/` and the rating-regression corpus, with a before/after comparison around the task’s operations. The test should inspect the subtree recursively.
+       detects: The task accidentally modifies decompose-stability fixtures or logic, contaminating an unrelated stability corpus.
+       full detail: acceptance recommendation --criterion do-not-touch-decompose-stability
+  13. The corpus remains the source of truth for the new assertions rather than being rewritten to fit them.
+       inputs:  A corpus case whose labels are compared against the source evidence record, plus a mutation attempt that would rewrite the corpus-derived labels or case metadata while leaving directory names unchanged. Use the corpus README and the generated regression fixtures together.
+       detects: Developer keeps the corpus files intact but changes only derived documentation outside the corpus tree.
+       full detail: acceptance recommendation --criterion preserve-corpus-evidence-record
+  14. Cases use the run's input data without inheriting the resumed state from runs 2 and 3.
+       inputs:  Two cases built from runs that had resumed state in the original corpus, with any persisted incremental-state artifacts present in the repository snapshot. The test should ensure the case uses only the run input data and not resumed state from runs 2 and 3.
+       detects: Developer carries forward some other incremental metadata not named in the assertions, but leaves the checked fields empty.
+       full detail: acceptance recommendation --criterion do-not-restore-incremental-state
+  15. The repository contains committed fixture files for the new regression cases.
+       inputs:  A repository scan that expects the new regression cases to exist as committed files under `tests/fixtures/rating-regression/`, with each case containing `case.json` and `labels.json`. Use all six runs so missing or partial fixture commits are visible.
+       detects: Developer commits the directories but omits some non-checked ancillary metadata inside them.
+       full detail: acceptance recommendation --criterion scoreboard-committed-as-fixtures
+  16. Running the suite with an always-`strongly supported` judge produces failing cases.
+       inputs:  A suite run with the always-`strongly supported` degenerate judge against the full regression corpus, including cases that should expose permissive behavior. The case set must include both genuine gaps and genuine strong labels so the judge cannot skate by.
+       detects: Developer leaves the metrics below 1.0 but the case set still cannot distinguish always-strongly-supported behavior from normal behavior on the tested inputs.
+       full detail: acceptance recommendation --criterion strongly-supported-always-fails
+  17. Running the suite with a never-`strongly supported` judge produces failing cases.
+       inputs:  A suite run with the never-`strongly supported` degenerate judge against the full regression corpus, including cases that should expose pessimistic behavior. The corpus must contain both strong and non-strong labels so the judge cannot pass by being uniformly negative.
+       detects: Developer changes scoring internals but the tested case set still yields the same metrics and label diversity.
+       full detail: acceptance recommendation --criterion never-strongly-supported-fails
+  18. The benchmark expects the real gaps named in the task to appear in the scored results.
+       inputs:  A regression test that enumerates the corpus’s named real gaps and checks they still appear in the scored results, using runs where those gaps are explicitly recorded. Include at least one partly-real gap so the test can distinguish real from merely adjacent findings.
+       detects: Developer keeps the named gaps but changes unrelated gap metadata or ordering.
+       full detail: acceptance recommendation --criterion real-gaps-remain-required
+  19. The benchmark expects the unearned `strongly supported` ratings named in the task to be absent from the scored results.
+       inputs:  A regression test that checks the corpus’s named unearned `strongly supported` ratings are absent from the scored results, using runs where those ratings were later corrected. Include at least one case where the underlying judgment remains permissive even if the label text changes.
+       detects: Developer changes the label text to a different non-strongly_supported value but leaves the underlying judgment equally permissive.
+       full detail: acceptance recommendation --criterion unearned-ratings-no-longer-issued
+  20. The run 3 fixture records which of the two preserved readings is authoritative.
+       inputs:  The `167-gate2-run3` regression fixture, which contains both the original and corrected readings in `judgement.md`/`case.json`. The test must focus on the preserved-reading choice, not on unrelated metadata.
+       detects: Developer preserves the corrected reading text but accidentally flips one unrelated obligation's label.
+       full detail: acceptance recommendation --criterion run3-preserved-reading-ground-truth
+  21. The run 5 fixture records which of the two preserved readings is authoritative.
+       inputs:  The `167-gate2-run5` regression fixture, which also has a rewritten judgement and a corrected reading. The test should verify the authoritative reading choice rather than incidental labels.
+       detects: Developer keeps the corrected reading but changes some other obligation not mentioned in the assertions.
+       full detail: acceptance recommendation --criterion run5-preserved-reading-ground-truth
+  22. The control case is scored by substantive assertions rather than by a trivial pass-through.
+       inputs:  The control case `163-gate2-run1`, scored with the same kind of substantive assertions as the other cases. The input must be a control that could otherwise pass trivially if only one direction were checked.
+       detects: Developer keeps the control case substantive but changes only a non-control case's assertions.
+       full detail: acceptance recommendation --criterion control-case-nontrivial-assertions
+  23. The README text reflects that the corpus is now used by tests, or precisely scopes any remaining unread parts.
+       inputs:  The corpus README text plus the new regression fixture tree, compared against the actual test files that now read the corpus. The test should verify the README’s claims against the committed regression suite and the corpus files it references.
+       detects: Developer updates the README to mention tests but omits the precise scope of what is read.
+       full detail: acceptance recommendation --criterion readme-updated-about-test-coverage
+  24. The run 3 case preserves the corrected interpretation of the three findings.
+       inputs:  The `167-gate2-run3` case and labels, focusing on the three findings the corpus says were real gaps. Use the corrected reading from the rewritten judgement, not the original tool-defect reading.
+       detects: Developer preserves the corrected reading for the three findings but changes unrelated metadata in the judgement file.
+       full detail: acceptance recommendation --criterion run3-corrected-reading-real-findings
+  25. The run 5 case preserves the corrected interpretation of the verdict.
+       inputs:  The `167-gate2-run5` case and labels, especially the single partially supported rating that the rewritten judgement says was a wrong verdict. Use the run 4/run 5 one-commit-apart relationship to make the defect observable.
+       detects: Developer keeps the corrected verdict but changes unrelated labels in run 5.
+       full detail: acceptance recommendation --criterion run5-corrected-reading-verdict
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
