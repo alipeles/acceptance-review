@@ -15,7 +15,8 @@ Clear it out when the task lands rather than letting it accrete.
 ## Task in flight
 
 **#202** — M1.2.r1, decomposition returns a requirement → obligation mapping.
-Branch `202-requirement-obligation-mapping`, off `4ec4470`. No code written yet.
+Branch `202-requirement-obligation-mapping`, off `4ec4470`. Implemented; three
+commits; suite green at 750.
 
 Design is `docs/DR-202-decomposition-requirement-mapping.md` (accepted, not
 built). #202 is scoped to the **representational** change only — DR decisions
@@ -50,20 +51,35 @@ decompose after the change as a test of it. Both runs are in `dogfood-logs/`.
 human can reject. The never-duplicate property (DR-202 decision 2), lost in both
 its statements in run 1, is mapped in run 2.
 
-**Two content defects found in run 2, neither filed yet — decide with the human:**
+**Run 3 added the requirement-major renderer and a prompt rule for unresolvable
+references.** The second was the human's diagnosis and it was right: run 2's
+declines said *"a scope note pointing to #204"*, which is what not knowing what
+#204 is looks like. Coverage went 35 → **43 of 44**; all ten scope exclusions now
+yield. The one decline is `completion-01: Implementation`, correctly.
 
-1. The Task section's *problem statement* became an obligation to preserve the
-   flat list, alongside the obligation to replace it. Contradictory pair from one
-   paragraph, nothing flags it. #181 family, possibly #205.
-2. `exclusion-04` (*"requiring a citation is #206's job"*) inverted into
-   *"An open question does not need to cite…"*, typed `human_review`. Turns "out
-   of scope" into "must be false". Related to #196.
+This **refutes DR-202's positive-invariant hypothesis as the primary cause** —
+that rule was already in force for run 2 and recovered only 2 of 10.
 
-**Eight of ten scope exclusions were still declined**, each as *"a scope note
-pointing to #204 rather than a standalone requirement"*. I disagree for the six
-naming sibling issues. DR-202's positive-invariant hypothesis is **partially
-supported, not settled** — instructing against it recovered only 2 of 10.
-Attributed to #205.
+**Open defects:**
+
+1. **#210** (filed, child of #181) — three exclusions linked to a neighbouring
+   requirement's obligation instead of their own. Predictive signal is exact on
+   this sample: the only three exclusions sharing an obligation with a Completion
+   expectation are the only three mislinked. **DR-202 decision 2's reframe
+   relocates over-merging rather than removing it** — read before building #144.
+2. **#211** (filed, supersedes #195, child of #186) — rebuild that suite against
+   the mapping and score **link precision separately from coverage**. Blocks #210:
+   43-of-44 would otherwise score as ~0.98 accuracy.
+3. **Unfiled** — the Task section's *problem statement* becomes an obligation to
+   preserve the flat list, alongside the obligation to replace it. Stable across
+   all three runs. #181 family.
+
+**Withdrawn:** the `exclusion-04` "inversion" finding from runs 2 and 3 was my
+error, not a tool defect — *"does not need to"* is a permission, not a
+prohibition, and the obligation takes the same form as its correctly-handled
+siblings. Both judgements corrected in place, both readings preserved. The lesson
+is DR-180's in mirror: I reused a judgement across three runs instead of
+re-deriving it, and its stability was not evidence for it.
 
 **Next: Gate 2** (`acceptance check --task current-task.md --base 4ec4470`).
 Expect #153 to cap the scope exclusions below `strongly supported`, as it did for

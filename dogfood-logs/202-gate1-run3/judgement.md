@@ -88,17 +88,45 @@ obligation to replace it, and nothing flags the contradiction.
 
 Three consecutive runs produce it. It is stable, not noise.
 
-**B.** `exclusion-04` — *"Requiring an open question to cite where the task file
-fails to answer it, which is #206"* — becomes *"An open question does not need to
-cite where the task file fails to answer it."* Out-of-scope inverted into
-must-be-false. A later stage could report this change as having failed to deliver
-an absence.
+**B. — WITHDRAWN. This finding was wrong; the corrected reading is ground truth.**
 
-Note the interaction with Finding 1: the reference rule made the model engage
-with `exclusion-04` rather than decline it, and engaging with it produced the
-inversion. The rule is still right — an arguable wrong obligation beats a silent
-drop — but it converts some declines into inversions rather than into correct
-obligations.
+> *Original reading, preserved:* `exclusion-04` — *"Requiring an open question to
+> cite where the task file fails to answer it, which is #206"* — becomes *"An open
+> question does not need to cite where the task file fails to answer it."*
+> Out-of-scope inverted into must-be-false. A later stage could report this change
+> as having failed to deliver an absence.
+
+**Corrected reading.** There is nothing wrong with it. Set against the exclusions
+this same run handled correctly:
+
+| requirement | obligation |
+|---|---|
+| `exclusion-02` | Obligation derivation **is not partitioned** by requirement batch. |
+| `exclusion-05` | Open-question resolution **does not read** the base revision. |
+| `exclusion-07` | Semantically duplicate obligations **are not** de-duplicated. |
+| `exclusion-04` | An open question **does not need to** cite where the task file fails to answer it. |
+
+Same form as its siblings — *X is not done* — and if anything the mildest of the
+four. The claimed inversion requires *"an open question must **not** cite …"*.
+**"Does not need to" is a permission, not a prohibition**, so no diff can fail
+this obligation by adding citations, which is precisely what the original finding
+asserted would happen.
+
+The error was mine, not the tool's: a bad inference over a reading I had already
+got right. Run 2's version of this finding contains the correct gloss
+(*"citations must not be **required**"*) and then draws the wrong conclusion from
+it in the next clause. It was then carried into this run's judgement unchecked —
+a judgement reused rather than re-derived, which is DR-180's lesson wearing the
+other face: the stability of my own claim across three runs was not evidence for
+it.
+
+Nothing survives of this finding for run 3. (Run 2's *secondary* observation does
+survive **for run 2 only**: the same obligation was typed `human_review` there and
+`functional` here, which is #196's shape and a type-instability datum. It is not
+a defect in the text, and it does not rescue the withdrawn claim.)
+
+**Consequence:** the exclusion defects in this run are **three bad links out of
+ten, not four**, and all three are one defect with one predictive signal.
 
 ## Finding 4 — the renderer
 
@@ -122,9 +150,14 @@ obligation is an invention or a mapping failure, and both are findings.
 |---|---|
 | 1 — reference rule fixed the declines | delivered; refutes DR-202's prompt-rule hypothesis as primary cause. Carry to #205/#206 |
 | 2 — three false links, two clearly wrong | **new defect, unfiled.** Recall converted to precision. Needs a link-precision measure before #195's suite is rebuilt |
+| 2 — three false links | filed as **#210** (child of #181), blocked on **#211** |
 | 3A — problem statement became an obligation | **unfiled**, stable across three runs, #181 family |
-| 3B — scope exclusion inverted | **unfiled**, related to #196/#206 |
+| 3B — scope exclusion inverted | **withdrawn — the finding was wrong, not the tool** |
 | 4 — renderer | delivered |
+
+The link-precision measure Finding 2 calls for is **#211**, which supersedes #195
+and blocks #210: nothing about the linking behaviour should be changed before a
+number exists that can tell whether the change helped.
 
 `current-task.md` is unedited across all three runs, so the comparison is clean.
 

@@ -92,15 +92,29 @@ preserve the problem has misread the mandate, not the sentence. Recorded against
 **#181**; filing deferred pending the human's read, since it may belong under
 #205 with the typing work.
 
-**B.** `obligation-open-question-no-citation-required` — *"An open question does
-not need to cite where the task file fails to answer it."*, typed `human_review`,
-derived from `exclusion-04`.
+**B. — MOSTLY WITHDRAWN after run 3. The corrected reading is ground truth.**
 
-The exclusion says citations are **#206's** job, not this change's. The
-obligation inverts that into an assertion that citations must **not** be
-required — turning "out of scope" into "must be false". A later stage could
-report this change as failing to deliver an absence. The `human_review` type on
-a statically-checkable statement is separately #196's shape.
+> *Original reading, preserved:* `obligation-open-question-no-citation-required` —
+> *"An open question does not need to cite where the task file fails to answer
+> it."*, typed `human_review`, derived from `exclusion-04`. The exclusion says
+> citations are **#206's** job, not this change's. The obligation inverts that
+> into an assertion that citations must **not** be required — turning "out of
+> scope" into "must be false". A later stage could report this change as failing
+> to deliver an absence. The `human_review` type on a statically-checkable
+> statement is separately #196's shape.
+
+**Corrected reading.** The text is a correct decomposition of its requirement,
+taking the same *X is not done* form as the exclusions this run and run 3 handled
+well. *"Does not need to"* is a permission, not a prohibition; the inversion
+claimed would require *"must not cite"*, which was never produced. Note that the
+paragraph above states the correct gloss — *"citations must not be **required**"* —
+and then draws a conclusion that does not follow from it. The defect was in the
+judgement, not in the decomposition.
+
+**What survives:** the type. `human_review` on a statically-checkable statement is
+#196's shape, and run 3 returned `functional` for the same text — a type-
+instability datum (#193). That observation stands on its own and does not support
+the withdrawn claim.
 
 Both are content defects in a change that only claimed to be representational —
 so they are **not** regressions introduced by it, but they are not fixed by it
@@ -139,7 +153,7 @@ invariant for a presentation nit.
 | 2 — eight exclusions declined | attributed to **#205**; recorded, human overrules the claim |
 | 3 — never-duplicate recovered | resolves run 1's Finding 2 |
 | 4A — problem statement became an obligation | new defect, **#181** family, filing deferred to the human |
-| 4B — scope exclusion inverted into a prohibition | new defect, related to **#196**/#206, filing deferred |
+| 4B — scope exclusion inverted into a prohibition | **withdrawn after run 3** — the judgement was wrong, not the decomposition. Residual type observation only (#196/#193) |
 | 5 — open question vanished | no conclusion drawn; #193 |
 | 6 — wrapped-bullet text | not fixed, reason recorded |
 
