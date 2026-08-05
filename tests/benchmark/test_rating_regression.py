@@ -410,3 +410,83 @@ def test_the_labels_still_show_the_instability_rather_than_smoothing_it():
     moved = {o: c for o, c in by_obligation.items() if len(c) > 1}
     assert len(moved) >= 5, f"only {len(moved)} obligations disagree across runs"
     assert "remove-stale-next-instruction-file" in moved
+
+
+def test_each_case_is_scored_through_score_case_itself(corpus_worktrees):
+    """`score_case_set` aggregates via `_all_counts` and never calls
+    `score_case`, so asserting the set-level entrypoint alone left the stated
+    constraint — cases are scored through `score_case` — satisfied only in
+    spirit. This scores every case through `score_case` directly and requires
+    the two paths to agree, so a private scorer cannot diverge unnoticed.
+    """
+    import acceptance.benchmark.scoring as scoring
+
+    scored, seen = [], []
+    real = scoring.score_case
+
+    def spy(case, client=None):
+        seen.append(case.case_id)
+        return real(case, client)
+
+    for index, case_dir in enumerate(CASE_DIRS):
+        case = build_corpus_case(case_dir, REPO, CORPUS_DIR, corpus_worktrees / f"wt{index}")
+        obligations = [
+            {"id": o["id"], "description": o["description"]}
+            for o in _labels(case_dir)["obligations"]
+        ]
+        scored.append(classify_case(case, degenerate_client(obligations, always_strong=True)))
+
+    per_case = [spy(case) for case in scored]
+    assert seen == [c.case_id for c in scored]
+    assert per_case == score_case_set(scored).per_case
+
+
+def test_no_provider_is_ever_contacted(corpus_worktrees, monkeypatch):
+    """The stronger form of "no live call": make the provider entrypoint itself
+    fail. `llm._default_completion_fn` calls `litellm.completion`, so a stage
+    that slipped past the injected stub would raise here instead of quietly
+    reaching the network."""
+    import litellm
+
+    def explode(*args, **kwargs):
+        raise AssertionError("a live provider call was attempted")
+
+    monkeypatch.setattr(litellm, "completion", explode)
+
+    case = build_corpus_case(CASE_DIRS[0], REPO, CORPUS_DIR, corpus_worktrees / "wt0")
+    obligations = [
+        {"id": o["id"], "description": o["description"]}
+        for o in _labels(CASE_DIRS[0])["obligations"]
+    ]
+    scored = classify_case(case, degenerate_client(obligations, always_strong=True))
+    assert scored.reviewer_output is not None
+
+
+# The one sanctioned transcript corpus: #146's recorded prompt-quality fixtures.
+# It predates this task and is deliberately committed; everything else under
+# tests/fixtures/ must stay transcript-free.
+SANCTIONED_TRANSCRIPTS = REPO / "tests" / "fixtures" / "transcripts"
+
+
+def test_no_transcript_lives_anywhere_under_the_fixture_tree():
+    """Wider than the two case directories, because the stated defect is a
+    transcript stored *elsewhere* in the repository. A transcript embeds the
+    full request, so one committed here would leak this repo's own diffs and
+    task text into versioned test data."""
+    fixtures = REPO / "tests" / "fixtures"
+    suspects = []
+    for path in fixtures.rglob("*"):
+        if not path.is_file() or SANCTIONED_TRANSCRIPTS in path.parents:
+            continue
+        if path.suffix not in {".json", ".jsonl", ".txt", ".md", ".log"}:
+            continue
+        head = path.read_text(errors="ignore")[:4000]
+        if '"response"' in head and '"messages"' in head:
+            suspects.append(str(path.relative_to(REPO)))
+    assert not suspects, f"transcript-like files outside the sanctioned corpus: {suspects}"
+
+
+def test_this_task_added_nothing_to_the_sanctioned_transcript_corpus():
+    """#146's corpus is for prompt-quality tests recorded against archetypes,
+    never against this repository's own dogfood runs."""
+    assert len(list(SANCTIONED_TRANSCRIPTS.glob("*.json"))) == 3
