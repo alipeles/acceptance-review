@@ -74,56 +74,14 @@ The corpus preserves both readings. The corrected reading is ground truth in eac
 | run 4 | the two open questions were dropped, not resolved; the original judgement leaned toward genuine resolution and run 5 falsified it by bringing both back |
 | run 6 | the breakdown was not accurate; a whole scope exclusion produced no obligation, and the correction written after run 7 stands above the original wording |
 
-## Ground truth from this task's own Gate 1 run
-An eighth case derives from `dogfood-logs/195-gate1-run1/`, the Gate 1 run for
-this task. It is the strongest case in the suite: its task file was authored
-knowing what the decomposition should contain, so the losses are enumerated
-rather than reconstructed. Its `judgement.md` establishes the following.
-
-**Requirements that produced no obligation.** Four Completion expectations:
-
-| requirement |
-|---|
-| *A decomposer that drops content fails the suite.* |
-| *A decomposer that raises every open question fails the suite.* |
-| *A decomposer that splits every sentence into its own obligation fails the suite.* |
-| *Every case carries assertions of the same kind as the other cases rather than passing trivially.* |
-
-And five Scope exclusions:
-
-| requirement |
-|---|
-| *Deciding which of its three observed types `record-run-provenance` should carry.* |
-| *Measuring resample variance over one unchanged task file, which is #189's harness.* |
-| *Producing new corpus runs by re-running `decompose`.* |
-| *The rating-stability corpus and the regression suite over it, which #190 delivered.* |
-| *Modifying any file under `tests/fixtures/decompose-stability/` other than its README.* |
-
-**Obligations wrongly typed `human_review`.** Both are statically checkable
-prohibitions on the harness's own behaviour:
-
-| obligation |
-|---|
-| `preserve-no-thresholding` |
-| `preserve-no-variance-reduction` |
-
-**Open questions raised that the task file answers.** All three, each answerable
-from the task file alone:
-
-| question |
-|---|
-| `clarify-record-run-provenance-type` |
-| `clarify-run-4-reading` |
-| `clarify-run-6-reading` |
-
 ## Constraints
 - Cases are scored through the benchmark scoring path the repository already has,
   `benchmark/scoring.py::score_case`, rather than a second one written for this
   task.
 - Ground-truth labels use the existing `benchmark/case.py::GroundTruthLabels`
   shape that `tests/fixtures/archetypes/` already carries.
-- A case's input is the `current-task.md` of the run that case derives from.
-- No task text is copied into the case.
+- A case's input is the `current-task.md` of the corpus run that case derives
+  from. No task text is copied into the case.
 - Obligation sets are compared through `benchmark/alignment.py::align_obligations`.
 - Obligation counts are never compared.
 - Content differences are asserted separately from shape differences.
@@ -164,10 +122,6 @@ from the task file alone:
   suite to retain that symbol.
 - Each case derived from run 4 or run 6 records which of the two preserved
   readings in its `judgement.md` is ground truth.
-- A case derived from `dogfood-logs/195-gate1-run1/` requires each requirement
-  listed above as producing no obligation to be reported.
-- That case requires each open question listed above as answerable from the task
-  file to no longer be raised.
 - Every case carries assertions of the same kind as the other cases rather than
   passing trivially.
 - The corpus README no longer states that the corpus is not read by any test, or

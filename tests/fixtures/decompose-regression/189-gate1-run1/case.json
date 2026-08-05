@@ -1,0 +1,6 @@
+{
+  "run": "189-gate1-run1",
+  "run_dir": "tests/fixtures/decompose-stability/189-gate1-run1",
+  "judgement": "tests/fixtures/decompose-stability/189-gate1-run1/judgement.md \u2014 the first run, over a task file that stated the same requirement in three sections. The duplicate pairs it produced were real and run 2's merge of them was right.",
+  "summary": "Shaped like a control and deliberately not a trivial one. Its bite is the open question: run 1 raised the output-format question, which is correct, so a decomposer that drops questions loses recall here. Its task file is the only one of the seven that names neither symbol, so no symbol requirement applies."
+}

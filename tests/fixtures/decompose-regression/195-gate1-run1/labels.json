@@ -1,0 +1,108 @@
+{
+  "obligations": [
+    {
+      "id": "lossy-decomposer-fails",
+      "description": "A decomposer that drops content fails the suite.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced no obligation. One of three consecutive single-clause bullets stating the both-directions requirement, all three of which vanished. Nothing to reword, so attributed to the tool."
+    },
+    {
+      "id": "question-raising-decomposer-fails",
+      "description": "A decomposer that raises every open question fails the suite.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced no obligation. Absence of loss is explicitly not sufficient on its own, and #178 is the opposite-direction defect that must not be rewarded."
+    },
+    {
+      "id": "sentence-splitting-decomposer-fails",
+      "description": "A decomposer that splits every sentence into its own obligation fails the suite.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced no obligation. This is the direction a recall-only metric structurally cannot see."
+    },
+    {
+      "id": "no-case-passes-trivially",
+      "description": "Every case carries assertions of the same kind as the other cases rather than passing trivially.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced no obligation. The corpus's own note warns that runs 3 and 4 are the trap rather than the control."
+    },
+    {
+      "id": "no-deciding-provenance-type",
+      "description": "Deciding which of its three observed types record-run-provenance should carry is out of scope.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced no obligation, and worse: it came back inverted as an open question asking which type to decide. An exclusion saying 'do not decide X' became a request to decide X."
+    },
+    {
+      "id": "no-resample-variance-measurement",
+      "description": "Measuring resample variance over one unchanged task file is out of scope.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced no obligation. Scope exclusions carry no meaning downstream (#153) and here did not survive decomposition at all."
+    },
+    {
+      "id": "no-new-corpus-runs",
+      "description": "Producing new corpus runs by re-running decompose is out of scope.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced no obligation."
+    },
+    {
+      "id": "no-rating-stability-work",
+      "description": "The rating-stability corpus and the regression suite over it are out of scope.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced no obligation."
+    },
+    {
+      "id": "no-corpus-modification",
+      "description": "Modifying any file under tests/fixtures/decompose-stability/ other than its README is out of scope.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced no obligation. This is the exclusion that protects the evidence record the whole suite is derived from, and it is the one whose loss would matter most."
+    },
+    {
+      "id": "preserve-no-thresholding",
+      "description": "Keep threshold-setting out of the harness.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced, but typed human_review. Statically checkable, and the same defect run 7 of the corpus records \u2014 reproduced on a task file that lists that finding as ground truth.",
+      "expected_type": "invariant"
+    },
+    {
+      "id": "preserve-no-variance-reduction",
+      "description": "Preserve the measured variance without attempting to reduce it.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Produced, but typed human_review, and statically checkable.",
+      "expected_type": "invariant"
+    }
+  ],
+  "gaps": [],
+  "unrequested_changes": [],
+  "open_questions": [
+    {
+      "id": "clarify-record-run-provenance-type",
+      "description": "Which type should the unchanged-text obligation record-run-provenance carry: invariant, docs_config, or functional?",
+      "should_be_raised": false,
+      "rationale": "Answerable from the task file alone, twice over: it states that which of the three types is correct is not established by the corpus, and it excludes deciding it from scope. #178.",
+      "aliases": []
+    },
+    {
+      "id": "clarify-run-4-reading",
+      "description": "For run 4, which preserved reading in judgement.md is ground truth: that the open questions were dropped, or that they were resolved?",
+      "should_be_raised": false,
+      "rationale": "Answerable from the task file's ground-truth table, whose stated purpose is settling exactly this: the questions were dropped, not resolved, and run 5 falsified the original reading. #178.",
+      "aliases": []
+    },
+    {
+      "id": "clarify-run-6-reading",
+      "description": "For run 6, which preserved reading in judgement.md is ground truth: that the breakdown was not accurate, or the original wording?",
+      "should_be_raised": false,
+      "rationale": "Answerable from the same table: the breakdown was not accurate, and the correction written after run 7 stands above the original wording. #178.",
+      "aliases": []
+    }
+  ]
+}

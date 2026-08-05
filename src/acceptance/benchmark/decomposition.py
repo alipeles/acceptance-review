@@ -31,5 +31,10 @@ def decompose_case(case: BenchmarkCase, client: ModelClient) -> BenchmarkCase:
         # reflect calls that actually happened (#160).
         provenance=provenance_for(client),
         obligation_map=result.obligations,
+        # Carried, not dropped (#195). `decompose` produces open questions and
+        # this hook used to discard them, so any measurement of whether the
+        # stage raises the questions it should was reading an empty list and
+        # would have agreed with a decomposer that raised none.
+        open_questions=result.open_questions,
     )
     return scored_copy(case, review)

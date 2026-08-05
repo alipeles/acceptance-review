@@ -1,0 +1,52 @@
+{
+  "obligations": [
+    {
+      "id": "report-obligations-present-in-some-runs-only",
+      "description": "Report obligations that appear in some runs of one task file but not others.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. The first half of the compound bullet. Run 4 produced a softened version of this half and dropped the other."
+    },
+    {
+      "id": "report-open-questions-present-in-some-runs-only",
+      "description": "Report open questions that appear in some runs of one task file but not others.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. THE LOST HALF. The task file's bullet read 'which obligations appear in some runs but not others, and which open questions do'; run 4's obligation kept only the obligations half. A dropped requirement is invisible downstream \u2014 no later stage can evidence a requirement that was never extracted. Splitting the bullet fixed it at source and run 5 extracts both."
+    },
+    {
+      "id": "use-existing-variance-path",
+      "description": "Source statistics from the existing benchmark variance path in benchmark/scoring.py::disclose_variance.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Run 4 dropped the symbol from this obligation on byte-identical constraint text \u2014 verified by grep in the judgement. The task file names the symbol in backticks, which is as strong a signal as an input can carry, so the obligation derived from it must still name it.",
+      "required_symbols": [
+        "disclose_variance"
+      ]
+    },
+    {
+      "id": "use-existing-obligation-alignment",
+      "description": "Compare obligations across runs using benchmark/alignment.py::align_obligations.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. The alignment constraint entered the task file at run 4 naming `align_obligations`, and run 4's obligation reduced it to 'the existing alignment function'. The task file names the symbol in backticks, which is as strong a signal as an input can carry, so the obligation derived from it must still name it.",
+      "required_symbols": [
+        "align_obligations"
+      ]
+    }
+  ],
+  "gaps": [],
+  "unrequested_changes": [],
+  "open_questions": [
+    {
+      "id": "report-format",
+      "description": "What output format should the report use, and where should it be written or returned?",
+      "should_be_raised": true,
+      "rationale": "No version of the task file says anything about output format, so the text that would answer this question is absent throughout and the question is never resolved. A question that returns was never resolved; it was dropped.",
+      "aliases": [
+        "report-format-unspecified",
+        "oq-output-format"
+      ]
+    }
+  ]
+}

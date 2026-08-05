@@ -1,0 +1,6 @@
+{
+  "run": "189-gate1-run4",
+  "run_dir": "tests/fixtures/decompose-stability/189-gate1-run4",
+  "judgement": "tests/fixtures/decompose-stability/189-gate1-run4/judgement.md \u2014 GROUND TRUTH IS THE CORRECTED READING. Run 4 scored its zero-question result as leaning toward the questions having been genuinely resolved; run 5 falsified that by bringing both back, and resolution is not a state a question can return from. The questions were dropped, not resolved. The original reading is preserved in the run's own `judgement.md` and is not ground truth here.",
+  "summary": "The richest case in the corpus: a compound requirement that lost half its content, both symbols dropped from obligations derived from text that names them, and the output-format question still absent. Also the case that must NOT be charged for shape \u2014 run 3's single `harness-runs-review-pipeline-repeatedly` became three obligations here from an unchanged sentence, and no content was lost in doing so."
+}

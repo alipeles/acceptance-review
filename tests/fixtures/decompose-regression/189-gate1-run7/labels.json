@@ -1,0 +1,69 @@
+{
+  "obligations": [
+    {
+      "id": "no-acceptability-threshold",
+      "description": "Leave acceptability decisions to the task that changes the judge.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Typed human_review by run 7. Wrong: you can test that the harness emits no acceptability decision without a human looking at anything. The likely cause is surface vocabulary \u2014 a prohibition on exercising judgement read as a requirement for judgement.",
+      "expected_type": "invariant"
+    },
+    {
+      "id": "no-threshold-or-rating",
+      "description": "Keep threshold-setting and rating interpretation out of the harness.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Typed human_review by run 7 and statically checkable: a test can assert the harness emits no threshold.",
+      "expected_type": "invariant"
+    },
+    {
+      "id": "no-variance-reduction",
+      "description": "Preserve the measured variance without attempting to reduce it.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Typed human_review by run 7 and statically checkable: a test can assert the measured variance is passed through unreduced.",
+      "expected_type": "invariant"
+    },
+    {
+      "id": "use-existing-disclose-variance-path",
+      "description": "Source statistics from the existing benchmark variance path in benchmark/scoring.py::disclose_variance.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Run 7 retained the symbol. The task file names the symbol in backticks, which is as strong a signal as an input can carry, so the obligation derived from it must still name it.",
+      "required_symbols": [
+        "disclose_variance"
+      ]
+    },
+    {
+      "id": "use-existing-align-obligations",
+      "description": "Compare obligations across runs using benchmark/alignment.py::align_obligations.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Run 7 retained the symbol. The task file names the symbol in backticks, which is as strong a signal as an input can carry, so the obligation derived from it must still name it.",
+      "required_symbols": [
+        "align_obligations"
+      ]
+    },
+    {
+      "id": "record-run-provenance",
+      "description": "Record the input, model set, run count, and seeds that produced the report.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Typed functional here, the third of three values across runs 3-7 on unchanged text. Left unlabelled: the instability is the finding, and the corpus does not say which value is right."
+    }
+  ],
+  "gaps": [],
+  "unrequested_changes": [],
+  "open_questions": [
+    {
+      "id": "report-format",
+      "description": "What output format should the report use, and where should it be written or returned?",
+      "should_be_raised": true,
+      "rationale": "No version of the task file says anything about output format, so the text that would answer this question is absent throughout and the question is never resolved. A question that returns was never resolved; it was dropped.",
+      "aliases": [
+        "report-format-unspecified",
+        "oq-output-format"
+      ]
+    }
+  ]
+}

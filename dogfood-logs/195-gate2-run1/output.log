@@ -1,0 +1,291 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) with non-discriminating test evidence (update-readme-status).
+
+Obligations:
+
+  1. Commit regression cases derived from the decompose-stability corpus as test fixtures.
+       code evidence: addressed
+         1.1  tests/fixtures/decompose-regression/189-gate1-run1/case.json#@@ -0,0 +1,6 @@
+         1.2  tests/fixtures/decompose-regression/195-gate1-run1/case.json#@@ -0,0 +1,6 @@
+         1.3  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         1.4  tests/benchmark/test_decompose_regression.py::test_the_corpus_runs_are_all_represented
+         1.5  tests/benchmark/test_labels.py::test_build_benchmark_case_validates
+
+  2. Score cases through the repository's existing benchmark scoring path.
+       code evidence: addressed
+         2.1  src/acceptance/benchmark/scoring.py#@@ -140,6 +140,66 @@ def _decomposition_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _Ma
+         2.2  src/acceptance/benchmark/scoring.py#@@ -185,43 +245,61 @@ def _alignment(case: BenchmarkCase, client: ModelClient | None) -> dict[str, str
+         2.3  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         2.4  tests/benchmark/test_alignment.py::test_exact_match_scores_reworded_output_as_zero
+         2.5  tests/benchmark/test_alignment.py::test_semantic_match_scores_reworded_output_correctly
+         2.6  tests/benchmark/test_decompose_regression.py::test_scoring_goes_through_the_shared_benchmark_path
+         2.7  tests/benchmark/test_labels.py::test_full_loop_scores_the_noop_checker_as_all_miss
+         2.8  tests/benchmark/test_rating_regression.py::test_each_case_is_scored_through_score_case_itself
+         2.9  tests/benchmark/test_rating_regression.py::test_scoring_goes_through_the_shared_benchmark_path
+         2.10  tests/benchmark/test_scoring.py::test_empty_review_yields_an_all_miss_score
+         2.11  tests/benchmark/test_scoring.py::test_score_case_raises_without_reviewer_output
+
+  3. Represent ground-truth labels with the existing GroundTruthLabels shape used by archetype fixtures.
+       code evidence: addressed
+         3.1  src/acceptance/benchmark/case.py#@@ -42,7 +42,12 @@ from typing import Literal
+         3.2  src/acceptance/benchmark/case.py#@@ -82,6 +106,8 @@ class GroundTruthObligation(PersistableModel):
+         3.3  src/acceptance/benchmark/case.py#@@ -121,10 +147,50 @@ class GroundTruthUnrequestedChange(PersistableModel):
+         3.4  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         3.5  tests/benchmark/test_coverage.py::test_archetype_8_unrequested_change_gap_matches_via_its_obligation
+         3.6  tests/benchmark/test_decompose_regression.py::test_labels_load_against_the_shared_ground_truth_schema
+         3.7  tests/benchmark/test_labels.py::test_build_benchmark_case_validates
+
+  4. Use each run's committed current-task.md as the case input.
+       code evidence: addressed
+         4.1  src/acceptance/benchmark/corpus.py#@@ -178,6 +178,86 @@ def build_corpus_case(
+         4.2  tests/fixtures/decompose-regression/189-gate1-run1/case.json#@@ -0,0 +1,6 @@
+         4.3  tests/fixtures/decompose-regression/195-gate1-run1/case.json#@@ -0,0 +1,6 @@
+       test evidence: strongly supported  [tier: static]
+         4.4  tests/benchmark/test_decompose_regression.py::test_a_case_reads_its_task_file_from_the_run_rather_than_a_copy
+         4.5  tests/benchmark/test_decompose_regression.py::test_symbols_named_in_the_task_file_are_required_of_the_obligation
+         4.6  tests/benchmark/test_labels.py::test_build_benchmark_case_validates
+
+  5. Keep the case input as the real task file rather than a reconstruction.
+       code evidence: addressed
+         5.1  src/acceptance/benchmark/corpus.py#@@ -178,6 +178,86 @@ def build_corpus_case(
+         5.2  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/benchmark/test_decompose_regression.py::test_a_case_reads_its_task_file_from_the_run_rather_than_a_copy
+         5.4  tests/benchmark/test_decompose_regression.py::test_symbols_named_in_the_task_file_are_required_of_the_obligation
+         5.5  tests/benchmark/test_labels.py::test_build_benchmark_case_validates
+
+  6. Keep task text out of the case definition itself.
+       code evidence: addressed
+         6.1  src/acceptance/benchmark/corpus.py#@@ -178,6 +178,86 @@ def build_corpus_case(
+         6.2  tests/fixtures/decompose-regression/189-gate1-run1/case.json#@@ -0,0 +1,6 @@
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/benchmark/test_decompose_regression.py::test_a_case_reads_its_task_file_from_the_run_rather_than_a_copy
+         6.4  tests/benchmark/test_decompose_regression.py::test_symbols_named_in_the_task_file_are_required_of_the_obligation
+         6.5  tests/benchmark/test_labels.py::test_build_benchmark_case_validates
+
+  7. Compare obligation sets using benchmark/alignment.py::align_obligations.
+       code evidence: addressed
+         7.1  src/acceptance/benchmark/scoring.py#@@ -185,43 +245,61 @@ def _alignment(case: BenchmarkCase, client: ModelClient | None) -> dict[str, str
+         7.2  tests/fixtures/decompose-regression/189-gate1-run4/labels.json#@@ -0,0 +1,52 @@
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/benchmark/test_alignment.py::test_exact_match_scores_reworded_output_as_zero
+         7.4  tests/benchmark/test_alignment.py::test_semantic_match_scores_reworded_output_correctly
+         7.5  tests/benchmark/test_labels.py::test_full_loop_scores_the_noop_checker_as_all_miss
+         7.6  tests/evidence/test_mapping.py::test_archetype_1_mapping_accuracy_reports_a_real_number
+
+  8. Evaluate cases without comparing obligation counts.
+       code evidence: addressed
+         8.1  src/acceptance/benchmark/scoring.py#@@ -185,43 +245,61 @@ def _alignment(case: BenchmarkCase, client: ModelClient | None) -> dict[str, str
+         8.2  src/acceptance/benchmark/scoring.py#@@ -267,34 +349,22 @@ def _reconcile_determinism_modes(modes: set[str]) -> str | None:
+       test evidence: strongly supported  [tier: static]
+         8.3  tests/benchmark/test_alignment.py::test_exact_match_scores_reworded_output_as_zero
+         8.4  tests/benchmark/test_decompose_regression.py::test_no_case_passes_trivially
+         8.5  tests/benchmark/test_labels.py::test_full_loop_scores_the_noop_checker_as_all_miss
+         8.6  tests/benchmark/test_scoring.py::test_empty_review_yields_an_all_miss_score
+         8.7  tests/benchmark/test_scoring.py::test_metrics_are_none_when_their_ground_truth_is_empty
+         8.8  tests/benchmark/test_scoring_report.py::test_empty_case_set_yields_no_metrics
+         8.9  tests/benchmark/test_scoring_report.py::test_pooled_report_matches_hand_calculated_values
+         8.10  tests/benchmark/test_scoring_report.py::test_report_includes_per_case_scores
+         8.11  tests/evidence/test_mapping.py::test_archetype_1_mapping_accuracy_reports_a_real_number
+
+  9. Assert content differences separately from shape differences.
+       code evidence: addressed
+         9.1  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+         9.2  tests/fixtures/decompose-stability/README.md#@@ -1,7 +1,24 @@
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/benchmark/test_coverage.py::test_archetype_8_unrequested_change_gap_matches_via_its_obligation
+         9.4  tests/benchmark/test_decompose_regression.py::test_content_loss_and_shape_difference_are_scored_separately
+         9.5  tests/benchmark/test_decompose_regression.py::test_precision_is_not_asserted_where_a_re_split_is_ground_truth
+         9.6  tests/benchmark/test_decomposition.py::test_decompose_case_leaves_other_metrics_as_no_op_defaults
+         9.7  tests/change/test_working_tree.py::test_dirty_working_tree_matches_committed_diff_shape
+
+  10. Treat the listed shape differences as required non-defects for the suite.
+       code evidence: addressed
+         10.1  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+         10.2  tests/fixtures/decompose-regression/189-gate1-run4/labels.json#@@ -0,0 +1,52 @@
+         10.3  tests/fixtures/decompose-regression/189-gate1-run6/labels.json#@@ -0,0 +1,52 @@
+       test evidence: strongly supported  [tier: static]
+         10.4  tests/benchmark/test_coverage.py::test_archetype_8_unrequested_change_gap_matches_via_its_obligation
+         10.5  tests/benchmark/test_decompose_regression.py::test_content_loss_and_shape_difference_are_scored_separately
+         10.6  tests/benchmark/test_decompose_regression.py::test_precision_is_not_asserted_where_a_re_split_is_ground_truth
+         10.7  tests/benchmark/test_decomposition.py::test_decompose_case_leaves_other_metrics_as_no_op_defaults
+         10.8  tests/change/test_working_tree.py::test_dirty_working_tree_matches_committed_diff_shape
+
+  11. Fail a case when its named corpus task file is missing, and report the run name.
+       code evidence: addressed
+         11.1  src/acceptance/benchmark/corpus.py#@@ -178,6 +178,86 @@ def build_corpus_case(
+         11.2  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         11.3  tests/benchmark/test_decompose_regression.py::test_a_case_naming_a_missing_run_fails_rather_than_skipping
+
+  12. Run cases without issuing live model calls.
+       code evidence: addressed
+         12.1  tests/benchmark/degenerate_decomposers.py#@@ -0,0 +1,148 @@
+         12.2  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         12.3  tests/benchmark/test_runner.py::test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_score
+
+  13. Keep recorded model transcripts out of the committed suite.
+       code evidence: addressed
+         13.1  tests/benchmark/degenerate_decomposers.py#@@ -0,0 +1,148 @@
+         13.2  tests/fixtures/decompose-regression/189-gate1-run1/case.json#@@ -0,0 +1,6 @@
+       test evidence: strongly supported  [tier: static]
+         13.3  tests/prompts/test_corpus_mechanism.py::test_the_corpus_matches_an_exact_manifest_not_merely_a_count
+
+  14. Make each case's ground-truth label traceable to the judgement.md it came from.
+       code evidence: addressed
+         14.1  tests/fixtures/decompose-regression/189-gate1-run4/case.json#@@ -0,0 +1,6 @@
+         14.2  tests/fixtures/decompose-regression/195-gate1-run1/case.json#@@ -0,0 +1,6 @@
+         14.3  tests/fixtures/decompose-stability/README.md#@@ -1,7 +1,24 @@
+       test evidence: strongly supported  [tier: static]
+         14.4  tests/benchmark/test_decompose_regression.py::test_a_contested_case_records_which_reading_is_ground_truth
+         14.5  tests/benchmark/test_labels.py::test_build_benchmark_case_validates
+
+  15. Report every content loss listed in the corpus ground truth.
+       code evidence: addressed
+         15.1  tests/fixtures/decompose-regression/195-gate1-run1/labels.json#@@ -0,0 +1,108 @@
+         15.2  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         15.3  tests/benchmark/test_decompose_regression.py::test_a_decomposer_that_drops_content_fails_the_suite
+         15.4  tests/benchmark/test_decompose_regression.py::test_every_content_loss_is_required_to_be_reported
+
+  16. Assign a non-human-review type to each obligation listed as wrongly typed human_review.
+       code evidence: addressed
+         16.1  tests/fixtures/decompose-regression/189-gate1-run7/labels.json#@@ -0,0 +1,69 @@
+         16.2  tests/fixtures/decompose-regression/195-gate1-run1/labels.json#@@ -0,0 +1,108 @@
+         16.3  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         16.4  tests/benchmark/test_decompose_regression.py::test_every_mistyped_prohibition_is_required_to_carry_another_type
+
+  17. Preserve symbols named in task-file text on the obligations derived from that text.
+       code evidence: addressed
+         17.1  src/acceptance/benchmark/case.py#@@ -74,7 +79,26 @@ class GroundTruthObligation(PersistableModel):
+         17.2  tests/fixtures/decompose-regression/189-gate1-run4/labels.json#@@ -0,0 +1,52 @@
+         17.3  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         17.4  tests/benchmark/test_decompose_regression.py::test_symbols_named_in_the_task_file_are_required_of_the_obligation
+
+  18. Record which preserved reading is ground truth for the run 4 case.
+       code evidence: addressed
+         18.1  tests/fixtures/decompose-regression/189-gate1-run4/case.json#@@ -0,0 +1,6 @@
+         18.2  src/acceptance/benchmark/corpus.py#@@ -178,6 +178,86 @@ def build_corpus_case(
+       test evidence: strongly supported  [tier: static]
+         18.3  tests/benchmark/test_decompose_regression.py::test_a_contested_case_records_which_reading_is_ground_truth
+
+  19. Record which preserved reading is ground truth for the run 6 case.
+       code evidence: addressed
+         19.1  tests/fixtures/decompose-regression/189-gate1-run6/case.json#@@ -0,0 +1,6 @@
+         19.2  src/acceptance/benchmark/corpus.py#@@ -178,6 +178,86 @@ def build_corpus_case(
+       test evidence: strongly supported  [tier: static]
+         19.3  tests/benchmark/test_decompose_regression.py::test_a_contested_case_records_which_reading_is_ground_truth
+
+  20. Require the dogfood case to report each listed no-obligation requirement.
+       code evidence: addressed
+         20.1  tests/fixtures/decompose-regression/195-gate1-run1/labels.json#@@ -0,0 +1,108 @@
+         20.2  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         20.3  tests/benchmark/test_decompose_regression.py::test_a_decomposer_that_raises_everything_and_splits_everything_fails_the_suite
+
+  21. Require the dogfood case to stop raising each open question answerable from the task file.
+       code evidence: addressed
+         21.1  tests/fixtures/decompose-regression/195-gate1-run1/labels.json#@@ -0,0 +1,108 @@
+         21.2  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         21.3  tests/benchmark/test_decompose_regression.py::test_a_decomposer_that_raises_everything_and_splits_everything_fails_the_suite
+         21.4  tests/benchmark/test_decompose_regression.py::test_questions_the_task_file_answers_are_required_not_to_be_raised
+         21.5  tests/benchmark/test_decompose_regression.py::test_the_output_format_question_is_required_on_every_corpus_case
+
+  22. Give every case assertions of the same kind as the other cases instead of trivial pass-throughs.
+       code evidence: addressed
+         22.1  tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+       test evidence: strongly supported  [tier: static]
+         22.2  tests/benchmark/test_decompose_regression.py::test_a_decomposer_that_drops_content_fails_the_suite
+         22.3  tests/benchmark/test_decompose_regression.py::test_a_decomposer_that_raises_everything_and_splits_everything_fails_the_suite
+         22.4  tests/benchmark/test_decompose_regression.py::test_the_two_degenerate_decomposers_fail_on_different_metrics
+         22.5  tests/benchmark/test_decomposition.py::test_all_archetype_cases_report_a_decomposition_accuracy_number
+         22.6  tests/benchmark/test_decomposition.py::test_archetype_1_reports_the_expected_decomposition_accuracy
+         22.7  tests/benchmark/test_labels.py::test_full_loop_scores_the_noop_checker_as_all_miss
+         22.8  tests/benchmark/test_runner.py::test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_score
+         22.9  tests/test_config.py::test_the_benchmark_hooks_also_report_honoured_controls
+
+  23. Revise the corpus README so it no longer claims the corpus is unread by tests, or else states exactly which parts remain unread.
+       code evidence: addressed
+         23.1  tests/fixtures/decompose-stability/README.md#@@ -1,7 +1,24 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+Unrequested changes:
+  1. [separable] `session-state.md` was updated with the current task and dogfood run notes. None of the listed obligations require changing session-state scratch notes.
+       session-state.md#@@ -8,17 +8,35 @@ Committed, so it survives a context reset or a machine change — but still a
+  2. [separable] The added dogfood log files under `dogfood-logs/195-gate1-run1/` are not required by any obligation; the task asked to commit regression cases and update the corpus README, not to add a new dogfood transcript bundle.
+       dogfood-logs/195-gate1-run1/current-task.md#@@ -0,0 +1,128 @@
+       dogfood-logs/195-gate1-run1/judgement.md#@@ -0,0 +1,108 @@
+       dogfood-logs/195-gate1-run1/output.log#@@ -0,0 +1,35 @@
+  3. [in_service] `GroundTruthObligation`, `GroundTruthLabels`, `BenchmarkScore`, and related benchmark models gained new fields (`expected_type`, `required_symbols`, `open_questions`, new score metrics). The obligations asked to use the existing shapes and score through the existing path, not to expand the public benchmark schema.
+       src/acceptance/benchmark/case.py#@@ -42,7 +42,12 @@ from typing import Literal
+       src/acceptance/benchmark/case.py#@@ -74,7 +79,26 @@ class GroundTruthObligation(PersistableModel):
+       src/acceptance/benchmark/case.py#@@ -82,6 +106,8 @@ class GroundTruthObligation(PersistableModel):
+       src/acceptance/benchmark/case.py#@@ -121,10 +147,50 @@ class GroundTruthUnrequestedChange(PersistableModel):
+       src/acceptance/benchmark/case.py#@@ -159,6 +225,17 @@ class GroundTruthLabels(PersistableModel):
+       src/acceptance/benchmark/case.py#@@ -175,11 +252,17 @@ class BenchmarkScore(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -140,6 +140,66 @@ def _decomposition_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _Ma
+       src/acceptance/benchmark/scoring.py#@@ -185,43 +245,61 @@ def _alignment(case: BenchmarkCase, client: ModelClient | None) -> dict[str, str
+       src/acceptance/benchmark/scoring.py#@@ -233,6 +311,10 @@ class BenchmarkReport(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -267,34 +349,22 @@ def _reconcile_determinism_modes(modes: set[str]) -> str | None:
+       src/acceptance/benchmark/scoring.py#@@ -303,10 +373,14 @@ _METRIC_FIELDS = (
+       src/acceptance/benchmark/scoring.py#@@ -327,6 +401,7 @@ class SampledBenchmarkReport(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -334,6 +409,9 @@ class SampledBenchmarkReport(PersistableModel):
+  4. [in_service] `build_decompose_case`, `MissingRunInputError`, and the new decompose-specific corpus loading path change how benchmark cases are assembled and how missing run inputs fail. The task required committing regression fixtures and using the existing scoring path, not introducing a new case-construction mode.
+       src/acceptance/benchmark/corpus.py#@@ -178,6 +178,86 @@ def build_corpus_case(
+  5. [risky] `decompose_case` now carries `open_questions` into the review object. The obligations mention preserving open questions in the suite, but they do not call for changing the decomposition review payload itself.
+       src/acceptance/benchmark/decomposition.py#@@ -31,5 +31,10 @@ def decompose_case(case: BenchmarkCase, client: ModelClient) -> BenchmarkCase:
+  6. [in_service] `score_case` and `score_case_set` now compute additional metrics for open questions and obligation types, and `decomposition_precision` is added to the benchmark report. The task asked to score through the existing benchmark path, not to add new scoring dimensions or alter report shape.
+       src/acceptance/benchmark/scoring.py#@@ -140,6 +140,66 @@ def _decomposition_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _Ma
+       src/acceptance/benchmark/scoring.py#@@ -185,43 +245,61 @@ def _alignment(case: BenchmarkCase, client: ModelClient | None) -> dict[str, str
+       src/acceptance/benchmark/scoring.py#@@ -233,6 +311,10 @@ class BenchmarkReport(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -267,34 +349,22 @@ def _reconcile_determinism_modes(modes: set[str]) -> str | None:
+       src/acceptance/benchmark/scoring.py#@@ -303,10 +373,14 @@ _METRIC_FIELDS = (
+       src/acceptance/benchmark/scoring.py#@@ -327,6 +401,7 @@ class SampledBenchmarkReport(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -334,6 +409,9 @@ class SampledBenchmarkReport(PersistableModel):
+  7. [in_service] The new regression test helper and suite are substantial additions beyond fixture commitment and README updates. Some tests are requested in spirit, but the specific degenerate decomposer machinery and many assertions are not directly called for by the obligations as written.
+       tests/benchmark/degenerate_decomposers.py#@@ -0,0 +1,148 @@
+       tests/benchmark/test_decompose_regression.py#@@ -0,0 +1,406 @@
+  8. [in_service] The new regression fixture cases under `tests/fixtures/decompose-regression/` are requested in general, but several of the added labels and case metadata encode extra provenance and assertions beyond the obligations explicitly listed, including new open-question records and type annotations.
+       tests/fixtures/decompose-regression/189-gate1-run1/case.json#@@ -0,0 +1,6 @@
+       tests/fixtures/decompose-regression/189-gate1-run1/labels.json#@@ -0,0 +1,25 @@
+       tests/fixtures/decompose-regression/189-gate1-run2/case.json#@@ -0,0 +1,6 @@
+       tests/fixtures/decompose-regression/189-gate1-run2/labels.json#@@ -0,0 +1,28 @@
+       tests/fixtures/decompose-regression/189-gate1-run3/case.json#@@ -0,0 +1,6 @@
+       tests/fixtures/decompose-regression/189-gate1-run3/labels.json#@@ -0,0 +1,35 @@
+       tests/fixtures/decompose-regression/189-gate1-run4/case.json#@@ -0,0 +1,6 @@
+       tests/fixtures/decompose-regression/189-gate1-run4/labels.json#@@ -0,0 +1,52 @@
+       tests/fixtures/decompose-regression/189-gate1-run5/case.json#@@ -0,0 +1,6 @@
+       tests/fixtures/decompose-regression/189-gate1-run5/labels.json#@@ -0,0 +1,66 @@
+       tests/fixtures/decompose-regression/189-gate1-run6/case.json#@@ -0,0 +1,6 @@
+       tests/fixtures/decompose-regression/189-gate1-run6/labels.json#@@ -0,0 +1,52 @@
+       tests/fixtures/decompose-regression/189-gate1-run7/case.json#@@ -0,0 +1,6 @@
+       tests/fixtures/decompose-regression/189-gate1-run7/labels.json#@@ -0,0 +1,69 @@
+       tests/fixtures/decompose-regression/195-gate1-run1/case.json#@@ -0,0 +1,6 @@
+       tests/fixtures/decompose-regression/195-gate1-run1/labels.json#@@ -0,0 +1,108 @@
+
+Open questions:
+  1. [resolved] What exact fixture file layout and naming convention should the new regression cases use?
+       The diff shows the fixture layout directly: each regression case lives under `tests/fixtures/decompose-regression/<run-id>/` with a `case.json` and `labels.json` pair, mirroring the existing corpus-derived fixture style. The new tests iterate `CASES_DIR = .../decompose-regression` and load those two files, so the naming convention is unambiguous.
+  2. [resolved] Where should the new case derived from `dogfood-logs/195-gate1-run1/` live relative to the corpus-derived fixtures?
+       The diff places the new dogfood-derived case under `tests/fixtures/decompose-regression/195-gate1-run1/` and sets its `run_dir` to `dogfood-logs/195-gate1-run1`, while the corpus-derived cases use `tests/fixtures/decompose-stability/...` as their `run_dir`. That makes the relative placement explicit: the dogfood case lives alongside the regression fixtures, not inside the corpus directory.
+
+Recommended tests:
+  1. The README either removes the old claim or replaces it with a precise statement of what remains unread.
+       inputs:  A README test that loads `tests/fixtures/decompose-stability/README.md` and inspects the exact status sentence(s) about test coverage. Use the current README text as the baseline, including the newly added table that says `current-task.md` is read by `tests/benchmark/test_decompose_regression.py` and that `decompose-output.log`, `task-diffs.txt`, and `prediction.md` are not read. The input must distinguish between the old blanket claim and the new precise coverage statement.
+       detects: The README still claims the corpus is not read by any test, or it adds a precise statement without removing/replacing that old blanket claim. This test fails if the old claim survives.
+       full detail: acceptance recommendation --criterion update-readme-status
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

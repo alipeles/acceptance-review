@@ -1,0 +1,25 @@
+{
+  "obligations": [
+    {
+      "id": "reuse-existing-variance-path",
+      "description": "Source statistics from the benchmark harness's existing variance path.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Run 1's task file names no symbol for the variance path (verified by grep), so this obligation is required to state the requirement and nothing more. It carries no symbol requirement."
+    }
+  ],
+  "gaps": [],
+  "unrequested_changes": [],
+  "open_questions": [
+    {
+      "id": "report-format",
+      "description": "What output format should the report use, and where should it be written or returned?",
+      "should_be_raised": true,
+      "rationale": "No version of the task file says anything about output format, so the text that would answer this question is absent throughout and the question is never resolved. A question that returns was never resolved; it was dropped.",
+      "aliases": [
+        "report-format-unspecified",
+        "oq-output-format"
+      ]
+    }
+  ]
+}

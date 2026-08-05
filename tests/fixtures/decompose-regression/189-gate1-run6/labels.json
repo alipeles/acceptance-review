@@ -1,0 +1,52 @@
+{
+  "obligations": [
+    {
+      "id": "report-only-no-acceptance-decision",
+      "description": "Keep the harness as a reporting tool that does not decide acceptability.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. THE LOST SCOPE EXCLUSION. Run 6 produced no obligation covering this section, from text unchanged since run 5. The wording here is run 5's, which covered it with one obligation; run 7 covers the same content with three, which is shape and not content."
+    },
+    {
+      "id": "use-existing-variance-path",
+      "description": "Source statistics from the existing benchmark variance path in benchmark/scoring.py::disclose_variance.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Run 6 retained the symbol, unlike runs 4 and 5. Recorded so the requirement is asserted on the runs that met it as well as on those that did not. The task file names the symbol in backticks, which is as strong a signal as an input can carry, so the obligation derived from it must still name it.",
+      "required_symbols": [
+        "disclose_variance"
+      ]
+    },
+    {
+      "id": "use-existing-obligation-alignment",
+      "description": "Compare obligations across runs using benchmark/alignment.py::align_obligations.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Also retained here, in backticks, having been dropped in runs 4 and 5. The task file names the symbol in backticks, which is as strong a signal as an input can carry, so the obligation derived from it must still name it.",
+      "required_symbols": [
+        "align_obligations"
+      ]
+    },
+    {
+      "id": "record-run-provenance",
+      "description": "Record the input, model set, run count, and seeds that produced the report.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Type unlabelled, for the reason given on runs 3 and 5."
+    }
+  ],
+  "gaps": [],
+  "unrequested_changes": [],
+  "open_questions": [
+    {
+      "id": "report-format",
+      "description": "What output format should the report use, and where should it be written or returned?",
+      "should_be_raised": true,
+      "rationale": "No version of the task file says anything about output format, so the text that would answer this question is absent throughout and the question is never resolved. A question that returns was never resolved; it was dropped. Run 6 did raise it, which is the correct behaviour.",
+      "aliases": [
+        "report-format-unspecified",
+        "oq-output-format"
+      ]
+    }
+  ]
+}

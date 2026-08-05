@@ -1,7 +1,24 @@
 # Decompose-stability corpus
 
 Captured `decompose` iterations, kept as **test data for measuring and fixing the
-instability they document** (#189, umbrella #181/#184). Not yet read by any test.
+instability they document** (#189, umbrella #181/#184).
+
+**Read by `tests/benchmark/test_decompose_regression.py`** (#195), which turns
+the findings below into assertions. What that suite reads, and what it does not:
+
+| part of a run | read? |
+|---|---|
+| `current-task.md` | **yes** — it is the whole input to a case; `decompose` takes nothing else |
+| `judgement.md` | **yes**, but by a human: each case's `case.json` cites the judgement its labels came from, and for runs 4 and 6 states which of the two preserved readings is ground truth |
+| `decompose-output.log` | **no**, not by the suite. The labels were derived from it by hand — the symbol losses in runs 4 and 5 are read straight out of it — but no test parses it. It is rendered CLI output, not a transcript, so the runs cannot be replayed |
+| `task-diffs.txt` | **no** |
+| `prediction.md` (runs 4 and 6) | **no** |
+
+The ground truth in those cases is **the obligations and questions judged here**,
+not a complete expected decomposition for each task file. Transcribing a run's
+full output as ground truth would assert that what the run produced was right,
+which for these runs is the thing in dispute — run 6's judgement says in terms
+that its breakdown was not accurate.
 
 Sibling of `tests/fixtures/rating-stability/`, which does the same job for the
 **evidence-judgement** stage (#180). Kept separate deliberately: that corpus shows

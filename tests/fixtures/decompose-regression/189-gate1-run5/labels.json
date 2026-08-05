@@ -1,0 +1,66 @@
+{
+  "obligations": [
+    {
+      "id": "report-obligations-present-in-some-runs-only",
+      "description": "Report obligations that appear in some runs of one task file but not others.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Extracted correctly here after the compound bullet was split."
+    },
+    {
+      "id": "report-open-questions-present-in-some-runs-only",
+      "description": "Report open questions that appear in some runs of one task file but not others.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. The half run 4 lost, recovered. Splitting the bullet was sufficient; the open-questions half is no longer swallowed."
+    },
+    {
+      "id": "report-only-no-acceptance-decision",
+      "description": "Keep the harness as a reporting tool that does not decide acceptability.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Run 5's single obligation for the scope exclusion about interpreting figures, setting thresholds and reducing variance. Run 6 produced none for the same unchanged section, which is the loss; run 7 produced three, which is a shape difference over the same content."
+    },
+    {
+      "id": "reuse-existing-variance-path",
+      "description": "Source statistics from the existing benchmark variance path in benchmark/scoring.py::disclose_variance.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Run 5's obligation reads 'Compute statistics through the existing benchmark variance path' \u2014 the symbol is gone, as in run 4. Observed in this run's committed `decompose-output.log`; run 5's judgement recorded the run-4 instance and not this one. The task file names the symbol in backticks, which is as strong a signal as an input can carry, so the obligation derived from it must still name it.",
+      "required_symbols": [
+        "disclose_variance"
+      ]
+    },
+    {
+      "id": "reuse-existing-obligation-alignment",
+      "description": "Compare obligations across runs using benchmark/alignment.py::align_obligations.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Reduced to 'the existing alignment function' here, the same loss as run 4 and read from the same source \u2014 this run's output log rather than its judgement. The task file names the symbol in backticks, which is as strong a signal as an input can carry, so the obligation derived from it must still name it.",
+      "required_symbols": [
+        "align_obligations"
+      ]
+    },
+    {
+      "id": "record-run-provenance",
+      "description": "Record the input, model set, run count, and seeds that produced the report.",
+      "explicit": true,
+      "evidence_class": "unsupported",
+      "evidence_rationale": "Decompose-stage case: the hook parses the task file and stops, so no test was ever examined for this obligation. `unsupported` is the accurate class for that and no evidence assertion is made on these cases. Typed docs_config here against invariant in runs 3-4 and functional in run 7, on unchanged source text. Left unlabelled: the corpus establishes that the type moved, not which value is right."
+    }
+  ],
+  "gaps": [],
+  "unrequested_changes": [],
+  "open_questions": [
+    {
+      "id": "report-format",
+      "description": "What output format should the report use, and where should it be written or returned?",
+      "should_be_raised": true,
+      "rationale": "No version of the task file says anything about output format, so the text that would answer this question is absent throughout and the question is never resolved. A question that returns was never resolved; it was dropped.",
+      "aliases": [
+        "report-format-unspecified",
+        "oq-output-format"
+      ]
+    }
+  ]
+}

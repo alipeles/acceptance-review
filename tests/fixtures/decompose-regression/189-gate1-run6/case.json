@@ -1,0 +1,6 @@
+{
+  "run": "189-gate1-run6",
+  "run_dir": "tests/fixtures/decompose-stability/189-gate1-run6",
+  "judgement": "tests/fixtures/decompose-stability/189-gate1-run6/judgement.md \u2014 GROUND TRUTH IS THE CORRECTION, which is written above the original wording in that file. Run 6 was originally scored as an accurate breakdown; it was not. It emitted no obligation at all for the scope exclusion about interpreting figures, setting a threshold, or reducing variance, verified by grep across runs 5, 6 and 7. The original 'accurate breakdown' verdict is preserved in the file and is not ground truth here.",
+  "summary": "The cleanest content loss in the corpus: the source text is unchanged across runs 5-7 and the loss is total rather than partial. Also the canonical shape difference in the opposite direction \u2014 two obligation pairs from run 5 are bundled into one each here, losing nothing \u2014 so the case asserts the content and must not be charged for the bundling."
+}
