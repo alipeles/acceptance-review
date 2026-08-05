@@ -140,6 +140,66 @@ def _decomposition_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _Ma
     return _counts(ground_truth_refs, reported_refs)
 
 
+def _open_question_counts(case: BenchmarkCase) -> _MatchCounts:
+    """Open questions the decomposition should raise, against the ones it did.
+
+    Scored in both directions from one set, because both directions are defects
+    and they are different defects (#195). A question the task file never answers
+    must be raised, and dropping it is the loss the decompose-stability corpus
+    documents oscillating; a question the task file already answers must not be
+    raised (#178). Recall therefore counts the must-raise questions that were
+    raised, and precision charges for raising a must-not-raise one.
+
+    Matched by id (see `GroundTruthOpenQuestion.matches`), not by description,
+    and so not through the obligation aligner.
+    """
+    review = case.reviewer_output
+    raised = [q.id for q in review.open_questions]
+
+    expected = [q for q in case.ground_truth.open_questions if q.should_be_raised]
+    forbidden = [q for q in case.ground_truth.open_questions if not q.should_be_raised]
+
+    matched = sum(1 for q in expected if any(q.matches(rid) for rid in raised))
+    # A raised question is "reported" against this metric when the ground truth
+    # has an opinion about it either way. One it says nothing about is neither
+    # credited nor charged — silence in the corpus is not a label.
+    known = [
+        rid
+        for rid in raised
+        if any(q.matches(rid) for q in case.ground_truth.open_questions)
+    ]
+    charged = [rid for rid in known if any(q.matches(rid) for q in forbidden)]
+
+    return _MatchCounts(
+        matched=matched,
+        ground_truth_total=len(expected),
+        reported_total=matched + len(charged),
+    )
+
+
+def _type_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _MatchCounts:
+    """Obligation types, over the obligations whose type a human has judged.
+
+    Only obligations carrying an `expected_type` participate — the corpus judges
+    the type of a handful and says nothing about the rest, and scoring silence as
+    agreement would report a type accuracy that means nothing. Keyed by
+    description through the alignment, like every other obligation-keyed metric,
+    so a correct-but-reworded obligation still has its type scored."""
+    review = case.reviewer_output
+    ground_truth_refs = {
+        (o.description, o.expected_type)
+        for o in case.ground_truth.obligations
+        if o.expected_type is not None
+    }
+    judged = {desc for desc, _ in ground_truth_refs}
+    reported_refs = {
+        (_remap(o.description, alignment), o.type)
+        for o in review.obligation_map
+        if _remap(o.description, alignment) in judged
+    }
+    return _counts(ground_truth_refs, reported_refs)
+
+
 def _mapping_counts(case: BenchmarkCase, alignment: dict[str, str]) -> _MatchCounts:
     review = case.reviewer_output
     ground_truth_refs = {
@@ -185,43 +245,61 @@ def _alignment(case: BenchmarkCase, client: ModelClient | None) -> dict[str, str
     )
 
 
+# Keyed rather than positional since #195 took the families past five: a
+# seven-tuple threaded through three call sites is where an argument gets
+# transposed and a metric silently reports another metric's counts.
+_FAMILIES = (
+    "gap",
+    "decomposition",
+    "mapping",
+    "evidence",
+    "unrequested",
+    "open_question",
+    "type",
+)
+
+
 def _all_counts(
     case: BenchmarkCase, client: ModelClient | None = None
-) -> tuple[_MatchCounts, _MatchCounts, _MatchCounts, _MatchCounts, _MatchCounts]:
+) -> dict[str, _MatchCounts]:
     if case.reviewer_output is None:
         raise ValueError(f"case {case.case_id!r} has no reviewer_output; run it first")
     alignment = _alignment(case, client)
-    return (
-        _gap_counts(case, alignment),
-        _decomposition_counts(case, alignment),
-        _mapping_counts(case, alignment),
-        _evidence_counts(case, alignment),
-        _unrequested_counts(case),
-    )
+    return {
+        "gap": _gap_counts(case, alignment),
+        "decomposition": _decomposition_counts(case, alignment),
+        "mapping": _mapping_counts(case, alignment),
+        "evidence": _evidence_counts(case, alignment),
+        "unrequested": _unrequested_counts(case),
+        "open_question": _open_question_counts(case),
+        "type": _type_counts(case, alignment),
+    }
 
 
-def _score_from_counts(
-    gap: _MatchCounts,
-    decomposition: _MatchCounts,
-    mapping: _MatchCounts,
-    evidence: _MatchCounts,
-    unrequested: _MatchCounts,
-) -> BenchmarkScore:
+def _score_from_counts(counts: dict[str, _MatchCounts]) -> BenchmarkScore:
     return BenchmarkScore(
-        gap_recall=gap.recall(),
-        gap_precision=gap.precision(),
-        decomposition_accuracy=decomposition.recall(),
-        mapping_accuracy=mapping.recall(),
-        evidence_agreement=evidence.recall(),
-        unrequested_precision=unrequested.precision(),
-        unrequested_recall=unrequested.recall(),
+        gap_recall=counts["gap"].recall(),
+        gap_precision=counts["gap"].precision(),
+        decomposition_accuracy=counts["decomposition"].recall(),
+        # Recall cannot see over-decomposition: a decomposer that emits every
+        # ground-truth obligation plus a hundred inventions scores a perfect
+        # accuracy. Precision is the direction that charges for the inventions,
+        # and #195 requires a permanently permissive decomposer to fail.
+        decomposition_precision=counts["decomposition"].precision(),
+        mapping_accuracy=counts["mapping"].recall(),
+        evidence_agreement=counts["evidence"].recall(),
+        unrequested_precision=counts["unrequested"].precision(),
+        unrequested_recall=counts["unrequested"].recall(),
+        open_question_recall=counts["open_question"].recall(),
+        open_question_precision=counts["open_question"].precision(),
+        obligation_type_accuracy=counts["type"].recall(),
     )
 
 
 def score_case(case: BenchmarkCase, client: ModelClient | None = None) -> BenchmarkScore:
     """Score one case. Pass a `client` for semantic obligation matching (#118);
     with none, the obligation-keyed metrics fall back to exact-string match."""
-    return _score_from_counts(*_all_counts(case, client))
+    return _score_from_counts(_all_counts(case, client))
 
 
 class BenchmarkReport(PersistableModel):
@@ -233,6 +311,10 @@ class BenchmarkReport(PersistableModel):
     gap_recall: float | None = None
     gap_precision: float | None = None
     decomposition_accuracy: float | None = None
+    decomposition_precision: float | None = None
+    open_question_recall: float | None = None
+    open_question_precision: float | None = None
+    obligation_type_accuracy: float | None = None
     # NOT COMPARABLE ACROSS #164. The mapping stage now partitions its request
     # across several calls instead of asking one call for every test-obligation
     # judgment (DR-164), which changes the prompts and forced the whole mapping
@@ -267,34 +349,22 @@ def _reconcile_determinism_modes(modes: set[str]) -> str | None:
 def score_case_set(
     cases: list[BenchmarkCase], client: ModelClient | None = None
 ) -> BenchmarkReport:
-    gap_total = _MatchCounts.zero()
-    decomposition_total = _MatchCounts.zero()
-    mapping_total = _MatchCounts.zero()
-    evidence_total = _MatchCounts.zero()
-    unrequested_total = _MatchCounts.zero()
+    totals = {family: _MatchCounts.zero() for family in _FAMILIES}
     per_case: list[BenchmarkScore] = []
     modes: set[str] = set()
 
     for case in cases:
-        gap, decomposition, mapping, evidence, unrequested = _all_counts(case, client)
-        gap_total += gap
-        decomposition_total += decomposition
-        mapping_total += mapping
-        evidence_total += evidence
-        unrequested_total += unrequested
-        per_case.append(_score_from_counts(gap, decomposition, mapping, evidence, unrequested))
+        counts = _all_counts(case, client)
+        for family in _FAMILIES:
+            totals[family] += counts[family]
+        per_case.append(_score_from_counts(counts))
         modes.add(_case_determinism_mode(case))
 
+    pooled = _score_from_counts(totals)
     return BenchmarkReport(
         case_count=len(cases),
         determinism_mode=_reconcile_determinism_modes(modes),
-        gap_recall=gap_total.recall(),
-        gap_precision=gap_total.precision(),
-        decomposition_accuracy=decomposition_total.recall(),
-        mapping_accuracy=mapping_total.recall(),
-        evidence_agreement=evidence_total.recall(),
-        unrequested_precision=unrequested_total.precision(),
-        unrequested_recall=unrequested_total.recall(),
+        **pooled.model_dump(),
         per_case=per_case,
     )
 
@@ -303,10 +373,14 @@ _METRIC_FIELDS = (
     "gap_recall",
     "gap_precision",
     "decomposition_accuracy",
+    "decomposition_precision",
     "mapping_accuracy",
     "evidence_agreement",
     "unrequested_precision",
     "unrequested_recall",
+    "open_question_recall",
+    "open_question_precision",
+    "obligation_type_accuracy",
 )
 
 
@@ -327,6 +401,7 @@ class SampledBenchmarkReport(PersistableModel):
     gap_recall: MetricStats
     gap_precision: MetricStats
     decomposition_accuracy: MetricStats
+    decomposition_precision: MetricStats
     # Not comparable across #164 — see BenchmarkReport.mapping_accuracy. Spread
     # pooled across that boundary would read as model variance when it is the
     # partitioning change.
@@ -334,6 +409,9 @@ class SampledBenchmarkReport(PersistableModel):
     evidence_agreement: MetricStats
     unrequested_precision: MetricStats
     unrequested_recall: MetricStats
+    open_question_recall: MetricStats
+    open_question_precision: MetricStats
+    obligation_type_accuracy: MetricStats
     runs: list[BenchmarkReport] = Field(default_factory=list)
 
 

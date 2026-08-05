@@ -1,0 +1,6 @@
+{
+  "run": "189-gate1-run5",
+  "run_dir": "tests/fixtures/decompose-stability/189-gate1-run5",
+  "judgement": "tests/fixtures/decompose-stability/189-gate1-run5/judgement.md \u2014 Gate 1 passed. The run that settles what runs 3 and 4 could not: both open questions came back on a task file that still says nothing about them, so run 3's disappearance was a drop and run 4's lean toward resolution was wrong.",
+  "summary": "The recovery case for run 4's compound truncation \u2014 both halves are extracted here \u2014 and the run that must not be charged for the scope-exclusion content, which it covers with one obligation. Its symbol loss is read from its own output log rather than from its judgement, which did not record it."
+}

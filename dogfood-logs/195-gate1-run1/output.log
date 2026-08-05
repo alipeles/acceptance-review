@@ -1,0 +1,35 @@
+Obligations:
+  [functional/explicit] build-regression-cases-from-corpus: Turn the decompose-stability corpus into regression cases the benchmark can score.
+  [functional/explicit] preserve-real-run-inputs: Use each run's committed current-task.md as the case input exactly as recorded in the corpus.
+  [invariant/explicit] no-replay-from-output-log: Treat decompose-output.log as downstream rendered output rather than replayable model input.
+  [functional/explicit] per-run-content-quality-cases: Score each assertion against the task file from its own run, producing per-run content-quality cases rather than stability cases.
+  [functional/explicit] use-task-diffs-as-run-boundaries: Treat task-diffs.txt as the exact edit between each consecutive pair of task files.
+  [functional/explicit] content-differences-separate-from-shape-differences: Assert content differences separately from shape differences.
+  [invariant/explicit] shape-differences-not-counted-against-quality: Treat the listed shape differences as required non-defects for decomposition quality scoring.
+  [error_handling/explicit] missing-corpus-file-fails-case-by-run: Fail a case when its named corpus task file is missing, and report the run name.
+  [invariant/explicit] no-live-model-calls: Run the cases without issuing live model calls.
+  [docs_config/explicit] no-recorded-transcript-committed: Keep recorded model transcripts out of the committed test fixtures.
+  [explanation_observability/explicit] trace-labels-to-judgement-md: Make each case's ground-truth label traceable to the judgement.md it was derived from.
+  [compatibility/explicit] score-through-existing-path: Use benchmark/scoring.py::score_case as the scoring path for these cases.
+  [compatibility/explicit] use-existing-ground-truth-label-shape: Represent ground-truth labels with the existing benchmark/case.py::GroundTruthLabels shape used by tests/fixtures/archetypes/.
+  [compatibility/explicit] align-obligations-through-existing-aligner: Compare obligation sets through benchmark/alignment.py::align_obligations.
+  [invariant/explicit] do-not-compare-obligation-counts: Keep obligation counts out of case comparison.
+  [functional/explicit] record-run-4-ground-truth-reading: For cases derived from run 4, record which preserved reading in judgement.md is ground truth.
+  [functional/explicit] record-run-6-ground-truth-reading: For cases derived from run 6, record which preserved reading in judgement.md is ground truth.
+  [functional/explicit] report-lost-open-questions-half: Report the loss of the open-questions half of the compound decomposition-variance requirement at run 4 and its recovery at run 5.
+  [functional/explicit] report-lost-scope-exclusion: Report the loss of the scope exclusion about interpreting figures, setting a threshold, or reducing variance at run 6 and its recovery at run 7.
+  [functional/explicit] report-lost-output-format-question: Report the loss of the output format open question in runs 3, 4, and 7 and its recovery in runs 5 and 6.
+  [functional/explicit] report-lost-disclose-variance-symbol: Report the loss of the symbol benchmark/scoring.py::disclose_variance from the obligation derived from the text naming it at run 4.
+  [functional/explicit] report-lost-align-obligations-symbol: Report the loss of the symbol align_obligations from the obligation derived from the text naming it at run 4.
+  [functional/explicit] type-human-review-obligations-as-non-human-review: Assign each of the three listed human_review obligations a non-human-review type.
+  [invariant/explicit] preserve-symbols-in-derived-obligations: Retain symbols named in task-file text within the obligations derived from that text.
+  [docs_config/explicit] keep-corpus-readme-accurate-about-test-coverage: Update the corpus README so it no longer says the corpus is not read by any test, or else states precisely which parts are still not read.
+  [compatibility/explicit] preserve-existing-decomposition-stage: Leave the decomposition stage itself untouched while building the scoreboard.
+  [invariant/explicit] preserve-instability-documentation: Keep the instability documented by the corpus intact.
+  [human_review/explicit] preserve-no-thresholding: Keep threshold-setting out of the harness.
+  [human_review/explicit] preserve-no-variance-reduction: Preserve the measured variance without attempting to reduce it.
+
+Open questions:
+  ? clarify-record-run-provenance-type: Which type should the unchanged-text obligation `record-run-provenance` carry: invariant, docs_config, or functional?
+  ? clarify-run-4-reading: For run 4, which preserved reading in judgement.md is the ground truth: the reading that says the open questions were dropped, or the reading that says they were resolved?
+  ? clarify-run-6-reading: For run 6, which preserved reading in judgement.md is the ground truth: the reading that says the breakdown was not accurate, or the original wording?

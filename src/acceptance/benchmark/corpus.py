@@ -178,6 +178,86 @@ def build_corpus_case(
     )
 
 
+class MissingRunInputError(RuntimeError):
+    """A decompose case names a run whose task file is not there.
+
+    The decompose analogue of `UnresolvableRevisionError`, and raised for the
+    same reason: a case that quietly skips itself lets the suite shrink without
+    anyone noticing. `decompose` takes only a task file, so that file is the
+    whole input — losing it is losing the case.
+    """
+
+
+class DecomposeCaseMeta(PersistableModel):
+    """A decompose run reduced to what a case needs, plus its provenance.
+
+    `run_dir` is repo-relative rather than a name under a fixed root, because
+    these runs do not all live in one place: seven are corpus runs under
+    `tests/fixtures/decompose-stability/`, and the eighth is this task's own
+    Gate 1 run under `dogfood-logs/`. Putting the eighth into the corpus
+    directory would have meant modifying the corpus, which is what the case set
+    exists to measure against.
+
+    `judgement` records which reading of that run's `judgement.md` is ground
+    truth — load-bearing for runs 4 and 6, whose judgements were made wrong and
+    which preserve both the original and the corrected reading.
+
+    There are no revisions. `decompose` takes a task file and nothing else, so
+    unlike the rating-stability cases there is no diff to pin and nothing to
+    materialize.
+    """
+
+    run: str
+    run_dir: str
+    judgement: str
+    summary: str
+
+
+def load_decompose_meta(case_dir: Path) -> DecomposeCaseMeta:
+    return DecomposeCaseMeta.from_dict(json.loads((case_dir / "case.json").read_text()))
+
+
+def decompose_task_text(repo: Path, meta: DecomposeCaseMeta) -> str:
+    """The exact task file the run was given, read from the run's own directory.
+
+    Read rather than copied, for the reason `corpus_task_text` gives: the run
+    directory is the evidence record, and a second copy under the case directory
+    could drift from it.
+    """
+    path = repo / meta.run_dir / "current-task.md"
+    if not path.is_file():
+        raise MissingRunInputError(
+            f"case {meta.run!r} names {meta.run_dir!r}, which has no "
+            f"current-task.md. That file is the entire input to `decompose`, so "
+            f"the case fails here rather than skipping itself and shrinking the "
+            f"suite silently."
+        )
+    return path.read_text()
+
+
+def build_decompose_case(case_dir: Path, repo: Path) -> BenchmarkCase:
+    """Assemble a labeled BenchmarkCase for one decompose run."""
+    meta = load_decompose_meta(case_dir)
+    return BenchmarkCase(
+        case_id=case_dir.name,
+        source=BenchmarkCaseSource(kind="agent_run", identifier=meta.run),
+        inputs=BenchmarkCaseInputs(
+            # No repo tree and no diff are read: the decompose hook parses
+            # task_text and stops. `repo` is carried so a case that is later
+            # extended to a full review has somewhere to start.
+            repo=str(repo),
+            task_text=decompose_task_text(repo, meta),
+            # Empty rather than a plausible-looking SHA. These runs recorded no
+            # revision — `decompose` does not take one — and a fabricated value
+            # would be an invented input in a case set whose whole argument is
+            # that its inputs are real.
+            base_revision="",
+            head_revision="",
+        ),
+        ground_truth=load_labels(case_dir),
+    )
+
+
 def _resolve(repo: Path, revision: str, corpus_run: str) -> str:
     result = subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", f"{revision}^{{commit}}"],

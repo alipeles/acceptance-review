@@ -1,0 +1,6 @@
+{
+  "run": "189-gate1-run2",
+  "run_dir": "tests/fixtures/decompose-stability/189-gate1-run2",
+  "judgement": "tests/fixtures/decompose-stability/189-gate1-run2/judgement.md \u2014 the duplicate collapse from 24 obligations to 18, which the corpus records as a correct response to a genuinely improved task file rather than as instability.",
+  "summary": "The run where the symbol requirement first applies: the task file names `disclose_variance` from here on, and run 2 retained it. Also still raising the output-format question."
+}

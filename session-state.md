@@ -8,17 +8,35 @@ Committed, so it survives a context reset or a machine change — but still a
 scratch record, not a plan. **The GitHub issue stays authoritative** (#168).
 Clear it out when the task lands rather than letting it accrete.
 
-*Last updated: 2026-08-04*
+*Last updated: 2026-08-05*
 
 ---
 
 ## Task in flight
 
-**None.** #190 landed (`0d851b9`, PR #197) and #198 landed after it (`bab56d8`,
-PR #199). `main` is green.
+**#195** — the decompose-stability corpus as a regression suite, #190's
+counterpart and #193's scoreboard. Then #193, #191, #192. Branch: still `main`,
+nothing coded.
 
-Next on the board is **#195** — the decompose-stability corpus as a regression
-suite, #190's counterpart and #193's scoreboard. Then #193, #191, #192.
+**Gate 1 run 1 FAILED and is a hard stop, not a retry.** `current-task.md` written
+from #195 and decomposed at `dbb342f`; run saved to `dogfood-logs/195-gate1-run1/`.
+29 obligations, 3 open questions, nothing invented — the failure is entirely
+absence:
+
+- **Nine requirements produced no obligation.** Four Completion expectations,
+  including all three degenerate-decomposer bullets that are #195's most
+  load-bearing requirement; five of eight Scope exclusions. → #181/#193, #153.
+- **All three open questions are the "wrong question" case** — each answered in
+  the task file, two of them by a table written specifically to settle them.
+  → #178, sixth audited recurrence. CLAUDE.md says stop and tell the human; done,
+  awaiting direction.
+- **Two prohibitions typed `human_review`** → #196, the run-7 corpus finding
+  reproducing on the task file that encodes it as ground truth.
+- **One compound bullet lost its second half** — *"No task text is copied into the
+  case."* Mine to fix: split the bullet on the next iteration.
+
+Full triage in that run's `judgement.md`. Do not re-run decompose expecting a
+prettier breakdown — run 7 of the corpus warns against exactly that.
 
 ## What #190 left behind that the next task needs
 

@@ -1,0 +1,6 @@
+{
+  "run": "189-gate1-run7",
+  "run_dir": "tests/fixtures/decompose-stability/189-gate1-run7",
+  "judgement": "tests/fixtures/decompose-stability/189-gate1-run7/judgement.md \u2014 Gate 1 passed, the most complete breakdown of the series, with two findings attributed to the tool rather than fixed at source: the scope exclusion run 6 dropped is recovered here, and all three of its obligations came back typed human_review.",
+  "summary": "The type case. Three statically-checkable prohibitions on the harness's own behaviour, all typed human_review \u2014 a mandatory Gate 2 pause under CLAUDE.md, so as typed they would block a clean gate by construction forever. Also the run where the output-format question disappeared again, breaking the runs-of-two pattern run 6 had warned against reading into it."
+}

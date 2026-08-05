@@ -1,0 +1,6 @@
+{
+  "run": "195-gate1-run1",
+  "run_dir": "dogfood-logs/195-gate1-run1",
+  "judgement": "dogfood-logs/195-gate1-run1/judgement.md \u2014 Gate 1 for this task, which did not pass. Nine requirements produced no obligation, three open questions were raised that the task file answers, and two statically-checkable prohibitions were typed human_review.",
+  "summary": "The strongest case in the set, and the only one whose input was authored knowing what the decomposition should contain \u2014 so its losses are enumerated rather than reconstructed. Three of its four Completion-expectation losses are the both-directions requirement itself, which is the requirement this whole suite exists to encode."
+}

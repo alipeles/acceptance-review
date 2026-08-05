@@ -1,0 +1,6 @@
+{
+  "run": "189-gate1-run3",
+  "run_dir": "tests/fixtures/decompose-stability/189-gate1-run3",
+  "judgement": "tests/fixtures/decompose-stability/189-gate1-run3/judgement.md \u2014 Gate 1 passed, and the pass is partly unexplained: two open questions vanished in response to an edit that touched neither. The judgement states both, and the corpus README calls this the trap the corpus exists to record.",
+  "summary": "One of the two clean sheets, and explicitly NOT the control. 20 obligations and zero open questions, reached partly by dropping the output-format question \u2014 which run 5 proved was a drop by bringing it back. The case asserts the drop, so a clean sheet cannot pass it."
+}
