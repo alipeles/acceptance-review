@@ -14,36 +14,17 @@ Clear it out when the task lands rather than letting it accrete.
 
 ## Task in flight
 
-**#195** — the decompose-stability corpus as a regression suite. Branch
-`195-decompose-regression-suite`, pushed, **PR #200 open, CI green, Gate 2 clean
-at `ac3a71d`**. Awaiting human review/merge. Then #193, #191, #192.
+**None.** #195 landed (`4b16f26`, PR #200) on top of #190 (`0d851b9`) and #198
+(`bab56d8`). `main` is green.
 
-**CI failed once on the first attempt and passed on re-run of the identical
-commit** — `test_materialization_ignores_compiled_python`, recorded against #129
-with the sharpened diagnosis: two *different* tests now fail the same way on the
-same fixture, so the flake is in `materialize_archetype` for
-`07-declaration-mismatch`, not in either test. Ruled out the `__pycache__`
-exclusion and local state (pristine clone passes, 734 tests). CI is Python 3.12,
-local is 3.10 — unexplained and worth checking whether 3.12 writes something into
-the fixture tree that `ignore_patterns` misses.
+Both judgement stages now have a scoreboard: #190 for evidence judgement, #195
+for decomposition. Next on the board is **#193**, whose scoreboard #195 is, then
+#191, then #192.
 
-**Gate 1 failed and the human directed proceeding past it** (option 2 of three:
-fix #178 first / proceed / re-run). Reasoning: a decompose fix judged before its
-scoreboard exists is judged by eyeball, and a fix may not be buildable at all if
-the cause is model capability rather than prompt structure. Nine requirements
-produced no obligation, three open questions were answerable from the task file,
-two prohibitions typed `human_review`. All recorded against #193, #153, #178,
-#196 — comments posted, each citing the run directory.
-
-**Gate 2 took three rounds and is clean.** 23 obligations all strongly supported,
-both questions resolved, no recommended tests, no risky unrequested change. Two
-real gaps found and fixed (README claim unheld; no-live-calls unasserted). Round 2
-fell 22→4 strongly supported on a test-only diff and recovered in round 3 — #191,
-with a mapping audit at 87% populated proving it was not half-blind.
-
-That failed Gate 1 run **is case `195-gate1-run1` in the suite** — the strongest
-case in it, because its input was authored knowing what the decomposition should
-contain, so the losses are enumerated rather than reconstructed.
+**Before starting #193, decide the model question.** #195's Gate 1 failed on
+exactly the defect #193 describes, and the open question at the time was whether
+a fix is even buildable or whether `gpt-5.4-mini` is at its limit. Running the
+experiment first tells you which task #193 actually is. See below.
 
 ## What #195 leaves for the next task
 
@@ -66,6 +47,12 @@ contain, so the losses are enumerated rather than reconstructed.
 - **Every PR here will show two `separable` unrequested changes** —
   `session-state.md` and `dogfood-logs/` — because CLAUDE.md mandates them and no
   task file does. Correctly labelled, not a defect; possibly an input to #88.
+- **#129 is now a materialization flake, not a test flake.** Two different tests
+  failing the same way on `07-declaration-mismatch` say the nondeterminism is in
+  `materialize_archetype`. It cost #195 one red CI that passed on re-run of the
+  identical commit. Ruled out: the `__pycache__` exclusion, and local state (a
+  pristine clone passes all 734). Unchecked: CI is Python 3.12 and local is 3.10,
+  and `ignore_patterns` does not cover `.pytest_cache` and friends.
 
 ## What #190 left behind that the next task needs
 
