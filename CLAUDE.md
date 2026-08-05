@@ -39,6 +39,13 @@ whether the checker works. GitHub Acceptance Review is Stage 2 — out of scope.
   valid, expected results — don't force a confident verdict (§9.3, §7.3).
 - **Structured, persisted review-state**, not an unstructured model transcript
   (§12, §15). Build this store first (M0) so later components write into it.
+- **Markdown is an input format and a rendering format — never an interchange
+  format.** Anything the code has already parsed reaches the model as typed,
+  identified fields, never re-pasted as raw source for it to re-derive.
+  Responses are schema-constrained everywhere already; the gap is on the way
+  *in*. `requirement/obligations.py::_user_prompt` handing the model
+  `parsed.source` after `parse_task_file` has computed the structure is the
+  shape to avoid — the parse is discarded and the model is asked to redo it.
 - **Replay-first + determinism.** Model calls are schema-constrained and recorded
   for replay; capability tests run off recorded transcripts, no live calls
   (M0.4, M0.5). Two recorded runs over the same input must be byte-identical.
