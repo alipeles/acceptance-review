@@ -32,22 +32,42 @@ still holds Order 414 and **#202 is not on the project board at all**.
 
 ## Where #202 stands
 
-**Gate 1 run 1 is done and DID NOT PASS.** Full record in
-`dogfood-logs/202-gate1-run1/`. Escalated to the human; awaiting a decision on
-whether to proceed under attribution. Do not start coding until that is settled.
+**Implemented and committed (`a772982`). Full suite green. Gate 2 NOT yet run.**
 
-- 42 substantive requirements, 25 obligations, **12 requirements produced
-  nothing**. Recall ≈ 0.71, precision ≈ 1.0 — nothing invented, pure absence.
-- **All 10 of 10 Scope exclusions produced no obligation.** #195 lost 5 of 8.
-- The never-duplicate property (DR-202 decision 2) was lost in **both** its
-  statements, including the positively-phrased one.
-- One open question, correctly raised, triaged case 2 (implementation detail).
-  No #178 recurrence.
-- Every finding attributed to #202 itself; `current-task.md` deliberately **not**
-  rewritten, because rewording the exclusions would destroy Finding 1's evidence.
+Gate 1 run 1 did not pass, and the human authorised proceeding under attribution
+(every loss traced to #202 itself, which predates the run), asking for a second
+decompose after the change as a test of it. Both runs are in `dogfood-logs/`.
 
-**The bind:** Gate 1 step 2 says do not proceed past a breakdown you would not
-defend, and this is the one task where the breakdown's defect *is* the task.
+| | run 1 (flat list) | run 2 (mapping) |
+|---|---|---|
+| requirements identified | — | 44 |
+| yielding an obligation | 30 of 42 | 35 of 44 |
+| yielding nothing | **12, invisible** | **9, each with a reason** |
+| `undisposed` | n/a | **0** |
+| obligations serving >1 requirement | not representable | 10 |
+
+**The deliverable works.** Run 1's losses were silence; run 2's are claims a
+human can reject. The never-duplicate property (DR-202 decision 2), lost in both
+its statements in run 1, is mapped in run 2.
+
+**Two content defects found in run 2, neither filed yet — decide with the human:**
+
+1. The Task section's *problem statement* became an obligation to preserve the
+   flat list, alongside the obligation to replace it. Contradictory pair from one
+   paragraph, nothing flags it. #181 family, possibly #205.
+2. `exclusion-04` (*"requiring a citation is #206's job"*) inverted into
+   *"An open question does not need to cite…"*, typed `human_review`. Turns "out
+   of scope" into "must be false". Related to #196.
+
+**Eight of ten scope exclusions were still declined**, each as *"a scope note
+pointing to #204 rather than a standalone requirement"*. I disagree for the six
+naming sibling issues. DR-202's positive-invariant hypothesis is **partially
+supported, not settled** — instructing against it recovered only 2 of 10.
+Attributed to #205.
+
+**Next: Gate 2** (`acceptance check --task current-task.md --base 4ec4470`).
+Expect #153 to cap the scope exclusions below `strongly supported`, as it did for
+#190 and #195.
 
 ## Decisions already taken on #202
 
