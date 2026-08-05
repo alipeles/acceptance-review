@@ -397,6 +397,28 @@ def test_a_case_reads_its_task_file_from_the_run_rather_than_a_copy(case_dir):
     assert (REPO / meta.run_dir / "current-task.md").is_file()
 
 
+def test_the_cases_issue_no_live_model_calls(monkeypatch):
+    """Scoring a case never reaches the provider.
+
+    The decomposers run in RECORD mode — an injected `completion_fn` is only
+    reached on the live path — which reads like a live call and is not one.
+    That is exactly the arrangement worth pinning: it stays correct only while
+    every client the suite builds carries its own `completion_fn`, and nothing
+    but this test would notice one that stopped.
+
+    `_default_completion_fn` is the single door to litellm (`llm.py`), so
+    breaking it is sufficient.
+    """
+    import acceptance.llm as llm
+
+    def forbidden(**kwargs):
+        raise AssertionError("the suite reached the live provider path")
+
+    monkeypatch.setattr(llm, "_default_completion_fn", forbidden)
+    for behaviour in ("faithful", "lossy", "permissive"):
+        score_case(_scored(CASE_DIRS[0], behaviour))
+
+
 def test_the_corpus_readme_no_longer_claims_it_is_unread():
     """The old blanket claim is gone, and what replaced it is precise.
 
