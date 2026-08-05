@@ -14,7 +14,7 @@ final step.
    literally; it is the authority on how work happens in this repo.
 2. `session-state.md` — the task in flight. Assume it is accurate; it is the
    work log, carried across context resets.
-3. `current-task.md` — the mandate under review, in the tool's own input format.
+3. `current-task.md` — the mandate most recently under review, in the tool's own input format.
 
 ## 2. Check the ground truth
 
