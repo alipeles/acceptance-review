@@ -40,7 +40,7 @@ from acceptance.report import render_report
 from acceptance.rerun import find_prior_review
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import ChangeSet, OpenQuestion, Review
+from acceptance.review_state import ChangeSet, Disposition, OpenQuestion, Review
 from acceptance.review_store import ReviewStore
 
 
@@ -235,13 +235,7 @@ def render_decomposition(result: Decomposition) -> str:
     if not total:
         return _render_flat(result)
 
-    unyielding = requirement_map.unyielding()
-    lines = [
-        f"Requirements: {total}   "
-        f"yielding obligations: {total - len(unyielding)}   "
-        f"yielding none: {len(unyielding)}",
-        "",
-    ]
+    lines = [_summary(requirement_map, total), ""]
 
     for requirement in requirement_map.requirements:
         entry = requirement_map.disposition_for(requirement.id)
@@ -253,6 +247,41 @@ def render_decomposition(result: Decomposition) -> str:
     lines.extend(_orphan_obligations(result, requirement_map))
     lines.extend(_unraised_questions(result, requirement_map))
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _summary(requirement_map, total: int) -> str:
+    """The header counts, with the three ways of yielding no obligation kept
+    apart.
+
+    A single "yielding none" figure reads as a defect count, and only one of its
+    three components is one. A requirement the decomposer deliberately declined
+    with a reason (a bare section marker) and one it raised a question about are
+    both correct outcomes; a requirement it never accounted for is the recall
+    failure this whole stage exists to surface. Collapsing them would put the
+    defect back behind a number that looks the same either way — a smaller
+    version of the flat list's own problem.
+
+    `unaccounted` is printed even when zero, because zero is the assurance a
+    reader wants and an absent line does not give it.
+    """
+    declined = questioned = unaccounted = 0
+    for entry in requirement_map.dispositions:
+        if entry.obligation_ids:
+            continue
+        if entry.disposition is Disposition.UNDISPOSED:
+            unaccounted += 1
+        elif entry.open_question_ids:
+            questioned += 1
+        else:
+            declined += 1
+
+    parts = [f"Requirements: {total}", f"with obligations: {total - declined - questioned - unaccounted}"]
+    if questioned:
+        parts.append(f"raised a question: {questioned}")
+    if declined:
+        parts.append(f"deliberately none: {declined}")
+    parts.append(f"UNACCOUNTED FOR: {unaccounted}" if unaccounted else "unaccounted for: 0")
+    return "   ".join(parts)
 
 
 def _requirement_block(
@@ -290,7 +319,12 @@ def _requirement_block(
         lines.extend(_wrap(text, indent="       ", hang="       "))
 
     if not entry.obligation_ids and not entry.open_question_ids:
-        lines.append(f"    -- NO OBLIGATION ({entry.disposition.value})")
+        # Shouted only for the failure. A deliberate decline is a correct
+        # outcome and reads as one; an unaccounted requirement is the defect.
+        if entry.disposition is Disposition.UNDISPOSED:
+            lines.append("    !! UNACCOUNTED FOR — the decomposer did not address this")
+        else:
+            lines.append("    -- no obligation, deliberately")
         if entry.reason:
             lines.extend(_wrap(entry.reason, indent="       ", hang="       "))
 

@@ -332,8 +332,12 @@ def test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing():
 
     for requirement_id in ("[task]", "[constraint-01]", "[constraint-02]", "[exclusion-01]"):
         assert requirement_id in output, f"{requirement_id} is missing from the rendered mapping"
-    assert "NO OBLIGATION" in output
+    assert "no obligation, deliberately" in output
     assert "Covered by the CSV suite." in output
+    # A deliberate decline is a correct outcome; only an unaccounted requirement
+    # is a failure, and the header must not merge the two into one number.
+    assert "deliberately none: 1" in output
+    assert "unaccounted for: 0" in output
 
 
 def test_the_cli_says_when_an_obligation_serves_other_requirements():
@@ -369,3 +373,34 @@ def test_an_obligation_no_requirement_claims_is_still_shown():
 
     assert "Obligations mapped to no requirement:" in output
     assert "orphan" in output
+
+
+def test_the_header_separates_a_deliberate_decline_from_an_unaccounted_requirement():
+    """One "yielding none" figure reads as a defect count, and only one of its
+    three components is one. A bare section marker declined with a reason is a
+    correct outcome; a requirement the decomposer never addressed is the recall
+    failure the stage exists to surface. Merging them puts the defect back behind
+    a number that looks the same either way."""
+    from acceptance.cli import render_decomposition
+
+    parsed = parse_task_file(TASK)
+    response = {
+        "obligations": [
+            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
+        ],
+        "open_questions": [],
+        "requirement_dispositions": [
+            _disposition("task", "yielded", obligation_ids=["render-lines"]),
+            _disposition("constraint-01", "no_obligation", reason="A bare section marker."),
+            # constraint-02, exclusion-01 and completion-01 go unmentioned.
+        ],
+    }
+
+    output = render_decomposition(decompose(parsed, _client_returning(response)))
+
+    assert "with obligations: 1" in output
+    assert "deliberately none: 1" in output
+    assert "UNACCOUNTED FOR: 3" in output
+    assert output.count("!! UNACCOUNTED FOR") == 3
+    # The correct decline is not shouted at.
+    assert "!! UNACCOUNTED FOR — the decomposer did not address this\n       A bare section marker." not in output
