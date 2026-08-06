@@ -208,8 +208,47 @@ def test_open_questions_and_recommendations_are_numbered():
 
     assert "  1. [open] Minus sign or parentheses?" in report
     assert "  2. [resolved] Tax inclusive?" in report
-    assert "  1. Daily rate uses days_in_month" in report
-    assert "detects: hard-codes /30" in report
+
+    # The recommendation renders inside its obligation's block, on the test
+    # evidence axis it explains — not in a separate numbered list (#218, §16).
+    obligation_block = report.split("Obligations:")[1].split("Unrequested changes:")[0]
+    assert "recommended test: Daily rate uses days_in_month" in obligation_block
+    assert "detects: hard-codes /30" in obligation_block
+    assert "full detail: acceptance recommendation --criterion a" in obligation_block
+    assert "Recommended tests:" not in report
+
+
+def test_a_recommendation_sits_under_its_own_obligation_and_no_other():
+    """The join key is `obligation_id`, and using it for placement is the whole
+    point: §16 organises by obligation so a criterion's axes sit together rather
+    than in separate lists the reader must join by eye."""
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[
+            _obligation("Weak one", "addressed", "nominally_supported"),
+            _obligation("Strong one", "addressed", "strongly_supported"),
+        ],
+        recommendations=[
+            TestRecommendation(
+                obligation_id="weak-one",
+                criterion="Weak one",
+                required_inputs="A non-30-day month",
+                boundary_conditions="0 days",
+                expected_output="price/28*days",
+                required_assertions=["assert prorate(280, 14, 28) == 140.0"],
+                plausible_defect="hard-codes /30",
+                repo_conventions="test_billing.py",
+            )
+        ],
+    )
+
+    report = render_report(review)
+    blocks = report.split("Obligations:")[1].split("Unrequested changes:")[0]
+    weak_block, strong_block = blocks.split("  2. Strong one")
+
+    assert "recommended test:" in weak_block
+    assert "recommended test:" not in strong_block
 
 
 def test_tier_label_comes_from_the_recorded_tier_not_a_hardcoded_string():

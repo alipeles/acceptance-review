@@ -1,83 +1,65 @@
 # Task
-DR-202 decision 3 gives a requirement exactly one of three dispositions, each
-carrying something: yielded obligations, deliberately yields none with a reason,
-or raised an open question instead. The implementation added a fourth,
-`UNDISPOSED`, carrying none of them, and reached it two ways: a response that
-never mentioned a requirement, and a response that labelled a requirement
-`yielded` while naming no obligations.
+The §16 report prints test recommendations in their own block at the foot of the
+report. An obligation whose test evidence is weak says nothing about the
+recommendation that explains it, and the recommendation identifies its
+obligation only through a `--criterion` slug that appears nowhere in the
+obligation's own block. Joining the two is manual, and in the run that prompted
+this they sat about two hundred lines apart.
 
-Both are malformed responses, and both are currently absorbed as soft findings.
-`_requirement_map` discards the reason the response supplied, substitutes a
-diagnostic string of its own, and lets the run continue to a verdict on an
-answer that did not account for the mandate.
+§16 already rules this out: output is organised by obligation so that a
+criterion's axes sit together rather than in separate lists the reader must join
+by eye. A recommendation is a third axis and received exactly the treatment §16
+forbids. The join key already exists, because `TestRecommendation.obligation_id`
+is what builds the `--criterion` command.
 
-The registry of requirements is derived deterministically from the parse, and
-the code iterates over that registry. Dropping a requirement is therefore not a
-possible outcome — the only possible bad outcome is a response of poor quality.
-Make that true in the types: every requirement carries one of exactly three
-dispositions, each structurally required to carry its own payload, and a
-response that fails to account for every requirement does not parse. Remove the
-fourth disposition entirely.
+Separately, `coverage/recommendations.py::recommend_tests` iterates the
+recommendations a response returned and never reconciles them against the weak
+obligations it asked about. A response returning three recommendations for five
+weak obligations produces a report in which two weak obligations carry none, and
+nothing distinguishes that from a complete answer.
+
+Render each recommendation with the obligation it explains, and make a missing
+recommendation an error rather than an absence.
 
 ## Constraints
-- A requirement disposition is one of exactly three: yielded obligations,
-  no obligations needed with a reason, or an open question that prevents an
-  answer.
-- `Disposition` has no `UNDISPOSED` value.
-- `_RequirementDisposition` is a union of one shape per disposition, each
-  carrying only the payload its own disposition defines.
-- The union is unambiguous at parse: each shape names its disposition as a
-  literal value.
-- The schema sent to the model uses only keywords OpenAI strict mode accepts.
-- A `yielded` disposition carries at least one obligation id.
-- A `no_obligation` disposition carries a reason that is not empty.
-- An `open_question` disposition carries at least one open-question id.
-- A response labelling a requirement `yielded` while naming no obligation id
-  fails to parse.
-- A response labelling a requirement `no_obligation` with an empty reason fails
-  to parse.
-- A response that omits any requirement in the registry is rejected.
-- A response that names a requirement id absent from the registry is rejected.
-- A rejected response produces no `RequirementMap`.
-- The JSON schema sent to the model cannot express a `yielded` disposition with
-  zero obligation ids.
-- The reason a response supplies for declining a requirement is preserved rather
-  than replaced by a diagnostic string.
-- The helper that restricts an id field to the ids a call supplied keeps working
-  when the response model's item type is a union, so the requirement-id
-  constraint survives the new shape.
+- A recommendation is rendered inside the block of the obligation it names.
+- A recommendation is rendered on the test-evidence axis, which is the axis it
+  explains.
+- The report contains no standalone recommendations section.
+- The `--criterion` retrieval line stays with each recommendation.
+- The report keeps its closing line pointing at the retrieval command.
+- An obligation whose test evidence is below strongly supported carries a
+  recommendation.
+- An obligation whose test evidence is strongly supported carries none.
+- A response that omits a recommendation for a weak obligation the call supplied
+  is rejected.
+- A response naming an obligation that is not weak is rejected rather than
+  silently dropped.
+- The count of recommendations in a produced review equals the count of weak
+  obligations.
+- The verdict summary counts weak obligations from the obligations themselves,
+  not from the recommendation list.
 - Typed schemas are pydantic models, as the rest of the repository defines them.
 - Tests issue no live model calls.
 
 ## Scope exclusions
-- The decomposer declining to yield obligations for scope exclusions, against
-  the instruction already in the decompose prompt. That is a prompt defect
-  tracked separately and costs a transcript re-record.
-- Changing the decompose prompt text.
+- Whether an obligation needs test evidence at all, which is #148. The rule
+  built here is that a recommendation exists exactly when test evidence is below
+  strongly supported; the further condition that tests are the right evidence
+  for the obligation is not computable until #148 lands.
+- Changing the strength classifier, or what counts as weak.
+- Changing what a recommendation contains.
 - Retrying or repairing a rejected response.
-- Nested-bullet and multi-paragraph parse coverage, which is #216.
-- Whether mandate coverage bounds the completion verdict, which is #214.
-- Aligning requirement ids across two versions of a task file, which is #209.
+- The separate rendering of open questions and unrequested changes.
 
 ## Completion expectations
 - Implementation
-- Every requirement in a parsed `RequirementMap` carries one of the three
-  dispositions.
-- A response with a `yielded` disposition and no obligation ids is rejected.
-- A response with a `no_obligation` disposition and an empty reason is rejected.
-- A response omitting a requirement present in the registry is rejected.
-- No `RequirementMap` is produced from a rejected response.
-- The `UNDISPOSED` value and every code path that assigns it are removed.
-- A response naming a requirement id outside the registry is rejected.
-- A response disposing the same requirement twice is rejected.
-- An `open_question` disposition naming no question the response produced is
+- A report containing weak obligations has no standalone recommendations
+  section.
+- Each weak obligation's rendered block contains its own recommendation.
+- A strongly supported obligation's rendered block contains no recommendation.
+- A response omitting a recommendation for a supplied weak obligation is
   rejected.
-- A test asserts that the schema sent to the model rejects a `yielded`
-  disposition carrying zero obligation ids.
-- A test asserts that the id constraint still reaches every member of a union
-  item type.
-- The tests, CLI rendering and report sections that referred to the removed
-  disposition are updated rather than left asserting it.
-- `docs/DR-202-decomposition-requirement-mapping.md` records that the
-  disposition set is the three of decision 3, and that completeness is enforced
-  at parse.
+- A response naming a non-weak obligation is rejected.
+- A review carrying weak obligations has one recommendation per weak obligation.
+- A report with no weak obligations renders no recommendation text.

@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from acceptance.coverage.prompt import render_diff_section
 from acceptance.evidence.discrimination import ObligationDiscrimination
-from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
 from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.review_state import ChangeSet, Obligation, TestRecommendation
 
@@ -143,21 +143,45 @@ def recommend_tests(
         obligation.id: (obligation.observable_behavior or obligation.description)
         for obligation in weak
     }
-    recommendations = []
+
+    # A recommendation exists for a weak obligation, and only for a weak one.
+    # The "only" half was already enforced — `weak` is what the call supplies,
+    # and a foreign id is unrepresentable under constrained decoding. The
+    # "always" half was not: this loop used to iterate the response and skip
+    # what it could not place, so a response answering 3 of 5 weak obligations
+    # produced a report where two carried no recommendation and nothing
+    # distinguished it from a complete answer. That is M1.2.r1's missing
+    # disposition, one stage downstream, and it is rejected the same way.
+    returned: dict[str, _Recommendation] = {}
     for rec in result.recommendations:
-        criterion = criterion_by_id.get(rec.obligation_id)
-        if criterion is None:
-            continue  # model named an obligation that isn't weak / doesn't exist
-        recommendations.append(
-            TestRecommendation(
-                obligation_id=rec.obligation_id,
-                criterion=criterion,
-                required_inputs=rec.required_inputs,
-                boundary_conditions=rec.boundary_conditions,
-                expected_output=rec.expected_output,
-                required_assertions=rec.required_assertions,
-                plausible_defect=rec.plausible_defect,
-                repo_conventions=rec.repo_conventions,
+        if rec.obligation_id in returned:
+            raise SchemaValidationError(
+                f"obligation '{rec.obligation_id}' was recommended for more than once"
             )
+        if rec.obligation_id not in criterion_by_id:
+            raise SchemaValidationError(
+                f"recommendation named obligation '{rec.obligation_id}', which the call "
+                "did not supply as weak"
+            )
+        returned[rec.obligation_id] = rec
+
+    missing = [obligation.id for obligation in weak if obligation.id not in returned]
+    if missing:
+        raise SchemaValidationError(
+            f"no recommendation for {len(missing)} of {len(weak)} weak "
+            f"obligation(s): {', '.join(missing)}"
         )
-    return recommendations
+
+    return [
+        TestRecommendation(
+            obligation_id=obligation.id,
+            criterion=criterion_by_id[obligation.id],
+            required_inputs=returned[obligation.id].required_inputs,
+            boundary_conditions=returned[obligation.id].boundary_conditions,
+            expected_output=returned[obligation.id].expected_output,
+            required_assertions=returned[obligation.id].required_assertions,
+            plausible_defect=returned[obligation.id].plausible_defect,
+            repo_conventions=returned[obligation.id].repo_conventions,
+        )
+        for obligation in weak
+    ]
