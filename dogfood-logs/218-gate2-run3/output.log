@@ -1,0 +1,205 @@
+Task completion: INCOMPLETE
+
+3 obligation(s) with non-discriminating test evidence (closing-line-points-at-retrieval-command, typed-schemas-are-pydantic-models, tests-avoid-live-model-calls).
+
+Obligations:
+
+  1. Render each test recommendation inside the block for the obligation it explains, so the recommendation and its obligation appear together.
+       requirements: task-01, task-02, task-04, constraint-01, completion-03
+       code evidence: addressed
+         1.1  src/acceptance/report.py#@@ -39,9 +40,17 @@ def render_report(review: Review) -> str:
+         1.2  src/acceptance/report.py#@@ -75,20 +84,9 @@ def render_report(review: Review) -> str:
+         1.3  src/acceptance/report.py#@@ -256,9 +254,13 @@ def _unread_block(requirement_map: RequirementMap) -> list[str]:
+         1.4  src/acceptance/report.py#@@ -302,6 +304,23 @@ def _obligation_block(
+         1.5  tests/test_report.py#@@ -208,8 +208,53 @@ def test_open_questions_and_recommendations_are_numbered():
+       test evidence: strongly supported  [tier: static]
+         1.6  tests/coverage/test_recommendations.py::test_weak_criterion_gets_a_fully_populated_recommendation
+         1.7  tests/test_report.py::test_a_recommendation_sits_under_its_own_obligation_and_no_other
+         1.8  tests/test_report.py::test_open_questions_and_recommendations_are_numbered
+
+  2. Render each recommendation on the test-evidence axis, matching the axis it explains.
+       requirements: task-02, constraint-02
+       code evidence: addressed
+         2.1  src/acceptance/report.py#@@ -256,9 +254,13 @@ def _unread_block(requirement_map: RequirementMap) -> list[str]:
+         2.2  src/acceptance/report.py#@@ -302,6 +304,23 @@ def _obligation_block(
+         2.3  tests/test_report.py#@@ -208,8 +208,53 @@ def test_open_questions_and_recommendations_are_numbered():
+         2.4  tests/test_report.py#@@ -208,8 +208,53 @@ def test_open_questions_and_recommendations_are_numbered():
+       test evidence: strongly supported  [tier: static]
+         2.5  tests/coverage/test_recommendations.py::test_weak_criterion_gets_a_fully_populated_recommendation
+         2.6  tests/test_report.py::test_a_recommendation_sits_under_its_own_obligation_and_no_other
+         2.7  tests/test_report.py::test_open_questions_and_recommendations_are_numbered
+
+  3. Preserve the report structure so it contains no standalone recommendations section.
+       requirements: constraint-03, completion-02, completion-08
+       code evidence: addressed
+         3.1  src/acceptance/report.py#@@ -75,20 +84,9 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported  [tier: static]
+         3.2  tests/test_report.py::test_a_first_review_renders_no_changes_section
+         3.3  tests/test_report.py::test_empty_review_renders_the_full_shell
+         3.4  tests/test_report.py::test_open_questions_and_recommendations_are_numbered
+
+  4. Keep the `--criterion` retrieval line attached to each recommendation.
+       requirements: task-01, task-02, constraint-04
+       code evidence: addressed
+         4.1  src/acceptance/report.py#@@ -302,6 +304,23 @@ def _obligation_block(
+         4.2  tests/test_report.py#@@ -208,8 +208,53 @@ def test_open_questions_and_recommendations_are_numbered():
+       test evidence: strongly supported  [tier: static]
+         4.3  tests/coverage/test_recommendations.py::test_weak_criterion_gets_a_fully_populated_recommendation
+         4.4  tests/test_report.py::test_open_questions_and_recommendations_are_numbered
+         4.5  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  5. Preserve the report's closing line so it points at the retrieval command.
+       requirements: constraint-05
+       code evidence: addressed
+         5.1  src/acceptance/report.py#@@ -302,6 +304,23 @@ def _obligation_block(
+         5.2  tests/test_report.py#@@ -208,8 +208,53 @@ def test_open_questions_and_recommendations_are_numbered():
+       test evidence: nominally supported  [tier: static]
+         5.3  tests/test_report.py::test_empty_review_renders_the_full_shell
+         5.4  tests/test_report.py::test_open_questions_and_recommendations_are_numbered
+         5.5  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         5.6  tests/test_verdict.py::test_resolved_open_question_does_not_block
+         recommended test: The final line of the report still references the retrieval command.
+           inputs:  Render a report for a review that includes at least one weak obligation with a recommendation, so the report reaches the footer path after the recommendations are rendered. The input must be specific enough that the old retrieval-command footer would have been present, making any footer replacement or removal observable.
+           detects: The report footer is changed to a different closing line, or the retrieval command line is removed entirely while the rest of the report stays unchanged.
+           full detail: acceptance recommendation --criterion closing-line-points-at-retrieval-command
+
+  6. Ensure every obligation whose test evidence is below strongly supported carries a recommendation.
+       requirements: constraint-06
+       code evidence: addressed
+         6.1  src/acceptance/coverage/recommendations.py#@@ -143,21 +143,45 @@ def recommend_tests(
+         6.2  tests/coverage/test_recommendations.py#@@ -6,7 +6,10 @@ Generation is a schema-constrained model call; per the replay-first invariant
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/coverage/test_recommendations.py::test_every_weak_obligation_gets_exactly_one_recommendation
+         6.4  tests/coverage/test_recommendations.py::test_weak_criterion_gets_a_fully_populated_recommendation
+         6.5  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         6.6  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         6.7  tests/test_verdict.py::test_weak_evidence_is_incomplete
+
+  7. Preserve the behavior that strongly supported obligations carry no recommendation.
+       requirements: constraint-07, completion-04
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         7.1  tests/coverage/test_recommendations.py::test_strongly_supported_obligations_get_no_recommendation_and_no_model_call
+         7.2  tests/test_report.py::test_a_recommendation_sits_under_its_own_obligation_and_no_other
+         7.3  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  8. Reject a response that omits a recommendation for any supplied weak obligation.
+       requirements: task-03, task-04, constraint-08, completion-05
+       code evidence: addressed
+         8.1  src/acceptance/coverage/recommendations.py#@@ -143,21 +143,45 @@ def recommend_tests(
+         8.2  tests/coverage/test_recommendations.py#@@ -6,7 +6,10 @@ Generation is a schema-constrained model call; per the replay-first invariant
+       test evidence: strongly supported  [tier: static]
+         8.3  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_is_rejected
+
+  9. Reject a response that names an obligation that is not weak instead of silently dropping it.
+       requirements: task-03, constraint-09, completion-06
+       code evidence: addressed
+         9.1  src/acceptance/coverage/recommendations.py#@@ -143,21 +143,45 @@ def recommend_tests(
+         9.2  tests/coverage/test_recommendations.py#@@ -6,7 +6,10 @@ Generation is a schema-constrained model call; per the replay-first invariant
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/coverage/test_recommendations.py::test_a_response_naming_a_non_weak_obligation_is_rejected
+
+  10. Ensure the number of recommendations in a produced review equals the number of weak obligations.
+       requirements: task-03, constraint-10, completion-07
+       code evidence: addressed
+         10.1  src/acceptance/coverage/recommendations.py#@@ -143,21 +143,45 @@ def recommend_tests(
+         10.2  tests/coverage/test_recommendations.py#@@ -6,7 +6,10 @@ Generation is a schema-constrained model call; per the replay-first invariant
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/coverage/test_recommendations.py::test_a_duplicate_recommendation_is_rejected
+         10.4  tests/coverage/test_recommendations.py::test_every_weak_obligation_gets_exactly_one_recommendation
+         10.5  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         10.6  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         10.7  tests/test_verdict.py::test_weak_evidence_is_incomplete
+
+  11. Compute the verdict summary's weak-obligation count from the obligations themselves rather than from the recommendation list.
+       requirements: task-03, constraint-11
+       code evidence: addressed
+         11.1  tests/test_verdict.py#@@ -138,3 +140,24 @@ def test_completion_result_round_trips_through_persistence():
+       test evidence: strongly supported  [tier: static]
+         11.2  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         11.3  tests/test_verdict.py::test_the_weak_count_is_read_off_the_obligations_not_the_recommendations
+
+  12. Represent typed schemas as pydantic models, consistent with the rest of the repository.
+       requirements: constraint-12
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: Schema definitions remain pydantic model classes rather than another schema mechanism.
+           inputs:  Inspect the schema-definition objects used for recommendation generation and persistence in the acceptance layer, focusing on the concrete types exported by the schema module rather than runtime JSON shape. The test should target a representative schema class that is expected to be a Pydantic model class.
+           detects: Schema definitions are replaced with another schema mechanism, such as dataclasses, TypedDicts, or ad hoc dict-based validation, while the tests still pass because serialization looks similar.
+           full detail: acceptance recommendation --criterion typed-schemas-are-pydantic-models
+
+  13. Keep tests free of live model calls.
+       requirements: constraint-13
+       code evidence: addressed
+         13.1  tests/benchmark/degenerate_judges.py#@@ -37,7 +37,7 @@ from typing import Any
+         13.2  tests/benchmark/degenerate_judges.py#@@ -143,7 +143,7 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+         13.3  tests/support.py#@@ -33,11 +33,66 @@ def _fake_response(content: str) -> SimpleNamespace:
+         13.4  tests/support.py#@@ -127,7 +182,7 @@ def client_dispatching(
+         13.5  tests/coverage/test_recommendations.py#@@ -6,7 +6,10 @@ Generation is a schema-constrained model call; per the replay-first invariant
+       test evidence: nominally supported  [tier: static]
+         13.6  tests/coverage/test_recommendations.py::test_strongly_supported_obligations_get_no_recommendation_and_no_model_call
+         recommended test: The test suite runs without making networked or live model requests.
+           inputs:  Run the relevant test subset that exercises recommendation generation and report rendering under the normal fixture/stub setup, while instrumenting the model client path so any attempt to reach the network or a live model is observable. The input should include at least one recommendation-producing path so a hidden live call cannot hide behind an empty result.
+           detects: The test suite makes a live model/network call while generating recommendations, or a hidden model call is made but cached/stubbed so the visible recommendation list stays empty.
+           full detail: acceptance recommendation --criterion tests-avoid-live-model-calls
+
+  14. Make recommendation existence depend exactly on test evidence being below strongly supported, while preserving the separate #148 rule about whether test evidence is needed at all.
+       requirements: exclusion-01
+       code evidence: addressed
+         14.1  src/acceptance/coverage/recommendations.py#@@ -143,21 +143,45 @@ def recommend_tests(
+         14.2  tests/coverage/test_recommendations.py#@@ -6,7 +6,10 @@ Generation is a schema-constrained model call; per the replay-first invariant
+         14.3  tests/support.py#@@ -33,11 +33,66 @@ def _fake_response(content: str) -> SimpleNamespace:
+         14.4  tests/support.py#@@ -127,7 +182,7 @@ def client_dispatching(
+       test evidence: strongly supported  [tier: static]
+         14.5  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         14.6  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         14.7  tests/test_verdict.py::test_weak_evidence_is_incomplete
+
+Mandate coverage: 25 of 30 requirements yielded obligations
+  1. [no_obligation] exclusion-02: Changing the strength classifier, or what counts as weak.
+       reason: Scope exclusion only; it preserves the existing strength classifier and weak/strong threshold unchanged.
+  2. [no_obligation] exclusion-03: Changing what a recommendation contains.
+       reason: Scope exclusion only; it preserves the existing recommendation contents unchanged.
+  3. [no_obligation] exclusion-04: Retrying or repairing a rejected response.
+       reason: Scope exclusion only; it preserves the absence of retry/repair behavior.
+  4. [no_obligation] exclusion-05: The separate rendering of open questions and unrequested changes.
+       reason: Scope exclusion only; it preserves the separate rendering of open questions and unrequested changes.
+  5. [no_obligation] completion-01: Implementation
+       reason: Section marker only; it introduces no checkable requirement.
+
+Unrequested changes:
+  1. [in_service] Added a new helper to recursively extract enum values from the outgoing schema and used it to auto-complete empty recommendation lists in test doubles. This is an internal test-support refactor not required by the listed obligations.
+       tests/support.py#@@ -33,11 +33,66 @@ def _fake_response(content: str) -> SimpleNamespace:
+       tests/support.py#@@ -127,7 +182,7 @@ def client_dispatching(
+       tests/benchmark/degenerate_judges.py#@@ -37,7 +37,7 @@ from typing import Any
+       tests/benchmark/degenerate_judges.py#@@ -143,7 +143,7 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+  2. [in_service] The new tests assert specific rejection behavior for duplicate recommendations and for recommendations naming non-weak obligations. The obligations require rejecting missing recommendations and rejecting non-weak obligations instead of silently dropping them, but they do not call for duplicate-detection behavior or its test coverage.
+       tests/coverage/test_recommendations.py#@@ -6,7 +6,10 @@ Generation is a schema-constrained model call; per the replay-first invariant
+       tests/coverage/test_recommendations.py#@@ -120,3 +123,115 @@ def test_recommendation_round_trips_through_persistence():
+  3. [in_service] The report test was expanded to assert exact placement and count of recommendation text, including a new test for a weak recommendation under one obligation and absent from another. The obligations require co-locating recommendations with obligations and preserving the retrieval line, but not these extra count-based assertions or the additional bespoke test case.
+       tests/test_report.py#@@ -208,8 +208,53 @@ def test_open_questions_and_recommendations_are_numbered():
+  4. [in_service] The rerun test was changed to expect an additional recommendation (`alpha`) and to explain the prior behavior in comments. The obligations require weak obligations to carry recommendations, but this specific scenario adjustment and commentary are not directly called for by the listed obligations.
+       tests/test_rerun.py#@@ -687,7 +687,16 @@ def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path
+  5. [in_service] The verdict test adds an import of `inspect` and a new assertion about `derive_verdict`'s signature not accepting recommendations. The obligations require computing the weak-obligation count from obligations themselves, but not this signature-level assertion or the extra import.
+       tests/test_verdict.py#@@ -7,6 +7,8 @@ question blocks a positive verdict (#113).
+       tests/test_verdict.py#@@ -138,3 +140,24 @@ def test_completion_result_round_trips_through_persistence():
+
+Changes since 22738d75:
+  closed:
+    - Preserve the report structure so it contains no standalone recommendations section.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+  moved:
+    - Preserve the report's closing line so it points at the retrieval command.
+        test evidence: strongly supported -> nominally supported
+    - Keep tests free of live model calls.
+        test evidence: strongly supported -> nominally supported
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
