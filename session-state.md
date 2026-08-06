@@ -15,192 +15,128 @@ Clear it out when the task lands rather than letting it accrete.
 ## Task in flight
 
 **#202** — M1.2.r1, decomposition returns a requirement → obligation mapping.
-Branch `202-requirement-obligation-mapping`, off `4ec4470`. Implemented; three
-commits; suite green at 750.
+Branch `202-requirement-obligation-mapping`, 12 commits off `4ec4470`. Suite
+green at 761. **Both gates closed. Not yet pushed; no PR open.**
 
-Design is `docs/DR-202-decomposition-requirement-mapping.md` (accepted, not
-built). #202 is scoped to the **representational** change only — DR decisions
-1–4 and 8. Siblings under #181, all deliberately out of scope: #204 (partition by
-requirement batch), #205 (typing pass), #206 (open-question citations), #207
-(resolver reads base revision), #208 (`decision`: decomposer code context), #144
-(de-dup, sequenced immediately after).
+## Gate status
 
-**#193 is no longer the next task.** The model question it was blocked on is
-answered: DR-202 concludes the fix is structural, not a model upgrade, and
-rejects the upgrade explicitly (deficit is recall only). #193 is now the symptom
-issue that #202 and its siblings address. Note the board has not caught up — #193
-still holds Order 414 and **#202 is not on the project board at all**.
+**Gate 1: passed under attribution.** Run 1 did not pass; every loss traced to
+#202 itself, which predates the run. Runs 2–4 verified the fix.
 
-## Where #202 stands
+**Gate 2: closed with an accepted residue** — 1 coverage gap, 2 recommendations.
+Recorded on #202, and **note it is a third disposition** CLAUDE.md does not
+contemplate: accepting a true positive is neither "address it" nor "attribute it
+to a tracked tool defect". Human decision, recorded so it stays visible.
 
-**Implemented and committed (`a772982`). Full suite green. Gate 2 NOT yet run.**
+- **The gap:** `exclusion-01` claims *"the derivation is untouched"*, which is
+  false — this change adds two sections to the decomposition prompt. **The tool
+  is right.** Not fixed, because that would be a third consecutive edit to
+  `current-task.md` made after seeing the checker's output.
+- **The 2 recommendations:** #213 — the evidence is #195's green suite, which
+  the tool cannot read. Deliberately not satisfied with duplicate tests.
 
-Gate 1 run 1 did not pass, and the human authorised proceeding under attribution
-(every loss traced to #202 itself, which predates the run), asking for a second
-decompose after the change as a test of it. Both runs are in `dogfood-logs/`.
+## The thing to carry forward
 
-| | run 1 (flat list) | run 2 (mapping) |
-|---|---|---|
-| requirements identified | — | 44 |
-| yielding an obligation | 30 of 42 | 35 of 44 |
-| yielding nothing | **12, invisible** | **9, each with a reason** |
-| `undisposed` | n/a | **0** |
-| obligations serving >1 requirement | not representable | 10 |
+**#214 changes how every Gate 2 number in this repo should be read.**
+`derive_verdict` never receives the requirement map, so mandate coverage cannot
+move the verdict. A decomposer that drops requirements therefore scores
+*better* — dropped requirements cannot generate gaps. Gate 2 run 2 demonstrated
+it live: every headline improved while mandate coverage fell 46/47 → 42/52.
 
-**The deliverable works.** Run 1's losses were silence; run 2's are claims a
-human can reject. The never-duplicate property (DR-202 decision 2), lost in both
-its statements in run 1, is mapped in run 2.
+#190 and #195 both shipped on Gate 2 residues read under this blindness. Not a
+claim their conclusions were wrong — nobody has looked — but the instrument had
+the flaw then too.
 
-**Run 3 added the requirement-major renderer and a prompt rule for unresolvable
-references.** The second was the human's diagnosis and it was right: run 2's
-declines said *"a scope note pointing to #204"*, which is what not knowing what
-#204 is looks like. Coverage went 35 → **43 of 44**; all ten scope exclusions now
-yield. The one decline is `completion-01: Implementation`, correctly.
+## Filed this session
 
-This **refutes DR-202's positive-invariant hypothesis as the primary cause** —
-that rule was already in force for run 2 and recovered only 2 of 10.
+| | |
+|---|---|
+| #209 | semantic requirement alignment across task-file versions |
+| #210 | mapping over-merges onto lexically adjacent requirements |
+| #211 | rebuild #195's suite; score link precision separately from coverage |
+| #212 | task files cannot distinguish context from requirements |
+| #213 | a green regression suite is unreadable as evidence for preservation |
+| #214 | the verdict cannot see mandate coverage |
 
-**Open defects:**
+**#211 blocks #210.** #212's motivating example was corrected on the issue — it
+turned out to be the parse bug, not context bleed.
 
-1. **#210** (filed, child of #181) — three exclusions linked to a neighbouring
-   requirement's obligation instead of their own. Predictive signal is exact on
-   this sample: the only three exclusions sharing an obligation with a Completion
-   expectation are the only three mislinked. **DR-202 decision 2's reframe
-   relocates over-merging rather than removing it** — read before building #144.
-2. **#211** (filed, supersedes #195, child of #186) — rebuild that suite against
-   the mapping and score **link precision separately from coverage**. Blocks #210:
-   43-of-44 would otherwise score as ~0.98 accuracy.
-3. **#212** (filed, child of #181) — task files cannot distinguish context from
-   requirements. **Its motivating example was corrected on the issue**: the
-   contradictory obligation was caused by the parse bug below, not context
-   bleed, and does not reproduce in run 4. Still worth doing; weaker evidence
-   than when filed.
+## Three conclusions withdrawn today, all single-run readings
 
-**Run 4 fixed a regression this change had introduced.** `parse_task_file` kept
-only the FIRST paragraph under `# Task`. Harmless while `_user_prompt` passed
-`parsed.source`; fatal once the registry became the only thing the model sees —
-three paragraphs of #202's own mandate stopped reaching it. Fixed, plus a guard:
-unclaimed blocks are recorded as `RequirementMap.unread_source` and rendered by
-both the CLI and the report. **General rule, now in DR-202: a lossy parse is safe
-exactly until it is authoritative.**
+1. The `exclusion-04` "inversion" — *"does not need to"* is a permission, not a
+   prohibition. My error, not a tool defect.
+2. *"The reference rule fixed the scope-exclusion declines"* — held two runs,
+   then fell to 1 of 10 on six added bullets.
+3. *"Gate 2 run 2 is much better"* — it was worse; the numbers improved because
+   the mandate shrank.
 
-Run 4: **47 requirements, 46 with obligations, 0 unaccounted, 0 unread.** The
-contradiction is gone. Ids are now `task-01`… — the bare `task` spelling was
-premised on there being one behavior paragraph, which was only true because the
-parser dropped the rest.
+Each was internally coherent when written. That is a pattern about judgement
+under this workflow, not three unrelated slips, and it is the strongest argument
+for sequencing **#211 before any further decomposition work**.
 
-**#210's false links MOVED between runs 3 and 4** on the same input, with nothing
-targeting them — `exclusion-08` fixed itself, `exclusion-10` got worse, `task-01`
-gained a new one. Count flat, membership turned over. This hardens **#211 into a
-prerequisite**: the defect cannot be fixed or verified by looking at a run.
+## What #202 delivered
 
-**Disclosed, not excused:** 35 obligations in runs 3 and 4, **4 ids in common**.
-#202's own `exclusion-01` (*"Changing which obligations a task file decomposes
-into"*) is violated — necessarily, since the alternative was shipping a change
-that hides part of the mandate. #195's control suite still passes with no case
-flipped, which is the check that matters.
-
-**Withdrawn:** the `exclusion-04` "inversion" finding from runs 2 and 3 was my
-error, not a tool defect — *"does not need to"* is a permission, not a
-prohibition, and the obligation takes the same form as its correctly-handled
-siblings. Both judgements corrected in place, both readings preserved. The lesson
-is DR-180's in mirror: I reused a judgement across three runs instead of
-re-deriving it, and its stability was not evidence for it.
-
-**Next: Gate 2** (`acceptance check --task current-task.md --base 4ec4470`).
-Expect #153 to cap the scope exclusions below `strongly supported`, as it did for
-#190 and #195.
-
-## Decisions already taken on #202
-
-- **Requirement id stability is settled as an interim scheme**: `section +
-  ordinal`, code-assigned in parse order, zero-padded — `constraint-01`,
-  `exclusion-03`, `completion-07`, and `task` for the behavior paragraph. Full
-  rationale in the #202 comment; the short form is that positional ids satisfy
-  the acceptance criterion as written (within-version determinism) and their
-  failure mode is inspectable, whereas a content hash would present a reworded
-  bullet as *requirement vanished, new requirement appeared* — indistinguishable
-  from the recall defect being fixed.
-- **True cross-version requirement identity is semantic and is deferred to
-  #209** (filed, child of #181). It is the `align_obligations` problem one level
-  up. DR-202's §Open first bullet is to be updated to record this — that update
-  is a Completion expectation of the current task file.
-
-## What #195 left that #202 needs
-
-- `benchmark/scoring.py::score_case` and `benchmark/case.py::GroundTruthLabels`
-  are the scoring path; #195's decompose-stability suite is the **control** for
-  #202 — it must run unchanged and no case may flip. A flip means something
-  behavioral changed, and #202 is representational.
-- Rebuilding that suite to bind labels to the mapping is a **superseding issue**,
-  not part of #202 (DR-202 §Sequencing).
-- `benchmark/corpus.py` materializes a case from a real commit as a detached
-  worktree.
-- **`corpus/*` tags are load-bearing** and CI must keep `fetch-depth: 0`.
-
-## Known open, not #202's problem
-
-- **#153** — scope exclusions demand test evidence that cannot exist; caps them
-  at `partially supported`. Will hit #202's Gate 2, as it hit #190 and #195.
-- **#191** — per-defect verdict instability; 20 → 3 `strongly supported` on a
-  tests-only diff.
-- **#196** — decomposer types automatable obligations `human_review`. #205 owns
-  the fix.
-- **#178** — questions raised that the task file answers. Did **not** recur in
-  this run.
-- **#129** — materialization flake in `materialize_archetype`, not a test flake.
-  Cost #195 one red CI that passed on re-run of the identical commit. Unchecked:
-  CI is 3.12, local is 3.10; `ignore_patterns` misses `.pytest_cache`.
+- requirement registry from the parse; ids `task-01` / `constraint-01` / … are
+  assigned by the code. Interim — cross-version identity is #209.
+- `Decomposition` and `Review` carry a many-to-many `RequirementMap`. Every
+  requirement carries exactly one disposition, and the **code** marks
+  `UNDISPOSED` anything the response failed to account for.
+- `_user_prompt` passes typed identified fields, never `parsed.source`.
+- the mapping renders requirement-major in the CLI and in the §16 report.
+- **the parse regression this change introduced**: `parse_task_file` kept only
+  the first `# Task` paragraph. Free while the model got `parsed.source`; silent
+  data loss once the parse became authoritative. Fixed, plus `unread_source`.
 
 ## Findings worth not re-deriving
 
-- **Mapping quality must be measured filtered to the current task's obligation
-  ids.** #189's Gate 2 read 76% unfiltered and **97% filtered**; DR-164's
-  half-blind failure was ~17%.
-- **Audit mapping before believing OR disbelieving a Gate 2.**
+- **A lossy parse is safe exactly until it is authoritative** (DR-202). Any stage
+  that stops passing source and starts passing structure owes a report of what
+  its structure does not cover.
+- **Coverage is not quality.** "43 of 44" says nothing about whether the links
+  are right; #210's false links moved between runs while the count held flat.
+- **Measure mapping from the persisted review, not `.acceptance/cache/`** — the
+  cache pools every run this repo has ever made and read 45% where the review
+  read 80%.
+- **Mapping quality must be filtered to the current task's obligation ids.**
+  #189's Gate 2 read 76% unfiltered and 97% filtered; DR-164's failure was ~17%.
 - **A stable obligation count can conceal a re-split.** Compare aligned sets.
-- **Two runs of silence is not evidence of resolution.**
-- **Single-clause bullets do not rescue recall.** #202's task file was written
-  after DR-202, deliberately avoiding compound clauses, and still lost 12 of 42.
-  Second independent argument that the fix must be structural.
 
 ## The inference to avoid (DR-180)
 
 > *The diff was purely additive; added tests cannot weaken evidence; therefore a
 > rating that fell did so for reasons outside the diff.*
 
-Both premises true, conclusion false. In 7 of 8 unstable obligations the corpus
-found the LOW rating was correct. **Instability is not a licence to dismiss a
+Both premises true, conclusion false. **Instability is not a licence to dismiss a
 finding.**
+
+## Known open, not #202's problem
+
+- **#153** — scope exclusions demanding evidence that cannot exist. Did **not**
+  fire in Gate 2 runs 2–3, because the exclusions produced no obligations to
+  demand evidence for. The condition that suppressed it is worse than it.
+- **#191** — per-defect verdict instability.
+- **#196**, **#178**, **#193** — decomposition defects; #205 owns the typing fix.
+- **#129** — materialization flake in `materialize_archetype`, not a test flake.
 
 ## Outstanding, small (carried, not started)
 
 - **`docs/DR-180` §Open is stale** — lists two settled questions. Own small PR.
-- **A DR for the content-vs-shape distinction is arguably owed.**
-- **#193's body describes five runs; the corpus is seven.**
 - **The instability harness has never been run live.** DR-202 names its first
   live run: `decompose_case` over #195's cases with `RunConfig.model` varied.
-- **Semantic open-question aligner** — #195 matches by id + observed aliases, so
-  a decomposer inventing a new slug defeats it. Not filed.
+- **Semantic open-question aligner** — #195 matches by id + observed aliases.
 
 ## Traps
 
-- **`acceptance decompose --mode record` writes nothing to stdout when
-  redirected**, though replay does. Confirmed again on this run. Record once,
-  then re-run in replay to capture. Still not filed.
-- **`ModelClient` is a plain class, not pydantic.** Set defaults in `__init__`;
-  the injected completion hook is `_completion_fn`, not `completion_fn`.
+- **`acceptance decompose|check --mode record` writes nothing to stdout when
+  redirected**, though replay does. Record once, then re-run in replay. Not filed.
+- **A `pgrep -f` pattern that matches your own waiter never exits.** Cost ~10 min.
+- **`ModelClient` is a plain class, not pydantic.** Hook is `_completion_fn`.
 - **Python here is 3.10** — no `enum.StrEnum`. Use `(str, Enum)`.
 - **The repo is `alipeles/acceptance-review`**, not the local dir name.
 - **`tee FILE | head -N` writes an empty file** — redirect first, then read.
 - **`gh api ... -f` sends strings**; sub-issue ids need `-F` for integers.
 - **Adding a sub-issue returns the PARENT**, so `-q .number` echoes the umbrella.
-- **Never assert a test file does not contain a string** — the assertion contains
-  the string it searches for, so it can only be self-referential.
-- **pytest may import a test module under a different name**, so
-  `import tests.x.y as m; monkeypatch.setattr(m, ...)` can patch a *second*
-  module object and silently do nothing. Patch `globals()` instead.
-- **Project `Order` is a custom field**, not the `order` key in `item-list` JSON.
+- **pytest may import a test module under a different name** — patch `globals()`.
 
 ## What to ignore
 
