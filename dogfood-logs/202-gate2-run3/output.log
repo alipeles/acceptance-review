@@ -1,0 +1,568 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) not fully implemented (obligation-derivation-unchanged); 2 obligation(s) with non-discriminating test evidence (obligation-regression-suite-195-unchanged-runs, obligation-regression-suite-195-results-stable).
+
+Obligations:
+
+  1. Represent decomposition as a mapping from each requirement to exactly one disposition, so requirements that yield nothing are recorded explicitly rather than disappearing from the result.
+       requirements: task-02, completion-02, completion-03
+       code evidence: addressed
+         1.1  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         1.2  src/acceptance/requirement/obligations.py#@@ -75,7 +101,58 @@ Granularity — isolate distinct computations, keep cohesive behaviors whole:
+         1.3  src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+         1.4  src/acceptance/pipeline.py#@@ -312,6 +314,10 @@ def run_review(
+         1.5  src/acceptance/report.py#@@ -40,11 +41,15 @@ def render_report(review: Review) -> str:
+         1.6  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+       test evidence: strongly supported  [tier: static]
+         1.7  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         1.8  tests/requirement/test_obligations.py::test_underspecified_qualifier_yields_an_open_question_not_an_obligation
+         1.9  tests/requirement/test_requirement_map.py::test_a_fully_accounted_response_leaves_no_requirement_undisposed
+         1.10  tests/requirement/test_requirement_map.py::test_a_requirement_deliberately_yielding_nothing_carries_its_reason
+         1.11  tests/requirement/test_requirement_map.py::test_a_requirement_the_response_never_mentions_is_recorded_as_undisposed
+         1.12  tests/requirement/test_requirement_map.py::test_a_yielded_claim_naming_no_real_obligation_is_not_honoured
+         1.13  tests/requirement/test_requirement_map.py::test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing
+         1.14  tests/requirement/test_requirement_map.py::test_the_header_separates_a_deliberate_decline_from_an_unaccounted_requirement
+         1.15  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         1.16  tests/test_cli.py::test_check_json_emits_a_structured_review
+         1.17  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+
+  2. Preserve the ability to account for every requirement in the decomposition output instead of only returning flat lists of obligations and open questions.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         2.2  src/acceptance/cli.py#@@ -212,7 +213,192 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
+         2.3  src/acceptance/report.py#@@ -40,11 +41,15 @@ def render_report(review: Review) -> str:
+         2.4  src/acceptance/review_state.py#@@ -551,6 +719,11 @@ class Review(_Model):
+       test evidence: strongly supported  [tier: static]
+         2.5  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         2.6  tests/requirement/test_requirement_map.py::test_a_requirement_the_response_never_mentions_is_recorded_as_undisposed
+         2.7  tests/requirement/test_requirement_map.py::test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing
+         2.8  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         2.9  tests/test_cli.py::test_check_json_emits_a_structured_review
+         2.10  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+
+  3. Attach each obligation to the requirement it came from so an auditor can see the originating requirement for every obligation.
+       requirements: task-03
+       code evidence: addressed
+         3.1  src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+         3.2  src/acceptance/cli.py#@@ -212,7 +213,192 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
+         3.3  src/acceptance/report.py#@@ -203,6 +265,14 @@ def _obligation_block(index: int, obligation: Obligation) -> list[str]:
+         3.4  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+       test evidence: strongly supported  [tier: static]
+         3.5  tests/benchmark/test_case.py::test_gap_referencing_unknown_obligation_fails_validation
+         3.6  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         3.7  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         3.8  tests/requirement/test_obligations.py::test_each_obligation_links_to_its_source_span
+         3.9  tests/requirement/test_requirement_map.py::test_an_obligation_no_requirement_claims_is_still_shown
+
+  4. Pass the complete parse to the model so that all requirements visible in the task file can influence decomposition.
+       requirements: task-04
+       code evidence: addressed
+         4.1  src/acceptance/requirement/obligations.py#@@ -75,7 +101,58 @@ Granularity — isolate distinct computations, keep cohesive behaviors whole:
+         4.2  src/acceptance/requirement/task_file.py#@@ -30,13 +30,27 @@ _TASK = {"task"}
+         4.3  src/acceptance/requirement/task_file.py#@@ -48,14 +62,20 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+         4.4  tests/requirement/test_task_file.py#@@ -124,3 +124,74 @@ def test_a_bullet_wrapped_across_lines_still_has_an_exact_span():
+       test evidence: strongly supported  [tier: static]
+         4.5  tests/benchmark/test_instability.py::test_run_once_drives_the_real_pipeline_and_snapshots_its_output
+         4.6  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         4.7  tests/requirement/test_obligations.py::test_floating_rate_example_yields_five_typed_criteria
+         4.8  tests/requirement/test_requirement_map.py::test_the_prompt_carries_identified_requirements_not_raw_markdown
+         4.9  tests/test_rerun.py::test_a_prior_review_of_a_different_task_is_not_used
+         4.10  tests/test_rerun.py::test_a_review_on_a_divergent_branch_is_not_used_as_the_prior
+
+  5. Derive the requirement registry from `requirement/task_file.py::parse_task_file`.
+       requirements: constraint-01
+       code evidence: addressed
+         5.1  src/acceptance/requirement/registry.py#@@ -0,0 +1,65 @@
+         5.2  src/acceptance/requirement/obligations.py#@@ -18,9 +32,21 @@ from pydantic import Field
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/requirement/test_requirement_map.py::test_every_requirement_in_the_file_is_identified
+         5.4  tests/requirement/test_task_file.py::test_parses_the_projects_own_current_task_file
+         5.5  tests/test_rerun.py::test_a_prior_review_of_a_different_task_is_not_used
+         5.6  tests/test_rerun.py::test_a_review_on_a_divergent_branch_is_not_used_as_the_prior
+
+  6. Assign requirement ids in code rather than by the model.
+       requirements: constraint-02, completion-07
+       code evidence: addressed
+         6.1  src/acceptance/requirement/registry.py#@@ -0,0 +1,65 @@
+         6.2  src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/requirement/test_requirement_map.py::test_every_requirement_in_the_file_is_identified
+         6.4  tests/requirement/test_requirement_map.py::test_requirement_ids_are_identical_across_two_runs_over_identical_text
+
+  7. Form each requirement id from its section and its ordinal within that section, in parse order.
+       requirements: constraint-03
+       code evidence: addressed
+         7.1  src/acceptance/requirement/registry.py#@@ -0,0 +1,65 @@
+         7.2  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/requirement/test_requirement_map.py::test_every_requirement_in_the_file_is_identified
+         7.4  tests/requirement/test_requirement_map.py::test_requirement_ids_are_identical_across_two_runs_over_identical_text
+
+  8. Store the `TextSpan` for each requirement registry entry.
+       requirements: constraint-04
+       code evidence: addressed
+         8.1  src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+         8.2  src/acceptance/requirement/registry.py#@@ -0,0 +1,65 @@
+         8.3  tests/requirement/test_task_file.py#@@ -124,3 +124,74 @@ def test_a_bullet_wrapped_across_lines_still_has_an_exact_span():
+       test evidence: strongly supported  [tier: static]
+         8.4  tests/requirement/test_requirement_map.py::test_each_registry_entry_carries_the_span_of_its_requirement
+         8.5  tests/requirement/test_task_file.py::test_a_bullet_wrapped_across_lines_still_has_an_exact_span
+         8.6  tests/requirement/test_task_file.py::test_every_extracted_item_retains_a_source_reference
+         8.7  tests/requirement/test_task_file.py::test_parses_the_projects_own_current_task_file
+         8.8  tests/requirement/test_task_file.py::test_scope_exclusions_are_parsed_when_present
+
+  9. Represent the requirement-to-obligation relation as many-to-many, allowing one obligation to be linked to multiple requirements and one requirement to be linked to multiple obligations.
+       requirements: constraint-05, completion-05
+       code evidence: addressed
+         9.1  src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+         9.2  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         9.3  src/acceptance/cli.py#@@ -212,7 +213,192 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
+         9.4  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+       test evidence: strongly supported  [tier: static]
+         9.5  tests/requirement/test_requirement_map.py::test_a_disposition_naming_a_renamed_obligation_still_links
+         9.6  tests/requirement/test_requirement_map.py::test_an_obligation_no_requirement_claims_is_still_shown
+         9.7  tests/requirement/test_requirement_map.py::test_one_obligation_serves_two_requirements_rather_than_being_duplicated
+         9.8  tests/requirement/test_requirement_map.py::test_the_cli_says_when_an_obligation_serves_other_requirements
+
+  10. Link an obligation to every requirement it serves.
+       requirements: constraint-06, completion-05
+       code evidence: addressed
+         10.1  src/acceptance/cli.py#@@ -212,7 +213,192 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
+         10.2  src/acceptance/report.py#@@ -203,6 +265,14 @@ def _obligation_block(index: int, obligation: Obligation) -> list[str]:
+         10.3  src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+       test evidence: strongly supported  [tier: static]
+         10.4  tests/requirement/test_requirement_map.py::test_a_disposition_naming_a_renamed_obligation_still_links
+         10.5  tests/requirement/test_requirement_map.py::test_one_obligation_serves_two_requirements_rather_than_being_duplicated
+         10.6  tests/requirement/test_requirement_map.py::test_the_cli_says_when_an_obligation_serves_other_requirements
+
+  11. Preserve a single obligation object when it serves multiple requirements.
+       requirements: constraint-07, completion-06
+       code evidence: addressed
+         11.1  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         11.2  src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+         11.3  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+       test evidence: strongly supported  [tier: static]
+         11.4  tests/requirement/test_requirement_map.py::test_a_disposition_naming_a_renamed_obligation_still_links
+         11.5  tests/requirement/test_requirement_map.py::test_one_obligation_serves_two_requirements_rather_than_being_duplicated
+         11.6  tests/requirement/test_requirement_map.py::test_the_cli_says_when_an_obligation_serves_other_requirements
+
+  12. Ensure every requirement has exactly one disposition.
+       requirements: constraint-08
+       code evidence: addressed
+         12.1  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         12.2  src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+         12.3  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+       test evidence: strongly supported  [tier: static]
+         12.4  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         12.5  tests/requirement/test_obligations.py::test_underspecified_qualifier_yields_an_open_question_not_an_obligation
+         12.6  tests/requirement/test_requirement_map.py::test_a_fully_accounted_response_leaves_no_requirement_undisposed
+         12.7  tests/requirement/test_requirement_map.py::test_a_requirement_deliberately_yielding_nothing_carries_its_reason
+         12.8  tests/requirement/test_requirement_map.py::test_a_requirement_the_response_never_mentions_is_recorded_as_undisposed
+         12.9  tests/requirement/test_requirement_map.py::test_a_yielded_claim_naming_no_real_obligation_is_not_honoured
+         12.10  tests/requirement/test_requirement_map.py::test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing
+         12.11  tests/requirement/test_requirement_map.py::test_the_header_separates_a_deliberate_decline_from_an_unaccounted_requirement
+         12.12  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         12.13  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+
+  13. Support the three disposition kinds: yielded obligations, deliberately yields none with a reason, and raised an open question instead.
+       requirements: constraint-09
+       code evidence: addressed
+         13.1  src/acceptance/requirement/obligations.py#@@ -75,7 +101,58 @@ Granularity — isolate distinct computations, keep cohesive behaviors whole:
+         13.2  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         13.3  src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+         13.4  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+       test evidence: strongly supported  [tier: static]
+         13.5  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         13.6  tests/requirement/test_obligations.py::test_underspecified_qualifier_yields_an_open_question_not_an_obligation
+         13.7  tests/requirement/test_requirement_map.py::test_a_fully_accounted_response_leaves_no_requirement_undisposed
+         13.8  tests/requirement/test_requirement_map.py::test_a_requirement_deliberately_yielding_nothing_carries_its_reason
+         13.9  tests/requirement/test_requirement_map.py::test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing
+         13.10  tests/requirement/test_requirement_map.py::test_the_header_separates_a_deliberate_decline_from_an_unaccounted_requirement
+         13.11  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         13.12  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+
+  14. Persist the requirement-to-obligation mapping in the structured review state defined by `review_state.py` and `review_store.py`.
+       requirements: constraint-10
+       code evidence: addressed
+         14.1  src/acceptance/review_state.py#@@ -551,6 +719,11 @@ class Review(_Model):
+         14.2  src/acceptance/pipeline.py#@@ -312,6 +314,10 @@ def run_review(
+       test evidence: strongly supported  [tier: static]
+         14.3  tests/requirement/test_obligations.py::test_decomposition_round_trips_through_persistence
+         14.4  tests/test_cli.py::test_check_json_emits_a_structured_review
+         14.5  tests/test_cli.py::test_check_persists_the_review_to_the_store
+         14.6  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+         14.7  tests/test_review_store.py::test_review_round_trips_through_the_store
+         14.8  tests/test_review_store.py::test_stored_form_is_canonical
+         14.9  tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean
+         14.10  tests/test_supplied_ids.py::test_an_unusable_answer_leaves_the_obligation_indeterminate
+
+  15. Render the requirement-to-obligation mapping in the §16 report.
+       requirements: constraint-11
+       code evidence: addressed
+         15.1  src/acceptance/report.py#@@ -40,11 +41,15 @@ def render_report(review: Review) -> str:
+         15.2  src/acceptance/report.py#@@ -195,7 +200,64 @@ def _delta_block(delta) -> list[str]:
+         15.3  src/acceptance/report.py#@@ -203,6 +265,14 @@ def _obligation_block(index: int, obligation: Obligation) -> list[str]:
+         15.4  tests/test_cli.py#@@ -942,3 +942,56 @@ def test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact():
+       test evidence: strongly supported  [tier: static]
+         15.5  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         15.6  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         15.7  tests/test_report.py::test_test_citations_name_the_test_not_just_the_file
+
+  16. Have `_user_prompt` pass typed, identified fields.
+       requirements: constraint-12
+       code evidence: addressed
+         16.1  src/acceptance/requirement/obligations.py#@@ -75,7 +101,58 @@ Granularity — isolate distinct computations, keep cohesive behaviors whole:
+         16.2  tests/requirement/test_obligations.py#@@ -266,6 +270,7 @@ def test_ids_are_unique_across_obligations_and_open_questions():
+       test evidence: strongly supported  [tier: static]
+         16.3  tests/requirement/test_requirement_map.py::test_the_prompt_carries_identified_requirements_not_raw_markdown
+         16.4  tests/test_llm.py::test_the_schema_sent_to_the_provider_has_no_ref_indirection
+
+  17. Keep `_user_prompt` from passing `parsed.source`.
+       requirements: constraint-13
+       code evidence: addressed
+         17.1  src/acceptance/requirement/obligations.py#@@ -75,7 +101,58 @@ Granularity — isolate distinct computations, keep cohesive behaviors whole:
+         17.2  tests/requirement/test_obligations.py#@@ -266,6 +270,7 @@ def test_ids_are_unique_across_obligations_and_open_questions():
+       test evidence: strongly supported  [tier: static]
+         17.3  tests/requirement/test_requirement_map.py::test_the_prompt_carries_identified_requirements_not_raw_markdown
+
+  18. Treat every paragraph of the task file's `Task` section as a requirement.
+       requirements: constraint-14, completion-08
+       code evidence: addressed
+         18.1  src/acceptance/requirement/task_file.py#@@ -30,13 +30,27 @@ _TASK = {"task"}
+         18.2  src/acceptance/requirement/task_file.py#@@ -48,14 +62,20 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+         18.3  src/acceptance/requirement/registry.py#@@ -0,0 +1,65 @@
+         18.4  tests/requirement/test_task_file.py#@@ -124,3 +124,74 @@ def test_a_bullet_wrapped_across_lines_still_has_an_exact_span():
+       test evidence: strongly supported  [tier: static]
+         18.5  tests/requirement/test_requirement_map.py::test_every_requirement_in_the_file_is_identified
+         18.6  tests/requirement/test_task_file.py::test_every_paragraph_of_the_task_section_is_kept
+         18.7  tests/requirement/test_task_file.py::test_spec_example_fields_match_expected
+
+  19. Record task-file text that the parse claims for no requirement.
+       requirements: constraint-15
+       code evidence: addressed
+         19.1  src/acceptance/requirement/task_file.py#@@ -30,13 +30,27 @@ _TASK = {"task"}
+         19.2  src/acceptance/requirement/task_file.py#@@ -48,14 +62,20 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+         19.3  src/acceptance/requirement/task_file.py#@@ -90,6 +110,26 @@ def _inline_content(node: SyntaxTreeNode) -> str:
+         19.4  tests/requirement/test_task_file.py#@@ -124,3 +124,74 @@ def test_a_bullet_wrapped_across_lines_still_has_an_exact_span():
+       test evidence: strongly supported  [tier: static]
+         19.5  tests/requirement/test_requirement_map.py::test_text_the_parse_never_read_is_carried_into_the_mapping
+         19.6  tests/requirement/test_requirement_map.py::test_the_cli_shouts_about_text_that_was_never_read
+         19.7  tests/requirement/test_task_file.py::test_a_table_no_section_claims_is_reported_whole
+         19.8  tests/requirement/test_task_file.py::test_parses_the_projects_own_current_task_file
+         19.9  tests/requirement/test_task_file.py::test_text_outside_every_recognised_section_is_reported_not_dropped
+
+  20. Render recorded unclaimed text in both the decompose output and the report.
+       requirements: constraint-16, completion-04
+       code evidence: addressed
+         20.1  src/acceptance/cli.py#@@ -212,7 +213,192 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
+         20.2  src/acceptance/report.py#@@ -195,7 +200,64 @@ def _delta_block(delta) -> list[str]:
+         20.3  src/acceptance/report.py#@@ -40,11 +41,15 @@ def render_report(review: Review) -> str:
+         20.4  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+         20.5  tests/test_cli.py#@@ -942,3 +942,56 @@ def test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact():
+       test evidence: strongly supported  [tier: static]
+         20.6  tests/requirement/test_requirement_map.py::test_the_cli_shouts_about_text_that_was_never_read
+         20.7  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+
+  21. Keep the decomposer free of any `ChangeSet` input.
+       requirements: constraint-17
+       code evidence: addressed
+         21.1  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         21.2  tests/requirement/test_obligations.py#@@ -266,6 +270,7 @@ def test_ids_are_unique_across_obligations_and_open_questions():
+       test evidence: strongly supported  [tier: static]
+         21.3  tests/requirement/test_requirement_map.py::test_decompose_cannot_reach_a_diff_or_a_head_revision
+         21.4  tests/test_cli.py::test_run_check_accepts_an_explicit_repo_independent_of_cwd
+
+  22. Keep the decomposer free of any repository path input.
+       requirements: constraint-18
+       code evidence: addressed
+         22.1  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         22.2  tests/requirement/test_obligations.py#@@ -266,6 +270,7 @@ def test_ids_are_unique_across_obligations_and_open_questions():
+       test evidence: strongly supported  [tier: static]
+         22.3  tests/requirement/test_requirement_map.py::test_decompose_cannot_reach_a_diff_or_a_head_revision
+         22.4  tests/test_cli.py::test_run_check_accepts_an_explicit_repo_independent_of_cwd
+
+  23. Keep the decomposer free of any head revision input.
+       requirements: constraint-19
+       code evidence: addressed
+         23.1  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         23.2  tests/requirement/test_obligations.py#@@ -266,6 +270,7 @@ def test_ids_are_unique_across_obligations_and_open_questions():
+       test evidence: strongly supported  [tier: static]
+         23.3  tests/requirement/test_requirement_map.py::test_decompose_cannot_reach_a_diff_or_a_head_revision
+         23.4  tests/test_cli.py::test_run_check_accepts_an_explicit_repo_independent_of_cwd
+
+  24. Use pydantic models for typed schemas.
+       requirements: constraint-20
+       code evidence: addressed
+         24.1  src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+         24.2  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+       test evidence: strongly supported  [tier: static]
+         24.3  tests/requirement/test_obligations.py::test_floating_rate_example_yields_five_typed_criteria
+         24.4  tests/requirement/test_task_file.py::test_roundtrips_through_persistence
+         24.5  tests/test_llm.py::test_inlining_preserves_nested_and_listed_refs
+         24.6  tests/test_llm.py::test_non_text_content_is_rejected_with_a_typed_error
+         24.7  tests/test_supplied_ids.py::test_a_foreign_id_does_not_validate_against_the_constrained_schema
+         24.8  tests/test_supplied_ids.py::test_a_list_valued_id_field_constrains_its_items
+         24.9  tests/test_supplied_ids.py::test_a_single_supplied_id_is_still_sent_as_an_enum
+         24.10  tests/test_supplied_ids.py::test_an_empty_supplied_set_leaves_the_field_unconstrained
+
+  25. Keep tests from issuing live model calls.
+       requirements: constraint-21
+       code evidence: addressed
+         25.1  tests/benchmark/test_instability.py#@@ -41,7 +41,7 @@ from acceptance.config import Mode, RunConfig  # noqa: E402
+         25.2  tests/support.py#@@ -148,7 +148,11 @@ def client_dispatching(
+         25.3  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+       test evidence: strongly supported  [tier: static]
+         25.4  tests/benchmark/test_instability.py::test_runs_are_recorded_live_and_never_replayed
+         25.5  tests/test_cli.py::test_decompose_replay_without_transcript_fails_cleanly
+         25.6  tests/test_cli.py::test_retrieval_makes_no_model_call
+
+  26. Preserve the existing derivation of obligations from the requirements shown to the model.
+       requirements: task-01, exclusion-01
+       code evidence: partially addressed
+         26.1  src/acceptance/requirement/obligations.py#@@ -10,6 +10,20 @@ model returns an exact `source_quote` which we locate in the source), so every
+         26.2  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         26.3  src/acceptance/requirement/task_file.py#@@ -30,13 +30,27 @@ _TASK = {"task"}
+         26.4  src/acceptance/requirement/task_file.py#@@ -48,14 +62,20 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       test evidence: strongly supported  [tier: static]
+         26.5  tests/benchmark/test_instability.py::test_run_once_drives_the_real_pipeline_and_snapshots_its_output
+         26.6  tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces
+
+  27. Produce one requirement per paragraph in the `Task` section.
+       code evidence: addressed
+         27.1  src/acceptance/requirement/task_file.py#@@ -30,13 +30,27 @@ _TASK = {"task"}
+         27.2  src/acceptance/requirement/registry.py#@@ -0,0 +1,65 @@
+         27.3  tests/requirement/test_task_file.py#@@ -124,3 +124,74 @@ def test_a_bullet_wrapped_across_lines_still_has_an_exact_span():
+       test evidence: strongly supported  [tier: static]
+         27.4  tests/requirement/test_requirement_map.py::test_every_requirement_in_the_file_is_identified
+         27.5  tests/requirement/test_task_file.py::test_every_paragraph_of_the_task_section_is_kept
+         27.6  tests/requirement/test_task_file.py::test_spec_example_fields_match_expected
+
+  28. Report text under headings that the format does not recognize as unread.
+       requirements: completion-09
+       code evidence: addressed
+         28.1  src/acceptance/requirement/task_file.py#@@ -48,14 +62,20 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+         28.2  src/acceptance/cli.py#@@ -212,7 +213,192 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
+         28.3  src/acceptance/report.py#@@ -195,7 +200,64 @@ def _delta_block(delta) -> list[str]:
+         28.4  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+       test evidence: strongly supported  [tier: static]
+         28.5  tests/requirement/test_requirement_map.py::test_a_fully_recognised_file_says_nothing_about_unread_text
+         28.6  tests/requirement/test_requirement_map.py::test_text_the_parse_never_read_is_carried_into_the_mapping
+         28.7  tests/requirement/test_requirement_map.py::test_the_cli_shouts_about_text_that_was_never_read
+         28.8  tests/requirement/test_task_file.py::test_a_table_no_section_claims_is_reported_whole
+         28.9  tests/requirement/test_task_file.py::test_text_outside_every_recognised_section_is_reported_not_dropped
+         28.10  tests/requirement/test_task_file.py::test_unknown_sections_are_ignored
+
+  29. Report zero unread blocks when every block in a task file is claimed.
+       requirements: completion-10
+       code evidence: addressed
+         29.1  src/acceptance/requirement/task_file.py#@@ -30,13 +30,27 @@ _TASK = {"task"}
+         29.2  src/acceptance/report.py#@@ -195,7 +200,64 @@ def _delta_block(delta) -> list[str]:
+         29.3  tests/requirement/test_task_file.py#@@ -124,3 +124,74 @@ def test_a_bullet_wrapped_across_lines_still_has_an_exact_span():
+         29.4  tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+       test evidence: strongly supported  [tier: static]
+         29.5  tests/requirement/test_task_file.py::test_a_fully_recognised_file_reports_nothing_unclaimed
+
+  30. Keep the decomposer unable to reach a diff.
+       requirements: completion-11
+       code evidence: addressed
+         30.1  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         30.2  tests/requirement/test_obligations.py#@@ -266,6 +270,7 @@ def test_ids_are_unique_across_obligations_and_open_questions():
+       test evidence: strongly supported  [tier: static]
+         30.3  tests/requirement/test_requirement_map.py::test_decompose_cannot_reach_a_diff_or_a_head_revision
+
+  31. Keep the decomposer unable to reach a head revision.
+       requirements: completion-12
+       code evidence: addressed
+         31.1  src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+         31.2  tests/requirement/test_obligations.py#@@ -266,6 +270,7 @@ def test_ids_are_unique_across_obligations_and_open_questions():
+       test evidence: strongly supported  [tier: static]
+         31.3  tests/requirement/test_requirement_map.py::test_decompose_cannot_reach_a_diff_or_a_head_revision
+         31.4  tests/test_cli.py::test_run_check_rejects_a_revision_missing_from_the_given_repo
+
+  32. Persist the mapping instead of discarding it in the pipeline.
+       requirements: completion-13
+       code evidence: addressed
+         32.1  src/acceptance/pipeline.py#@@ -312,6 +314,10 @@ def run_review(
+         32.2  src/acceptance/review_state.py#@@ -551,6 +719,11 @@ class Review(_Model):
+         32.3  tests/test_cli.py#@@ -942,3 +942,56 @@ def test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact():
+       test evidence: strongly supported  [tier: static]
+         32.4  tests/requirement/test_obligations.py::test_decomposition_round_trips_through_persistence
+         32.5  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+
+  33. Keep regression suite #195 runnable unchanged against the new output.
+       requirements: completion-14
+       code evidence: addressed
+         33.1  tests/test_rerun.py#@@ -405,6 +405,7 @@ _HEAD_JUDGMENTS = {
+         33.2  tests/test_rerun.py#@@ -576,6 +577,7 @@ _TWO_FILE_JUDGMENTS = {
+         33.3  tests/test_supplied_ids.py#@@ -295,6 +295,7 @@ _JUDGMENTS = {
+         33.4  dogfood-logs/202-gate2-run2/output.log#@@ -0,0 +1,547 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  34. Preserve the result of every case in regression suite #195.
+       requirements: completion-15
+       code evidence: addressed
+         34.1  tests/test_rerun.py#@@ -405,6 +405,7 @@ _HEAD_JUDGMENTS = {
+         34.2  tests/test_rerun.py#@@ -576,6 +577,7 @@ _TWO_FILE_JUDGMENTS = {
+         34.3  tests/test_supplied_ids.py#@@ -295,6 +295,7 @@ _JUDGMENTS = {
+         34.4  dogfood-logs/202-gate2-run2/output.log#@@ -0,0 +1,547 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  35. Update `docs/DR-202-decomposition-requirement-mapping.md` to record the resolved requirement-id decision instead of listing it as open.
+       requirements: completion-16
+       code evidence: addressed
+         35.1  docs/DR-202-decomposition-requirement-mapping.md#@@ -248,11 +248,66 @@ passed.
+         35.2  tests/test_decision_records.py#@@ -0,0 +1,57 @@
+       test evidence: strongly supported  [tier: static]
+         35.3  tests/test_decision_records.py::test_dr_202_no_longer_lists_requirement_id_stability_as_open
+         35.4  tests/test_decision_records.py::test_dr_202_records_the_requirement_id_decision_as_resolved
+         35.5  tests/test_decision_records.py::test_dr_202_records_what_the_interim_scheme_defers
+
+  36. Mark the decomposition-accuracy figure as non-comparable across this change wherever a reader encounters it.
+       requirements: completion-17
+       code evidence: addressed
+         36.1  src/acceptance/benchmark/case.py#@@ -251,6 +251,11 @@ class BenchmarkScore(PersistableModel):
+         36.2  src/acceptance/benchmark/scoring.py#@@ -310,6 +310,10 @@ class BenchmarkReport(PersistableModel):
+         36.3  src/acceptance/benchmark/scoring.py#@@ -400,6 +404,10 @@ class SampledBenchmarkReport(PersistableModel):
+       test evidence: strongly supported  [tier: static]
+         36.4  tests/benchmark/test_scoring.py::test_mapping_accuracy_is_marked_not_comparable_across_the_partitioning_change
+         36.5  tests/benchmark/test_scoring.py::test_the_decision_record_states_the_non_comparability_too
+
+Mandate coverage: 42 of 52 requirements yielded obligations
+  1. [no_obligation] exclusion-02: Partitioning obligation derivation by requirement batch, which is #204.
+       reason: Scope exclusion naming a separate, excluded change.
+  2. [no_obligation] exclusion-03: Assigning obligation types in a separate pass, which is #205.
+       reason: Scope exclusion naming a separate, excluded change.
+  3. [no_obligation] exclusion-04: - Requiring an open question to cite where the task file fails to answer it,
+  which is #206.
+       reason: Scope exclusion naming a separate, excluded change.
+  4. [no_obligation] exclusion-05: Reading the base revision during open-question resolution, which is #207.
+       reason: Scope exclusion naming a separate, excluded change.
+  5. [no_obligation] exclusion-06: - Deciding whether the decomposer receives base-revision code context, which is
+  #208.
+       reason: Scope exclusion naming a separate, excluded change.
+  6. [no_obligation] exclusion-07: De-duplicating semantically duplicate obligations, which is #144.
+       reason: Scope exclusion naming a separate, excluded change.
+  7. [no_obligation] exclusion-08: Aligning requirement ids across two versions of a task file, which is #209.
+       reason: Scope exclusion naming a separate, excluded change.
+  8. [no_obligation] exclusion-09: Rebuilding #195's regression suite to bind its labels to the mapping.
+       reason: Scope exclusion naming a separate, excluded change.
+  9. [no_obligation] exclusion-10: Measuring whether decomposition recall improves as a result of this change.
+       reason: Scope exclusion naming a separate, excluded change.
+  10. [no_obligation] completion-01: Implementation
+       reason: Section marker with no standalone requirement.
+
+Unrequested changes:
+  1. [in_service] The docs edit adds a long new explanatory section about interim id scheme rationale, parse loss, and cross-version identity. The obligations only require recording the resolved requirement-id decision and marking the decomposition-accuracy figure non-comparable, not this extra narrative.
+       docs/DR-202-decomposition-requirement-mapping.md#@@ -248,11 +248,66 @@ passed.
+  2. [in_service] The new dogfood log files are transcript artifacts, but the obligations only require re-recording invalidated transcripts once. The added multi-run commentary and detailed judgement/output narratives go beyond the requested transcript re-records.
+       dogfood-logs/202-gate1-run1/current-task.md#@@ -0,0 +1,79 @@
+       dogfood-logs/202-gate1-run1/judgement.md#@@ -0,0 +1,160 @@
+       dogfood-logs/202-gate1-run1/output.log#@@ -0,0 +1,29 @@
+       dogfood-logs/202-gate1-run2/current-task.md#@@ -0,0 +1,79 @@
+       dogfood-logs/202-gate1-run2/judgement.md#@@ -0,0 +1,171 @@
+       dogfood-logs/202-gate1-run2/output.log#@@ -0,0 +1,48 @@
+       dogfood-logs/202-gate1-run3/current-task.md#@@ -0,0 +1,79 @@
+       dogfood-logs/202-gate1-run3/judgement.md#@@ -0,0 +1,181 @@
+       dogfood-logs/202-gate1-run3/output.log#@@ -0,0 +1,223 @@
+       dogfood-logs/202-gate1-run4/current-task.md#@@ -0,0 +1,79 @@
+       dogfood-logs/202-gate1-run4/judgement.md#@@ -0,0 +1,119 @@
+       dogfood-logs/202-gate1-run4/output.log#@@ -0,0 +1,255 @@
+       dogfood-logs/202-gate2-run1/current-task.md#@@ -0,0 +1,79 @@
+       dogfood-logs/202-gate2-run1/judgement.md#@@ -0,0 +1,137 @@
+       dogfood-logs/202-gate2-run1/output.log#@@ -0,0 +1,556 @@
+       dogfood-logs/202-gate2-run1/revisions.txt#@@ -0,0 +1,2 @@
+       dogfood-logs/202-gate2-run2/current-task.md#@@ -0,0 +1,88 @@
+       dogfood-logs/202-gate2-run2/judgement.md#@@ -0,0 +1,133 @@
+       dogfood-logs/202-gate2-run2/output.log#@@ -0,0 +1,547 @@
+       dogfood-logs/202-gate2-run2/revisions.txt#@@ -0,0 +1,2 @@
+  3. [in_service] The benchmark scoring comments about decomposition accuracy being non-comparable across #202 are extra documentation. The obligations ask to mark the figure non-comparable where encountered, but not to add explanatory comments in both benchmark model classes.
+       src/acceptance/benchmark/case.py#@@ -251,6 +251,11 @@ class BenchmarkScore(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -310,6 +310,10 @@ class BenchmarkReport(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -400,6 +404,10 @@ class SampledBenchmarkReport(PersistableModel):
+  4. [in_service] Importing textwrap, adding helper functions like _flatten/_wrap/_summary/_orphan_obligations, and restructuring render_decomposition are implementation details. They may support requested behavior, but the specific refactor and helper decomposition are not separately called for.
+       src/acceptance/cli.py#@@ -18,6 +18,7 @@ import argparse
+       src/acceptance/cli.py#@@ -39,7 +40,7 @@ from acceptance.report import render_report
+       src/acceptance/cli.py#@@ -212,7 +213,192 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
+       src/acceptance/cli.py#@@ -230,6 +416,23 @@ def render_decomposition(result: Decomposition) -> str:
+  5. [in_service] The CLI now renders unread source blocks and orphan obligations in addition to the requirement mapping. The obligations require rendering the requirement-to-obligation mapping in §16, but do not mention surfacing unread source or orphan obligations in the CLI report.
+       src/acceptance/cli.py#@@ -212,7 +213,192 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
+       src/acceptance/cli.py#@@ -230,6 +416,23 @@ def render_decomposition(result: Decomposition) -> str:
+  6. [in_service] The pipeline now constructs and passes an UnusableAnswerLog into decompose and later stages. The obligations require typed identified fields and no ChangeSet/repository-path/head-revision inputs, but do not require introducing this extra logging object into the pipeline signature or flow.
+       src/acceptance/pipeline.py#@@ -215,8 +215,14 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -226,10 +232,6 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -312,6 +314,10 @@ def run_review(
+  7. [in_service] The report now adds a mandate-coverage section and unread-source section, and threads requirement_map through obligation rendering. The obligations require rendering the requirement-to-obligation mapping in the §16 report, but not these additional report sections or the extra requirement-major obligation annotations.
+       src/acceptance/report.py#@@ -20,6 +20,7 @@ from acceptance.review_state import (
+       src/acceptance/report.py#@@ -40,11 +41,15 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -195,7 +200,64 @@ def _delta_block(delta) -> list[str]:
+       src/acceptance/report.py#@@ -203,6 +265,14 @@ def _obligation_block(index: int, obligation: Obligation) -> list[str]:
+  8. [in_service] The decomposition module now introduces a much larger prompt, a new response schema with requirement dispositions, a RequirementMap return field, and extra reconciliation logic. Those broad changes support the requested mapping, but the specific additions about code-blindness, reference handling, and the detailed disposition semantics go beyond the obligations as stated.
+       src/acceptance/requirement/obligations.py#@@ -1,4 +1,4 @@
+       src/acceptance/requirement/obligations.py#@@ -10,6 +10,20 @@ model returns an exact `source_quote` which we locate in the source), so every
+       src/acceptance/requirement/obligations.py#@@ -18,9 +32,21 @@ from pydantic import Field
+       src/acceptance/requirement/obligations.py#@@ -75,7 +101,58 @@ Granularity — isolate distinct computations, keep cohesive behaviors whole:
+       src/acceptance/requirement/obligations.py#@@ -96,58 +173,219 @@ class _OpenQuestion(StrictResponseModel):
+  9. [in_service] Adding a new registry module and zero-padded requirement_id formatting is implementation detail beyond the requested requirement registry derivation and section/ordinal scheme. The zero-padding choice and the interim-vs-semantic identity discussion are not required by the obligations.
+       src/acceptance/requirement/registry.py#@@ -0,0 +1,65 @@
+  10. [in_service] The task-file parser now records every paragraph, unclaimed blocks, and whole-block spans for tables/code fences. The obligations require deriving the requirement registry from parse_task_file and attaching TextSpans, but do not require broadening parse_task_file to capture unread source or changing behavior extraction from a single span to a list beyond what is needed for the mapping.
+       src/acceptance/requirement/task_file.py#@@ -30,13 +30,27 @@ _TASK = {"task"}
+       src/acceptance/requirement/task_file.py#@@ -48,14 +62,20 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       src/acceptance/requirement/task_file.py#@@ -90,6 +110,26 @@ def _inline_content(node: SyntaxTreeNode) -> str:
+  11. [in_service] The review state gains RequirementSection, RequirementRef, Disposition, RequirementDisposition, RequirementMap, and a new requirement_map field on Review. The mapping persistence obligation requests structured review-state support, but the specific enum/model design and helper methods are extra implementation choices not explicitly required.
+       src/acceptance/review_state.py#@@ -40,6 +40,11 @@ __all__ = [
+       src/acceptance/review_state.py#@@ -225,6 +230,169 @@ _WEAK_OR_MISSING_EVIDENCE = frozenset(
+       src/acceptance/review_state.py#@@ -551,6 +719,11 @@ class Review(_Model):
+  12. [in_service] The benchmark degenerate decomposer/judge fixtures now include empty requirement_dispositions arrays. The obligations require tests to stay free of live model calls and to re-record invalidated transcripts once, but these fixture schema updates are extra test-harness changes not directly called for by the listed obligations.
+       tests/benchmark/degenerate_decomposers.py#@@ -80,6 +80,14 @@ def _faithful(labels: GroundTruthLabels) -> dict[str, Any]:
+       tests/benchmark/degenerate_decomposers.py#@@ -96,6 +104,7 @@ def _lossy(labels: GroundTruthLabels) -> dict[str, Any]:
+       tests/benchmark/degenerate_decomposers.py#@@ -119,6 +128,7 @@ def _permissive(labels: GroundTruthLabels) -> dict[str, Any]:
+       tests/benchmark/degenerate_judges.py#@@ -80,6 +80,7 @@ def _decomposition(obligations: list[dict]) -> dict:
+       tests/benchmark/test_coverage.py#@@ -53,6 +53,7 @@ def _decomposition_response(obligations: list[dict]) -> dict:
+       tests/benchmark/test_decomposition.py#@@ -31,6 +31,7 @@ def _obligation_response(descriptions: list[str]) -> dict:
+       tests/benchmark/test_instability.py#@@ -41,7 +41,7 @@ from acceptance.config import Mode, RunConfig  # noqa: E402
+       tests/benchmark/test_instability.py#@@ -425,7 +425,7 @@ def _observing_factory(calls):
+  13. [in_service] The new requirement-map test file adds extensive coverage for registry IDs, CLI rendering, unread source, and prompt shape. The obligations require tests for the mapping and related constraints, but several of these specific assertions and explanatory comments go beyond the minimum requested behavior.
+       tests/requirement/test_requirement_map.py#@@ -0,0 +1,473 @@
+  14. [in_service] The task-file tests now assert multi-paragraph behavior, unclaimed text, and table handling. The obligations require deriving the registry from parse_task_file and attaching TextSpans, but not necessarily these extra parser behaviors or the new unread-source reporting semantics.
+       tests/requirement/test_task_file.py#@@ -23,7 +23,7 @@ def _texts(spans):
+       tests/requirement/test_task_file.py#@@ -40,7 +40,7 @@ def test_spec_example_fields_match_expected():
+       tests/requirement/test_task_file.py#@@ -78,7 +78,7 @@ Do the thing.
+       tests/requirement/test_task_file.py#@@ -95,10 +95,10 @@ def test_parses_the_projects_own_current_task_file():
+       tests/requirement/test_task_file.py#@@ -124,3 +124,74 @@ def test_a_bullet_wrapped_across_lines_still_has_an_exact_span():
+  15. [in_service] The support fixture now includes requirement_dispositions in the empty schema. That is a test-harness schema change beyond the explicit requirement to keep tests free of live model calls and re-record transcripts once.
+       tests/support.py#@@ -148,7 +148,11 @@ def client_dispatching(
+  16. [in_service] The CLI tests add end-to-end assertions for persisting the requirement map and rendering mandate coverage. Those behaviors are related to the requested persistence/reporting, but the specific test cases and their detailed expectations are additional scope beyond the obligations themselves.
+       tests/test_cli.py#@@ -524,7 +524,7 @@ def _gap_client():
+       tests/test_cli.py#@@ -942,3 +942,56 @@ def test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact():
+  17. [in_service] The rerun and supplied-id tests add requirement_dispositions to their canned judgments. That schema expansion is a test fixture change not explicitly required by the obligations beyond keeping tests working with the new output shape.
+       tests/test_rerun.py#@@ -405,6 +405,7 @@ _HEAD_JUDGMENTS = {
+       tests/test_rerun.py#@@ -576,6 +577,7 @@ _TWO_FILE_JUDGMENTS = {
+       tests/test_supplied_ids.py#@@ -295,6 +295,7 @@ _JUDGMENTS = {
+
+Changes since 2cb8084b:
+  closed:
+    - Update `docs/DR-202-decomposition-requirement-mapping.md` to record the resolved requirement-id decision instead of listing it as open.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+  moved:
+    - Preserve the existing derivation of obligations from the requirements shown to the model.
+        code evidence: addressed -> partially addressed
+
+Recommended tests:
+  1. The existing #195 regression suite executes without needing label rewrites for the new output shape.
+       inputs:  Use the existing #195 regression corpus exactly as-is, with the new requirement-major decomposition/reporting path enabled, and compare the delivered labels/identifiers against the suite’s current expected labels without any rebinding from source text. The input must be byte-identical #195 cases so a label-rewrite implementation diverges immediately.
+       detects: The implementation rebuilds or rewrites #195 labels to fit the new output shape instead of letting the existing regression suite run unchanged.
+       full detail: acceptance recommendation --criterion obligation-regression-suite-195-unchanged-runs
+  2. Each case in the #195 suite keeps the same pass/fail outcome after the change.
+       inputs:  Run the full existing #195 suite before and after the change on the same corpus, with the same revisions pinned, and compare per-case pass/fail outcomes. Include cases that were previously near the recall boundary so a flip would be observable if the change perturbs behavior.
+       detects: A case in the #195 suite flips result after the update, indicating the representational change altered behavior rather than only output shape.
+       full detail: acceptance recommendation --criterion obligation-regression-suite-195-results-stable
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
