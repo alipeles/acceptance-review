@@ -1,88 +1,70 @@
 # Task
-`decompose` returns a flat list of obligations plus a flat list of open
-questions. A response covering 20 of a task file's 29 requirements is exactly as
-well-formed as one covering all 29, so nothing downstream can notice that nine
-requirements produced nothing. Gate 1 for #195 lost 4 of 15 Completion
-expectations and 5 of 8 Scope exclusions this way, and the review reported no
-gap.
+DR-202 decision 3 gives a requirement exactly one of three dispositions, each
+carrying something: yielded obligations, deliberately yields none with a reason,
+or raised an open question instead. The implementation added a fourth,
+`UNDISPOSED`, carrying none of them, and reached it two ways: a response that
+never mentioned a requirement, and a response that labelled a requirement
+`yielded` while naming no obligations.
 
-Make decomposition return a mapping from requirement to obligation, so that a
-requirement producing nothing is a recorded fact rather than an absence.
+Both are malformed responses, and both are currently absorbed as soft findings.
+`_requirement_map` discards the reason the response supplied, substitutes a
+diagnostic string of its own, and lets the run continue to a verdict on an
+answer that did not account for the mandate.
 
-Separately, and independent of that defect: a reader auditing a breakdown cannot
-see which requirement each obligation came from. `Obligation.source_spans` points
-at a character offset, so the trace runs one way and only to text, never to an
-identified requirement.
-
-This change is mostly representational, and one part of it is not. Passing the
-parse to the model instead of the raw task text is only safe if the parse is
-complete, and it is not: only the first paragraph of the `Task` section survives
-it. Correcting that changes which obligations a task file decomposes into,
-because requirements that were invisible to the model become visible.
+The registry of requirements is derived deterministically from the parse, and
+the code iterates over that registry. Dropping a requirement is therefore not a
+possible outcome — the only possible bad outcome is a response of poor quality.
+Make that true in the types: every requirement carries one of exactly three
+dispositions, each structurally required to carry its own payload, and a
+response that fails to account for every requirement does not parse. Remove the
+fourth disposition entirely.
 
 ## Constraints
-- A requirement registry is derived from `requirement/task_file.py::parse_task_file`.
-- Requirement ids are assigned by the code, never by the model.
-- A requirement id is its section and its ordinal within that section, in parse
-  order.
-- Each registry entry carries the `TextSpan` of the requirement it identifies.
-- The requirement-to-obligation relation is many-to-many.
-- An obligation serving two requirements is linked to both.
-- An obligation is never duplicated so that each requirement can hold its own
-  copy.
-- Every requirement carries exactly one disposition.
-- The dispositions are: yielded obligations; deliberately yields none, with a
-  reason; raised an open question instead.
-- The mapping is persisted in the structured review state that
-  `review_state.py` and `review_store.py` already define.
-- The mapping is rendered in the §16 report.
-- `requirement/obligations.py::_user_prompt` passes typed, identified fields.
-- `_user_prompt` does not pass `parsed.source`.
-- Every paragraph of the task file's `Task` section is a requirement.
-- Task-file text that the parse claims for no requirement is recorded.
-- Recorded unclaimed text is rendered by both the decompose output and the
-  report.
-- The decomposer receives no `ChangeSet`.
-- The decomposer receives no repository path.
-- The decomposer receives no head revision.
+- A requirement disposition is one of exactly three: yielded obligations,
+  no obligations needed with a reason, or an open question that prevents an
+  answer.
+- `Disposition` has no `UNDISPOSED` value.
+- `_RequirementDisposition` is a discriminated union on its disposition field.
+- A `yielded` disposition carries at least one obligation id.
+- A `no_obligation` disposition carries a reason that is not empty.
+- An `open_question` disposition carries at least one open-question id.
+- A response labelling a requirement `yielded` while naming no obligation id
+  fails to parse.
+- A response labelling a requirement `no_obligation` with an empty reason fails
+  to parse.
+- A response that omits any requirement in the registry is rejected.
+- A response that names a requirement id absent from the registry is rejected.
+- A rejected response produces no `RequirementMap`.
+- The JSON schema sent to the model cannot express a `yielded` disposition with
+  zero obligation ids.
+- The reason a response supplies for declining a requirement is preserved rather
+  than replaced by a diagnostic string.
 - Typed schemas are pydantic models, as the rest of the repository defines them.
 - Tests issue no live model calls.
 
 ## Scope exclusions
-- Changing how obligations are derived from the requirements the model is shown.
-  The derivation is untouched; what changes is which requirements reach it.
-- Partitioning obligation derivation by requirement batch, which is #204.
-- Assigning obligation types in a separate pass, which is #205.
-- Requiring an open question to cite where the task file fails to answer it,
-  which is #206.
-- Reading the base revision during open-question resolution, which is #207.
-- Deciding whether the decomposer receives base-revision code context, which is
-  #208.
-- De-duplicating semantically duplicate obligations, which is #144.
+- The decomposer declining to yield obligations for scope exclusions, against
+  the instruction already in the decompose prompt. That is a prompt defect
+  tracked separately and costs a transcript re-record.
+- Changing the decompose prompt text.
+- Retrying or repairing a rejected response.
+- Nested-bullet and multi-paragraph parse coverage, which is #216.
+- Whether mandate coverage bounds the completion verdict, which is #214.
 - Aligning requirement ids across two versions of a task file, which is #209.
-- Rebuilding #195's regression suite to bind its labels to the mapping.
-- Measuring whether decomposition recall improves as a result of this change.
 
 ## Completion expectations
 - Implementation
-- A task file whose every requirement yields an obligation produces a mapping in
-  which no requirement is undisposed.
-- A requirement that yields no obligation appears in the mapping carrying its
-  reason.
-- A requirement that yields no obligation is visible in the rendered report.
-- A requirement stated twice in different sections yields one obligation linked
-  to both requirements.
-- That same case yields one obligation rather than two.
-- Requirement ids are identical across two runs over byte-identical task text.
-- A `Task` section of several paragraphs yields one requirement per paragraph.
-- Text under a heading the format does not recognise is reported as unread.
-- A task file whose every block is claimed reports zero unread blocks.
-- A test pins that the decomposer cannot reach a diff.
-- A test pins that the decomposer cannot reach a head revision.
-- A test pins that the pipeline persists the mapping rather than discarding it.
-- The regression suite #195 delivered runs unchanged against the new output.
-- No case in that suite flips its result.
-- `docs/DR-202-decomposition-requirement-mapping.md` records the resolved
-  requirement-id decision in place of listing it as open.
-- The decomposition-accuracy figure is marked non-comparable across this change
-  where a reader meets it.
+- Every requirement in a parsed `RequirementMap` carries one of the three
+  dispositions.
+- A response with a `yielded` disposition and no obligation ids is rejected.
+- A response with a `no_obligation` disposition and an empty reason is rejected.
+- A response omitting a requirement present in the registry is rejected.
+- No `RequirementMap` is produced from a rejected response.
+- The `UNDISPOSED` value and every code path that assigns it are removed.
+- A test asserts that the schema sent to the model rejects a `yielded`
+  disposition carrying zero obligation ids.
+- The tests, CLI rendering and report sections that referred to the removed
+  disposition are updated rather than left asserting it.
+- `docs/DR-202-decomposition-requirement-mapping.md` records that the
+  disposition set is the three of decision 3, and that completeness is enforced
+  at parse.

@@ -108,6 +108,39 @@ erred. Nothing here asks that. Forcing an answer per requirement makes *silence*
 unrepresentable; a wrong disposition remains wrong, but it is a claim a human can
 reject at Gate 1 and a benchmark case can score.
 
+> **Amended by M1.2.r2 (#217).** The implementation of this decision added a
+> fourth disposition, `UNDISPOSED`, assigned by the code to any requirement the
+> response failed to account for. It has been removed, and the set is again the
+> three above.
+>
+> The fourth value was reached from two conditions: a response that never
+> mentioned a requirement, and a response that labelled one `yielded` while
+> naming no obligations. Both are malformed, and recording them as a disposition
+> turned a malformed response into a soft finding that still reached a verdict.
+> #216's Gate 1 is the demonstration: eight requirements came back `yielded`
+> with an empty id list **and a substantive reason**, the reason was discarded
+> in favour of a diagnostic string, and the run continued.
+>
+> The registry is derived from the parse and reconciliation walks it, so the
+> code cannot drop a requirement — the worst reachable outcome is a poor-quality
+> response. A disposition for "the response did not say" therefore encoded a
+> state no correct run produces.
+>
+> **Completeness is now enforced at parse.** Each disposition is a distinct
+> shape carrying only its own payload, so `yielded` structurally requires an
+> obligation id and `no_obligation` structurally requires a reason; and
+> reconciliation raises on a missing requirement, a duplicate, an id outside the
+> registry, or a claim naming only outputs the response never produced. A
+> response that does not account for the mandate produces no `RequirementMap`
+> at all.
+>
+> Two implementation notes worth not rediscovering. The shapes are a plain
+> `Union`, not a pydantic tagged union: a tagged union renders `oneOf` plus
+> `discriminator`, and OpenAI strict mode accepts neither. "At least one id" is
+> a required scalar field beside a list rather than a list with `min_length`,
+> because strict mode rejects `minItems` — the guarantee has to be carried by
+> the shape to survive onto the wire.
+
 **4. Requirement ids are derived from the parse.** The work list comes from
 `markdown-it`. A model-generated list of requirements would be built by the same
 attention pass that produced 29 instead of 38.

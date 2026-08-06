@@ -280,17 +280,18 @@ class Disposition(str, Enum):
     response covering 20 of 29 requirements was exactly as well-formed as one
     covering all 29.
 
-    `UNDISPOSED` is the fourth value and the load-bearing one: it is assigned by
-    the CODE, never returned by the model, for a requirement the response failed
-    to account for. Without it a model omission is once again invisible, and the
-    schema change would buy nothing — the same shape as DR-164's schema-valid
-    empty `obligation_ids`.
+    There are exactly three, and there is deliberately no fourth for "the
+    response did not say" (M1.2.r2). The registry is derived from the parse and
+    the reconciliation walks it, so a requirement cannot be dropped by the code;
+    a response that fails to account for one is malformed and is rejected at
+    parse rather than recorded. A fourth value would be a state no correct run
+    can produce, and its only effect was to turn a malformed response into a
+    soft finding that still reached a verdict.
     """
 
     YIELDED = "yielded"
     NO_OBLIGATION = "no_obligation"
     OPEN_QUESTION = "open_question"
-    UNDISPOSED = "undisposed"
 
 
 class RequirementDisposition(_Model):
@@ -319,10 +320,6 @@ class RequirementDisposition(_Model):
             )
         if self.disposition is Disposition.NO_OBLIGATION and not (self.reason or "").strip():
             raise ValueError("a 'no_obligation' disposition must carry a reason")
-        if self.disposition is Disposition.UNDISPOSED and (
-            self.obligation_ids or self.open_question_ids
-        ):
-            raise ValueError("an 'undisposed' requirement produced nothing by definition")
         return self
 
 
@@ -364,23 +361,17 @@ class RequirementMap(_Model):
                 return requirement
         return None
 
-    def undisposed(self) -> list[RequirementDisposition]:
-        """Requirements the decomposer failed to account for — the recall gap,
-        as a list a reader and a benchmark case can both read."""
-        return [
-            entry
-            for entry in self.dispositions
-            if entry.disposition is Disposition.UNDISPOSED
-        ]
-
     def unyielding(self) -> list[RequirementDisposition]:
         """Every requirement that produced no obligation, for whatever reason.
 
-        Broader than `undisposed()`: it also covers the requirements the
-        decomposer deliberately declined and those it turned into a question.
-        This is the set the report shows, because a reader auditing a mandate
-        cares that a requirement produced nothing before they care whose
-        decision that was.
+        Covers the requirements the decomposer deliberately declined and those
+        it turned into a question. This is the set the report shows, because a
+        reader auditing a mandate cares that a requirement produced nothing
+        before they care whose decision that was.
+
+        There is no companion listing requirements the response never accounted
+        for: since M1.2.r2 such a response does not parse, so no `RequirementMap`
+        containing one exists to query.
         """
         return [entry for entry in self.dispositions if not entry.obligation_ids]
 

@@ -13,11 +13,17 @@ obligations — uncertainty is a first-class, expected result (M1.3).
 
 **What decomposition returns is a mapping, not a list** (M1.2.r1, DR-202). The
 call is asked for one disposition per identified requirement, so a requirement
-that produced nothing is a recorded fact rather than an absence; the code then
-marks as `UNDISPOSED` every requirement the response failed to mention. A flat
+that produced nothing is a recorded fact rather than an absence. A flat
 obligation list made a response covering 20 of 29 requirements exactly as
 well-formed as one covering all 29, which is how #195's Gate 1 lost 4 of 15
 Completion expectations and 5 of 8 Scope exclusions without the review saying so.
+
+**A response that does not account for the mandate is rejected, not recorded**
+(M1.2.r2). Each disposition is one of three shapes, each structurally carrying
+what its name claims, and reconciliation raises on anything else: a missing
+requirement, a duplicate, an id outside the registry, or a claim naming outputs
+the response never produced. `M1.2.r1` recorded those as a fourth disposition
+instead, which let a malformed response reach a verdict as a soft finding.
 
 **The decomposer is code-blind** (DR-202 decision 8): it takes a parsed task
 file and a client, and never a `ChangeSet`, a repository path or a head
@@ -28,9 +34,11 @@ destroys the one thing the review exists to detect. Pinned by a test.
 
 from __future__ import annotations
 
+from typing import Literal, Union
+
 from pydantic import Field
 
-from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
 from acceptance.model_base import PersistableModel
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import ParsedTaskFile
@@ -173,12 +181,50 @@ class _OpenQuestion(StrictResponseModel):
     source_quote: str
 
 
-class _RequirementDisposition(StrictResponseModel):
+class _Yielded(StrictResponseModel):
+    """Obligations were derived. At least one, structurally."""
+
     requirement_id: str
-    disposition: str
-    obligation_ids: list[str]
-    open_question_ids: list[str]
+    disposition: Literal["yielded"]
+    # Split rather than `list[str]` with a minimum, because a minimum cannot be
+    # expressed on the wire: OpenAI strict mode rejects `minItems`. One required
+    # field plus the rest makes "at least one" a property of the SHAPE, so the
+    # empty case is unrepresentable in the schema the model is given rather than
+    # merely rejected after it answers.
+    obligation_id: str
+    more_obligation_ids: list[str]
+
+    def ids(self) -> list[str]:
+        return [self.obligation_id, *self.more_obligation_ids]
+
+
+class _NoObligation(StrictResponseModel):
+    """Deliberately yields none. The reason is the disposition's whole content,
+    so the shape has nowhere to put obligations."""
+
+    requirement_id: str
+    disposition: Literal["no_obligation"]
     reason: str
+
+
+class _RaisedOpenQuestion(StrictResponseModel):
+    """An open question prevents answering. At least one, structurally."""
+
+    requirement_id: str
+    disposition: Literal["open_question"]
+    open_question_id: str
+    more_open_question_ids: list[str]
+
+    def ids(self) -> list[str]:
+        return [self.open_question_id, *self.more_open_question_ids]
+
+
+# A plain `Union`, deliberately not `Field(discriminator=...)`: pydantic renders
+# a tagged union as `oneOf` + `discriminator`, and strict mode accepts neither,
+# while `inline_schema_refs` would leave the discriminator mapping pointing at
+# `$defs` it had just inlined. A plain union renders `anyOf`, which strict mode
+# does accept, and the `Literal` tags still make the match unambiguous.
+_RequirementDisposition = Union[_Yielded, _NoObligation, _RaisedOpenQuestion]
 
 
 class _Decomposition(StrictResponseModel):
@@ -311,69 +357,89 @@ def _requirement_map(
 ) -> RequirementMap:
     """Reconcile the returned dispositions against the registry.
 
-    Two things happen here, and the second is the point of the whole change:
+    The registry is derived deterministically from the parse and this loop walks
+    it, so **dropping a requirement is not a reachable outcome** — the worst a
+    model can do is answer badly. That is why there is no fourth disposition
+    here. `M1.2.r1` added one, `UNDISPOSED`, for a requirement the response
+    failed to account for, and it turned two kinds of malformed response into a
+    soft finding that flowed on to a verdict. A response that does not account
+    for the mandate is not a review with a gap in it; it is not a review.
 
-    1. Ids the response invented are dropped, since a disposition can only name
-       outputs the same response actually produced.
-    2. **Every registry requirement the response did not account for — or
-       accounted for with nothing usable — is recorded as `UNDISPOSED`.** The
-       registry is the work list, so absence from the response is a fact about
-       the response rather than a fact about the task file. Without this step the
-       schema change buys nothing: a short disposition list would be as
-       well-formed as a complete one, which is the defect one level up.
+    So every disagreement between the registry and the response raises. What
+    survives is a map in which every requirement carries one of decision 3's
+    three dispositions, each holding what its name claims.
     """
-    by_requirement = {entry.requirement_id: entry for entry in returned}
+    by_requirement: dict[str, _RequirementDisposition] = {}
+    for entry in returned:
+        if entry.requirement_id in by_requirement:
+            raise SchemaValidationError(
+                f"requirement '{entry.requirement_id}' was disposed more than once"
+            )
+        by_requirement[entry.requirement_id] = entry
+
+    known = {requirement.id for requirement in registry}
+    unknown = sorted(set(by_requirement) - known)
+    if unknown:
+        raise SchemaValidationError(
+            f"response disposed requirement ids not in the registry: {', '.join(unknown)}"
+        )
+    missing = [requirement.id for requirement in registry if requirement.id not in by_requirement]
+    if missing:
+        raise SchemaValidationError(
+            f"response did not account for {len(missing)} of {len(registry)} "
+            f"requirements: {', '.join(missing)}"
+        )
+
     dispositions: list[RequirementDisposition] = []
-
     for requirement in registry:
-        entry = by_requirement.get(requirement.id)
-        if entry is None:
-            dispositions.append(_undisposed(requirement.id, "not accounted for in the response"))
-            continue
+        entry = by_requirement[requirement.id]
 
-        obligation_ids = _resolve(entry.obligation_ids, obligation_final)
-        open_question_ids = _resolve(entry.open_question_ids, question_final)
-        reason = entry.reason.strip() or None
-
-        if obligation_ids:
-            disposition = Disposition.YIELDED
-        elif open_question_ids:
-            disposition = Disposition.OPEN_QUESTION
-        elif entry.disposition == Disposition.NO_OBLIGATION.value and reason:
-            disposition = Disposition.NO_OBLIGATION
-        else:
-            # Claimed something it did not deliver: `yielded` naming no
-            # surviving obligation, or `no_obligation` with no reason. The claim
-            # is not honoured, because honouring it would let a requirement be
-            # marked handled while nothing was said about it.
+        if isinstance(entry, _NoObligation):
             dispositions.append(
-                _undisposed(
-                    requirement.id,
-                    f"disposition '{entry.disposition}' named no usable output",
+                RequirementDisposition(
+                    requirement_id=requirement.id,
+                    disposition=Disposition.NO_OBLIGATION,
+                    reason=entry.reason,
                 )
             )
             continue
 
+        # Ids the response invented are still dropped — a disposition may only
+        # name outputs the same response produced. But dropping them all is not
+        # a survivable state: it leaves a claim that obligations exist with none
+        # to point at, which is the contradiction this change exists to remove.
+        if isinstance(entry, _Yielded):
+            obligation_ids = _resolve(entry.ids(), obligation_final)
+            if not obligation_ids:
+                raise SchemaValidationError(
+                    f"requirement '{requirement.id}' was disposed 'yielded' naming "
+                    f"{len(entry.ids())} obligation id(s), none of which the response produced"
+                )
+            dispositions.append(
+                RequirementDisposition(
+                    requirement_id=requirement.id,
+                    disposition=Disposition.YIELDED,
+                    obligation_ids=obligation_ids,
+                )
+            )
+            continue
+
+        open_question_ids = _resolve(entry.ids(), question_final)
+        if not open_question_ids:
+            raise SchemaValidationError(
+                f"requirement '{requirement.id}' was disposed 'open_question' naming "
+                f"{len(entry.ids())} question id(s), none of which the response produced"
+            )
         dispositions.append(
             RequirementDisposition(
                 requirement_id=requirement.id,
-                disposition=disposition,
-                obligation_ids=obligation_ids,
+                disposition=Disposition.OPEN_QUESTION,
                 open_question_ids=open_question_ids,
-                reason=reason,
             )
         )
 
     return RequirementMap(
         requirements=registry, dispositions=dispositions, unread_source=unread
-    )
-
-
-def _undisposed(requirement_id: str, reason: str) -> RequirementDisposition:
-    return RequirementDisposition(
-        requirement_id=requirement_id,
-        disposition=Disposition.UNDISPOSED,
-        reason=reason,
     )
 
 

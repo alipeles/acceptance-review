@@ -35,7 +35,7 @@ from typing import Any
 from acceptance.benchmark.case import GroundTruthLabels
 from acceptance.config import DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
-from tests.support import _EMPTY_BY_SCHEMA, _fake_response
+from tests.support import _EMPTY_BY_SCHEMA, _fake_response, declining_dispositions
 
 # Obligations the permissive decomposer adds on top of a faithful set, standing
 # in for "splits every sentence into its own obligation". They align to nothing
@@ -80,13 +80,8 @@ def _faithful(labels: GroundTruthLabels) -> dict[str, Any]:
             for q in labels.open_questions
             if q.should_be_raised
         ],
-        # Empty, and deliberately so. These doubles are seeded from a case's
-        # LABELS, which name obligations and questions but no requirement ids —
-        # those come from the parse, which a double bypasses. What #195 scores is
-        # the obligation and open-question content, and that is unaffected: a
-        # missing disposition makes every requirement `undisposed`, which the
-        # scoring path does not read. Scoring the mapping itself is the
-        # superseding issue DR-202 sequences after this change.
+        # Filled in by `decomposer`'s completion_fn, which can see the
+        # requirement ids the call supplied; a label-seeded builder cannot.
         "requirement_dispositions": [],
     }
 
@@ -143,7 +138,19 @@ def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
         spec = kwargs["response_format"]["json_schema"]
         name = spec["name"]
         if name == "_Decomposition":
-            return _fake_response(json.dumps(build(labels)))
+            response = build(labels)
+            # Seeded from a case's LABELS, which name obligations and questions
+            # but no requirement ids — those come from the parse a double
+            # bypasses. Every requirement is therefore declined, which leaves
+            # the obligation and open-question content these cases score
+            # untouched while keeping the response well-formed. Since M1.2.r2 a
+            # response disposing nothing does not parse, so the empty list these
+            # doubles used to send is no longer a neutral choice.
+            response = {**response, "requirement_dispositions": declining_dispositions(
+                reason="seeded from ground-truth labels, which carry no requirement ids",
+                **kwargs,
+            )}
+            return _fake_response(json.dumps(response))
         return _fake_response(json.dumps(_EMPTY_BY_SCHEMA[name]))
 
     return ModelClient(

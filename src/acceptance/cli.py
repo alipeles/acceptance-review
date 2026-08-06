@@ -40,7 +40,7 @@ from acceptance.report import render_report
 from acceptance.rerun import find_prior_review
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import ChangeSet, Disposition, OpenQuestion, Review
+from acceptance.review_state import ChangeSet, OpenQuestion, Review
 from acceptance.review_store import ReviewStore
 
 
@@ -286,26 +286,26 @@ def _summary(requirement_map, total: int) -> str:
     defect back behind a number that looks the same either way — a smaller
     version of the flat list's own problem.
 
-    `unaccounted` is printed even when zero, because zero is the assurance a
-    reader wants and an absent line does not give it.
+    There is no "unaccounted for" count. It used to be printed even when zero,
+    as the assurance a reader wants — but the assurance is now structural: a
+    response that leaves a requirement unaccounted for does not parse, so a
+    rendered map cannot contain one (M1.2.r2). A line reporting zero every time
+    is noise that reads as a check being performed.
     """
-    declined = questioned = unaccounted = 0
+    declined = questioned = 0
     for entry in requirement_map.dispositions:
         if entry.obligation_ids:
             continue
-        if entry.disposition is Disposition.UNDISPOSED:
-            unaccounted += 1
-        elif entry.open_question_ids:
+        if entry.open_question_ids:
             questioned += 1
         else:
             declined += 1
 
-    parts = [f"Requirements: {total}", f"with obligations: {total - declined - questioned - unaccounted}"]
+    parts = [f"Requirements: {total}", f"with obligations: {total - declined - questioned}"]
     if questioned:
         parts.append(f"raised a question: {questioned}")
     if declined:
         parts.append(f"deliberately none: {declined}")
-    parts.append(f"UNACCOUNTED FOR: {unaccounted}" if unaccounted else "unaccounted for: 0")
     return "   ".join(parts)
 
 
@@ -344,12 +344,9 @@ def _requirement_block(
         lines.extend(_wrap(text, indent="       ", hang="       "))
 
     if not entry.obligation_ids and not entry.open_question_ids:
-        # Shouted only for the failure. A deliberate decline is a correct
-        # outcome and reads as one; an unaccounted requirement is the defect.
-        if entry.disposition is Disposition.UNDISPOSED:
-            lines.append("    !! UNACCOUNTED FOR — the decomposer did not address this")
-        else:
-            lines.append("    -- no obligation, deliberately")
+        # A deliberate decline is a correct outcome and reads as one. The
+        # failure case it used to be distinguished from no longer reaches here.
+        lines.append("    -- no obligation, deliberately")
         if entry.reason:
             lines.extend(_wrap(entry.reason, indent="       ", hang="       "))
 
