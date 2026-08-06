@@ -295,6 +295,7 @@ _JUDGMENTS = {
             }
         ],
         "open_questions": [],
+        "requirement_dispositions": [],
     },
     # The defect, reproduced: a mapping naming an obligation nobody supplied.
     "_Mappings": {

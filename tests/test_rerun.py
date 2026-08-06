@@ -405,6 +405,7 @@ _HEAD_JUDGMENTS = {
             },
         ],
         "open_questions": [],
+        "requirement_dispositions": [],
     },
     "_Mappings": {
         "mappings": [
@@ -576,6 +577,7 @@ _TWO_FILE_JUDGMENTS = {
             },
         ],
         "open_questions": [],
+        "requirement_dispositions": [],
     },
     "_Mappings": {"mappings": []},
     "_Discrimination": {"obligations": []},

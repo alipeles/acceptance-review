@@ -41,7 +41,7 @@ from acceptance.config import Mode, RunConfig  # noqa: E402
 from support import client_dispatching, client_finding_nothing  # noqa: E402
 
 _EMPTY_BY_SCHEMA = {
-    "_Decomposition": {"obligations": [], "open_questions": []},
+    "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
     "_Mappings": {"mappings": []},
     "_Discrimination": {"discriminations": []},
     "_Coverage": {"classifications": []},
@@ -425,7 +425,7 @@ def _observing_factory(calls):
             name = kwargs["response_format"]["json_schema"]["name"]
             calls.append((config.seed, name))
             empty = {
-                "_Decomposition": {"obligations": [], "open_questions": []},
+                "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
                 "_Mappings": {"mappings": []},
                 "_Discrimination": {"discriminations": []},
                 "_Coverage": {"classifications": []},

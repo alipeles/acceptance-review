@@ -248,11 +248,66 @@ passed.
 Two transcript re-records are unavoidable — one for the mapping's schema change,
 one for the quality work (decisions 5–7). Sequence each so the cost is paid once.
 
+## Resolved after acceptance
+
+**Requirement id stability — settled as an interim scheme (#202, deferred to
+#209).** Ids are `section + ordinal` in parse order, zero-padded and assigned by
+the code: `task-01`, `constraint-01`, `exclusion-03`, `completion-07`. The Task
+section is ordinal-bearing like the others; an earlier draft spelled it bare
+`task`, on the reasoning that there is at most one behavior statement — true only
+because `parse_task_file` was discarding every paragraph after the first.
+
+Neither candidate captures requirement *identity*, and that was the finding.
+Positional ids cannot distinguish "the same requirement, reworded" from "a
+different requirement in the same position"; content-derived ids cannot
+distinguish "the same requirement, reworded" from "a new requirement". Identity
+across versions is semantic — the `align_obligations` problem one level up — and
+is out of scope for a representational change. #209 owns it.
+
+Positional wins the interim on two grounds. It satisfies the acceptance
+criterion as written, which is *within-version* determinism ("stable across two
+runs over byte-identical task text"), and nothing in decision 1–4 needs more.
+And its failure mode is the safe one: a content hash changes on a comma, so the
+commonest edit in the corpus — rewording a bullet — would present as *this
+requirement vanished and a new one appeared*, which is indistinguishable from
+the recall defect this whole change exists to make visible. A positional id
+shifting after an inserted bullet is mechanical, and the registry entry carries
+the `TextSpan`, so a reader always sees the text an id points at.
+
+**What this defers explicitly:** a requirement id is not comparable across two
+versions of a task file. The Sequencing section's rebuild of #195's suite — so
+labels bind to the mapping rather than reconstructing it from `source_quote` —
+is where cross-version identity actually bites, and it is sequenced after #209.
+
+## A parse may only be authoritative if it reports what it missed
+
+Recorded because #202 learned it the expensive way, and because the
+structured-interchange invariant in CLAUDE.md does not say it.
+
+Decision 5 replaced `parsed.source` in the decomposer's prompt with typed,
+identified fields. That is right. But `parse_task_file` kept only the **first**
+paragraph under `# Task`, and while the model was handed the raw source that cost
+nothing — it read the whole file regardless. The moment the parse became the only
+thing the model sees, every gap in it became invisible data loss. The first
+casualty was three paragraphs of #202's own mandate, including the sentence
+stating what the change was; the decomposer then produced an obligation to
+*preserve the flat list being removed*, which was a faithful reading of the only
+Task text it had been given.
+
+The general rule: **a lossy parse is safe exactly until it is authoritative.**
+Any stage that stops passing source text and starts passing structure takes on an
+obligation to report what its structure does not cover. #202 does this as
+`RequirementMap.unread_source`, rendered by both the CLI and the §16 report — the
+mandate-coverage story one hop further back, source text -> requirements ->
+obligations, with the same failure mode of silence at each hop.
+
+This also caught a second thing for free: `parse_task_file` has never read
+markdown tables, so #195's own task file carried its ground truth invisibly. That
+was already noted under Open below; it is now reported at runtime rather than
+known only to this document.
+
 ## Open
 
-- **Requirement id stability.** Content-derived ids change when text is edited;
-  positional ids shift when a bullet is inserted. The corpus task files differ
-  between runs, so this decides whether benchmark labels survive an edit.
 - **Does the decomposer get base-revision context?** Own `decision` issue.
   Decision 9 moves the code-answerable case downstream, which may settle it. If it
   is ever built, the constraint is that grounding may sharpen wording, settle

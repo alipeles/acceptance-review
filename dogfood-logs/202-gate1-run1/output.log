@@ -1,0 +1,29 @@
+Obligations:
+  [functional/explicit] decompose-returns-requirement-mapping: Make decomposition return a mapping from requirement to obligation, so that a requirement producing nothing is a recorded fact rather than an absence.
+  [invariant/explicit] requirement-disposition-recorded: Represent every requirement with exactly one disposition: yielded obligations, deliberately yields none with a reason, or raised an open question instead.
+  [invariant/explicit] many-to-many-requirement-obligation-link: Preserve a many-to-many relation between requirements and obligations, including linking one obligation to multiple requirements when applicable.
+  [functional/explicit] persist-mapping-in-review-state: Persist the requirement-to-obligation mapping in the structured review state defined by review_state.py and review_store.py.
+  [functional/explicit] render-mapping-in-section-16-report: Render the requirement-to-obligation mapping in the §16 report.
+  [functional/explicit] typed-user-prompt-fields: Have requirement/obligations.py::_user_prompt pass typed, identified fields.
+  [compatibility/explicit] user-prompt-omits-parsed-source: Keep `_user_prompt` from passing parsed.source.
+  [compatibility/explicit] decomposer-receives-no-change-set: Ensure the decomposer receives no ChangeSet.
+  [compatibility/explicit] decomposer-receives-no-repository-path: Ensure the decomposer receives no repository path.
+  [compatibility/explicit] decomposer-receives-no-head-revision: Ensure the decomposer receives no head revision.
+  [compatibility/explicit] typed-schemas-are-pydantic-models: Keep typed schemas implemented as pydantic models, consistent with the rest of the repository.
+  [regression/explicit] tests-no-live-model-calls: Keep tests free of live model calls.
+  [regression/explicit] re-record-invalidated-transcripts: Re-record recorded transcripts that are invalidated by the changed prompt exactly once.
+  [functional/explicit] requirement-registry-derived-from-parse-task-file: Derive the requirement registry from requirement/task_file.py::parse_task_file.
+  [invariant/explicit] requirement-ids-assigned-by-code: Assign requirement ids in code rather than by the model.
+  [functional/explicit] requirement-id-section-and-ordinal: Define each requirement id as its section and its ordinal within that section, in parse order.
+  [functional/explicit] registry-entry-carries-text-span: Have each registry entry carry the TextSpan of the requirement it identifies.
+  [regression/explicit] requirement-id-stability-byte-identical-text: Keep requirement ids identical across two runs over byte-identical task text.
+  [regression/explicit] decomposer-cannot-reach-diff: Pin a test showing the decomposer cannot reach a diff.
+  [regression/explicit] decomposer-cannot-reach-head-revision: Pin a test showing the decomposer cannot reach a head revision.
+  [regression/explicit] pipeline-persists-mapping: Pin a test that the pipeline persists the mapping rather than discarding it.
+  [compatibility/explicit] regression-suite-195-unchanged: Keep the regression suite #195 delivered runs unchanged against the new output.
+  [regression/explicit] regression-suite-195-results-stable: Preserve the result of every case in regression suite #195.
+  [docs_config/explicit] docs-dr-202-records-resolved-decision: Record the resolved requirement-id decision in docs/DR-202-decomposition-requirement-mapping.md in place of listing it as open.
+  [docs_config/explicit] accuracy-figure-marked-non-comparable: Mark the decomposition-accuracy figure as non-comparable across this change where a reader meets it.
+
+Open questions:
+  ? requirement-id-format-ambiguity: What exact string format should requirement ids use for the section-and-ordinal scheme (for example, `§3.2`, `3-2`, or another canonical form)?

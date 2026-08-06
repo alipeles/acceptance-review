@@ -80,6 +80,14 @@ def _faithful(labels: GroundTruthLabels) -> dict[str, Any]:
             for q in labels.open_questions
             if q.should_be_raised
         ],
+        # Empty, and deliberately so. These doubles are seeded from a case's
+        # LABELS, which name obligations and questions but no requirement ids —
+        # those come from the parse, which a double bypasses. What #195 scores is
+        # the obligation and open-question content, and that is unaffected: a
+        # missing disposition makes every requirement `undisposed`, which the
+        # scoring path does not read. Scoring the mapping itself is the
+        # superseding issue DR-202 sequences after this change.
+        "requirement_dispositions": [],
     }
 
 
@@ -96,6 +104,7 @@ def _lossy(labels: GroundTruthLabels) -> dict[str, Any]:
     return {
         "obligations": faithful["obligations"][:-1],
         "open_questions": [],
+        "requirement_dispositions": [],
     }
 
 
@@ -119,6 +128,7 @@ def _permissive(labels: GroundTruthLabels) -> dict[str, Any]:
     return {
         "obligations": faithful["obligations"] + inventions,
         "open_questions": [_question(q.id, q.description) for q in labels.open_questions],
+        "requirement_dispositions": [],
     }
 
 

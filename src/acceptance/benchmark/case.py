@@ -251,6 +251,11 @@ class BenchmarkScore(PersistableModel):
 
     gap_recall: float | None = None
     gap_precision: float | None = None
+    # Not comparable across #202, for the reason #164 gives at mapping_accuracy:
+    # decomposition is now asked for one disposition per identified requirement
+    # rather than for a flat obligation list, so the question put to the model
+    # changed. Figures either side of that change must not be plotted as a trend
+    # or cited as a regression.
     decomposition_accuracy: float | None = None
     decomposition_precision: float | None = None
     # Not comparable across #164 — see BenchmarkReport.mapping_accuracy.

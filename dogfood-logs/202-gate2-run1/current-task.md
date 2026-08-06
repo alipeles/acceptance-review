@@ -14,11 +14,8 @@ see which requirement each obligation came from. `Obligation.source_spans` point
 at a character offset, so the trace runs one way and only to text, never to an
 identified requirement.
 
-This change is mostly representational, and one part of it is not. Passing the
-parse to the model instead of the raw task text is only safe if the parse is
-complete, and it is not: only the first paragraph of the `Task` section survives
-it. Correcting that changes which obligations a task file decomposes into,
-because requirements that were invisible to the model become visible.
+This change is representational. It alters the shape of what decomposition
+returns, not the obligations it derives.
 
 ## Constraints
 - A requirement registry is derived from `requirement/task_file.py::parse_task_file`.
@@ -38,19 +35,16 @@ because requirements that were invisible to the model become visible.
 - The mapping is rendered in the §16 report.
 - `requirement/obligations.py::_user_prompt` passes typed, identified fields.
 - `_user_prompt` does not pass `parsed.source`.
-- Every paragraph of the task file's `Task` section is a requirement.
-- Task-file text that the parse claims for no requirement is recorded.
-- Recorded unclaimed text is rendered by both the decompose output and the
-  report.
 - The decomposer receives no `ChangeSet`.
 - The decomposer receives no repository path.
 - The decomposer receives no head revision.
 - Typed schemas are pydantic models, as the rest of the repository defines them.
 - Tests issue no live model calls.
+- Recorded transcripts invalidated by the changed prompt are re-recorded once.
 
 ## Scope exclusions
-- Changing how obligations are derived from the requirements the model is shown.
-  The derivation is untouched; what changes is which requirements reach it.
+- Changing which obligations a task file decomposes into. The obligation content
+  is held fixed; only its representation changes.
 - Partitioning obligation derivation by requirement batch, which is #204.
 - Assigning obligation types in a separate pass, which is #205.
 - Requiring an open question to cite where the task file fails to answer it,
@@ -74,9 +68,6 @@ because requirements that were invisible to the model become visible.
   to both requirements.
 - That same case yields one obligation rather than two.
 - Requirement ids are identical across two runs over byte-identical task text.
-- A `Task` section of several paragraphs yields one requirement per paragraph.
-- Text under a heading the format does not recognise is reported as unread.
-- A task file whose every block is claimed reports zero unread blocks.
 - A test pins that the decomposer cannot reach a diff.
 - A test pins that the decomposer cannot reach a head revision.
 - A test pins that the pipeline persists the mapping rather than discarding it.

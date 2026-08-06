@@ -53,6 +53,7 @@ def _decomposition_response(obligations: list[dict]) -> dict:
             for o in obligations
         ],
         "open_questions": [],
+        "requirement_dispositions": [],
     }
 
 

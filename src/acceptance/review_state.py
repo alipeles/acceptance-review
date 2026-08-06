@@ -40,6 +40,11 @@ __all__ = [
     "DiffHunk",
     "FileChange",
     "ChangeSet",
+    "RequirementSection",
+    "RequirementRef",
+    "Disposition",
+    "RequirementDisposition",
+    "RequirementMap",
     "Obligation",
     "OpenQuestion",
     "TestEvidence",
@@ -223,6 +228,169 @@ EvidenceClassification = Literal[
 _WEAK_OR_MISSING_EVIDENCE = frozenset(
     {"partially_supported", "nominally_supported", "unsupported", "indeterminate", None}
 )
+
+
+class RequirementSection(str, Enum):
+    """The §7.1 section a requirement was parsed out of."""
+
+    TASK = "task"
+    CONSTRAINT = "constraint"
+    EXCLUSION = "exclusion"
+    COMPLETION = "completion"
+
+
+class RequirementRef(_Model):
+    """One identified requirement in the task file (M1.2.r1, DR-202 decision 4).
+
+    Ids are assigned by the code from the parse, never by the model: a
+    model-generated list of requirements would be built by the same attention
+    pass that produced 29 obligations for 38 requirements, so the work list has
+    to come from somewhere the defect cannot reach.
+
+    The id is `section + ordinal` in parse order — an INTERIM scheme (#209).
+    It is stable across two runs over byte-identical task text, which is what
+    this stage needs, and is NOT stable across an edit to the task file:
+    inserting a bullet shifts every later ordinal in its section. Requirement
+    identity across versions is semantic, is the `align_obligations` problem one
+    level up, and is deliberately not solved here. The chosen failure mode is
+    the inspectable one — a content hash would instead present a reworded bullet
+    as a requirement vanishing and a new one appearing, which is exactly the
+    recall defect this stage exists to make visible.
+
+    The behavior paragraph is `task` with no ordinal: `parse_task_file` admits
+    at most one, so an ordinal would carry no information.
+    """
+
+    id: str
+    section: RequirementSection
+    ordinal: int
+    span: TextSpan
+
+    @property
+    def text(self) -> str:
+        return self.span.text
+
+
+class Disposition(str, Enum):
+    """What became of one requirement (DR-202 decision 3).
+
+    Every requirement carries exactly one of these, which is what makes
+    *silence* unrepresentable. A flat obligation list cannot distinguish a
+    requirement the decomposer weighed and declined from one it never read, so a
+    response covering 20 of 29 requirements was exactly as well-formed as one
+    covering all 29.
+
+    `UNDISPOSED` is the fourth value and the load-bearing one: it is assigned by
+    the CODE, never returned by the model, for a requirement the response failed
+    to account for. Without it a model omission is once again invisible, and the
+    schema change would buy nothing — the same shape as DR-164's schema-valid
+    empty `obligation_ids`.
+    """
+
+    YIELDED = "yielded"
+    NO_OBLIGATION = "no_obligation"
+    OPEN_QUESTION = "open_question"
+    UNDISPOSED = "undisposed"
+
+
+class RequirementDisposition(_Model):
+    """One requirement's disposition and the outputs it produced."""
+
+    requirement_id: str
+    disposition: Disposition
+    obligation_ids: list[str] = Field(default_factory=list)
+    open_question_ids: list[str] = Field(default_factory=list)
+    reason: str | None = None
+
+    @model_validator(mode="after")
+    def _disposition_is_supported(self) -> RequirementDisposition:
+        """A disposition must carry what it claims.
+
+        Enforced rather than trusted: a `yielded` disposition naming no
+        obligation, or a `no_obligation` disposition with no reason, is a
+        requirement recorded as handled while nothing was actually said about
+        it — the defect this model exists to prevent, wearing a label.
+        """
+        if self.disposition is Disposition.YIELDED and not self.obligation_ids:
+            raise ValueError("a 'yielded' disposition must name at least one obligation")
+        if self.disposition is Disposition.OPEN_QUESTION and not self.open_question_ids:
+            raise ValueError(
+                "an 'open_question' disposition must name at least one open question"
+            )
+        if self.disposition is Disposition.NO_OBLIGATION and not (self.reason or "").strip():
+            raise ValueError("a 'no_obligation' disposition must carry a reason")
+        if self.disposition is Disposition.UNDISPOSED and (
+            self.obligation_ids or self.open_question_ids
+        ):
+            raise ValueError("an 'undisposed' requirement produced nothing by definition")
+        return self
+
+
+class RequirementMap(_Model):
+    """The requirement -> obligation mapping decomposition returns (M1.2.r1).
+
+    The relation is many-to-many (DR-202 decision 2): two requirements stating
+    the same thing in different sections are recorded as one obligation linked
+    to both, never as a duplicated obligation. This is why `#144` de-duplication
+    becomes "does this requirement restate one already covered?" — anchored to
+    identified requirements — rather than the fuzzy "are these two obligations
+    the same?" whose worst outcome is over-merging.
+    """
+
+    requirements: list[RequirementRef] = Field(default_factory=list)
+    dispositions: list[RequirementDisposition] = Field(default_factory=list)
+    # Task-file text that became no requirement at all, so the model never saw
+    # it (M1.2.r1). This is the mandate-coverage story one stage further back:
+    # source text -> requirements -> obligations, with the same failure mode of
+    # silence at each hop.
+    #
+    # It exists because the structured-interchange invariant has a precondition
+    # nothing was checking. While the decomposer was handed `parsed.source` a
+    # gap in the parse cost nothing — the model read the file regardless. Once
+    # the parse became the only thing it sees, every gap became invisible data
+    # loss, and the first one cost this very change three paragraphs of its own
+    # mandate. A parse may only be authoritative if it reports what it missed.
+    unread_source: list[TextSpan] = Field(default_factory=list)
+
+    def disposition_for(self, requirement_id: str) -> RequirementDisposition | None:
+        for entry in self.dispositions:
+            if entry.requirement_id == requirement_id:
+                return entry
+        return None
+
+    def requirement_for(self, requirement_id: str) -> RequirementRef | None:
+        for requirement in self.requirements:
+            if requirement.id == requirement_id:
+                return requirement
+        return None
+
+    def undisposed(self) -> list[RequirementDisposition]:
+        """Requirements the decomposer failed to account for — the recall gap,
+        as a list a reader and a benchmark case can both read."""
+        return [
+            entry
+            for entry in self.dispositions
+            if entry.disposition is Disposition.UNDISPOSED
+        ]
+
+    def unyielding(self) -> list[RequirementDisposition]:
+        """Every requirement that produced no obligation, for whatever reason.
+
+        Broader than `undisposed()`: it also covers the requirements the
+        decomposer deliberately declined and those it turned into a question.
+        This is the set the report shows, because a reader auditing a mandate
+        cares that a requirement produced nothing before they care whose
+        decision that was.
+        """
+        return [entry for entry in self.dispositions if not entry.obligation_ids]
+
+    def requirements_for_obligation(self, obligation_id: str) -> list[str]:
+        """The requirement ids one obligation serves, in parse order."""
+        return [
+            entry.requirement_id
+            for entry in self.dispositions
+            if obligation_id in entry.obligation_ids
+        ]
 
 
 class Obligation(_Model):
@@ -551,6 +719,11 @@ class Review(_Model):
     declaration: BuilderDeclaration | None = None
     change_set: ChangeSet | None = None
     obligation_map: list[Obligation] = Field(default_factory=list)
+    # The requirement -> obligation mapping (M1.2.r1). Persisted rather than
+    # derived at render time: coverage of the MANDATE is a property of review
+    # state, so every later stage and the rendered report read the same record
+    # of which requirements produced nothing.
+    requirement_map: RequirementMap | None = None
     open_questions: list[OpenQuestion] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[TestRecommendation] = Field(default_factory=list)

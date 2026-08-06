@@ -18,6 +18,7 @@ import argparse
 import json
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 from acceptance.change.diff import extract_change_set, extract_working_tree_change_set
@@ -39,7 +40,7 @@ from acceptance.report import render_report
 from acceptance.rerun import find_prior_review
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import ChangeSet, OpenQuestion, Review
+from acceptance.review_state import ChangeSet, Disposition, OpenQuestion, Review
 from acceptance.review_store import ReviewStore
 
 
@@ -212,7 +213,192 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
     return decompose(parsed, config.build_client())
 
 
+_WIDTH = 88
+
+
 def render_decomposition(result: Decomposition) -> str:
+    """Render the decomposition requirement-major — as the mapping it is.
+
+    Organised by requirement rather than by obligation because that is the
+    question a reader has at Gate 1: *did my mandate survive?* An
+    obligation-major list answers "what did the tool produce", which a reader can
+    only turn into the first question by reconciling it against the task file by
+    hand — which is exactly the manual step #202 exists to remove.
+
+    Every requirement appears, including the ones that produced nothing.
+    """
+    requirement_map = result.requirement_map
+    obligations = {o.id: o for o in result.obligations}
+    questions = {q.id: q for q in result.open_questions}
+
+    total = len(requirement_map.requirements)
+    if not total:
+        return _render_flat(result)
+
+    lines = [_summary(requirement_map, total), ""]
+
+    for requirement in requirement_map.requirements:
+        entry = requirement_map.disposition_for(requirement.id)
+        lines.extend(
+            _requirement_block(requirement, entry, obligations, questions, requirement_map)
+        )
+        lines.append("")
+
+    lines.extend(_orphan_obligations(result, requirement_map))
+    lines.extend(_unraised_questions(result, requirement_map))
+    lines.extend(_unread_source(requirement_map))
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _unread_source(requirement_map) -> list[str]:
+    """Task-file text that became no requirement, so the model never saw it.
+
+    Loud, because this is the one failure on this page the reader cannot fix by
+    arguing with the tool: text that was never parsed produced no obligation, no
+    disposition, and no question, and nothing else in the output would hint that
+    it exists. It is also the reader's own fix — usually a section the format
+    does not recognise.
+    """
+    unread = requirement_map.unread_source
+    if not unread:
+        return []
+    lines = [
+        f"!! NOT READ AS ANY REQUIREMENT: {len(unread)} block(s) of the task file",
+        "   These were parsed but matched no §7.1 section, so the decomposer",
+        "   never saw them. Move them under a recognised heading if they state",
+        "   a requirement.",
+    ]
+    for span in unread:
+        lines.extend(_wrap(_flatten(span.text), indent="     - ", hang="       "))
+    lines.append("")
+    return lines
+
+
+def _summary(requirement_map, total: int) -> str:
+    """The header counts, with the three ways of yielding no obligation kept
+    apart.
+
+    A single "yielding none" figure reads as a defect count, and only one of its
+    three components is one. A requirement the decomposer deliberately declined
+    with a reason (a bare section marker) and one it raised a question about are
+    both correct outcomes; a requirement it never accounted for is the recall
+    failure this whole stage exists to surface. Collapsing them would put the
+    defect back behind a number that looks the same either way — a smaller
+    version of the flat list's own problem.
+
+    `unaccounted` is printed even when zero, because zero is the assurance a
+    reader wants and an absent line does not give it.
+    """
+    declined = questioned = unaccounted = 0
+    for entry in requirement_map.dispositions:
+        if entry.obligation_ids:
+            continue
+        if entry.disposition is Disposition.UNDISPOSED:
+            unaccounted += 1
+        elif entry.open_question_ids:
+            questioned += 1
+        else:
+            declined += 1
+
+    parts = [f"Requirements: {total}", f"with obligations: {total - declined - questioned - unaccounted}"]
+    if questioned:
+        parts.append(f"raised a question: {questioned}")
+    if declined:
+        parts.append(f"deliberately none: {declined}")
+    parts.append(f"UNACCOUNTED FOR: {unaccounted}" if unaccounted else "unaccounted for: 0")
+    return "   ".join(parts)
+
+
+def _requirement_block(
+    requirement, entry, obligations: dict, questions: dict, requirement_map
+) -> list[str]:
+    """One requirement and everything it produced."""
+    lines = _wrap(f"[{requirement.id}] {_flatten(requirement.text)}", indent="", hang="    ")
+
+    if entry is None:  # defensive: the map always disposes every requirement
+        lines.append("    (no disposition recorded)")
+        return lines
+
+    for obligation_id in entry.obligation_ids:
+        obligation = obligations.get(obligation_id)
+        if obligation is None:
+            lines.append(f"    -> {obligation_id}  (obligation not found)")
+            continue
+        flag = "explicit" if obligation.explicit else "inferred"
+        # Naming the other requirements an obligation serves is what makes the
+        # relation legible as many-to-many rather than looking like the same
+        # obligation duplicated under several headings (DR-202 decision 2).
+        shared = [
+            other
+            for other in requirement_map.requirements_for_obligation(obligation_id)
+            if other != requirement.id
+        ]
+        also = f"   (also serves {', '.join(shared)})" if shared else ""
+        lines.append(f"    -> {obligation_id}  [{obligation.type.value}/{flag}]{also}")
+        lines.extend(_wrap(obligation.description, indent="       ", hang="       "))
+
+    for question_id in entry.open_question_ids:
+        question = questions.get(question_id)
+        text = question.question if question is not None else question_id
+        lines.append(f"    ?  {question_id}")
+        lines.extend(_wrap(text, indent="       ", hang="       "))
+
+    if not entry.obligation_ids and not entry.open_question_ids:
+        # Shouted only for the failure. A deliberate decline is a correct
+        # outcome and reads as one; an unaccounted requirement is the defect.
+        if entry.disposition is Disposition.UNDISPOSED:
+            lines.append("    !! UNACCOUNTED FOR — the decomposer did not address this")
+        else:
+            lines.append("    -- no obligation, deliberately")
+        if entry.reason:
+            lines.extend(_wrap(entry.reason, indent="       ", hang="       "))
+
+    return lines
+
+
+def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
+    """Obligations no requirement claims.
+
+    Rendered rather than dropped: an obligation traceable to no requirement is
+    either an invention or a mapping failure, and both are findings. Silently
+    omitting it would reintroduce, on the other axis, the exact invisibility
+    this command was restructured to remove.
+    """
+    orphans = [
+        o for o in result.obligations
+        if not requirement_map.requirements_for_obligation(o.id)
+    ]
+    if not orphans:
+        return []
+    lines = ["Obligations mapped to no requirement:"]
+    for obligation in orphans:
+        lines.append(f"  ! {obligation.id}  [{obligation.type.value}]")
+        lines.extend(_wrap(obligation.description, indent="     ", hang="     "))
+    lines.append("")
+    return lines
+
+
+def _unraised_questions(result: Decomposition, requirement_map) -> list[str]:
+    """Open questions no requirement's disposition accounts for."""
+    claimed = {
+        qid
+        for entry in requirement_map.dispositions
+        for qid in entry.open_question_ids
+    }
+    loose = [q for q in result.open_questions if q.id not in claimed]
+    if not loose:
+        return []
+    lines = ["Open questions not tied to a requirement:"]
+    for question in loose:
+        lines.append(f"  ? {question.id}")
+        lines.extend(_wrap(question.question, indent="     ", hang="     "))
+    lines.append("")
+    return lines
+
+
+def _render_flat(result: Decomposition) -> str:
+    """Fallback for a task file with no parseable §7.1 requirements — there is
+    no mapping to show, so the obligations are all there is to say."""
     lines = ["Obligations:"]
     if result.obligations:
         for o in result.obligations:
@@ -228,6 +414,23 @@ def render_decomposition(result: Decomposition) -> str:
     else:
         lines.append("  (none)")
     return "\n".join(lines)
+
+
+def _flatten(text: str) -> str:
+    """Collapse a requirement's own line breaks and list marker.
+
+    `task_file.py`'s span fallback keeps a wrapped bullet verbatim, marker and
+    all, because a citation's offsets must satisfy `source[start:end] ==
+    span.text`. That is right for the data and wrong for a heading line, so the
+    flattening happens here, at the point of display.
+    """
+    collapsed = " ".join(text.split())
+    return collapsed[2:] if collapsed.startswith("- ") else collapsed
+
+
+def _wrap(text: str, indent: str, hang: str) -> list[str]:
+    wrapped = textwrap.wrap(text, width=_WIDTH, initial_indent=indent, subsequent_indent=hang)
+    return wrapped or [indent + text]
 
 
 def run_diff(repo: str, base: str, head: str | None) -> ChangeSet:

@@ -148,7 +148,11 @@ def client_dispatching(
 # judgment. Since M7.4's shared pipeline, `run_check` makes real model calls, so
 # these tests must inject a client instead of relying on an empty skeleton.
 _EMPTY_BY_SCHEMA = {
-    "_Decomposition": {"obligations": [], "open_questions": []},
+    "_Decomposition": {
+        "obligations": [],
+        "open_questions": [],
+        "requirement_dispositions": [],
+    },
     "_Mappings": {"mappings": []},
     "_Discrimination": {"discriminations": []},
     "_Coverage": {"classifications": []},

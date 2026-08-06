@@ -215,8 +215,14 @@ def run_review(
     from its transcript at no cost, and re-running it keeps the obligation set
     derived from one place rather than two.
     """
+    # One log for the whole run: every stage that asks the model to echo back an
+    # id we supplied reports the ids it could not honour here (#163). Built
+    # before the first such stage, which is decomposition — it supplies the
+    # requirement ids.
+    unusable = UnusableAnswerLog()
+
     parsed = parse_task_file(task_text)
-    decomposition = decompose(parsed, client)
+    decomposition = decompose(parsed, client, unusable)
     obligations = decomposition.obligations
 
     # Whole-diff stages below always run: unrequested-change detection and
@@ -225,10 +231,6 @@ def run_review(
     fresh_obligations = obligations
     if prior is not None:
         obligations = obligations_to_rederive(fresh_obligations, prior, change_set)
-
-    # One log for the whole run: every stage that asks the model to echo back an
-    # id we supplied reports the ids it could not honour here (#163).
-    unusable = UnusableAnswerLog()
 
     discovered = discover_tests(repo, change_set)
     mapping = map_tests_to_obligations(
@@ -312,6 +314,10 @@ def run_review(
         # controls the provider honoured (#160).
         provenance=provenance_for(client),
         obligation_map=obligations,
+        # Persisted, not re-derived: which requirements produced nothing is a
+        # property of review state that every later stage and the report read
+        # from one place (M1.2.r1).
+        requirement_map=decomposition.requirement_map,
         open_questions=open_questions,
         change_set=change_set,
         declaration=declaration,
