@@ -23,7 +23,7 @@ def _texts(spans):
 def test_spec_example_fields_match_expected():
     parsed = parse_task_file(SPEC_EXAMPLE)
 
-    assert parsed.behavior.text == "Add support for indirect circular references."
+    assert [b.text for b in parsed.behavior] == ["Add support for indirect circular references."]
     assert _texts(parsed.constraints) == [
         "Do not evaluate formulas involved in a cycle.",
         "Return the complete cycle path.",
@@ -40,7 +40,7 @@ def test_spec_example_fields_match_expected():
 def test_every_extracted_item_retains_a_source_reference():
     parsed = parse_task_file(SPEC_EXAMPLE)
 
-    spans = [parsed.behavior, *parsed.constraints, *parsed.completion_expectations]
+    spans = [*parsed.behavior, *parsed.constraints, *parsed.completion_expectations]
     for span in spans:
         # The source reference is real: the span points at exactly its text.
         assert SPEC_EXAMPLE[span.start : span.end] == span.text
@@ -78,7 +78,7 @@ Do the thing.
 
 def test_missing_sections_yield_empty_fields():
     parsed = parse_task_file("# Task\nJust a behavior, nothing else.\n")
-    assert parsed.behavior.text == "Just a behavior, nothing else."
+    assert [b.text for b in parsed.behavior] == ["Just a behavior, nothing else."]
     assert parsed.constraints == []
     assert parsed.completion_expectations == []
     assert parsed.scope_exclusions == []
@@ -95,10 +95,10 @@ def test_parses_the_projects_own_current_task_file():
     repo_root = Path(__file__).resolve().parents[2]
     parsed = parse_task_file((repo_root / "current-task.md").read_text())
 
-    assert parsed.behavior is not None
+    assert parsed.behavior
     assert parsed.constraints  # the dogfooded task lists constraints
     assert parsed.completion_expectations
-    for span in [parsed.behavior, *parsed.constraints, *parsed.completion_expectations]:
+    for span in [*parsed.behavior, *parsed.constraints, *parsed.completion_expectations]:
         assert parsed.source[span.start : span.end] == span.text
 
 
@@ -124,3 +124,74 @@ def test_a_bullet_wrapped_across_lines_still_has_an_exact_span():
     (constraint,) = parsed.constraints
     assert parsed.source[constraint.start : constraint.end] == constraint.text
     assert constraint.text.endswith("continuation indent.")
+
+
+# --- the parse must be complete before it can be authoritative (M1.2.r1) ----
+
+MULTI_PARAGRAPH_TASK = """# Task
+The tool drops requirements silently, and nobody notices.
+
+Make it report what it dropped.
+
+## Constraints
+- Keep the existing output format.
+"""
+
+
+def test_every_paragraph_of_the_task_section_is_kept():
+    """Keeping only the first cost nothing while the decomposer was handed
+    `parsed.source` and read the file itself. It became silent data loss the
+    moment M1.2.r1 made this parse the only thing the model sees — and the first
+    casualty was the mandate sentence of the change that introduced it, which
+    was the second paragraph."""
+    parsed = parse_task_file(MULTI_PARAGRAPH_TASK)
+
+    assert [b.text for b in parsed.behavior] == [
+        "The tool drops requirements silently, and nobody notices.",
+        "Make it report what it dropped.",
+    ]
+
+
+def test_text_outside_every_recognised_section_is_reported_not_dropped():
+    task = """# Task
+Do the thing.
+
+## Background
+This paragraph is under a heading the format does not recognise.
+
+## Constraints
+- Keep it fast.
+"""
+    parsed = parse_task_file(task)
+
+    assert [b.text for b in parsed.behavior] == ["Do the thing."]
+    assert [c.text for c in parsed.constraints] == ["Keep it fast."]
+    assert [u.text for u in parsed.unclaimed] == [
+        "This paragraph is under a heading the format does not recognise."
+    ]
+
+
+def test_a_table_no_section_claims_is_reported_whole():
+    """`_span` locates a node's INLINE content, which for a table is its first
+    cell — reporting that as the unread region would understate what was
+    skipped. #195's own task file carries its ground truth in tables."""
+    task = """# Task
+Do the thing.
+
+## Ground truth
+| lost | at |
+|---|---|
+| the open-questions half | run 4 |
+"""
+    parsed = parse_task_file(task)
+
+    assert len(parsed.unclaimed) == 1
+    unread = parsed.unclaimed[0]
+    assert "the open-questions half" in unread.text
+    assert "| lost | at |" in unread.text
+    # The span invariant still holds, so a citation into it points at real text.
+    assert parsed.source[unread.start : unread.end] == unread.text
+
+
+def test_a_fully_recognised_file_reports_nothing_unclaimed():
+    assert parse_task_file(MULTI_PARAGRAPH_TASK).unclaimed == []

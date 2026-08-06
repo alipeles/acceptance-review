@@ -25,9 +25,13 @@ __all__ = ["build_registry", "requirement_id"]
 def requirement_id(section: RequirementSection, ordinal: int) -> str:
     """The id for one requirement. Zero-padded to two digits so ids sort in
     document order; a task file with more than 99 bullets in one section simply
-    gets a wider field rather than an id that sorts wrongly."""
-    if section is RequirementSection.TASK:
-        return section.value
+    gets a wider field rather than an id that sorts wrongly.
+
+    The Task section is ordinal-bearing like every other. An earlier version
+    spelled it bare `task`, on the reasoning that there is at most one behavior
+    statement — which was true only because `parse_task_file` was silently
+    discarding every paragraph after the first.
+    """
     return f"{section.value}-{ordinal:02d}"
 
 
@@ -40,10 +44,8 @@ def build_registry(parsed: ParsedTaskFile) -> list[RequirementRef]:
     """
     registry: list[RequirementRef] = []
 
-    if parsed.behavior is not None:
-        registry.append(_ref(RequirementSection.TASK, 1, parsed.behavior))
-
     for section, spans in (
+        (RequirementSection.TASK, parsed.behavior),
         (RequirementSection.CONSTRAINT, parsed.constraints),
         (RequirementSection.EXCLUSION, parsed.scope_exclusions),
         (RequirementSection.COMPLETION, parsed.completion_expectations),

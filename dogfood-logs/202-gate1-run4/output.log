@@ -1,0 +1,255 @@
+Requirements: 47   with obligations: 46   deliberately none: 1   unaccounted for: 0
+
+[task-01] `decompose` returns a flat list of obligations plus a flat list of open
+    questions. A response covering 20 of a task file's 29 requirements is exactly as
+    well-formed as one covering all 29, so nothing downstream can notice that nine
+    requirements produced nothing. Gate 1 for #195 lost 4 of 15 Completion expectations
+    and 5 of 8 Scope exclusions this way, and the review reported no gap.
+    -> obligation-requirement-to-obligation-mapping  [functional/explicit]   (also serves task-02, completion-02)
+       Return decomposition results as a mapping from each requirement to its obligation
+       disposition, so requirement-level outcomes are recorded explicitly.
+    -> obligation-record-none-disposition  [functional/explicit]   (also serves task-02, completion-02, completion-03)
+       Represent requirements that yield no obligation as recorded mapping entries with
+       their reason.
+    -> obligation-regression-suite-195-results-unchanged  [regression/explicit]   (also serves completion-12)
+       Preserve the pass/fail results of regression suite #195.
+
+[task-02] Make decomposition return a mapping from requirement to obligation, so that a
+    requirement producing nothing is a recorded fact rather than an absence.
+    -> obligation-requirement-to-obligation-mapping  [functional/explicit]   (also serves task-01, completion-02)
+       Return decomposition results as a mapping from each requirement to its obligation
+       disposition, so requirement-level outcomes are recorded explicitly.
+    -> obligation-record-none-disposition  [functional/explicit]   (also serves task-01, completion-02, completion-03)
+       Represent requirements that yield no obligation as recorded mapping entries with
+       their reason.
+
+[task-03] Separately, and independent of that defect: a reader auditing a breakdown
+    cannot see which requirement each obligation came from. `Obligation.source_spans`
+    points at a character offset, so the trace runs one way and only to text, never to
+    an identified requirement.
+    -> obligation-obligation-source-requirement-trace  [explanation_observability/explicit]
+       Provide traceability from each obligation back to the requirement it came from,
+       not only to character offsets.
+
+[task-04] This change is representational. It alters the shape of what decomposition
+    returns, not the obligations it derives.
+    -> obligation-representational-change-only  [invariant/explicit]
+       Preserve the set of obligations derived from a task file while changing only the
+       representation returned by decomposition.
+
+[constraint-01] A requirement registry is derived from
+    `requirement/task_file.py::parse_task_file`.
+    -> obligation-requirement-registry-from-parser  [functional/explicit]
+       Derive the requirement registry from `requirement/task_file.py::parse_task_file`.
+
+[constraint-02] Requirement ids are assigned by the code, never by the model.
+    -> obligation-requirement-ids-assigned-by-code  [invariant/explicit]
+       Assign requirement ids in code rather than by the model.
+
+[constraint-03] A requirement id is its section and its ordinal within that section, in
+    parse order.
+    -> obligation-requirement-id-section-ordinal  [functional/explicit]   (also serves completion-07)
+       Form each requirement id from its section and its ordinal within that section, in
+       parse order.
+
+[constraint-04] Each registry entry carries the `TextSpan` of the requirement it
+    identifies.
+    -> obligation-requirement-registry-textspan  [functional/explicit]
+       Attach the `TextSpan` of the identified requirement to each registry entry.
+
+[constraint-05] The requirement-to-obligation relation is many-to-many.
+    -> obligation-many-to-many-relation  [invariant/explicit]
+       Model the requirement-to-obligation relation as many-to-many.
+
+[constraint-06] An obligation serving two requirements is linked to both.
+    -> obligation-obligation-linked-to-both-requirements  [functional/explicit]   (also serves completion-05)
+       Link an obligation that serves two requirements to both requirements.
+
+[constraint-07] An obligation is never duplicated so that each requirement can hold its
+    own copy.
+    -> obligation-no-obligation-duplication  [invariant/explicit]   (also serves completion-06)
+       Keep each obligation as a single object rather than duplicating it per
+       requirement.
+
+[constraint-08] Every requirement carries exactly one disposition.
+    -> obligation-one-disposition-per-requirement  [invariant/explicit]
+       Assign exactly one disposition to every requirement.
+
+[constraint-09] The dispositions are: yielded obligations; deliberately yields none,
+    with a reason; raised an open question instead.
+    -> obligation-disposition-kinds  [functional/explicit]
+       Support the three disposition kinds: yielded obligations, deliberately yields
+       none with a reason, and raised an open question instead.
+
+[constraint-10] The mapping is persisted in the structured review state that
+    `review_state.py` and `review_store.py` already define.
+    -> obligation-persist-mapping-in-review-state  [functional/explicit]   (also serves completion-10)
+       Persist the requirement-to-obligation mapping in the structured review state
+       defined by `review_state.py` and `review_store.py`.
+
+[constraint-11] The mapping is rendered in the §16 report.
+    -> obligation-render-mapping-in-section-16-report  [functional/explicit]   (also serves completion-04)
+       Render the requirement-to-obligation mapping in the §16 report.
+
+[constraint-12] `requirement/obligations.py::_user_prompt` passes typed, identified
+    fields.
+    -> obligation-user-prompt-typed-identified-fields  [functional/explicit]
+       Have `_user_prompt` pass typed, identified fields.
+
+[constraint-13] `_user_prompt` does not pass `parsed.source`.
+    -> obligation-user-prompt-omits-parsed-source  [invariant/explicit]
+       Keep `_user_prompt` from passing `parsed.source`.
+
+[constraint-14] The decomposer receives no `ChangeSet`.
+    -> obligation-decomposer-no-changeset  [compatibility/explicit]   (also serves completion-08)
+       Keep the decomposer free of `ChangeSet` input.
+
+[constraint-15] The decomposer receives no repository path.
+    -> obligation-decomposer-no-repository-path  [compatibility/explicit]
+       Keep the decomposer free of repository-path input.
+
+[constraint-16] The decomposer receives no head revision.
+    -> obligation-decomposer-no-head-revision  [compatibility/explicit]   (also serves completion-09)
+       Keep the decomposer free of head-revision input.
+
+[constraint-17] Typed schemas are pydantic models, as the rest of the repository defines
+    them.
+    -> obligation-pydantic-typed-schemas  [compatibility/explicit]
+       Use pydantic models for typed schemas, consistent with the rest of the
+       repository.
+
+[constraint-18] Tests issue no live model calls.
+    -> obligation-tests-no-live-model-calls  [regression/explicit]
+       Keep tests free of live model calls.
+
+[constraint-19] Recorded transcripts invalidated by the changed prompt are re-recorded
+    once.
+    -> obligation-transcripts-rerecorded-once  [regression/explicit]
+       Re-record transcripts invalidated by the changed prompt exactly once.
+
+[exclusion-01] Changing which obligations a task file decomposes into. The obligation
+    content is held fixed; only its representation changes.
+    -> obligation-obligation-content-fixed  [regression/explicit]
+       Preserve the obligation content derived from a task file while changing only its
+       representation.
+
+[exclusion-02] Partitioning obligation derivation by requirement batch, which is #204.
+    -> obligation-no-batch-partitioning  [compatibility/explicit]
+       Keep obligation derivation unpartitioned by requirement batch.
+
+[exclusion-03] Assigning obligation types in a separate pass, which is #205.
+    -> obligation-no-separate-obligation-type-pass  [compatibility/explicit]
+       Keep obligation type assignment within the existing decomposition flow rather
+       than a separate pass.
+
+[exclusion-04] Requiring an open question to cite where the task file fails to answer
+    it, which is #206.
+    -> obligation-open-question-no-citation-requirement  [compatibility/explicit]
+       Keep open questions free of a requirement to cite where the task file fails to
+       answer them.
+
+[exclusion-05] Reading the base revision during open-question resolution, which is #207.
+    -> obligation-no-base-revision-reading-for-open-questions  [compatibility/explicit]
+       Keep open-question resolution independent of reading the base revision.
+
+[exclusion-06] Deciding whether the decomposer receives base-revision code context,
+    which is #208.
+    -> obligation-no-base-context-decision  [human_review/explicit]
+       Leave the decomposer's receipt of base-revision code context undecided by this
+       change.
+
+[exclusion-07] De-duplicating semantically duplicate obligations, which is #144.
+    -> obligation-no-semantic-deduplication  [regression/explicit]   (also serves exclusion-10)
+       Preserve one obligation per derivation without semantic duplicate collapsing.
+
+[exclusion-08] Aligning requirement ids across two versions of a task file, which is
+    #209.
+    -> obligation-no-requirement-id-alignment-across-versions  [compatibility/explicit]
+       Keep requirement ids from being aligned across two versions of a task file.
+
+[exclusion-09] Rebuilding #195's regression suite to bind its labels to the mapping.
+    -> obligation-regression-suite-195-labels-unchanged  [regression/explicit]   (also serves completion-11)
+       Keep regression suite #195 running against the new output without rebinding its
+       labels to the mapping.
+
+[exclusion-10] Measuring whether decomposition recall improves as a result of this
+    change.
+    -> obligation-no-semantic-deduplication  [regression/explicit]   (also serves exclusion-07)
+       Preserve one obligation per derivation without semantic duplicate collapsing.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker only; it contains no checkable requirement.
+
+[completion-02] A task file whose every requirement yields an obligation produces a
+    mapping in which no requirement is undisposed.
+    -> obligation-requirement-to-obligation-mapping  [functional/explicit]   (also serves task-01, task-02)
+       Return decomposition results as a mapping from each requirement to its obligation
+       disposition, so requirement-level outcomes are recorded explicitly.
+    -> obligation-record-none-disposition  [functional/explicit]   (also serves task-01, task-02, completion-03)
+       Represent requirements that yield no obligation as recorded mapping entries with
+       their reason.
+
+[completion-03] A requirement that yields no obligation appears in the mapping carrying
+    its reason.
+    -> obligation-record-none-disposition  [functional/explicit]   (also serves task-01, task-02, completion-02)
+       Represent requirements that yield no obligation as recorded mapping entries with
+       their reason.
+
+[completion-04] A requirement that yields no obligation is visible in the rendered
+    report.
+    -> obligation-render-mapping-in-section-16-report  [functional/explicit]   (also serves constraint-11)
+       Render the requirement-to-obligation mapping in the §16 report.
+
+[completion-05] A requirement stated twice in different sections yields one obligation
+    linked to both requirements.
+    -> obligation-obligation-linked-to-both-requirements  [functional/explicit]   (also serves constraint-06)
+       Link an obligation that serves two requirements to both requirements.
+
+[completion-06] That same case yields one obligation rather than two.
+    -> obligation-no-obligation-duplication  [invariant/explicit]   (also serves constraint-07)
+       Keep each obligation as a single object rather than duplicating it per
+       requirement.
+
+[completion-07] Requirement ids are identical across two runs over byte-identical task
+    text.
+    -> obligation-requirement-id-section-ordinal  [functional/explicit]   (also serves constraint-03)
+       Form each requirement id from its section and its ordinal within that section, in
+       parse order.
+
+[completion-08] A test pins that the decomposer cannot reach a diff.
+    -> obligation-decomposer-no-changeset  [compatibility/explicit]   (also serves constraint-14)
+       Keep the decomposer free of `ChangeSet` input.
+
+[completion-09] A test pins that the decomposer cannot reach a head revision.
+    -> obligation-decomposer-no-head-revision  [compatibility/explicit]   (also serves constraint-16)
+       Keep the decomposer free of head-revision input.
+
+[completion-10] A test pins that the pipeline persists the mapping rather than
+    discarding it.
+    -> obligation-persist-mapping-in-review-state  [functional/explicit]   (also serves constraint-10)
+       Persist the requirement-to-obligation mapping in the structured review state
+       defined by `review_state.py` and `review_store.py`.
+
+[completion-11] The regression suite #195 delivered runs unchanged against the new
+    output.
+    -> obligation-regression-suite-195-labels-unchanged  [regression/explicit]   (also serves exclusion-09)
+       Keep regression suite #195 running against the new output without rebinding its
+       labels to the mapping.
+
+[completion-12] No case in that suite flips its result.
+    -> obligation-regression-suite-195-results-unchanged  [regression/explicit]   (also serves task-01)
+       Preserve the pass/fail results of regression suite #195.
+
+[completion-13] `docs/DR-202-decomposition-requirement-mapping.md` records the resolved
+    requirement-id decision in place of listing it as open.
+    -> obligation-docs-record-resolved-id-decision  [docs_config/explicit]
+       Record the resolved requirement-id decision in `docs/DR-202-decomposition-
+       requirement-mapping.md` instead of listing it as open.
+
+[completion-14] The decomposition-accuracy figure is marked non-comparable across this
+    change where a reader meets it.
+    -> obligation-accuracy-figure-marked-non-comparable  [docs_config/explicit]
+       Mark the decomposition-accuracy figure as non-comparable across this change where
+       it is encountered.
+

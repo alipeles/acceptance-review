@@ -968,7 +968,7 @@ def test_the_pipeline_persists_the_requirement_map(git_repo, tmp_path, stub_mode
     stored = ReviewStore().read(git_repo["head"])
     assert stored.requirement_map is not None
     assert [r.id for r in stored.requirement_map.requirements] == [
-        "task",
+        "task-01",
         "constraint-01",
         "constraint-02",
         "exclusion-01",

@@ -229,6 +229,29 @@ def _mandate_coverage_block(requirement_map: RequirementMap) -> list[str]:
             lines.append(f"       reason: {entry.reason}")
         if entry.open_question_ids:
             lines.append(f"       raised: {', '.join(entry.open_question_ids)}")
+    lines.extend(_unread_block(requirement_map))
+    return lines
+
+
+def _unread_block(requirement_map: RequirementMap) -> list[str]:
+    """Task-file text no requirement was derived from.
+
+    Reported alongside mandate coverage because it is the same question one step
+    earlier — a review can only speak to text that reached the decomposer, and
+    text the parse dropped is a limit on the review, not a property of the code.
+    """
+    if not requirement_map.unread_source:
+        return []
+    lines = [
+        "",
+        f"  Not read as any requirement: {len(requirement_map.unread_source)} block(s)"
+        " — outside every recognised section, so no obligation could derive from them.",
+    ]
+    for span in requirement_map.unread_source:
+        excerpt = " ".join(span.text.split())
+        if len(excerpt) > 100:
+            excerpt = excerpt[:97] + "..."
+        lines.append(f"       - {excerpt}")
     return lines
 
 

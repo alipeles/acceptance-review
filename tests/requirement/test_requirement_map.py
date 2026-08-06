@@ -72,7 +72,7 @@ def test_every_requirement_in_the_file_is_identified():
     registry = build_registry(parse_task_file(TASK))
 
     assert [r.id for r in registry] == [
-        "task",
+        "task-01",
         "constraint-01",
         "constraint-02",
         "exclusion-01",
@@ -114,7 +114,7 @@ def test_a_fully_accounted_response_leaves_no_requirement_undisposed():
         ],
         "open_questions": [],
         "requirement_dispositions": [
-            _disposition("task", "yielded", obligation_ids=["render-lines"]),
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
             _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
             _disposition("constraint-02", "yielded", obligation_ids=["csv-unchanged"]),
             _disposition("exclusion-01", "yielded", obligation_ids=["pdf-untouched"]),
@@ -140,7 +140,7 @@ def test_a_requirement_the_response_never_mentions_is_recorded_as_undisposed():
         ],
         "open_questions": [],
         "requirement_dispositions": [
-            _disposition("task", "yielded", obligation_ids=["render-lines"]),
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
             _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
             _disposition("completion-01", "yielded", obligation_ids=["usd-format"]),
         ],
@@ -162,7 +162,7 @@ def test_a_requirement_deliberately_yielding_nothing_carries_its_reason():
         ],
         "open_questions": [],
         "requirement_dispositions": [
-            _disposition("task", "yielded", obligation_ids=["render-lines"]),
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
             _disposition("constraint-01", "no_obligation", reason="A section marker, not a requirement."),
             _disposition("constraint-02", "no_obligation", reason="Restates constraint-01."),
             _disposition("exclusion-01", "no_obligation", reason="Out of scope by construction."),
@@ -190,7 +190,7 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
         ],
         "open_questions": [],
         "requirement_dispositions": [
-            _disposition("task", "yielded", obligation_ids=["render-lines"]),
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
             _disposition("constraint-01", "yielded", obligation_ids=["never-emitted"]),
             _disposition("constraint-02", "yielded", obligation_ids=[]),
             _disposition("exclusion-01", "no_obligation", reason=""),
@@ -219,7 +219,7 @@ def test_one_obligation_serves_two_requirements_rather_than_being_duplicated():
         ],
         "open_questions": [],
         "requirement_dispositions": [
-            _disposition("task", "yielded", obligation_ids=["render-lines"]),
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
             _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
             _disposition("constraint-02", "yielded", obligation_ids=["csv-unchanged"]),
             _disposition("exclusion-01", "yielded", obligation_ids=["pdf-untouched"]),
@@ -251,7 +251,7 @@ def test_a_disposition_naming_a_renamed_obligation_still_links():
         ],
         "open_questions": [],
         "requirement_dispositions": [
-            _disposition("task", "yielded", obligation_ids=["dup"]),
+            _disposition("task-01", "yielded", obligation_ids=["dup"]),
             _disposition("constraint-01", "yielded", obligation_ids=["dup"]),
             _disposition("constraint-02", "no_obligation", reason="Not applicable."),
             _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
@@ -262,7 +262,7 @@ def test_a_disposition_naming_a_renamed_obligation_still_links():
     result = decompose(parsed, _client_returning(response))
 
     assert [o.id for o in result.obligations] == ["dup", "dup-2"]
-    assert result.requirement_map.disposition_for("task").obligation_ids == ["dup"]
+    assert result.requirement_map.disposition_for("task-01").obligation_ids == ["dup"]
     assert result.requirement_map.undisposed() == []
 
 
@@ -315,7 +315,7 @@ def _decomposition_with_a_shared_and_a_declined_requirement():
         ],
         "open_questions": [],
         "requirement_dispositions": [
-            _disposition("task", "yielded", obligation_ids=["render-lines"]),
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
             _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
             _disposition("constraint-02", "no_obligation", reason="Covered by the CSV suite."),
             _disposition("exclusion-01", "yielded", obligation_ids=["render-lines"]),
@@ -330,7 +330,7 @@ def test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing():
 
     output = render_decomposition(_decomposition_with_a_shared_and_a_declined_requirement())
 
-    for requirement_id in ("[task]", "[constraint-01]", "[constraint-02]", "[exclusion-01]"):
+    for requirement_id in ("[task-01]", "[constraint-01]", "[constraint-02]", "[exclusion-01]"):
         assert requirement_id in output, f"{requirement_id} is missing from the rendered mapping"
     assert "no obligation, deliberately" in output
     assert "Covered by the CSV suite." in output
@@ -351,7 +351,7 @@ def test_the_cli_says_when_an_obligation_serves_other_requirements():
     assert "also serves exclusion-01" in output
     assert "also serves completion-01" in output
     # An obligation is never told it serves the requirement it is listed under.
-    assert "also serves task, exclusion-01" not in output
+    assert "also serves task-01, exclusion-01" not in output
 
 
 def test_an_obligation_no_requirement_claims_is_still_shown():
@@ -390,7 +390,7 @@ def test_the_header_separates_a_deliberate_decline_from_an_unaccounted_requireme
         ],
         "open_questions": [],
         "requirement_dispositions": [
-            _disposition("task", "yielded", obligation_ids=["render-lines"]),
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
             _disposition("constraint-01", "no_obligation", reason="A bare section marker."),
             # constraint-02, exclusion-01 and completion-01 go unmentioned.
         ],
@@ -404,3 +404,70 @@ def test_the_header_separates_a_deliberate_decline_from_an_unaccounted_requireme
     assert output.count("!! UNACCOUNTED FOR") == 3
     # The correct decline is not shouted at.
     assert "!! UNACCOUNTED FOR — the decomposer did not address this\n       A bare section marker." not in output
+
+
+# --- unread source reaches the reader (M1.2.r1) -----------------------------
+
+TASK_WITH_AN_UNRECOGNISED_SECTION = """# Task
+Render each invoice line.
+
+## Background
+Invoices are currently rendered by a legacy template nobody owns.
+
+## Constraints
+- Format money as USD.
+"""
+
+
+def test_text_the_parse_never_read_is_carried_into_the_mapping():
+    """The structured-interchange invariant has a precondition: the parse must
+    be complete before it can be authoritative. While the decomposer got
+    `parsed.source`, a gap in the parse cost nothing. Once the registry became
+    the only thing it sees, unparsed text stopped reaching the model at all — so
+    the mapping has to carry what the parse did not read."""
+    parsed = parse_task_file(TASK_WITH_AN_UNRECOGNISED_SECTION)
+    response = {
+        "obligations": [
+            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
+        ],
+        "open_questions": [],
+        "requirement_dispositions": [
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
+            _disposition("constraint-01", "no_obligation", reason="Covered elsewhere."),
+        ],
+    }
+
+    result = decompose(parsed, _client_returning(response))
+
+    unread = [span.text for span in result.requirement_map.unread_source]
+    assert unread == ["Invoices are currently rendered by a legacy template nobody owns."]
+
+
+def test_the_cli_shouts_about_text_that_was_never_read():
+    """Nothing else in the output hints that this text exists: it produced no
+    requirement, so no disposition, no obligation and no question. Silence here
+    is indistinguishable from the file not containing it."""
+    from acceptance.cli import render_decomposition
+
+    parsed = parse_task_file(TASK_WITH_AN_UNRECOGNISED_SECTION)
+    response = {
+        "obligations": [],
+        "open_questions": [],
+        "requirement_dispositions": [
+            _disposition("task-01", "no_obligation", reason="Nothing checkable."),
+            _disposition("constraint-01", "no_obligation", reason="Nothing checkable."),
+        ],
+    }
+
+    output = render_decomposition(decompose(parsed, _client_returning(response)))
+
+    assert "NOT READ AS ANY REQUIREMENT" in output
+    assert "legacy template nobody owns" in output
+
+
+def test_a_fully_recognised_file_says_nothing_about_unread_text():
+    from acceptance.cli import render_decomposition
+
+    output = render_decomposition(_decomposition_with_a_shared_and_a_declined_requirement())
+
+    assert "NOT READ AS ANY REQUIREMENT" not in output

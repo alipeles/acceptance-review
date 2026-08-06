@@ -339,6 +339,18 @@ class RequirementMap(_Model):
 
     requirements: list[RequirementRef] = Field(default_factory=list)
     dispositions: list[RequirementDisposition] = Field(default_factory=list)
+    # Task-file text that became no requirement at all, so the model never saw
+    # it (M1.2.r1). This is the mandate-coverage story one stage further back:
+    # source text -> requirements -> obligations, with the same failure mode of
+    # silence at each hop.
+    #
+    # It exists because the structured-interchange invariant has a precondition
+    # nothing was checking. While the decomposer was handed `parsed.source` a
+    # gap in the parse cost nothing — the model read the file regardless. Once
+    # the parse became the only thing it sees, every gap became invisible data
+    # loss, and the first one cost this very change three paragraphs of its own
+    # mandate. A parse may only be authoritative if it reports what it missed.
+    unread_source: list[TextSpan] = Field(default_factory=list)
 
     def disposition_for(self, requirement_id: str) -> RequirementDisposition | None:
         for entry in self.dispositions:

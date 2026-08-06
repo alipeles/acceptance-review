@@ -30,13 +30,27 @@ _TASK = {"task"}
 
 
 class ParsedTaskFile(PersistableModel):
-    """The §7.1 task file parsed into fields, each linked to its source span."""
+    """The §7.1 task file parsed into fields, each linked to its source span.
+
+    `behavior` is a LIST because the Task section routinely runs to several
+    paragraphs. It used to keep only the first, which cost nothing while the
+    decomposer was handed `parsed.source` and read the file itself — and became
+    silent data loss the moment M1.2.r1 made this parse the only thing the model
+    sees. A lossy parse is safe exactly until it is authoritative.
+
+    `unclaimed` is every content block this parse did not route into a field:
+    text under an unrecognised heading, tables, code fences, block quotes. It is
+    recorded rather than discarded for the same reason a requirement yielding no
+    obligation is recorded rather than dropped — the parse cannot be trusted to
+    be complete, so it has to say what it did not take.
+    """
 
     source: str
-    behavior: TextSpan | None = None
+    behavior: list[TextSpan] = []
     constraints: list[TextSpan] = []
     scope_exclusions: list[TextSpan] = []
     completion_expectations: list[TextSpan] = []
+    unclaimed: list[TextSpan] = []
 
 
 def parse_task_file(text: str) -> ParsedTaskFile:
@@ -48,14 +62,20 @@ def parse_task_file(text: str) -> ParsedTaskFile:
 
     for node in tree.children:
         if node.type == "heading":
+            # Headings are structure, not requirements, and are never unclaimed.
             section = _inline_content(node).strip().lower()
         elif node.type == "paragraph":
-            if section in _TASK and result.behavior is None:
-                result.behavior = _span(text, line_offsets, node)
+            target = result.behavior if section in _TASK else result.unclaimed
+            target.append(_span(text, line_offsets, node))
         elif node.type == "bullet_list":
             target = _list_target(result, section)
-            if target is not None:
-                target.extend(_span(text, line_offsets, item) for item in node.children)
+            spans = [_span(text, line_offsets, item) for item in node.children]
+            (result.unclaimed if target is None else target).extend(spans)
+        else:
+            # Tables, fenced code, block quotes. Nothing reads them yet — the
+            # ground-truth tables in #195's own task file are invisible to this
+            # parse — so the honest output is to say they were not read.
+            result.unclaimed.append(_block_span(text, line_offsets, node))
 
     return result
 
@@ -88,6 +108,26 @@ def _inline_content(node: SyntaxTreeNode) -> str:
         if found:
             return found
     return ""
+
+
+def _block_span(text: str, line_offsets: list[int], node: SyntaxTreeNode) -> TextSpan:
+    """The whole of a block, with offsets narrowed to its stripped text.
+
+    Used for blocks nothing parses into a field. `_span` locates a node's
+    *inline* content, which for a table is its first cell — reporting that as
+    the unread region would understate what was skipped.
+    """
+    start_line, end_line = node.map
+    block_start = line_offsets[start_line]
+    block_end = line_offsets[end_line] if end_line < len(line_offsets) else len(text)
+    block = text[block_start:block_end]
+    leading = len(block) - len(block.lstrip())
+    trailing = len(block) - len(block.rstrip())
+    return TextSpan(
+        text=block.strip(),
+        start=block_start + leading,
+        end=block_end - trailing,
+    )
 
 
 def _span(text: str, line_offsets: list[int], node: SyntaxTreeNode) -> TextSpan:

@@ -246,7 +246,32 @@ def render_decomposition(result: Decomposition) -> str:
 
     lines.extend(_orphan_obligations(result, requirement_map))
     lines.extend(_unraised_questions(result, requirement_map))
+    lines.extend(_unread_source(requirement_map))
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _unread_source(requirement_map) -> list[str]:
+    """Task-file text that became no requirement, so the model never saw it.
+
+    Loud, because this is the one failure on this page the reader cannot fix by
+    arguing with the tool: text that was never parsed produced no obligation, no
+    disposition, and no question, and nothing else in the output would hint that
+    it exists. It is also the reader's own fix — usually a section the format
+    does not recognise.
+    """
+    unread = requirement_map.unread_source
+    if not unread:
+        return []
+    lines = [
+        f"!! NOT READ AS ANY REQUIREMENT: {len(unread)} block(s) of the task file",
+        "   These were parsed but matched no §7.1 section, so the decomposer",
+        "   never saw them. Move them under a recognised heading if they state",
+        "   a requirement.",
+    ]
+    for span in unread:
+        lines.extend(_wrap(_flatten(span.text), indent="     - ", hang="       "))
+    lines.append("")
+    return lines
 
 
 def _summary(requirement_map, total: int) -> str:

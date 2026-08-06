@@ -293,7 +293,11 @@ def decompose(
         obligations=obligations,
         open_questions=open_questions,
         requirement_map=_requirement_map(
-            registry, result.requirement_dispositions, obligation_final, question_final
+            registry,
+            result.requirement_dispositions,
+            obligation_final,
+            question_final,
+            parsed.unclaimed,
         ),
     )
 
@@ -303,6 +307,7 @@ def _requirement_map(
     returned: list[_RequirementDisposition],
     obligation_final: dict[str, str],
     question_final: dict[str, str],
+    unread: list,
 ) -> RequirementMap:
     """Reconcile the returned dispositions against the registry.
 
@@ -359,7 +364,9 @@ def _requirement_map(
             )
         )
 
-    return RequirementMap(requirements=registry, dispositions=dispositions)
+    return RequirementMap(
+        requirements=registry, dispositions=dispositions, unread_source=unread
+    )
 
 
 def _undisposed(requirement_id: str, reason: str) -> RequirementDisposition:

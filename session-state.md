@@ -70,9 +70,35 @@ that rule was already in force for run 2 and recovered only 2 of 10.
 2. **#211** (filed, supersedes #195, child of #186) — rebuild that suite against
    the mapping and score **link precision separately from coverage**. Blocks #210:
    43-of-44 would otherwise score as ~0.98 accuracy.
-3. **Unfiled** — the Task section's *problem statement* becomes an obligation to
-   preserve the flat list, alongside the obligation to replace it. Stable across
-   all three runs. #181 family.
+3. **#212** (filed, child of #181) — task files cannot distinguish context from
+   requirements. **Its motivating example was corrected on the issue**: the
+   contradictory obligation was caused by the parse bug below, not context
+   bleed, and does not reproduce in run 4. Still worth doing; weaker evidence
+   than when filed.
+
+**Run 4 fixed a regression this change had introduced.** `parse_task_file` kept
+only the FIRST paragraph under `# Task`. Harmless while `_user_prompt` passed
+`parsed.source`; fatal once the registry became the only thing the model sees —
+three paragraphs of #202's own mandate stopped reaching it. Fixed, plus a guard:
+unclaimed blocks are recorded as `RequirementMap.unread_source` and rendered by
+both the CLI and the report. **General rule, now in DR-202: a lossy parse is safe
+exactly until it is authoritative.**
+
+Run 4: **47 requirements, 46 with obligations, 0 unaccounted, 0 unread.** The
+contradiction is gone. Ids are now `task-01`… — the bare `task` spelling was
+premised on there being one behavior paragraph, which was only true because the
+parser dropped the rest.
+
+**#210's false links MOVED between runs 3 and 4** on the same input, with nothing
+targeting them — `exclusion-08` fixed itself, `exclusion-10` got worse, `task-01`
+gained a new one. Count flat, membership turned over. This hardens **#211 into a
+prerequisite**: the defect cannot be fixed or verified by looking at a run.
+
+**Disclosed, not excused:** 35 obligations in runs 3 and 4, **4 ids in common**.
+#202's own `exclusion-01` (*"Changing which obligations a task file decomposes
+into"*) is violated — necessarily, since the alternative was shipping a change
+that hides part of the mandate. #195's control suite still passes with no case
+flipped, which is the check that matters.
 
 **Withdrawn:** the `exclusion-04` "inversion" finding from runs 2 and 3 was my
 error, not a tool defect — *"does not need to"* is a permission, not a
