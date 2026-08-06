@@ -1,0 +1,366 @@
+Task completion: INCOMPLETE
+
+7 obligation(s) with non-discriminating test evidence (obligation-unambiguous-literal-discriminators, obligation-yielded-empty-obligations-rejected, obligation-rejected-response-produces-no-map, obligation-pydantic-typed-schemas, obligation-tests-no-live-model-calls, obligation-open-question-empty-rejected, obligation-schema-test-rejects-empty-yielded).
+
+Obligations:
+
+  1. A requirement disposition is limited to exactly three cases: yielded obligations, no obligations needed with a reason, or an open question that prevents an answer.
+       requirements: task-01, constraint-01, exclusion-01
+       code evidence: addressed
+         1.1  src/acceptance/review_state.py#@@ -280,17 +280,18 @@ class Disposition(str, Enum):
+         1.2  src/acceptance/requirement/obligations.py#@@ -13,12 +13,18 @@ obligations — uncertainty is a first-class, expected result (M1.3).
+         1.3  docs/DR-202-decomposition-requirement-mapping.md#@@ -108,6 +108,39 @@ erred. Nothing here asks that. Forcing an answer per requirement makes *silence*
+       test evidence: strongly supported  [tier: static]
+         1.4  tests/requirement/test_requirement_map.py::test_the_disposition_set_is_exactly_the_three_of_decision_3
+         1.5  tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+
+  2. The Disposition type excludes any UNDISPOSED value.
+       requirements: task-01, task-03, constraint-02, completion-07
+       code evidence: addressed
+         2.1  src/acceptance/review_state.py#@@ -280,17 +280,18 @@ class Disposition(str, Enum):
+         2.2  src/acceptance/review_state.py#@@ -319,10 +320,6 @@ class RequirementDisposition(_Model):
+       test evidence: strongly supported  [tier: static]
+         2.3  tests/requirement/test_requirement_map.py::test_the_disposition_set_is_exactly_the_three_of_decision_3
+         2.4  tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+
+  3. _RequirementDisposition is modeled as a union with one shape per disposition, and each shape carries only the payload defined by that disposition.
+       requirements: task-03, constraint-03, completion-09
+       code evidence: addressed
+         3.1  src/acceptance/requirement/obligations.py#@@ -173,14 +181,52 @@ class _OpenQuestion(StrictResponseModel):
+       test evidence: strongly supported  [tier: static]
+         3.2  tests/requirement/test_requirement_map.py::test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations
+         3.3  tests/test_supplied_ids.py::test_a_union_of_item_shapes_constrains_every_member
+
+  4. Each disposition shape names its disposition as a literal value so the union is unambiguous at parse time.
+       requirements: task-03, constraint-04
+       code evidence: addressed
+         4.1  src/acceptance/requirement/obligations.py#@@ -173,14 +181,52 @@ class _OpenQuestion(StrictResponseModel):
+       test evidence: nominally supported  [tier: static]
+         4.2  tests/requirement/test_requirement_map.py::test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations
+         4.3  tests/test_supplied_ids.py::test_a_union_of_item_shapes_constrains_every_member
+
+  5. The schema sent to the model uses only keywords accepted by OpenAI strict mode.
+       requirements: constraint-05
+       code evidence: addressed
+         5.1  src/acceptance/requirement/obligations.py#@@ -173,14 +181,52 @@ class _OpenQuestion(StrictResponseModel):
+         5.2  tests/requirement/test_requirement_map.py#@@ -192,16 +235,202 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/requirement/test_requirement_map.py::test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations
+         5.4  tests/test_llm.py::test_the_hashed_request_carries_the_inlined_schema
+         5.5  tests/test_llm.py::test_the_schema_sent_to_the_provider_has_no_ref_indirection
+         5.6  tests/test_supplied_ids.py::test_supplied_ids_become_an_enum_on_the_field_the_model_sees
+
+  6. A yielded disposition carries at least one obligation id.
+       requirements: constraint-01, constraint-06
+       code evidence: addressed
+         6.1  src/acceptance/requirement/obligations.py#@@ -173,14 +181,52 @@ class _OpenQuestion(StrictResponseModel):
+       test evidence: strongly supported  [tier: static]
+         6.2  tests/requirement/test_requirement_map.py::test_a_yielded_claim_naming_no_real_obligation_is_rejected
+         6.3  tests/requirement/test_requirement_map.py::test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations
+
+  7. A no_obligation disposition carries a non-empty reason.
+       requirements: constraint-01, constraint-07
+       code evidence: addressed
+         7.1  src/acceptance/requirement/obligations.py#@@ -173,14 +181,52 @@ class _OpenQuestion(StrictResponseModel):
+         7.2  src/acceptance/requirement/obligations.py#@@ -311,56 +357,84 @@ def _requirement_map(
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/requirement/test_requirement_map.py::test_a_no_obligation_disposition_with_an_empty_reason_is_rejected
+         7.4  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         7.5  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+
+  8. An open_question disposition carries at least one open-question id.
+       requirements: constraint-01, constraint-08
+       code evidence: addressed
+         8.1  src/acceptance/requirement/obligations.py#@@ -173,14 +181,52 @@ class _OpenQuestion(StrictResponseModel):
+       test evidence: strongly supported  [tier: static]
+         8.2  tests/coverage/test_open_questions.py::test_diff_does_not_resolve_the_question
+         8.3  tests/coverage/test_open_questions.py::test_diff_resolves_the_question
+         8.4  tests/requirement/test_requirement_map.py::test_an_open_question_disposition_naming_no_real_question_is_rejected
+         8.5  tests/test_verdict.py::test_resolved_open_question_does_not_block
+
+  9. A response that labels a requirement yielded while naming no obligation id fails to parse.
+       requirements: constraint-09, completion-03
+       code evidence: addressed
+         9.1  src/acceptance/requirement/obligations.py#@@ -311,56 +357,84 @@ def _requirement_map(
+         9.2  tests/requirement/test_requirement_map.py#@@ -146,12 +185,12 @@ def test_a_requirement_the_response_never_mentions_is_recorded_as_undisposed():
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  10. A response that labels a requirement no_obligation with an empty reason fails to parse.
+       requirements: constraint-10, completion-04
+       code evidence: addressed
+         10.1  src/acceptance/review_state.py#@@ -319,10 +320,6 @@ class RequirementDisposition(_Model):
+         10.2  tests/requirement/test_requirement_map.py#@@ -192,16 +235,202 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/requirement/test_requirement_map.py::test_a_no_obligation_disposition_with_an_empty_reason_is_rejected
+
+  11. A response that omits any requirement in the registry is rejected.
+       requirements: task-03, constraint-11, completion-05
+       code evidence: addressed
+         11.1  src/acceptance/requirement/obligations.py#@@ -311,56 +357,84 @@ def _requirement_map(
+         11.2  tests/requirement/test_requirement_map.py#@@ -146,12 +185,12 @@ def test_a_requirement_the_response_never_mentions_is_recorded_as_undisposed():
+       test evidence: strongly supported  [tier: static]
+         11.3  tests/requirement/test_requirement_map.py::test_a_response_that_never_mentions_a_requirement_is_rejected
+         11.4  tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers
+
+  12. A response that names a requirement id absent from the registry is rejected.
+       requirements: task-03, constraint-12, completion-08
+       code evidence: addressed
+         12.1  src/acceptance/requirement/obligations.py#@@ -311,56 +357,84 @@ def _requirement_map(
+         12.2  tests/requirement/test_requirement_map.py#@@ -192,16 +235,202 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
+       test evidence: strongly supported  [tier: static]
+         12.3  tests/evidence/test_mapping.py::test_unknown_ids_are_dropped
+         12.4  tests/requirement/test_requirement_map.py::test_a_response_naming_a_requirement_outside_the_registry_is_rejected
+         12.5  tests/requirement/test_requirement_map.py::test_a_yielded_claim_naming_no_real_obligation_is_rejected
+         12.6  tests/requirement/test_requirement_map.py::test_an_open_question_disposition_naming_no_real_question_is_rejected
+
+  13. A rejected response produces no RequirementMap.
+       requirements: task-02, constraint-13, exclusion-03, completion-06
+       code evidence: addressed
+         13.1  src/acceptance/requirement/obligations.py#@@ -311,56 +357,84 @@ def _requirement_map(
+         13.2  tests/requirement/test_requirement_map.py#@@ -146,12 +185,12 @@ def test_a_requirement_the_response_never_mentions_is_recorded_as_undisposed():
+       test evidence: partially supported  [tier: static]
+         13.3  tests/requirement/test_requirement_map.py::test_a_requirement_disposed_twice_is_rejected
+         13.4  tests/requirement/test_requirement_map.py::test_a_yielded_claim_naming_no_real_obligation_is_rejected
+         13.5  tests/requirement/test_requirement_map.py::test_an_open_question_disposition_naming_no_real_question_is_rejected
+         13.6  tests/test_cli.py::test_check_json_emits_a_structured_review
+         13.7  tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers
+         13.8  tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean
+         13.9  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+         13.10  tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
+         13.11  tests/test_supplied_ids.py::test_an_unusable_answer_leaves_the_obligation_indeterminate
+
+  14. The JSON schema sent to the model cannot express a yielded disposition with zero obligation ids.
+       requirements: constraint-14
+       code evidence: addressed
+         14.1  src/acceptance/requirement/obligations.py#@@ -173,14 +181,52 @@ class _OpenQuestion(StrictResponseModel):
+         14.2  tests/requirement/test_requirement_map.py#@@ -192,16 +235,202 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
+       test evidence: strongly supported  [tier: static]
+         14.3  tests/requirement/test_requirement_map.py::test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations
+
+  15. The reason supplied for declining a requirement is preserved rather than replaced by a diagnostic string.
+       requirements: task-02, constraint-15
+       code evidence: addressed
+         15.1  src/acceptance/requirement/obligations.py#@@ -311,56 +357,84 @@ def _requirement_map(
+         15.2  tests/requirement/test_requirement_map.py#@@ -192,16 +235,202 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
+       test evidence: strongly supported  [tier: static]
+         15.3  tests/requirement/test_requirement_map.py::test_a_requirement_deliberately_yielding_nothing_carries_its_reason
+         15.4  tests/requirement/test_requirement_map.py::test_a_supplied_reason_is_preserved_rather_than_replaced
+         15.5  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+         15.6  tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean
+
+  16. The helper that restricts an id field to supplied ids continues to work when the response model item type is a union, so the requirement-id constraint survives the new shape.
+       requirements: constraint-16
+       code evidence: addressed
+         16.1  src/acceptance/supplied_ids.py#@@ -33,13 +33,17 @@ than dropped. Dropping is what made the original defect invisible.
+         16.2  src/acceptance/supplied_ids.py#@@ -63,16 +67,27 @@ def _constrained_nested(annotation: Any, allowed: Mapping[str, Sequence[str]]) -
+       test evidence: strongly supported  [tier: static]
+         16.3  tests/requirement/test_requirement_map.py::test_a_disposition_naming_a_renamed_obligation_still_links
+         16.4  tests/test_supplied_ids.py::test_a_foreign_id_does_not_validate_against_the_constrained_schema
+         16.5  tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped
+         16.6  tests/test_supplied_ids.py::test_a_list_valued_id_field_constrains_its_items
+         16.7  tests/test_supplied_ids.py::test_a_single_supplied_id_is_still_sent_as_an_enum
+         16.8  tests/test_supplied_ids.py::test_a_union_of_item_shapes_constrains_every_member
+         16.9  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+         16.10  tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
+         16.11  tests/test_supplied_ids.py::test_each_partition_constrains_test_ids_to_its_own_batch
+         16.12  tests/test_supplied_ids.py::test_scan_finds_ids_that_were_never_supplied
+         16.13  tests/test_supplied_ids.py::test_scan_reports_each_unusable_id_once
+         16.14  tests/test_supplied_ids.py::test_supplied_ids_become_an_enum_on_the_field_the_model_sees
+         16.15  tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id
+         16.16  tests/test_supplied_ids.py::test_the_schema_asked_for_differs_from_the_shape_parsed
+
+  17. Typed schemas are implemented as pydantic models.
+       requirements: constraint-17
+       code evidence: addressed
+         17.1  src/acceptance/requirement/obligations.py#@@ -173,14 +181,52 @@ class _OpenQuestion(StrictResponseModel):
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  18. Tests issue no live model calls.
+       requirements: constraint-18
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: nominally supported  [tier: static]
+         18.1  tests/test_cli.py::test_classify_replay_without_transcript_fails_cleanly
+         18.2  tests/test_cli.py::test_decompose_replay_without_transcript_fails_cleanly
+         18.3  tests/test_cli.py::test_retrieval_makes_no_model_call
+
+  19. Every requirement in a parsed RequirementMap carries one of the three dispositions.
+       requirements: task-01, task-03, completion-02
+       code evidence: addressed
+         19.1  src/acceptance/requirement/obligations.py#@@ -311,56 +357,84 @@ def _requirement_map(
+         19.2  src/acceptance/review_state.py#@@ -280,17 +280,18 @@ class Disposition(str, Enum):
+       test evidence: strongly supported  [tier: static]
+         19.3  tests/requirement/test_requirement_map.py::test_a_fully_accounted_response_disposes_every_requirement
+         19.4  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         19.5  tests/test_cli.py::test_check_json_emits_a_structured_review
+         19.6  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+         19.7  tests/test_verdict.py::test_resolved_open_question_does_not_block
+
+  20. An open_question disposition naming no question the response produced is rejected.
+       requirements: completion-10
+       code evidence: addressed
+         20.1  src/acceptance/requirement/obligations.py#@@ -311,56 +357,84 @@ def _requirement_map(
+         20.2  tests/requirement/test_requirement_map.py#@@ -192,16 +235,202 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  21. A test asserts that the schema sent to the model rejects a yielded disposition carrying zero obligation ids.
+       requirements: completion-11
+       code evidence: addressed
+         21.1  tests/requirement/test_requirement_map.py#@@ -192,16 +235,202 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+
+  22. A test asserts that the id constraint still reaches every member of a union item type.
+       requirements: completion-12
+       code evidence: addressed
+         22.1  tests/test_supplied_ids.py#@@ -68,6 +88,31 @@ def test_a_list_valued_id_field_constrains_its_items():
+       test evidence: strongly supported  [tier: static]
+         22.2  tests/requirement/test_requirement_map.py::test_one_obligation_serves_two_requirements_rather_than_being_duplicated
+         22.3  tests/test_supplied_ids.py::test_a_foreign_id_does_not_validate_against_the_constrained_schema
+         22.4  tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped
+         22.5  tests/test_supplied_ids.py::test_a_list_valued_id_field_constrains_its_items
+         22.6  tests/test_supplied_ids.py::test_a_single_supplied_id_is_still_sent_as_an_enum
+         22.7  tests/test_supplied_ids.py::test_a_union_of_item_shapes_constrains_every_member
+         22.8  tests/test_supplied_ids.py::test_each_partition_constrains_test_ids_to_its_own_batch
+
+  23. The tests, CLI rendering, and report sections that referred to the removed disposition are updated rather than left asserting it.
+       requirements: exclusion-02, completion-13
+       code evidence: addressed
+         23.1  src/acceptance/cli.py#@@ -286,26 +286,26 @@ def _summary(requirement_map, total: int) -> str:
+         23.2  src/acceptance/cli.py#@@ -344,12 +344,9 @@ def _requirement_block(
+         23.3  src/acceptance/report.py#@@ -207,9 +207,13 @@ def _mandate_coverage_block(requirement_map: RequirementMap) -> list[str]:
+         23.4  tests/test_cli.py#@@ -948,11 +949,14 @@ def test_the_pipeline_persists_the_requirement_map(git_repo, tmp_path, stub_mode
+         23.5  tests/test_cli.py#@@ -973,7 +977,10 @@ def test_the_pipeline_persists_the_requirement_map(git_repo, tmp_path, stub_mode
+         23.6  tests/test_decision_records.py#@@ -42,6 +42,20 @@ def test_dr_202_records_the_requirement_id_decision_as_resolved():
+         23.7  tests/requirement/test_requirement_map.py#@@ -124,14 +150,27 @@ def test_a_fully_accounted_response_leaves_no_requirement_undisposed():
+         23.8  tests/requirement/test_requirement_map.py#@@ -334,10 +562,7 @@ def test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing():
+         23.9  tests/requirement/test_requirement_map.py#@@ -375,35 +610,23 @@ def test_an_obligation_no_requirement_claims_is_still_shown():
+       test evidence: strongly supported  [tier: static]
+         23.10  tests/benchmark/test_labels.py::test_candidate_test_ids_name_real_tests
+         23.11  tests/requirement/test_requirement_map.py::test_an_obligation_no_requirement_claims_is_still_shown
+         23.12  tests/requirement/test_requirement_map.py::test_one_obligation_serves_two_requirements_rather_than_being_duplicated
+         23.13  tests/requirement/test_requirement_map.py::test_text_the_parse_never_read_is_carried_into_the_mapping
+         23.14  tests/requirement/test_requirement_map.py::test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing
+         23.15  tests/requirement/test_requirement_map.py::test_the_cli_says_when_an_obligation_serves_other_requirements
+         23.16  tests/requirement/test_requirement_map.py::test_the_cli_shouts_about_text_that_was_never_read
+         23.17  tests/requirement/test_requirement_map.py::test_the_disposition_set_is_exactly_the_three_of_decision_3
+         23.18  tests/requirement/test_requirement_map.py::test_the_header_counts_declines_without_claiming_a_check_it_no_longer_makes
+         23.19  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         23.20  tests/test_cli.py::test_a_stale_instruction_file_is_removed_and_the_removal_reported
+         23.21  tests/test_cli.py::test_report_shell_renders_all_sections_present_and_empty
+         23.22  tests/test_cli.py::test_the_spec_does_not_frame_the_recommendation_as_a_written_artifact
+         23.23  tests/test_cli.py::test_the_spec_names_the_command_the_cli_actually_accepts
+         23.24  tests/test_cli.py::test_the_spec_no_longer_names_a_written_file
+         23.25  tests/test_decision_records.py::test_dr_202_no_longer_lists_requirement_id_stability_as_open
+         23.26  tests/test_decision_records.py::test_dr_202_records_the_requirement_id_decision_as_resolved
+         23.27  tests/test_decision_records.py::test_dr_202_records_what_the_interim_scheme_defers
+
+  24. The decomposition documentation records that the disposition set is the three of decision 3, and that completeness is enforced at parse.
+       requirements: completion-14
+       code evidence: addressed
+         24.1  docs/DR-202-decomposition-requirement-mapping.md#@@ -108,6 +108,39 @@ erred. Nothing here asks that. Forcing an answer per requirement makes *silence*
+       test evidence: strongly supported  [tier: static]
+         24.2  tests/test_cli.py::test_render_decomposition_lists_obligations_and_open_questions
+         24.3  tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+
+Mandate coverage: 37 of 41 requirements yielded obligations
+  1. [no_obligation] exclusion-04: Nested-bullet and multi-paragraph parse coverage, which is #216.
+       reason: This exclusion points to work tracked separately (#216) and does not add a direct implementation requirement here.
+  2. [no_obligation] exclusion-05: Whether mandate coverage bounds the completion verdict, which is #214.
+       reason: This exclusion explicitly defers the completion-verdict question to #214 and does not constrain this change directly.
+  3. [no_obligation] exclusion-06: Aligning requirement ids across two versions of a task file, which is #209.
+       reason: This exclusion refers to aligning ids across task-file versions, which is tracked separately (#209) and is outside this change's direct scope.
+  4. [no_obligation] completion-01: Implementation
+       reason: Section marker only.
+
+Unrequested changes:
+  1. [in_service] The CLI summary output was changed to remove the explicit unaccounted-for count and the shouted failure line. The obligations require updating references to the removed disposition, but they do not ask to alter the summary’s wording or to stop reporting the count entirely.
+       src/acceptance/cli.py#@@ -286,26 +286,26 @@ def _summary(requirement_map, total: int) -> str:
+       src/acceptance/cli.py#@@ -344,12 +344,9 @@ def _requirement_block(
+       tests/requirement/test_requirement_map.py#@@ -334,10 +562,7 @@ def test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing():
+       tests/requirement/test_requirement_map.py#@@ -375,35 +610,23 @@ def test_an_obligation_no_requirement_claims_is_still_shown():
+  2. [in_service] `RequirementMap.unyielding()` now has a broader docstring, but more importantly the separate `undisposed()` accessor was removed. The obligations call for removing references to the removed disposition, yet they do not explicitly require deleting this public method; that is an API change beyond the stated update scope.
+       src/acceptance/review_state.py#@@ -364,23 +361,17 @@ class RequirementMap(_Model):
+       tests/test_cli.py#@@ -948,11 +949,14 @@ def test_the_pipeline_persists_the_requirement_map(git_repo, tmp_path, stub_mode
+  3. [in_service] `Disposition` lost the `UNDISPOSED` enum member. Removing the removed disposition is requested, but this is still a public symbol change with external API impact, so it is a notable interface break beyond the minimum needed to satisfy the documentation and parsing requirements.
+       src/acceptance/review_state.py#@@ -280,17 +280,18 @@ class Disposition(str, Enum):
+       src/acceptance/review_state.py#@@ -319,10 +320,6 @@ class RequirementDisposition(_Model):
+       tests/requirement/test_requirement_map.py#@@ -192,16 +235,202 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
+       tests/requirement/test_requirement_map.py#@@ -263,7 +492,6 @@ def test_a_disposition_naming_a_renamed_obligation_still_links():
+       tests/test_cli.py#@@ -4,6 +4,7 @@ import pytest
+  4. [in_service] The parser now rejects duplicate, unknown, missing, and unproduced requirement ids by raising `SchemaValidationError` instead of reconciling them into a map. The obligations require rejection of missing and unknown requirements and no map on rejection, but the duplicate-id rejection and the specific new error paths are extra behavior not explicitly called for.
+       src/acceptance/requirement/obligations.py#@@ -311,56 +357,84 @@ def _requirement_map(
+       tests/requirement/test_requirement_map.py#@@ -146,12 +185,12 @@ def test_a_requirement_the_response_never_mentions_is_recorded_as_undisposed():
+       tests/requirement/test_requirement_map.py#@@ -192,16 +235,202 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
+  5. [in_service] The response-model implementation was changed to rely on `Union`, `Literal`, and schema-shape behavior to satisfy strict-mode constraints. The obligations require pydantic typed schemas and strict-mode compatibility, but the added dependency on union-shape encoding details and the new `SchemaValidationError` import are implementation choices beyond the explicit requirements.
+       src/acceptance/requirement/obligations.py#@@ -28,9 +34,11 @@ destroys the one thing the review exists to detect. Pinned by a test.
+       src/acceptance/requirement/obligations.py#@@ -173,14 +181,52 @@ class _OpenQuestion(StrictResponseModel):
+       src/acceptance/requirement/obligations.py#@@ -311,56 +357,84 @@ def _requirement_map(
+  6. [in_service] `tests/support.py` now auto-completes empty `requirement_dispositions` into full decline lists for any client helper that returns `[]`. The obligations require tests to avoid live model calls and to cover the new parsing behavior, but they do not ask to change the generic test doubles so that empty lists are rewritten behind the scenes.
+       tests/support.py#@@ -34,10 +34,17 @@ def _fake_response(content: str) -> SimpleNamespace:
+       tests/support.py#@@ -127,7 +134,7 @@ def client_dispatching(
+       tests/support.py#@@ -141,6 +148,57 @@ def client_dispatching(
+  7. [in_service] The benchmark doubles were changed from returning empty disposition lists to synthesizing full decline lists. That is a behavior change in test fixtures beyond merely updating references to the removed disposition, and it is not specifically required by the obligations.
+       tests/benchmark/degenerate_decomposers.py#@@ -35,7 +35,7 @@ from typing import Any
+       tests/benchmark/degenerate_decomposers.py#@@ -80,13 +80,8 @@ def _faithful(labels: GroundTruthLabels) -> dict[str, Any]:
+       tests/benchmark/degenerate_decomposers.py#@@ -143,7 +138,19 @@ def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
+       tests/benchmark/degenerate_judges.py#@@ -37,7 +37,7 @@ from typing import Any
+       tests/benchmark/degenerate_judges.py#@@ -80,6 +80,7 @@ def _decomposition(obligations: list[dict]) -> dict:
+       tests/benchmark/degenerate_judges.py#@@ -97,7 +98,17 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+  8. [in_service] The requirement-map tests were expanded with many new rejection cases, schema-shape assertions, and filesystem-wide scans for `UNDISPOSED`. The obligations ask for tests covering parse rejection and schema constraints, but not for a repository-wide AST search or the extra broad assertions about every new failure mode.
+       tests/requirement/test_requirement_map.py#@@ -17,9 +17,15 @@ invariant — no live calls.
+       tests/requirement/test_requirement_map.py#@@ -56,12 +62,32 @@ def _obligation(oid: str, description: str, quote: str) -> dict:
+       tests/requirement/test_requirement_map.py#@@ -103,7 +129,7 @@ def test_each_registry_entry_carries_the_span_of_its_requirement():
+       tests/requirement/test_requirement_map.py#@@ -124,14 +150,27 @@ def test_a_fully_accounted_response_leaves_no_requirement_undisposed():
+       tests/requirement/test_requirement_map.py#@@ -146,12 +185,12 @@ def test_a_requirement_the_response_never_mentions_is_recorded_as_undisposed():
+       tests/requirement/test_requirement_map.py#@@ -175,14 +214,18 @@ def test_a_requirement_deliberately_yielding_nothing_carries_its_reason():
+       tests/requirement/test_requirement_map.py#@@ -192,16 +235,202 @@ def test_a_yielded_claim_naming_no_real_obligation_is_not_honoured():
+       tests/requirement/test_requirement_map.py#@@ -263,7 +492,6 @@ def test_a_disposition_naming_a_renamed_obligation_still_links():
+       tests/requirement/test_requirement_map.py#@@ -334,10 +562,7 @@ def test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing():
+       tests/requirement/test_requirement_map.py#@@ -364,9 +589,19 @@ def test_an_obligation_no_requirement_claims_is_still_shown():
+       tests/requirement/test_requirement_map.py#@@ -375,35 +610,23 @@ def test_an_obligation_no_requirement_claims_is_still_shown():
+  9. [in_service] The supplied-ids helper was generalized to recurse through unions and lists. The obligations do require the id constraint to survive union item types, but the broader refactor of the helper’s traversal logic and union-origin handling is an implementation expansion beyond the minimum requested change.
+       src/acceptance/supplied_ids.py#@@ -33,13 +33,17 @@ than dropped. Dropping is what made the original defect invisible.
+       src/acceptance/supplied_ids.py#@@ -63,16 +67,27 @@ def _constrained_nested(annotation: Any, allowed: Mapping[str, Sequence[str]]) -
+       tests/test_supplied_ids.py#@@ -13,6 +13,10 @@ honour is RECORDED rather than dropped.
+       tests/test_supplied_ids.py#@@ -32,6 +36,22 @@ class _Container(StrictResponseModel):
+       tests/test_supplied_ids.py#@@ -68,6 +88,31 @@ def test_a_list_valued_id_field_constrains_its_items():
+
+Recommended tests:
+  1. Parsing can distinguish disposition variants by a literal discriminator field.
+       inputs:  A decomposition response whose `requirement_dispositions` contains two different variant shapes that share the same `requirement_id` field but differ only by the literal `disposition` tag, plus a negative control where the tag is omitted or made non-literal in a hand-built schema/instance. Use at least one `yielded` entry and one `no_obligation` entry so the parser must choose the correct variant by the literal tag, not by `requirement_id` alone.
+       detects: Disposition variants use a non-literal or missing discriminator field, or the union is treated as a plain same-shape union keyed only by `obligation_id`/`requirement_id`, making parse-time matching ambiguous.
+       full detail: acceptance recommendation --criterion obligation-unambiguous-literal-discriminators
+  2. Malformed yielded responses are rejected during parsing.
+       inputs:  A raw `_Decomposition`-shaped payload with a `requirement_dispositions` item whose `disposition` is `yielded` but whose obligation-id payload is empty/missing: specifically omit `obligation_id` and provide `more_obligation_ids: []`. This is the exact shape that should be unrepresentable if the schema is correct.
+       detects: Malformed yielded responses are accepted during parsing even when they name no obligations, allowing an empty yielded disposition to slip through.
+       full detail: acceptance recommendation --criterion obligation-yielded-empty-obligations-rejected
+  3. Parsing failure prevents construction of a RequirementMap.
+       inputs:  A response that is rejected during reconciliation for a single concrete reason, such as one requirement omitted from `requirement_dispositions` or one duplicate requirement id, while the rest of the response is otherwise valid. Use the same task fixture as the existing requirement-map tests so the registry is non-empty and the failure is deterministic.
+       detects: Parsing raises an error but still returns or stores a partial `RequirementMap`, so a rejected response can leak a partially constructed map.
+       full detail: acceptance recommendation --criterion obligation-rejected-response-produces-no-map
+  4. Schema types follow the repository's pydantic-model pattern.
+       inputs:  A schema-introspection test against the response model classes used by decomposition, especially `_Decomposition` and the disposition union. Inspect the generated pydantic schema and the model classes themselves rather than runtime behavior. Include the union member classes and the container model so the test can verify the repository’s pydantic-model pattern end to end.
+       detects: Schema types are implemented with the wrong pattern, such as plain dataclasses/TypedDicts or a tagged union that emits `oneOf` plus `discriminator`, which would not match the repository’s pydantic strict-mode approach.
+       full detail: acceptance recommendation --criterion obligation-pydantic-typed-schemas
+  5. The test suite runs without contacting a live model endpoint.
+       inputs:  A test that exercises the full test suite’s model-call path using a stubbed client or transcript fixture, and a guard that fails if any code path attempts a real network/model endpoint call. The input should be one of the existing offline fixtures that already drives `decompose(...)` or the CLI, so the test can prove the path stays local.
+       detects: A test path actually contacts a live model endpoint instead of replaying or using local fixtures, or a live-call branch exists but is not exercised by the current suite.
+       full detail: acceptance recommendation --criterion obligation-tests-no-live-model-calls
+  6. Open-question responses without question ids are rejected.
+       inputs:  A decomposition response containing an `open_question` disposition item with a literal `disposition: 'open_question'` but no `open_question_id` and an empty `more_open_question_ids` list. Pair it with otherwise valid items so the only failure is the empty open-question payload.
+       detects: Open-question responses without question ids are accepted, allowing an empty open-question disposition to parse when it should be rejected.
+       full detail: acceptance recommendation --criterion obligation-open-question-empty-rejected
+  7. The test suite includes coverage for the yielded-empty schema constraint.
+       inputs:  A schema-level test that feeds the response model an empty-yielded shape and asserts the schema/validation constraint is enforced at the model boundary. Use the exact `_Decomposition` model and its `requirement_dispositions` item schema, with `yielded` missing `obligation_id` and `more_obligation_ids` empty.
+       detects: The test suite lacks coverage for the yielded-empty schema constraint, so a regression could remove the structural requirement while existing tests still pass.
+       full detail: acceptance recommendation --criterion obligation-schema-test-rejects-empty-yielded
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

@@ -33,12 +33,16 @@ than dropped. Dropping is what made the original defect invisible.
 
 from __future__ import annotations
 
+import types
 from collections.abc import Container, Iterable, Mapping, Sequence
-from typing import Any, Literal, TypeVar, get_args, get_origin
+from typing import Any, Literal, TypeVar, Union, get_args, get_origin
 
 from pydantic import BaseModel, create_model
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
+
+# `Union[A, B]` and `A | B` are distinct origins on 3.10; both reach here.
+_UNION_ORIGINS = (Union, types.UnionType)
 
 
 def _literal(ids: Sequence[str]) -> Any:
@@ -63,16 +67,27 @@ def _constrained_nested(annotation: Any, allowed: Mapping[str, Sequence[str]]) -
     The id fields live on the *item* model (`_TestMapping.obligation_ids`), not
     on the container the call returns (`_Mappings.mappings`), so the walk has to
     descend rather than look only at top-level fields.
+
+    A union is walked member by member. Without that, a response model whose
+    item type is a union of per-disposition shapes (`obligations.py`) would
+    quietly lose its id constraint: the walk would find no `BaseModel` to
+    descend into, return None, and the guarantee would vanish with nothing
+    failing — the shape of defect this walk exists to prevent.
     """
     if isinstance(annotation, type) and issubclass(annotation, BaseModel):
         nested = constrain(annotation, allowed)
         return None if nested is annotation else nested
+    if get_origin(annotation) in _UNION_ORIGINS:
+        members = get_args(annotation)
+        rebuilt = [_constrained_nested(member, allowed) or member for member in members]
+        if all(new is old for new, old in zip(rebuilt, members)):
+            return None
+        return Union[tuple(rebuilt)]
     if get_origin(annotation) is list:
         args = get_args(annotation)
         item = args[0] if args else None
-        if isinstance(item, type) and issubclass(item, BaseModel):
-            nested = constrain(item, allowed)
-            return None if nested is item else list[nested]  # type: ignore[valid-type]
+        nested = _constrained_nested(item, allowed) if item is not None else None
+        return None if nested is None else list[nested]  # type: ignore[valid-type]
     return None
 
 

@@ -13,6 +13,10 @@ honour is RECORDED rather than dropped.
 """
 
 import json
+from typing import Literal, Union
+
+import pytest
+from pydantic import ValidationError
 
 from acceptance.evidence.discovery import DiscoveredTest, DiscoveryReason
 from acceptance.evidence.mapping import map_tests_to_obligations
@@ -30,6 +34,22 @@ class _Item(StrictResponseModel):
 
 class _Container(StrictResponseModel):
     items: list[_Item]
+
+
+class _FirstShape(StrictResponseModel):
+    kind: Literal["first"]
+    obligation_id: str
+    rationale: str
+
+
+class _SecondShape(StrictResponseModel):
+    kind: Literal["second"]
+    obligation_id: str
+    note: str
+
+
+class _UnionContainer(StrictResponseModel):
+    items: list[Union[_FirstShape, _SecondShape]]
 
 
 def _test(test_id: str, source: str = "def t():\n    pass") -> DiscoveredTest:
@@ -66,6 +86,31 @@ def test_a_list_valued_id_field_constrains_its_items():
 
     field = schema["properties"]["items"]["items"]["properties"]["obligation_ids"]
     assert field["items"]["enum"] == ["ob-1"]
+
+
+def test_a_union_of_item_shapes_constrains_every_member():
+    """The walk must descend through a union, not stop at it.
+
+    `_Decomposition` returns a union of per-disposition shapes (M1.2.r2), and
+    every member carries the same `requirement_id`. Before this, the walk found
+    no `BaseModel` to descend into, returned None, and the constraint vanished
+    with nothing failing — the guarantee would have been silently gone while
+    every existing test still passed, which is the shape of defect the walk
+    exists to prevent.
+    """
+    constrained = constrain(_UnionContainer, {"obligation_id": ["ob-1", "ob-2"]})
+    schema = inline_schema_refs(constrained.model_json_schema())
+
+    members = schema["properties"]["items"]["items"]["anyOf"]
+    assert len(members) == 2
+    for member in members:
+        assert member["properties"]["obligation_id"]["enum"] == ["ob-1", "ob-2"]
+
+    # And it still refuses an id outside the supplied set, through the union.
+    with pytest.raises(ValidationError):
+        constrained.model_validate(
+            {"items": [{"kind": "first", "obligation_id": "ob-9", "rationale": "."}]}
+        )
 
 
 def test_a_foreign_id_does_not_validate_against_the_constrained_schema():

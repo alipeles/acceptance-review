@@ -1,0 +1,193 @@
+Requirements: 31   with obligations: 22   deliberately none: 1   UNACCOUNTED FOR: 8
+
+[task-01] `requirement/task_file.py::parse_task_file` claims a list item using the first
+    inline text found inside that item. A list item whose children are a paragraph
+    followed by a nested bullet list is therefore spanned by its first paragraph alone,
+    and the nested list is never visited. Because the item was claimed, the nested text
+    never reaches `unclaimed` either.
+    -> obligation-claim-nested-content-reachable  [functional/explicit]   (also serves task-03, exclusion-01, completion-02)
+       Make content nested inside a claimed list item reachable so it is either
+       extracted as a requirement in its own right or recorded as unread text, with
+       every nested region accounted for exactly once by one of those two readings.
+
+[task-02] Nested requirements consequently reach neither the requirement registry nor
+    `unread_source`. The guard #202 added does not merely fail to notice the loss: it
+    reports `unaccounted for: 0` and so affirmatively certifies the mandate as fully
+    read while requirements are missing. The same loss applies to the second and
+    subsequent paragraphs of a single list item, and to any block nested inside a
+    claimed list item, including nested code fences and nested tables.
+    -> obligation-nested-content-either-registry-or-unclaimed  [invariant/explicit]   (also serves constraint-01)
+       Preserve the invariant that content nested inside a claimed list item is either a
+       requirement registry entry or an unclaimed span.
+    -> obligation-unread-source-covers-nested-text  [functional/explicit]   (also serves constraint-03)
+       Count task-file text nested inside recognised sections in `unclaimed`, not only
+       text under unrecognised top-level headings.
+    -> obligation-zero-unread-when-all-blocks-claimed  [regression/explicit]   (also serves completion-08)
+       Preserve the behavior that a task file whose every block is claimed reports zero
+       unread blocks.
+
+[task-03] Make every region of a task file reachable. Content nested inside a claimed
+    list item is either extracted as a requirement in its own right or recorded as
+    unread text, and never neither. Which of those two readings a nested bullet gets is
+    decided as part of this change.
+    -> obligation-claim-nested-content-reachable  [functional/explicit]   (also serves task-01, exclusion-01, completion-02)
+       Make content nested inside a claimed list item reachable so it is either
+       extracted as a requirement in its own right or recorded as unread text, with
+       every nested region accounted for exactly once by one of those two readings.
+    -> obligation-nested-bullet-reading-recorded  [human_review/explicit]   (also serves completion-02, completion-09)
+       Record the chosen reading for a nested bullet as either a requirement of its own
+       or a continuation of its parent.
+
+[constraint-01] Content nested inside a claimed list item is either a requirement
+    registry entry or an unclaimed span.
+    -> obligation-nested-content-either-registry-or-unclaimed  [invariant/explicit]   (also serves task-02)
+       Preserve the invariant that content nested inside a claimed list item is either a
+       requirement registry entry or an unclaimed span.
+
+[constraint-02] No non-whitespace, non-heading region of a task file is absent from both
+    the requirement registry and `unclaimed`.
+    -> obligation-no-region-dropped-from-registry-or-unclaimed  [invariant/explicit]
+       Preserve coverage so no non-whitespace, non-heading region of a task file is
+       absent from both the requirement registry and `unclaimed`.
+
+[constraint-03] `unclaimed` accounts for task-file text nested inside recognised
+    sections, not only text under unrecognised top-level headings.
+    -> obligation-unread-source-covers-nested-text  [functional/explicit]   (also serves task-02)
+       Count task-file text nested inside recognised sections in `unclaimed`, not only
+       text under unrecognised top-level headings.
+
+[constraint-04] A requirement id is its section and its ordinal within that section, in
+    parse order.
+    -> obligation-requirement-id-section-and-ordinal  [functional/explicit]
+       Assign each requirement id from its section and its ordinal within that section,
+       in parse order.
+
+[constraint-05] Requirement ids are assigned by the code, never by the model.
+    -> obligation-requirement-ids-code-assigned  [invariant/explicit]
+       Keep requirement id assignment in code rather than by the model.
+
+[constraint-06] Requirement ids are identical across two runs over byte-identical task
+    text.
+    -> obligation-requirement-ids-deterministic-across-runs  [regression/explicit]
+       Keep requirement ids identical across two runs over byte-identical task text.
+
+[constraint-07] Each registry entry carries the `TextSpan` of the requirement it
+    identifies.
+    -> obligation-registry-entry-carries-textspan  [functional/explicit]
+       Ensure each registry entry carries the `TextSpan` of the requirement it
+       identifies.
+
+[constraint-08] Recorded unclaimed text is rendered by both the decompose output and the
+    §16 report.
+    -> obligation-unclaimed-rendered-in-decompose-and-report  [explanation_observability/explicit]
+       Render recorded unclaimed text in both the decompose output and the §16 report.
+
+[constraint-09] Typed schemas are pydantic models, as the rest of the repository defines
+    them.
+    -> obligation-pydantic-schemas  [compatibility/explicit]
+       Keep typed schemas implemented as pydantic models, matching the repository's
+       existing schema style.
+
+[constraint-10] Tests issue no live model calls.
+    -> obligation-no-live-model-calls-in-tests  [compatibility/explicit]
+       Keep tests free of live model calls.
+
+[exclusion-01] Changing how obligations are derived from the requirements the model is
+    shown. What changes is which regions of the task file become requirements or unread
+    text.
+    -> obligation-claim-nested-content-reachable  [functional/explicit]   (also serves task-01, task-03, completion-02)
+       Make content nested inside a claimed list item reachable so it is either
+       extracted as a requirement in its own right or recorded as unread text, with
+       every nested region accounted for exactly once by one of those two readings.
+
+[exclusion-02] Whether an obligation links to the requirement that actually states it,
+    which is #210.
+    !! UNACCOUNTED FOR — the decomposer did not address this
+       disposition 'yielded' named no usable output
+
+[exclusion-03] Whether mandate coverage bounds the completion verdict, which is #214.
+    !! UNACCOUNTED FOR — the decomposer did not address this
+       disposition 'yielded' named no usable output
+
+[exclusion-04] Aligning requirement ids across two versions of a task file, which is
+    #209.
+    !! UNACCOUNTED FOR — the decomposer did not address this
+       disposition 'yielded' named no usable output
+
+[exclusion-05] De-duplicating semantically duplicate obligations, which is #144.
+    !! UNACCOUNTED FOR — the decomposer did not address this
+       disposition 'yielded' named no usable output
+
+[exclusion-06] Rebuilding #195's regression suite to bind its labels to the mapping,
+    which is #211.
+    !! UNACCOUNTED FOR — the decomposer did not address this
+       disposition 'yielded' named no usable output
+
+[exclusion-07] Measuring whether decomposition recall improves as a result of this
+    change.
+    !! UNACCOUNTED FOR — the decomposer did not address this
+       disposition 'yielded' named no usable output
+
+[exclusion-08] Supporting task-file structures beyond the §7.1 format the parser already
+    recognises.
+    !! UNACCOUNTED FOR — the decomposer did not address this
+       disposition 'yielded' named no usable output
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker with no standalone requirement.
+
+[completion-02] The nested-bullet reproduction recorded on #216 yields either five
+    requirements, or two requirements plus three unread blocks.
+    -> obligation-claim-nested-content-reachable  [functional/explicit]   (also serves task-01, task-03, exclusion-01)
+       Make content nested inside a claimed list item reachable so it is either
+       extracted as a requirement in its own right or recorded as unread text, with
+       every nested region accounted for exactly once by one of those two readings.
+    -> obligation-nested-bullet-reading-recorded  [human_review/explicit]   (also serves task-03, completion-09)
+       Record the chosen reading for a nested bullet as either a requirement of its own
+       or a continuation of its parent.
+
+[completion-03] A list item holding two paragraphs loses neither paragraph.
+    -> obligation-list-item-paragraphs-preserved  [functional/explicit]
+       Preserve every paragraph within a list item so a list item holding two paragraphs
+       loses neither paragraph.
+
+[completion-04] A block nested inside a claimed list item that is neither a paragraph
+    nor a bullet — a code fence or a table — is reachable by the same rule.
+    -> obligation-nested-nonparagraph-blocks-reachable  [functional/explicit]
+       Make blocks nested inside a claimed list item that are not paragraphs or bullets
+       reachable under the same coverage rule.
+
+[completion-05] A test asserts that every non-whitespace, non-heading region of a task
+    file lies inside either a registry span or an unclaimed span.
+    -> obligation-coverage-assertion-all-nonheading-regions  [functional/explicit]
+       Assert that every non-whitespace, non-heading region of a task file lies inside
+       either a registry span or an unclaimed span.
+
+[completion-06] That coverage assertion runs over the repository's own committed task
+    files.
+    -> obligation-coverage-assertion-committed-task-files  [functional/explicit]
+       Run the coverage assertion over the repository's own committed task files.
+
+[completion-07] That coverage assertion runs over the `tests/fixtures/decompose-
+    stability/` corpus.
+    -> obligation-coverage-assertion-fixtures-corpus  [functional/explicit]
+       Run the coverage assertion over the `tests/fixtures/decompose-stability/` corpus.
+
+[completion-08] A task file whose every block is claimed still reports zero unread
+    blocks.
+    -> obligation-zero-unread-when-all-blocks-claimed  [regression/explicit]   (also serves task-02)
+       Preserve the behavior that a task file whose every block is claimed reports zero
+       unread blocks.
+
+[completion-09] The chosen reading of a nested bullet — a requirement of its own, or a
+    continuation of its parent — is recorded in a Decision Record or on #216.
+    -> obligation-nested-bullet-reading-recorded  [human_review/explicit]   (also serves task-03, completion-02)
+       Record the chosen reading for a nested bullet as either a requirement of its own
+       or a continuation of its parent.
+
+[completion-10] The decomposition-accuracy figure is marked non-comparable across this
+    change where a reader meets it.
+    !! UNACCOUNTED FOR — the decomposer did not address this
+       disposition 'yielded' named no usable output
+

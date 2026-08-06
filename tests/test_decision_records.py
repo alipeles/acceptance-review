@@ -42,6 +42,20 @@ def test_dr_202_records_the_requirement_id_decision_as_resolved():
     assert "`section + ordinal`" in flat
 
 
+def test_dr_202_records_the_three_disposition_set_and_parse_time_completeness():
+    """M1.2.r2 (#217). Decision 3 named three dispositions and the
+    implementation shipped four, so the DR and the code disagreed while both
+    read as settled. A reader arriving at decision 3 must meet the amendment
+    there rather than infer it from the absence of `UNDISPOSED` in the code.
+    """
+    flat = _flat(DR_202.read_text())
+
+    assert "Amended by M1.2.r2" in flat
+    assert "UNDISPOSED" in flat and "has been removed" in flat
+    # The mechanism, not just the fact: enforcement moved to parse time.
+    assert "Completeness is now enforced at parse" in flat
+
+
 def test_dr_202_no_longer_lists_requirement_id_stability_as_open():
     """The half that matters. Adding a Resolved section while leaving the
     question under Open records the decision and hides it at the same time."""

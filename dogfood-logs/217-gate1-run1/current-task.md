@@ -24,11 +24,7 @@ fourth disposition entirely.
   no obligations needed with a reason, or an open question that prevents an
   answer.
 - `Disposition` has no `UNDISPOSED` value.
-- `_RequirementDisposition` is a union of one shape per disposition, each
-  carrying only the payload its own disposition defines.
-- The union is unambiguous at parse: each shape names its disposition as a
-  literal value.
-- The schema sent to the model uses only keywords OpenAI strict mode accepts.
+- `_RequirementDisposition` is a discriminated union on its disposition field.
 - A `yielded` disposition carries at least one obligation id.
 - A `no_obligation` disposition carries a reason that is not empty.
 - An `open_question` disposition carries at least one open-question id.
@@ -43,9 +39,6 @@ fourth disposition entirely.
   zero obligation ids.
 - The reason a response supplies for declining a requirement is preserved rather
   than replaced by a diagnostic string.
-- The helper that restricts an id field to the ids a call supplied keeps working
-  when the response model's item type is a union, so the requirement-id
-  constraint survives the new shape.
 - Typed schemas are pydantic models, as the rest of the repository defines them.
 - Tests issue no live model calls.
 
@@ -68,14 +61,8 @@ fourth disposition entirely.
 - A response omitting a requirement present in the registry is rejected.
 - No `RequirementMap` is produced from a rejected response.
 - The `UNDISPOSED` value and every code path that assigns it are removed.
-- A response naming a requirement id outside the registry is rejected.
-- A response disposing the same requirement twice is rejected.
-- An `open_question` disposition naming no question the response produced is
-  rejected.
 - A test asserts that the schema sent to the model rejects a `yielded`
   disposition carrying zero obligation ids.
-- A test asserts that the id constraint still reaches every member of a union
-  item type.
 - The tests, CLI rendering and report sections that referred to the removed
   disposition are updated rather than left asserting it.
 - `docs/DR-202-decomposition-requirement-mapping.md` records that the

@@ -207,9 +207,13 @@ def _mandate_coverage_block(requirement_map: RequirementMap) -> list[str]:
     yielded no obligation used simply not to appear anywhere in the review, so a
     breakdown covering 20 of 29 requirements read exactly like one covering all
     29 — the reader was told nothing was missing because nothing was there to
-    say it. Rendering the empty case is the whole point: an `undisposed`
-    requirement is a claim about the REVIEW, not about the code, and it belongs
-    in front of the person who can act on it.
+    say it. Rendering the empty case is the whole point: a requirement that
+    produced nothing is a claim about the REVIEW, not about the code, and it
+    belongs in front of the person who can act on it.
+
+    Every entry here is now a decision the decomposer *made* — declined with a
+    reason, or turned into an open question. A requirement it simply failed to
+    address cannot appear, because that response no longer parses (M1.2.r2).
     """
     total = len(requirement_map.requirements)
     if not total:

@@ -4,6 +4,7 @@ import pytest
 
 from acceptance.cli import main, run_check
 from acceptance.config import DEFAULT_SEED, RunConfig
+from acceptance.review_state import Disposition
 from acceptance.review_store import ReviewStore
 from tests.support import client_finding_nothing
 
@@ -948,11 +949,14 @@ def test_the_pipeline_persists_the_requirement_map(git_repo, tmp_path, stub_mode
     """Wiring, not the function (CLAUDE.md).
 
     `decompose` building a mapping is worth nothing if `run_review` drops it on
-    the floor — the shape of hole defect injection keeps finding here. The stub
-    client accounts for no requirement at all, so every one of them must come
-    back `undisposed`: a review that persisted an empty or absent map would be
-    indistinguishable from one whose decomposer read the whole mandate, which is
-    the exact defect M1.2.r1 exists to close.
+    the floor — the shape of hole defect injection keeps finding here. A review
+    that persisted an empty or absent map would be indistinguishable from one
+    whose decomposer read the whole mandate, which is the exact defect M1.2.r1
+    exists to close.
+
+    The stub declines every requirement, which since M1.2.r2 is the only way a
+    decomposer can produce nothing and still answer: a response that accounts
+    for no requirement at all no longer parses.
     """
     task = tmp_path / "task.md"
     task.write_text(
@@ -973,7 +977,10 @@ def test_the_pipeline_persists_the_requirement_map(git_repo, tmp_path, stub_mode
         "constraint-02",
         "exclusion-01",
     ]
-    assert len(stored.requirement_map.undisposed()) == 4
+    assert len(stored.requirement_map.unyielding()) == 4
+    for entry in stored.requirement_map.dispositions:
+        assert entry.disposition is Disposition.NO_OBLIGATION
+        assert entry.reason
 
 
 def test_a_requirement_that_yielded_nothing_is_visible_in_the_report(
