@@ -327,6 +327,63 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
         )
 
 
+def test_a_disposition_cannot_carry_another_disposition_s_payload():
+    """Exclusivity is what stops the contradiction returning in a new costume.
+
+    A `yielded` entry that also carries `reason` is a response claiming both
+    dispositions at once — M1.2.r1's defect wearing different clothes. If it
+    parsed, it would bind to `_Yielded`, which has no `reason` field, so the
+    reason would be dropped on the floor exactly as it was before.
+
+    It rejects today only because `StrictResponseModel` sets `extra="forbid"`,
+    and that exists for an unrelated reason: OpenAI strict mode requires every
+    object in the schema to forbid extra properties. Nothing else records that
+    this union depends on it, so relaxing `extra` elsewhere would reopen the gap
+    with every other test still green. Hence this guard.
+    """
+    def parse(entry: dict):
+        return _Decomposition.model_validate(
+            {"obligations": [], "open_questions": [], "requirement_dispositions": [entry]}
+        )
+
+    # Claims `yielded` and supplies a decline reason alongside it.
+    with pytest.raises(ValidationError):
+        parse(
+            {
+                "requirement_id": "task-01",
+                "disposition": "yielded",
+                "obligation_id": "ob-1",
+                "more_obligation_ids": [],
+                "reason": "declined because it adds no checkable behavior",
+            }
+        )
+
+    # The mirror: were members selected by which fields are present rather than
+    # by the literal tag, this would match `_Yielded` and turn a decline into a
+    # yield.
+    with pytest.raises(ValidationError):
+        parse(
+            {
+                "requirement_id": "task-01",
+                "disposition": "no_obligation",
+                "reason": "Not applicable.",
+                "obligation_id": "ob-1",
+                "more_obligation_ids": [],
+            }
+        )
+
+    # The control, so neither assertion above can pass vacuously.
+    clean = parse(
+        {
+            "requirement_id": "task-01",
+            "disposition": "yielded",
+            "obligation_id": "ob-1",
+            "more_obligation_ids": [],
+        }
+    )
+    assert clean.requirement_dispositions[0].ids() == ["ob-1"]
+
+
 def test_the_schema_cannot_express_an_open_question_disposition_with_no_questions():
     """The twin of the yielded case, at the schema boundary rather than at
     reconciliation: `open_question_id` is required, so the empty payload has no
