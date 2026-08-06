@@ -7,6 +7,8 @@ question blocks a positive verdict (#113).
 derive_verdict is a pure function, so these assert its output directly — no
 model call is involved in the headline result at all."""
 
+import inspect
+
 from acceptance.review_state import (
     CompletionVerdict,
     Finding,
@@ -138,3 +140,24 @@ def test_completion_result_round_trips_through_persistence():
 
     result = derive_verdict([_obligation("a", "strongly_supported")], [], [])
     assert CompletionResult.from_dict(result.to_dict()) == result
+
+def test_the_weak_count_is_read_off_the_obligations_not_the_recommendations():
+    """The summary's weak count must not be derivable from the recommendation
+    list (#218).
+
+    If it were, a response that skipped a recommendation would *lower* the
+    reported weak count — a decomposer-style blindness where answering less
+    scores better (#214). `derive_verdict` is not given the recommendations at
+    all, which is the strongest form of that guarantee; this pins it, since a
+    later refactor threading them in would look harmless.
+    """
+    obligations = [
+        _obligation("a", "nominally_supported"),
+        _obligation("b", "unsupported"),
+        _obligation("c", "strongly_supported"),
+    ]
+
+    result = derive_verdict(obligations, [], [])
+
+    assert "2 obligation(s) with non-discriminating test evidence" in result.rationale
+    assert "recommendation" not in inspect.signature(derive_verdict).parameters
