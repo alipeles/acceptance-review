@@ -17,7 +17,9 @@ invariant — no live calls.
 
 from __future__ import annotations
 
+import ast
 import inspect
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -302,6 +304,108 @@ def test_a_no_obligation_disposition_with_an_empty_reason_is_rejected():
 
     with pytest.raises((SchemaValidationError, ValidationError, ValueError)):
         decompose(parsed, _client_returning(response))
+
+
+def test_the_disposition_set_is_exactly_the_three_of_decision_3():
+    """No fourth value, and no path that could assign one.
+
+    Asserted on the enum rather than on behaviour because that is the whole
+    claim: `UNDISPOSED` encoded a state no correct run produces, and leaving the
+    value in place while removing its call sites would invite it back.
+    """
+    assert [d.value for d in Disposition] == ["yielded", "no_obligation", "open_question"]
+    assert not hasattr(Disposition, "UNDISPOSED")
+
+    # Executable references only. The docstrings that explain why the value is
+    # gone are the record of a decision that cost a Gate 1 run to find, and a
+    # text search would forbid exactly the prose worth keeping.
+    source = Path(inspect.getfile(decompose)).parent.parent
+    offenders: list[str] = []
+    for path in source.rglob("*.py"):
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            named = (
+                isinstance(node, ast.Attribute) and node.attr == "UNDISPOSED"
+            ) or (isinstance(node, ast.Name) and node.id == "UNDISPOSED")
+            if named:
+                offenders.append(f"{path.relative_to(source).as_posix()}:{node.lineno}")
+    assert offenders == [], f"the removed disposition is still referenced at {offenders}"
+
+
+def test_an_open_question_disposition_naming_no_real_question_is_rejected():
+    """The `yielded` hole has a twin on the open-question side, and closing one
+    without the other leaves the same contradiction reachable by another name."""
+    parsed = parse_task_file(TASK)
+    response = {
+        "obligations": [
+            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
+        ],
+        "open_questions": [],
+        "requirement_dispositions": [
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
+            _disposition("constraint-01", "open_question", open_question_ids=["never-asked"]),
+            _disposition("constraint-02", "no_obligation", reason="Not applicable."),
+            _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
+            _disposition("completion-01", "no_obligation", reason="Not applicable."),
+        ],
+    }
+
+    with pytest.raises(SchemaValidationError) as raised:
+        decompose(parsed, _client_returning(response))
+
+    assert "constraint-01" in str(raised.value)
+
+
+def test_a_response_naming_a_requirement_outside_the_registry_is_rejected():
+    """Constrained decoding makes a foreign id unrepresentable, but the
+    guarantee degrades when a provider ignores the constraint (#163), so the
+    local check has to exist and has to raise rather than drop."""
+    parsed = parse_task_file(TASK)
+    response = {
+        "obligations": [
+            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
+        ],
+        "open_questions": [],
+        "requirement_dispositions": [
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
+            _disposition("constraint-01", "no_obligation", reason="Not applicable."),
+            _disposition("constraint-02", "no_obligation", reason="Not applicable."),
+            _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
+            _disposition("completion-01", "no_obligation", reason="Not applicable."),
+            _disposition("constraint-99", "no_obligation", reason="No such requirement."),
+        ],
+    }
+
+    with pytest.raises(SchemaValidationError) as raised:
+        decompose(parsed, _client_returning(response))
+
+    assert "constraint-99" in str(raised.value)
+
+
+def test_a_requirement_disposed_twice_is_rejected():
+    """Two dispositions for one requirement is a response contradicting itself,
+    and picking either one silently would be the reader's problem, not the
+    model's."""
+    parsed = parse_task_file(TASK)
+    response = {
+        "obligations": [
+            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
+        ],
+        "open_questions": [],
+        "requirement_dispositions": [
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
+            _disposition("task-01", "no_obligation", reason="Also declined."),
+            _disposition("constraint-01", "no_obligation", reason="Not applicable."),
+            _disposition("constraint-02", "no_obligation", reason="Not applicable."),
+            _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
+            _disposition("completion-01", "no_obligation", reason="Not applicable."),
+        ],
+    }
+
+    with pytest.raises(SchemaValidationError) as raised:
+        decompose(parsed, _client_returning(response))
+
+    assert "more than once" in str(raised.value)
 
 
 def test_a_supplied_reason_is_preserved_rather_than_replaced():
