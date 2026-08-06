@@ -404,3 +404,51 @@ def test_a_first_review_renders_no_changes_section():
     )
 
     assert "Changes since" not in render_report(review)
+
+
+def test_a_review_with_gaps_closes_by_pointing_at_the_retrieval_command():
+    """The positive branch of `_has_gaps`, which nothing covered.
+
+    Only `"Recommended next instruction: (none)"` was asserted anywhere — the
+    no-gaps branch. The line this exists to produce appeared in no test at all,
+    just in committed fixture logs that assert nothing. Found by the tool's own
+    Gate 2 on #218, and dismissed as tautological before being checked.
+
+    It matters because the line is the only thing telling an agent the full
+    prescription is retrievable; M7.3.r1 replaced a written file with it
+    precisely so a stale artifact could not contradict the report.
+    """
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[_obligation("A", "addressed", "nominally_supported")],
+        completion=CompletionResult(
+            verdict=CompletionVerdict.INCOMPLETE,
+            rationale="1 obligation(s) with non-discriminating test evidence.",
+        ),
+    )
+
+    report = render_report(review)
+
+    assert report.endswith(
+        "Next: retrieve a criterion's full recommendation with\n"
+        "  acceptance recommendation --criterion <id>"
+    )
+    assert "Recommended next instruction: (none)" not in report
+
+
+def test_a_review_with_no_obligations_does_not_advertise_retrieval():
+    """The second condition of `_has_gaps`, and the reason it is not simply
+    "the verdict is not positive". A review with no obligations is
+    `unable_to_determine` because there was nothing to assess — pointing it at
+    the retrieval command would advertise detail that does not exist."""
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        completion=CompletionResult(
+            verdict=CompletionVerdict.UNABLE_TO_DETERMINE,
+            rationale="No obligations were derived.",
+        ),
+    )
+
+    assert render_report(review).endswith("Recommended next instruction: (none)")

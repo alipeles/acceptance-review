@@ -31,7 +31,7 @@ runs.
 |---|---|
 | `typed-schemas-are-pydantic-models` | **#148** — present in all three runs, and in both of #217's. Design/approach obligation, no test can evidence it. |
 | `tests-avoid-live-model-calls` | **#148** — standing repo invariant, not this change's behaviour. |
-| `closing-line-points-at-retrieval-command` | **#180/#193** — oscillating. Its recommendation ("the same closing line text but it no longer corresponds to the retrieval command internally") is a tautology; the line is asserted by existing report tests. |
+| `closing-line-points-at-retrieval-command` | **A REAL GAP — this judgement was wrong when first written.** See below. |
 
 ## Unrequested changes
 
@@ -45,3 +45,33 @@ mandate. Recorded rather than waved off.
 
 Two of three attributed to #148, one to #180/#193. All three tracked. Nothing
 waived, nothing suppressed.
+
+
+## Correction: one finding was dismissed without being checked
+
+The row above originally read *"tautology; the line is asserted by existing
+report tests"*. That was asserted, not verified, and it was false.
+
+Only the **negative** branch was covered — `"Recommended next instruction:
+(none)"`, in three places. The line the obligation actually names —
+
+    Next: retrieve a criterion's full recommendation with
+      acceptance recommendation --criterion <id>
+
+— appeared in **no test anywhere**, only in committed fixture logs under
+`tests/fixtures/rating-stability/`, which assert nothing. `_has_gaps` has two
+non-trivial conditions and only its false branch was exercised.
+
+It matters: that line is the only thing telling an agent the full prescription
+is retrievable, and M7.3.r1 replaced a written file with it precisely so a stale
+artifact could not contradict the report.
+
+Both branches are now covered by
+`test_a_review_with_gaps_closes_by_pointing_at_the_retrieval_command` and
+`test_a_review_with_no_obligations_does_not_advertise_retrieval`.
+
+**The process failure is the point.** CLAUDE.md requires reading a recommendation
+before forming an opinion on the finding — and this dismissal was written
+*after* quoting that rule in the same session. Instability in the surrounding
+findings made "probably noise" an easy and wrong default. DR-180's warning is
+exactly this: instability is not a licence to dismiss a finding.
