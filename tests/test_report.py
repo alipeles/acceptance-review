@@ -215,7 +215,13 @@ def test_open_questions_and_recommendations_are_numbered():
     assert "recommended test: Daily rate uses days_in_month" in obligation_block
     assert "detects: hard-codes /30" in obligation_block
     assert "full detail: acceptance recommendation --criterion a" in obligation_block
-    assert "Recommended tests:" not in report
+
+    # Asserted by COUNT, not by the absence of a header string. A standalone
+    # block restates the criterion, so "appears exactly once" catches one under
+    # any heading — or none — where `"Recommended tests:" not in report` only
+    # catches the old spelling.
+    assert report.count("Daily rate uses days_in_month") == 1
+    assert report.count("detects: hard-codes /30") == 1
 
 
 def test_a_recommendation_sits_under_its_own_obligation_and_no_other():
