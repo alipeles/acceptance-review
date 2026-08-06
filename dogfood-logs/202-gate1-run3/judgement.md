@@ -40,6 +40,16 @@ cause**: the positive-invariant instruction was already in place for run 2 and
 recovered only 2 of 10. The unresolvable-reference confusion recovered the other
 8. The prohibition framing was a contributing factor at most.
 
+> **CORRECTED after Gate 2 run 2. The claim that this "fixed" the declines does
+> not survive.** With the prompt unchanged and the task file edited by six added
+> bullets and two rewordings, exclusions fell back to **1 of 10** yielding —
+> including two that name no issue number at all, so the unresolvable-reference
+> mechanism is not what is operating. The rule moved the outcome on one input; it
+> did not make the behaviour stable. What stands is the refutation of the
+> positive-invariant hypothesis, which rests on runs 2 and 3 together. What does
+> not stand is any claim to a fix. Recorded on #193; see
+> `dogfood-logs/202-gate2-run2/judgement.md` Finding 2.
+
 This is worth carrying into #205 and #206, which own the prompt work: the
 decomposer's failure was not that it could not phrase a prohibition, but that it
 treated its own missing context as the mandate's deficiency.
