@@ -283,6 +283,77 @@ def test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations():
     assert "discriminator" not in schema["properties"]["requirement_dispositions"]["items"]
 
 
+def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
+    """The union is plain, so the `disposition` literal is the only thing that
+    picks a member. Two entries sharing every other field must still land on
+    different shapes, or a `no_obligation` could be read as a `yielded` whose
+    ids happened to be absent — the contradiction rebuilt inside the parser.
+    """
+    parsed = _Decomposition.model_validate(
+        {
+            "obligations": [],
+            "open_questions": [],
+            "requirement_dispositions": [
+                {
+                    "requirement_id": "task-01",
+                    "disposition": "yielded",
+                    "obligation_id": "ob-1",
+                    "more_obligation_ids": [],
+                },
+                {
+                    "requirement_id": "constraint-01",
+                    "disposition": "no_obligation",
+                    "reason": "Declined.",
+                },
+            ],
+        }
+    )
+
+    first, second = parsed.requirement_dispositions
+    assert type(first).__name__ != type(second).__name__
+    assert first.ids() == ["ob-1"]
+    assert second.reason == "Declined."
+
+    # An unknown tag matches no member at all, rather than falling back to one.
+    with pytest.raises(ValidationError):
+        _Decomposition.model_validate(
+            {
+                "obligations": [],
+                "open_questions": [],
+                "requirement_dispositions": [
+                    {"requirement_id": "task-01", "disposition": "undisposed", "reason": "x"}
+                ],
+            }
+        )
+
+
+def test_the_schema_cannot_express_an_open_question_disposition_with_no_questions():
+    """The twin of the yielded case, at the schema boundary rather than at
+    reconciliation: `open_question_id` is required, so the empty payload has no
+    encoding to send."""
+    with pytest.raises(ValidationError):
+        _Decomposition.model_validate(
+            {
+                "obligations": [],
+                "open_questions": [],
+                "requirement_dispositions": [
+                    {
+                        "requirement_id": "task-01",
+                        "disposition": "open_question",
+                        "more_open_question_ids": [],
+                    }
+                ],
+            }
+        )
+
+    schema = inline_schema_refs(_Decomposition.model_json_schema())
+    members = schema["properties"]["requirement_dispositions"]["items"]["anyOf"]
+    questioned = next(
+        member for member in members if "open_question_id" in member.get("properties", {})
+    )
+    assert "open_question_id" in questioned["required"]
+
+
 def test_a_no_obligation_disposition_with_an_empty_reason_is_rejected():
     """`no_obligation` carries nothing BUT the reason, so an empty one is a
     requirement declined without saying why — the state whose reason M1.2.r1
