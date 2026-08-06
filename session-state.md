@@ -8,151 +8,109 @@ Committed, so it survives a context reset or a machine change — but still a
 scratch record, not a plan. **The GitHub issue stays authoritative** (#168).
 Clear it out when the task lands rather than letting it accrete.
 
-*Last updated: 2026-08-05*
+*Last updated: 2026-08-06*
 
 ---
 
 ## Task in flight
 
-**None.** #202 landed (`95a3856`, PR #215) and CI was green. `main` is clean.
+**#217 — M1.2.r2**, branch `issue-217-disposition-unrepresentable`, three commits
+(`76b847b`, `007966f`, `6c06517`). Not pushed, no PR.
 
-`current-task.md` still holds #202's mandate — it refers back to a finished task,
-which is expected.
+**Gate 2 is NOT clean.** Do not open a PR. See *Where it stands* below.
 
-## Next up
+## How #217 came to exist
 
-Board order is set. **#216 is first**, and the ordering deliberately puts
-measurement ahead of the DR-202 siblings:
+#216 was the intended task. Its **Gate 1 never passed**: 8 of 31 requirements
+came back `yielded` with an empty id list. The transcript showed the model had
+supplied a substantive `no_obligation` reason for every one, and
+`_requirement_map` discarded it because the label disagreed with the payload,
+recording the requirement as unaccounted-for instead.
 
-| order | issue | |
-|---|---|---|
-| 413.05 | **#216** | nested bullets dropped silently, guard reports zero |
-| 413.10 | **#211** | rebuild #195's suite; link precision vs coverage |
-| 413.15 | #210 | mapping over-merges onto adjacent requirements |
-| 413.2–413.6 | #204, #205, #206, #144, #207 | the DR-202 siblings |
-| 413.7–413.85 | #214, #213, #212, #209 | |
+So the fourth disposition `M1.2.r1` added, `UNDISPOSED`, was turning malformed
+responses into soft findings that still reached a verdict. #202 is correctly
+closed — its acceptance genuinely passed — and #217 supersedes it.
 
-**Why this differs from DR-202's stated sequencing**, which put #144 immediately
-after #202:
+**#216 is still open and still unstarted.** Its Gate 1 must be re-run after #217
+lands; the run that exposed all this is in `dogfood-logs/216-gate1-run1/`.
 
-- **#144's premise was falsified.** DR-202 decision 2 reframed it on the claim
-  that anchoring to identified requirements removes over-merging risk. #210
-  showed the reframe *relocates* over-merging into requirement linking. #144
-  needs a design revisit, not just a build. Commented on #144.
-- **#144 changes the obligation set**, so without #211 it gets judged by eyeball —
-  which is what `tests/fixtures/decompose-stability/` exists to prevent.
-- **#204/#205/#206 all edit the decompose prompt.** Each edit forces a transcript
-  re-record and makes accuracy non-comparable. Do them as one batch, not
-  interleaved with #144.
+## What #217 delivered
 
-**#214 probably wants a `decision` label and a short DR before building** — how
-mandate coverage bounds the verdict is a design question. Instinct: it should
-bound the verdict the way `Indeterminate` does rather than being averaged in.
+- three disposition shapes, each carrying only its own payload; `UNDISPOSED` and
+  every path assigning it deleted
+- reconciliation raises `SchemaValidationError` on a missing requirement, a
+  duplicate, an unknown id, or a claim naming only outputs never produced
+- a supplied reason is preserved, never replaced by a diagnostic
+- `constrain()` walks unions — **without this the `requirement_id` constraint
+  would have vanished silently** under the new shape, with every test still green
+- DR-202 decision 3 amended in place
 
-## What #202 delivered
+772 tests pass, ruff clean.
 
-- requirement registry from the parse; ids `task-01` / `constraint-01` / … are
-  **assigned by the code**. Interim — cross-version identity is #209.
-- `Decomposition` and `Review` carry a many-to-many `RequirementMap`. Every
-  requirement carries exactly one disposition, and the **code** marks
-  `UNDISPOSED` anything the response failed to account for. That last part is
-  load-bearing: without it a short disposition list is as well-formed as a
-  complete one and the schema change buys nothing.
-- `_user_prompt` passes typed identified fields, never `parsed.source`.
-- the mapping renders requirement-major in the CLI and the §16 report.
-- **a parse regression #202 itself introduced**: `parse_task_file` kept only the
-  first `# Task` paragraph. Free while the model got `parsed.source`; silent data
-  loss once the parse became authoritative. Fixed, plus `unread_source`.
+## Two things not to rediscover
 
-**Accepted Gate 2 residue** (recorded on #202): one true-positive coverage gap —
-`exclusion-01` claims *"the derivation is untouched"*, which is false — plus two
-obligations attributed to #213. Note this was a **third disposition** CLAUDE.md
-does not contemplate: accepting a true positive is neither "address it" nor
-"attribute it to a tracked tool defect".
+- **A pydantic tagged union cannot go on the wire.** `Field(discriminator=...)`
+  renders `oneOf` + `discriminator`; OpenAI strict mode accepts neither, and
+  `inline_schema_refs` leaves the mapping pointing at `$defs` it just inlined.
+  Plain `Union` renders `anyOf`, which works; `Literal` tags still disambiguate.
+- **"At least one" cannot be `min_length` either** — strict mode rejects
+  `minItems`. It is a required scalar field beside a list (`obligation_id` +
+  `more_obligation_ids`), so the guarantee is carried by the shape.
 
-## Read this before trusting any Gate 2 number
+## Where it stands — the 5 open findings
 
-**#214: `derive_verdict` never receives the requirement map**, so mandate
-coverage cannot move the verdict. A decomposer that drops requirements therefore
-scores *better* — dropped requirements cannot generate gaps.
+Gate 2 run 3 (`6ae97fd` → `6c06517`): INCOMPLETE, 5 obligations with
+non-discriminating test evidence. Down from 11 → 7 → 5. Nothing unaddressed, no
+`separable` change, mandate coverage correct.
 
-Demonstrated live in #202's Gate 2 run 2: **every headline number improved while
-mandate coverage fell 46/47 → 42/52**, because nine scope exclusions stopped
-producing obligations and fewer obligations means fewer things that can lack
-evidence. #190 and #195 both shipped on residues read under this blindness.
+Judgement in `dogfood-logs/217-gate2-run3/judgement.md`. In short:
 
-## Can the decomposer still drop a requirement? Yes — four ways
+- **2 are meta-obligations** — the task file asks that *a test exist*, so the
+  evidence stage is hunting for a test proving a test exists. Probably a
+  task-file authoring fix: state the behaviour, not the artifact.
+- **3 have direct, on-point tests** and still read non-discriminating. Whether
+  that is #183 (judgement) or #182 (mapping) is **not established** — check the
+  mapping transcript before assuming (DR-164).
 
-Asked and answered after #202 merged. What #202 closed is the *top-level silent*
-drop only.
+Each of the five needs a fix or a filed defect before a PR. None may be waived.
 
-1. **#216 — nested bullets and second paragraphs inside a list item vanish**, and
-   `unclaimed` is empty, so the guard prints `unaccounted for: 0`. Silence under
-   a clean bill of health, which is worse than #202's original bug. Our task
-   files happen not to nest bullets, which is why seven runs missed it.
-2. **`no_obligation` with a plausible reason** — visible as a claim, but nothing
-   is produced, and per #214 it does not touch the verdict.
-3. **Compound clause inside one bullet** — one bullet is one requirement id; half
-   a bullet can be lost with the disposition reading `yielded`.
-4. **False link (#210)** — disposed `yielded` against an obligation that does not
-   state it. Covered on paper, dropped in substance.
+Run 3's recommendation 2 is worth writing regardless: union members carrying
+*misleading* fields, which `extra="forbid"` turns into the strongest proof that
+dispatch is by literal tag alone.
 
-## Findings worth not re-deriving
+## Still open from the same root
 
-- **A lossy parse is safe exactly until it is authoritative** (DR-202). Any stage
-  that stops passing source and starts passing structure owes a report of what
-  its structure does not cover.
-- **Coverage is not quality.** #210's false links moved between runs while the
-  count held flat.
-- **Measure mapping from the persisted review, not `.acceptance/cache/`** — the
-  cache pools every run ever made and read 45% where the review read 80%.
-- **Mapping quality must be filtered to the current task's obligation ids.**
-  #189's Gate 2 read 76% unfiltered, 97% filtered; DR-164's failure was ~17%.
-- **A stable obligation count can conceal a re-split.** Compare aligned sets.
-- **Single-run readings are unreliable — three were withdrawn in one session**
-  (the `exclusion-04` "inversion"; "the reference rule fixed the declines"; "Gate
-  2 run 2 is much better"). Each was internally coherent when written. This is
-  the argument for #211 before any further decomposition work.
+**The decomposer declines scope exclusions outright** — 7 of 8 in #216's Gate 1,
+against the instruction already at `obligations.py:150`. #217 makes those
+declines visible and reasoned; it does not make them right. **Not yet filed.**
+Belongs in the #204/#205/#206 prompt batch, where the re-record is paid once.
 
-## The inference to avoid (DR-180)
+## The re-record cost was paid
 
-> *The diff was purely additive; added tests cannot weaken evidence; therefore a
-> rating that fell did so for reasons outside the diff.*
+`request_key` hashes the response schema (`llm.py:81-87`), so changing
+`_RequirementDisposition` invalidated **every** recorded decompose transcript.
+Decomposition-accuracy figures are non-comparable across this change.
 
-Both premises true, conclusion false. **Instability is not a licence to dismiss a
-finding.**
+## Known open, not this task's problem
 
-## Known open, not the next task's problem
-
-- **#153** — scope exclusions demanding evidence that cannot exist. Did **not**
-  fire in #202's Gate 2 runs 2–3, because the exclusions produced no obligations
-  to demand evidence for. The condition that suppressed it is worse than it.
-- **#191**, **#196**, **#178**, **#193** — judgement and decomposition defects.
-- **#129** — materialization flake in `materialize_archetype`, not a test flake.
-
-## Outstanding, small (carried, not started)
-
-- **`docs/DR-180` §Open is stale** — lists two settled questions. Own small PR.
-- **The instability harness has never been run live.** DR-202 names its first
-  live run: `decompose_case` over #195's cases with `RunConfig.model` varied.
-- **Semantic open-question aligner** — #195 matches by id + observed aliases.
+- **#210** — false links; fired again in #217's own Gate 1 (five exclusions
+  linked to an obligation that does not state them).
+- **#216** — nested bullets dropped silently; unstarted.
+- **#153**, **#191**, **#196**, **#178**, **#193**, **#214**, **#129**.
 
 ## Traps
 
-- **`acceptance decompose|check --mode record` writes nothing to stdout when
-  redirected**, though replay does. Record once, then re-run in replay to
-  capture. Still not filed.
-- **A `pgrep -f` pattern that matches your own waiter never exits.** Cost ~10 min.
-- **`ModelClient` is a plain class, not pydantic.** Hook is `_completion_fn`.
+- **`decompose|check --mode record` writes nothing to stdout when redirected.**
+  Record once, then re-run in replay to capture. Cost real time this session.
+- **A text search for a removed symbol flags its own explanation.** Use an AST
+  walk for "no code references X" so the docstrings recording *why* survive.
+- **Test doubles returning `requirement_dispositions: []` no longer parse.**
+  `tests/support.py::declining_dispositions` completes them from the ids the
+  call supplied, read off the outgoing schema's enum.
 - **Python here is 3.10** — no `enum.StrEnum`. Use `(str, Enum)`.
 - **The repo is `alipeles/acceptance-review`**, not the local dir name.
-- **`tee FILE | head -N` writes an empty file** — redirect first, then read.
 - **`gh api ... -f` sends strings**; sub-issue ids need `-F` for integers.
 - **Adding a sub-issue returns the PARENT**, so `-q .number` echoes the umbrella.
-- **pytest may import a test module under a different name** — patch `globals()`.
-- **Project `Order` IS readable** as the `order` key in `item-list --format json`;
-  writing it needs `item-edit --field-id PVTF_lAHOAYe6HM4Bd8dTzhYaetU
-  --project-id PVT_kwHOAYe6HM4Bd8dT --number <n>`.
 
 ## What to ignore
 
