@@ -34,3 +34,36 @@ written.
 
 **Nothing here is waved off. No PR until each of the five is either fixed or
 attributed to a filed defect.**
+
+
+## Re-check of all five recommendations (added later)
+
+Each was checked against the actual tests rather than judged from its `detects:`
+line. Four of five held.
+
+| # | obligation | outcome |
+|---|---|---|
+| 3 | `disposition-union-payloads` | **Real gap.** Both its recommendation and #4's asked for MIXED payloads — a `yielded` entry also carrying `reason`. Addressed in `865f6e9`. |
+| 4 | `unambiguous-literal-discriminators` | Same gap, same test. |
+| 17 | `pydantic-typed-schemas` | **#148.** See correction below. |
+| 21 | `schema-test-rejects-empty-yielded` | **#148 category 2.** `test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations` exists and does exactly what the recommendation asks. Nothing can be mapped to "a test asserts X". |
+| 22 | `union-id-test-covers-members` | **#148 category 2.** Same shape; it drew 6 mapped tests including the correct one, where 21 drew none. |
+
+### Correction on obligation 17
+
+It was reported to the human as a **mapping miss (#182)**, on the grounds that
+`test_a_union_of_item_shapes_constrains_every_member` does what recommendation 3
+describes. That was wrong.
+
+The test matches the recommendation's *prescription* — a synthetic pydantic model
+with a union-of-models field, run through the constraining and inlining path —
+but it would pass whether or not the production schemas are pydantic. It cannot
+discriminate the obligation, so the mapper had nothing on-point to miss.
+
+Obligation 17 is #148 category 1, as the #148 comment filed from this same run
+already said. The two accounts were inconsistent and this is the correct one.
+
+**The error shape is worth keeping**: naming a test that resembles the
+recommendation, without checking that the test would fail if the obligation were
+violated. The same shape produced the wrong dismissal recorded above for #218's
+`closing-line-points-at-retrieval-command`.
