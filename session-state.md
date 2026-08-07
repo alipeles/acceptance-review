@@ -8,90 +8,65 @@ Committed, so it survives a context reset or a machine change — but still a
 scratch record, not a plan. **The GitHub issue stays authoritative** (#168).
 Clear it out when the task lands rather than letting it accrete.
 
-*Last updated: 2026-08-06*
+*Last updated: 2026-08-07*
 
 ---
 
 ## Task in flight
 
-**#218**, branch `issue-218-recommendations-by-obligation`, rebased onto main
-after #217 landed. Not pushed, no PR.
+**None.** #217 landed (`1c71535`, PR #221) and #218 landed (`1ea8904`, PR #222),
+both with CI green. `main` is clean, 781 tests pass.
 
-**#217 (M1.2.r2) is merged** — `1c71535`, PR #221, CI green.
+`current-task.md` holds #218's mandate — it refers back to a finished task,
+which is expected.
 
-## What #218 does
+## What landed
 
-A test recommendation exists exactly when an obligation's test evidence is below
-strongly-supported. Two halves:
+**#217 (M1.2.r2)** — a self-contradictory requirement disposition is now
+unrepresentable. Three disposition shapes, each carrying only its own payload;
+`UNDISPOSED` and every path assigning it deleted; reconciliation raises on a
+missing requirement, a duplicate, an unknown id, or a claim naming only outputs
+the response never produced. DR-202 decision 3 amended in place.
 
-- **Placement.** Each recommendation renders inside the obligation it explains,
-  on the test-evidence axis. §16 organises output by obligation "so a criterion's
-  two axes sit together rather than in separate lists the reader must join by
-  eye", and its example report has no recommendations block at all. In #217's
-  Gate 2 the obligation and its recommendation sat ~200 lines apart, joined only
-  by a `--criterion` slug appearing nowhere in the obligation's block.
-- **Completeness.** `recommend_tests` kept whatever the response returned, so a
-  response answering 3 of 5 weak obligations produced a report where two carried
-  none — M1.2.r1's missing disposition, one stage downstream. Missing, duplicate
-  and non-weak recommendations now raise.
+**#218** — a test recommendation exists exactly when test evidence is below
+strongly-supported. Each renders inside its obligation's block; a weak
+obligation with no recommendation now raises instead of vanishing.
 
-Not in scope: whether an obligation needs test evidence at all, which is #148.
+## Start here next
 
-## The rebase had a silent hazard — look for it again next time
+**#148 is the highest-value next task**, and this session escalated it twice.
+Three comments were added with live evidence.
 
-`tests/support.py` **auto-merged cleanly and was semantically wrong**. Both
-branches added a `_completed` helper in different regions, so git reported no
-conflict and left two definitions; the second shadowed the first, which would
-have disabled #218's recommendation completion with nothing failing at merge
-time.
+Until now it produced honest `unsupported` readings that *blocked* gates. In
+#218's Gate 2 run 4 it manufactured a **green** one:
 
-Folded into one: `_supplied_enum(field, **kwargs)` walks the outgoing schema for
-any id field's enum, `declining_dispositions` is built on it, and one
-`_completed` handles both `requirement_dispositions` (#217) and
-`recommendations` (#218). `supplied_requirement_ids` is gone — it was the
-single-field version of `_supplied_enum`.
+```
+12. Represent typed schemas as pydantic models.
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         12.1  ...::test_recommendation_round_trips_through_persistence
+         12.2  ...::test_completion_result_round_trips_through_persistence
+```
 
-## Where #218 stands
+Both cited tests pass whether or not the schemas are pydantic. **The evidence is
+inverted** — the code axis, where the answer lives, cites nothing; the test
+axis, which cannot hold it, carries citations.
 
-Gate 1 passed. Gate 2 run 4 (`1c71535` → `e52a57c`) reports **NO-MATERIAL-GAPS**
-— and it should not be read as a clean gate. Judgement in
-`dogfood-logs/218-gate2-run4/judgement.md`.
+Two findings that reshape #148's deliverable:
 
-- **Not comparable to run 3.** The task file is byte-identical, yet 12 of 14
-  obligations were reworded, because #217 changed `_Decomposition`'s schema and
-  `request_key` hashes it, so the decomposition was re-derived. The 3-weak → 0
-  movement is not evidence the added tests closed anything.
-- **One false positive.** Obligation 12, *"Represent typed schemas as pydantic
-  models"* — the #148 obligation that read `unsupported` in runs 1-3 — is now
-  `strongly supported`, citing two `*_round_trips_through_persistence` tests
-  that pass whether or not the schemas are pydantic. `addressed` is claimed with
-  `(no corresponding change)`.
-- Mapping is sound (DR-164 check): 14 of 14 obligations carry mapped tests, 33
-  links, measured from the persisted review.
+- **The destination already exists.** `requires_other_evidence` is a valid
+  `evidence_class` (`review_state.py:213,220`) and `verdict.py:81` already
+  routes it to `needs_non_code_review`. It is simply never produced —
+  `strength.py:15-18` explicitly declines to invent it and defers to a coverage
+  status that does not route it either. So the work is "decide what routes into
+  the existing tier", not "build a tier".
+- **Open question to settle first:** is `needs_non_code_review` even the right
+  verdict for a design/approach obligation? It fits "docs, visual, deploy"; it
+  arguably does not fit "the import is there in the diff", which should be
+  satisfiable on code evidence alone.
 
-**The work itself is complete and genuinely tested.** The unreliability is in the
-tool's judgement of one obligation, not in the change.
-
-**#148 escalated.** Until now it produced honest `unsupported` readings that
-blocked gates. Here it manufactured a green one. Evidence attached to #148.
-
-## A correction worth not repeating
-
-Two recommendations across the two branches were dismissed wrongly, both toward
-"already covered":
-
-- #218's `closing-line-points-at-retrieval-command` was called a tautology
-  "asserted by existing report tests". Only the *negative* branch was; the line
-  the obligation names appeared in no test at all. Real gap, now covered.
-- #217's `pydantic-typed-schemas` was reported as a mapping miss (#182) because
-  a test matched the recommendation's prescription. That test would pass whether
-  or not the production schemas are pydantic, so it cannot discriminate the
-  obligation. It is #148.
-
-**The shape**: naming a test that resembles the recommendation without checking
-it would fail if the obligation were violated. Recorded in both judgement files.
-
-## Filed this session, not built
+## Also open, filed this session
 
 - **#219** — scope exclusions declined as `no_obligation` against the prompt's
   own instruction at `obligations.py:150`, with the reason stating the
@@ -101,9 +76,28 @@ it would fail if the obligation were violated. Recorded in both judgement files.
   exhaustive cases: unchanged / changed with inputs moved / changed with inputs
   unmoved. The third is the reportable event. Classification is **computed**
   from `rerun.py::stale_obligation_ids`, so no model call and no re-examination.
-  `restated` deferred behind measurement.
-- **#148** — this session's evidence attached. It now blocks Gate 2 on
-  consecutive PRs and is the strongest candidate for the next capability task.
+  `restated` is deferred behind measurement, deliberately: v1 makes case 3
+  countable, which is what a before/after comparison needs.
+- **#216** — nested bullets dropped silently. **Still unstarted**; its Gate 1 is
+  what set this whole session off. Re-run it now that #217 has landed;
+  `dogfood-logs/216-gate1-run1/` holds the original.
+
+## Judgement failures worth not repeating
+
+Two dogfood recommendations were dismissed wrongly, both toward "already
+covered", and both are corrected in their judgement files:
+
+- #218's `closing-line-points-at-retrieval-command` — called a tautology
+  "asserted by existing report tests". Only the *negative* branch was; the line
+  the obligation names appeared in no test at all.
+- #217's `pydantic-typed-schemas` — reported as a mapping miss (#182) because a
+  test matched the recommendation's prescription. That test would pass whether
+  or not the obligation held.
+
+**The shape**: naming a test that *resembles* the recommendation without
+checking it would fail if the obligation were violated. Surrounding instability
+makes "probably noise" an easy and wrong default — DR-180's warning is exactly
+this.
 
 ## Do not rediscover
 
@@ -112,9 +106,16 @@ it would fail if the obligation were violated. Recorded in both judgement files.
   `inline_schema_refs` leaves the mapping pointing at `$defs` it just inlined.
   Plain `Union` renders `anyOf`; `Literal` tags still disambiguate.
 - **"At least one" cannot be `min_length`** — strict mode rejects `minItems`.
-  Use a required scalar beside a list.
+  Use a required scalar beside a list (`obligation_id` + `more_obligation_ids`).
 - **`request_key` hashes the response schema** (`llm.py:81-87`). #217 paid this
-  for the whole decompose corpus; accuracy figures are non-comparable across it.
+  for the whole decompose corpus, so decomposition-accuracy figures are
+  non-comparable across it — and it silently re-derived #218's obligation set
+  mid-review: byte-identical task file, 12 of 14 obligations reworded.
+- **A stable obligation count can conceal a total re-split.** Compare aligned
+  sets, not counts.
+- **Test doubles returning `[]` no longer parse** for decomposition or
+  recommendations. `tests/support.py::_completed` fills both from the ids the
+  call supplied, read off the outgoing schema's enum via `_supplied_enum`.
 - **A text search for a removed symbol flags its own explanation.** Use an AST
   walk so the docstrings recording *why* survive.
 
@@ -122,16 +123,23 @@ it would fail if the obligation were violated. Recorded in both judgement files.
 
 - **`decompose|check --mode record` writes nothing to stdout when redirected.**
   Record once, then re-run in replay to capture.
+- **A commit subject starting with `#` is deleted during `rebase --continue`.**
+  `git commit -m` uses `--cleanup=whitespace` and keeps it; rebase re-reads
+  `COMMIT_EDITMSG` under `--cleanup=default` and strips it as a comment. Put the
+  issue ref at the end: `Subject line (#218)`.
+- **Two branches adding a helper to the same file in different regions
+  auto-merge cleanly and silently.** #217 and #218 both added `_completed` to
+  `tests/support.py`; git reported no conflict and left two definitions, the
+  second shadowing the first. Grep for duplicate `def` after any rebase.
 - **Python here is 3.10** — no `enum.StrEnum`. Use `(str, Enum)`.
 - **The repo is `alipeles/acceptance-review`**, not the local dir name.
 - **`gh api ... -f` sends strings**; sub-issue ids need `-F` for integers.
 - **Adding a sub-issue returns the PARENT**, so `-q .number` echoes the umbrella.
 
-## Known open, not this task's problem
+## Known open, not the next task's problem
 
-**#148** (blocks Gate 2), **#216** (unstarted — its Gate 1 started this whole
-session), **#219**, **#220**, **#210**, **#180**, **#193**, **#153**, **#191**,
-**#196**, **#178**, **#214**, **#129**.
+**#210**, **#180**, **#193**, **#153**, **#191**, **#196**, **#178**, **#214**,
+**#129**.
 
 ## What to ignore
 
