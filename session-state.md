@@ -17,9 +17,14 @@ Clear it out when the task lands rather than letting it accrete.
 **#216** — nested bullets and multi-paragraph list items dropped silently, and
 the unread-source guard reports zero. Child of #181, board order 413.05.
 
-**Gate 1 run 2 did not pass**, at `efa2cab`. Run saved to
-`dogfood-logs/216-gate1-run2/`. No code written. **Awaiting a human decision on
-whether to proceed** — see *The open decision* below.
+**Gate 1 run 2 did not pass**, at `efa2cab` — but the human reviewed it and
+cleared implementation to start. Run saved to `dogfood-logs/216-gate1-run2/`.
+No code written yet.
+
+**Next action: design and implement #216.** Its own open design fork —
+*is nested content a requirement in its own right, or a continuation of its
+parent?* — is undecided and is part of the issue. Both are defensible; #216 says
+what is not defensible is the current behaviour, which is neither.
 
 ## Gate 1 run 2 — what it found
 
@@ -47,24 +52,45 @@ same code, model and seed.
 **Zero open questions**, second consecutive run on this file, on a task file that
 explicitly states a design fork as undecided. Noted against #206.
 
-## The open decision
+## Decision taken — proceed with #216
 
-Whether to proceed to implementation on this breakdown. The tension is real:
+Human decided: **finish #216, then #204 with no linking at all, then #144 owning
+linking.** Recorded in `docs/DR-204-derivation-performs-no-linking.md`.
 
-- **Against** — CLAUDE.md Gate 1 step 2 says do not proceed past a breakdown you
-  would not defend, and two requirements' content is stated by no obligation.
-  (Both *are* linked to one — the log shows no gap. The obligation just doesn't
-  say what they say. Read the obligation text, not the arrow.)
-- **For** — the substance of #216 is covered faithfully by the 13 obligations
-  (both deliverable halves, the region-coverage invariant, both regression
-  cases, the reproduction, the design decision). The damage is confined to two
-  cross-cutting hygiene constraints and five exclusions, none of which is
-  #216's actual work.
+Gate 1's findings are all attributed and tracked, and the substance of #216 is
+covered faithfully by the 13 obligations — both deliverable halves, the
+region-coverage invariant, both regression cases, the reproduction, the design
+fork. The damage is confined to two cross-cutting constraints and five
+exclusions, none of which is #216's actual work. **Implementation may start.**
 
-Separately, and honestly: `constraint-11` may be **inapplicable boilerplate**
-here — #216 concerns spans and parse coverage and may introduce no new typed
-schema. Reconsidering that bullet is legitimate authoring; it is *not* the
-disposition of finding 1, and must not be used as one.
+Note for reading the log: nothing is unlinked and nothing is unaccounted-for.
+Both absorbed constraints carry a link to a plausible-looking obligation. The
+defect is only visible by reading the obligation's text against the
+requirement's. **Read the obligation text, not the arrow.**
+
+`constraint-11` is **not** boilerplate — an earlier note calling it that is
+withdrawn. It is code-evident (`BaseModel` in the diff) and is #148's canonical
+case; `constraint-12` is test-evident via a network-disconnected test.
+
+## The sequencing decision, recorded
+
+`docs/DR-204-derivation-performs-no-linking.md`. Derivation may split a
+requirement or decline it, but may **not** attach a requirement to an obligation
+derived from another. Enforced as a **validator, not a prompt rule** — within a
+response each obligation id appears in exactly one requirement's disposition;
+violations go through `UnusableAnswerLog`. The many-to-one mapping #202
+established survives, as **#144's** output rather than derivation's.
+
+Partly reverses DR-202 decision 2, on the ground that derivation's failure is
+**lossy** and a merge pass's is **noisy**. #204's partitioning alone would have
+blocked every mis-link seen in run 2 (all cross a batch boundary), but batches
+are contiguous runs, so within-batch adjacency — #210's trigger — stays exposed.
+
+#204 and #144 must land adjacently: between them the obligation set is unmerged
+(~29 vs 13 on run 2's file) and every downstream stage is per-obligation.
+
+Amendments commented on #204 and #144. #211 must score link precision over
+#144's output, not derivation. #210 and #223 stay open as evidence.
 
 ## Also open, filed earlier this session-block
 

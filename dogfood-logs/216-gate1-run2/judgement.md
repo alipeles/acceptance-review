@@ -48,11 +48,13 @@ session-state record quotes `12. Represent typed schemas as pydantic models` as
 a standalone obligation of that run. Same code, model and seed; different
 surrounding task file.
 
-*Caveat on my own authoring, separate from the defect:* `constraint-11` may be
-inapplicable boilerplate here — #216 concerns spans and parse coverage, and may
-introduce no new typed schema at all. That is a reason to reconsider the bullet,
-not a reason the tool may absorb it. A vacuous constraint should surface as an
-obligation nothing addresses.
+*An earlier version of this file suggested `constraint-11` might be inapplicable
+boilerplate for #216. **Withdrawn** — wrong on both counts.* The two constraints
+differ in kind, and neither is padding: `constraint-12` is genuinely test-evident
+(the tool's usual recommendation is a test confirming no live model use with the
+network disconnected), and `constraint-11` is **code-evident**, settled by
+reading the diff for `BaseModel`. `constraint-11` is #148's canonical case, not a
+candidate for deletion. Recorded on #223.
 
 ### 2. All five scope exclusions over-merged — #210, at 5 of 5
 
