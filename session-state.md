@@ -52,6 +52,37 @@ same code, model and seed.
 **Zero open questions**, second consecutive run on this file, on a task file that
 explicitly states a design fork as undecided. Noted against #206.
 
+## #216's design is settled — `docs/DR-216-parser-accounts-decomposer-splits.md`
+
+Five decisions, all made. Implementation can start from the DR without
+re-deriving anything:
+
+1. Every leaf block (markdown-it AST node) is inside a registry span or an
+   `unclaimed` span, never neither.
+2. Nested content under a claimed list item gets **its own requirement**, not a
+   widened parent span. Covers nested bullets and 2nd+ paragraphs in a list item.
+3. **The parser never judges block type.** Nested fences, tables and bullets are
+   treated alike — no "fences are illustrative" rule.
+4. Splitting and declining stay with the decomposer. Both already work:
+   `task-01` yielded 4 obligations; `completion-01` was declined with a reason.
+5. The coverage assertion needs **purpose-built fixtures**.
+
+**Why 5 matters:** the repo's task files contain **zero nested bullets** —
+verified across `current-task.md`, every `dogfood-logs/*/current-task.md`, and
+all of `tests/fixtures/decompose-stability/`. #216's acceptance item "runs over
+the repository's own committed task files" would pass **vacuously** without new
+fixtures. Fixtures must exercise nested bullets, multi-paragraph list items,
+nested fences and nested tables.
+
+**#216's body contradicts itself** and the DR resolves it: its `Open:` paragraph
+offers "own requirement vs continuation of parent", its Acceptance offers "five
+requirements vs two plus three unread". Continuation yields two-and-nothing-
+unread, which the Acceptance does not admit. **The Acceptance stands as written
+— five requirements.**
+
+**#224** filed (child of #181): nothing detects when the decomposer under-splits
+a block. Out of #216's scope, not closable by the parser. Measure first.
+
 ## Decision taken — proceed with #216
 
 Human decided: **finish #216, then #204 with no linking at all, then #144 owning
@@ -187,7 +218,7 @@ this.
 ## Known open, not the next task's problem
 
 **#210**, **#180**, **#193**, **#153**, **#191**, **#196**, **#178**, **#214**,
-**#129**, **#223**.
+**#129**, **#223**, **#224**.
 
 ## What to ignore
 
