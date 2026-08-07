@@ -22,6 +22,7 @@ from acceptance.review_state import (
     Obligation,
     RequirementMap,
     Review,
+    TestRecommendation,
 )
 
 _EMPTY = "  (none)"
@@ -39,9 +40,17 @@ def render_report(review: Review) -> str:
 
     lines.append("Obligations:")
     if review.obligation_map:
+        by_obligation = {rec.obligation_id: rec for rec in review.recommendations}
         for index, obligation in enumerate(review.obligation_map, start=1):
             lines.append("")
-            lines.extend(_obligation_block(index, obligation, review.requirement_map))
+            lines.extend(
+                _obligation_block(
+                    index,
+                    obligation,
+                    review.requirement_map,
+                    by_obligation.get(obligation.id),
+                )
+            )
     else:
         lines.append(_EMPTY)
     lines.append("")
@@ -75,20 +84,9 @@ def render_report(review: Review) -> str:
                 lines.append(f"       {question.resolution_rationale}")
         lines.append("")
 
-    if review.recommendations:
-        lines.append("Recommended tests:")
-        for index, rec in enumerate(review.recommendations, start=1):
-            lines.append(f"  {index}. {rec.criterion}")
-            lines.append(f"       inputs:  {rec.required_inputs}")
-            lines.append(f"       detects: {rec.plausible_defect}")
-            # §9.5's single-iteration goal depends on the agent KNOWING the full
-            # prescription exists. Naming the command per recommendation — rather
-            # than once at the foot of the report — is what makes the pull happen
-            # at the moment the reader decides to act on this criterion.
-            lines.append(
-                f"       full detail: acceptance recommendation --criterion {rec.obligation_id}"
-            )
-        lines.append("")
+    # No recommendations block. Each one renders inside the obligation it
+    # explains (`_obligation_block`), per §16's rule that a criterion's axes sit
+    # together rather than in separate lists joined by eye.
 
     if completion is not None and completion.limitations:
         lines.append("Evidence limitations:")
@@ -260,9 +258,13 @@ def _unread_block(requirement_map: RequirementMap) -> list[str]:
 
 
 def _obligation_block(
-    index: int, obligation: Obligation, requirement_map: RequirementMap | None = None
+    index: int,
+    obligation: Obligation,
+    requirement_map: RequirementMap | None = None,
+    recommendation: TestRecommendation | None = None,
 ) -> list[str]:
-    """One numbered obligation with both evidence axes nested beneath it.
+    """One numbered obligation with both evidence axes nested beneath it, and
+    the test recommendation that explains a weak one.
 
     Evidence items are numbered `<obligation>.<item>` continuously across both
     axes, so every citation in the report has a unique handle."""
@@ -305,6 +307,23 @@ def _obligation_block(
             lines.append(f"         {index}.{item}  {test_id}")
     else:
         lines.append(f"         {_NO_TESTS}")
+
+    # The recommendation belongs to the axis it explains. It used to render in a
+    # separate block at the foot of the report, identified only by a
+    # `--criterion` slug that appeared nowhere in this block — the "separate
+    # lists the reader must join by eye" §16 exists to prevent, and a real cost:
+    # CLAUDE.md requires reading the recommendation BEFORE judging a weak
+    # obligation, which the old layout made a manual cross-reference.
+    if recommendation is not None:
+        lines.append(f"         recommended test: {recommendation.criterion}")
+        lines.append(f"           inputs:  {recommendation.required_inputs}")
+        lines.append(f"           detects: {recommendation.plausible_defect}")
+        # §9.5's single-iteration goal depends on the agent KNOWING the full
+        # prescription exists, at the moment it decides to act on this criterion.
+        lines.append(
+            "           full detail: acceptance recommendation "
+            f"--criterion {recommendation.obligation_id}"
+        )
 
     return lines
 

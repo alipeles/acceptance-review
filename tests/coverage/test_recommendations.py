@@ -6,7 +6,10 @@ Generation is a schema-constrained model call; per the replay-first invariant
 these tests inject the recorded response via completion_fn — no live calls.
 Recommendation *quality* against the real model is shown by the PR's record run."""
 
+import pytest
+
 from acceptance.coverage.recommendations import recommend_tests
+from acceptance.llm import SchemaValidationError
 from acceptance.evidence.discrimination import ObligationDiscrimination, PlausibleDefect
 from acceptance.review_state import ChangeSet, DiffHunk, FileChange, Obligation, ObligationType
 from tests.support import client_returning as _client_returning
@@ -120,3 +123,115 @@ def test_recommendation_round_trips_through_persistence():
 
     rec = recommend_tests(obligations, [], _change_set(), _client_returning(response))[0]
     assert TestRecommendation.from_dict(rec.to_dict()) == rec
+
+
+def _two_weak() -> tuple[list[Obligation], list[ObligationDiscrimination]]:
+    obligations = [
+        _obligation("daily-rate", "Daily rate uses days_in_month", "nominally_supported"),
+        _obligation("proration", "Proration handles partial months", "unsupported"),
+    ]
+    discriminations = [
+        ObligationDiscrimination(
+            obligation_id=obligation.id,
+            defects=[
+                PlausibleDefect(
+                    description="the behaviour is wrong",
+                    would_be_caught=False,
+                    reason="no discriminating input",
+                )
+            ],
+            discriminating=False,
+        )
+        for obligation in obligations
+    ]
+    return obligations, discriminations
+
+
+def _recommendation(obligation_id: str) -> dict:
+    return {
+        "obligation_id": obligation_id,
+        "required_inputs": "a month whose length is not 30",
+        "boundary_conditions": "0 days and a full month",
+        "expected_output": "price/28*days",
+        "required_assertions": ["assert prorate(280, 14, 28) == 140.0"],
+        "plausible_defect": "hard-codes /30",
+        "repo_conventions": "test_billing.py",
+    }
+
+
+def test_a_response_skipping_a_weak_obligation_is_rejected():
+    """The "always" half of the invariant, and the defect #218 removes.
+
+    This stage used to iterate the response and keep what it could place, so a
+    response answering one of two weak obligations produced a report where the
+    other silently carried no recommendation — indistinguishable from a complete
+    answer. That is M1.2.r1's missing disposition, one stage downstream.
+    """
+    obligations, discriminations = _two_weak()
+    response = {"recommendations": [_recommendation("daily-rate")]}
+
+    with pytest.raises(SchemaValidationError) as raised:
+        recommend_tests(
+            obligations, discriminations, _change_set(), _client_returning(response)
+        )
+
+    message = str(raised.value)
+    assert "proration" in message
+    assert "1 of 2" in message
+
+
+def test_a_response_naming_a_non_weak_obligation_is_rejected():
+    """The "only" half. It was enforced by dropping the entry, which is the same
+    silence in the other direction: a recommendation the call never asked for
+    means the model answered about something else, and that is worth knowing."""
+    obligations, discriminations = _two_weak()
+    response = {
+        "recommendations": [
+            _recommendation("daily-rate"),
+            _recommendation("proration"),
+            _recommendation("some-other-obligation"),
+        ]
+    }
+
+    with pytest.raises(SchemaValidationError) as raised:
+        recommend_tests(
+            obligations, discriminations, _change_set(), _client_returning(response)
+        )
+
+    assert "some-other-obligation" in str(raised.value)
+
+
+def test_a_duplicate_recommendation_is_rejected():
+    obligations, discriminations = _two_weak()
+    response = {
+        "recommendations": [
+            _recommendation("daily-rate"),
+            _recommendation("daily-rate"),
+            _recommendation("proration"),
+        ]
+    }
+
+    with pytest.raises(SchemaValidationError) as raised:
+        recommend_tests(
+            obligations, discriminations, _change_set(), _client_returning(response)
+        )
+
+    assert "more than once" in str(raised.value)
+
+
+def test_every_weak_obligation_gets_exactly_one_recommendation():
+    """The invariant stated positively, and in weak-obligation order rather than
+    response order — two recorded runs over one input must be byte-identical."""
+    obligations, discriminations = _two_weak()
+    response = {
+        "recommendations": [
+            _recommendation("proration"),
+            _recommendation("daily-rate"),
+        ]
+    }
+
+    recommendations = recommend_tests(
+        obligations, discriminations, _change_set(), _client_returning(response)
+    )
+
+    assert [r.obligation_id for r in recommendations] == ["daily-rate", "proration"]

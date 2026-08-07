@@ -33,6 +33,82 @@ def _fake_response(content: str) -> SimpleNamespace:
     )
 
 
+def _supplied_enum(field: str, **kwargs) -> list[str]:
+    """The ids a call supplied for `field`, read back off the schema it sent.
+
+    `constrain` restricts each id field to a `Literal` of the ids that call
+    actually offered, so the enum in the outgoing schema is the work list. That
+    lets a double answer a call completely without being told the fixture's ids
+    separately, and keeps it honest when they change.
+    """
+    schema = kwargs["response_format"]["json_schema"]["schema"]
+    found: list[str] = []
+
+    def walk(node, key=None):
+        if isinstance(node, dict):
+            if key == field and isinstance(node.get("enum"), list):
+                found.extend(v for v in node["enum"] if v not in found)
+            for name, value in node.items():
+                walk(value, name if name not in ("properties", "$defs", "items") else key)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item, key)
+
+    walk(schema)
+    return found
+
+
+def declining_dispositions(reason: str = "not exercised by this fixture", **kwargs) -> list[dict]:
+    """One `no_obligation` disposition per supplied requirement.
+
+    The honest "found nothing" for decomposition since M1.2.r2. A response
+    disposing nothing is malformed and raises, so a double that returns an
+    empty list is not a no-op checker — it is a broken one.
+    """
+    return [
+        {"requirement_id": requirement_id, "disposition": "no_obligation", "reason": reason}
+        for requirement_id in _supplied_enum("requirement_id", **kwargs)
+    ]
+
+
+def _completed(response: dict, **kwargs) -> dict:
+    """Fill an empty response list from the ids the call supplied.
+
+    Two stages reject an under-filled answer rather than absorbing it, so `[]`
+    is not the neutral stand-in it used to be — a double returning one is not a
+    no-op checker but a broken one:
+
+    - decomposition (M1.2.r2, #217) — a response disposing nothing does not parse;
+    - recommendations (#218) — a weak obligation with no recommendation is an
+      error, not an absence.
+
+    Rather than make every fixture restate ids it never cared about, the doubles
+    complete both. A test that IS about either names them explicitly, and a
+    non-empty list is left alone.
+    """
+    if not isinstance(response, dict):
+        return response
+    if response.get("requirement_dispositions") == []:
+        return {**response, "requirement_dispositions": declining_dispositions(**kwargs)}
+    if response.get("recommendations") == []:
+        return {
+            **response,
+            "recommendations": [
+                {
+                    "obligation_id": obligation_id,
+                    "required_inputs": "inputs where the defect changes the outcome",
+                    "boundary_conditions": "none",
+                    "expected_output": "the criterion holds",
+                    "required_assertions": ["asserts the criterion"],
+                    "plausible_defect": "the criterion is not met",
+                    "repo_conventions": "follow the existing test module",
+                }
+                for obligation_id in _supplied_enum("obligation_id", **kwargs)
+            ],
+        }
+    return response
+
+
 def client_returning(response: dict, model: str = _DEFAULT_MODEL) -> ModelClient:
     """A client whose every call returns the same fixed response.
 
@@ -146,57 +222,6 @@ def client_dispatching(
         seed=seed,
         completion_fn=completion_fn,
     )
-
-
-def supplied_requirement_ids(**kwargs) -> list[str]:
-    """The requirement ids a decomposition call supplied, read back off the
-    schema it sent.
-
-    `constrain` restricts `requirement_id` to a `Literal` of the registry ids,
-    so the enum in the outgoing schema is the work list — which lets a double
-    answer a call completely without being told the fixture's requirements
-    separately, and keeps it honest if they change.
-    """
-    schema = kwargs["response_format"]["json_schema"]["schema"]
-    items = schema["properties"]["requirement_dispositions"]["items"]
-    ids: list[str] = []
-    for member in items.get("anyOf", [items]):
-        enum = member.get("properties", {}).get("requirement_id", {}).get("enum") or []
-        for value in enum:
-            if value not in ids:
-                ids.append(value)
-    return ids
-
-
-def declining_dispositions(reason: str = "not exercised by this fixture", **kwargs) -> list[dict]:
-    """One `no_obligation` disposition per supplied requirement.
-
-    The honest "found nothing" for decomposition since M1.2.r2. A response
-    disposing nothing is malformed and raises, so a double that returns an
-    empty list is not a no-op checker — it is a broken one.
-    """
-    return [
-        {"requirement_id": requirement_id, "disposition": "no_obligation", "reason": reason}
-        for requirement_id in supplied_requirement_ids(**kwargs)
-    ]
-
-
-def _completed(response: dict, **kwargs) -> dict:
-    """Fill in an empty `requirement_dispositions` from the requirements the
-    call supplied.
-
-    Since M1.2.r2 a decomposition response that disposes nothing does not
-    parse, so `[]` is not the neutral stand-in it used to be. Rather than make
-    every fixture restate its task file's whole requirement list, the doubles
-    complete it as a full set of declines — which keeps them well-formed while
-    leaving the obligations and questions they are actually about untouched. A
-    test that IS about dispositions names them, and this leaves it alone.
-    """
-    if not isinstance(response, dict) or response.get("requirement_dispositions") != []:
-        return response
-    if "requirement_dispositions" not in response:
-        return response
-    return {**response, "requirement_dispositions": declining_dispositions(**kwargs)}
 
 
 # An empty result per pipeline response schema (schemas are strict, so each

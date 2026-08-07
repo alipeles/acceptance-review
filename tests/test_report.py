@@ -208,8 +208,53 @@ def test_open_questions_and_recommendations_are_numbered():
 
     assert "  1. [open] Minus sign or parentheses?" in report
     assert "  2. [resolved] Tax inclusive?" in report
-    assert "  1. Daily rate uses days_in_month" in report
-    assert "detects: hard-codes /30" in report
+
+    # The recommendation renders inside its obligation's block, on the test
+    # evidence axis it explains — not in a separate numbered list (#218, §16).
+    obligation_block = report.split("Obligations:")[1].split("Unrequested changes:")[0]
+    assert "recommended test: Daily rate uses days_in_month" in obligation_block
+    assert "detects: hard-codes /30" in obligation_block
+    assert "full detail: acceptance recommendation --criterion a" in obligation_block
+
+    # Asserted by COUNT, not by the absence of a header string. A standalone
+    # block restates the criterion, so "appears exactly once" catches one under
+    # any heading — or none — where `"Recommended tests:" not in report` only
+    # catches the old spelling.
+    assert report.count("Daily rate uses days_in_month") == 1
+    assert report.count("detects: hard-codes /30") == 1
+
+
+def test_a_recommendation_sits_under_its_own_obligation_and_no_other():
+    """The join key is `obligation_id`, and using it for placement is the whole
+    point: §16 organises by obligation so a criterion's axes sit together rather
+    than in separate lists the reader must join by eye."""
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[
+            _obligation("Weak one", "addressed", "nominally_supported"),
+            _obligation("Strong one", "addressed", "strongly_supported"),
+        ],
+        recommendations=[
+            TestRecommendation(
+                obligation_id="weak-one",
+                criterion="Weak one",
+                required_inputs="A non-30-day month",
+                boundary_conditions="0 days",
+                expected_output="price/28*days",
+                required_assertions=["assert prorate(280, 14, 28) == 140.0"],
+                plausible_defect="hard-codes /30",
+                repo_conventions="test_billing.py",
+            )
+        ],
+    )
+
+    report = render_report(review)
+    blocks = report.split("Obligations:")[1].split("Unrequested changes:")[0]
+    weak_block, strong_block = blocks.split("  2. Strong one")
+
+    assert "recommended test:" in weak_block
+    assert "recommended test:" not in strong_block
 
 
 def test_tier_label_comes_from_the_recorded_tier_not_a_hardcoded_string():
@@ -359,3 +404,51 @@ def test_a_first_review_renders_no_changes_section():
     )
 
     assert "Changes since" not in render_report(review)
+
+
+def test_a_review_with_gaps_closes_by_pointing_at_the_retrieval_command():
+    """The positive branch of `_has_gaps`, which nothing covered.
+
+    Only `"Recommended next instruction: (none)"` was asserted anywhere — the
+    no-gaps branch. The line this exists to produce appeared in no test at all,
+    just in committed fixture logs that assert nothing. Found by the tool's own
+    Gate 2 on #218, and dismissed as tautological before being checked.
+
+    It matters because the line is the only thing telling an agent the full
+    prescription is retrievable; M7.3.r1 replaced a written file with it
+    precisely so a stale artifact could not contradict the report.
+    """
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[_obligation("A", "addressed", "nominally_supported")],
+        completion=CompletionResult(
+            verdict=CompletionVerdict.INCOMPLETE,
+            rationale="1 obligation(s) with non-discriminating test evidence.",
+        ),
+    )
+
+    report = render_report(review)
+
+    assert report.endswith(
+        "Next: retrieve a criterion's full recommendation with\n"
+        "  acceptance recommendation --criterion <id>"
+    )
+    assert "Recommended next instruction: (none)" not in report
+
+
+def test_a_review_with_no_obligations_does_not_advertise_retrieval():
+    """The second condition of `_has_gaps`, and the reason it is not simply
+    "the verdict is not positive". A review with no obligations is
+    `unable_to_determine` because there was nothing to assess — pointing it at
+    the retrieval command would advertise detail that does not exist."""
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        completion=CompletionResult(
+            verdict=CompletionVerdict.UNABLE_TO_DETERMINE,
+            rationale="No obligations were derived.",
+        ),
+    )
+
+    assert render_report(review).endswith("Recommended next instruction: (none)")

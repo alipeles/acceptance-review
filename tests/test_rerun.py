@@ -687,7 +687,16 @@ def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path
     # And its gap is still reported, so the verdict still reflects it —
     # along with the instruction for closing it, which the agent still needs.
     assert any(f.related_obligation == "Beta behaves" for f in review.findings)
-    assert [r.obligation_id for r in review.recommendations] == ["beta"]
+
+    # Both weak obligations carry a recommendation: `beta` carried forward from
+    # the prior review, `alpha` derived fresh this run.
+    #
+    # This assertion previously read `== ["beta"]`, which encoded the defect
+    # #218 removed. `alpha` is weak — it is supplied to `recommend_tests` as
+    # such — and simply went without a recommendation because the stage kept
+    # whatever the response returned and never reconciled it against the weak
+    # set. A weak obligation with no recommendation is now an error.
+    assert sorted(r.obligation_id for r in review.recommendations) == ["alpha", "beta"]
     assert review.completion is not None
     assert review.completion.verdict.value != "no_material_gaps"
 

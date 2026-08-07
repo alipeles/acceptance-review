@@ -37,7 +37,7 @@ from typing import Any
 
 from acceptance.config import DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
-from tests.support import _EMPTY_BY_SCHEMA, _fake_response, declining_dispositions
+from tests.support import _EMPTY_BY_SCHEMA, _completed, _fake_response, declining_dispositions
 
 import tempfile
 
@@ -154,7 +154,7 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
                 ]
             }))
 
-        return _fake_response(json.dumps(_EMPTY_BY_SCHEMA[name]))
+        return _fake_response(json.dumps(_completed(_EMPTY_BY_SCHEMA[name], **kwargs)))
 
     return ModelClient(
         model=DEFAULT_MODEL,
