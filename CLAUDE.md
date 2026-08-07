@@ -346,6 +346,16 @@ primitives and LLM harness (M0) and the benchmark harness (M-B0) come before
 capabilities, so nothing ships unmeasured. The execution tier (M8) comes after the
 static pipeline (M7) — it only confirms what static analysis already maps.
 
+**Decomposition quality comes before evidence quality.** Obligations must be
+accurate, stable, non-redundant and clean before work on judging evidence about
+them is worth doing — every downstream stage is judging the obligation set, so a
+wrong or unstable set invalidates mapping, discrimination and the verdict alike,
+and any measurement taken over it is measuring the wrong thing. In practice that
+puts the `#181` decomposition defects ahead of the `#183` evidence-judgement and
+`#185` presentation ones. Within reason: a defect that makes the tool actively
+*misleading* — one that turns a gate green rather than red — can jump the queue,
+because everything after it is judged against a broken gate.
+
 ## Commands
 
 ```bash

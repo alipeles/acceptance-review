@@ -34,11 +34,21 @@ obligation with no recommendation now raises instead of vanishing.
 
 ## Start here next
 
-**#148 is the highest-value next task**, and this session escalated it twice.
-Three comments were added with live evidence.
+**#216**, board order 413.05 — the task this whole session displaced. Its Gate 1
+is what exposed everything else, and `dogfood-logs/216-gate1-run1/` holds that
+run. Re-run its Gate 1 first: it was taken against the pre-#217 decomposer, so
+its 8 unaccounted requirements should now be reasoned declines instead.
 
-Until now it produced honest `unsupported` readings that *blocked* gates. In
-#218's Gate 2 run 4 it manufactured a **green** one:
+The board is sequenced on the principle now recorded in CLAUDE.md — obligations
+accurate, stable, non-redundant and clean before evidence judgement — so the
+whole #181 block (413.05-413.85, then #193 at 414) comes before the evidence
+work.
+
+### Carry this warning through that block
+
+**#148 sits at 414.5, behind all of it, and until it lands a clean Gate 2 can be
+false.** This session it stopped merely blocking gates and started manufacturing
+green ones:
 
 ```
 12. Represent typed schemas as pydantic models.
@@ -50,21 +60,23 @@ Until now it produced honest `unsupported` readings that *blocked* gates. In
 ```
 
 Both cited tests pass whether or not the schemas are pydantic. **The evidence is
-inverted** — the code axis, where the answer lives, cites nothing; the test
-axis, which cannot hold it, carries citations.
+inverted** — the code axis, where the answer lives, cites nothing; the test axis,
+which cannot hold it, carries citations.
 
-Two findings that reshape #148's deliverable:
+So when a Gate 2 in the #181 block comes back clean, check whether any obligation
+of that shape is carrying it. Three comments on #148 hold the evidence.
+
+Two findings that reshape #148's deliverable when it comes up:
 
 - **The destination already exists.** `requires_other_evidence` is a valid
-  `evidence_class` (`review_state.py:213,220`) and `verdict.py:81` already
-  routes it to `needs_non_code_review`. It is simply never produced —
-  `strength.py:15-18` explicitly declines to invent it and defers to a coverage
-  status that does not route it either. So the work is "decide what routes into
-  the existing tier", not "build a tier".
-- **Open question to settle first:** is `needs_non_code_review` even the right
-  verdict for a design/approach obligation? It fits "docs, visual, deploy"; it
-  arguably does not fit "the import is there in the diff", which should be
-  satisfiable on code evidence alone.
+  `evidence_class` (`review_state.py:213,220`) and `verdict.py:81` already routes
+  it to `needs_non_code_review`. It is simply never produced —
+  `strength.py:15-18` declines to invent it and defers to a coverage status that
+  does not route it either. The work is "decide what routes into the existing
+  tier", not "build a tier".
+- **Settle first** whether `needs_non_code_review` is even the right verdict. It
+  fits "docs, visual, deploy"; it arguably does not fit "the import is there in
+  the diff", which should be satisfiable on code evidence alone.
 
 ## Also open, filed this session
 
