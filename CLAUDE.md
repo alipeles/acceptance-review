@@ -189,6 +189,18 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
 - **Surface open decisions, don't silently resolve them.** Open design decisions
   are tracked as `decision`-labeled issues, each owned by a milestone — that
   label *is* the list. Raise a new one rather than picking quietly.
+- **Never write to the backlog without human review.** Draft the item — title,
+  body, labels, parent umbrella — and show it *alongside the evidence that
+  produced it*, then wait for approval. This covers `gh issue create`, attaching
+  a sub-issue, and any comment that asserts a new finding on an existing issue.
+  Editing your own draft after feedback is not a second approval; re-show it.
+  The backlog is the plan (see *How work is tracked*), so filing is a change to
+  the plan, and an agent that files as it goes writes the plan unsupervised.
+  **This binds the dogfood gates.** Their rule that a negative finding must be
+  *addressed* or *attributed to a tool defect with a backlog item existing
+  before you move forward* now means the item must be **approved and filed** —
+  so a gate ending in an attribution stops there until it is. Draft the item as
+  part of the judgement, present it with the run, and wait.
 - **Write a Decision Record when one is resolved**, or when a non-obvious finding
   changes the design: `docs/DR-<issue>-<slug>.md`, referenced from the issue. A
   decision that lives only in a commit message or a chat session is lost. See
