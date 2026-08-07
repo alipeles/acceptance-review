@@ -28,6 +28,12 @@ _COMPLETION = {"completion expectations"}
 _EXCLUSIONS = {"scope exclusions", "exclusions"}
 _TASK = {"task"}
 
+# Container nodes: they hold blocks rather than being one, so they are
+# descended into rather than spanned. Spanning a container would double-count
+# the blocks inside it, and — for a list item with nested content — is exactly
+# the widening DR-216 decision 2 rejects.
+_LISTS = {"bullet_list", "ordered_list"}
+
 
 class ParsedTaskFile(PersistableModel):
     """The §7.1 task file parsed into fields, each linked to its source span.
@@ -43,6 +49,15 @@ class ParsedTaskFile(PersistableModel):
     recorded rather than discarded for the same reason a requirement yielding no
     obligation is recorded rather than dropped — the parse cannot be trusted to
     be complete, so it has to say what it did not take.
+
+    The unit of all five lists is a **block** — an AST leaf, not a semantic
+    requirement — and every non-whitespace, non-heading block of the file is
+    inside one of them (DR-216 decision 1). That total-coverage property is what
+    lets `unread_source` report zero and mean it; before #216 a block nested
+    inside a claimed list item was in none of the five, so the zero was
+    unfalsifiable. Finding the independent requirements *inside* a block is the
+    decomposer's job, not this one's — see DR-216 for why that split is where it
+    is, and #224 for what still goes unmeasured on the other side of it.
     """
 
     source: str
@@ -67,10 +82,10 @@ def parse_task_file(text: str) -> ParsedTaskFile:
         elif node.type == "paragraph":
             target = result.behavior if section in _TASK else result.unclaimed
             target.append(_span(text, line_offsets, node))
-        elif node.type == "bullet_list":
+        elif node.type in _LISTS:
             target = _list_target(result, section)
-            spans = [_span(text, line_offsets, item) for item in node.children]
-            (result.unclaimed if target is None else target).extend(spans)
+            dest = result.unclaimed if target is None else target
+            _emit_list(text, line_offsets, node, dest)
         else:
             # Tables, fenced code, block quotes. Nothing reads them yet — the
             # ground-truth tables in #195's own task file are invisible to this
@@ -78,6 +93,42 @@ def parse_task_file(text: str) -> ParsedTaskFile:
             result.unclaimed.append(_block_span(text, line_offsets, node))
 
     return result
+
+
+def _emit_list(
+    text: str, line_offsets: list[int], node: SyntaxTreeNode, dest: list[TextSpan]
+) -> None:
+    for item in node.children:
+        _emit_item(text, line_offsets, item, dest)
+
+
+def _emit_item(
+    text: str, line_offsets: list[int], item: SyntaxTreeNode, dest: list[TextSpan]
+) -> None:
+    """Every block inside one list item, each as its own span (DR-216).
+
+    A list item's children are blocks: its own paragraph, then whatever is
+    nested under it — a further list, a second paragraph, a fence, a table.
+    This used to span the item once via `_inline_content`, which returns the
+    FIRST inline node it finds and stops. The narrow span was located in the
+    source, so `_span`'s widening fallback never fired, and everything after
+    that first paragraph reached neither a field nor `unclaimed`: no
+    requirement id, no disposition, and — because the item was claimed —
+    nothing for `unread_source` to report either (#216).
+
+    Nested content becomes its own requirement rather than widening the
+    parent's span, per DR-216 decision 2: a redundant requirement is noisy and
+    recoverable, an absorbed one is silent and not. Block type is never judged
+    (decision 3) — a nested fence and a nested bullet are treated alike, and
+    what a block MEANS is the decomposer's judgment, not the parser's.
+    """
+    for child in item.children:
+        if child.type in _LISTS:
+            _emit_list(text, line_offsets, child, dest)
+        elif child.type == "paragraph":
+            dest.append(_span(text, line_offsets, child))
+        else:
+            dest.append(_block_span(text, line_offsets, child))
 
 
 def _list_target(result: ParsedTaskFile, section: str | None) -> list[TextSpan] | None:

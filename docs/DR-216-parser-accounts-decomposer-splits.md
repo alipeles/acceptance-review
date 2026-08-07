@@ -1,7 +1,7 @@
 # Decision Record 216 — The parser accounts for blocks; the decomposer splits and declines
 
-*Relates to issue #216 and the #181 umbrella (decomposition). Status: **accepted,
-not built**. Track: checker. Stage: 1. Consistent with DR-202 and DR-204.*
+*Relates to issue #216 and the #181 umbrella (decomposition). Status: **accepted
+and built**. Track: checker. Stage: 1. Consistent with DR-202 and DR-204.*
 
 ---
 
@@ -110,6 +110,18 @@ Hence decision 5. The fixtures must exercise nested bullets, multi-paragraph lis
 items, nested fences and nested tables. Running the assertion over the real
 corpora stays worthwhile as a regression guard; it is not evidence the guard
 works.
+
+**As built:** the fixtures are `tests/fixtures/nested-blocks/`, the assertion is
+`tests/requirement/region_coverage.py`, and both corpora are still asserted over
+in `tests/requirement/test_region_coverage.py`. The vacuity argument is itself
+tested — `test_each_purpose_built_fixture_actually_exercises_nesting` fails a
+fixture that could not distinguish the fixed parser from the reported one. Run
+against the pre-#216 parser, all five fixtures fail and both real corpora pass,
+which is the measurement claim above confirmed rather than asserted.
+
+The assertion is stated over source **characters**, not over the blocks the
+parser descends into. Enumerating the parser's own blocks would be circular: it
+would pass for any self-consistent parser, including the one #216 reports.
 
 ## A contradiction in #216 to fix
 
