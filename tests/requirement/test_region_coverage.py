@@ -168,6 +168,45 @@ def test_a_dropped_region_is_detected_when_the_requirement_count_is_unchanged():
     assert [run for _, run in uncovered_regions(text, damaged)] == ["ted."]
 
 
+def test_the_pre_216_parse_is_detected_although_every_span_it_emits_is_exact():
+    """The #216 regression, encoded rather than verified by hand.
+
+    This is the precise shape the old parser produced on the reproduction, and
+    the reason a count could not see it: the requirements it *did* emit were
+    entirely correct — right number of claimed bullets, exact text, exact
+    offsets — and `unclaimed` was empty. Nothing was wrong with any span
+    present. Three whole blocks were simply not there, and no count of things
+    that exist can report a thing that does not.
+
+    Reconstructed here by deleting the nested spans from a good parse, so the
+    guard is pinned against a parser that drops nested content without needing
+    the old parser to still exist. `test_purpose_built_fixtures_are_fully_covered`
+    proves the current parser covers this file; this proves the check would
+    notice if it stopped.
+    """
+    parsed = parse_task_file(REPRODUCTION)
+    pre_216 = parsed.model_copy(deep=True)
+    # Exactly what `_inline_content` used to return: the first paragraph of
+    # each top-level list item, and nothing nested inside it.
+    pre_216.constraints = [
+        span
+        for span in parsed.constraints
+        if span.text in ("The outer requirement.", "A second outer requirement.")
+    ]
+
+    assert len(pre_216.constraints) == 2
+    assert pre_216.unclaimed == []
+    # Every span it does emit is exact — there is no damaged span to find.
+    for span in pre_216.constraints:
+        assert REPRODUCTION[span.start : span.end] == span.text
+
+    assert [run for _, run in uncovered_regions(REPRODUCTION, pre_216)] == [
+        "A nested requirement that is real.",
+        "Another nested one.",
+        "A second paragraph inside that same bullet, stating a further requirement.",
+    ]
+
+
 # --- total coverage over corpora -------------------------------------------
 
 
