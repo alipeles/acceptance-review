@@ -53,16 +53,27 @@ single-field version of `_supplied_enum`.
 
 ## Where #218 stands
 
-Gate 1 passed. **Gate 2 is not clean** — 3 weak obligations at `79522b2`,
-pre-rebase. The run needs repeating post-rebase, since the diff changed.
+Gate 1 passed. Gate 2 run 4 (`1c71535` → `e52a57c`) reports **NO-MATERIAL-GAPS**
+— and it should not be read as a clean gate. Judgement in
+`dogfood-logs/218-gate2-run4/judgement.md`.
 
-The weak set went 5 → 2 → 3 across three runs whose only changes were additive
-tests. Remaining attributed to #148 and #180/#193; judgements in
-`dogfood-logs/218-gate2-run{1,2,3}/`.
+- **Not comparable to run 3.** The task file is byte-identical, yet 12 of 14
+  obligations were reworded, because #217 changed `_Decomposition`'s schema and
+  `request_key` hashes it, so the decomposition was re-derived. The 3-weak → 0
+  movement is not evidence the added tests closed anything.
+- **One false positive.** Obligation 12, *"Represent typed schemas as pydantic
+  models"* — the #148 obligation that read `unsupported` in runs 1-3 — is now
+  `strongly supported`, citing two `*_round_trips_through_persistence` tests
+  that pass whether or not the schemas are pydantic. `addressed` is claimed with
+  `(no corresponding change)`.
+- Mapping is sound (DR-164 check): 14 of 14 obligations carry mapped tests, 33
+  links, measured from the persisted review.
 
-**Before a PR:** re-run Gate 2 against the new base, and re-check each
-recommendation against the actual tests rather than judging it from its
-`detects:` line — see below.
+**The work itself is complete and genuinely tested.** The unreliability is in the
+tool's judgement of one obligation, not in the change.
+
+**#148 escalated.** Until now it produced honest `unsupported` readings that
+blocked gates. Here it manufactured a green one. Evidence attached to #148.
 
 ## A correction worth not repeating
 
