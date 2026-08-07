@@ -57,7 +57,7 @@ while unrelated ones are accepted.
 
 Two rounds of real strengthening came out of this obligation (runs 1 and 2), so
 the recommendations were worth reading. This third round has nothing left to
-build. **Attributed to #173**; comment drafted, awaiting review.
+build. **Attributed to #173**, filed as `#173 (comment 5220724039)`.
 
 ## 2 & 3. `…coverage-on-committed-task-files`, `…coverage-on-decompose-stability-corpus` — TOOL DEFECT
 
@@ -75,7 +75,7 @@ decompose-stability corpus*. Both are parametrised over exactly those globs,
 and `test_the_corpora_under_test_are_not_empty` exists precisely so a glob that
 matches nothing cannot turn them into zero silent passes.
 
-**Attributed to #180**; comment drafted, awaiting review.
+**Attributed to #180**, filed as `#180 (comment 5220738963)`.
 
 ## 4. `obligation-region-level-total-coverage-tests` — unsupported — TOOL DEFECT
 
@@ -83,7 +83,7 @@ Third consecutive run, same obligation id, same absorption of `constraint-11`
 (pydantic schemas) and `constraint-12` (no live model calls) into an obligation
 that states neither, and still a duplicate of obligations 7 and 8.
 
-**Attributed to #223**; comment drafted, awaiting review.
+**Attributed to #223**, filed as `#223 (comment 5220684032)`.
 
 ## 5. `obligation-decision-recorded-in-repository` — partially supported — TOOL DEFECT, and the sharpest one
 
@@ -112,7 +112,7 @@ This is not #180 (the mapping changed, and changed for the better) and not #173
 mapping working: correct discriminating evidence present, mapped, and
 under-rated, with a recommendation duplicating a test in its own set.
 
-**New child of #183 drafted**, awaiting review.
+**Filed as #225**, child of #183.
 
 ## Not blockers
 
@@ -133,7 +133,22 @@ this run is the reason it is worth keeping there.
 
 ## Standing
 
-**Gate 2 has not passed and I am not opening a PR.** Every remaining finding is
-attributed to a tool defect, and CLAUDE.md requires the backlog item to be
-approved and filed before moving forward. Four items are drafted — comments on
-#223, #173 and #180, and one new child of #183 — and are with the human.
+**Gate 2 did not come back clean, and the branch moves forward anyway** under
+CLAUDE.md's second permitted disposition: every remaining finding is attributed
+to a tool defect with a backlog item filed before moving on. Reviewed and
+approved by the human, then filed:
+
+| finding | tracked as |
+|---|---|
+| on-point test withheld from the obligation that prescribed it | #173 (comment 5220724039) |
+| two ratings fell, one on a byte-identical mapped set | #180 (comment 5220738963) |
+| `constraint-11`/`constraint-12` absorbed, third consecutive run | #223 (comment 5220684032) |
+| rating falls as evidence improves; recommendation names a test in its own mapped set | **#225**, new child of #183 |
+
+Nothing here is suppressed and nothing is waved off as noise. What the gate
+could not certify is now four tracked defects in the tool, each with the run
+that produced it as its evidence — which is what dogfooding is for.
+
+The distinction that matters for anyone reading this later: **runs 1 and 2 found
+real gaps and made the work better; run 3 found only tool defects.** Three
+rounds is not three rounds of the same thing.

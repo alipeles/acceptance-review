@@ -17,12 +17,13 @@ Clear it out when the task lands rather than letting it accrete.
 **#216** — nested bullets and multi-paragraph list items dropped silently, and
 the unread-source guard reports zero. Child of #181, board order 413.05.
 
-Branch **`216-parser-accounts-for-blocks`**, 4 commits, not pushed. Design was
-settled beforehand in `docs/DR-216-parser-accounts-decomposer-splits.md`;
-implementation followed it without re-deriving anything.
+Branch **`216-parser-accounts-for-blocks`**. Design was settled beforehand in
+`docs/DR-216-parser-accounts-decomposer-splits.md`; implementation followed it
+without re-deriving anything.
 
-**Blocked at Gate 2, awaiting human review of four backlog drafts.** Not a code
-problem — see *Where it stands* below.
+**Gate 2 closed by attribution** — it never came back clean, and every remaining
+finding is a filed tool defect (#223, #173, #180, #225), not a gap in the work.
+See *Where it stands* below.
 
 ## What landed
 
@@ -32,12 +33,13 @@ problem — see *Where it stands* below.
 | `77ae7cb` | Gate 2 run 1 fixes: count-insensitivity test, DR-216 decision-record tests |
 | `616f505` | Gate 2 run 2 fix: the pre-#216 parse pinned as a regression |
 | `63acea6` | three dogfood logs with judgements |
+| `e1c0e8a`+ | session state, attributions recorded |
 
 `parse_task_file` now descends into lists and list items, emitting one span per
 leaf block. Nested content gets its own requirement (DR-216 decision 2); block
 type is never judged (decision 3).
 
-Full suite green at 832 before the last two commits; `ruff` clean.
+Full suite green at **840**; `ruff` clean.
 
 ## Two facts worth not re-deriving
 
@@ -85,24 +87,20 @@ obligations lost a tier while their evidence improved:
 **My judgement: the implementation is complete and correctly evidenced, and the
 gate cannot say so.** That claim is the human's to check, not mine to act on.
 
-## The four drafts awaiting review
+## The four attributions — reviewed, approved, filed
 
-Nothing may be filed without approval, and CLAUDE.md stops a gate that ends in
-attribution until the item exists. Drafted, presented, waiting:
+Gate 2 never came back clean. The branch moved forward under CLAUDE.md's second
+permitted disposition: attributed to a tool defect, backlog item filed first.
 
-1. **Comment on #223** — `constraint-11` (pydantic) and `constraint-12` (no live
-   model calls) absorbed into `obligation-region-level-total-coverage-tests`,
-   which states neither, in **all three runs**, under **the same obligation id**
-   as #216's Gate 1 run 2 decompose. Same two constraints, same destination,
-   different stage, different SHA — **deterministic, not noise.** That is a
-   stronger claim than #223 currently holds.
-2. **Comment on #173** — the tool prescribed a test, was given it, mapped it
-   accurately to five neighbouring obligations, withheld it from the one that
-   asked for it, and re-issued the same prescription.
-3. **Comment on #180** — the byte-identical-mapped-set rating drop.
-4. **New child of #183** — rating falls as evidence improves; the prescribed
-   test is in the strength call's own mapped set. Distinct from #180 (mapping
-   changed, for the better) and from #173 (mapping is correct here).
+| finding | tracked as |
+|---|---|
+| `constraint-11`/`constraint-12` absorbed into an obligation stating neither, **all three runs, same obligation id** as Gate 1 run 2 — deterministic, not noise | #223 (comment 5220684032) |
+| prescribed test supplied, mapped accurately to five neighbours, withheld from the obligation that asked | #173 (comment 5220724039) |
+| two ratings fell, one on a **byte-identical mapped set** | #180 (comment 5220738963) |
+| rating falls as evidence improves; recommendation names a test in its **own** mapped set | **#225**, new child of #183 |
+
+#225 is the one to read first — it is the residual failure mode left once #180
+and #173 are fixed, which is why it needed its own item rather than a comment.
 
 ## Judgement failures worth not repeating
 

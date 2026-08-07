@@ -54,7 +54,7 @@ without needing the old parser to exist.
 
 Unchanged from run 1, including the obligation id. Still the duplicate of
 obligations 7 and 8 that absorbs `constraint-11` and `constraint-12` without
-stating either. **Attributed to #223**; comment drafted, awaiting human review.
+stating either. **Attributed to #223**, filed as `#223 (comment 5220684032)`.
 
 That it reproduces byte-for-byte across two runs at two different SHAs is worth
 more to #223 than either run alone.

@@ -75,7 +75,7 @@ This is **#223 exactly**, and it is now reproduced with a stronger claim than
 decompose. Same two constraints, same destination id, different stage,
 different SHA. That is a deterministic defect, not run-to-run noise.
 
-**Attributed to #223.** Comment drafted and awaiting human review before filing.
+**Attributed to #223**, filed as `#223 (comment 5220684032)`.
 
 ## Read the obligation text, not the arrow
 
