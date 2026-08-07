@@ -14,57 +14,84 @@ Clear it out when the task lands rather than letting it accrete.
 
 ## Task in flight
 
-**None.** #217 landed (`1c71535`, PR #221) and #218 landed (`1ea8904`, PR #222),
-both with CI green. `main` is clean, 781 tests pass.
+**#216** — nested bullets and multi-paragraph list items dropped silently, and
+the unread-source guard reports zero. Child of #181, board order 413.05.
 
-`current-task.md` holds #218's mandate — it refers back to a finished task,
-which is expected.
+**Gate 1 run 2 did not pass**, at `efa2cab`. Run saved to
+`dogfood-logs/216-gate1-run2/`. No code written. **Awaiting a human decision on
+whether to proceed** — see *The open decision* below.
 
-## What landed
+## Gate 1 run 2 — what it found
 
-**#217 (M1.2.r2)** — a self-contradictory requirement disposition is now
-unrepresentable. Three disposition shapes, each carrying only its own payload;
-`UNDISPOSED` and every path assigning it deleted; reconciliation raises on a
-missing requirement, a duplicate, an unknown id, or a claim naming only outputs
-the response never produced. DR-202 decision 3 amended in place.
+`Requirements: 29   with obligations: 28   deliberately none: 1`, no
+unaccounted-for line. All findings verified against the recorded response
+(`.acceptance/cache/transcripts/9c83cd8d…json`), not the rendering.
 
-**#218** — a test recommendation exists exactly when test evidence is below
-strongly-supported. Each renders inside its obligation's block; a weak
-obligation with no recommendation now raises instead of vanishing.
+Three defects, all attributed to the tool, all now tracked:
 
-## Start here next
+1. **#223 (new, child of #181)** — `constraint-11` ("Typed schemas are pydantic
+   models") and `constraint-12` ("Tests issue no live model calls") both
+   dispositioned `yielded` onto `obligation-region-level-total-coverage-tests`,
+   which states neither. **No obligation in the set states either.** The content
+   is gone and `with obligations: 28` counts them as read.
+2. **#210** — all five scope exclusions over-merged onto another requirement's
+   obligation, 5 of 5. Evidence commented on the issue.
+3. Redundant obligation: `…region-level-total-coverage-tests` restates
+   constraint-06/07/08's three obligations, and is then what absorbs
+   constraint-11/12. Recorded on #223; touches #144 (inverted) and #193.
 
-**#216**, board order 413.05 — the task this whole session displaced. Its Gate 1
-is what exposed everything else, and `dogfood-logs/216-gate1-run1/` holds that
-run. Re-run its Gate 1 first: it was taken against the pre-#217 decomposer, so
-its 8 unaccounted requirements should now be reasoned declines instead.
+**None attributable to task-file wording.** Both absorbed bullets are
+word-for-word from #218's task file, where each yielded its own obligation —
+same code, model and seed.
 
-The board is sequenced on the principle now recorded in CLAUDE.md — obligations
-accurate, stable, non-redundant and clean before evidence judgement — so the
-whole #181 block (413.05-413.85, then #193 at 414) comes before the evidence
-work.
+**Zero open questions**, second consecutive run on this file, on a task file that
+explicitly states a design fork as undecided. Noted against #206.
 
-### Carry this warning through that block
+## The open decision
+
+Whether to proceed to implementation on this breakdown. The tension is real:
+
+- **Against** — CLAUDE.md Gate 1 step 2 says do not proceed past a breakdown you
+  would not defend, and two requirements have no obligation at all.
+- **For** — the substance of #216 is covered faithfully by the 13 obligations
+  (both deliverable halves, the region-coverage invariant, both regression
+  cases, the reproduction, the design decision). The damage is confined to two
+  cross-cutting hygiene constraints and five exclusions, none of which is
+  #216's actual work.
+
+Separately, and honestly: `constraint-11` may be **inapplicable boilerplate**
+here — #216 concerns spans and parse coverage and may introduce no new typed
+schema. Reconsidering that bullet is legitimate authoring; it is *not* the
+disposition of finding 1, and must not be used as one.
+
+## Also open, filed earlier this session-block
+
+- **#219** — exclusions declined as `no_obligation`. Did **not** fire in run 2;
+  the opposite did. Commented: exclusions fail in two opposite directions and
+  which one fires is unstable across task files. Wants one measure and one fix
+  pass with #210.
+- **#220** (`decision`) — carried rating changes classified into three exhaustive
+  cases; case 3 is the reportable event, computed from
+  `rerun.py::stale_obligation_ids`.
+
+## Carry this warning through the #181 block
 
 **#148 sits at 414.5, behind all of it, and until it lands a clean Gate 2 can be
-false.** This session it stopped merely blocking gates and started manufacturing
-green ones:
+false.** In #218 it manufactured a green one:
 
 ```
 12. Represent typed schemas as pydantic models.
        code evidence: addressed
          (no corresponding change)
        test evidence: strongly supported  [tier: static]
-         12.1  ...::test_recommendation_round_trips_through_persistence
-         12.2  ...::test_completion_result_round_trips_through_persistence
 ```
 
 Both cited tests pass whether or not the schemas are pydantic. **The evidence is
 inverted** — the code axis, where the answer lives, cites nothing; the test axis,
-which cannot hold it, carries citations.
+which cannot hold it, carries citations. Three comments on #148 hold the
+evidence.
 
-So when a Gate 2 in the #181 block comes back clean, check whether any obligation
-of that shape is carrying it. Three comments on #148 hold the evidence.
+Note the same bullet is now implicated in #223. It is a reliable troublemaker.
 
 Two findings that reshape #148's deliverable when it comes up:
 
@@ -78,30 +105,12 @@ Two findings that reshape #148's deliverable when it comes up:
   fits "docs, visual, deploy"; it arguably does not fit "the import is there in
   the diff", which should be satisfiable on code evidence alone.
 
-## Also open, filed this session
-
-- **#219** — scope exclusions declined as `no_obligation` against the prompt's
-  own instruction at `obligations.py:150`, with the reason stating the
-  obligation. Fired in two consecutive Gate 1 runs. Belongs in the
-  #204/#205/#206 prompt batch, where the re-record is paid once.
-- **#220** (`decision`) — every carried rating change classified into three
-  exhaustive cases: unchanged / changed with inputs moved / changed with inputs
-  unmoved. The third is the reportable event. Classification is **computed**
-  from `rerun.py::stale_obligation_ids`, so no model call and no re-examination.
-  `restated` is deferred behind measurement, deliberately: v1 makes case 3
-  countable, which is what a before/after comparison needs.
-- **#216** — nested bullets dropped silently. **Still unstarted**; its Gate 1 is
-  what set this whole session off. Re-run it now that #217 has landed;
-  `dogfood-logs/216-gate1-run1/` holds the original.
-
 ## Judgement failures worth not repeating
 
-Two dogfood recommendations were dismissed wrongly, both toward "already
-covered", and both are corrected in their judgement files:
+Dogfood recommendations dismissed wrongly, all toward "already covered":
 
 - #218's `closing-line-points-at-retrieval-command` — called a tautology
-  "asserted by existing report tests". Only the *negative* branch was; the line
-  the obligation names appeared in no test at all.
+  "asserted by existing report tests". Only the *negative* branch was.
 - #217's `pydantic-typed-schemas` — reported as a mapping miss (#182) because a
   test matched the recommendation's prescription. That test would pass whether
   or not the obligation held.
@@ -121,10 +130,10 @@ this.
   Use a required scalar beside a list (`obligation_id` + `more_obligation_ids`).
 - **`request_key` hashes the response schema** (`llm.py:81-87`). #217 paid this
   for the whole decompose corpus, so decomposition-accuracy figures are
-  non-comparable across it — and it silently re-derived #218's obligation set
-  mid-review: byte-identical task file, 12 of 14 obligations reworded.
+  non-comparable across it.
 - **A stable obligation count can conceal a total re-split.** Compare aligned
-  sets, not counts.
+  sets, not counts. And `with obligations: N` counts *dispositions, not
+  coverage* — #223 is exactly that gap.
 - **Test doubles returning `[]` no longer parse** for decomposition or
   recommendations. `tests/support.py::_completed` fills both from the ids the
   call supplied, read off the outgoing schema's enum via `_supplied_enum`.
@@ -136,22 +145,21 @@ this.
 - **`decompose|check --mode record` writes nothing to stdout when redirected.**
   Record once, then re-run in replay to capture.
 - **A commit subject starting with `#` is deleted during `rebase --continue`.**
-  `git commit -m` uses `--cleanup=whitespace` and keeps it; rebase re-reads
-  `COMMIT_EDITMSG` under `--cleanup=default` and strips it as a comment. Put the
-  issue ref at the end: `Subject line (#218)`.
+  Put the issue ref at the end: `Subject line (#218)`.
 - **Two branches adding a helper to the same file in different regions
-  auto-merge cleanly and silently.** #217 and #218 both added `_completed` to
-  `tests/support.py`; git reported no conflict and left two definitions, the
-  second shadowing the first. Grep for duplicate `def` after any rebase.
+  auto-merge cleanly and silently.** Grep for duplicate `def` after any rebase.
 - **Python here is 3.10** — no `enum.StrEnum`. Use `(str, Enum)`.
 - **The repo is `alipeles/acceptance-review`**, not the local dir name.
-- **`gh api ... -f` sends strings**; sub-issue ids need `-F` for integers.
+- **`gh api ... -f` sends strings**; sub-issue ids need `-F` for integers, and
+  the id is the REST `.id`, not the issue number.
 - **Adding a sub-issue returns the PARENT**, so `-q .number` echoes the umbrella.
+- **`cd` inside a Bash call persists to the next call.** `cd` back, or use
+  absolute paths.
 
 ## Known open, not the next task's problem
 
 **#210**, **#180**, **#193**, **#153**, **#191**, **#196**, **#178**, **#214**,
-**#129**.
+**#129**, **#223**.
 
 ## What to ignore
 
