@@ -52,7 +52,9 @@ explicitly states a design fork as undecided. Noted against #206.
 Whether to proceed to implementation on this breakdown. The tension is real:
 
 - **Against** — CLAUDE.md Gate 1 step 2 says do not proceed past a breakdown you
-  would not defend, and two requirements have no obligation at all.
+  would not defend, and two requirements' content is stated by no obligation.
+  (Both *are* linked to one — the log shows no gap. The obligation just doesn't
+  say what they say. Read the obligation text, not the arrow.)
 - **For** — the substance of #216 is covered faithfully by the 13 obligations
   (both deliverable halves, the region-coverage invariant, both regression
   cases, the reproduction, the design decision). The damage is confined to two
