@@ -97,13 +97,19 @@ def _accounted_positions(parsed: ParsedTaskFile) -> set[int]:
     return positions
 
 
-def uncovered_regions(text: str) -> list[tuple[int, str]]:
+def uncovered_regions(text: str, parsed: ParsedTaskFile | None = None) -> list[tuple[int, str]]:
     """Contiguous runs of task-file content no span accounts for.
 
     Returns `(start_offset, text)` per run, so a failure names the dropped
     words rather than a character count.
+
+    `parsed` defaults to this text's real parse. It is injectable so a test can
+    supply a deliberately-damaged parse and prove this function detects a loss
+    a requirement count cannot see — see
+    `test_a_dropped_region_is_detected_when_the_requirement_count_is_unchanged`.
     """
-    parsed = parse_task_file(text)
+    if parsed is None:
+        parsed = parse_task_file(text)
     exempt = _heading_positions(text) | _marker_positions(text)
     accounted = _accounted_positions(parsed)
 
@@ -133,9 +139,11 @@ def uncovered_regions(text: str) -> list[tuple[int, str]]:
     return [(s, text[s:e]) for s, e in merged]
 
 
-def assert_total_region_coverage(text: str, label: str) -> None:
+def assert_total_region_coverage(
+    text: str, label: str, parsed: ParsedTaskFile | None = None
+) -> None:
     """Fail with the dropped text itself, not a count of it."""
-    uncovered = uncovered_regions(text)
+    uncovered = uncovered_regions(text, parsed)
     if not uncovered:
         return
     detail = "\n".join(f"  offset {start}: {run!r}" for start, run in uncovered)

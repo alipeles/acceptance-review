@@ -20,11 +20,20 @@ from markdown_it.tree import SyntaxTreeNode
 
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import parse_task_file
+from acceptance.source_ref import TextSpan
 
 from tests.requirement.region_coverage import assert_total_region_coverage, uncovered_regions
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "nested-blocks"
+
+_SECTION_FIELDS = (
+    "behavior",
+    "constraints",
+    "scope_exclusions",
+    "completion_expectations",
+    "unclaimed",
+)
 
 # The reproduction from #216, verbatim.
 REPRODUCTION = (FIXTURES / "nested-bullets.md").read_text()
@@ -123,6 +132,40 @@ def test_a_list_item_with_two_paragraphs_contributes_no_unaccounted_region():
         "First paragraph.",
         "Second paragraph.",
     ]
+
+
+def test_a_dropped_region_is_detected_when_the_requirement_count_is_unchanged():
+    """The assertion is over source regions, not over a requirement count —
+    and this is the case that tells the two apart.
+
+    A count cannot detect its own missing entries. That is not a theoretical
+    objection: #216 shipped with a registry of the right shape, an empty
+    `unclaimed`, and three requirements gone. So the coverage check has to
+    survive a parse whose count is exactly right and whose spans are not.
+
+    Here every span is present and the count is untouched; one span merely
+    stops short of the text it claims. A count-based check sees nothing. This
+    one names the characters that fell out.
+    """
+    text = "# Task\nDo it.\n\n## Constraints\n- Outer.\n  - Nested.\n"
+    parsed = parse_task_file(text)
+    assert uncovered_regions(text, parsed) == []
+
+    damaged = parsed.model_copy(deep=True)
+    whole = damaged.constraints[1]
+    damaged.constraints[1] = TextSpan(
+        text=whole.text[:3],
+        start=whole.start,
+        end=whole.start + 3,
+    )
+
+    # Same number of requirements in every section — a count is unmoved.
+    assert len(damaged.constraints) == len(parsed.constraints)
+    assert [len(getattr(damaged, f)) for f in _SECTION_FIELDS] == [
+        len(getattr(parsed, f)) for f in _SECTION_FIELDS
+    ]
+    # The region check is not.
+    assert [run for _, run in uncovered_regions(text, damaged)] == ["ted."]
 
 
 # --- total coverage over corpora -------------------------------------------
