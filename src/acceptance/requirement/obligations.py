@@ -367,6 +367,7 @@ def decompose(
             constrain(_Decomposition, allowed),
             batch.request_partition(),
             parse_as=_Decomposition,
+            stage=_STAGE,
         )
         if unusable_answers is not None:
             unusable_answers.record(scan(result, allowed, _STAGE))

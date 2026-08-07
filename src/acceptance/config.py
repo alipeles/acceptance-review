@@ -129,5 +129,5 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
         controls_in_force=(
             None if in_force is None else DeterminismControls(**in_force)
         ),
-        request_partition_size=client.partition_size_in_force,
+        request_partition_sizes=client.partition_sizes_in_force,
     )

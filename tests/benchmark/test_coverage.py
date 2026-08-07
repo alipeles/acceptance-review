@@ -33,7 +33,12 @@ from acceptance.config import DEFAULT_MODEL, RunConfig
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_store import ReviewStore
 from tests.support import client_dispatching as _client_dispatching
-from tests.support import _EMPTY_BY_SCHEMA, _fake_response, client_finding_nothing
+from tests.support import (
+    _EMPTY_BY_SCHEMA,
+    _completed,
+    _fake_response,
+    client_finding_nothing,
+)
 
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 
@@ -636,7 +641,7 @@ def test_the_shared_pipeline_partitions_the_mapping_call(tmp_path):
         schema_name = kwargs["response_format"]["json_schema"]["name"]
         if schema_name == "_Mappings":
             mapping_prompts.append(kwargs["messages"][-1]["content"])
-        return _fake_response(json.dumps(_EMPTY_BY_SCHEMA[schema_name]))
+        return _fake_response(json.dumps(_completed(_EMPTY_BY_SCHEMA[schema_name], **kwargs)))
 
     def run(batch_size):
         mapping_prompts.clear()

@@ -133,12 +133,25 @@ _BEHAVIOURS = {"faithful": _faithful, "lossy": _lossy, "permissive": _permissive
 def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
     """A decomposer whose output is decided by `behaviour`, not by the task."""
     build = _BEHAVIOURS[behaviour]
+    # Derivation is partitioned by requirement (#204), so a task file of any
+    # size draws several calls. The label-seeded payload models the decomposer's
+    # WHOLE output, so it is emitted on the first call only — a real partitioned
+    # decomposer emits each obligation and question in exactly one batch, and
+    # repeating the set per batch would multiply it, with `_unique` renaming the
+    # copies (`report-format`, `report-format-2`, ...). The union across calls is
+    # what these cases score, and it is the ground truth exactly once.
+    emitted = {"done": False}
 
     def completion_fn(**kwargs):
         spec = kwargs["response_format"]["json_schema"]
         name = spec["name"]
         if name == "_Decomposition":
-            response = build(labels)
+            response = (
+                {"obligations": [], "open_questions": [], "requirement_dispositions": []}
+                if emitted["done"]
+                else build(labels)
+            )
+            emitted["done"] = True
             # Seeded from a case's LABELS, which name obligations and questions
             # but no requirement ids — those come from the parse a double
             # bypasses. Every requirement is therefore declined, which leaves

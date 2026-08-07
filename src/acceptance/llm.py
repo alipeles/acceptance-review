@@ -259,10 +259,18 @@ class ModelClient:
         # provenance can report the controls actually in force rather than the
         # ones configured (#160) — see `controls_in_force`.
         self._observed_controls: list[dict | None] = []
-        # One entry per partitioned call. Observed rather than configured, for
-        # the same reason as the controls above: provenance should describe the
-        # run that happened, not the run that was asked for (DR-164).
-        self._observed_partitions: list[dict] = []
+        # One entry per partitioned call, as (stage, size). Observed rather than
+        # configured, for the same reason as the controls above: provenance
+        # should describe the run that happened, not the run that was asked for
+        # (DR-164).
+        #
+        # Keyed by STAGE because two stages now partition at different sizes
+        # (#204): mapping splits relevance judgments, derivation splits
+        # requirements, and they scale differently, so one number cannot honestly
+        # describe both. Collapsing them to a single scalar made a run that
+        # partitioned twice report `None` — indistinguishable from a run that
+        # never partitioned at all.
+        self._observed_partitions: list[tuple[str, dict]] = []
 
     def build_request(
         self,
@@ -298,6 +306,7 @@ class ModelClient:
         response_model: type[ResponseModelT],
         partition: dict[str, Any] | None = None,
         parse_as: type[BaseModel] | None = None,
+        stage: str | None = None,
     ) -> ResponseModelT:
         """Return a validated response, from a live call or a transcript.
 
@@ -339,7 +348,11 @@ class ModelClient:
         # provider that discarded a control must not replay as pinned.
         self._observed_controls.append(record.get("controls_applied"))
         if partition is not None:
-            self._observed_partitions.append(partition)
+            # `stage` is deliberately NOT in `build_request`: it names which
+            # caller partitioned, which is provenance, not a determinism
+            # control. Folding it into the hash would re-key every existing
+            # mapping transcript for a label that cannot change an answer.
+            self._observed_partitions.append((stage or "unknown", partition))
         return self._validate(record["response"], parse_as or response_model)  # type: ignore[arg-type]
 
     @property
@@ -367,19 +380,23 @@ class ModelClient:
         return in_force
 
     @property
-    def partition_size_in_force(self) -> int | None:
-        """The partition size observed across this client's partitioned calls.
+    def partition_sizes_in_force(self) -> dict[str, int]:
+        """The partition size observed per stage, across this client's calls.
 
-        `None` means no partitioned call was made — an unpartitioned run, which
-        is a different claim from a partition size of one. As with
-        `controls_in_force`, disagreement between calls yields `None` rather than
-        a value that only some calls ran under.
+        An empty mapping means no partitioned call was made — an unpartitioned
+        run, which is a different claim from a partition of size one. A stage
+        whose calls disagree on size is omitted rather than reported at a value
+        only some of them ran under, exactly as `controls_in_force` yields
+        `None` on disagreement.
         """
-        sizes = {partition.get("size") for partition in self._observed_partitions}
-        if len(sizes) != 1:
-            return None
-        size = sizes.pop()
-        return size if isinstance(size, int) else None
+        by_stage: dict[str, set] = {}
+        for stage, partition in self._observed_partitions:
+            by_stage.setdefault(stage, set()).add(partition.get("size"))
+        return {
+            stage: sizes.pop()
+            for stage, sizes in sorted(by_stage.items())
+            if len(sizes) == 1 and isinstance(next(iter(sizes)), int)
+        }
 
     def _persist_live_call(
         self, key: str, request: dict, response_model: type[BaseModel]

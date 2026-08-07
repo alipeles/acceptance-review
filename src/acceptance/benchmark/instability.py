@@ -256,8 +256,8 @@ class ObservingClient(ModelClient):
         # run look identical — stability faked by the measuring instrument.
         self.observed: list[Any] = []
 
-    def complete(self, messages, response_model, partition=None, parse_as=None):
-        result = super().complete(messages, response_model, partition, parse_as)
+    def complete(self, messages, response_model, partition=None, parse_as=None, stage=None):
+        result = super().complete(messages, response_model, partition, parse_as, stage)
         self.observed.append(result)
         return result
 

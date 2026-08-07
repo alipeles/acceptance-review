@@ -3,7 +3,7 @@ import json
 import pytest
 
 from acceptance.cli import main, run_check
-from acceptance.config import DEFAULT_SEED, RunConfig
+from acceptance.config import DEFAULT_DECOMPOSE_BATCH_SIZE, DEFAULT_SEED, RunConfig
 from acceptance.review_state import Disposition
 from acceptance.review_store import ReviewStore
 from tests.support import client_finding_nothing
@@ -92,10 +92,12 @@ def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_pa
         "model": "openai/gpt-5",
         "controls_requested": {"temperature": 0.4, "seed": 7},
         "controls_in_force": {"temperature": 0.4, "seed": 7},
-        # This fixture's diff surfaces no candidate tests, so the mapping stage
-        # makes no call and there is no partitioning to report. None here is
-        # "unpartitioned run", not "partition of size zero".
-        "request_partition_size": None,
+        # This fixture's diff surfaces no candidate tests, so the mapping
+        # stage makes no call — but derivation partitions every run, so it
+        # reports its own size. Per stage because the two are different work
+        # at different scale (#204); an EMPTY mapping is the "unpartitioned
+        # run" claim, not a null.
+        "request_partition_sizes": {"decompose": DEFAULT_DECOMPOSE_BATCH_SIZE},
     }
 
 

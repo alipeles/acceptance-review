@@ -142,6 +142,7 @@ def map_tests_to_obligations(
             constrain(_Mappings, allowed),
             batch.request_partition(),
             parse_as=_Mappings,
+            stage=_STAGE,
         )
 
         unusable_answers.extend(scan(result, allowed, _STAGE))
