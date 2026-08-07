@@ -15,6 +15,7 @@ import pathlib
 
 DOCS = pathlib.Path(__file__).resolve().parents[1] / "docs"
 DR_202 = DOCS / "DR-202-decomposition-requirement-mapping.md"
+DR_216 = DOCS / "DR-216-parser-accounts-decomposer-splits.md"
 
 
 def _flat(text: str) -> str:
@@ -69,3 +70,45 @@ def test_dr_202_records_what_the_interim_scheme_defers():
 
     assert "#209" in flat
     assert "a requirement id is not comparable across two versions" in flat
+
+
+def test_dr_216_records_the_nested_content_decision_as_resolved():
+    """#216's Completion expectations require the choice between
+    nested-as-requirement and nested-as-unread to be *recorded in the
+    repository*, and #216's own body offers both as open.
+
+    The record is the only place that choice survives — nothing in the parser
+    distinguishes "this is the policy" from "this is how it happens to behave"
+    — so an edit that drops it leaves the next session re-deriving a decision
+    already made. That is the failure this module exists to catch.
+    """
+    text = DR_216.read_text()
+    flat = _flat(text)
+
+    # The choice itself, stated as chosen rather than surveyed.
+    assert "Nested content under a claimed list item becomes its own requirement" in flat
+    # Its scope: both shapes #216 reports, not only nested bullets.
+    assert "nested bullets and second or subsequent paragraphs" in flat
+    # The ground it rests on, so the decision can be revisited on its merits.
+    assert "lossy versus noisy" in flat
+
+
+def test_dr_216_states_the_decision_uniformly_rather_than_per_block_type():
+    """The constraint is that the choice is made ONCE and applied uniformly.
+    A record that settled nested bullets while leaving fences and tables to a
+    separate rule would satisfy the letter and lose the property."""
+    flat = _flat(DR_216.read_text())
+
+    assert "The parser never judges block type" in flat
+    assert "A nested fence, a nested table and a nested bullet are treated alike" in flat
+
+
+def test_dr_216_records_that_the_real_corpora_cannot_falsify_the_guard():
+    """DR-216 decision 5. Without this the coverage assertion is green on a
+    corpus containing zero nested bullets — the same shape of hole #216
+    exists to close, rebuilt inside its own fix."""
+    flat = _flat(DR_216.read_text())
+
+    assert "contain zero nested bullets" in flat
+    assert "purpose-built fixtures" in flat
+    assert "tests/fixtures/nested-blocks/" in flat

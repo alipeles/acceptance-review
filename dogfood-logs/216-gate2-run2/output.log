@@ -1,0 +1,201 @@
+Task completion: INCOMPLETE
+
+2 obligation(s) with non-discriminating test evidence (obligation-region-level-coverage-assertion, obligation-region-level-total-coverage-tests).
+
+Obligations:
+
+  1. Nested content under a claimed list item is accounted for either as its own requirement or as unread source, so it is never omitted from both registry and unclaimed coverage.
+       requirements: task-01, task-02, task-05, constraint-01, exclusion-01, exclusion-03
+       code evidence: addressed
+         1.1  src/acceptance/requirement/task_file.py#@@ -67,10 +82,10 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+         1.2  src/acceptance/requirement/task_file.py#@@ -80,6 +95,42 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+         1.3  tests/requirement/test_region_coverage.py#@@ -0,0 +1,264 @@
+       test evidence: strongly supported  [tier: static]
+         1.4  tests/requirement/test_region_coverage.py::test_a_list_item_with_a_nested_bullet_list_contributes_no_unaccounted_region
+         1.5  tests/requirement/test_region_coverage.py::test_a_list_item_with_two_paragraphs_contributes_no_unaccounted_region
+         1.6  tests/requirement/test_region_coverage.py::test_a_nested_fence_is_accounted_for_whole
+         1.7  tests/requirement/test_region_coverage.py::test_a_nested_table_is_accounted_for_whole
+         1.8  tests/requirement/test_region_coverage.py::test_nested_content_under_an_unrecognised_heading_is_reported_as_unread
+         1.9  tests/requirement/test_region_coverage.py::test_the_reproduction_yields_five_requirements
+         1.10  tests/requirement/test_task_file.py::test_every_paragraph_of_the_task_section_is_kept
+
+  2. A second or subsequent paragraph inside a single list item is accounted for either as its own requirement or as unread source.
+       requirements: task-01, constraint-02
+       code evidence: addressed
+         2.1  src/acceptance/requirement/task_file.py#@@ -80,6 +95,42 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+         2.2  tests/fixtures/nested-blocks/multi-paragraph-item.md#@@ -0,0 +1,21 @@
+         2.3  tests/requirement/test_region_coverage.py#@@ -0,0 +1,264 @@
+       test evidence: strongly supported  [tier: static]
+         2.4  tests/requirement/test_region_coverage.py::test_a_list_item_with_two_paragraphs_contributes_no_unaccounted_region
+         2.5  tests/requirement/test_region_coverage.py::test_the_reproduction_yields_five_requirements
+         2.6  tests/requirement/test_task_file.py::test_every_paragraph_of_the_task_section_is_kept
+
+  3. The nested-content accounting decision is made once and applied consistently across the parse.
+       requirements: constraint-03
+       code evidence: addressed
+         3.1  src/acceptance/requirement/task_file.py#@@ -80,6 +95,42 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+         3.2  docs/DR-216-parser-accounts-decomposer-splits.md#@@ -111,6 +111,18 @@ items, nested fences and nested tables. Running the assertion over the real
+         3.3  tests/test_decision_records.py#@@ -69,3 +70,45 @@ def test_dr_202_records_what_the_interim_scheme_defers():
+       test evidence: strongly supported  [tier: static]
+         3.4  tests/requirement/test_region_coverage.py::test_a_list_item_with_a_nested_bullet_list_contributes_no_unaccounted_region
+         3.5  tests/requirement/test_region_coverage.py::test_a_list_item_with_two_paragraphs_contributes_no_unaccounted_region
+         3.6  tests/requirement/test_region_coverage.py::test_a_nested_fence_is_accounted_for_whole
+         3.7  tests/requirement/test_region_coverage.py::test_nested_content_under_an_unrecognised_heading_is_reported_as_unread
+         3.8  tests/requirement/test_region_coverage.py::test_the_reproduction_yields_five_requirements
+
+  4. unclaimed accounts for all task-file text, including text beyond unrecognised top-level headings.
+       requirements: task-03, task-04, constraint-04, constraint-10, exclusion-04, exclusion-05
+       code evidence: addressed
+         4.1  tests/requirement/region_coverage.py#@@ -0,0 +1,153 @@
+         4.2  src/acceptance/requirement/task_file.py#@@ -67,10 +82,10 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+         4.3  src/acceptance/requirement/task_file.py#@@ -80,6 +95,42 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       test evidence: strongly supported  [tier: static]
+         4.4  tests/requirement/test_region_coverage.py::test_nested_content_under_an_unrecognised_heading_is_reported_as_unread
+         4.5  tests/requirement/test_requirement_map.py::test_text_the_parse_never_read_is_carried_into_the_mapping
+         4.6  tests/requirement/test_requirement_map.py::test_the_cli_shouts_about_text_that_was_never_read
+         4.7  tests/requirement/test_task_file.py::test_a_table_no_section_claims_is_reported_whole
+         4.8  tests/requirement/test_task_file.py::test_text_outside_every_recognised_section_is_reported_not_dropped
+
+  5. Every non-whitespace, non-heading region of a task file is covered by either a registry span or an unclaimed span.
+       requirements: task-03, task-04, task-05, constraint-05
+       code evidence: addressed
+         5.1  tests/requirement/region_coverage.py#@@ -0,0 +1,153 @@
+       test evidence: strongly supported  [tier: static]
+         5.2  tests/requirement/test_region_coverage.py::test_a_dropped_region_is_detected_when_the_requirement_count_is_unchanged
+         5.3  tests/requirement/test_region_coverage.py::test_a_nested_table_is_accounted_for_whole
+         5.4  tests/requirement/test_region_coverage.py::test_nested_content_under_an_unrecognised_heading_is_reported_as_unread
+         5.5  tests/requirement/test_region_coverage.py::test_the_reproduction_leaves_nothing_unaccounted_for
+         5.6  tests/requirement/test_task_file.py::test_a_table_no_section_claims_is_reported_whole
+         5.7  tests/requirement/test_task_file.py::test_parses_the_projects_own_current_task_file
+         5.8  tests/requirement/test_task_file.py::test_text_outside_every_recognised_section_is_reported_not_dropped
+
+  6. The coverage test asserts total coverage directly over source regions rather than over requirement counts.
+       requirements: constraint-06
+       code evidence: addressed
+         6.1  tests/requirement/region_coverage.py#@@ -0,0 +1,153 @@
+         6.2  tests/requirement/test_region_coverage.py#@@ -0,0 +1,264 @@
+       test evidence: partially supported  [tier: static]
+         6.3  tests/requirement/test_region_coverage.py::test_a_dropped_region_is_detected_when_the_requirement_count_is_unchanged
+         6.4  tests/requirement/test_region_coverage.py::test_every_requirement_of_the_reproduction_keeps_an_exact_span
+         6.5  tests/requirement/test_region_coverage.py::test_purpose_built_fixtures_are_fully_covered
+         6.6  tests/requirement/test_region_coverage.py::test_the_decompose_stability_corpus_is_fully_covered
+         6.7  tests/requirement/test_region_coverage.py::test_the_repositorys_own_task_files_are_fully_covered
+         recommended test: The test checks source-region coverage metrics, not just the number of requirements produced.
+           inputs:  Use a task-file fixture where the parser can produce the same requirement count and exact per-span text for the claimed requirements, but still miss some source characters because a claimed list item contains nested content (e.g. a nested bullet, second paragraph, fence, or table). The input must include at least one dropped nested block inside a claimed list item so the defect changes total source coverage without changing the visible requirement count.
+           detects: Coverage test checks exact span text for each requirement but not total source coverage, so a parser that drops nested content while preserving the visible spans of the requirements it does emit would still pass.
+           full detail: acceptance recommendation --criterion obligation-region-level-coverage-assertion
+
+  7. The coverage assertion runs over the repository's own committed task files.
+       requirements: constraint-07
+       code evidence: addressed
+         7.1  tests/requirement/test_region_coverage.py#@@ -0,0 +1,264 @@
+       test evidence: strongly supported  [tier: static]
+         7.2  tests/requirement/test_region_coverage.py::test_the_repositorys_own_task_files_are_fully_covered
+         7.3  tests/requirement/test_task_file.py::test_parses_the_projects_own_current_task_file
+
+  8. The coverage assertion runs over the tests/fixtures/decompose-stability/ corpus.
+       requirements: constraint-08
+       code evidence: addressed
+         8.1  tests/requirement/test_region_coverage.py#@@ -0,0 +1,264 @@
+       test evidence: strongly supported  [tier: static]
+         8.2  tests/requirement/test_region_coverage.py::test_purpose_built_fixtures_are_fully_covered
+         8.3  tests/requirement/test_region_coverage.py::test_the_decompose_stability_corpus_is_fully_covered
+
+  9. The specified reproduction yields either five requirements or two requirements plus three unread blocks.
+       requirements: constraint-09, completion-02
+       code evidence: addressed
+         9.1  tests/requirement/test_region_coverage.py#@@ -0,0 +1,264 @@
+         9.2  tests/fixtures/nested-blocks/nested-bullets.md#@@ -0,0 +1,10 @@
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/requirement/test_region_coverage.py::test_the_reproduction_leaves_nothing_unaccounted_for
+         9.4  tests/requirement/test_region_coverage.py::test_the_reproduction_yields_five_requirements
+
+  10. A list item containing a nested bullet list contributes no unaccounted region.
+       requirements: task-01, completion-03
+       code evidence: addressed
+         10.1  tests/fixtures/nested-blocks/nested-bullets.md#@@ -0,0 +1,10 @@
+         10.2  tests/requirement/test_region_coverage.py#@@ -0,0 +1,264 @@
+         10.3  src/acceptance/requirement/task_file.py#@@ -80,6 +95,42 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       test evidence: strongly supported  [tier: static]
+         10.4  tests/requirement/test_region_coverage.py::test_a_list_item_with_a_nested_bullet_list_contributes_no_unaccounted_region
+         10.5  tests/requirement/test_region_coverage.py::test_nested_content_under_an_unrecognised_heading_is_reported_as_unread
+         10.6  tests/requirement/test_region_coverage.py::test_the_reproduction_yields_five_requirements
+
+  11. A list item containing two paragraphs contributes no unaccounted region.
+       requirements: task-01, completion-04
+       code evidence: addressed
+         11.1  tests/fixtures/nested-blocks/multi-paragraph-item.md#@@ -0,0 +1,21 @@
+         11.2  tests/requirement/test_region_coverage.py#@@ -0,0 +1,264 @@
+         11.3  src/acceptance/requirement/task_file.py#@@ -80,6 +95,42 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       test evidence: strongly supported  [tier: static]
+         11.4  tests/requirement/test_region_coverage.py::test_a_list_item_with_two_paragraphs_contributes_no_unaccounted_region
+         11.5  tests/requirement/test_region_coverage.py::test_the_reproduction_yields_five_requirements
+         11.6  tests/requirement/test_task_file.py::test_every_paragraph_of_the_task_section_is_kept
+
+  12. A test asserts region-level total coverage over the repository's committed task files and over the decompose-stability corpus.
+       requirements: constraint-11, constraint-12, completion-05, completion-06
+       code evidence: addressed
+         12.1  tests/requirement/test_region_coverage.py#@@ -0,0 +1,264 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The test suite includes coverage assertions for both the repository task files and the decompose-stability fixtures.
+           inputs:  Use both corpus classes named in the diff: repository task files (`current-task.md` plus `dogfood-logs/*/current-task.md`) and the decompose-stability fixtures (`tests/fixtures/decompose-stability/*/current-task.md`). The test must exercise a corpus that is currently green but insufficient as evidence, and a purpose-built nested-block fixture that can fail under the pre-#216 parser.
+           detects: The test suite includes coverage assertions for only one corpus class, or it relies on corpora that cannot falsify the guard because they contain no nested blocks, so the total-coverage claim is unsupported.
+           full detail: acceptance recommendation --criterion obligation-region-level-total-coverage-tests
+
+  13. The nested-as-requirement versus nested-as-unread decision is recorded in the repository.
+       requirements: exclusion-02, completion-07
+       code evidence: addressed
+         13.1  docs/DR-216-parser-accounts-decomposer-splits.md#@@ -1,7 +1,7 @@
+         13.2  docs/DR-216-parser-accounts-decomposer-splits.md#@@ -111,6 +111,18 @@ items, nested fences and nested tables. Running the assertion over the real
+         13.3  tests/test_decision_records.py#@@ -15,6 +15,7 @@ import pathlib
+         13.4  tests/test_decision_records.py#@@ -69,3 +70,45 @@ def test_dr_202_records_what_the_interim_scheme_defers():
+       test evidence: strongly supported  [tier: static]
+         13.5  tests/requirement/test_obligations.py::test_decomposition_round_trips_through_persistence
+         13.6  tests/requirement/test_requirement_map.py::test_a_disposition_naming_a_renamed_obligation_still_links
+         13.7  tests/requirement/test_requirement_map.py::test_a_fully_accounted_response_disposes_every_requirement
+         13.8  tests/test_decision_records.py::test_dr_202_no_longer_lists_requirement_id_stability_as_open
+         13.9  tests/test_decision_records.py::test_dr_202_records_the_requirement_id_decision_as_resolved
+         13.10  tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+         13.11  tests/test_decision_records.py::test_dr_202_records_what_the_interim_scheme_defers
+         13.12  tests/test_decision_records.py::test_dr_216_records_that_the_real_corpora_cannot_falsify_the_guard
+         13.13  tests/test_decision_records.py::test_dr_216_records_the_nested_content_decision_as_resolved
+         13.14  tests/test_decision_records.py::test_dr_216_states_the_decision_uniformly_rather_than_per_block_type
+
+Mandate coverage: 28 of 29 requirements yielded obligations
+  1. [no_obligation] completion-01: Implementation
+       reason: Section marker only; it does not add a checkable requirement by itself.
+
+Unrequested changes:
+  1. [in_service] The decision-record edit changes the status line from “accepted, not built” to “accepted and built,” which is a repository metadata/configuration change not required by the listed obligations. The obligations ask that the decision be recorded, but do not require changing its build status or track/stage metadata.
+       docs/DR-216-parser-accounts-decomposer-splits.md#@@ -1,7 +1,7 @@
+  2. [in_service] The new parser logic now treats `ordered_list` the same as `bullet_list` and recursively emits nested list items, fences, tables, and second paragraphs as separate spans. The obligations require nested-content accounting and coverage, but they do not mention broadening parsing to ordered lists or changing how non-nested block types are emitted in the parser itself.
+       src/acceptance/requirement/task_file.py#@@ -28,6 +28,12 @@ _COMPLETION = {"completion expectations"}
+       src/acceptance/requirement/task_file.py#@@ -67,10 +82,10 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+       src/acceptance/requirement/task_file.py#@@ -80,6 +95,42 @@ def parse_task_file(text: str) -> ParsedTaskFile:
+  3. [in_service] The added `nested-blocks` fixture corpus and its README introduce a new test corpus and explanatory documentation. The obligations require coverage tests over committed task files and the decompose-stability corpus, plus a decision record; they do not explicitly require creating this separate nested-blocks fixture corpus or its README.
+       tests/fixtures/nested-blocks/README.md#@@ -0,0 +1,32 @@
+       tests/fixtures/nested-blocks/deeply-nested.md#@@ -0,0 +1,25 @@
+       tests/fixtures/nested-blocks/multi-paragraph-item.md#@@ -0,0 +1,21 @@
+       tests/fixtures/nested-blocks/nested-bullets.md#@@ -0,0 +1,10 @@
+       tests/fixtures/nested-blocks/nested-fence.md#@@ -0,0 +1,13 @@
+       tests/fixtures/nested-blocks/nested-table.md#@@ -0,0 +1,15 @@
+  4. [in_service] `tests/requirement/region_coverage.py` introduces a new character-level coverage algorithm, including heading/marker exemptions and a public assertion API. The obligations require a region-level coverage assertion over source regions, but they do not specify this particular implementation strategy or the extra helper functions and exported names.
+       tests/requirement/region_coverage.py#@@ -0,0 +1,153 @@
+  5. [in_service] The new tests assert exact counts and exact span text for the reproduction, plus additional checks for nested fences/tables and a damaged-span scenario. The obligations require region-level coverage and the nested-content accounting outcomes, but they do not call for these extra behavioral assertions or the specific reproduction fixture expectations.
+       tests/requirement/test_region_coverage.py#@@ -0,0 +1,264 @@
+  6. [in_service] The decision-record tests add new string assertions about the DR-216 text, including claims about uniform block-type treatment and corpus vacuity. The obligations require that the nested-as-requirement versus nested-as-unread decision be recorded, but they do not require these specific documentation assertions or the exact phrasing checked here.
+       tests/test_decision_records.py#@@ -15,6 +15,7 @@ import pathlib
+       tests/test_decision_records.py#@@ -69,3 +70,45 @@ def test_dr_202_records_what_the_interim_scheme_defers():
+
+Changes since 2ae0fed7:
+  closed:
+    - The nested-as-requirement versus nested-as-unread decision is recorded in the repository.
+        code evidence: addressed -> addressed
+        test evidence: nominally supported -> strongly supported
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
