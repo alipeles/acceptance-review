@@ -123,17 +123,25 @@ def constrain(model: type[ModelT], allowed: Mapping[str, Sequence[str]]) -> type
 
 
 class UnusableAnswer(BaseModel):
-    """A returned id that was never supplied to the call that returned it.
+    """An answer that cannot be honoured — most often an id never supplied to
+    the call that returned it.
 
     Kept rather than dropped: an id we cannot honour means the judgment we asked
     for was not obtained, which is a different thing from the model considering
     the question and answering it negatively. Dropping the two together is what
     made the original defect invisible.
+
+    `reason` is optional because the original and still most common case needs
+    none — the field name and the id say it. It exists for rejections that are
+    not about supply at all, such as #204's no-linking rule, where a reader
+    seeing only `field=obligation_id` could not tell what was wrong with an id
+    the response itself minted.
     """
 
     stage: str
     field: str
     returned_id: str
+    reason: str | None = None
 
 
 class UnusableAnswerLog:

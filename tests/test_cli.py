@@ -214,13 +214,19 @@ def test_run_check_rejects_a_revision_missing_from_the_given_repo(
 
 # --- decompose subcommand (M1.2/M1.3 dogfood path) ---
 
-def test_decompose_replay_without_transcript_fails_cleanly(
-    fixture_task_path, tmp_path, monkeypatch, capsys
-):
+def test_decompose_replay_without_transcript_fails_cleanly(tmp_path, monkeypatch, capsys):
     # REPLAY mode with no recorded transcript must not call live; it errors out.
     # chdir to an empty dir so the relative transcript store is guaranteed empty.
+    #
+    # Uses a §7.1-shaped task rather than `fixture_task_path`: derivation is
+    # partitioned by requirement (#204), so a file the parser reads no
+    # requirements out of issues no call at all and there is no transcript to
+    # miss. `minimal_task.md` is headed `## Deliverable` / `## Acceptance` and is
+    # exactly such a file, which made this test pass for the wrong reason.
+    task = tmp_path / "task.md"
+    task.write_text("# Task\nDo the thing.\n\n## Constraints\n- Keep it fast.\n")
     monkeypatch.chdir(tmp_path)
-    exit_code = main(["decompose", "--task", fixture_task_path, "--mode", "replay"])
+    exit_code = main(["decompose", "--task", str(task), "--mode", "replay"])
 
     assert exit_code == 1
     assert "model error" in capsys.readouterr().err
@@ -327,7 +333,9 @@ def test_run_classify_auto_ignores_the_task_file(git_repo, monkeypatch):
         cli_module, "extract_working_tree_change_set", fake_extract_working_tree_change_set
     )
     monkeypatch.setattr(
-        cli_module, "decompose", lambda parsed, client: Decomposition(obligations=[])
+        cli_module,
+        "decompose",
+        lambda parsed, client, **kwargs: Decomposition(obligations=[]),
     )
     monkeypatch.setattr(cli_module, "classify_coverage", lambda obligations, cs, client: [])
     monkeypatch.setattr(

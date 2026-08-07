@@ -25,11 +25,24 @@ import pytest
 from pydantic import ValidationError
 
 from acceptance.llm import SchemaValidationError, inline_schema_refs
-from acceptance.requirement.obligations import _Decomposition, _user_prompt, decompose
+from acceptance.requirement.obligations import (
+    Decomposition,
+    _Decomposition,
+    _user_prompt,
+    decompose,
+)
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import Disposition, RequirementSection
+from acceptance.review_state import (
+    Disposition,
+    ObligationType,
+    RequirementDisposition,
+    RequirementMap,
+    RequirementSection,
+)
+from acceptance.supplied_ids import UnusableAnswerLog
 from tests.support import client_returning as _client_returning
+from tests.support import make_obligation
 
 # Three requirements in three sections, deliberately: the section a requirement
 # sits in is part of its id, and a single-section file could not catch a scheme
@@ -137,6 +150,7 @@ def test_a_fully_accounted_response_disposes_every_requirement():
             _obligation("usd-format", "Format money as USD.", "Format money as USD"),
             _obligation("csv-unchanged", "Keep the CSV export unchanged.", "existing CSV export"),
             _obligation("pdf-untouched", "Preserve the PDF renderer.", "Changing the PDF renderer"),
+            _obligation("usd-format-done", "Format money as USD.", "Format money as USD"),
         ],
         "open_questions": [],
         "requirement_dispositions": [
@@ -144,7 +158,7 @@ def test_a_fully_accounted_response_disposes_every_requirement():
             _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
             _disposition("constraint-02", "yielded", obligation_ids=["csv-unchanged"]),
             _disposition("exclusion-01", "yielded", obligation_ids=["pdf-untouched"]),
-            _disposition("completion-01", "yielded", obligation_ids=["usd-format"]),
+            _disposition("completion-01", "yielded", obligation_ids=["usd-format-done"]),
         ],
     }
 
@@ -176,12 +190,13 @@ def test_a_response_that_never_mentions_a_requirement_is_rejected():
         "obligations": [
             _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
             _obligation("usd-format", "Format money as USD.", "Format money as USD"),
+            _obligation("usd-format-done", "Format money as USD.", "Format money as USD"),
         ],
         "open_questions": [],
         "requirement_dispositions": [
             _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
             _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
-            _disposition("completion-01", "yielded", obligation_ids=["usd-format"]),
+            _disposition("completion-01", "yielded", obligation_ids=["usd-format-done"]),
         ],
     }
 
@@ -561,11 +576,22 @@ def test_a_supplied_reason_is_preserved_rather_than_replaced():
     assert result.requirement_map.disposition_for("exclusion-01").reason == reason
 
 
-def test_one_obligation_serves_two_requirements_rather_than_being_duplicated():
-    """DR-202 decision 2. The same requirement stated under Constraints and
-    under Completion expectations is ONE obligation with two links, which is
-    what reframes #144 from 'are these obligations the same?' to 'does this
-    requirement restate one already covered?'."""
+def test_one_obligation_named_by_two_requirements_is_rejected():
+    """DR-204, reversing DR-202 decision 2 for THIS pass.
+
+    Derivation performs no linking. A response naming one obligation from two
+    requirements is recorded through `UnusableAnswerLog` and neither requirement
+    is treated as disposed — which leaves the mandate unaccounted for, so the
+    reconciliation raises.
+
+    DR-202 argued that anchoring the judgment to identified requirements avoids
+    over-merging. #210 established that it *relocated* over-merging into linking
+    instead, and the cost is asymmetric: an over-merge here destroys a
+    requirement's content, while an under-merge downstream leaves two obligations
+    saying nearly the same thing. Lossy against noisy. The many-to-one mapping is
+    still the final state of a review — it becomes #144's output, not this
+    pass's.
+    """
     parsed = parse_task_file(TASK)
     response = {
         "obligations": [
@@ -580,20 +606,64 @@ def test_one_obligation_serves_two_requirements_rather_than_being_duplicated():
             _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
             _disposition("constraint-02", "yielded", obligation_ids=["csv-unchanged"]),
             _disposition("exclusion-01", "yielded", obligation_ids=["pdf-untouched"]),
-            # The same obligation, not a second copy of it.
+            # The same obligation named a second time — the link this pass may
+            # no longer make.
             _disposition("completion-01", "yielded", obligation_ids=["usd-format"]),
+        ],
+    }
+    unusable = UnusableAnswerLog()
+
+    with pytest.raises(SchemaValidationError) as raised:
+        decompose(parsed, _client_returning(response), unusable)
+
+    # Neither claimant survives: keeping one would silently pick a winner, and
+    # the loser's content is what disappears.
+    assert "constraint-01" in str(raised.value)
+    assert "completion-01" in str(raised.value)
+
+    (answer,) = [a for a in unusable.answers if a.field == "obligation_id"]
+    assert answer.stage == "decompose"
+    assert answer.returned_id == "usd-format"
+    assert "completion-01, constraint-01" in answer.reason
+    assert "no linking" in answer.reason
+
+
+def test_two_requirements_stating_the_same_thing_yield_two_obligations():
+    """The other half of DR-204: the duplicate is the CORRECT output here.
+
+    A task file stating one requirement under Constraints and again under
+    Completion expectations yields two obligations from this pass, each stating
+    its own requirement's content. #144 merges them afterwards. Under-merging is
+    verbose and recoverable; over-merging is silent and not.
+    """
+    parsed = parse_task_file(TASK)
+    response = {
+        "obligations": [
+            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
+            _obligation("usd-format", "Format money as USD.", "Format money as USD"),
+            _obligation("csv-unchanged", "Keep the CSV export unchanged.", "existing CSV export"),
+            _obligation("pdf-untouched", "Preserve the PDF renderer.", "Changing the PDF renderer"),
+            _obligation("usd-format-done", "Format money as USD.", "Format money as USD"),
+        ],
+        "open_questions": [],
+        "requirement_dispositions": [
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
+            _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
+            _disposition("constraint-02", "yielded", obligation_ids=["csv-unchanged"]),
+            _disposition("exclusion-01", "yielded", obligation_ids=["pdf-untouched"]),
+            _disposition("completion-01", "yielded", obligation_ids=["usd-format-done"]),
         ],
     }
 
     result = decompose(parsed, _client_returning(response))
 
-    assert result.requirement_map.requirements_for_obligation("usd-format") == [
-        "constraint-01",
-        "completion-01",
+    assert result.requirement_map.requirements_for_obligation("usd-format") == ["constraint-01"]
+    assert result.requirement_map.requirements_for_obligation("usd-format-done") == [
+        "completion-01"
     ]
-    # One obligation, not two near-identical ones.
-    assert [o.id for o in result.obligations].count("usd-format") == 1
-    assert len(result.obligations) == 4
+    # Every obligation belongs to exactly one requirement.
+    for obligation in result.obligations:
+        assert len(result.requirement_map.requirements_for_obligation(obligation.id)) == 1
 
 
 def test_a_disposition_naming_a_renamed_obligation_still_links():
@@ -608,8 +678,11 @@ def test_a_disposition_naming_a_renamed_obligation_still_links():
         ],
         "open_questions": [],
         "requirement_dispositions": [
+            # One requirement names the colliding id. A SECOND naming it would
+            # now be linking, which #204 rejects — so the rename and the
+            # no-linking rule are tested apart, and this one is the rename.
             _disposition("task-01", "yielded", obligation_ids=["dup"]),
-            _disposition("constraint-01", "yielded", obligation_ids=["dup"]),
+            _disposition("constraint-01", "no_obligation", reason="Not applicable."),
             _disposition("constraint-02", "no_obligation", reason="Not applicable."),
             _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
             _disposition("completion-01", "no_obligation", reason="Not applicable."),
@@ -636,7 +709,7 @@ def test_decompose_cannot_reach_a_diff_or_a_head_revision():
     """
     parameters = inspect.signature(decompose).parameters
 
-    assert list(parameters) == ["parsed", "client", "unusable_answers"]
+    assert list(parameters) == ["parsed", "client", "unusable_answers", "batch_size"]
     annotations = {name: str(p.annotation) for name, p in parameters.items()}
     forbidden = ("ChangeSet", "Path", "revision", "repo", "head")
     for name, annotation in annotations.items():
@@ -650,7 +723,8 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
     already computed the structure; pasting `parsed.source` back discards it and
     asks the model to re-derive what the code knows."""
     parsed = parse_task_file(TASK)
-    prompt = _user_prompt(build_registry(parsed))
+    registry = build_registry(parsed)
+    prompt = _user_prompt(registry, {r.id for r in registry})
 
     assert "[constraint-01]" in prompt
     assert "[exclusion-01]" in prompt
@@ -659,26 +733,88 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
     assert "## Scope exclusions" not in prompt
 
 
+def test_every_batch_sees_the_whole_task_file_and_answers_for_its_own_share():
+    """#204 deliverable 2. The batch scopes what a call must ANSWER FOR; it does
+    not scope what the call may READ.
+
+    #178 is a failure to reconcile across sections, and a call shown only its own
+    bullets cannot notice that a later section settles a term an earlier one
+    leaves open — it would trade one silent loss for another.
+    """
+    parsed = parse_task_file(TASK)
+    registry = build_registry(parsed)
+    prompt = _user_prompt(registry, {"constraint-01"})
+
+    # Every requirement is present, including the ones another call answers for.
+    for requirement in registry:
+        assert f"[{requirement.id}]" in prompt
+    assert "Format money as USD" in prompt
+    assert "Changing the PDF renderer" in prompt
+
+    # But only one is asked for, and the rest are marked as context.
+    assert "[constraint-01] (constraint) [ANSWER FOR THIS]" in prompt
+    assert "[exclusion-01] (exclusion) [context only]" in prompt
+
+
 # --- the CLI renders the mapping as a mapping -------------------------------
 
 
 def _decomposition_with_a_shared_and_a_declined_requirement():
+    """A many-to-one map, built directly rather than through `decompose`.
+
+    The renderer's job — showing that one obligation serves several requirements
+    — is unchanged and still needed: a many-to-one map is the final state of a
+    review (DR-202 decision 2, which DR-204 leaves standing). What changed is
+    which pass may create one. Derivation may not, so a fixture that produced
+    this shape by calling `decompose` would now be asserting the renderer works
+    on input the pipeline cannot hand it, and the honest source of that shape is
+    #144's de-duplication pass.
+
+    Constructed here so the renderer keeps its test while #144 is unbuilt.
+    """
     parsed = parse_task_file(TASK)
-    response = {
-        "obligations": [
-            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
-            _obligation("usd-format", "Format money as USD.", "Format money as USD"),
-        ],
-        "open_questions": [],
-        "requirement_dispositions": [
-            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
-            _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
-            _disposition("constraint-02", "no_obligation", reason="Covered by the CSV suite."),
-            _disposition("exclusion-01", "yielded", obligation_ids=["render-lines"]),
-            _disposition("completion-01", "yielded", obligation_ids=["usd-format"]),
-        ],
-    }
-    return decompose(parsed, _client_returning(response))
+    obligations = [
+        make_obligation("render-lines", "Render each invoice line.", ObligationType.FUNCTIONAL),
+        make_obligation("usd-format", "Format money as USD.", ObligationType.FUNCTIONAL),
+    ]
+    dispositions = [
+        RequirementDisposition(
+            requirement_id="task-01",
+            disposition=Disposition.YIELDED,
+            obligation_ids=["render-lines"],
+        ),
+        RequirementDisposition(
+            requirement_id="constraint-01",
+            disposition=Disposition.YIELDED,
+            obligation_ids=["usd-format"],
+        ),
+        RequirementDisposition(
+            requirement_id="constraint-02",
+            disposition=Disposition.NO_OBLIGATION,
+            reason="Covered by the CSV suite.",
+        ),
+        # The link a de-duplication pass would make.
+        RequirementDisposition(
+            requirement_id="exclusion-01",
+            disposition=Disposition.YIELDED,
+            obligation_ids=["render-lines"],
+        ),
+        # The second link, restating constraint-01 under Completion expectations.
+        RequirementDisposition(
+            requirement_id="completion-01",
+            disposition=Disposition.YIELDED,
+            obligation_ids=["usd-format"],
+        ),
+    ]
+    return Decomposition(
+        obligations=obligations,
+        open_questions=[],
+        requirement_map=RequirementMap(
+            requirements=build_registry(parsed),
+            dispositions=dispositions,
+            unread_source=parsed.unclaimed,
+        ),
+    )
 
 
 def test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing():

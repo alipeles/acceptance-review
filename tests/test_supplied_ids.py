@@ -324,7 +324,7 @@ def test_the_schema_asked_for_differs_from_the_shape_parsed():
 # --- the pipeline actually uses it (the wiring, not just the helper) ---
 
 
-_TASK = "# Task\n\n- Alpha behaves\n"
+_TASK = "# Task\nAlpha behaves.\n\n## Constraints\n- Alpha behaves\n"
 
 _JUDGMENTS = {
     "_Decomposition": {

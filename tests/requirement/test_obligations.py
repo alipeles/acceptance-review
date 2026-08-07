@@ -104,10 +104,33 @@ def test_each_obligation_links_to_its_source_span():
             assert parsed.source[span.start : span.end] == span.text
 
 
+ARCHETYPE_1_AS_SPEC_SHAPE = """# Task
+Implement `format_line(name, quantity, unit_price)` in `receipt.py`, returning a
+single formatted line string.
+
+## Constraints
+- Show the item name, the quantity, and the unit price.
+- Include the line total (quantity \u00d7 unit price).
+- Format every money value as USD with exactly two decimals and a leading `$`.
+- For returns (a negative quantity), show the quantity and the line total in
+  parentheses rather than with a minus sign.
+
+## Completion expectations
+- Implementation
+"""
+
+
 def test_archetype_1_includes_the_omitted_obligation():
-    """On archetype #1 the omitted (negative-quantity) obligation is present."""
-    task = (ARCHETYPES / "01-missed-obligation" / "task.md").read_text()
-    parsed = parse_task_file(task)
+    """The negative-quantity obligation is derived, with a span into the source.
+
+    Uses archetype #1's requirement TEXT in a §7.1-shaped file rather than
+    reading `archetypes/01-missed-obligation/task.md` directly. That file heads
+    its mandate `# Task: Receipt line formatter`, which the parser does not
+    recognise as the `task` section, so it yields an empty registry — and with
+    an empty registry this test asserted nothing about the code, only that the
+    double returned what it was told to. The corpus shape is a separate defect.
+    """
+    parsed = parse_task_file(ARCHETYPE_1_AS_SPEC_SHAPE)
 
     response = {
         "obligations": [

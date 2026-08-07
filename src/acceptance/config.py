@@ -42,6 +42,21 @@ DEFAULT_SEED = 0
 # stage was measured shedding work, at ~1.5x the total input tokens.
 DEFAULT_MAPPING_BATCH_SIZE = 12
 
+# Requirements per obligation-derivation call (#204). Same determinism-control
+# status as the mapping size, and the same consequence: changing it invalidates
+# every recorded decompose transcript.
+#
+# The failure being partitioned is the same one DR-164 measured a stage later —
+# a single call over ~36 requirements at ~2.5k input tokens produced no
+# obligation for 9 of them. Decompose has no diff, so the repeated context is
+# just the requirement list and partitioning costs a fraction of what it would
+# on the diff-dominated stages DR-164 decision 2 declined to split.
+#
+# 8 rather than 12: derivation asks more of each item than mapping does. Mapping
+# returns one relevance judgment per test; derivation enumerates, splits, types,
+# quotes and disposes for every requirement in the batch.
+DEFAULT_DECOMPOSE_BATCH_SIZE = 8
+
 
 class ScopeExpansionPolicy(str, Enum):
     """How tolerant the review is of changes beyond the mandate (DR-081
@@ -72,6 +87,9 @@ class RunConfig(BaseModel):
     # rather than parameterising the provider call, so it reaches the mapping
     # stage through the pipeline instead of through build_client().
     mapping_batch_size: int = Field(default=DEFAULT_MAPPING_BATCH_SIZE, ge=1)
+    # The same kind of control for obligation derivation (#204), reaching the
+    # stage the same way and for the same reason.
+    decompose_batch_size: int = Field(default=DEFAULT_DECOMPOSE_BATCH_SIZE, ge=1)
     # A review-interpretation knob (consumed by the M3.5.3 separability
     # classifier), not a determinism control — so it deliberately does not
     # feed build_client() or provenance_for(). If we later want it recorded for

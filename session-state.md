@@ -12,7 +12,29 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## Task in flight
+## Task in flight — #204
+
+**Gate 1 PASSED at `40383bc`, decomposition confirmed by the human (aalipeles).**
+Run 2 in `dogfood-logs/204-gate1-run2/`: 34 requirements, 33 with obligations,
+one deliberate decline, nothing unaccounted for. Implementation may start.
+
+Run 1 was superseded: its `completion-10` made a dogfood run a requirement of
+the software. **The tool must never be aware it is being dogfooded** — now a
+CLAUDE.md rule. The issue says how we verify; the task file says what the
+software must do.
+
+Two open notes carried from Gate 1, neither blocking:
+
+- **#223's trigger is task-file dependent.** The comment I filed calls the
+  absorption deterministic — true across three runs and two stages on *one* task
+  file — but `constraint-15`/`constraint-16` here are the same two requirements
+  and are *not* absorbed. Follow-up comment drafted, unfiled.
+- **#204's premise did not reproduce.** One unpartitioned call (`partition:
+  None`, verified in the transcript), 35 requirements, 3547 prompt tokens, zero
+  lost — where #195 lost 9 of ~36 at ~2.5k. Does not undermine #204; this run is
+  simply not evidence for it.
+
+## Previous task — #216, landed
 
 **#216** — nested bullets and multi-paragraph list items dropped silently, and
 the unread-source guard reports zero. Child of #181, board order 413.05.
