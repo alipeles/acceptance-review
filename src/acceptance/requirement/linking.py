@@ -64,19 +64,34 @@ Your job is to find the obligations that state the SAME requirement, and link \
 them. Report each duplicate as a pair: the obligation that survives, and the \
 obligation that states the same requirement as it.
 
-What counts as the same requirement:
-- The same demanded behavior, stated in different words.
-- A requirement and a clause giving the REASON for that requirement. The reason \
-is not a second requirement.
-- A requirement stated as a constraint and again as something a test must assert. \
-"The links are typed fields" and "a test asserts that a link is a typed field" \
-are one requirement, not two.
+**The test for sameness, and the only one that matters.** Two obligations state \
+the same requirement if and only if BOTH hold:
 
-What does NOT count:
-- Two obligations about the same area of the change that demand different things.
-- A general requirement and a specific case of it, where the specific case could \
-be satisfied while the general one was not.
-- Obligations that share vocabulary but not the demand.
+1. They are true under exactly the same conditions and false under exactly the \
+same conditions. If you can describe any delivered change that satisfies one and \
+violates the other, they are different requirements.
+2. The same test would demonstrate both. Not two tests in the same file, and not \
+two assertions about the same function — the SAME test, asserting the same thing.
+
+Apply that test explicitly before reporting any pair. Similar wording, a shared \
+subject, and belonging to the same feature are not evidence of sameness; the two \
+conditions above are.
+
+Cases that pass the test:
+- The same demanded behavior stated in different words.
+- A requirement and a clause giving the REASON for that requirement. The reason \
+is not separately checkable, so no test can distinguish them.
+- A constraint and the acceptance criterion that restates it as something a test \
+must assert.
+
+Cases that FAIL the test, and are the common mistakes:
+- A behavior and the technology used to implement it. "The amount is written with \
+two decimal places" and "the file is produced with the standard CSV library" can \
+each hold while the other fails, and no single test shows both.
+- A general requirement and a specific case of it. The specific case can pass \
+while the general one fails.
+- Two requirements about the same area of the change that demand different things.
+- Obligations sharing vocabulary but not the demand.
 
 **When you are unsure, do not link them.** Leaving two obligations separate costs \
 a little redundancy. Linking two obligations that demand different things \

@@ -382,12 +382,12 @@ _APPROVED_TRANSCRIPTS = {
     # reproduces a decomposition defect exactly, which is what rules out
     # dogfood contamination as the cause of a result.
     # gpt-5.4-mini, derivation over the invoice task
-    "16c090f863dba51c76a7036214ce4639ec5bec4891daab6bfc95e382042ba638.json": (
+    "ae36a6cae4fdc874f0da42243f0b22839222eb5b20793c0d6aee11e5546bc62c.json": (
         "invoice",
         "header row",
     ),
     # gpt-5.4-mini, the linking pass over what that derivation produced
-    "9c2e57c830aec0a59c177f7b1179c213d6f8a4aa5cb9badb2ee0daa02da67cf3.json": (
+    "86fefa29f8446cf619e2cc1ba8860d51469ae8d82ca9564fafda9b358dfbedc2.json": (
         "invoice",
         "header row",
     ),

@@ -42,6 +42,8 @@ Export invoices to a CSV file.
 - The export writes one row per invoice, so a reader can count invoices without
   parsing any amounts.
 - The export escapes embedded commas in the customer name.
+- The amount column is written with exactly two decimal places.
+- The file is produced with Python's standard-library csv module.
 
 ## Completion expectations
 - A test asserts that the export writes a header row naming every column.
@@ -110,3 +112,20 @@ def test_every_requirement_still_names_an_obligation_after_linking(linked):
     for disposition in after.requirement_map.dispositions:
         if disposition.disposition.value == "yielded":
             assert disposition.obligation_ids, disposition.requirement_id
+
+
+def test_a_behavior_and_the_technology_implementing_it_are_not_merged(linked):
+    """The over-merge observed on this repo's own task file at #144 Gate 2 run 1:
+    "the links are typed fields" was merged with "typed schemas are pydantic
+    models" — a demanded behavior and the library used to express it.
+
+    `constraint-04` (two decimal places) and `constraint-05` (the csv module) are
+    that shape. Either can hold while the other fails, and no single test shows
+    both, so the sameness criterion must keep them apart."""
+    _, after = linked
+
+    formatting = _obligations_of(after, "constraint-04")
+    library = _obligations_of(after, "constraint-05")
+
+    assert formatting and library
+    assert set(formatting).isdisjoint(library)
