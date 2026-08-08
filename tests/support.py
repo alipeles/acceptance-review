@@ -71,6 +71,67 @@ def declining_dispositions(reason: str = "not exercised by this fixture", **kwar
     ]
 
 
+def _nest_obligations(response: dict) -> dict:
+    """Translate the flat-obligations shape into the nested one (#204).
+
+    Fixtures read better as "here are the obligations, here is who claimed
+    them", so they keep writing that. The wire shape no longer has a flat list:
+    each obligation is carried inside the disposition that derived it, which is
+    what makes linking unrepresentable rather than merely forbidden.
+
+    This adapter enforces the same invariant it translates for. A fixture naming
+    one obligation from two dispositions RAISES here, because such a response
+    can no longer be built — a test that could still express linking would be
+    asserting against a shape the model is never offered.
+    """
+    # Only a DECOMPOSITION response. `_Discrimination` also has a top-level
+    # `obligations` key, with an entirely different shape, and must be left
+    # alone — the marker is `requirement_dispositions`, which only decomposition
+    # carries.
+    if "obligations" not in response or "requirement_dispositions" not in response:
+        return response
+
+    # Consumed positionally, not looked up in a dict: a fixture may legitimately
+    # mint the same id twice (that is what `_unique` renaming is for), and a
+    # dict would silently collapse the pair.
+    remaining = list(response["obligations"])
+    consumed_by: dict[str, str] = {}
+    dispositions = []
+    for entry in response.get("requirement_dispositions", []):
+        if entry.get("disposition") != "yielded":
+            dispositions.append(entry)
+            continue
+        ids = [entry["obligation_id"], *entry.get("more_obligation_ids", [])]
+        carried = []
+        for oid in ids:
+            match = next((i for i, o in enumerate(remaining) if o["id"] == oid), None)
+            if match is None:
+                if oid in consumed_by:
+                    raise AssertionError(
+                        f"fixture links obligation {oid!r} from both "
+                        f"{consumed_by[oid]!r} and {entry['requirement_id']!r}. Derivation "
+                        f"carries obligations inside the disposition that owns them, so one "
+                        f"obligation cannot be named by two requirements — give each "
+                        f"requirement its own (#204, DR-204)."
+                    )
+                raise AssertionError(
+                    f"fixture disposes {entry['requirement_id']!r} as 'yielded' naming "
+                    f"obligation id {oid!r}, which the response does not define"
+                )
+            carried.append(remaining.pop(match))
+            consumed_by[oid] = entry["requirement_id"]
+        rest = {
+            k: v for k, v in entry.items() if k not in ("obligation_id", "more_obligation_ids")
+        }
+        dispositions.append({**rest, "obligation": carried[0], "more_obligations": carried[1:]})
+
+    return {
+        k: v
+        for k, v in {**response, "requirement_dispositions": dispositions}.items()
+        if k != "obligations"
+    }
+
+
 def _completed(response: dict, **kwargs) -> dict:
     """Fill an empty response list from the ids the call supplied.
 
@@ -89,7 +150,35 @@ def _completed(response: dict, **kwargs) -> dict:
     if not isinstance(response, dict):
         return response
     if response.get("requirement_dispositions") == []:
-        return {**response, "requirement_dispositions": declining_dispositions(**kwargs)}
+        supplied = _supplied_enum("requirement_id", **kwargs)
+        obligations = response.get("obligations") or []
+        # Since #204 an obligation is carried inside the disposition that
+        # derived it, so it cannot be an orphan. A fixture that supplies
+        # obligations and leaves dispositions to be filled gets them attached to
+        # the first requirement the call was given; the rest decline. Which
+        # requirement owns them is not what such a fixture is about — it is
+        # about the obligations themselves — and before #204 they sat in a flat
+        # list owned by nobody, which is no longer representable.
+        dispositions = []
+        if supplied and obligations:
+            dispositions.append(
+                {
+                    "requirement_id": supplied[0],
+                    "disposition": "yielded",
+                    "obligation_id": obligations[0]["id"],
+                    "more_obligation_ids": [o["id"] for o in obligations[1:]],
+                }
+            )
+            supplied = supplied[1:]
+        dispositions.extend(
+            {
+                "requirement_id": rid,
+                "disposition": "no_obligation",
+                "reason": "no obligation, deliberately (test double)",
+            }
+            for rid in supplied
+        )
+        return _nest_obligations({**response, "requirement_dispositions": dispositions})
     if response.get("recommendations") == []:
         return {
             **response,
@@ -106,7 +195,7 @@ def _completed(response: dict, **kwargs) -> dict:
                 for obligation_id in _supplied_enum("obligation_id", **kwargs)
             ],
         }
-    return response
+    return _nest_obligations(response)
 
 
 def client_returning(response: dict, model: str = _DEFAULT_MODEL) -> ModelClient:

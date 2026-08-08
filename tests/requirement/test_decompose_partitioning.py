@@ -250,24 +250,22 @@ def test_two_batches_minting_the_same_obligation_id_stay_separate():
     def completion_fn(**kwargs):
         supplied = _supplied_enum("requirement_id", **kwargs)
         payload = {
-            "obligations": [
-                {
-                    "id": "shared-slug",
-                    "description": f"Derived for {supplied[0]}.",
-                    "type": "functional",
-                    "importance": "normal",
-                    "explicit": True,
-                    "observable_behavior": "...",
-                    "source_quote": "Do the thing.",
-                }
-            ],
             "open_questions": [],
             "requirement_dispositions": [
                 {
                     "requirement_id": supplied[0],
                     "disposition": "yielded",
-                    "obligation_id": "shared-slug",
-                    "more_obligation_ids": [],
+                    # Carried, not referenced — each batch mints its own.
+                    "obligation": {
+                        "id": "shared-slug",
+                        "description": f"Derived for {supplied[0]}.",
+                        "type": "functional",
+                        "importance": "normal",
+                        "explicit": True,
+                        "observable_behavior": "...",
+                        "source_quote": "Do the thing.",
+                    },
+                    "more_obligations": [],
                 }
             ]
             + [

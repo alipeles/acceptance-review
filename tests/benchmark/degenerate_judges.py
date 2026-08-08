@@ -37,7 +37,7 @@ from typing import Any
 
 from acceptance.config import DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
-from tests.support import _EMPTY_BY_SCHEMA, _completed, _fake_response, declining_dispositions
+from tests.support import _EMPTY_BY_SCHEMA, _completed, _fake_response
 
 import tempfile
 
@@ -98,17 +98,13 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
         name, schema = spec["name"], spec["schema"]
 
         if name == "_Decomposition":
-            # Declined rather than empty: what this suite steers is the evidence
-            # judgement, and the obligations reach it regardless of how the
-            # requirements were disposed. An empty disposition list no longer
-            # parses (M1.2.r2).
-            return _fake_response(json.dumps({
-                **_decomposition(obligations),
-                "requirement_dispositions": declining_dispositions(
-                    reason="seeded obligations; this suite does not exercise the mapping",
-                    **kwargs,
-                ),
-            }))
+            # Dispositions are completed by the shared helper, which attaches
+            # the seeded obligations to the first requirement the call was
+            # given and declines the rest. Since #204 an obligation is carried
+            # inside the disposition that derived it, so it must have an owner —
+            # declining every requirement would leave these orphaned and they
+            # would not reach the stage this suite is actually steering.
+            return _fake_response(json.dumps(_completed(_decomposition(obligations), **kwargs)))
 
         if name == "_Mappings":
             # Map every test to every obligation the call allows. A permissive

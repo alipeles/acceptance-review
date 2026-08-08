@@ -40,7 +40,6 @@ from acceptance.review_state import (
     RequirementMap,
     RequirementSection,
 )
-from acceptance.supplied_ids import UnusableAnswerLog
 from tests.support import client_returning as _client_returning
 from tests.support import make_obligation
 
@@ -232,34 +231,33 @@ def test_a_requirement_deliberately_yielding_nothing_carries_its_reason():
     assert len(result.requirement_map.unyielding()) == 4
 
 
-def test_a_yielded_claim_naming_no_real_obligation_is_rejected():
-    """A disposition may not launder a requirement into 'handled' by naming an
-    obligation the same response never produced.
+def test_a_disposition_cannot_reference_an_obligation_at_all():
+    """The hole this used to close no longer exists.
 
-    The shape guarantees at least one id is NAMED; it cannot guarantee the id
-    refers to something. So the one hole the schema leaves — every named id
-    dropped as invented — closes here, and closes by raising rather than by
-    recording a requirement as unaddressed.
+    A `yielded` disposition once NAMED its obligations by id, so it could name
+    one the response never produced — laundering a requirement into "handled"
+    with nothing behind it. Reconciliation had to raise on that.
+
+    Since #204 the obligation is carried inside the disposition, so there is no
+    id to write and nothing to dangle. The guarantee moved from a check into the
+    shape, which is where the same argument put "at least one" (#217).
     """
-    parsed = parse_task_file(TASK)
-    response = {
-        "obligations": [
-            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
-        ],
-        "open_questions": [],
-        "requirement_dispositions": [
-            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
-            _disposition("constraint-01", "yielded", obligation_ids=["never-emitted"]),
-            _disposition("constraint-02", "no_obligation", reason="Not applicable."),
-            _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
-            _disposition("completion-01", "no_obligation", reason="Not applicable."),
-        ],
+    schema = inline_schema_refs(_Decomposition.model_json_schema())
+    members = schema["properties"]["requirement_dispositions"]["items"]["anyOf"]
+    yielded = next(m for m in members if "obligation" in m.get("properties", {}))
+
+    # No reference-shaped field survives anywhere on the disposition.
+    assert "obligation_id" not in yielded["properties"]
+    assert "more_obligation_ids" not in yielded["properties"]
+    # And the payload is the obligation itself.
+    assert set(yielded["properties"]["obligation"]["properties"]) >= {
+        "id",
+        "description",
+        "type",
+        "source_quote",
     }
-
-    with pytest.raises(SchemaValidationError) as raised:
-        decompose(parsed, _client_returning(response))
-
-    assert "constraint-01" in str(raised.value)
+    # There is no top-level list for a reference to point INTO, either.
+    assert "obligations" not in schema["properties"]
 
 
 def test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations():
@@ -273,13 +271,12 @@ def test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations():
     with pytest.raises(ValidationError):
         _Decomposition.model_validate(
             {
-                "obligations": [],
                 "open_questions": [],
                 "requirement_dispositions": [
                     {
                         "requirement_id": "task-01",
                         "disposition": "yielded",
-                        "more_obligation_ids": [],
+                        "more_obligations": [],
                     }
                 ],
             }
@@ -290,9 +287,11 @@ def test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations():
     schema = inline_schema_refs(_Decomposition.model_json_schema())
     members = schema["properties"]["requirement_dispositions"]["items"]["anyOf"]
     yielded = next(
-        member for member in members if "obligation_id" in member.get("properties", {})
+        member for member in members if "obligation" in member.get("properties", {})
     )
-    assert "obligation_id" in yielded["required"]
+    assert "obligation" in yielded["required"]
+    # And it carries the obligation itself, not a reference to one.
+    assert yielded["properties"]["obligation"]["type"] == "object"
     # Strict mode rejects both, and a tagged union would emit them.
     assert "oneOf" not in schema["properties"]["requirement_dispositions"]["items"]
     assert "discriminator" not in schema["properties"]["requirement_dispositions"]["items"]
@@ -306,14 +305,13 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
     """
     parsed = _Decomposition.model_validate(
         {
-            "obligations": [],
             "open_questions": [],
             "requirement_dispositions": [
                 {
                     "requirement_id": "task-01",
                     "disposition": "yielded",
-                    "obligation_id": "ob-1",
-                    "more_obligation_ids": [],
+                    "obligation": _obligation("ob-1", "A.", "Render each invoice line."),
+                    "more_obligations": [],
                 },
                 {
                     "requirement_id": "constraint-01",
@@ -326,7 +324,7 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
 
     first, second = parsed.requirement_dispositions
     assert type(first).__name__ != type(second).__name__
-    assert first.ids() == ["ob-1"]
+    assert [o.id for o in first.derived()] == ["ob-1"]
     assert second.reason == "Declined."
 
     # An unknown tag matches no member at all, rather than falling back to one.
@@ -358,7 +356,7 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
     """
     def parse(entry: dict):
         return _Decomposition.model_validate(
-            {"obligations": [], "open_questions": [], "requirement_dispositions": [entry]}
+            {"open_questions": [], "requirement_dispositions": [entry]}
         )
 
     # Claims `yielded` and supplies a decline reason alongside it.
@@ -367,8 +365,8 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
             {
                 "requirement_id": "task-01",
                 "disposition": "yielded",
-                "obligation_id": "ob-1",
-                "more_obligation_ids": [],
+                "obligation": _obligation("ob-1", "A.", "Render each invoice line."),
+                "more_obligations": [],
                 "reason": "declined because it adds no checkable behavior",
             }
         )
@@ -382,8 +380,8 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
                 "requirement_id": "task-01",
                 "disposition": "no_obligation",
                 "reason": "Not applicable.",
-                "obligation_id": "ob-1",
-                "more_obligation_ids": [],
+                "obligation": _obligation("ob-1", "A.", "Render each invoice line."),
+                "more_obligations": [],
             }
         )
 
@@ -392,11 +390,11 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
         {
             "requirement_id": "task-01",
             "disposition": "yielded",
-            "obligation_id": "ob-1",
-            "more_obligation_ids": [],
+            "obligation": _obligation("ob-1", "A.", "Render each invoice line."),
+            "more_obligations": [],
         }
     )
-    assert clean.requirement_dispositions[0].ids() == ["ob-1"]
+    assert [o.id for o in clean.requirement_dispositions[0].derived()] == ["ob-1"]
 
 
 def test_the_schema_cannot_express_an_open_question_disposition_with_no_questions():
@@ -576,21 +574,22 @@ def test_a_supplied_reason_is_preserved_rather_than_replaced():
     assert result.requirement_map.disposition_for("exclusion-01").reason == reason
 
 
-def test_one_obligation_named_by_two_requirements_is_rejected():
-    """DR-204, reversing DR-202 decision 2 for THIS pass.
+def test_one_obligation_cannot_be_carried_by_two_requirements():
+    """DR-204, as amended: derivation performs no linking, and that is now a
+    property of the SHAPE rather than a rejection applied afterwards.
 
-    Derivation performs no linking. A response naming one obligation from two
-    requirements is recorded through `UnusableAnswerLog` and neither requirement
-    is treated as disposed — which leaves the mandate unaccounted for, so the
-    reconciliation raises.
+    The first implementation validated it post-response and had to drop BOTH
+    claimants, which left the mandate unaccounted for and aborted the whole
+    review. Measured on ordinary input, that was not an edge case: a task file
+    stating one requirement under Constraints and again under Completion
+    expectations — the restatement DR-202 itself calls typical — linked every
+    time, because the flat obligation list made writing the same id twice the
+    obvious encoding. A rule the schema invites cannot be enforced by asking
+    harder.
 
-    DR-202 argued that anchoring the judgment to identified requirements avoids
-    over-merging. #210 established that it *relocated* over-merging into linking
-    instead, and the cost is asymmetric: an over-merge here destroys a
-    requirement's content, while an under-merge downstream leaves two obligations
-    saying nearly the same thing. Lossy against noisy. The many-to-one mapping is
-    still the final state of a review — it becomes #144's output, not this
-    pass's.
+    Now each obligation is carried by exactly one disposition, so two
+    requirements sharing one is not expressible. What DR-204 wants — an
+    obligation each, merged later by #144 — is the only thing that can be said.
     """
     parsed = parse_task_file(TASK)
     response = {
@@ -599,6 +598,7 @@ def test_one_obligation_named_by_two_requirements_is_rejected():
             _obligation("usd-format", "Format money as USD.", "Format money as USD"),
             _obligation("csv-unchanged", "Keep the CSV export unchanged.", "existing CSV export"),
             _obligation("pdf-untouched", "Preserve the PDF renderer.", "Changing the PDF renderer"),
+            _obligation("usd-format-done", "Format money as USD.", "Format money as USD"),
         ],
         "open_questions": [],
         "requirement_dispositions": [
@@ -606,26 +606,22 @@ def test_one_obligation_named_by_two_requirements_is_rejected():
             _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
             _disposition("constraint-02", "yielded", obligation_ids=["csv-unchanged"]),
             _disposition("exclusion-01", "yielded", obligation_ids=["pdf-untouched"]),
-            # The same obligation named a second time — the link this pass may
-            # no longer make.
-            _disposition("completion-01", "yielded", obligation_ids=["usd-format"]),
+            _disposition("completion-01", "yielded", obligation_ids=["usd-format-done"]),
         ],
     }
-    unusable = UnusableAnswerLog()
 
-    with pytest.raises(SchemaValidationError) as raised:
-        decompose(parsed, _client_returning(response), unusable)
+    result = decompose(parsed, _client_returning(response))
 
-    # Neither claimant survives: keeping one would silently pick a winner, and
-    # the loser's content is what disappears.
-    assert "constraint-01" in str(raised.value)
-    assert "completion-01" in str(raised.value)
+    # Every obligation is owned by exactly one requirement, structurally.
+    for obligation in result.obligations:
+        owners = result.requirement_map.requirements_for_obligation(obligation.id)
+        assert len(owners) == 1
 
-    (answer,) = [a for a in unusable.answers if a.field == "obligation_id"]
-    assert answer.stage == "decompose"
-    assert answer.returned_id == "usd-format"
-    assert "completion-01, constraint-01" in answer.reason
-    assert "no linking" in answer.reason
+    # The two requirements that state the same thing each carry their own.
+    assert result.requirement_map.requirements_for_obligation("usd-format") == ["constraint-01"]
+    assert result.requirement_map.requirements_for_obligation("usd-format-done") == [
+        "completion-01"
+    ]
 
 
 def test_two_requirements_stating_the_same_thing_yield_two_obligations():
@@ -666,10 +662,16 @@ def test_two_requirements_stating_the_same_thing_yield_two_obligations():
         assert len(result.requirement_map.requirements_for_obligation(obligation.id)) == 1
 
 
-def test_a_disposition_naming_a_renamed_obligation_still_links():
-    """`_unique` renames a colliding id, and a disposition naming the original
-    would otherwise dangle — silently converting a mapped requirement into an
-    unmapped one, which is the defect wearing a different hat."""
+def test_two_requirements_minting_the_same_id_keep_separate_obligations():
+    """`_unique` still renames a colliding id — two requirements can
+    independently pick the same slug — but a rename can no longer mis-resolve
+    anyone's disposition, because no disposition refers to an obligation by id.
+
+    This used to be the "renamed obligation still links" case: a disposition
+    naming `dup` had to survive `dup` becoming `dup-2`, and getting that wrong
+    silently converted a mapped requirement into an unmapped one. That failure
+    mode is gone with the reference it depended on.
+    """
     parsed = parse_task_file(TASK)
     response = {
         "obligations": [
@@ -678,10 +680,8 @@ def test_a_disposition_naming_a_renamed_obligation_still_links():
         ],
         "open_questions": [],
         "requirement_dispositions": [
-            # One requirement names the colliding id. A SECOND naming it would
-            # now be linking, which #204 rejects — so the rename and the
-            # no-linking rule are tested apart, and this one is the rename.
-            _disposition("task-01", "yielded", obligation_ids=["dup"]),
+            # One requirement, two obligations, both minting the same slug.
+            _disposition("task-01", "yielded", obligation_ids=["dup", "dup"]),
             _disposition("constraint-01", "no_obligation", reason="Not applicable."),
             _disposition("constraint-02", "no_obligation", reason="Not applicable."),
             _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
@@ -691,11 +691,10 @@ def test_a_disposition_naming_a_renamed_obligation_still_links():
 
     result = decompose(parsed, _client_returning(response))
 
+    # Both survive, the second renamed, and both belong to the requirement that
+    # derived them.
     assert [o.id for o in result.obligations] == ["dup", "dup-2"]
-    assert result.requirement_map.disposition_for("task-01").obligation_ids == ["dup"]
-
-
-# --- the decomposer stays code-blind (DR-202 decision 8) --------------------
+    assert result.requirement_map.disposition_for("task-01").obligation_ids == ["dup", "dup-2"]
 
 
 def test_decompose_cannot_reach_a_diff_or_a_head_revision():
@@ -844,31 +843,51 @@ def test_the_cli_says_when_an_obligation_serves_other_requirements():
 
 
 def test_an_obligation_no_requirement_claims_is_still_shown():
-    """An unmapped obligation is an invention or a mapping failure — both are
-    findings. Dropping it would recreate the same invisibility on the other
-    axis."""
+    """The renderer's job is unchanged and still needed; what changed is that
+    derivation can no longer PRODUCE an orphan.
+
+    An obligation now arrives inside the disposition that derived it, so one
+    claimed by no requirement is not expressible from this stage. The report
+    must still show one if it ever appears — a later pass (#144) rewrites the
+    map, and an obligation stranded there would be an invention or a merge
+    failure, both findings. Dropping it would recreate the invisibility on the
+    other axis.
+
+    Built directly rather than through `decompose`, because a fixture that made
+    `decompose` produce this would be asserting the renderer works on input the
+    stage cannot hand it.
+    """
     from acceptance.cli import render_decomposition
 
     parsed = parse_task_file(TASK)
-    response = {
-        "obligations": [
-            _obligation("orphan", "An obligation no requirement claims.", "Render each invoice line."),
-            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
+    decomposition = Decomposition(
+        obligations=[
+            make_obligation("orphan", "An obligation no requirement claims.", ObligationType.FUNCTIONAL),
+            make_obligation("render-lines", "Render each invoice line.", ObligationType.FUNCTIONAL),
         ],
-        "open_questions": [],
-        # Every requirement is accounted for, and one obligation is still
-        # claimed by none of them — the response must be complete for the
-        # orphan to be the only thing under test.
-        "requirement_dispositions": [
-            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
-            _disposition("constraint-01", "no_obligation", reason="Not applicable."),
-            _disposition("constraint-02", "no_obligation", reason="Not applicable."),
-            _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
-            _disposition("completion-01", "no_obligation", reason="Not applicable."),
-        ],
-    }
+        open_questions=[],
+        requirement_map=RequirementMap(
+            requirements=build_registry(parsed),
+            dispositions=[
+                RequirementDisposition(
+                    requirement_id="task-01",
+                    disposition=Disposition.YIELDED,
+                    obligation_ids=["render-lines"],
+                ),
+                *(
+                    RequirementDisposition(
+                        requirement_id=rid,
+                        disposition=Disposition.NO_OBLIGATION,
+                        reason="Not applicable.",
+                    )
+                    for rid in ("constraint-01", "constraint-02", "exclusion-01", "completion-01")
+                ),
+            ],
+            unread_source=parsed.unclaimed,
+        ),
+    )
 
-    output = render_decomposition(decompose(parsed, _client_returning(response)))
+    output = render_decomposition(decomposition)
 
     assert "Obligations mapped to no requirement:" in output
     assert "orphan" in output
