@@ -212,6 +212,17 @@ We run the tool against our own work in progress. It is the only place the tool'
 own failures become visible, so it is a hard constraint on shipping. Two gates,
 both mandatory, neither skippable because the change looks small.
 
+**The tool must never be aware that it is being dogfooded.** The whole premise is
+that we use it exactly as a client would, so `current-task.md` is an ordinary
+mandate and nothing more. It never mentions dogfooding, gates, runs, or this
+repo's own verification process, and it never makes one of them a requirement —
+*"a dogfood run over a large task file loses no requirement"* is a thing **we
+do**, not a thing the **software does**, and putting it in the input asks the
+tool to derive an obligation the code can never satisfy. Acceptance items of that
+kind are real and belong on the GitHub issue, which is our plan; they do not
+cross into the tool's input. The issue says how we verify; the task file says
+what the software must do.
+
 Always save each dogfood run as a self-contained, committed directory under
 `dogfood-logs/`, in the shape `tests/fixtures/rating-stability/` already uses —
 so any run can later become a benchmark case:

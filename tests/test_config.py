@@ -148,16 +148,19 @@ def test_provenance_reports_the_partition_size_the_run_actually_used():
 
     client = client_finding_nothing()
     client.complete(
-        [{"role": "user", "content": "batch 1"}], _Decomposition, {"size": 7}
+        [{"role": "user", "content": "batch 1"}],
+        _Decomposition,
+        {"size": 7},
+        stage="decompose",
     )
 
-    assert provenance_for(client).request_partition_size == 7
+    assert provenance_for(client).request_partition_sizes == {"decompose": 7}
 
 
 def test_provenance_of_an_unpartitioned_run_reports_no_partition_size():
-    """None means "no partitioned call was made", which is a different claim
-    from a partition of size one — the same distinction controls_in_force draws
-    between "ignored" and "nothing observed"."""
+    """An EMPTY mapping means "no partitioned call was made", which is a
+    different claim from a partition of size one — the same distinction
+    controls_in_force draws between "ignored" and "nothing observed"."""
     from acceptance.requirement.obligations import _Decomposition
 
     from tests.support import client_finding_nothing
@@ -165,7 +168,7 @@ def test_provenance_of_an_unpartitioned_run_reports_no_partition_size():
     client = client_finding_nothing()
     client.complete([{"role": "user", "content": "unpartitioned"}], _Decomposition)
 
-    assert provenance_for(client).request_partition_size is None
+    assert provenance_for(client).request_partition_sizes == {}
 
 
 def test_one_builder_serves_both_the_cli_pipeline_and_the_benchmark():

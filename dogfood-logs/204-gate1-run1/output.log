@@ -1,0 +1,241 @@
+Requirements: 35   with obligations: 34   deliberately none: 1
+
+[task-01] Obligation derivation issues one model call for the whole requirement
+    registry. At scale that call sheds work: Gate 1 for #195 dropped 9 of roughly 36
+    requirements in a single call at about 2.5k input tokens. That is DR-164's
+    judgments-per-request failure, one stage earlier than the mapping stage where it was
+    first found and fixed.
+    -> obligation-partition-by-requirement-batch  [functional/explicit]   (also serves task-03, constraint-01)
+       Partition obligation derivation by requirement batch using the existing
+       partitioning path, and make the batch size configurable from the command line as
+       `--decompose-batch-size`.
+    -> obligation-ceil-calls-per-batch  [functional/explicit]   (also serves constraint-10, completion-02)
+       Produce `ceil(N / size)` derivation calls for a task file with `N` requirements.
+    -> obligation-dogfood-no-loss  [regression/explicit]   (also serves completion-10)
+       Ensure a dogfood decompose run over a task file of #195's size loses no
+       requirement.
+
+[task-02] The same call also links. It may attach a requirement to an obligation derived
+    from a different requirement, and that linking fails in both directions on one
+    corpus under the same code, model and seed: seven scope exclusions declined with
+    reasons that stated the obligation, then all five over-merged onto another
+    requirement's obligation, with two Constraints absorbed into an obligation stating
+    neither. Absorbed content is gone, and the run still reports every requirement as
+    carrying a disposition, because that count reports dispositions rather than
+    coverage.
+    -> obligation-no-linking-in-derivation  [functional/explicit]   (also serves task-03, constraint-06)
+       Keep obligation derivation free of cross-requirement linking so a call may split
+       one requirement into several obligations or decline it with `no_obligation`,
+       while each obligation remains associated only with the requirement that produced
+       it.
+    -> obligation-obligation-id-unique-per-requirement  [invariant/explicit]   (also serves constraint-07)
+       Within one derivation response, each obligation id appears in exactly one
+       requirement's disposition.
+    -> obligation-duplicate-obligation-id-logged  [error_handling/explicit]   (also serves constraint-08, completion-05)
+       Record a response that names one obligation from two requirements through
+       `UnusableAnswerLog`, and leave both affected requirements undisposed.
+    -> obligation-every-requirement-has-disposition  [functional/explicit]   (also serves constraint-11, completion-03)
+       Ensure every requirement carries a disposition after the merge.
+
+[task-03] Partition obligation derivation by requirement batch, and stop derivation from
+    linking at all.
+    -> obligation-partition-by-requirement-batch  [functional/explicit]   (also serves task-01, constraint-01)
+       Partition obligation derivation by requirement batch using the existing
+       partitioning path, and make the batch size configurable from the command line as
+       `--decompose-batch-size`.
+    -> obligation-no-linking-in-derivation  [functional/explicit]   (also serves task-02, constraint-06)
+       Keep obligation derivation free of cross-requirement linking so a call may split
+       one requirement into several obligations or decline it with `no_obligation`,
+       while each obligation remains associated only with the requirement that produced
+       it.
+
+[constraint-01] Obligation derivation is partitioned by requirement batch, through the
+    existing `partition.py` rather than a second partitioning mechanism.
+    -> obligation-partition-by-requirement-batch  [functional/explicit]   (also serves task-01, task-03)
+       Partition obligation derivation by requirement batch using the existing
+       partitioning path, and make the batch size configurable from the command line as
+       `--decompose-batch-size`.
+
+[constraint-02] The whole task file appears in every derivation prompt. The batch scopes
+    which requirements a call must answer for; it does not scope what the call may read.
+    -> obligation-whole-task-file-in-prompt  [invariant/explicit]
+       Include the whole task file in every derivation prompt while using the batch only
+       to determine which requirements the call must answer for.
+
+[constraint-03] `RunConfig.decompose_batch_size` exists and is settable from the command
+    line as `--decompose-batch-size`.
+    -> obligation-batch-size-configurable  [docs_config/explicit]
+       Expose `RunConfig.decompose_batch_size` as a settable command-line option named
+       `--decompose-batch-size`.
+
+[constraint-04] The batch size is treated as a determinism control exactly as
+    `mapping_batch_size` is: only the size enters the hashed request, and the batch
+    index and batch count never do.
+    -> obligation-batch-size-determinism-control  [invariant/explicit]   (also serves completion-06)
+       Treat batch size as the only determinism control input for derivation request
+       hashing, matching `mapping_batch_size`, so batch index and batch count do not
+       affect the hashed request.
+
+[constraint-05] A batch answers only for the requirements it was supplied. A returned
+    requirement id that was not supplied to that call is recorded through
+    `UnusableAnswerLog` rather than silently filtered.
+    -> obligation-unsubmitted-requirements-logged  [error_handling/explicit]   (also serves completion-04)
+       Record any returned requirement id that was not supplied to the call through
+       `UnusableAnswerLog`.
+
+[constraint-06] Obligation derivation performs no linking. A call may split one
+    requirement into several obligations, or decline it with `no_obligation`, but it may
+    not attach a requirement to an obligation derived from another requirement.
+    -> obligation-no-linking-in-derivation  [functional/explicit]   (also serves task-02, task-03)
+       Keep obligation derivation free of cross-requirement linking so a call may split
+       one requirement into several obligations or decline it with `no_obligation`,
+       while each obligation remains associated only with the requirement that produced
+       it.
+
+[constraint-07] Within one derivation response, each obligation id appears in exactly
+    one requirement's disposition.
+    -> obligation-obligation-id-unique-per-requirement  [invariant/explicit]   (also serves task-02)
+       Within one derivation response, each obligation id appears in exactly one
+       requirement's disposition.
+
+[constraint-08] A response naming one obligation from two requirements is recorded
+    through `UnusableAnswerLog`, and neither affected requirement is treated as
+    disposed.
+    -> obligation-duplicate-obligation-id-logged  [error_handling/explicit]   (also serves task-02, completion-05)
+       Record a response that names one obligation from two requirements through
+       `UnusableAnswerLog`, and leave both affected requirements undisposed.
+
+[constraint-09] Merged results are ordered deterministically, so batch composition and
+    merge order are pure functions of the input.
+    -> obligation-deterministic-merge-order  [invariant/explicit]
+       Order merged results deterministically so batch composition and merge order are
+       pure functions of the input.
+
+[constraint-10] A task file with N requirements produces ceil(N / size) derivation
+    calls.
+    -> obligation-ceil-calls-per-batch  [functional/explicit]   (also serves task-01, completion-02)
+       Produce `ceil(N / size)` derivation calls for a task file with `N` requirements.
+
+[constraint-11] Every requirement carries a disposition after the merge.
+    -> obligation-every-requirement-has-disposition  [functional/explicit]   (also serves task-02, completion-03)
+       Ensure every requirement carries a disposition after the merge.
+
+[constraint-12] Changing the decompose batch size invalidates recorded transcripts.
+    -> obligation-batch-size-invalidates-transcripts  [compatibility/explicit]
+       Invalidate recorded transcripts when the decompose batch size changes.
+
+[constraint-13] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> obligation-byte-identical-review-state  [regression/explicit]   (also serves completion-07)
+       Produce byte-identical review state for two runs over byte-identical task text.
+
+[constraint-14] `ReviewProvenance.request_partition_size` reports the size observed from
+    the calls rather than the size read from configuration.
+    -> obligation-request-partition-size-from-calls  [functional/explicit]   (also serves completion-08)
+       Report `ReviewProvenance.request_partition_size` from the observed call size
+       rather than from configuration.
+
+[constraint-15] Typed schemas are pydantic models, as the rest of the repository defines
+    them.
+    -> obligation-pydantic-schemas  [compatibility/explicit]
+       Represent typed schemas as pydantic models.
+
+[constraint-16] Tests issue no live model calls.
+    -> obligation-no-live-model-calls-in-tests  [compatibility/explicit]
+       Keep tests free of live model calls.
+
+[exclusion-01] De-duplicating obligations, and attaching a requirement to an obligation
+    derived from another requirement, which is #144 and lands immediately after this
+    change.
+    -> obligation-no-dedup-or-crosslinking  [regression/explicit]
+       Preserve the current scope so de-duplicating obligations and attaching a
+       requirement to an obligation derived from another requirement remain outside this
+       change.
+
+[exclusion-02] Scoring link precision, which is #211 and which measures #144's output
+    rather than this pass.
+    -> obligation-no-link-precision-scoring  [regression/explicit]
+       Preserve the current scope so scoring link precision remains outside this pass.
+
+[exclusion-03] The wording of the decomposition prompt beyond what partitioning and the
+    no-linking rule require, which is #205, #206 and #219.
+    -> obligation-prompt-wording-unchanged-beyond-scope  [docs_config/explicit]
+       Preserve the decomposition prompt wording except for the changes required by
+       partitioning and the no-linking rule.
+
+[exclusion-04] Whether an obligation needs test evidence at all, which is #148.
+    -> obligation-no-test-evidence-policy-change  [regression/explicit]
+       Preserve the current policy on whether an obligation needs test evidence.
+
+[exclusion-05] Recovering the requirements a prior run dropped, or comparing obligation
+    counts against recorded transcripts.
+    -> obligation-no-recovery-or-count-comparison  [regression/explicit]
+       Preserve the current scope so recovering requirements dropped by a prior run and
+       comparing obligation counts against recorded transcripts remain outside this
+       change.
+
+[exclusion-06] Whether the de-duplication pass itself needs partitioning, which is a
+    question #144 answers.
+    -> obligation-no-dedup-partitioning-change  [regression/explicit]
+       Preserve the current scope so the de-duplication pass itself remains
+       unpartitioned.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker only; it does not impose a checkable requirement by itself.
+
+[completion-02] A test asserts that a task file with N requirements produces ceil(N /
+    size) derivation calls.
+    -> obligation-ceil-calls-per-batch  [functional/explicit]   (also serves task-01, constraint-10)
+       Produce `ceil(N / size)` derivation calls for a task file with `N` requirements.
+
+[completion-03] A test asserts that every requirement carries a disposition after the
+    merge.
+    -> obligation-every-requirement-has-disposition  [functional/explicit]   (also serves task-02, constraint-11)
+       Ensure every requirement carries a disposition after the merge.
+
+[completion-04] A test asserts that a returned requirement id the call was not supplied
+    yields an `unusable_answer` finding, and that the requirement is not treated as
+    disposed.
+    -> obligation-unsubmitted-requirements-logged  [error_handling/explicit]   (also serves constraint-05)
+       Record any returned requirement id that was not supplied to the call through
+       `UnusableAnswerLog`.
+
+[completion-05] A test asserts that a response naming one obligation from two
+    requirements yields an `unusable_answer` finding, and disposes neither requirement.
+    -> obligation-duplicate-obligation-id-logged  [error_handling/explicit]   (also serves task-02, constraint-08)
+       Record a response that names one obligation from two requirements through
+       `UnusableAnswerLog`, and leave both affected requirements undisposed.
+
+[completion-06] A test asserts that changing the decompose batch size changes the hashed
+    request key, and that the batch index and batch count do not.
+    -> obligation-batch-size-determinism-control  [invariant/explicit]   (also serves constraint-04)
+       Treat batch size as the only determinism control input for derivation request
+       hashing, matching `mapping_batch_size`, so batch index and batch count do not
+       affect the hashed request.
+
+[completion-07] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> obligation-byte-identical-review-state  [regression/explicit]   (also serves constraint-13)
+       Produce byte-identical review state for two runs over byte-identical task text.
+
+[completion-08] A test asserts that `ReviewProvenance.request_partition_size` reports
+    the size observed from the calls.
+    -> obligation-request-partition-size-from-calls  [functional/explicit]   (also serves constraint-14)
+       Report `ReviewProvenance.request_partition_size` from the observed call size
+       rather than from configuration.
+
+[completion-09] A task file stating one requirement in both Constraints and Completion
+    expectations yields two obligations from this pass rather than one obligation
+    carrying two requirement links.
+    -> obligation-two-obligations-for-shared-requirement  [functional/explicit]
+       When a task file states one requirement in both Constraints and Completion
+       expectations, produce two obligations from this pass rather than one obligation
+       carrying two requirement links.
+
+[completion-10] A dogfood decompose run over a task file of #195's size loses no
+    requirement.
+    -> obligation-dogfood-no-loss  [regression/explicit]   (also serves task-01)
+       Ensure a dogfood decompose run over a task file of #195's size loses no
+       requirement.
+

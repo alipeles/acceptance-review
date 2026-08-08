@@ -33,10 +33,10 @@ linking at all.
 - Obligation derivation performs no linking. A call may split one requirement
   into several obligations, or decline it with `no_obligation`, but it may not
   attach a requirement to an obligation derived from another requirement.
-- An obligation is carried inside the disposition of the requirement that
-  derived it, rather than referenced by id from a shared list.
-- The response schema offers no way to attach one obligation to two
-  requirements.
+- Within one derivation response, each obligation id appears in exactly one
+  requirement's disposition.
+- A response naming one obligation from two requirements is recorded through
+  `UnusableAnswerLog`, and neither affected requirement is treated as disposed.
 - Merged results are ordered deterministically, so batch composition and merge
   order are pure functions of the input.
 - A task file with N requirements produces ceil(N / size) derivation calls.
@@ -70,8 +70,8 @@ linking at all.
 - A test asserts that a returned requirement id the call was not supplied yields
   an `unusable_answer` finding, and that the requirement is not treated as
   disposed.
-- A test asserts that the response schema cannot express one obligation
-  attached to two requirements.
+- A test asserts that a response naming one obligation from two requirements
+  yields an `unusable_answer` finding, and disposes neither requirement.
 - A test asserts that changing the decompose batch size changes the hashed
   request key, and that the batch index and batch count do not.
 - A test asserts that two runs over byte-identical task text produce

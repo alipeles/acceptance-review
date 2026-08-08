@@ -1,14 +1,14 @@
 # Task
 Obligation derivation issues one model call for the whole requirement registry.
-At scale that call sheds work: an observed run over roughly 36 requirements, at
-about 2.5k input tokens, produced no obligation for 9 of them. That is DR-164's
+At scale that call sheds work: Gate 1 for #195 dropped 9 of roughly 36
+requirements in a single call at about 2.5k input tokens. That is DR-164's
 judgments-per-request failure, one stage earlier than the mapping stage where it
 was first found and fixed.
 
 The same call also links. It may attach a requirement to an obligation derived
 from a different requirement, and that linking fails in both directions on one
-task file under the same code, model and seed: seven scope exclusions declined
-with reasons that stated the obligation, then all five over-merged onto another
+corpus under the same code, model and seed: seven scope exclusions declined with
+reasons that stated the obligation, then all five over-merged onto another
 requirement's obligation, with two Constraints absorbed into an obligation
 stating neither. Absorbed content is gone, and the run still reports every
 requirement as carrying a disposition, because that count reports dispositions
@@ -33,10 +33,10 @@ linking at all.
 - Obligation derivation performs no linking. A call may split one requirement
   into several obligations, or decline it with `no_obligation`, but it may not
   attach a requirement to an obligation derived from another requirement.
-- An obligation is carried inside the disposition of the requirement that
-  derived it, rather than referenced by id from a shared list.
-- The response schema offers no way to attach one obligation to two
-  requirements.
+- Within one derivation response, each obligation id appears in exactly one
+  requirement's disposition.
+- A response naming one obligation from two requirements is recorded through
+  `UnusableAnswerLog`, and neither affected requirement is treated as disposed.
 - Merged results are ordered deterministically, so batch composition and merge
   order are pure functions of the input.
 - A task file with N requirements produces ceil(N / size) derivation calls.
@@ -70,8 +70,8 @@ linking at all.
 - A test asserts that a returned requirement id the call was not supplied yields
   an `unusable_answer` finding, and that the requirement is not treated as
   disposed.
-- A test asserts that the response schema cannot express one obligation
-  attached to two requirements.
+- A test asserts that a response naming one obligation from two requirements
+  yields an `unusable_answer` finding, and disposes neither requirement.
 - A test asserts that changing the decompose batch size changes the hashed
   request key, and that the batch index and batch count do not.
 - A test asserts that two runs over byte-identical task text produce
@@ -81,3 +81,4 @@ linking at all.
 - A task file stating one requirement in both Constraints and Completion
   expectations yields two obligations from this pass rather than one obligation
   carrying two requirement links.
+- A dogfood decompose run over a task file of #195's size loses no requirement.

@@ -21,6 +21,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from acceptance.config import (
+    DEFAULT_DECOMPOSE_BATCH_SIZE,
     DEFAULT_MAPPING_BATCH_SIZE,
     ScopeExpansionPolicy,
     provenance_for,
@@ -203,6 +204,7 @@ def run_review(
     declaration_text: str | None = None,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
     mapping_batch_size: int = DEFAULT_MAPPING_BATCH_SIZE,
+    decompose_batch_size: int = DEFAULT_DECOMPOSE_BATCH_SIZE,
     task_identifier: str = "<inline>",
     prior: Review | None = None,
 ) -> Review:
@@ -222,7 +224,7 @@ def run_review(
     unusable = UnusableAnswerLog()
 
     parsed = parse_task_file(task_text)
-    decomposition = decompose(parsed, client, unusable)
+    decomposition = decompose(parsed, client, unusable, batch_size=decompose_batch_size)
     obligations = decomposition.obligations
 
     # Whole-diff stages below always run: unrequested-change detection and

@@ -630,11 +630,18 @@ class ReviewProvenance(_Model):
     # model call at all, and such a run must not inherit a claim that the
     # configured controls held — see `determinism`.
     controls_in_force: DeterminismControls | None = None
-    # How many items one partitioned request covered (DR-164). Observed from the
-    # calls, not read from configuration, so it reports the partitioning that was
-    # actually in force. None means no partitioned call was made — a different
-    # claim from a partition of size one.
-    request_partition_size: int | None = None
+    # How many items one partitioned request covered, per stage (DR-164, #204).
+    # Observed from the calls, not read from configuration, so it reports the
+    # partitioning that was actually in force.
+    #
+    # Per stage rather than one number: mapping partitions relevance judgments
+    # and derivation partitions requirements, at different sizes, because they
+    # are different work at different scale. A single scalar had to return
+    # `None` once the two disagreed — which reads as "no partitioned call was
+    # made" and would have described every real review as unpartitioned. An
+    # EMPTY mapping is that claim, and a stage is absent when its own calls
+    # disagreed.
+    request_partition_sizes: dict[str, int] = Field(default_factory=dict)
 
     def determinism(self) -> Literal["pinned", "unpinned", "indeterminate"]:
         """Whether this run is reproducible, derived rather than stored.

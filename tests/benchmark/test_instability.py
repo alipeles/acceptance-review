@@ -38,7 +38,7 @@ from acceptance.benchmark.instability import (  # noqa: E402
     summarize_model,
 )
 from acceptance.config import Mode, RunConfig  # noqa: E402
-from support import client_dispatching, client_finding_nothing  # noqa: E402
+from support import _completed, client_dispatching, client_finding_nothing  # noqa: E402
 
 _EMPTY_BY_SCHEMA = {
     "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
@@ -65,7 +65,7 @@ def _recording_factory(calls: list):
             return SimpleNamespace(
                 choices=[
                     SimpleNamespace(
-                        message=SimpleNamespace(content=json.dumps(_EMPTY_BY_SCHEMA[name]))
+                        message=SimpleNamespace(content=json.dumps(_completed(_EMPTY_BY_SCHEMA[name], **kwargs)))
                     )
                 ],
                 usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
@@ -434,6 +434,7 @@ def _observing_factory(calls):
                 "_Recommendations": {"recommendations": []},
                 "_Mismatches": {"mismatches": []},
             }[name]
+            empty = _completed(empty, **kwargs)
             from types import SimpleNamespace
 
             return SimpleNamespace(

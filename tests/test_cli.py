@@ -3,7 +3,7 @@ import json
 import pytest
 
 from acceptance.cli import main, run_check
-from acceptance.config import DEFAULT_SEED, RunConfig
+from acceptance.config import DEFAULT_DECOMPOSE_BATCH_SIZE, DEFAULT_SEED, RunConfig
 from acceptance.review_state import Disposition
 from acceptance.review_store import ReviewStore
 from tests.support import client_finding_nothing
@@ -92,10 +92,12 @@ def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_pa
         "model": "openai/gpt-5",
         "controls_requested": {"temperature": 0.4, "seed": 7},
         "controls_in_force": {"temperature": 0.4, "seed": 7},
-        # This fixture's diff surfaces no candidate tests, so the mapping stage
-        # makes no call and there is no partitioning to report. None here is
-        # "unpartitioned run", not "partition of size zero".
-        "request_partition_size": None,
+        # This fixture's diff surfaces no candidate tests, so the mapping
+        # stage makes no call — but derivation partitions every run, so it
+        # reports its own size. Per stage because the two are different work
+        # at different scale (#204); an EMPTY mapping is the "unpartitioned
+        # run" claim, not a null.
+        "request_partition_sizes": {"decompose": DEFAULT_DECOMPOSE_BATCH_SIZE},
     }
 
 
@@ -214,13 +216,19 @@ def test_run_check_rejects_a_revision_missing_from_the_given_repo(
 
 # --- decompose subcommand (M1.2/M1.3 dogfood path) ---
 
-def test_decompose_replay_without_transcript_fails_cleanly(
-    fixture_task_path, tmp_path, monkeypatch, capsys
-):
+def test_decompose_replay_without_transcript_fails_cleanly(tmp_path, monkeypatch, capsys):
     # REPLAY mode with no recorded transcript must not call live; it errors out.
     # chdir to an empty dir so the relative transcript store is guaranteed empty.
+    #
+    # Uses a §7.1-shaped task rather than `fixture_task_path`: derivation is
+    # partitioned by requirement (#204), so a file the parser reads no
+    # requirements out of issues no call at all and there is no transcript to
+    # miss. `minimal_task.md` is headed `## Deliverable` / `## Acceptance` and is
+    # exactly such a file, which made this test pass for the wrong reason.
+    task = tmp_path / "task.md"
+    task.write_text("# Task\nDo the thing.\n\n## Constraints\n- Keep it fast.\n")
     monkeypatch.chdir(tmp_path)
-    exit_code = main(["decompose", "--task", fixture_task_path, "--mode", "replay"])
+    exit_code = main(["decompose", "--task", str(task), "--mode", "replay"])
 
     assert exit_code == 1
     assert "model error" in capsys.readouterr().err
@@ -327,7 +335,9 @@ def test_run_classify_auto_ignores_the_task_file(git_repo, monkeypatch):
         cli_module, "extract_working_tree_change_set", fake_extract_working_tree_change_set
     )
     monkeypatch.setattr(
-        cli_module, "decompose", lambda parsed, client: Decomposition(obligations=[])
+        cli_module,
+        "decompose",
+        lambda parsed, client, **kwargs: Decomposition(obligations=[]),
     )
     monkeypatch.setattr(cli_module, "classify_coverage", lambda obligations, cs, client: [])
     monkeypatch.setattr(

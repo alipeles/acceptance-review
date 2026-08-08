@@ -38,8 +38,10 @@ from typing import Literal, Union
 
 from pydantic import Field
 
+from acceptance.config import DEFAULT_DECOMPOSE_BATCH_SIZE
 from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
 from acceptance.model_base import PersistableModel
+from acceptance.partition import partition
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import ParsedTaskFile
 from acceptance.review_state import (
@@ -52,7 +54,12 @@ from acceptance.review_state import (
     RequirementRef,
 )
 from acceptance.source_ref import find_span
-from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
+from acceptance.supplied_ids import (
+    UnusableAnswer,
+    UnusableAnswerLog,
+    constrain,
+    scan,
+)
 
 _STAGE = "decompose"
 
@@ -157,10 +164,15 @@ positive restatement described above, and it is checkable — the delivered chan
 either touched X or it did not. Do not dispose of a scope exclusion as
 `no_obligation` because it is phrased as a prohibition; restate it and yield.
 
-One obligation may serve SEVERAL requirements. When two requirements state the
-same thing — commonly one bullet under Constraints and another under Completion
-expectations — emit ONE obligation and name it in BOTH dispositions. Never emit
-two near-identical obligations so that each requirement has its own copy."""
+Each requirement's obligations are carried INSIDE its own disposition, so every
+obligation belongs to exactly one requirement. Account for each requirement on
+its own: split it into several obligations, or decline it with `no_obligation`.
+
+When two requirements state the same thing — commonly one bullet under
+Constraints and another under Completion expectations — give an obligation to
+EACH of them. Two obligations saying nearly the same thing is the correct
+output here; a later pass merges them. Write each one out in full under its own
+requirement rather than trying to avoid the duplication."""
 
 
 # Empty arrays are returned explicitly (StrictResponseModel: no defaults).
@@ -182,20 +194,41 @@ class _OpenQuestion(StrictResponseModel):
 
 
 class _Yielded(StrictResponseModel):
-    """Obligations were derived. At least one, structurally."""
+    """Obligations were derived, and they belong to this requirement alone.
+
+    The obligations are CARRIED here rather than referenced by id from a flat
+    top-level list (#204, DR-204). That is what makes "derivation performs no
+    linking" a property of the shape instead of a rule the model is asked to
+    follow: there is no id to write twice, so one obligation cannot be named by
+    two requirements.
+
+    The previous shape put `obligations` at the top level and had each
+    disposition point into it by unconstrained string — which made linking the
+    natural encoding for "these two requirements state the same thing", and the
+    model used it despite two paragraphs of prompt forbidding it. Measured, not
+    assumed: a task file stating one requirement under Constraints and again
+    under Completion expectations — the restatement DR-202 itself calls typical
+    — linked on every attempt, on subject matter having nothing to do with
+    decomposition.
+
+    Rejecting that after the fact left the mandate unaccounted for and aborted
+    the review, so an ordinary task file could not be reviewed at all. A rule
+    the schema contradicts is not enforceable by asking harder; #217 settled the
+    same argument for the empty-`yielded` case.
+    """
 
     requirement_id: str
     disposition: Literal["yielded"]
-    # Split rather than `list[str]` with a minimum, because a minimum cannot be
+    # Split rather than `list[...]` with a minimum, because a minimum cannot be
     # expressed on the wire: OpenAI strict mode rejects `minItems`. One required
     # field plus the rest makes "at least one" a property of the SHAPE, so the
     # empty case is unrepresentable in the schema the model is given rather than
     # merely rejected after it answers.
-    obligation_id: str
-    more_obligation_ids: list[str]
+    obligation: _DecomposedObligation
+    more_obligations: list[_DecomposedObligation]
 
-    def ids(self) -> list[str]:
-        return [self.obligation_id, *self.more_obligation_ids]
+    def derived(self) -> list[_DecomposedObligation]:
+        return [self.obligation, *self.more_obligations]
 
 
 class _NoObligation(StrictResponseModel):
@@ -228,7 +261,17 @@ _RequirementDisposition = Union[_Yielded, _NoObligation, _RaisedOpenQuestion]
 
 
 class _Decomposition(StrictResponseModel):
-    obligations: list[_DecomposedObligation]
+    """No top-level `obligations` list: every obligation reaches us inside the
+    disposition that owns it.
+
+    `open_questions` stays flat and referenced by id, deliberately. Two
+    requirements really can be blocked by one ambiguity, and the question text
+    is about the ambiguity rather than a restatement of either requirement's
+    content — so sharing one loses nothing, which is not true of obligations.
+    The no-linking rule is about obligations, and it is applied to obligations
+    only.
+    """
+
     open_questions: list[_OpenQuestion]
     requirement_dispositions: list[_RequirementDisposition]
 
@@ -243,8 +286,8 @@ class Decomposition(PersistableModel):
     requirement_map: RequirementMap = Field(default_factory=RequirementMap)
 
 
-def _user_prompt(registry: list[RequirementRef]) -> str:
-    """The identified requirements, as typed fields.
+def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+    """The identified requirements, as typed fields — all of them, every call.
 
     Deliberately NOT `parsed.source`. The pipeline runs `parse_task_file`, which
     computes typed spans for the behavior, constraints, scope exclusions and
@@ -256,13 +299,36 @@ def _user_prompt(registry: list[RequirementRef]) -> str:
     It is also what makes the disposition list enforceable. Asking for "one entry
     per requirement" only means something if the code and the model agree on what
     the requirements ARE, and that agreement is this list.
+
+    **The batch scopes which requirements this call must answer for; it does not
+    scope what the call may read** (#204). The whole registry is the task file in
+    its structured form, so every call sees all of it. #178 is a failure to
+    reconcile across sections, and a call shown only its own bullets cannot
+    notice that a later section settles a term an earlier one leaves open — it
+    would trade one silent loss for another.
     """
     lines = [
-        "Requirements, each with the id you must account for it under:",
+        "The complete set of requirements in this task file, for context:",
         "",
     ]
     for requirement in registry:
-        lines.append(f"[{requirement.id}] ({requirement.section.value}) {requirement.text}")
+        marker = "ANSWER FOR THIS" if requirement.id in answer_for else "context only"
+        lines.append(
+            f"[{requirement.id}] ({requirement.section.value}) [{marker}] {requirement.text}"
+        )
+    lines.extend(
+        [
+            "",
+            "Return exactly one disposition for each of these requirement ids, and "
+            "for no others:",
+            "",
+            ", ".join(sorted(answer_for)),
+            "",
+            "The rest are shown so you can read the mandate as a whole. Do not "
+            "dispose of them and do not derive obligations for them; another call "
+            "answers for those.",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -274,85 +340,199 @@ def decompose(
     parsed: ParsedTaskFile,
     client: ModelClient,
     unusable_answers: UnusableAnswerLog | None = None,
+    batch_size: int = DEFAULT_DECOMPOSE_BATCH_SIZE,
 ) -> Decomposition:
     """Decompose a parsed task into typed obligations, open questions, and the
     mapping from each identified requirement to what it produced.
 
     Takes a parsed task file and a client, and nothing else — no `ChangeSet`, no
     repository, no head revision (DR-202 decision 8).
+
+    The requirements are partitioned across several calls (#204). One call over
+    the whole registry sheds work the way DR-164 measured a stage later: an
+    observed run over ~36 requirements produced no obligation for 9 of them,
+    with a schema-valid response that nothing downstream could question. Every
+    call still reads the whole task file; only the answering is split.
     """
     registry = build_registry(parsed)
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {"role": "user", "content": _user_prompt(registry)},
-    ]
-    # Requirement ids are ours, so a foreign one is unrepresentable under
-    # constrained decoding and detected locally otherwise (#163). Obligation and
-    # question ids are minted by this same response, so there is nothing to
-    # constrain them against; they are reconciled below instead.
-    allowed = {"requirement_id": [requirement.id for requirement in registry]}
-    result = client.complete(
-        messages,
-        constrain(_Decomposition, allowed),
-        parse_as=_Decomposition,
-    )
-    if unusable_answers is not None:
-        unusable_answers.record(scan(result, allowed, _STAGE))
+    # No requirements, no calls. `partition` returns no batches for an empty
+    # registry and the loop below simply does not run — spelled out because the
+    # previous single-call shape issued one request regardless, asking the model
+    # to decompose an empty requirement list. What came back could only be
+    # invented, since the prompt carried no task content at all.
+    #
+    # This is how `tests/fixtures/archetypes/` behaves today: every task.md
+    # there heads its mandate `# Task: <title>`, which is not the `task` heading
+    # the parser recognises, so all thirteen produce an empty registry. Tracked
+    # separately — it is a property of that corpus, not of this stage.
 
     seen_ids: set[str] = set()
     obligations: list[Obligation] = []
-    # The model's own id for each output, mapped to the id it ended up with:
-    # `_unique` may rename a collision, and a disposition naming the original
-    # would otherwise dangle. First claimant wins, which is the only stable
-    # reading when the model emits the same id twice.
-    obligation_final: dict[str, str] = {}
-    for item in result.obligations:
-        final_id = _unique(item.id, seen_ids)
-        obligation_final.setdefault(item.id, final_id)
-        obligations.append(
-            Obligation(
-                id=final_id,
-                description=item.description,
-                type=item.type,
-                importance=_importance(item.importance),
-                explicit=item.explicit,
-                observable_behavior=item.observable_behavior,
-                source_spans=_spans(parsed.source, item.source_quote),
-            )
-        )
-
     open_questions: list[OpenQuestion] = []
-    question_final: dict[str, str] = {}
-    for item in result.open_questions:
-        final_id = _unique(item.id, seen_ids)
-        question_final.setdefault(item.id, final_id)
-        open_questions.append(
-            OpenQuestion(
-                id=final_id,
-                question=item.question,
-                importance=_importance(item.importance),
-                source_spans=_spans(parsed.source, item.source_quote),
-            )
+    dispositions: list[_RequirementDisposition] = []
+    # requirement id -> the final ids of the obligations it derived. Built as
+    # the dispositions are read, because an obligation now arrives inside the
+    # disposition that owns it: there is no flat list to reconcile against and
+    # no model-minted reference that could dangle or be written twice.
+    #
+    # `_unique` still runs, because two requirements may independently mint the
+    # same slug — but a rename can no longer mis-resolve anyone else's
+    # disposition, since nobody else names it.
+    derived_ids: dict[str, list[str]] = {}
+    # Open questions stay flat and referenced by id (see `_Decomposition`), so
+    # they still need per-batch resolution: each response mints its own ids.
+    question_final: dict[str, dict[str, str]] = {}
+
+    for batch in partition(registry, batch_size, key=lambda requirement: requirement.id):
+        batch_ids = [requirement.id for requirement in batch.items]
+        messages = [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": _user_prompt(registry, set(batch_ids))},
+        ]
+        # Constrained to THIS batch's ids, not the whole registry: a disposition
+        # for a requirement another call owns is unrepresentable under
+        # constrained decoding, and caught locally otherwise (#163). Obligation
+        # and question ids are minted by the same response, so there is nothing
+        # to constrain them against; they are reconciled below.
+        allowed = {"requirement_id": batch_ids}
+        result = client.complete(
+            messages,
+            constrain(_Decomposition, allowed),
+            batch.request_partition(),
+            parse_as=_Decomposition,
+            stage=_STAGE,
         )
+        if unusable_answers is not None:
+            unusable_answers.record(scan(result, allowed, _STAGE))
+
+        kept = _batch_dispositions(
+            result.requirement_dispositions,
+            set(batch_ids),
+            {requirement.id for requirement in registry},
+            unusable_answers,
+        )
+        dispositions.extend(kept)
+
+        # Obligations are lifted out of their dispositions in registry order, so
+        # the flat list downstream reads in document order and two runs over the
+        # same input produce it identically.
+        for entry in kept:
+            if not isinstance(entry, _Yielded):
+                continue
+            for item in entry.derived():
+                final_id = _unique(item.id, seen_ids)
+                derived_ids.setdefault(entry.requirement_id, []).append(final_id)
+                obligations.append(
+                    Obligation(
+                        id=final_id,
+                        description=item.description,
+                        type=item.type,
+                        importance=_importance(item.importance),
+                        explicit=item.explicit,
+                        observable_behavior=item.observable_behavior,
+                        source_spans=_spans(parsed.source, item.source_quote),
+                    )
+                )
+
+        # After the obligations, deliberately: ids are uniqued across both, and
+        # an obligation and a question minting the same slug must resolve the
+        # same way they did before this stage was partitioned.
+        batch_question_final: dict[str, str] = {}
+        for item in result.open_questions:
+            final_id = _unique(item.id, seen_ids)
+            batch_question_final.setdefault(item.id, final_id)
+            open_questions.append(
+                OpenQuestion(
+                    id=final_id,
+                    question=item.question,
+                    importance=_importance(item.importance),
+                    source_spans=_spans(parsed.source, item.source_quote),
+                )
+            )
+        for requirement_id in batch_ids:
+            question_final[requirement_id] = batch_question_final
 
     return Decomposition(
         obligations=obligations,
         open_questions=open_questions,
         requirement_map=_requirement_map(
             registry,
-            result.requirement_dispositions,
-            obligation_final,
+            dispositions,
+            derived_ids,
             question_final,
             parsed.unclaimed,
         ),
     )
 
 
+def _batch_dispositions(
+    returned: list[_RequirementDisposition],
+    batch_ids: set[str],
+    registry_ids: set[str],
+    unusable_answers: UnusableAnswerLog | None,
+) -> list[_RequirementDisposition]:
+    """One batch's usable dispositions.
+
+    **A batch may only answer for its own requirements.** A disposition naming a
+    requirement this call was not given is recorded and dropped rather than
+    silently filtered — the requirement belongs to another batch, which answers
+    for it, and letting this one through would make the merged result depend on
+    which batch returned last.
+
+    There is no no-linking check here, and deliberately none anywhere: since the
+    obligations are carried inside the disposition that derived them, one
+    obligation cannot be named by two requirements. The rule is a property of
+    the shape, not a rejection applied afterwards (DR-204, amended). An earlier
+    version validated it post-response and had to drop BOTH claimants, which
+    left the mandate unaccounted for and aborted the review — on an ordinary
+    task file that merely restated a requirement across two sections.
+    """
+    rejected: list[UnusableAnswer] = []
+    usable: list[_RequirementDisposition] = []
+    seen: dict[str, _RequirementDisposition] = {}
+
+    for entry in returned:
+        # An EXACT repeat of a disposition already returned in this response is
+        # dropped, not rejected. It carries no information the first copy did
+        # not, and a response that repeats itself verbatim is a degenerate
+        # generation rather than a contradiction — observed once the obligations
+        # moved inside the dispositions and responses grew: the model emitted
+        # its whole disposition list twice.
+        #
+        # A duplicate that DIFFERS is still a contradiction and still reaches
+        # `_requirement_map`, which refuses it: two different answers for one
+        # requirement is exactly the self-contradiction M1.2.r2 exists to catch.
+        previous = seen.get(entry.requirement_id)
+        if previous is not None and previous == entry:
+            continue
+        # An id outside the registry ENTIRELY is passed through, not filtered
+        # here: it is a malformed response rather than a batch overstepping, and
+        # `_requirement_map` already refuses it by name. Filtering it here would
+        # convert a loud, specific rejection into a vague "did not account for"
+        # about some other requirement.
+        if entry.requirement_id in registry_ids and entry.requirement_id not in batch_ids:
+            rejected.append(
+                UnusableAnswer(
+                    stage=_STAGE,
+                    field="requirement_id",
+                    returned_id=entry.requirement_id,
+                    reason="disposed a requirement this call was not asked to answer for",
+                )
+            )
+            continue
+        seen.setdefault(entry.requirement_id, entry)
+        usable.append(entry)
+
+    if rejected and unusable_answers is not None:
+        unusable_answers.record(rejected)
+    return usable
+
+
 def _requirement_map(
     registry: list[RequirementRef],
     returned: list[_RequirementDisposition],
-    obligation_final: dict[str, str],
-    question_final: dict[str, str],
+    derived_ids: dict[str, list[str]],
+    question_final: dict[str, dict[str, str]],
     unread: list,
 ) -> RequirementMap:
     """Reconcile the returned dispositions against the registry.
@@ -404,16 +584,17 @@ def _requirement_map(
             )
             continue
 
-        # Ids the response invented are still dropped — a disposition may only
-        # name outputs the same response produced. But dropping them all is not
-        # a survivable state: it leaves a claim that obligations exist with none
-        # to point at, which is the contradiction this change exists to remove.
+        # No reconciliation, and no dangling-reference case to handle: the
+        # obligations arrived inside this disposition, so `derived_ids` holds
+        # exactly what it carried. `_Yielded` requires at least one
+        # structurally, so the empty case is unrepresentable rather than
+        # rejected here (#217).
         if isinstance(entry, _Yielded):
-            obligation_ids = _resolve(entry.ids(), obligation_final)
+            obligation_ids = derived_ids.get(requirement.id, [])
             if not obligation_ids:
                 raise SchemaValidationError(
-                    f"requirement '{requirement.id}' was disposed 'yielded' naming "
-                    f"{len(entry.ids())} obligation id(s), none of which the response produced"
+                    f"requirement '{requirement.id}' was disposed 'yielded' but carried "
+                    f"no obligation"
                 )
             dispositions.append(
                 RequirementDisposition(
@@ -424,7 +605,7 @@ def _requirement_map(
             )
             continue
 
-        open_question_ids = _resolve(entry.ids(), question_final)
+        open_question_ids = _resolve(entry.ids(), question_final.get(requirement.id, {}))
         if not open_question_ids:
             raise SchemaValidationError(
                 f"requirement '{requirement.id}' was disposed 'open_question' naming "

@@ -1,5 +1,8 @@
-## Deliverable
-minimal fixture task used to exercise the `acceptance check` CLI in tests.
+# Task
+Minimal fixture task used to exercise the `acceptance check` CLI in tests.
 
-## Acceptance
-the CLI parses this file without error.
+## Constraints
+- The CLI parses this file without error.
+
+## Completion expectations
+- Implementation

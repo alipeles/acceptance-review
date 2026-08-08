@@ -597,7 +597,13 @@ _TWO_FILE_JUDGMENTS = {
     "_Mismatches": {"mismatches": []},
 }
 
-_TWO_FILE_TASK = "# Task\n\n- Alpha behaves\n- Beta behaves\n"
+# §7.1-shaped: bullets under `# Task` are claimed by no section, so a
+# file in the old shape yields an empty registry and — since #204
+# partitions by requirement — no derivation call at all.
+_TWO_FILE_TASK = (
+    "# Task\nAlpha and beta behave.\n\n"
+    "## Constraints\n- Alpha behaves\n- Beta behaves\n"
+)
 
 
 def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path):

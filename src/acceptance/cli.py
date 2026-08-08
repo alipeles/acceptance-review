@@ -23,6 +23,7 @@ from pathlib import Path
 
 from acceptance.change.diff import extract_change_set, extract_working_tree_change_set
 from acceptance.config import (
+    DEFAULT_DECOMPOSE_BATCH_SIZE,
     DEFAULT_MAPPING_BATCH_SIZE,
     DEFAULT_MODEL,
     DEFAULT_SEED,
@@ -172,6 +173,7 @@ def run_check(
         declaration_text=declaration_text,
         policy=config.scope_expansion_policy,
         mapping_batch_size=config.mapping_batch_size,
+        decompose_batch_size=config.decompose_batch_size,
         task_identifier=task,
         prior=prior,
     )
@@ -210,7 +212,7 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
     Uses a live model call (in RECORD mode) — the dogfooding path for M1.2/M1.3.
     """
     parsed = parse_task_file(_read_task(task))
-    return decompose(parsed, config.build_client())
+    return decompose(parsed, config.build_client(), batch_size=config.decompose_batch_size)
 
 
 _WIDTH = 88
@@ -476,7 +478,9 @@ def run_classify(
     `decompose` standalone (#113)."""
     repo_path = Path(repo)
     parsed = parse_task_file(_read_task(task))
-    decomposition = decompose(parsed, config.build_client())
+    decomposition = decompose(
+        parsed, config.build_client(), batch_size=config.decompose_batch_size
+    )
     obligations = decomposition.obligations
 
     task_ignore = _task_ignore_pattern(task, repo_path)
@@ -589,6 +593,16 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
             "Candidate tests per mapping call (determinism; default: "
             f"{DEFAULT_MAPPING_BATCH_SIZE}). Changing it invalidates recorded "
             "mapping transcripts."
+        ),
+    )
+    parser.add_argument(
+        "--decompose-batch-size",
+        type=int,
+        default=DEFAULT_DECOMPOSE_BATCH_SIZE,
+        help=(
+            "Requirements per obligation-derivation call (determinism; default: "
+            f"{DEFAULT_DECOMPOSE_BATCH_SIZE}). Changing it invalidates recorded "
+            "decompose transcripts."
         ),
     )
 
@@ -705,6 +719,7 @@ def main(argv: list[str] | None = None) -> int:
             seed=_seed_from(args),
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
+            decompose_batch_size=args.decompose_batch_size,
         )
         try:
             review = run_check(
@@ -756,6 +771,7 @@ def main(argv: list[str] | None = None) -> int:
             seed=_seed_from(args),
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
+            decompose_batch_size=args.decompose_batch_size,
         )
         try:
             result = run_decompose(args.task, config)
@@ -790,6 +806,7 @@ def main(argv: list[str] | None = None) -> int:
             seed=_seed_from(args),
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
+            decompose_batch_size=args.decompose_batch_size,
         )
         try:
             obligations, open_questions, coverages, dispositioned = run_classify(
