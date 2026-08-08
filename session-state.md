@@ -8,209 +8,129 @@ Committed, so it survives a context reset or a machine change — but still a
 scratch record, not a plan. **The GitHub issue stays authoritative** (#168).
 Clear it out when the task lands rather than letting it accrete.
 
-*Last updated: 2026-08-07*
+*Last updated: 2026-08-08*
 
 ---
 
-## Task in flight — #204
+## Next task — #144, and it starts immediately
 
-**Gate 1 PASSED at `40383bc`, decomposition confirmed by the human (aalipeles).**
-Run 2 in `dogfood-logs/204-gate1-run2/`: 34 requirements, 33 with obligations,
-one deliberate decline, nothing unaccounted for. Implementation may start.
+**#144 (merge semantically duplicate obligations) is the next task and must not
+wait.** Between #204 landing and #144 landing, the obligation set is unmerged:
+#204's own Gate 2 derived **71 obligations from 34 requirements**. Every
+downstream stage is per-obligation, so cost and report length stay roughly
+doubled until #144 lands, and **no Gate 2 on this repo can come back clean in
+the meantime** — the same gap gets counted several times.
 
-Run 1 was superseded: its `completion-10` made a dogfood run a requirement of
-the software. **The tool must never be aware it is being dogfooded** — now a
-CLAUDE.md rule. The issue says how we verify; the task file says what the
-software must do.
+Two constraints are already recorded as comments on #144; read them before
+planning:
 
-Two open notes carried from Gate 1, neither blocking:
+1. **Links are structured output, not prose.** A link written into an
+   obligation's description cannot be validated, cannot be scored by #211, and
+   cannot be told apart from the model narrating what it did.
+2. **The pre-merge obligation set must be persisted**, even though no user sees
+   it. Obligation determination is now two stages, and determinism is enforced
+   at each: per-requirement obligations change only if that requirement's
+   relevant inputs change; the de-duplication and its links stay identical
+   unless the per-requirement obligations they were computed from change.
+   Without stage 1's output stored, a movement in the final set cannot be
+   attributed to the stage that caused it. Expect `rerun.py` to gain a second
+   staleness question.
 
-- **#223's trigger is task-file dependent.** The comment I filed calls the
-  absorption deterministic — true across three runs and two stages on *one* task
-  file — but `constraint-15`/`constraint-16` here are the same two requirements
-  and are *not* absorbed. Follow-up comment drafted, unfiled.
-- **#204's premise did not reproduce.** One unpartitioned call (`partition:
-  None`, verified in the transcript), 35 requirements, 3547 prompt tokens, zero
-  lost — where #195 lost 9 of ~36 at ~2.5k. Does not undermine #204; this run is
-  simply not evidence for it.
+## Previous task — #204, merged (or in flight; check the PR)
 
-## Previous task — #216, landed
+Branch `204-partition-obligation-derivation`, **PR #229**. Gate 1 passed at
+`40383bc` (human-confirmed); three Gate 2 runs in `dogfood-logs/204-gate2-run*/`.
+Suite green at 860.
 
-**#216** — nested bullets and multi-paragraph list items dropped silently, and
-the unread-source guard reports zero. Child of #181, board order 413.05.
+**Gate 2 was honest but not clean, and could not be** — see the next-task note
+above. Closed on that basis, not by attribution.
 
-Branch **`216-parser-accounts-for-blocks`**. Design was settled beforehand in
-`docs/DR-216-parser-accounts-decomposer-splits.md`; implementation followed it
-without re-deriving anything.
+### What #204 changed, in one place
 
-**Gate 2 closed by attribution** — it never came back clean, and every remaining
-finding is a filed tool defect (#223, #173, #180, #225), not a gap in the work.
-See *Where it stands* below.
+- Derivation is partitioned by requirement batch through `partition.py`, at
+  `DEFAULT_DECOMPOSE_BATCH_SIZE = 8`. **Every call still reads the whole task
+  file**; the batch scopes only what a call must answer for.
+- `--decompose-batch-size`, hashed via `Batch.request_partition()` — only
+  `size`, never index or count.
+- **Derivation performs no linking, as a SHAPE.** `_Yielded` carries
+  `obligation` + `more_obligations` — the obligations themselves — instead of
+  ids pointing into a flat list. DR-204's mechanism section is amended.
+- `request_partition_sizes` is per stage; the stage label is recorded outside
+  the hashed request so no mapping transcript is re-keyed.
 
-## What landed
+## The lesson from #204 worth carrying
 
-| commit | what |
-|---|---|
-| `2ae0fed` | the parser change + fixtures + coverage assertion |
-| `77ae7cb` | Gate 2 run 1 fixes: count-insensitivity test, DR-216 decision-record tests |
-| `616f505` | Gate 2 run 2 fix: the pre-#216 parse pinned as a regression |
-| `63acea6` | three dogfood logs with judgements |
-| `e1c0e8a`+ | session state, attributions recorded |
+**A rule the schema invites cannot be enforced by asking harder.**
 
-`parse_task_file` now descends into lists and list items, emitting one span per
-leaf block. Nested content gets its own requirement (DR-216 decision 2); block
-type is never judged (decision 3).
+DR-204 first enforced no-linking with a post-response validator. It rejected the
+response, dropped both claimants, left the mandate unaccounted for, and aborted
+the review — deterministically, at temperature 0.
 
-Full suite green at **840**; `ruff` clean.
+The model was not ignoring an instruction it understood. Obligations sat in a
+flat list and dispositions pointed into it by unconstrained string, so writing
+the same id twice was the *obvious* encoding for "these two requirements state
+the same thing", while the prompt forbade it in prose.
 
-## Two facts worth not re-deriving
-
-**Every committed task file parses byte-identically** across the change —
-verified by dumping both parses from a HEAD worktree and diffing. **No recorded
-transcript is invalidated**, so decomposition-accuracy figures stay comparable.
-The method is worth repeating for any future parser change.
-
-**The real corpora cannot falsify the coverage guard.** Zero nested bullets in
-`current-task.md`, every `dogfood-logs/*/current-task.md`, and all of
-`tests/fixtures/decompose-stability/`. Hence `tests/fixtures/nested-blocks/`,
-and hence `test_each_purpose_built_fixture_actually_exercises_nesting`, which
-fails a fixture that could not tell the fixed parser from the broken one.
-Verified empirically: run against the pre-#216 parser, **all five fixtures fail
-and both real corpora pass**.
-
-## Where it stands — Gate 2, three runs, still not clean
-
-Runs at `2ae0fed`, `77ae7cb`, `616f505`, all in `dogfood-logs/216-gate2-run*/`.
-Mapping checked before the verdict each time (DR-164); it was dense and accurate,
-never half-blind.
-
-**Runs 1 and 2 each found a real gap and each was addressed.** Both were worth
-having:
-
-- the coverage assertion was never exercised against a parse that was right on
-  one axis and wrong on the other, so nothing showed it sees what a count
-  cannot;
-- run 2 then sharpened that correctly — a *damaged span* is not #216's shape; a
-  *dropped block* with every remaining span exact is. Now pinned.
-
-**Run 3 found nothing attributable to the work, and moved backwards.** Five
-findings, up from two, after a commit that only strengthened the suite. Three
-obligations lost a tier while their evidence improved:
-
-- committed-task-files coverage: strongly → nominally on a **byte-identical
-  mapped set** — the cleanest instance of #180 seen so far;
-- decompose-stability coverage: strongly → nominally, having lost one mapped
-  test that did not change;
-- decision-recorded-in-repository: strongly → partially **after** gaining the
-  three on-point `test_dr_216_*` tests, with a recommendation prescribing
-  `test_dr_216_records_the_nested_content_decision_as_resolved` — a test **in
-  its own mapped set**.
-
-**My judgement: the implementation is complete and correctly evidenced, and the
-gate cannot say so.** That claim is the human's to check, not mine to act on.
-
-## The four attributions — reviewed, approved, filed
-
-Gate 2 never came back clean. The branch moved forward under CLAUDE.md's second
-permitted disposition: attributed to a tool defect, backlog item filed first.
-
-| finding | tracked as |
-|---|---|
-| `constraint-11`/`constraint-12` absorbed into an obligation stating neither, **all three runs, same obligation id** as Gate 1 run 2 — deterministic, not noise | #223 (comment 5220684032) |
-| prescribed test supplied, mapped accurately to five neighbours, withheld from the obligation that asked | #173 (comment 5220724039) |
-| two ratings fell, one on a **byte-identical mapped set** | #180 (comment 5220738963) |
-| rating falls as evidence improves; recommendation names a test in its **own** mapped set | **#225**, new child of #183 |
-
-#225 is the one to read first — it is the residual failure mode left once #180
-and #173 are fixed, which is why it needed its own item rather than a comment.
-
-## Judgement failures worth not repeating
-
-**Run 2 upgraded `obligation-decision-recorded-in-repository` to *strongly
-supported* and it was not my fix that did it.** The mapped set that run held no
-`test_dr_216_*` test at all — four unrelated tests were re-scored upward. I read
-the green movement as my work landing before checking the mapped set.
-
-A green movement is not self-justifying. *"My fix landed"* has to be checked
-against the mapped set exactly like a red one — and it is the direction where
-checking feels unnecessary.
-
-The older instances, same family, all toward "already covered": #218's
-`closing-line-points-at-retrieval-command`, #217's `pydantic-typed-schemas`.
-**The shape**: naming a test that *resembles* the claim without checking it would
-fail if the obligation were violated.
-
-## Carry this warning through the #181 block
-
-**#148 sits at 414.5, behind all of it, and until it lands a clean Gate 2 can be
-false.** In #218 it manufactured a green one: both cited tests passed whether or
-not the schemas were pydantic. **The evidence is inverted** — the code axis,
-where the answer lives, cites nothing; the test axis, which cannot hold it,
-carries citations. Three comments on #148 hold the evidence, and `constraint-11`
-is implicated again in #223 and in all three runs above. It is a reliable
-troublemaker.
-
-Two findings that reshape #148's deliverable when it comes up:
-
-- **The destination already exists.** `requires_other_evidence` is a valid
-  `evidence_class` (`review_state.py:213,220`) and `verdict.py:81` already routes
-  it to `needs_non_code_review`. It is simply never produced —
-  `strength.py:15-18` declines to invent it and defers to a coverage status that
-  does not route it either. The work is "decide what routes into the existing
-  tier", not "build a tier".
-- **Settle first** whether `needs_non_code_review` is even the right verdict. It
-  fits "docs, visual, deploy"; it arguably does not fit "the import is there in
-  the diff", which should be satisfiable on code evidence alone.
-
-## The sequencing decision, recorded
-
-`docs/DR-204-derivation-performs-no-linking.md`. Derivation may split a
-requirement or decline it, but may **not** attach a requirement to an obligation
-derived from another. Enforced as a **validator, not a prompt rule**. Human
-decided: **#216, then #204 with no linking at all, then #144 owning linking.**
-
-#204 and #144 must land adjacently: between them the obligation set is unmerged
-and every downstream stage is per-obligation. #211 must score link precision over
-#144's output, not derivation. #210 and #223 stay open as evidence.
+**Measured, not assumed:** a control task file about invoice formatting — nothing
+to do with decomposition — linked identically. So it was neither dogfood
+contamination nor an edge case. When a prompt rule keeps losing, check whether
+the response shape is offering the thing you are forbidding.
 
 ## Do not rediscover
 
-- **A pydantic tagged union cannot go on the wire.** `Field(discriminator=...)`
-  renders `oneOf` + `discriminator`; strict mode accepts neither. Plain `Union`
-  renders `anyOf`; `Literal` tags still disambiguate.
-- **"At least one" cannot be `min_length`** — strict mode rejects `minItems`.
-  Use a required scalar beside a list.
-- **`request_key` hashes the response schema** (`llm.py:81-87`).
-- **A stable obligation count can conceal a total re-split.** Compare aligned
-  sets, not counts. `with obligations: N` counts *dispositions, not coverage*.
-- **Test doubles returning `[]` no longer parse** for decomposition or
-  recommendations. `tests/support.py::_completed` fills both from the ids the
-  call supplied.
-- **A text search for a removed symbol flags its own explanation.** Use an AST
-  walk.
-- **`tests/` is a namespace package** — shared helpers import as
-  `tests.requirement.region_coverage`, never as a relative import. `pythonpath =
-  ["."]` in `pyproject.toml` is what makes it work.
+- **The archetype corpus was unreadable until this branch.** All 13 task files
+  yielded an EMPTY registry (`# Task: <title>` is not the `task` heading), so
+  since #202 made the prompt registry-only the model saw a header and an empty
+  list. **`decomposition_accuracy` figures from before this branch are
+  meaningless.** Corpus fixed; the missing guard is **#228**.
+- **An obligation can no longer be an orphan.** It arrives inside the
+  disposition that owns it. The CLI still renders orphans because #144 rewrites
+  the map, but derivation cannot produce one.
+- **Test doubles use the flat shape and are translated** by
+  `tests/support.py::_nest_obligations`, which REFUSES to express linking, so no
+  fixture can smuggle back what the schema drops. It consumes obligations
+  positionally — a fixture may legitimately mint the same id twice.
+- **Verbatim response repetition is real**, new since responses grew: the model
+  emitted its whole disposition list twice, byte for byte. Exact repeats are
+  dropped; differing duplicates stay a rejection. If it recurs at larger sizes,
+  batch size is the lever.
+- **The task file must never mention dogfooding, gates, or our verification
+  process** — now a CLAUDE.md rule. The issue says how we verify; the task file
+  says what the software must do.
+- **`request_key` hashes the response schema** (`llm.py`), so a shape change
+  re-records everything. #204 paid this twice over.
+- **`tests/` is a namespace package** — import shared helpers as
+  `tests.requirement.region_coverage`, never relatively.
+- **Python here is 3.10**; the repo is `alipeles/acceptance-review`.
 
 ## Traps
 
 - **`decompose|check --mode record` writes nothing to stdout when redirected.**
   Record once, then re-run in replay to capture.
 - **A commit subject starting with `#` is deleted during `rebase --continue`.**
-  Put the issue ref at the end: `Subject line (#218)`.
-- **Two branches adding a helper to the same file in different regions
-  auto-merge cleanly and silently.** Grep for duplicate `def` after any rebase.
-- **Python here is 3.10** — no `enum.StrEnum`. Use `(str, Enum)`.
-- **The repo is `alipeles/acceptance-review`**, not the local dir name.
-- **`gh api ... -f` sends strings**; sub-issue ids need `-F` for integers, and
-  the id is the REST `.id`, not the issue number.
-- **Adding a sub-issue returns the PARENT**, so `-q .number` echoes the umbrella.
+  Put the issue ref at the end.
+- **`gh api ... -f` sends strings**; sub-issue ids need `-F`, and the id is the
+  REST `.id`, not the issue number. Adding a sub-issue returns the PARENT.
+- **Do the work on a branch.** #204's commits started on `main` and had to be
+  moved.
 - **`cd` inside a Bash call persists to the next call.** Use absolute paths.
+
+## Filed this session
+
+- **#227** (`decision`, → #181) — accept the task file the user actually wrote;
+  give feedback instead of silently reading nothing. Revisit after #208.
+- **#228** (→ #186) — a benchmark case yielding zero requirements must fail, not
+  score.
+- **#225** (→ #183) — a rating falls as its evidence improves, and the
+  recommendation names a test in the strength call's own mapped set.
+- Comments: **#223** (absorption is task-file dependent, narrowing an earlier
+  claim), **#173**, **#180**, **#212** (background became an obligation
+  *contradicting* the mandate — the sharpest instance yet), **#144** ×2.
 
 ## Known open, not the next task's problem
 
 **#210**, **#180**, **#193**, **#153**, **#191**, **#196**, **#178**, **#214**,
-**#129**, **#223**, **#224**, **#173**.
+**#129**, **#223**, **#224**, **#173**, **#225**, **#227**, **#228**, **#212**.
 
 ## What to ignore
 
