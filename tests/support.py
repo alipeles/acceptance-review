@@ -120,9 +120,7 @@ def _nest_obligations(response: dict) -> dict:
                 )
             carried.append(remaining.pop(match))
             consumed_by[oid] = entry["requirement_id"]
-        rest = {
-            k: v for k, v in entry.items() if k not in ("obligation_id", "more_obligation_ids")
-        }
+        rest = {k: v for k, v in entry.items() if k not in ("obligation_id", "more_obligation_ids")}
         dispositions.append({**rest, "obligation": carried[0], "more_obligations": carried[1:]})
 
     return {
@@ -312,9 +310,15 @@ def client_dispatching(
     make provenance describe the double instead of the run under test.
     """
 
+    # Defaults underneath, so a test names only the stages it is about. Adding a
+    # pipeline stage would otherwise break every multi-call test at once, which
+    # is a maintenance cost with no diagnostic value: a coverage test has no
+    # opinion about obligation linking and should not have to state one.
+    dispatch = {**_EMPTY_BY_SCHEMA, **responses_by_schema}
+
     def completion_fn(**kwargs):
         schema_name = kwargs["response_format"]["json_schema"]["name"]
-        return _fake_response(json.dumps(_completed(responses_by_schema[schema_name], **kwargs)))
+        return _fake_response(json.dumps(_completed(dispatch[schema_name], **kwargs)))
 
     return ModelClient(
         model=model,
@@ -340,6 +344,10 @@ _EMPTY_BY_SCHEMA = {
         "open_questions": [],
         "requirement_dispositions": [],
     },
+    # No obligation is linked to another: the de-duplication pass runs and finds
+    # nothing, so a test's derived obligations reach the rest of the pipeline
+    # exactly as it wrote them (#144).
+    "_Links": {"links": []},
     "_Mappings": {"mappings": []},
     "_Discrimination": {"discriminations": []},
     "_Coverage": {"classifications": []},
@@ -357,9 +365,7 @@ def client_finding_nothing(
 ) -> ModelClient:
     """A client whose every pipeline call returns an empty result — the
     checker runs end to end and reports nothing found."""
-    return client_dispatching(
-        _EMPTY_BY_SCHEMA, model=model, temperature=temperature, seed=seed
-    )
+    return client_dispatching(_EMPTY_BY_SCHEMA, model=model, temperature=temperature, seed=seed)
 
 
 # --- Recorded prompt-quality corpus (#146) ---------------------------------
@@ -423,9 +429,7 @@ def replaying_client(model: str | None = None, completion_fn=None) -> ModelClien
 def recorded_client(model: str | None = None) -> ModelClient:
     """Replay the committed corpus of real model responses (record with
     ACCEPTANCE_RECORD=1). A missing transcript means the prompt changed."""
-    return _corpus_config(
-        model, Mode.RECORD if recording_enabled() else Mode.REPLAY
-    ).build_client()
+    return _corpus_config(model, Mode.RECORD if recording_enabled() else Mode.REPLAY).build_client()
 
 
 def empty_corpus_client(root, model: str | None = None) -> ModelClient:

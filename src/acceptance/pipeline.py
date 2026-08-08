@@ -40,7 +40,10 @@ from acceptance.coverage.declaration_comparison import (
     declaration_mismatch_finding,
 )
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
-from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
+from acceptance.coverage.open_questions import (
+    apply_open_question_resolutions,
+    resolve_open_questions,
+)
 from acceptance.coverage.recommendations import recommend_tests
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.evidence.discovery import discover_tests
@@ -52,6 +55,7 @@ from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
+from acceptance.requirement.linking import link_duplicate_obligations
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import (
@@ -224,7 +228,14 @@ def run_review(
     unusable = UnusableAnswerLog()
 
     parsed = parse_task_file(task_text)
-    decomposition = decompose(parsed, client, unusable, batch_size=decompose_batch_size)
+    derived = decompose(parsed, client, unusable, batch_size=decompose_batch_size)
+    # Obligation determination is two stages (#144). Derivation accounts for each
+    # requirement alone and cannot link (#204), so a requirement stated twice
+    # yields two obligations; linking resolves them into one obligation named by
+    # both requirements. `derived` is kept, not discarded — it is persisted as
+    # provenance so a movement in the final set can be attributed to the stage
+    # that caused it.
+    decomposition = link_duplicate_obligations(derived, client, unusable)
     obligations = decomposition.obligations
 
     # Whole-diff stages below always run: unrequested-change detection and
@@ -232,7 +243,9 @@ def run_review(
     # obligation, so there is no unaffected subset to carry forward.
     fresh_obligations = obligations
     if prior is not None:
-        obligations = obligations_to_rederive(fresh_obligations, prior, change_set)
+        obligations = obligations_to_rederive(
+            fresh_obligations, prior, change_set, derived.obligations
+        )
 
     discovered = discover_tests(repo, change_set)
     mapping = map_tests_to_obligations(
@@ -241,9 +254,7 @@ def run_review(
     obligations = apply_test_mapping(obligations, mapping)
 
     test_evidence = extract_test_evidence(repo, discovered.tests, change_set, mapping)
-    discriminations = judge_discrimination(
-        obligations, test_evidence, change_set, client, unusable
-    )
+    discriminations = judge_discrimination(obligations, test_evidence, change_set, client, unusable)
     strengths = classify_strength(obligations, test_evidence, discriminations)
     obligations = apply_evidence_strength(obligations, strengths)
     # After strength, deliberately: an obligation whose judgment was never
@@ -258,13 +269,9 @@ def run_review(
     dispositioned = classify_dispositions(
         unrequested, obligations, coverages, change_set, policy, client
     )
-    resolutions = resolve_open_questions(
-        decomposition.open_questions, change_set, client, unusable
-    )
+    resolutions = resolve_open_questions(decomposition.open_questions, change_set, client, unusable)
     open_questions = apply_open_question_resolutions(decomposition.open_questions, resolutions)
-    recommendations = recommend_tests(
-        obligations, discriminations, change_set, client, unusable
-    )
+    recommendations = recommend_tests(obligations, discriminations, change_set, client, unusable)
 
     obligations_by_id = {obligation.id: obligation for obligation in obligations}
     findings = [
@@ -277,9 +284,7 @@ def run_review(
     if prior is not None:
         judged = obligations
         obligations = merge_carried_forward(fresh_obligations, judged, prior)
-        carried = [
-            obligation for obligation in obligations if obligation.carried_forward_from
-        ]
+        carried = [obligation for obligation in obligations if obligation.carried_forward_from]
         # A re-run must not lose the gap it reported last time for code nobody
         # touched: the verdict reads gaps off findings, so an unaddressed
         # obligation that was not re-examined would otherwise look resolved.
@@ -316,6 +321,10 @@ def run_review(
         # controls the provider honoured (#160).
         provenance=provenance_for(client),
         obligation_map=obligations,
+        # Stage 1's output, kept as provenance (#144). No reader sees it; it is
+        # what makes a movement in `obligation_map` attributable to derivation or
+        # to linking rather than ambiguous between them.
+        derived_obligation_map=derived.obligations,
         # Persisted, not re-derived: which requirements produced nothing is a
         # property of review state that every later stage and the report read
         # from one place (M1.2.r1).
