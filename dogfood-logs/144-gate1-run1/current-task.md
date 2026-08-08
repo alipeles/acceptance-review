@@ -32,6 +32,8 @@ obligation is named by every requirement that stated it.
   requirement, not two.
 - The obligations derivation produced, before any linking, are persisted in the
   review state. They are provenance rather than report content.
+- Obligations derived for a requirement change only when that requirement's own
+  relevant inputs change.
 - The links this pass produces are identical unless the derived obligations they
   were computed from change.
 - Two runs over byte-identical task text produce byte-identical review state,
@@ -61,5 +63,7 @@ obligation is named by every requirement that stated it.
   response schema cannot express a link as free text.
 - A test asserts that two runs over byte-identical task text produce
   byte-identical review state at both the derived and the linked stage.
+- A test asserts that changing a requirement's own inputs changes only that
+  requirement's derived obligations.
 - A test asserts that the links are unchanged when the derived obligations they
   were computed from are unchanged.
