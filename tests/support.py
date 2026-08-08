@@ -130,6 +130,21 @@ def client_returning(response: dict, model: str = _DEFAULT_MODEL) -> ModelClient
     )
 
 
+def model_client_with(completion_fn, model: str = _DEFAULT_MODEL) -> ModelClient:
+    """A client backed by a caller-supplied `completion_fn`.
+
+    For tests that need to vary the answer per call — which partitioned stages
+    do by construction, since a single fixed response cannot tell "every batch
+    was asked" from "one batch was".
+    """
+    return ModelClient(
+        model=model,
+        mode=Mode.RECORD,
+        store=TranscriptStore(tempfile.mkdtemp()),
+        completion_fn=completion_fn,
+    )
+
+
 def client_answering_per_call(
     responder, model: str = _DEFAULT_MODEL
 ) -> tuple[ModelClient, list[dict]]:

@@ -341,14 +341,19 @@ def decompose(
     obligations: list[Obligation] = []
     open_questions: list[OpenQuestion] = []
     dispositions: list[_RequirementDisposition] = []
-    # Resolution is per batch and merged after, NOT accumulated globally: each
+    # Keyed by REQUIREMENT, not merged into one model-id -> final-id map. Each
     # response mints its own obligation ids, so two batches can both return
-    # `obligation-foo` meaning different things. `_unique` renames the second to
-    # `obligation-foo-2`, and a global model-id -> final-id map would then
-    # resolve batch 1's disposition onto batch 0's obligation — the exact
-    # cross-requirement mis-link this change exists to make impossible.
-    resolved_obligations: dict[str, str] = {}
-    resolved_questions: dict[str, str] = {}
+    # `obligation-foo` meaning different things; `_unique` renames the second to
+    # `obligation-foo-2`. A single shared map would then hold one entry for
+    # `obligation-foo` — whichever batch wrote last — and resolve BOTH batches'
+    # dispositions onto it. That is a requirement silently attached to an
+    # obligation derived from another requirement: the exact mis-link this
+    # change exists to make impossible, reintroduced in the merge.
+    #
+    # Every requirement belongs to exactly one batch, so keying by requirement
+    # is unambiguous and each disposition resolves through its own call's map.
+    obligation_final: dict[str, dict[str, str]] = {}
+    question_final: dict[str, dict[str, str]] = {}
 
     for batch in partition(registry, batch_size, key=lambda requirement: requirement.id):
         batch_ids = [requirement.id for requirement in batch.items]
@@ -408,8 +413,9 @@ def decompose(
             unusable_answers,
         )
         dispositions.extend(kept)
-        resolved_obligations.update(batch_obligation_final)
-        resolved_questions.update(batch_question_final)
+        for requirement_id in batch_ids:
+            obligation_final[requirement_id] = batch_obligation_final
+            question_final[requirement_id] = batch_question_final
 
     return Decomposition(
         obligations=obligations,
@@ -417,8 +423,8 @@ def decompose(
         requirement_map=_requirement_map(
             registry,
             dispositions,
-            resolved_obligations,
-            resolved_questions,
+            obligation_final,
+            question_final,
             parsed.unclaimed,
         ),
     )
@@ -512,8 +518,8 @@ def _batch_dispositions(
 def _requirement_map(
     registry: list[RequirementRef],
     returned: list[_RequirementDisposition],
-    obligation_final: dict[str, str],
-    question_final: dict[str, str],
+    obligation_final: dict[str, dict[str, str]],
+    question_final: dict[str, dict[str, str]],
     unread: list,
 ) -> RequirementMap:
     """Reconcile the returned dispositions against the registry.
@@ -570,7 +576,7 @@ def _requirement_map(
         # a survivable state: it leaves a claim that obligations exist with none
         # to point at, which is the contradiction this change exists to remove.
         if isinstance(entry, _Yielded):
-            obligation_ids = _resolve(entry.ids(), obligation_final)
+            obligation_ids = _resolve(entry.ids(), obligation_final.get(requirement.id, {}))
             if not obligation_ids:
                 raise SchemaValidationError(
                     f"requirement '{requirement.id}' was disposed 'yielded' naming "
@@ -585,7 +591,7 @@ def _requirement_map(
             )
             continue
 
-        open_question_ids = _resolve(entry.ids(), question_final)
+        open_question_ids = _resolve(entry.ids(), question_final.get(requirement.id, {}))
         if not open_question_ids:
             raise SchemaValidationError(
                 f"requirement '{requirement.id}' was disposed 'open_question' naming "
