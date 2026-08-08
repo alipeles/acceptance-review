@@ -489,8 +489,22 @@ def _batch_dispositions(
     """
     rejected: list[UnusableAnswer] = []
     usable: list[_RequirementDisposition] = []
+    seen: dict[str, _RequirementDisposition] = {}
 
     for entry in returned:
+        # An EXACT repeat of a disposition already returned in this response is
+        # dropped, not rejected. It carries no information the first copy did
+        # not, and a response that repeats itself verbatim is a degenerate
+        # generation rather than a contradiction — observed once the obligations
+        # moved inside the dispositions and responses grew: the model emitted
+        # its whole disposition list twice.
+        #
+        # A duplicate that DIFFERS is still a contradiction and still reaches
+        # `_requirement_map`, which refuses it: two different answers for one
+        # requirement is exactly the self-contradiction M1.2.r2 exists to catch.
+        previous = seen.get(entry.requirement_id)
+        if previous is not None and previous == entry:
+            continue
         # An id outside the registry ENTIRELY is passed through, not filtered
         # here: it is a malformed response rather than a batch overstepping, and
         # `_requirement_map` already refuses it by name. Filtering it here would
@@ -506,6 +520,7 @@ def _batch_dispositions(
                 )
             )
             continue
+        seen.setdefault(entry.requirement_id, entry)
         usable.append(entry)
 
     if rejected and unusable_answers is not None:
