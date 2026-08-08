@@ -1,0 +1,715 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) not fully implemented (single-model-call-per-whole-registry); 17 obligation(s) with non-discriminating test evidence (flag-cross-linked-obligation-ids-as-unusable, decompose-batch-size-configurable-cli, unusable-answer-for-cross-requirement-obligation, deterministic-merge-order, batch-size-invalidates-recorded-transcripts, byte-identical-review-state-for-identical-task-text-2, no-dedup-or-cross-linking-scope, no-link-precision-scoring-in-this-pass, prompt-wording-scope-limited-to-required-partitioning-and-no-linking, no-test-evidence-requirement-change, no-recovery-or-transcript-count-comparison, no-dedup-pass-partitioning-change, scale-no-missed-obligations, address-dr-164-judgments-per-request-failure, task-02-obligation-no-cross-requirement-attachment, task-02-obligation-preserve-disposition-count, task-03-obligation-stop-linking).
+
+Obligations:
+
+  1. Produce one derivation call per batch so that a task file with N requirements results in ceil(N / size) derivation calls.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         1.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: strongly supported  [tier: static]
+         1.3  tests/evidence/test_mapping.py::test_each_batch_is_recorded_as_its_own_request
+         1.4  tests/evidence/test_mapping.py::test_the_tests_are_split_across_several_calls
+         1.5  tests/requirement/test_decompose_partitioning.py::test_a_task_file_of_n_requirements_produces_ceil_n_over_size_calls
+
+  2. Ensure that every requirement carries a disposition after the merge.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         2.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: strongly supported  [tier: static]
+         2.3  tests/evidence/test_mapping.py::test_the_per_call_results_are_merged
+         2.4  tests/requirement/test_decompose_partitioning.py::test_every_requirement_carries_a_disposition_after_the_merge
+         2.5  tests/requirement/test_requirement_map.py::test_a_fully_accounted_response_disposes_every_requirement
+         2.6  tests/requirement/test_requirement_map.py::test_a_response_that_never_mentions_a_requirement_is_rejected
+         2.7  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         2.8  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+         2.9  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+
+  3. Record a returned requirement id that the call was not supplied as an unusable_answer finding and leave that requirement untreated as disposed.
+       requirements: completion-04
+       code evidence: addressed
+         3.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         3.2  src/acceptance/supplied_ids.py#@@ -123,17 +123,25 @@ def constrain(model: type[ModelT], allowed: Mapping[str, Sequence[str]]) -> type
+         3.3  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: strongly supported  [tier: static]
+         3.4  tests/evidence/test_mapping.py::test_unknown_ids_are_dropped
+         3.5  tests/requirement/test_decompose_partitioning.py::test_a_disposition_for_a_requirement_the_call_was_not_given_is_recorded
+         3.6  tests/requirement/test_requirement_map.py::test_a_response_naming_a_requirement_outside_the_registry_is_rejected
+         3.7  tests/requirement/test_requirement_map.py::test_text_the_parse_never_read_is_carried_into_the_mapping
+         3.8  tests/requirement/test_requirement_map.py::test_the_cli_shouts_about_text_that_was_never_read
+         3.9  tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers
+         3.10  tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped
+         3.11  tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean
+         3.12  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+         3.13  tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
+         3.14  tests/test_supplied_ids.py::test_an_unusable_answer_leaves_the_obligation_indeterminate
+         3.15  tests/test_supplied_ids.py::test_scan_finds_ids_that_were_never_supplied
+         3.16  tests/test_supplied_ids.py::test_scan_reports_each_unusable_id_once
+         3.17  tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id
+         3.18  tests/test_supplied_ids.py::test_the_schema_asked_for_differs_from_the_shape_parsed
+
+  4. Record a response naming one obligation from two requirements as an unusable_answer finding and leave both requirements undisposed.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  src/acceptance/requirement/obligations.py#@@ -157,10 +164,15 @@ positive restatement described above, and it is checkable — the delivered chan
+         4.2  src/acceptance/requirement/obligations.py#@@ -182,20 +194,41 @@ class _OpenQuestion(StrictResponseModel):
+         4.3  tests/support.py#@@ -71,6 +71,67 @@ def declining_dispositions(reason: str = "not exercised by this fixture", **kwar
+         4.4  docs/DR-204-derivation-performs-no-linking.md#@@ -1,7 +1,7 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: When one obligation id is named for two requirements, the system emits an unusable_answer finding and neither requirement is disposed.
+           inputs:  A derivation response where two distinct requirements are both marked yielded and both name the same obligation id, with no other malformed fields. Use a task file that contains at least two requirements in different sections so both can be disposed independently.
+           detects: When one obligation id is named for two requirements, the system fails to flag it as unusable and/or still disposes one or both requirements.
+           full detail: acceptance recommendation --criterion flag-cross-linked-obligation-ids-as-unusable
+
+  5. Make the hashed request key change when the decompose batch size changes, while keeping the batch index and batch count out of the hash input.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  src/acceptance/llm.py#@@ -339,7 +348,11 @@ class ModelClient:
+         5.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/evidence/test_mapping.py::test_changing_the_batch_size_changes_every_request_key
+         5.4  tests/evidence/test_mapping.py::test_each_batch_is_recorded_as_its_own_request
+         5.5  tests/evidence/test_mapping.py::test_repeating_a_run_reuses_the_recorded_batches
+         5.6  tests/requirement/test_decompose_partitioning.py::test_changing_the_batch_size_changes_the_request_key
+         5.7  tests/requirement/test_decompose_partitioning.py::test_the_batch_index_and_count_never_enter_the_request
+         5.8  tests/test_llm.py::test_request_key_distinguishes_call_parameters
+         5.9  tests/test_llm.py::test_the_hashed_request_carries_the_inlined_schema
+         5.10  tests/test_review_state.py::test_a_control_honoured_at_a_different_value_is_unpinned
+         5.11  tests/test_review_state.py::test_a_run_whose_controls_all_held_is_pinned
+         5.12  tests/test_review_state.py::test_a_run_whose_provider_dropped_a_control_is_unpinned
+         5.13  tests/test_review_state.py::test_asking_for_nothing_and_getting_nothing_is_pinned
+
+  6. Produce byte-identical review state for two runs over byte-identical task text.
+       requirements: completion-07
+       code evidence: addressed
+         6.1  src/acceptance/llm.py#@@ -339,7 +348,11 @@ class ModelClient:
+         6.2  src/acceptance/review_state.py#@@ -630,11 +630,18 @@ class ReviewProvenance(_Model):
+         6.3  tests/test_cli.py#@@ -92,10 +92,12 @@ def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_pa
+         6.4  tests/test_config.py#@@ -148,16 +148,19 @@ def test_provenance_reports_the_partition_size_the_run_actually_used():
+       test evidence: strongly supported  [tier: static]
+         6.5  tests/benchmark/test_coverage.py::test_cli_and_benchmark_share_one_pipeline
+         6.6  tests/benchmark/test_instability.py::test_matching_ids_with_different_text_are_not_treated_as_the_same_obligation
+         6.7  tests/benchmark/test_instability.py::test_obligations_align_by_content_even_when_their_ids_differ
+         6.8  tests/benchmark/test_instability.py::test_seeds_are_derived_so_a_measurement_is_repeatable_from_its_provenance
+         6.9  tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces
+         6.10  tests/evidence/test_mapping.py::test_repeating_a_run_reuses_the_recorded_batches
+         6.11  tests/evidence/test_mapping.py::test_the_merged_mapping_does_not_depend_on_the_order_the_tests_arrive_in
+         6.12  tests/prompts/test_corpus_mechanism.py::test_a_known_defect_survives_an_unrelated_prompt_edit
+         6.13  tests/requirement/test_requirement_map.py::test_requirement_ids_are_identical_across_two_runs_over_identical_text
+         6.14  tests/test_cli.py::test_a_default_cli_run_is_seeded
+         6.15  tests/test_cli.py::test_check_json_emits_a_structured_review
+         6.16  tests/test_cli.py::test_check_persists_the_review_to_the_store
+         6.17  tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical
+         6.18  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         6.19  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         6.20  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+         6.21  tests/test_llm.py::test_recorded_transcripts_are_byte_identical_for_the_same_call
+         6.22  tests/test_llm.py::test_request_key_is_stable_across_clients
+         6.23  tests/test_llm.py::test_transcripts_record_no_wall_clock_state
+         6.24  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  7. Have ReviewProvenance.request_partition_size report the size observed from the calls.
+       requirements: completion-08
+       code evidence: addressed
+         7.1  src/acceptance/config.py#@@ -111,5 +129,5 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+         7.2  src/acceptance/llm.py#@@ -259,10 +259,18 @@ class ModelClient:
+         7.3  src/acceptance/review_state.py#@@ -630,11 +630,18 @@ class ReviewProvenance(_Model):
+         7.4  tests/test_config.py#@@ -148,16 +148,19 @@ def test_provenance_reports_the_partition_size_the_run_actually_used():
+       test evidence: strongly supported  [tier: static]
+         7.5  tests/evidence/test_mapping.py::test_each_batch_is_recorded_as_its_own_request
+         7.6  tests/requirement/test_decompose_partitioning.py::test_provenance_reports_the_derivation_size_observed_from_the_calls
+         7.7  tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+         7.8  tests/test_config.py::test_provenance_of_an_unpartitioned_run_reports_no_partition_size
+         7.9  tests/test_config.py::test_provenance_reports_the_partition_size_the_run_actually_used
+
+  8. A task file that states one requirement in both Constraints and Completion expectations yields separate obligations for each requirement entry, rather than one obligation carrying multiple requirement links.
+       requirements: completion-09
+       code evidence: addressed
+         8.1  src/acceptance/requirement/obligations.py#@@ -157,10 +164,15 @@ positive restatement described above, and it is checkable — the delivered chan
+         8.2  src/acceptance/requirement/obligations.py#@@ -182,20 +194,41 @@ class _OpenQuestion(StrictResponseModel):
+         8.3  tests/requirement/test_requirement_map.py#@@ -561,11 +574,23 @@ def test_a_supplied_reason_is_preserved_rather_than_replaced():
+         8.4  tests/requirement/test_requirement_map.py#@@ -580,26 +606,72 @@ def test_one_obligation_serves_two_requirements_rather_than_being_duplicated():
+       test evidence: strongly supported  [tier: static]
+         8.5  tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations
+         8.6  tests/requirement/test_requirement_map.py::test_the_cli_says_when_an_obligation_serves_other_requirements
+         8.7  tests/requirement/test_requirement_map.py::test_two_requirements_stating_the_same_thing_yield_two_obligations
+
+  9. Obligation derivation is partitioned by requirement batch using the existing partition.py mechanism.
+       requirements: constraint-01
+       code evidence: addressed
+         9.1  src/acceptance/requirement/obligations.py#@@ -38,8 +38,10 @@ from typing import Literal, Union
+         9.2  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/benchmark/test_coverage.py::test_the_shared_pipeline_partitions_the_mapping_call
+         9.4  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         9.5  tests/evidence/test_mapping.py::test_every_test_is_judged_against_every_obligation_across_the_calls
+         9.6  tests/evidence/test_mapping.py::test_the_tests_are_split_across_several_calls
+         9.7  tests/requirement/test_decompose_partitioning.py::test_the_batch_scopes_what_a_call_answers_for_not_what_it_reads
+         9.8  tests/requirement/test_requirement_map.py::test_every_batch_sees_the_whole_task_file_and_answers_for_its_own_share
+         9.9  tests/test_supplied_ids.py::test_each_partition_constrains_test_ids_to_its_own_batch
+
+  10. The whole task file appears in every derivation prompt, while the batch only scopes which requirements the call must answer for.
+       requirements: constraint-02
+       code evidence: addressed
+         10.1  src/acceptance/requirement/obligations.py#@@ -243,8 +286,8 @@ class Decomposition(PersistableModel):
+         10.2  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         10.3  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: strongly supported  [tier: static]
+         10.4  tests/benchmark/test_coverage.py::test_the_shared_pipeline_partitions_the_mapping_call
+         10.5  tests/coverage/test_disposition.py::test_the_escalation_prompt_asks_both_limbs_of_the_litmus
+         10.6  tests/evidence/test_mapping.py::test_every_test_is_judged_against_every_obligation_across_the_calls
+         10.7  tests/requirement/test_decompose_partitioning.py::test_the_batch_scopes_what_a_call_answers_for_not_what_it_reads
+         10.8  tests/requirement/test_requirement_map.py::test_every_batch_sees_the_whole_task_file_and_answers_for_its_own_share
+         10.9  tests/requirement/test_requirement_map.py::test_the_prompt_carries_identified_requirements_not_raw_markdown
+         10.10  tests/test_cli.py::test_run_classify_auto_ignores_the_task_file
+         10.11  tests/test_cli.py::test_task_ignore_pattern_for_a_file_inside_the_repo
+         10.12  tests/test_cli.py::test_task_ignore_pattern_for_a_relative_path
+         10.13  tests/test_cli.py::test_task_ignore_pattern_is_none_outside_the_repo
+         10.14  tests/test_llm.py::test_request_key_distinguishes_prompt_and_schema
+         10.15  tests/test_supplied_ids.py::test_each_partition_constrains_test_ids_to_its_own_batch
+
+  11. RunConfig.decompose_batch_size exists and can be set from the command line as --decompose-batch-size.
+       requirements: constraint-03
+       code evidence: addressed
+         11.1  src/acceptance/config.py#@@ -72,6 +87,9 @@ class RunConfig(BaseModel):
+         11.2  src/acceptance/cli.py#@@ -591,6 +595,16 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+         11.3  src/acceptance/cli.py#@@ -705,6 +719,7 @@ def main(argv: list[str] | None = None) -> int:
+         11.4  src/acceptance/cli.py#@@ -756,6 +771,7 @@ def main(argv: list[str] | None = None) -> int:
+         11.5  src/acceptance/cli.py#@@ -790,6 +806,7 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: nominally supported  [tier: static]
+         11.6  tests/test_cli.py::test_the_spec_names_the_command_the_cli_actually_accepts
+         recommended test: The configuration object exposes a decompose_batch_size field, and the CLI accepts --decompose-batch-size to set it.
+           inputs:  Invoke the CLI with --decompose-batch-size set to a non-default integer, and run a code path that actually constructs RunConfig and calls decompose/run_review so the parsed value matters.
+           detects: The CLI does not accept --decompose-batch-size or ignores it, or RunConfig lacks the field even though help text mentions it.
+           full detail: acceptance recommendation --criterion decompose-batch-size-configurable-cli
+
+  12. The batch size is treated as a determinism control in the same way as mapping_batch_size: only the size enters the hashed request, and the batch index and batch count do not.
+       requirements: constraint-04
+       code evidence: addressed
+         12.1  src/acceptance/llm.py#@@ -339,7 +348,11 @@ class ModelClient:
+         12.2  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         12.3  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: strongly supported  [tier: static]
+         12.4  tests/evidence/test_mapping.py::test_changing_the_batch_size_changes_every_request_key
+         12.5  tests/requirement/test_decompose_partitioning.py::test_changing_the_batch_size_changes_the_request_key
+         12.6  tests/requirement/test_decompose_partitioning.py::test_the_batch_index_and_count_never_enter_the_request
+         12.7  tests/test_llm.py::test_request_key_distinguishes_call_parameters
+         12.8  tests/test_review_state.py::test_a_control_honoured_at_a_different_value_is_unpinned
+         12.9  tests/test_review_state.py::test_a_run_whose_controls_all_held_is_pinned
+         12.10  tests/test_review_state.py::test_a_run_whose_provider_dropped_a_control_is_unpinned
+         12.11  tests/test_review_state.py::test_asking_for_nothing_and_getting_nothing_is_pinned
+
+  13. A derivation batch answers only for the requirements it was supplied, and any returned requirement id that was not supplied to that call is recorded through UnusableAnswerLog rather than silently filtered.
+       requirements: constraint-05
+       code evidence: addressed
+         13.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         13.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: strongly supported  [tier: static]
+         13.3  tests/evidence/test_mapping.py::test_unknown_ids_are_dropped
+         13.4  tests/requirement/test_decompose_partitioning.py::test_a_disposition_for_a_requirement_the_call_was_not_given_is_recorded
+         13.5  tests/requirement/test_requirement_map.py::test_a_response_naming_a_requirement_outside_the_registry_is_rejected
+         13.6  tests/requirement/test_requirement_map.py::test_text_the_parse_never_read_is_carried_into_the_mapping
+         13.7  tests/requirement/test_requirement_map.py::test_the_cli_shouts_about_text_that_was_never_read
+         13.8  tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers
+         13.9  tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped
+         13.10  tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean
+         13.11  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+         13.12  tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
+         13.13  tests/test_supplied_ids.py::test_an_unusable_answer_leaves_the_obligation_indeterminate
+         13.14  tests/test_supplied_ids.py::test_scan_finds_ids_that_were_never_supplied
+         13.15  tests/test_supplied_ids.py::test_scan_reports_each_unusable_id_once
+
+  14. Obligation derivation performs no linking: a call may split one requirement into several obligations or decline it with no_obligation, but it does not attach a requirement to an obligation derived from another requirement.
+       requirements: constraint-06
+       code evidence: addressed
+         14.1  src/acceptance/requirement/obligations.py#@@ -157,10 +164,15 @@ positive restatement described above, and it is checkable — the delivered chan
+         14.2  src/acceptance/requirement/obligations.py#@@ -182,20 +194,41 @@ class _OpenQuestion(StrictResponseModel):
+         14.3  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         14.4  tests/requirement/test_requirement_map.py#@@ -217,34 +231,33 @@ def test_a_requirement_deliberately_yielding_nothing_carries_its_reason():
+       test evidence: strongly supported  [tier: static]
+         14.5  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         14.6  tests/requirement/test_requirement_map.py::test_two_requirements_stating_the_same_thing_yield_two_obligations
+
+  15. Within one derivation response, each obligation id appears in exactly one requirement's disposition.
+       requirements: constraint-07
+       code evidence: addressed
+         15.1  src/acceptance/requirement/obligations.py#@@ -157,10 +164,15 @@ positive restatement described above, and it is checkable — the delivered chan
+         15.2  src/acceptance/requirement/obligations.py#@@ -182,20 +194,41 @@ class _OpenQuestion(StrictResponseModel):
+         15.3  tests/requirement/test_requirement_map.py#@@ -580,26 +606,72 @@ def test_one_obligation_serves_two_requirements_rather_than_being_duplicated():
+         15.4  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: strongly supported  [tier: static]
+         15.5  tests/requirement/test_decompose_partitioning.py::test_two_batches_minting_the_same_obligation_id_stay_separate
+         15.6  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         15.7  tests/requirement/test_requirement_map.py::test_two_requirements_minting_the_same_id_keep_separate_obligations
+
+  16. Record a response that names one obligation from two requirements as an unusable answer, and leave both affected requirements undisposed.
+       requirements: constraint-08
+       code evidence: addressed
+         16.1  src/acceptance/requirement/obligations.py#@@ -157,10 +164,15 @@ positive restatement described above, and it is checkable — the delivered chan
+         16.2  tests/support.py#@@ -71,6 +71,67 @@ def declining_dispositions(reason: str = "not exercised by this fixture", **kwar
+         16.3  docs/DR-204-derivation-performs-no-linking.md#@@ -1,7 +1,7 @@
+       test evidence: nominally supported  [tier: static]
+         16.4  tests/requirement/test_decompose_partitioning.py::test_two_batches_minting_the_same_obligation_id_stay_separate
+         recommended test: When a derivation response assigns the same obligation to two requirements, the system logs an unusable_answer finding and neither requirement is marked as disposed.
+           inputs:  A single derivation response where the same obligation id is assigned to two different requirements, with both requirements otherwise valid and supplied to the call.
+           detects: The system keeps both dispositions and does not log unusable_answer, or logs unusable_answer but still marks both requirements as disposed.
+           full detail: acceptance recommendation --criterion unusable-answer-for-cross-requirement-obligation
+
+  17. Keep merged results ordered deterministically so batch composition and merge order are pure functions of the input.
+       requirements: constraint-09
+       code evidence: addressed
+         17.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         17.2  src/acceptance/llm.py#@@ -339,7 +348,11 @@ class ModelClient:
+         17.3  src/acceptance/review_state.py#@@ -630,11 +630,18 @@ class ReviewProvenance(_Model):
+       test evidence: partially supported  [tier: static]
+         17.4  tests/benchmark/test_instability.py::test_seeds_are_derived_so_a_measurement_is_repeatable_from_its_provenance
+         17.5  tests/evidence/test_mapping.py::test_the_merged_mapping_does_not_depend_on_the_order_the_tests_arrive_in
+         17.6  tests/test_rerun.py::test_carrying_a_carried_judgment_forward_again_keeps_the_original_revision
+         17.7  tests/test_rerun.py::test_exactly_one_prior_review_is_used_even_when_several_are_candidates
+         17.8  tests/test_rerun.py::test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun
+         17.9  tests/test_rerun.py::test_the_delta_lists_which_obligations_were_carried_forward
+         17.10  tests/test_rerun.py::test_the_nearest_ancestor_wins_regardless_of_write_order
+         recommended test: Given the same input, the system produces the same batch composition and merge order across runs.
+           inputs:  Two runs over the same parsed task file where the derivation responses are intentionally batch-sensitive: multiple batches, each returning valid dispositions, so merge order depends on batch composition if nondeterministic.
+           detects: Merge order is stable for identical inputs but not pure with respect to batch composition, causing different batch splits to reorder results.
+           full detail: acceptance recommendation --criterion deterministic-merge-order
+
+  18. Make the number of derivation calls equal ceil(N / size) for a task file with N requirements.
+       requirements: constraint-10
+       code evidence: addressed
+         18.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         18.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: strongly supported  [tier: static]
+         18.3  tests/evidence/test_mapping.py::test_the_tests_are_split_across_several_calls
+         18.4  tests/requirement/test_decompose_partitioning.py::test_a_task_file_of_n_requirements_produces_ceil_n_over_size_calls
+
+  19. Ensure every requirement carries a disposition after the merge.
+       requirements: constraint-11
+       code evidence: addressed
+         19.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         19.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: strongly supported  [tier: static]
+         19.3  tests/benchmark/test_coverage.py::test_archetype_1_missed_obligation_yields_full_recall_and_precision
+         19.4  tests/benchmark/test_coverage.py::test_archetype_2_missed_qualifier_yields_full_recall_and_precision
+         19.5  tests/benchmark/test_instability.py::test_presence_rows_show_an_obligation_missing_from_some_runs
+         19.6  tests/evidence/test_mapping.py::test_the_per_call_results_are_merged
+         19.7  tests/requirement/test_decompose_partitioning.py::test_every_requirement_carries_a_disposition_after_the_merge
+         19.8  tests/requirement/test_requirement_map.py::test_a_fully_accounted_response_disposes_every_requirement
+         19.9  tests/requirement/test_requirement_map.py::test_a_response_that_never_mentions_a_requirement_is_rejected
+         19.10  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         19.11  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+         19.12  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         19.13  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         19.14  tests/test_rerun.py::test_the_delta_reports_a_closed_gap
+
+  20. Treat changes to the decompose batch size as invalidating recorded transcripts.
+       requirements: constraint-12
+       code evidence: addressed
+         20.1  src/acceptance/cli.py#@@ -591,6 +595,16 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+         20.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: partially supported  [tier: static]
+         20.3  tests/evidence/test_mapping.py::test_each_batch_is_recorded_as_its_own_request
+         20.4  tests/evidence/test_mapping.py::test_repeating_a_run_reuses_the_recorded_batches
+         20.5  tests/prompts/test_corpus_mechanism.py::test_a_known_defect_survives_an_unrelated_prompt_edit
+         20.6  tests/prompts/test_corpus_mechanism.py::test_editing_a_prompt_fails_with_guidance_naming_the_unverified_change
+         20.7  tests/prompts/test_corpus_mechanism.py::test_the_corpus_is_recorded_under_production_determinism_controls
+         20.8  tests/test_llm.py::test_request_key_distinguishes_call_parameters
+         recommended test: When the decompose batch size changes, previously recorded transcripts are no longer considered valid for reuse.
+           inputs:  Record a transcript for one decompose batch size, then rerun the same task with a different decompose batch size while keeping all other config the same.
+           detects: The system invalidates transcripts for any config change, not just batch-size changes.
+           full detail: acceptance recommendation --criterion batch-size-invalidates-recorded-transcripts
+
+  21. Produce byte-identical review state for two runs over byte-identical task text.
+       requirements: constraint-13
+       code evidence: addressed
+         21.1  src/acceptance/llm.py#@@ -339,7 +348,11 @@ class ModelClient:
+         21.2  src/acceptance/review_state.py#@@ -630,11 +630,18 @@ class ReviewProvenance(_Model):
+         21.3  tests/test_cli.py#@@ -92,10 +92,12 @@ def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_pa
+         21.4  tests/test_config.py#@@ -148,16 +148,19 @@ def test_provenance_reports_the_partition_size_the_run_actually_used():
+       test evidence: partially supported  [tier: static]
+         21.5  tests/benchmark/test_coverage.py::test_cli_and_benchmark_share_one_pipeline
+         21.6  tests/benchmark/test_instability.py::test_seeds_are_derived_so_a_measurement_is_repeatable_from_its_provenance
+         21.7  tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces
+         21.8  tests/evidence/test_mapping.py::test_repeating_a_run_reuses_the_recorded_batches
+         21.9  tests/evidence/test_mapping.py::test_the_merged_mapping_does_not_depend_on_the_order_the_tests_arrive_in
+         21.10  tests/prompts/test_corpus_mechanism.py::test_a_known_defect_survives_an_unrelated_prompt_edit
+         21.11  tests/requirement/test_requirement_map.py::test_requirement_ids_are_identical_across_two_runs_over_identical_text
+         21.12  tests/test_cli.py::test_a_default_cli_run_is_seeded
+         21.13  tests/test_cli.py::test_check_json_emits_a_structured_review
+         21.14  tests/test_cli.py::test_check_persists_the_review_to_the_store
+         21.15  tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical
+         21.16  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         21.17  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+         21.18  tests/test_llm.py::test_recorded_transcripts_are_byte_identical_for_the_same_call
+         21.19  tests/test_llm.py::test_request_key_is_stable_across_clients
+         21.20  tests/test_llm.py::test_transcripts_record_no_wall_clock_state
+         recommended test: Running the system twice on identical task text yields identical review-state bytes.
+           inputs:  Run the full review pipeline twice on byte-identical task text with the same config and recorded responses, then compare the serialized review-state bytes.
+           detects: The review state is byte-identical, but only because the pipeline skips some fields entirely on the second run.
+           full detail: acceptance recommendation --criterion byte-identical-review-state-for-identical-task-text-2
+
+  22. Report ReviewProvenance.request_partition_size from the size observed in the calls rather than from configuration.
+       requirements: constraint-14
+       code evidence: addressed
+         22.1  src/acceptance/config.py#@@ -111,5 +129,5 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+         22.2  src/acceptance/llm.py#@@ -259,10 +259,18 @@ class ModelClient:
+         22.3  src/acceptance/review_state.py#@@ -630,11 +630,18 @@ class ReviewProvenance(_Model):
+         22.4  tests/test_config.py#@@ -148,16 +148,19 @@ def test_provenance_reports_the_partition_size_the_run_actually_used():
+       test evidence: strongly supported  [tier: static]
+         22.5  tests/requirement/test_decompose_partitioning.py::test_provenance_reports_the_derivation_size_observed_from_the_calls
+         22.6  tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+         22.7  tests/test_config.py::test_provenance_of_an_unpartitioned_run_reports_no_partition_size
+         22.8  tests/test_config.py::test_provenance_reports_the_partition_size_the_run_actually_used
+
+  23. Represent typed schemas as pydantic models, consistent with the rest of the repository.
+       requirements: constraint-15
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         23.1  tests/requirement/test_obligations.py::test_floating_rate_example_yields_five_typed_criteria
+         23.2  tests/requirement/test_requirement_map.py::test_the_literal_tag_alone_decides_which_shape_a_disposition_is
+         23.3  tests/requirement/test_requirement_map.py::test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations
+         23.4  tests/requirement/test_requirement_map.py::test_the_schema_cannot_express_an_open_question_disposition_with_no_questions
+         23.5  tests/test_llm.py::test_schema_violating_response_is_rejected_with_a_typed_error
+         23.6  tests/test_llm.py::test_the_schema_sent_to_the_provider_has_no_ref_indirection
+         23.7  tests/test_supplied_ids.py::test_a_foreign_id_does_not_validate_against_the_constrained_schema
+         23.8  tests/test_supplied_ids.py::test_a_list_valued_id_field_constrains_its_items
+         23.9  tests/test_supplied_ids.py::test_a_single_supplied_id_is_still_sent_as_an_enum
+         23.10  tests/test_supplied_ids.py::test_a_union_of_item_shapes_constrains_every_member
+         23.11  tests/test_supplied_ids.py::test_an_empty_supplied_set_leaves_the_field_unconstrained
+         23.12  tests/test_supplied_ids.py::test_supplied_ids_become_an_enum_on_the_field_the_model_sees
+
+  24. Preserve test execution without live model calls by using only recorded or mocked inputs during tests.
+       requirements: constraint-16
+       code evidence: addressed
+         24.1  tests/support.py#@@ -71,6 +71,67 @@ def declining_dispositions(reason: str = "not exercised by this fixture", **kwar
+         24.2  tests/support.py#@@ -89,7 +150,35 @@ def _completed(response: dict, **kwargs) -> dict:
+         24.3  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+         24.4  tests/test_cli.py#@@ -214,13 +216,19 @@ def test_run_check_rejects_a_revision_missing_from_the_given_repo(
+       test evidence: strongly supported  [tier: static]
+         24.5  tests/benchmark/test_instability.py::test_no_ci_workflow_invokes_the_instability_harness
+         24.6  tests/benchmark/test_instability.py::test_runs_are_recorded_live_and_never_replayed
+         24.7  tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces
+         24.8  tests/benchmark/test_labels.py::test_full_loop_scores_the_noop_checker_as_all_miss
+         24.9  tests/benchmark/test_runner.py::test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_score
+         24.10  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         24.11  tests/prompts/test_corpus_mechanism.py::test_replay_needs_no_api_key
+         24.12  tests/prompts/test_corpus_mechanism.py::test_the_prompt_corpus_replays_with_no_live_call_at_all
+         24.13  tests/prompts/test_corpus_mechanism.py::test_the_prompt_quality_test_actually_consumes_a_committed_transcript
+         24.14  tests/test_cli.py::test_classify_replay_without_transcript_fails_cleanly
+         24.15  tests/test_llm.py::test_harness_does_not_import_the_provider_stack
+         24.16  tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls
+         24.17  tests/test_llm.py::test_replay_without_a_transcript_raises_rather_than_calling_live
+
+  25. Preserve the current scope by leaving de-duplicating obligations and attaching a requirement to an obligation derived from another requirement to the later change that handles that behavior.
+       requirements: exclusion-01
+       code evidence: addressed
+         25.1  docs/DR-204-derivation-performs-no-linking.md#@@ -1,7 +1,7 @@
+         25.2  tests/requirement/test_requirement_map.py#@@ -659,26 +732,88 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: This change does not implement obligation de-duplication or cross-requirement attachment behavior.
+           inputs:  A task file and change set that exercise derivation only, with no de-duplication pass inputs or outputs asserted, so the test can verify scope exclusion rather than behavior.
+           detects: The change accidentally implements de-duplication or cross-requirement attachment behavior even though it is out of scope.
+           full detail: acceptance recommendation --criterion no-dedup-or-cross-linking-scope
+
+  26. Preserve the current scope by leaving scoring link precision to the separate change that measures the later pass's output.
+       requirements: exclusion-02
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: This change does not add or modify link-precision scoring logic.
+           inputs:  A run that exercises derivation/decomposition only, without invoking any link-precision scoring pipeline or metrics collection.
+           detects: The change adds or modifies link-precision scoring logic despite the scope exclusion.
+           full detail: acceptance recommendation --criterion no-link-precision-scoring-in-this-pass
+
+  27. Preserve the decomposition prompt wording except for the parts required by partitioning and the no-linking rule.
+       requirements: exclusion-03
+       code evidence: addressed
+         27.1  src/acceptance/requirement/obligations.py#@@ -243,8 +286,8 @@ class Decomposition(PersistableModel):
+         27.2  src/acceptance/requirement/obligations.py#@@ -256,13 +299,36 @@ def _user_prompt(registry: list[RequirementRef]) -> str:
+         27.3  docs/DR-204-derivation-performs-no-linking.md#@@ -1,7 +1,7 @@
+       test evidence: nominally supported  [tier: static]
+         27.4  tests/coverage/test_disposition.py::test_policy_is_surfaced_to_the_model_judgment
+         27.5  tests/coverage/test_disposition.py::test_the_escalation_prompt_asks_both_limbs_of_the_litmus
+         recommended test: Prompt text changes are limited to what is needed for partitioning and no-linking.
+           inputs:  Capture the decomposition prompt text for a representative task before and after the change, using a task that triggers both partitioning and no-linking wording.
+           detects: The decomposition prompt is rewritten broadly, changing unrelated wording beyond the partitioning/no-linking edits, or it omits the new no-linking wording.
+           full detail: acceptance recommendation --criterion prompt-wording-scope-limited-to-required-partitioning-and-no-linking
+
+  28. Preserve the current rule for whether an obligation needs test evidence.
+       requirements: exclusion-04
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: partially supported  [tier: static]
+         28.1  tests/benchmark/test_coverage.py::test_archetype_1_evidence_agreement_reports_a_real_number
+         28.2  tests/benchmark/test_coverage.py::test_archetype_7_declaration_overclaim_produces_a_mismatch_finding
+         28.3  tests/coverage/test_disposition.py::test_comment_only_hunk_in_unaddressed_file_still_escalates_to_the_model
+         28.4  tests/coverage/test_disposition.py::test_defined_symbol_not_imported_elsewhere_still_escalates_to_the_model
+         28.5  tests/coverage/test_disposition.py::test_docstring_update_of_in_service_change_is_in_service_without_a_model_call
+         28.6  tests/coverage/test_disposition.py::test_hunk_mixing_code_and_comments_does_not_shortcut_to_in_service
+         28.7  tests/coverage/test_disposition.py::test_load_bearing_change_is_in_service_without_a_model_call
+         28.8  tests/coverage/test_disposition.py::test_modifies_existing_escalates_to_the_model
+         28.9  tests/coverage/test_disposition.py::test_new_test_functions_still_escalate_to_the_model
+         28.10  tests/coverage/test_disposition.py::test_partially_addressed_overlap_does_not_shortcut_to_in_service
+         28.11  tests/coverage/test_disposition.py::test_symbol_renamed_and_imported_by_another_changed_file_is_in_service
+         28.12  tests/evidence/test_mapping.py::test_a_test_evidencing_nothing_leaves_obligations_unmapped
+         28.13  tests/evidence/test_mapping.py::test_a_test_maps_to_the_obligation_it_evidences
+         28.14  tests/evidence/test_mapping.py::test_apply_test_mapping_populates_test_evidence
+         28.15  tests/evidence/test_mapping.py::test_archetype_1_mapping_accuracy_reports_a_real_number
+         28.16  tests/evidence/test_mapping.py::test_archetype_1_unmapped_obligations_are_flagged
+         28.17  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         28.18  tests/test_rerun.py::test_an_obligation_whose_test_changed_is_re_derived
+         28.19  tests/test_rerun.py::test_tests_appearing_for_a_non_code_obligation_is_not_a_closed_gap
+         recommended test: This change does not alter any requirement about test evidence for obligations.
+           inputs:  A task file containing an obligation archetype or edge case that currently depends on the test-evidence rule, ideally one not already covered by existing tests.
+           detects: The requirement-evidence rule changes only for an untested archetype or edge case, escaping current coverage.
+           full detail: acceptance recommendation --criterion no-test-evidence-requirement-change
+
+  29. Preserve the current behavior by leaving recovery of dropped requirements and comparison of obligation counts against recorded transcripts unchanged.
+       requirements: exclusion-05
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: partially supported  [tier: static]
+         29.1  tests/benchmark/test_coverage.py::test_archetype_8_unrequested_change_gap_matches_via_its_obligation
+         29.2  tests/benchmark/test_coverage.py::test_archetype_8_unrequested_change_metric_does_not_route_through_coverage
+         29.3  tests/test_rerun.py::test_an_obligation_with_no_citations_is_always_re_derived
+         recommended test: This change does not add logic to recover dropped requirements or compare obligation counts to transcripts.
+           inputs:  A run where some requirements are intentionally dropped or over-reported in a way that would tempt recovery logic or transcript-count comparison, but the test only checks that such logic is absent.
+           detects: The implementation adds recovery logic but only for cases not covered by the mapped tests, or adds transcript-count comparison logic.
+           full detail: acceptance recommendation --criterion no-recovery-or-transcript-count-comparison
+
+  30. Preserve the current handling of the de-duplication pass with respect to partitioning.
+       requirements: exclusion-06
+       code evidence: addressed
+         30.1  docs/DR-204-derivation-performs-no-linking.md#@@ -1,7 +1,7 @@
+         30.2  tests/requirement/test_requirement_map.py#@@ -659,26 +732,88 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: This change does not alter whether the de-duplication pass is partitioned.
+           inputs:  A de-duplication pass scenario that would reveal whether partitioning was altered, using a task large enough to make partitioning observable if it changed.
+           detects: The change alters whether the de-duplication pass is partitioned.
+           full detail: acceptance recommendation --criterion no-dedup-pass-partitioning-change
+
+  31. Perform obligation derivation with one model call for the whole requirement registry.
+       requirements: task-01
+       code evidence: not addressed
+         31.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         31.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: A full requirement registry is sent through a single derivation call.
+           inputs:  A large registry where the implementation would be forced to split if it were not using a single derivation call; instrument the client to count calls.
+           detects: The system secretly partitions derivation into multiple calls instead of sending the full registry through one call.
+           full detail: acceptance recommendation --criterion single-model-call-per-whole-registry
+
+  32. Preserve coverage at scale so that every requirement in the registry receives an obligation disposition from derivation.
+       requirements: task-01
+       code evidence: addressed
+         32.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         32.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: partially supported  [tier: static]
+         32.3  tests/benchmark/test_coverage.py::test_archetype_1_missed_obligation_yields_full_recall_and_precision
+         32.4  tests/benchmark/test_coverage.py::test_archetype_2_missed_qualifier_yields_full_recall_and_precision
+         32.5  tests/benchmark/test_instability.py::test_presence_rows_show_an_obligation_missing_from_some_runs
+         32.6  tests/requirement/test_requirement_map.py::test_a_response_that_never_mentions_a_requirement_is_rejected
+         32.7  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         32.8  tests/test_rerun.py::test_an_obligation_whose_files_are_untouched_is_not_re_derived
+         32.9  tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived
+         recommended test: A run over a larger registry does not leave any requirement without an obligation disposition.
+           inputs:  A larger registry with enough requirements to exercise multiple batches and a client that returns valid dispositions for each batch, so any missed requirement is attributable to the implementation rather than the fixture.
+           detects: The system still covers all requirements, but only by over-reporting gaps in unrelated obligations.
+           full detail: acceptance recommendation --criterion scale-no-missed-obligations
+
+  33. Eliminate the DR-164 judgments-per-request failure mode in obligation derivation.
+       requirements: task-01
+       code evidence: addressed
+         33.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         33.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The derivation stage no longer exhibits the DR-164 failure pattern described in the task.
+           inputs:  A derivation run that reproduces the DR-164-style large-request failure pattern: a large registry, one or more batches, and a client response that would expose dropped judgments if the bug remains.
+           detects: The derivation stage still exhibits the DR-164 failure pattern described in the task.
+           full detail: acceptance recommendation --criterion address-dr-164-judgments-per-request-failure
+
+  34. Preserve the no-linking behavior in obligation derivation so a requirement is never attached to an obligation derived from a different requirement.
+       requirements: task-02
+       code evidence: addressed
+         34.1  src/acceptance/requirement/obligations.py#@@ -157,10 +164,15 @@ positive restatement described above, and it is checkable — the delivered chan
+         34.2  src/acceptance/requirement/obligations.py#@@ -182,20 +194,41 @@ class _OpenQuestion(StrictResponseModel):
+         34.3  tests/requirement/test_requirement_map.py#@@ -561,11 +574,23 @@ def test_a_supplied_reason_is_preserved_rather_than_replaced():
+       test evidence: strongly supported  [tier: static]
+         34.4  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         34.5  tests/requirement/test_requirement_map.py::test_two_requirements_stating_the_same_thing_yield_two_obligations
+
+  35. Preserve the rule that each obligation id appears in exactly one requirement's disposition within a derivation response.
+       requirements: task-02
+       code evidence: addressed
+         35.1  src/acceptance/requirement/obligations.py#@@ -157,10 +164,15 @@ positive restatement described above, and it is checkable — the delivered chan
+         35.2  src/acceptance/requirement/obligations.py#@@ -182,20 +194,41 @@ class _OpenQuestion(StrictResponseModel):
+         35.3  tests/requirement/test_requirement_map.py#@@ -580,26 +606,72 @@ def test_one_obligation_serves_two_requirements_rather_than_being_duplicated():
+       test evidence: partially supported  [tier: static]
+         35.4  tests/requirement/test_decompose_partitioning.py::test_two_batches_minting_the_same_obligation_id_stay_separate
+         35.5  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         35.6  tests/requirement/test_requirement_map.py::test_two_requirements_stating_the_same_thing_yield_two_obligations
+         recommended test: Within one response, no obligation id is shared across multiple requirements.
+           inputs:  A response where two requirements are both yielded and each carries its own obligation, plus a hidden metadata field or auxiliary structure that could accidentally duplicate the same obligation id across requirements.
+           detects: The response keeps obligations separate but accidentally duplicates the same id in a hidden metadata field not inspected by the tests.
+           full detail: acceptance recommendation --criterion task-02-obligation-no-cross-requirement-attachment
+
+  36. Preserve the behavior that the reported requirement count reflects dispositions rather than coverage.
+       requirements: task-02
+       code evidence: addressed
+         36.1  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         36.2  tests/requirement/test_decompose_partitioning.py#@@ -0,0 +1,298 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The run can report every requirement as carrying a disposition even when some requirements' content was absorbed into another requirement's obligation.
+           inputs:  A derivation response where one requirement’s content is absorbed into another requirement’s obligation, but the run still marks every requirement as having some disposition.
+           detects: The run can report every requirement as carrying a disposition even when some requirements' content was absorbed into another requirement's obligation, but current tests do not cover that preservation of count.
+           full detail: acceptance recommendation --criterion task-02-obligation-preserve-disposition-count
+
+  37. Partition obligation derivation by requirement batch.
+       requirements: task-03
+       code evidence: addressed
+         37.1  src/acceptance/requirement/obligations.py#@@ -38,8 +38,10 @@ from typing import Literal, Union
+         37.2  src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+         37.3  src/acceptance/cli.py#@@ -591,6 +595,16 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+       test evidence: strongly supported  [tier: static]
+         37.4  tests/evidence/test_mapping.py::test_the_tests_are_split_across_several_calls
+         37.5  tests/test_supplied_ids.py::test_each_partition_constrains_test_ids_to_its_own_batch
+
+  38. Preserve the no-linking behavior in obligation derivation.
+       requirements: task-03
+       code evidence: addressed
+         38.1  src/acceptance/requirement/obligations.py#@@ -157,10 +164,15 @@ positive restatement described above, and it is checkable — the delivered chan
+         38.2  src/acceptance/requirement/obligations.py#@@ -182,20 +194,41 @@ class _OpenQuestion(StrictResponseModel):
+         38.3  tests/support.py#@@ -71,6 +71,67 @@ def declining_dispositions(reason: str = "not exercised by this fixture", **kwar
+       test evidence: partially supported  [tier: static]
+         38.4  tests/requirement/test_decompose_partitioning.py::test_two_batches_minting_the_same_obligation_id_stay_separate
+         38.5  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         38.6  tests/requirement/test_requirement_map.py::test_two_requirements_stating_the_same_thing_yield_two_obligations
+         recommended test: A derivation call may split one requirement into several obligations or decline it with no_obligation, but it does not attach a requirement to an obligation derived from another requirement.
+           inputs:  A derivation response that would previously have linked one requirement to an obligation derived from another requirement, plus a same-requirement duplicate-id case to ensure the implementation does not over-reject legitimate duplicates within one requirement.
+           detects: The implementation still prevents linking, but only by rejecting all duplicate obligation ids even within the same requirement.
+           full detail: acceptance recommendation --criterion task-03-obligation-stop-linking
+
+Mandate coverage: 33 of 34 requirements yielded obligations
+  1. [no_obligation] completion-01: Implementation
+       reason: This is a section marker naming the implementation area, but it does not itself state a checkable requirement.
+
+Unrequested changes:
+  1. [separable] The task only asked for partitioned obligation derivation and related provenance/CLI behavior. Changing `CLAUDE.md` to add a dogfooding policy is unrelated repository guidance, not needed to satisfy any listed obligation.
+       CLAUDE.md#@@ -212,6 +212,17 @@ We run the tool against our own work in progress. It is the only place the tool'
+  2. [in_service] The decision record rewrite changes status text and adds extensive new rationale about schema shape and linking. None of the obligations require editing this documentation file.
+       docs/DR-204-derivation-performs-no-linking.md#@@ -1,7 +1,7 @@
+       docs/DR-204-derivation-performs-no-linking.md#@@ -91,20 +91,77 @@ identifies as the over-merge trigger. Partitioning alone removes the mis-links
+  3. [separable] Adding dogfood log artifacts is not required by any obligation; the task concerns implementation and tests, not new run logs or transcripts.
+       dogfood-logs/204-gate1-run1/current-task.md#@@ -0,0 +1,84 @@
+       dogfood-logs/204-gate1-run1/judgement.md#@@ -0,0 +1,97 @@
+       dogfood-logs/204-gate1-run1/output.log#@@ -0,0 +1,241 @@
+       dogfood-logs/204-gate1-run2/current-task.md#@@ -0,0 +1,83 @@
+       dogfood-logs/204-gate1-run2/output.log#@@ -0,0 +1,232 @@
+       dogfood-logs/204-gate2-run1/current-task.md#@@ -0,0 +1,83 @@
+       dogfood-logs/204-gate2-run1/judgement.md#@@ -0,0 +1,113 @@
+       dogfood-logs/204-gate2-run1/output.log#@@ -0,0 +1 @@
+       dogfood-logs/204-gate2-run1/revisions.txt#@@ -0,0 +1,2 @@
+  4. [separable] The session-state note about the task being in flight and the dogfood interpretation is operational bookkeeping, not required by any listed obligation.
+       session-state.md#@@ -12,7 +12,29 @@ Clear it out when the task lands rather than letting it accrete.
+  5. [separable] Changing `ObservingClient.complete` to accept and forward a `stage` parameter is an internal plumbing change. The obligations require provenance to report observed partition sizes, but they do not require this specific test helper signature change.
+       src/acceptance/benchmark/instability.py#@@ -256,8 +256,8 @@ class ObservingClient(ModelClient):
+  6. [in_service] Adding the `--decompose-batch-size` CLI flag and wiring it through `run_check`, `run_decompose`, `run_classify`, and `RunConfig` is directly requested by the batch-size configurability obligations, so those parts are not unrequested. However, the new help text and default constant commentary in `config.py`/`cli.py` also alter user-facing behavior/documentation beyond the minimal required wiring, and the provenance API change to per-stage sizes goes beyond the stated requirement to report the observed size for decompose.
+       src/acceptance/cli.py#@@ -23,6 +23,7 @@ from pathlib import Path
+       src/acceptance/cli.py#@@ -172,6 +173,7 @@ def run_check(
+       src/acceptance/cli.py#@@ -210,7 +212,7 @@ def run_decompose(task: str, config: RunConfig) -> Decomposition:
+       src/acceptance/cli.py#@@ -476,7 +478,9 @@ def run_classify(
+       src/acceptance/cli.py#@@ -591,6 +595,16 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+       src/acceptance/cli.py#@@ -705,6 +719,7 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/cli.py#@@ -756,6 +771,7 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/cli.py#@@ -790,6 +806,7 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/config.py#@@ -42,6 +42,21 @@ DEFAULT_SEED = 0
+       src/acceptance/config.py#@@ -72,6 +87,9 @@ class RunConfig(BaseModel):
+       src/acceptance/config.py#@@ -111,5 +129,5 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+       src/acceptance/review_state.py#@@ -630,11 +630,18 @@ class ReviewProvenance(_Model):
+  7. [in_service] The prompt text in `_user_prompt` was expanded to include batch scoping instructions and context markers. The obligations require the whole task file in every prompt and partitioning by batch, but they do not require this specific wording or the added answer-for/context-only annotations beyond what is necessary to implement the behavior.
+       src/acceptance/requirement/obligations.py#@@ -243,8 +286,8 @@ class Decomposition(PersistableModel):
+       src/acceptance/requirement/obligations.py#@@ -256,13 +299,36 @@ def _user_prompt(registry: list[RequirementRef]) -> str:
+  8. [in_service] The decomposition schema was redesigned from a flat top-level obligation list to nested obligations inside each yielded disposition. That is a major behavioral/API change beyond the explicit obligations, which asked for no-linking, partitioning, and coverage/disposition invariants, but did not require this particular schema redesign.
+       src/acceptance/requirement/obligations.py#@@ -157,10 +164,15 @@ positive restatement described above, and it is checkable — the delivered chan
+       src/acceptance/requirement/obligations.py#@@ -182,20 +194,41 @@ class _OpenQuestion(StrictResponseModel):
+       src/acceptance/requirement/obligations.py#@@ -228,7 +261,17 @@ _RequirementDisposition = Union[_Yielded, _NoObligation, _RaisedOpenQuestion]
+       src/acceptance/requirement/obligations.py#@@ -274,85 +340,184 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -404,16 +569,17 @@ def _requirement_map(
+       src/acceptance/requirement/obligations.py#@@ -424,7 +590,7 @@ def _requirement_map(
+  9. [in_service] `UnusableAnswer` gained an optional `reason` field. The obligations require recording unusable answers, but they do not call for changing the schema of the log entry itself.
+       src/acceptance/supplied_ids.py#@@ -123,17 +123,25 @@ def constrain(model: type[ModelT], allowed: Mapping[str, Sequence[str]]) -> type
+  10. [in_service] The benchmark and fixture test changes rewrite many test doubles and sample tasks to the new nested-obligation shape and §7.1-shaped task format. Some of that supports the requested behavior, but the broad fixture rewrites and helper additions go beyond the obligations themselves and include new sample content not specifically required.
+       tests/benchmark/degenerate_decomposers.py#@@ -35,7 +35,12 @@ from typing import Any
+       tests/benchmark/degenerate_decomposers.py#@@ -133,12 +138,25 @@ _BEHAVIOURS = {"faithful": _faithful, "lossy": _lossy, "permissive": _permissive
+       tests/benchmark/degenerate_decomposers.py#@@ -146,11 +164,40 @@ def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
+       tests/benchmark/degenerate_judges.py#@@ -37,7 +37,7 @@ from typing import Any
+       tests/benchmark/degenerate_judges.py#@@ -98,17 +98,13 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+       tests/benchmark/test_coverage.py#@@ -33,7 +33,12 @@ from acceptance.config import DEFAULT_MODEL, RunConfig
+       tests/benchmark/test_coverage.py#@@ -636,7 +641,7 @@ def test_the_shared_pipeline_partitions_the_mapping_call(tmp_path):
+       tests/benchmark/test_instability.py#@@ -38,7 +38,7 @@ from acceptance.benchmark.instability import (  # noqa: E402
+       tests/benchmark/test_instability.py#@@ -65,7 +65,7 @@ def _recording_factory(calls: list):
+       tests/benchmark/test_instability.py#@@ -434,6 +434,7 @@ def _observing_factory(calls):
+       tests/fixtures/archetypes/01-missed-obligation/task.md#@@ -1,12 +1,10 @@
+       tests/fixtures/archetypes/02-qualifier-missed/task.md#@@ -1,12 +1,10 @@
+       tests/fixtures/archetypes/03-superficial-test/task.md#@@ -1,5 +1,4 @@
+       tests/fixtures/archetypes/04-non-discriminating-input/task.md#@@ -1,5 +1,4 @@
+       tests/fixtures/archetypes/05-circular-expected-result/task.md#@@ -1,4 +1,3 @@
+       tests/fixtures/archetypes/06-mocked-out-behavior/task.md#@@ -1,5 +1,4 @@
+       tests/fixtures/archetypes/07-declaration-mismatch/task.md#@@ -1,4 +1,3 @@
+       tests/fixtures/archetypes/08-unrequested-change-in-service/task.md#@@ -1,5 +1,4 @@
+       tests/fixtures/archetypes/08-unrequested-change-risky-adjacent/task.md#@@ -1,5 +1,4 @@
+       tests/fixtures/archetypes/08-unrequested-change-separable/task.md#@@ -1,5 +1,4 @@
+       tests/fixtures/archetypes/08-unrequested-change-test-support/task.md#@@ -1,4 +1,3 @@
+       tests/fixtures/archetypes/08-unrequested-change/task.md#@@ -1,5 +1,4 @@
+       tests/fixtures/archetypes/09-revision-cycle/task.md#@@ -1,5 +1,4 @@
+       tests/fixtures/tasks/minimal_task.md#@@ -1,5 +1,8 @@
+  11. [in_service] The requirement-obligation tests were heavily rewritten to assert the new nested schema and new helper behavior. While many assertions are plausibly related to the requested no-linking/partitioning work, the broad replacement of existing tests with new shapes and extra cases includes behavior changes not explicitly demanded by the obligations.
+       tests/requirement/test_obligations.py#@@ -104,10 +104,33 @@ def test_each_obligation_links_to_its_source_span():
+       tests/requirement/test_requirement_map.py#@@ -25,11 +25,23 @@ import pytest
+       tests/requirement/test_requirement_map.py#@@ -137,6 +149,7 @@ def test_a_fully_accounted_response_disposes_every_requirement():
+       tests/requirement/test_requirement_map.py#@@ -144,7 +157,7 @@ def test_a_fully_accounted_response_disposes_every_requirement():
+       tests/requirement/test_requirement_map.py#@@ -176,12 +189,13 @@ def test_a_response_that_never_mentions_a_requirement_is_rejected():
+       tests/requirement/test_requirement_map.py#@@ -217,34 +231,33 @@ def test_a_requirement_deliberately_yielding_nothing_carries_its_reason():
+       tests/requirement/test_requirement_map.py#@@ -258,13 +271,12 @@ def test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations():
+       tests/requirement/test_requirement_map.py#@@ -275,9 +287,11 @@ def test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations():
+       tests/requirement/test_requirement_map.py#@@ -291,14 +305,13 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
+       tests/requirement/test_requirement_map.py#@@ -311,7 +324,7 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
+       tests/requirement/test_requirement_map.py#@@ -343,7 +356,7 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
+       tests/requirement/test_requirement_map.py#@@ -352,8 +365,8 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
+       tests/requirement/test_requirement_map.py#@@ -367,8 +380,8 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
+       tests/requirement/test_requirement_map.py#@@ -377,11 +390,11 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
+       tests/requirement/test_requirement_map.py#@@ -561,11 +574,23 @@ def test_a_supplied_reason_is_preserved_rather_than_replaced():
+       tests/requirement/test_requirement_map.py#@@ -573,6 +598,7 @@ def test_one_obligation_serves_two_requirements_rather_than_being_duplicated():
+       tests/requirement/test_requirement_map.py#@@ -580,26 +606,72 @@ def test_one_obligation_serves_two_requirements_rather_than_being_duplicated():
+       tests/requirement/test_requirement_map.py#@@ -608,8 +680,9 @@ def test_a_disposition_naming_a_renamed_obligation_still_links():
+       tests/requirement/test_requirement_map.py#@@ -618,11 +691,10 @@ def test_a_disposition_naming_a_renamed_obligation_still_links():
+       tests/requirement/test_requirement_map.py#@@ -636,7 +708,7 @@ def test_decompose_cannot_reach_a_diff_or_a_head_revision():
+       tests/requirement/test_requirement_map.py#@@ -650,7 +722,8 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
+       tests/requirement/test_requirement_map.py#@@ -659,26 +732,88 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
+       tests/requirement/test_requirement_map.py#@@ -708,31 +843,51 @@ def test_the_cli_says_when_an_obligation_serves_other_requirements():
+  12. [in_service] The CLI/config tests were updated for the new provenance shape and a different replay fixture shape. The provenance reporting obligation is requested, but the broader test rewrites and fixture substitution are additional behavior changes not explicitly required.
+       tests/test_cli.py#@@ -3,7 +3,7 @@ import json
+       tests/test_cli.py#@@ -92,10 +92,12 @@ def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_pa
+       tests/test_cli.py#@@ -214,13 +216,19 @@ def test_run_check_rejects_a_revision_missing_from_the_given_repo(
+       tests/test_cli.py#@@ -327,7 +335,9 @@ def test_run_classify_auto_ignores_the_task_file(git_repo, monkeypatch):
+       tests/test_config.py#@@ -148,16 +148,19 @@ def test_provenance_reports_the_partition_size_the_run_actually_used():
+       tests/test_config.py#@@ -165,7 +168,7 @@ def test_provenance_of_an_unpartitioned_run_reports_no_partition_size():
+       tests/test_rerun.py#@@ -597,7 +597,13 @@ _TWO_FILE_JUDGMENTS = {
+       tests/test_supplied_ids.py#@@ -324,7 +324,7 @@ def test_the_schema_asked_for_differs_from_the_shape_parsed():
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
