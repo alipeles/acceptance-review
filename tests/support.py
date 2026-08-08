@@ -344,10 +344,15 @@ _EMPTY_BY_SCHEMA = {
         "open_questions": [],
         "requirement_dispositions": [],
     },
-    # No obligation is linked to another: the de-duplication pass runs and finds
-    # nothing, so a test's derived obligations reach the rest of the pipeline
-    # exactly as it wrote them (#144).
-    "_Links": {"links": []},
+    # Every pair comes back "not the same requirement", so the de-duplication
+    # pass runs its full sweep and merges nothing — a test's derived obligations
+    # reach the rest of the pipeline exactly as it wrote them (#144).
+    #
+    # An empty `verdicts` list would do the same thing here, and is what the
+    # other stages' defaults look like. It is spelled this way because the
+    # completion helper fills a supplied-id enum when it sees one, so the double
+    # answers the pairs it was actually given rather than none of them.
+    "_Verdicts": {"verdicts": []},
     "_Mappings": {"mappings": []},
     "_Discrimination": {"discriminations": []},
     "_Coverage": {"classifications": []},

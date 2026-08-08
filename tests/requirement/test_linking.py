@@ -11,14 +11,12 @@ attributable.
 
 from __future__ import annotations
 
-import json
 
-import pytest
 
 from acceptance.requirement.linking import (
-    _LinkedPair,
-    _Links,
-    _clusters,
+    _confirmed_clusters,
+    _pairs,
+    _Verdicts,
     link_duplicate_obligations,
 )
 from acceptance.requirement.obligations import Decomposition
@@ -87,16 +85,30 @@ def _decomposition(*pairs: tuple[str, str]) -> Decomposition:
     )
 
 
-def _client(links: list[dict]):
-    return client_dispatching({"_Links": {"links": links}})
+def _client_confirming(ordered_ids: list[str], same: set[frozenset[str]]):
+    """Answer every pair: True for the ones named, False for the rest.
+
+    A double that answered only the True pairs would not exercise the sweep —
+    the stage asks about every pair and a real response carries a verdict for
+    each, so the double must too.
+    """
+    verdicts = [
+        {
+            "pair_id": pair_id,
+            "same_requirement": frozenset((left, right)) in same,
+            "reason": "test double",
+        }
+        for pair_id, left, right in _pairs(ordered_ids)
+    ]
+    return client_dispatching({"_Verdicts": {"verdicts": verdicts}})
 
 
-def _link(canonical: str, duplicate: str, reason: str = "same requirement") -> dict:
-    return {
-        "canonical_obligation_id": canonical,
-        "duplicate_obligation_id": duplicate,
-        "reason": reason,
-    }
+def _client(same_pairs: list[tuple[str, str]] = ()):
+    """For the two-obligation fixtures, whose ids are always alpha/beta-shaped."""
+    return _client_confirming(_IDS, {frozenset(pair) for pair in same_pairs})
+
+
+_IDS = ["alpha", "beta"]
 
 
 # --- the link, not a deletion ------------------------------------------------
@@ -110,7 +122,7 @@ def test_one_requirement_stated_in_two_sections_yields_one_obligation_linked_to_
     )
 
     linked = link_duplicate_obligations(
-        decomposition, _client([_link("typed-links", "typed-links-tested")])
+        decomposition, _client_confirming(["typed-links", "typed-links-tested"], {frozenset(("typed-links", "typed-links-tested"))})
     )
 
     assert [o.id for o in linked.obligations] == ["typed-links"]
@@ -127,7 +139,7 @@ def test_the_surviving_obligation_carries_the_source_spans_of_both_statements():
     of task text that produced it, which the findings-link invariant requires."""
     decomposition = _decomposition(("constraint-01", "alpha"), ("completion-01", "beta"))
 
-    linked = link_duplicate_obligations(decomposition, _client([_link("alpha", "beta")]))
+    linked = link_duplicate_obligations(decomposition, _client([("alpha", "beta")]))
 
     survivor = linked.obligations[0]
     assert [span.text for span in survivor.source_spans] == [
@@ -139,7 +151,7 @@ def test_the_surviving_obligation_carries_the_source_spans_of_both_statements():
 def test_no_requirement_is_left_without_an_obligation_by_a_merge():
     decomposition = _decomposition(("constraint-01", "alpha"), ("completion-01", "beta"))
 
-    linked = link_duplicate_obligations(decomposition, _client([_link("alpha", "beta")]))
+    linked = link_duplicate_obligations(decomposition, _client([("alpha", "beta")]))
 
     assert all(d.obligation_ids for d in linked.requirement_map.dispositions)
 
@@ -152,7 +164,7 @@ def test_obligations_the_model_does_not_link_are_left_separate():
     pass would be merging on its own initiative rather than on a judgement."""
     decomposition = _decomposition(("constraint-01", "alpha"), ("completion-01", "beta"))
 
-    linked = link_duplicate_obligations(decomposition, _client([]))
+    linked = link_duplicate_obligations(decomposition, _client())
 
     assert [o.id for o in linked.obligations] == ["alpha", "beta"]
     assert [d.obligation_ids for d in linked.requirement_map.dispositions] == [["alpha"], ["beta"]]
@@ -185,27 +197,31 @@ def test_a_link_is_read_from_the_typed_ids_and_never_from_free_text():
     ever read the relation out of free text, this response would merge."""
     decomposition = _decomposition(("constraint-01", "alpha"), ("completion-01", "beta"))
 
+    verdicts = [
+        {
+            "pair_id": pair_id,
+            "same_requirement": False,
+            "reason": "alpha and beta are the same requirement",
+        }
+        for pair_id, _, _ in _pairs(_IDS)
+    ]
     linked = link_duplicate_obligations(
-        decomposition,
-        _client([_link("alpha", "alpha", reason="alpha and beta are the same requirement")]),
+        decomposition, client_dispatching({"_Verdicts": {"verdicts": verdicts}})
     )
 
     assert [o.id for o in linked.obligations] == ["alpha", "beta"]
 
 
 def test_the_response_schema_offers_no_free_text_route_to_a_link():
-    """The relation is expressible only as the two id fields. A schema that also
-    accepted, say, a list of ids in a string would let the model state a link the
-    code cannot validate or count (#211)."""
-    schema = _Links.model_json_schema()
-    pair = schema["$defs"]["_LinkedPair"]["properties"]
+    """The relation is expressible only as a boolean against a pair the code
+    chose. There is no field in which the model could name an obligation, so it
+    cannot state a link the code is unable to validate or count (#211)."""
+    schema = _Verdicts.model_json_schema()
+    verdict = schema["$defs"]["_PairVerdict"]["properties"]
 
-    assert set(pair) == {"canonical_obligation_id", "duplicate_obligation_id", "reason"}
-    assert pair["canonical_obligation_id"]["type"] == "string"
-    assert pair["duplicate_obligation_id"]["type"] == "string"
-    # One duplicate per pair: a list would let one entry name several ids, and
-    # "which of these is the survivor" would stop being a property of the shape.
-    assert schema["$defs"]["_LinkedPair"]["type"] == "object"
+    assert set(verdict) == {"pair_id", "same_requirement", "reason"}
+    assert verdict["same_requirement"]["type"] == "boolean"
+    assert verdict["pair_id"]["type"] == "string"
 
 
 def test_an_unsupplied_obligation_id_is_recorded_rather_than_silently_dropped():
@@ -213,7 +229,21 @@ def test_an_unsupplied_obligation_id_is_recorded_rather_than_silently_dropped():
     unusable = UnusableAnswerLog()
 
     linked = link_duplicate_obligations(
-        decomposition, _client([_link("alpha", "not-an-obligation")]), unusable
+        decomposition,
+        client_dispatching(
+            {
+                "_Verdicts": {
+                    "verdicts": [
+                        {
+                            "pair_id": "pair-9999",
+                            "same_requirement": True,
+                            "reason": "a pair this call was never given",
+                        }
+                    ]
+                }
+            }
+        ),
+        unusable,
     )
 
     assert [o.id for o in linked.obligations] == ["alpha", "beta"]
@@ -229,47 +259,58 @@ def test_the_survivor_is_chosen_by_derivation_order_not_by_the_models_nomination
     forward = _decomposition(("constraint-01", "alpha"), ("completion-01", "beta"))
     backward = _decomposition(("constraint-01", "alpha"), ("completion-01", "beta"))
 
-    one = link_duplicate_obligations(forward, _client([_link("alpha", "beta")]))
-    two = link_duplicate_obligations(backward, _client([_link("beta", "alpha")]))
+    one = link_duplicate_obligations(forward, _client([("alpha", "beta")]))
+    two = link_duplicate_obligations(backward, _client([("beta", "alpha")]))
 
     assert [o.id for o in one.obligations] == [o.id for o in two.obligations] == ["alpha"]
 
 
-def test_a_transitive_chain_resolves_to_one_cluster():
-    survivors = _clusters(
+def test_a_confirmed_triangle_merges_into_one_cluster():
+    """Sameness is transitive — the criterion is identical truth conditions — so
+    a fully confirmed triangle is one requirement stated three ways."""
+    survivors, inconsistent = _confirmed_clusters(
         ["alpha", "beta", "gamma"],
-        [
-            _LinkedPair(
-                canonical_obligation_id="gamma", duplicate_obligation_id="beta", reason="r"
-            ),
-            _LinkedPair(
-                canonical_obligation_id="beta", duplicate_obligation_id="alpha", reason="r"
-            ),
-        ],
+        {
+            frozenset(("alpha", "beta")),
+            frozenset(("beta", "gamma")),
+            frozenset(("alpha", "gamma")),
+        },
     )
 
     assert survivors == {"alpha": "alpha", "beta": "alpha", "gamma": "alpha"}
+    assert inconsistent == []
 
 
-@pytest.mark.parametrize(
-    "pair",
-    [
-        ("alpha", "alpha"),  # self-link asserts nothing
-        ("alpha", "missing"),  # id never supplied
-    ],
-)
-def test_a_link_that_asserts_nothing_merges_nothing(pair):
-    canonical, duplicate = pair
-    survivors = _clusters(
-        ["alpha", "beta"],
-        [
-            _LinkedPair(
-                canonical_obligation_id=canonical, duplicate_obligation_id=duplicate, reason="r"
-            )
-        ],
+def test_an_inconsistent_triangle_merges_nothing_and_is_recorded():
+    """alpha~beta and beta~gamma confirmed, alpha~gamma denied. The relation is
+    transitive, so these three answers cannot all be right — and because every
+    pair was asked, the contradiction is visible rather than inferred away.
+
+    Nothing merges. Resolving it would mean choosing which answer to believe,
+    and every failure this pass has had was an over-merge."""
+    survivors, inconsistent = _confirmed_clusters(
+        ["alpha", "beta", "gamma"],
+        {frozenset(("alpha", "beta")), frozenset(("beta", "gamma"))},
     )
 
-    assert survivors == {"alpha": "alpha", "beta": "beta"}
+    assert survivors == {"alpha": "alpha", "beta": "beta", "gamma": "gamma"}
+    assert inconsistent == [["alpha", "beta", "gamma"]]
+
+
+def test_an_inconsistency_does_not_block_an_unrelated_confirmed_pair():
+    """The conservative rule is per-component, not global: one contradiction must
+    not discard every other judgment in the run."""
+    survivors, inconsistent = _confirmed_clusters(
+        ["alpha", "beta", "gamma", "delta", "epsilon"],
+        {
+            frozenset(("alpha", "beta")),
+            frozenset(("beta", "gamma")),
+            frozenset(("delta", "epsilon")),
+        },
+    )
+
+    assert survivors["delta"] == "delta" and survivors["epsilon"] == "delta"
+    assert inconsistent == [["alpha", "beta", "gamma"]]
 
 
 def test_the_same_derived_obligations_produce_the_same_links():
@@ -277,11 +318,11 @@ def test_the_same_derived_obligations_produce_the_same_links():
     the derived obligations, so an unchanged derivation yields unchanged links."""
     first = link_duplicate_obligations(
         _decomposition(("constraint-01", "alpha"), ("completion-01", "beta")),
-        _client([_link("alpha", "beta")]),
+        _client([("alpha", "beta")]),
     )
     second = link_duplicate_obligations(
         _decomposition(("constraint-01", "alpha"), ("completion-01", "beta")),
-        _client([_link("alpha", "beta")]),
+        _client([("alpha", "beta")]),
     )
 
     assert first.to_dict() == second.to_dict()
@@ -292,11 +333,13 @@ def test_the_prompt_shows_typed_fields_and_never_the_task_files_markdown():
     so the model is handed identified fields, not source to re-derive."""
     from acceptance.requirement.linking import _user_prompt
 
-    prompt = _user_prompt(_decomposition(("constraint-01", "alpha"), ("completion-01", "beta")))
+    decomposition = _decomposition(("constraint-01", "alpha"), ("completion-01", "beta"))
+    prompt = _user_prompt(decomposition, _pairs(_IDS))
 
-    assert "[alpha]" in prompt and "derived from requirement: constraint-01" in prompt
+    assert "[pair-0000]" in prompt
+    assert "[alpha] from requirement constraint-01" in prompt
+    assert "[beta] from requirement completion-01" in prompt
     assert "## Constraints" not in prompt
-    assert json.dumps(prompt).count("\\n\\n") >= 1
 
 
 # --- wiring: the pipeline actually runs this pass ---------------------------
@@ -362,15 +405,14 @@ _DERIVED = {
     ],
 }
 
-_MERGE = {
-    "links": [
-        {
-            "canonical_obligation_id": "tier-on-every-line",
-            "duplicate_obligation_id": "tier-on-every-line-tested",
-            "reason": "the constraint and its acceptance criterion state one requirement",
-        }
-    ]
-}
+
+def _verdicts(same: bool):
+    """Two derived obligations means exactly one pair to answer."""
+    return {
+        "verdicts": [
+            {"pair_id": "pair-0000", "same_requirement": same, "reason": "test double"}
+        ]
+    }
 
 
 def _repo(tmp_path):
@@ -394,7 +436,7 @@ def _repo(tmp_path):
     return base, git("rev-parse", "HEAD")
 
 
-def _reviewed(tmp_path, links=_MERGE):
+def _reviewed(tmp_path, same=True):
     from acceptance.change.diff import extract_change_set
     from acceptance.pipeline import run_review
 
@@ -403,7 +445,7 @@ def _reviewed(tmp_path, links=_MERGE):
         task_text=_TASK,
         change_set=extract_change_set(tmp_path, base, head),
         repo=tmp_path,
-        client=client_dispatching({"_Decomposition": _DERIVED, "_Links": links}),
+        client=client_dispatching({"_Decomposition": _DERIVED, "_Verdicts": _verdicts(same)}),
         reviewed_revision=head,
     )
 
@@ -426,8 +468,6 @@ def test_the_pre_link_obligations_are_persisted_in_the_review_state(tmp_path):
 
 
 def test_the_two_stages_are_separately_readable_from_the_stored_review(tmp_path):
-    """The whole point of persisting stage 1: the two sets differ, and a reader
-    can see which stage removed the obligation."""
     review = _reviewed(tmp_path)
 
     assert len(review.derived_obligation_map) == 2
@@ -443,10 +483,10 @@ def test_both_requirements_name_the_surviving_obligation_in_the_stored_map(tmp_p
     assert named["completion-01"] == ["tier-on-every-line"]
 
 
-def test_a_review_that_links_nothing_keeps_both_obligations(tmp_path):
+def test_a_review_whose_pair_comes_back_false_keeps_both_obligations(tmp_path):
     """The discriminating half: if the pipeline merged on its own rather than on
     the pass's judgement, this would collapse too."""
-    review = _reviewed(tmp_path, links={"links": []})
+    review = _reviewed(tmp_path, same=False)
 
     assert len(review.obligation_map) == 2
     assert len(review.derived_obligation_map) == 2

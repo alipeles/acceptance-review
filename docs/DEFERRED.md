@@ -124,4 +124,4 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   acceptance gain a stability clause: the same scope exclusion receives the same
   treatment across runs whose own text is unchanged. Cross-reference **#231**, which is
   the same instability observed on a different section.
-- **Status:** open
+- **Status:** filed (comment on #230)

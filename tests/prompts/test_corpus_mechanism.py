@@ -384,12 +384,22 @@ _APPROVED_TRANSCRIPTS = {
     # gpt-5.4-mini, derivation over the invoice task
     "ae36a6cae4fdc874f0da42243f0b22839222eb5b20793c0d6aee11e5546bc62c.json": (
         "invoice",
-        "header row",
+        "CSV",
     ),
-    # gpt-5.4-mini, the linking pass over what that derivation produced
-    "86fefa29f8446cf619e2cc1ba8860d51469ae8d82ca9564fafda9b358dfbedc2.json": (
+    # gpt-5.4-mini, the linking sweep over what that derivation produced. TWO
+    # recordings because the sweep asks about every pair of obligations and the
+    # invoice task exceeds one pair-batch — which is the point: a single call
+    # over all pairs is the shape that produced the over-merges (#144).
+    # Markers are "invoice"/"CSV" rather than a specific requirement: a pair
+    # batch holds only the pairs it was given, so a marker naming one obligation
+    # is absent from every batch that does not happen to include it.
+    "6cd3a3784a71a137017280ea09bebee49daf7cc1651ceb4bd6caa14e5846deb6.json": (
         "invoice",
-        "header row",
+        "CSV",
+    ),
+    "c6287502f3a6f2288a6ee4d4a9e4bc480f879605d6479e0c80e7e6b042348128.json": (
+        "invoice",
+        "CSV",
     ),
 }
 

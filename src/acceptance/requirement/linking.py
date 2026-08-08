@@ -39,14 +39,18 @@ model's judgement rather than of how it happened to order a response.
 
 from __future__ import annotations
 
+from typing import Sequence
+
+from acceptance.config import DEFAULT_LINK_PAIR_BATCH_SIZE
 from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.partition import partition
 from acceptance.requirement.obligations import Decomposition
 from acceptance.review_state import (
     Obligation,
     RequirementDisposition,
     RequirementMap,
 )
-from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
+from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
 
 _STAGE = "obligation linking"
 
@@ -60,9 +64,10 @@ requirement is often followed by a clause giving the reason for it, the same \
 requirement is frequently stated more than once — and each statement produced its \
 own obligation.
 
-Your job is to find the obligations that state the SAME requirement, and link \
-them. Report each duplicate as a pair: the obligation that survives, and the \
-obligation that states the same requirement as it.
+You are given PAIRS of obligations. For each pair, answer one question: do \
+these two state the same requirement? You are not choosing the best partner for \
+anything and you are not searching for duplicates — each pair is independent, and \
+"no" is the right answer for most of them.
 
 **The test for sameness, and the only one that matters.** Two obligations state \
 the same requirement if and only if BOTH hold:
@@ -98,32 +103,56 @@ a little redundancy. Linking two obligations that demand different things \
 destroys one of the requirements, and nothing downstream can recover it. Prefer \
 the redundancy.
 
-Report only the pairs you are confident about. Reporting no pairs at all is a \
-valid answer."""
+Answer every pair you are given. Answering `false` for all of them is a valid \
+and common outcome."""
 
 
-class _LinkedPair(StrictResponseModel):
-    """One duplicate, as a pair of ids.
+class _PairVerdict(StrictResponseModel):
+    """One answer about one pair.
 
-    A link is a typed field and nothing else (#144). Stating it in prose — in a
-    description, a rationale, or any other free-text field — is not a link: it
-    cannot be validated against the supplied ids, cannot be counted by #211's
-    link-precision measure, and cannot be told apart from the model narrating
-    what it did. `reason` exists for the audit trail and carries no link; the
-    relation is entirely in the two id fields.
+    The unit is a pair the CODE chose, not a link the model found. That is what
+    removes the choice: the model is never asked which of several obligations is
+    the best partner, only whether these two state one requirement — so "no" is
+    as available an answer as "yes".
+
+    A link is a typed field and nothing else (#144). Stating it in prose is not a
+    link: it cannot be validated against the supplied ids, cannot be counted by
+    #211's link-precision measure, and cannot be told apart from the model
+    narrating what it did. `reason` is an audit field and carries no relation.
     """
 
-    canonical_obligation_id: str
-    duplicate_obligation_id: str
+    pair_id: str
+    same_requirement: bool
     reason: str
 
 
-class _Links(StrictResponseModel):
-    links: list[_LinkedPair]
+class _Verdicts(StrictResponseModel):
+    verdicts: list[_PairVerdict]
 
 
-def _user_prompt(decomposition: Decomposition) -> str:
-    """The derived obligations as typed, identified fields.
+def _pairs(ordered_ids: list[str]) -> list[tuple[str, str, str]]:
+    """Every unordered pair, with a stable id, in derivation order.
+
+    Quadratic and deliberately so. Every pair is asked, which is what makes the
+    sweep complete — no duplicate can be invisible the way it would be if the
+    obligations themselves were partitioned — and what makes an inconsistent
+    answer detectable. Inferring a pair from two others would assume the model's
+    judgments are consistent, and destroy the evidence that they are not.
+    """
+    return [
+        (f"pair-{index:04d}", ordered_ids[left], ordered_ids[right])
+        for index, (left, right) in enumerate(
+            (left, right)
+            for left in range(len(ordered_ids))
+            for right in range(left + 1, len(ordered_ids))
+        )
+    ]
+
+
+def _user_prompt(
+    decomposition: Decomposition, batch: Sequence[tuple[str, str, str]]
+) -> str:
+    """One batch of pairs, as typed identified fields.
 
     Never the task file's markdown. The parse has already computed this
     structure, and handing the model raw source to re-derive is the shape the
@@ -133,25 +162,48 @@ def _user_prompt(decomposition: Decomposition) -> str:
     for disposition in decomposition.requirement_map.dispositions:
         for obligation_id in disposition.obligation_ids:
             owner.setdefault(obligation_id, disposition.requirement_id)
+    by_id = {obligation.id: obligation for obligation in decomposition.obligations}
 
-    lines = ["The obligations derived from this task, one block each.", ""]
-    for obligation in decomposition.obligations:
-        lines.append(f"[{obligation.id}]")
-        lines.append(f"  derived from requirement: {owner.get(obligation.id, 'unknown')}")
-        lines.append(f"  description: {obligation.description}")
-        lines.append(f"  observable behavior: {obligation.observable_behavior}")
+    def describe(obligation_id: str, label: str) -> list[str]:
+        obligation = by_id[obligation_id]
+        return [
+            f"  {label}: [{obligation.id}] from requirement {owner.get(obligation.id, 'unknown')}",
+            f"    description: {obligation.description}",
+            f"    observable behavior: {obligation.observable_behavior}",
+        ]
+
+    lines = ["Answer for every pair below. Each is independent.", ""]
+    for pair_id, left, right in batch:
+        lines.append(f"[{pair_id}]")
+        lines.extend(describe(left, "A"))
+        lines.extend(describe(right, "B"))
         lines.append("")
     return "\n".join(lines).rstrip()
 
 
-def _clusters(ordered_ids: list[str], pairs: list[_LinkedPair]) -> dict[str, str]:
-    """Map every merged-away obligation id to the id that survives it.
+def _confirmed_clusters(
+    ordered_ids: list[str],
+    confirmed: set[frozenset[str]],
+) -> tuple[dict[str, str], list[list[str]]]:
+    """Survivor per obligation, plus the components rejected as inconsistent.
 
-    Union-find over the reported pairs, so a chain (A~B reported, B~C reported)
-    resolves to one cluster rather than depending on which pair is read first.
-    The survivor is the cluster member earliest in derivation order — chosen
-    here rather than read from `canonical_obligation_id`, so the result does not
-    move when the model nominates a different member of the same cluster.
+    Two steps, and the second is the conservative one.
+
+    Connected components come first: `same_requirement` is transitive by
+    definition, since the criterion is identical truth conditions, so a
+    confirmed A-B and B-C put all three in one component.
+
+    But transitivity of the RELATION does not make the model's ANSWERS
+    consistent. Confirming A-B and B-C while denying A-C is not an intransitive
+    relation, it is three answers that cannot all be right — and because every
+    pair was asked, we can see it. A component merges only if it is a complete
+    clique: every pair among its members confirmed. One that is not merges
+    NOTHING, all its members stay separate, and it is returned for recording.
+
+    Blunt on purpose. Resolving the contradiction ourselves would mean picking
+    which answer to believe, and every failure this pass has had has been an
+    over-merge — so it fails toward under-merging, which is the direction the
+    issue's bias accepts, and it says so rather than deciding quietly.
     """
     index = {obligation_id: position for position, obligation_id in enumerate(ordered_ids)}
     parent = {obligation_id: obligation_id for obligation_id in ordered_ids}
@@ -162,24 +214,33 @@ def _clusters(ordered_ids: list[str], pairs: list[_LinkedPair]) -> dict[str, str
             node = parent[node]
         return node
 
-    for pair in pairs:
-        left, right = pair.canonical_obligation_id, pair.duplicate_obligation_id
-        # An id the call was never given is recorded through `scan` and ignored
-        # here; a self-link asserts nothing and is dropped the same way.
-        if left not in index or right not in index or left == right:
-            continue
+    for pair in confirmed:
+        left, right = sorted(pair, key=lambda i: index[i])
         root_left, root_right = find(left), find(right)
         if root_left != root_right:
             survivor, absorbed = sorted((root_left, root_right), key=lambda i: index[i])
             parent[absorbed] = survivor
 
-    return {
-        obligation_id: min(
-            (member for member in ordered_ids if find(member) == find(obligation_id)),
-            key=lambda i: index[i],
+    components: dict[str, list[str]] = {}
+    for obligation_id in ordered_ids:
+        components.setdefault(find(obligation_id), []).append(obligation_id)
+
+    survivor_of: dict[str, str] = {}
+    inconsistent: list[list[str]] = []
+    for members in components.values():
+        complete = all(
+            frozenset((left, right)) in confirmed
+            for position, left in enumerate(members)
+            for right in members[position + 1 :]
         )
-        for obligation_id in ordered_ids
-    }
+        if not complete:
+            inconsistent.append(members)
+            for member in members:
+                survivor_of[member] = member
+            continue
+        for member in members:
+            survivor_of[member] = members[0]
+    return survivor_of, inconsistent
 
 
 def _merged_obligations(
@@ -234,38 +295,56 @@ def link_duplicate_obligations(
     decomposition: Decomposition,
     client: ModelClient,
     unusable_answers: UnusableAnswerLog | None = None,
+    pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
 ) -> Decomposition:
     """Link the obligations that state the same requirement.
 
-    Returns a `Decomposition` whose obligations are the survivors and whose
-    requirement map points every requirement at one. The input is returned
-    unchanged when there is nothing that could be linked — fewer than two
-    obligations means no call is made at all, so an empty or single-requirement
-    task costs nothing.
+    Sweeps every pair, in batches, and merges only cliques the model confirmed
+    outright. Returns the input unchanged when there is nothing to compare —
+    fewer than two obligations means no call is made at all.
     """
     obligations = decomposition.obligations
     if len(obligations) < 2:
         return decomposition
 
     ordered_ids = [obligation.id for obligation in obligations]
-    allowed = {
-        "canonical_obligation_id": ordered_ids,
-        "duplicate_obligation_id": ordered_ids,
-    }
-    result = client.complete(
-        [
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": _user_prompt(decomposition)},
-        ],
-        constrain(_Links, allowed),
-        None,
-        parse_as=_Links,
-        stage=_STAGE,
-    )
-    if unusable_answers is not None:
-        unusable_answers.record(scan(result, allowed, _STAGE))
+    confirmed: set[frozenset[str]] = set()
 
-    survivor_of = _clusters(ordered_ids, result.links)
+    for batch in partition(_pairs(ordered_ids), pair_batch_size, key=lambda pair: pair[0]):
+        by_pair_id = {pair_id: (left, right) for pair_id, left, right in batch.items}
+        allowed = {"pair_id": list(by_pair_id)}
+        result = client.complete(
+            [
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": _user_prompt(decomposition, batch.items)},
+            ],
+            constrain(_Verdicts, allowed),
+            batch.request_partition(),
+            parse_as=_Verdicts,
+            stage=_STAGE,
+        )
+        if unusable_answers is not None:
+            unusable_answers.record(scan(result, allowed, _STAGE))
+        for verdict in result.verdicts:
+            if verdict.same_requirement and verdict.pair_id in by_pair_id:
+                confirmed.add(frozenset(by_pair_id[verdict.pair_id]))
+
+    survivor_of, inconsistent = _confirmed_clusters(ordered_ids, confirmed)
+    if unusable_answers is not None and inconsistent:
+        unusable_answers.record(
+            UnusableAnswer(
+                stage=_STAGE,
+                field="same_requirement",
+                returned_id=", ".join(members),
+                reason=(
+                    "answers contradict each other: these obligations are linked "
+                    "transitively but at least one pair among them was denied, so "
+                    "none of them were merged"
+                ),
+            )
+            for members in inconsistent
+        )
+
     return decomposition.model_copy(
         update={
             "obligations": _merged_obligations(obligations, survivor_of),

@@ -17,7 +17,8 @@ Clear it out when the task lands rather than letting it accrete.
 Branch `144-merge-duplicate-obligations`, cut from `main` at `9724df4`.
 `main` is pushed; nothing on this branch is pushed.
 
-**Gate 1: decomposition confirmed accurate, human confirmation pending.**
+**Gate 1 PASSED at `e34aebc`** — decomposition confirmed accurate by the human
+(2026-08-08), on run 3.
 Three runs in `dogfood-logs/144-gate1-run{1,2,3}/`. Run 3 is the current one:
 27 requirements, 21 with obligations, 6 deliberately none, 24 obligations,
 **no open questions**. All 11 Constraints and all 7 Completion expectations
@@ -53,7 +54,7 @@ links, not a single owner; the response schema has no free-text path to a link.
 
 - **#230** (→ #181) — scope exclusions reframed inconsistently within one section.
   **Widen it**: run 3 declined all five uniformly with the bullets unchanged, so
-  the defect is instability, not inconsistency. Draft is in `docs/DEFERRED.md`.
+  the defect is instability, not inconsistency. Widening comment filed.
 - **#231** (→ #184) — derived obligations are not local to their requirement; a
   two-line edit re-split two untouched requirements and churned 27 of 33 ids.
 - Comment on **#144** — 30 obligations from 19 distinct requirements, nine

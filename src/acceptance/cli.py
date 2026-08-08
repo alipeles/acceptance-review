@@ -174,6 +174,7 @@ def run_check(
         policy=config.scope_expansion_policy,
         mapping_batch_size=config.mapping_batch_size,
         decompose_batch_size=config.decompose_batch_size,
+        link_pair_batch_size=config.link_pair_batch_size,
         task_identifier=task,
         prior=prior,
     )
