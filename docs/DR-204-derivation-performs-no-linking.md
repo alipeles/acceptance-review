@@ -1,7 +1,7 @@
 # Decision Record 204 — Obligation derivation performs no linking
 
 *Relates to issue #204 and the #181 umbrella (decomposition), with consequences
-for #144, #211, #210 and #223. Status: **accepted, not built**. Track: checker.
+for #144, #211, #210 and #223. Status: **accepted and built, mechanism amended**. Track: checker.
 Stage: 1. Partly reverses DR-202 decision 2, on evidence DR-202 did not have.*
 
 ---
@@ -91,20 +91,77 @@ identifies as the over-merge trigger. Partitioning alone removes the mis-links
 that are easy to catch by eye and leaves the highest-risk region untouched, which
 is worse than it sounds: the remaining failures look like a clean result.
 
-## Mechanism — a validator, not a prompt rule
+## Mechanism — a shape, not a validator (amended)
+
+> Each obligation is carried inside the disposition of the requirement that
+> derived it. There is no obligation id to write twice.
+
+**Amended after building it.** The original mechanism below was a post-response
+validator, and it failed in practice. What replaced it is stronger and simpler:
+`_Yielded` carries `obligation` and `more_obligations` — the obligations
+themselves — instead of `obligation_id` and `more_obligation_ids` pointing into
+a flat top-level list. One obligation cannot be named by two requirements
+because there is no naming. This is #217's move (make the bad state
+unrepresentable rather than reject it) applied to ownership rather than
+emptiness.
+
+With it go the validator, the model-id → final-id reconciliation, the
+dangling-reference case, and the cross-batch id-collision hazard. Nothing
+enforces the rule because nothing can break it.
+
+### Why the validator failed
+
+The original mechanism was:
 
 > Within a derivation response, each obligation id appears in exactly one
-> requirement's disposition.
+> requirement's disposition. A response naming one obligation from two
+> requirements is rejected through `UnusableAnswerLog`, and neither requirement
+> is treated as disposed.
 
-A response naming one obligation from two requirements is rejected through
-`UnusableAnswerLog`, in the shape #204 already specifies for a returned id that
-was not supplied, and neither requirement is treated as disposed. Cross-batch
-linking needs no check at all.
+Rejecting leaves both requirements unaccounted for, which `_requirement_map`
+raises on (M1.2.r2) — so **the whole review aborts**. On #204's own Gate 2 run,
+four batches of five were clean and the run still died, deterministically,
+because temperature is 0 and the seed is fixed.
 
-This is deterministic and post-response. That matters: every prompt-level rule
-considered for #210 depends on the model honouring it, and #219's evidence is
-that the decomposer already violates an explicit instruction at
-`obligations.py:150`.
+Worse, the trigger is ordinary. A control task file about invoice formatting —
+no mention of decomposition, linking or obligations — linked on the
+Constraints/Completion restatement *this record's own prompt guidance calls
+typical*. The tool could not review a normal mandate.
+
+The reason the model linked is not that it ignored an instruction it understood.
+**The schema invited the link**: obligations sat in a flat top-level list and a
+disposition pointed into it by unconstrained string, so writing the same id
+twice was the natural encoding for "these two requirements state the same
+thing". The prompt forbade in prose what the response shape offered as the
+obvious answer.
+
+The lesson generalises past this issue: *a rule the schema invites cannot be
+enforced by asking harder.* #219's evidence — that the decomposer already
+violates an explicit instruction — is the same observation from the other end.
+
+### What stays flat, and why
+
+`open_questions` remain a flat list referenced by id. Two requirements can
+genuinely be blocked by one ambiguity, and a question's text is about the
+ambiguity rather than a restatement of either requirement's content, so sharing
+one loses nothing. The no-linking rule is about obligations and is applied to
+obligations only — deliberately, not by omission.
+
+### Consequence: an obligation cannot be an orphan
+
+Every obligation now reaches the review owned by exactly one requirement. An
+obligation claimed by no requirement is not expressible from this stage. The
+report still renders one, because a later pass (#144) rewrites the map and an
+obligation stranded *there* is a finding.
+
+## Links are structured output, not prose (#144)
+
+When de-duplication attaches one obligation to several requirements, that link
+must be a **typed field in a schema-constrained response** — not text written
+into an obligation's description or rationale. A link expressed as prose cannot
+be validated, cannot be counted by #211's link-precision measure, and cannot be
+told apart from a model narrating what it did. The many-to-one mapping is data;
+it must arrive as data.
 
 ## Consequences
 
