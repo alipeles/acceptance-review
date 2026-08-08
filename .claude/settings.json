@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(/**)",
+      "Edit(/**)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(pytest *)",
+      "Bash(uv *)",
+      "Bash(uvx *)",
+      "Bash(pip install *)",
+      "Bash(pip show *)",
+      "Bash(pip list *)",
+      "Bash(ruff *)",
+      "Bash(black *)",
+      "Bash(mypy *)",
+      "Bash(pyright *)",
+      "Bash(coverage *)",
+      "Bash(mutmut *)",
+      "Bash(make *)",
+      "Bash(pre-commit *)",
+      "Bash(tox *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git blame *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git restore *)",
+      "Bash(git stash *)",
+      "Bash(git fetch *)",
+      "Bash(git pull --ff-only *)",
+      "Bash(git rev-parse *)",
+      "Bash(git ls-files *)",
+      "Bash(git worktree list *)",
+      "Bash(git worktree add *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh run view *)",
+      "Bash(gh run list *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(find *)",
+      "Bash(rg *)",
+      "Bash(grep *)",
+      "Bash(sed *)",
+      "Bash(awk *)",
+      "Bash(jq *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(diff *)",
+      "Bash(mkdir *)",
+      "Bash(touch *)",
+      "Bash(mv *)",
+      "Bash(cp *)",
+      "Bash(chmod *)",
+      "Bash(tree *)",
+      "Bash(which *)",
+      "Bash(echo *)",
+      "Bash(date *)",
+      "Bash(env)",
+      "Bash(docker build *)",
+      "Bash(docker run *)",
+      "Bash(docker ps *)",
+      "Bash(docker logs *)",
+      "WebSearch",
+      "WebFetch(domain:docs.python.org)",
+      "WebFetch(domain:code.claude.com)",
+      "WebFetch(domain:docs.claude.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:huggingface.co)",
+      "WebFetch(domain:docs.pytest.org)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git merge *)",
+      "Bash(git rebase *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(git worktree remove *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)",
+      "Bash(gh release *)",
+      "Bash(gh repo *)",
+      "Bash(twine *)",
+      "Bash(uv publish *)",
+      "Bash(docker system prune *)",
+      "Bash(brew *)"
+    ],
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(*.pem)",
+      "Read(id_rsa*)",
+      "Read(credentials*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gh/**)",
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(rm -r *)",
+      "Bash(sudo *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git filter-branch *)",
+      "Bash(chown *)"
+    ]
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/notify.sh attention",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/notify.sh done",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/format-changed.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

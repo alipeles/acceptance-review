@@ -188,7 +188,8 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
   into the benchmark harness (M-B0) — don't defer measurement to the end.
 - **Surface open decisions, don't silently resolve them.** Open design decisions
   are tracked as `decision`-labeled issues, each owned by a milestone — that
-  label *is* the list. Raise a new one rather than picking quietly.
+  label *is* the list. Raise a new one rather than picking quietly; raising it
+  means queueing it (*Working agreement* §4), not stopping the work.
 - **Never write to the backlog without human review.** Draft the item — title,
   body, labels, parent umbrella — and show it *alongside the evidence that
   produced it*, then wait for approval. This covers `gh issue create`, attaching
@@ -196,11 +197,10 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
   Editing your own draft after feedback is not a second approval; re-show it.
   The backlog is the plan (see *How work is tracked*), so filing is a change to
   the plan, and an agent that files as it goes writes the plan unsupervised.
-  **This binds the dogfood gates.** Their rule that a negative finding must be
-  *addressed* or *attributed to a tool defect with a backlog item existing
-  before you move forward* now means the item must be **approved and filed** —
-  so a gate ending in an attribution stops there until it is. Draft the item as
-  part of the judgement, present it with the run, and wait.
+  **The review is batched, not skipped.** Draft the item as part of the
+  judgement, put it in the queue (*Working agreement* §4), and keep working;
+  the queue is presented for approval at the next gate. Approval is what
+  authorises the filing — the wait is until the gate, not until each item.
 - **Write a Decision Record when one is resolved**, or when a non-obvious finding
   changes the design: `docs/DR-<issue>-<slug>.md`, referenced from the issue. A
   decision that lives only in a commit message or a chat session is lost. See
@@ -311,10 +311,11 @@ which SHA.
   back clean, not when it was written.
 - **Every negative finding has exactly two permitted dispositions:** (1) **address
   it** with a code or documentation change, or (2) **attribute it to a defect in
-  the tool**, in which case **a backlog item must exist before you move forward**
-  and the finding is recorded against it. There is no third option. Attribution
-  converts a finding into tracked work; an untracked attribution is
-  indistinguishable from suppressing it, and is treated as such.
+  the tool**, in which case **a drafted backlog item must be in the queue before
+  you move forward** (*Working agreement* §4) and the finding is recorded against
+  it. There is no third option. The draft is what makes it tracked work; it is
+  filed when the queue is approved at the gate. An attribution with nothing
+  queued is indistinguishable from suppressing the finding, and is treated as such.
 - **A clean verdict is only as trustworthy as the mapping step behind it.** A
   review whose M4 mapping call returned mostly empty `obligation_ids` is
   half-blind, not clean. Check the mapping transcript before believing a clean
@@ -390,6 +391,139 @@ gh issue view <n>                   # read a task
 ```
 
 Other subcommands: `decompose`, `diff`, `classify`.
+
+---
+
+# Working agreement
+
+How much autonomy an agent has between the gates. The gates themselves are
+defined in *Dogfooding — the review gates* above; this section does not add any.
+
+## 1. Default posture: keep going
+
+Work autonomously between the gates. Do not ask permission to read, edit, create
+files, run tests, lint, create branches, or commit. Do not narrate intent or ask
+"shall I proceed?" — proceed. The permission rules in `.claude/settings.json`
+define what is allowed; if a rule allows it, it is approved.
+
+Silence between the gates is the goal. The cost of a needless interruption is
+higher than the cost of a wrong turn caught at the next gate. **An iteration is
+one issue, Gate 1 to Gate 2** — that is the unit the queue in §4 batches over.
+
+## 2. The gates are the dogfood gates
+
+There is one set of gates in this repo: **Gate 1**, decomposing `current-task.md`
+before any code, and **Gate 2**, a clean `acceptance check` before a PR. Their
+procedure and their pass/fail rules live in *Dogfooding — the review gates*, and
+are neither restated nor relaxed here. This section says only what to **present**
+on arrival, because each gate is also the scheduled alert.
+
+At **Gate 1**:
+
+- the obligation breakdown, and your confirmation it is accurate — no invented
+  obligations, none of the real ones missing;
+- the triage of every open question, by the three cases in the gate's table;
+- the plan: files and modules you will change, and any schema or interface other
+  work will depend on, written out concretely;
+- anything in the issue you think is wrong or underspecified;
+- the bundled queue (§4).
+
+At **Gate 2**:
+
+- whether the check is clean by the gate's definition, stated plainly at the top
+  — if it is not clean, lead with that rather than burying it;
+- each Acceptance item from the issue and how it is demonstrated — name the test,
+  not the intent;
+- a diff summary, calling out anything touched outside the task's own area;
+- decisions and assumptions the Gate 1 plan did not cover;
+- the bundled queue (§4).
+
+Present and stop. Do not push, merge, or open a PR. Between the gates, stop for
+nothing except §3.
+
+## 3. Always interrupt — regardless of gate
+
+Interrupt immediately, via `AskUserQuestion` with concrete options (never an open
+question), when any of these happen:
+
+- An **invariant** above would have to change — local-only inputs, evidence-tier
+  discipline, typed-and-linked findings, markdown-never-as-interchange, replay
+  determinism — or the review-state schema would, after later work depends on it.
+- The **spec** would have to change for the issue's Acceptance to be reachable.
+- **Licensing, secrets, money, or dataset redistribution** is implicated.
+- You have **failed the same way twice** and the third attempt would be a
+  different approach rather than a fix. Say what you tried, what you observed,
+  and what you would try next.
+- **Benchmark ground-truth labels look wrong.** Never "fix" a label to make a
+  metric move.
+- An action is **irreversible or outward-facing**: pushing, merging, opening a
+  PR, closing an issue, rewriting history.
+
+The gates add two stops of their own and they stand unchanged: a Gate 1 open
+question that is a **wrong question**, and any tool output marked as needing
+**non-code evidence or human review**.
+
+Do **not** interrupt for: style choices, library selection within the dependency
+stance, test naming, refactors inside the task's own area, a decision to raise, a
+defect to file, or anything reversible in one commit. Those go in the queue.
+
+## 4. The bundled queue
+
+Three kinds of thing used to stop the work one at a time. All three now go into
+`docs/DEFERRED.md` and are reviewed **together at the next gate**:
+
+1. **Defects found mid-flight**, outside the current task's scope — a bug, a
+   smell, a missing test, a spec inconsistency, a dependency problem. Do not fix
+   it and do not ask about it.
+2. **Backlog filings** — an issue, a sub-issue, or a comment asserting a new
+   finding. *Never write to the backlog without human review* holds in full; what
+   changes is **when** that review happens. Draft the item — title, body, labels,
+   parent umbrella — with the evidence that produced it, and queue it. Nothing
+   reaches GitHub until it is approved at a gate.
+3. **Open design decisions** you would otherwise raise. Surfacing them stays
+   mandatory and resolving one quietly stays forbidden; queue it with your
+   recommendation and the alternative you rejected.
+
+```markdown
+### [YYYY-MM-DD] <one-line title>
+- **Kind:** defect | filing | decision
+- **Found during:** #144, Gate 1
+- **Where:** src/acceptance/requirement/obligations.py:118
+- **Severity:** blocker | should-fix | nice-to-have
+- **What's wrong:** one or two sentences, concrete.
+- **Why I didn't act:** out of scope for #144 / would change the review-state schema.
+- **Drafted fix:** for a defect, what you would do — specific enough to approve or
+  reject without a follow-up, with the diff sketch if it is small. For a filing, the
+  issue body as it would be filed, and its parent umbrella.
+- **Status:** open
+```
+
+**A dogfood finding attributed to a tool defect is a filing**, and the
+attribution rule in *Rules that apply at both gates* is satisfied by the queued
+draft rather than by an already-filed issue — the finding is recorded before you
+move forward, and filed at the gate. An attribution with nothing in the queue is
+still indistinguishable from suppressing the finding, and is still treated as one.
+
+Exception — fix it now, silently, and note it at the gate: the problem makes the
+*current* issue's Acceptance unachievable, and the fix is inside the task's own
+area.
+
+At each gate, present the queue grouped by kind and severity with a recommended
+disposition for each (fix now / fix next issue / won't fix / file as drafted /
+needs my call). I approve in a batch; `/triage` then executes the approved ones,
+filings included.
+
+## 5. Evidence discipline applies to your own work too
+
+This project's whole thesis is that a claim without discriminating evidence is
+worthless. Hold your own reports to it:
+
+- "The check passes" means you ran it and saw it pass — paste the output.
+- Never report an issue complete on the strength of code that looks right.
+- Before claiming a test demonstrates a behavior, ask whether it would fail if the
+  behavior were absent. If it wouldn't, the test is not evidence. Say so.
+- `Indeterminate` and "I could not verify this" are acceptable answers at a gate.
+  A false green is not.
 
 ---
 

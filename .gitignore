@@ -39,3 +39,4 @@ htmlcov/
 
 # Claude handoff notes — rolling, disposable, never committed
 handoff*.md
+.claude/settings.local.json
