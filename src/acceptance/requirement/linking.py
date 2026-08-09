@@ -122,8 +122,16 @@ class _PairVerdict(StrictResponseModel):
     """
 
     pair_id: str
-    same_requirement: bool
+    # Declared BEFORE the verdict, deliberately. Structured output is generated
+    # in field order, so a verdict field placed first is decided before any
+    # analysis exists and the reason becomes a rationalisation of it. Measured,
+    # not assumed: with the verdict first, two of five confirmations on this
+    # repo's own task file carried a reason that argued the opposite —
+    # "...which is the complementary condition and not the same requirement"
+    # attached to `same_requirement: true`. Reasoning first makes the boolean a
+    # conclusion rather than a commitment.
     reason: str
+    same_requirement: bool
 
 
 class _Verdicts(StrictResponseModel):
@@ -139,13 +147,30 @@ def _pairs(ordered_ids: list[str]) -> list[tuple[str, str, str]]:
     answer detectable. Inferring a pair from two others would assume the model's
     judgments are consistent, and destroy the evidence that they are not.
     """
+    # Ordered by the DISTANCE between the two obligations, not by the first of
+    # them: (0,1),(1,2),(2,3)… then (0,2),(1,3)… and so on.
+    #
+    # The natural nesting — every pair of the first obligation, then every pair
+    # of the second — puts all N-1 pairs of obligation 0 into the opening
+    # batches. A call holding 25 pairs that all share one obligation is not 25
+    # independent questions; it reads as "here is X, which of these is its
+    # duplicate?", which is the selection task this sweep exists to remove,
+    # reappearing one level down. Measured on this repo's task file: batch 0 of
+    # that ordering produced 5 of the 7 confirmations in a contradicted
+    # component, while the other batches said no to 12 of 14.
+    #
+    # By distance, each obligation appears about twice per diagonal, so no batch
+    # is about any one obligation. Still every pair exactly once, and still a
+    # pure function of derivation order.
+    count = len(ordered_ids)
+    ordered = [
+        (left, left + distance)
+        for distance in range(1, count)
+        for left in range(count - distance)
+    ]
     return [
         (f"pair-{index:04d}", ordered_ids[left], ordered_ids[right])
-        for index, (left, right) in enumerate(
-            (left, right)
-            for left in range(len(ordered_ids))
-            for right in range(left + 1, len(ordered_ids))
-        )
+        for index, (left, right) in enumerate(ordered)
     ]
 
 

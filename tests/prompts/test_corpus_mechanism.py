@@ -388,15 +388,18 @@ _APPROVED_TRANSCRIPTS = {
     #
     # TWO linking recordings for one derivation, because the sweep asks about
     # every pair of obligations and the invoice task exceeds one pair-batch.
+    # linking sweep
+    "102d48565911ff6200bb40075760526db774d1018934a99e4003698629d00381.json": (
+        "invoice",
+        "CSV",
+    ),
+    # derivation
     "19f90ca774d3cc690b8a9637a21a15bfef54c537d1bb9d02f38f39b4e86811a5.json": (
         "invoice",
         "CSV",
     ),
-    "3a3d4efafb585159030deca0326891b40e80612fbeccaf1a93b1cfba0e4363bd.json": (
-        "invoice",
-        "CSV",
-    ),
-    "ce7356a9bb9d60028505dac5dc3d9b6d51d7cf1af3abb82f3874816ee0d2c5f5.json": (
+    # linking sweep
+    "311f732282beacd35a69e53fd04e48250deb4f48234558dfdad2d089bf3db6e0.json": (
         "invoice",
         "CSV",
     ),
