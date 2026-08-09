@@ -14,6 +14,7 @@ from __future__ import annotations
 
 
 from acceptance.requirement.linking import (
+    _PairVerdict,
     _confirmed_clusters,
     _pairs,
     _Verdicts,
@@ -557,3 +558,36 @@ def test_the_decompose_command_surfaces_an_unreconciled_group(tmp_path, monkeypa
     _, unusable = cli.run_decompose(str(task), cli.RunConfig())
 
     assert hasattr(unusable, "answers"), "decompose must carry the linking stage's log"
+
+
+def test_the_linking_schemas_are_pydantic_models():
+    """Typed schemas are pydantic models, as the rest of the repository defines
+    them — asserted rather than assumed.
+
+    Not a style check. `constrain` builds the id-restricted subclass with
+    pydantic's model machinery and `model_json_schema` is what reaches the
+    provider, so a hand-rolled schema class would pass every behavioural test
+    here and break the supplied-id guarantee (#163) at the wire.
+    """
+    from pydantic import BaseModel
+
+    from acceptance.review_state import Obligation
+
+    assert issubclass(_Verdicts, BaseModel)
+    assert issubclass(_PairVerdict, BaseModel)
+    # The review-state field this task adds is the same model type as the
+    # obligations it holds, so the pre-link set serialises canonically too.
+    assert issubclass(Obligation, BaseModel)
+
+
+def test_the_constrained_response_schema_is_still_a_pydantic_model():
+    """`constrain` returns a subclass, so the guarantee survives the narrowing
+    the stage applies before every call."""
+    from pydantic import BaseModel
+
+    from acceptance.supplied_ids import constrain
+
+    narrowed = constrain(_Verdicts, {"pair_id": ["pair-0000"]})
+
+    assert issubclass(narrowed, BaseModel)
+    assert issubclass(narrowed, _Verdicts)
