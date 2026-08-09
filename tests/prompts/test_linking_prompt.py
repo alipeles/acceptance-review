@@ -28,14 +28,20 @@ from tests.support import recorded_client
 
 # Three properties in one file, so one recording covers all of them:
 #
-#   * `constraint-01` and `completion-01` state ONE requirement (the header row)
-#     in two sections — the case this issue exists for.
+#   * The Task prose and `constraint-01` demand the SAME behaviour — the header
+#     row — in two sections. That is the true duplicate this issue exists for.
+#   * `completion-01` asks for a TEST of that behaviour. Not the same
+#     requirement: code that already writes the header row with nobody having
+#     written the test satisfies one and violates the other.
 #   * `constraint-02` shares vocabulary with `constraint-01` ("row") while
 #     demanding something different — the over-merge trap.
 #   * `constraint-02` carries a trailing reason clause. The reason is not a
 #     second requirement.
+#   * `constraint-04` (formatting) beside `constraint-05` (the library) is the
+#     behaviour-versus-technology trap.
 _TASK = """# Task
-Export invoices to a CSV file.
+Export invoices to a CSV file. The export writes a header row naming every
+column.
 
 ## Constraints
 - The export writes a header row naming every column.
@@ -63,16 +69,34 @@ def _obligations_of(decomposition, requirement_id: str) -> list[str]:
     return list(disposition.obligation_ids) if disposition else []
 
 
-def test_one_requirement_stated_in_two_sections_ends_on_one_obligation(linked):
-    """The headline judgement: a constraint and the acceptance criterion that
-    restates it are one requirement, and the model recognises it."""
+def test_one_behaviour_demanded_in_two_sections_ends_on_one_obligation(linked):
+    """The headline judgement. The Task prose and `constraint-01` demand the same
+    thing — a header row naming every column — so they are one requirement stated
+    twice, and the surviving obligation is named by both."""
     _, after = linked
 
+    prose = _obligations_of(after, "task-01")
     constraint = _obligations_of(after, "constraint-01")
-    completion = _obligations_of(after, "completion-01")
 
-    assert constraint and completion
-    assert constraint == completion
+    assert prose and constraint
+    assert set(prose) & set(constraint)
+
+
+def test_a_behaviour_and_a_requirement_to_test_it_are_not_merged(linked):
+    """`constraint-01` demands the header row; `completion-01` demands a test of
+    it. Code that already writes the header row, with nobody having written the
+    test, satisfies one and violates the other — so they are different
+    requirements, and adding each is separate work.
+
+    This case used to be listed in the prompt as one that SHOULD merge, which
+    contradicted the prompt's own criterion. Flipping it is what this asserts."""
+    _, after = linked
+
+    behaviour = _obligations_of(after, "constraint-01")
+    its_test = _obligations_of(after, "completion-01")
+
+    assert behaviour and its_test
+    assert set(behaviour).isdisjoint(its_test)
 
 
 def test_two_requirements_sharing_vocabulary_are_not_merged(linked):

@@ -381,23 +381,22 @@ _APPROVED_TRANSCRIPTS = {
     # decomposition on purpose: #204 established that a control task file
     # reproduces a decomposition defect exactly, which is what rules out
     # dogfood contamination as the cause of a result.
-    # gpt-5.4-mini, derivation over the invoice task
-    "ae36a6cae4fdc874f0da42243f0b22839222eb5b20793c0d6aee11e5546bc62c.json": (
+    #
+    # Markers are fixture-level ("invoice"/"CSV") rather than requirement-level:
+    # a pair batch holds only the pairs it was given, so a marker naming one
+    # obligation is absent from every batch that does not include it.
+    #
+    # TWO linking recordings for one derivation, because the sweep asks about
+    # every pair of obligations and the invoice task exceeds one pair-batch.
+    "19f90ca774d3cc690b8a9637a21a15bfef54c537d1bb9d02f38f39b4e86811a5.json": (
         "invoice",
         "CSV",
     ),
-    # gpt-5.4-mini, the linking sweep over what that derivation produced. TWO
-    # recordings because the sweep asks about every pair of obligations and the
-    # invoice task exceeds one pair-batch — which is the point: a single call
-    # over all pairs is the shape that produced the over-merges (#144).
-    # Markers are "invoice"/"CSV" rather than a specific requirement: a pair
-    # batch holds only the pairs it was given, so a marker naming one obligation
-    # is absent from every batch that does not happen to include it.
-    "6cd3a3784a71a137017280ea09bebee49daf7cc1651ceb4bd6caa14e5846deb6.json": (
+    "3a3d4efafb585159030deca0326891b40e80612fbeccaf1a93b1cfba0e4363bd.json": (
         "invoice",
         "CSV",
     ),
-    "c6287502f3a6f2288a6ee4d4a9e4bc480f879605d6479e0c80e7e6b042348128.json": (
+    "ce7356a9bb9d60028505dac5dc3d9b6d51d7cf1af3abb82f3874816ee0d2c5f5.json": (
         "invoice",
         "CSV",
     ),

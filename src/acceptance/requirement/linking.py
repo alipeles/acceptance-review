@@ -54,42 +54,43 @@ from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain
 
 _STAGE = "obligation linking"
 
-
-_SYSTEM_PROMPT = """You are de-duplicating the obligations derived from one task \
-file.
-
-Each obligation below was derived from exactly one requirement. Because a mandate \
-and its acceptance criteria naturally restate each other, and because a \
-requirement is often followed by a clause giving the reason for it, the same \
-requirement is frequently stated more than once — and each statement produced its \
-own obligation.
+_SYSTEM_PROMPT = """You are de-duplicating a set of obligations derived from the \
+software requirements in one task file.
 
 You are given PAIRS of obligations. For each pair, answer one question: do \
-these two state the same requirement? You are not choosing the best partner for \
-anything and you are not searching for duplicates — each pair is independent, and \
-"no" is the right answer for most of them.
+these two obligations state exactly the same requirement?
+
+Most pairs will not, and "no" is the right answer for most of them. You are not \
+choosing the best partner for anything and you are not searching for duplicates.
 
 **The test for sameness, and the only one that matters.** Two obligations state \
-the same requirement if and only if BOTH hold:
+the exact same requirement if and only if BOTH hold:
 
-1. They are true under exactly the same conditions and false under exactly the \
-same conditions. If you can describe any delivered change that satisfies one and \
-violates the other, they are different requirements.
-2. The same test would demonstrate both. Not two tests in the same file, and not \
+1. They have identical truth conditions. They are true under exactly the same conditions \
+and false under exactly the same conditions. If you can describe any delivered change \
+that satisfies one and not the other, they are different requirements.
+2. The exact same set of tests would demonstrate both. Not two tests in the same file, and not \
 two assertions about the same function — the SAME test, asserting the same thing.
 
-Apply that test explicitly before reporting any pair. Similar wording, a shared \
-subject, and belonging to the same feature are not evidence of sameness; the two \
-conditions above are.
+Apply that test explicitly before reporting any pair.
+
+Note that sameness is transitive: if A and B are the same requirement, and B and C are the same requirement, \
+then A and C are the same requirement. If you are unsure, do not link them.
+
+Similar wording, a shared subject, or belonging to the same feature are not evidence of sameness; \
+only the two conditions above are.
 
 Cases that pass the test:
 - The same demanded behavior stated in different words.
 - A requirement and a clause giving the REASON for that requirement. The reason \
 is not separately checkable, so no test can distinguish them.
-- A constraint and the acceptance criterion that restates it as something a test \
-must assert.
 
 Cases that FAIL the test, and are the common mistakes:
+- A behavior and a requirement to TEST that behavior. "The export writes a header \
+row" and "a test asserts the export writes a header row" are different \
+requirements: code that already writes the header row, with nobody having written \
+the test, satisfies the first and violates the second. Adding the behavior and \
+adding its test are separate pieces of work and separate obligations.
 - A behavior and the technology used to implement it. "The amount is written with \
 two decimal places" and "the file is produced with the standard CSV library" can \
 each hold while the other fails, and no single test shows both.
@@ -105,7 +106,6 @@ the redundancy.
 
 Answer every pair you are given. Answering `false` for all of them is a valid \
 and common outcome."""
-
 
 class _PairVerdict(StrictResponseModel):
     """One answer about one pair.

@@ -506,3 +506,54 @@ def test_two_runs_over_identical_task_text_produce_identical_state_at_both_stage
     assert [o.to_dict() for o in first.obligation_map] == [
         o.to_dict() for o in second.obligation_map
     ]
+
+
+# --- wiring: `decompose` de-duplicates too, not only `check` ----------------
+
+
+def test_the_decompose_command_runs_the_linking_pass(tmp_path, monkeypatch):
+    """Obligation determination is two stages, and `decompose` reports its
+    OUTPUT. A decompose that skipped linking would show a different obligation
+    set from the one `check` reviews — so the breakdown a reader confirms would
+    not be the set every later stage judges.
+
+    Asserted through the CLI entry point rather than the helper, because the
+    defect being guarded is precisely a stage that exists but is not called.
+    """
+    from acceptance import cli
+
+    called: list[int] = []
+    real = cli.link_duplicate_obligations
+
+    def spy(decomposition, client, *args, **kwargs):
+        called.append(len(decomposition.obligations))
+        return real(decomposition, client, *args, **kwargs)
+
+    monkeypatch.setattr(cli, "link_duplicate_obligations", spy)
+    task = tmp_path / "task.md"
+    task.write_text(_TASK)
+    monkeypatch.setattr(
+        cli.RunConfig, "build_client", lambda self: client_dispatching({"_Decomposition": _DERIVED})
+    )
+
+    result, _ = cli.run_decompose(str(task), cli.RunConfig())
+
+    assert called == [2], "decompose must hand its derived obligations to the linking pass"
+    assert len(result.obligations) <= 2
+
+
+def test_the_decompose_command_surfaces_an_unreconciled_group(tmp_path, monkeypatch, capsys):
+    """A rejected clique is the difference between "nothing looked like a
+    duplicate" and "the answers could not be reconciled, so nothing merged".
+    Dropping the log would report the first while the second happened."""
+    from acceptance import cli
+
+    task = tmp_path / "task.md"
+    task.write_text(_TASK)
+    monkeypatch.setattr(
+        cli.RunConfig, "build_client", lambda self: client_dispatching({"_Decomposition": _DERIVED})
+    )
+
+    _, unusable = cli.run_decompose(str(task), cli.RunConfig())
+
+    assert hasattr(unusable, "answers"), "decompose must carry the linking stage's log"
