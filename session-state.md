@@ -62,8 +62,10 @@ no later work depends on it yet.
 
 1. **`undisposed` does not exist.** M1.2.r2 removed it — a response that fails to
    account for a requirement does not parse. The Deliverable's second bullet is
-   literally unimplementable; queued as a drafted comment on #214, implemented as
-   `unread_source` bounding the verdict, which carries the same meaning.
+   literally unimplementable. **Resolved:** corrected on #214 itself
+   (`issuecomment-5244447965`); the bullet is implemented against `unread_source`,
+   which carries the same meaning — unambiguous loss, still invisible to the
+   verdict.
 2. **Scope exclusions yield obligations again** since #153 (`0923f77`), in
    `CODE_ONLY` absence form. The #202 evidence in the issue body ("nine of ten
    scope exclusions stopped producing obligations") predates that, so the
@@ -72,12 +74,14 @@ no later work depends on it yet.
 
 ## Queue — `docs/DEFERRED.md`
 
-Two entries, both open, both for the Gate 1 presentation:
+One entry, open, awaiting the human's call:
 
 - **decision (blocker):** what exempts a declined requirement from the coverage
   bound — #214's Acceptance items 2 and 4 are in tension. Recommended structural
   exemption (≤3 words, no terminal punctuation); rejected uniformity-of-reason.
-- **filing:** the `undisposed` comment on #214 above.
+
+The `undisposed` entry is resolved and deleted — it was a correction to #214, not
+a new filing, and it is posted.
 
 ## Do not rediscover
 
