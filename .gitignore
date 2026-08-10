@@ -20,15 +20,14 @@ htmlcov/
 .env
 .env.*
 
-# Recorded model transcripts and local run artifacts (M0.4/M0.5), plus the
-# checker's own output when dogfooding this repo (M7.3) — all regenerated from
-# the current review, none of it a source file.
-.acceptance/*
-# ...except the checker's ignore config (#105), which is input rather than
-# output. It is the only committed thing under here, and it must stay committed:
-# a fresh clone or a CI run without it puts each dogfood run's own output.log
-# into the diff that run is reviewing, and the review then cannot be replayed.
-!.acceptance/ignore
+# Recorded model transcripts (M0.4/M0.5) and the checker's own output when
+# dogfooding this repo (M7.3) — regenerated per run, not source files.
+#
+# Named individually rather than ignoring `.acceptance/` wholesale: the
+# directory holds input as well as output. `.acceptance/ignore` (#105) is config
+# the checker reads and is committed. Judge anything new here on its own merits.
+.acceptance/cache/
+.acceptance/reviews/
 *.local
 
 # OS / editor
