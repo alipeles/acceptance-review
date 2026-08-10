@@ -43,6 +43,7 @@ from acceptance.coverage.declaration_comparison import (
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
 from acceptance.coverage.open_questions import (
     apply_open_question_resolutions,
+    derive_obligations,
     resolve_open_questions,
 )
 from acceptance.coverage.recommendations import recommend_tests
@@ -245,11 +246,23 @@ def run_review(
     # provenance so a movement in the final set can be attributed to the stage
     # that caused it.
     decomposition = link_duplicate_obligations(derived, client, unusable, link_pair_batch_size)
-    obligations = decomposition.obligations
 
-    # Whole-diff stages below always run: unrequested-change detection and
-    # open-question resolution are about the change as a whole, not about any one
-    # obligation, so there is no unaffected subset to carry forward.
+    # Open-question resolution runs HERE, ahead of every judging stage, because
+    # a question the diff resolves yields an obligation (#214) and that
+    # obligation has to be mapped, judged and rated like any other. Run after
+    # the evidence stages — where it sat until #214 — it would produce an
+    # obligation nothing had judged, which is the silence the change exists to
+    # remove. It depends only on the questions and the diff, so it is free to
+    # move.
+    resolutions = resolve_open_questions(decomposition.open_questions, change_set, client, unusable)
+    open_questions = apply_open_question_resolutions(decomposition.open_questions, resolutions)
+    question_obligations = derive_obligations(open_questions, resolutions)
+    derived_ids = {obligation.id for obligation in question_obligations}
+    obligations = decomposition.obligations + question_obligations
+
+    # Whole-diff stages below always run: unrequested-change detection is about
+    # the change as a whole, not about any one obligation, so there is no
+    # unaffected subset to carry forward.
     fresh_obligations = obligations
     if prior is not None:
         obligations = obligations_to_rederive(
@@ -272,14 +285,19 @@ def run_review(
     # neither can a first run claim one it never made.
     obligations = _apply_indeterminate(obligations, unusable)
 
-    coverages = classify_coverage(obligations, change_set, client, unusable)
-    obligations = _apply_coverage_status(obligations, coverages)
+    # A derived obligation is `addressed` by construction — its resolution had
+    # to cite the hunks that answer the question, so the code is already located
+    # and asking the coverage stage whether it exists is a category error. It is
+    # held out of both the call and the write-back, since `_apply_coverage_status`
+    # nulls the status of any obligation it has no record for.
+    to_classify = [o for o in obligations if o.id not in derived_ids]
+    held_out = [o for o in obligations if o.id in derived_ids]
+    coverages = classify_coverage(to_classify, change_set, client, unusable)
+    obligations = _apply_coverage_status(to_classify, coverages) + held_out
     unrequested = detect_unrequested_changes(obligations, change_set, client, unusable)
     dispositioned = classify_dispositions(
         unrequested, obligations, coverages, change_set, policy, client
     )
-    resolutions = resolve_open_questions(decomposition.open_questions, change_set, client, unusable)
-    open_questions = apply_open_question_resolutions(decomposition.open_questions, resolutions)
     recommendations = recommend_tests(obligations, discriminations, change_set, client, unusable)
 
     obligations_by_id = {obligation.id: obligation for obligation in obligations}
@@ -316,7 +334,9 @@ def run_review(
         declaration = None
         findings.append(declaration_absent_finding())
 
-    completion = derive_verdict(obligations, findings, open_questions)
+    completion = derive_verdict(
+        obligations, findings, open_questions, decomposition.requirement_map
+    )
     if prior is not None:
         delta = compute_delta(prior, obligations, completion.verdict.value)
 

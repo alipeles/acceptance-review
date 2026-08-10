@@ -22,12 +22,20 @@ def _question(question_id: str, text: str) -> OpenQuestion:
 
 def _change_set() -> ChangeSet:
     hunk = DiffHunk(
-        header="@@ -1 +1 @@", old_start=1, old_lines=1, new_start=1, new_lines=1,
+        header="@@ -1 +1 @@",
+        old_start=1,
+        old_lines=1,
+        new_start=1,
+        new_lines=1,
         content="+result = f'-{amount}'",
     )
-    return ChangeSet(base_revision="a", head_revision="b", files=[
-        FileChange(path="pkg.py", status="modified", category="source", hunks=[hunk]),
-    ])
+    return ChangeSet(
+        base_revision="a",
+        head_revision="b",
+        files=[
+            FileChange(path="pkg.py", status="modified", category="source", hunks=[hunk]),
+        ],
+    )
 
 
 def _exploding_client() -> ModelClient:
@@ -54,6 +62,7 @@ def test_diff_resolves_the_question():
                 "resolved": True,
                 "rationale": "The diff formats negatives with a leading minus sign.",
                 "diff_refs": ["pkg.py#0"],
+                "implemented_behavior": "Negative amounts are formatted with a leading minus sign.",
             }
         ]
     }
@@ -77,6 +86,7 @@ def test_diff_does_not_resolve_the_question():
                 "resolved": False,
                 "rationale": "The diff never touches network or timeout handling.",
                 "diff_refs": [],
+                "implemented_behavior": "",
             }
         ]
     }
@@ -106,7 +116,13 @@ def test_unknown_question_id_in_response_is_dropped():
     question = _question("q-1", "A real question")
     response = {
         "resolutions": [
-            {"question_id": "ghost", "resolved": True, "rationale": "...", "diff_refs": []}
+            {
+                "question_id": "ghost",
+                "resolved": True,
+                "rationale": "...",
+                "diff_refs": [],
+                "implemented_behavior": "",
+            }
         ]
     }
 
@@ -121,7 +137,9 @@ def test_unknown_question_id_in_response_is_dropped():
 def test_apply_resolutions_writes_the_judgment_onto_the_question():
     question = _question("q-1", "Minus sign or parentheses?")
     resolution = OpenQuestionResolution(
-        question_id="q-1", resolved=True, rationale="Uses a minus sign.",
+        question_id="q-1",
+        resolved=True,
+        rationale="Uses a minus sign.",
         diff_refs=[],
     )
 
@@ -144,7 +162,9 @@ def test_apply_resolutions_leaves_unjudged_questions_open():
 
 def test_open_question_resolution_round_trips_through_persistence():
     resolution = OpenQuestionResolution(
-        question_id="q-1", resolved=True, rationale="...",
+        question_id="q-1",
+        resolved=True,
+        rationale="...",
         diff_refs=[],
     )
     assert OpenQuestionResolution.from_dict(resolution.to_dict()) == resolution
