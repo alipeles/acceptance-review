@@ -12,59 +12,51 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## No task in flight
+## In flight: #248 — one requirement yields the identical obligation twice
 
-Three parallel lanes ran and all three landed, CI green on each:
+Child of #181. Picked up because `CLAUDE.md`'s sequencing rule puts decomposition
+quality ahead of evidence judgement, and #248 is upstream of #242: its duplicate
+pair is one of the inputs to the cluster #242 cannot merge.
 
-| | | |
-|---|---|---|
-| **#214** | `7573697` (PR #247) | mandate coverage bounds the completion verdict |
-| **#228** | `75fefc4` (PR #246) | a benchmark case yielding no requirements fails instead of scoring |
-| **#244** | `5047088` (PR #255) | an obligation is filed under the requirement its quotation comes from |
+**Gate 1 run** at `4619e78`, on main, clean tree. Run committed at
+`dogfood-logs/248-gate1-run1/`. Agent confirms the breakdown is accurate;
+**human confirmation pending** — presented but not yet signed off. If the next
+session finds this line unchanged, the gate was never closed.
 
-Worktrees and branches for all three are removed. `docs/DEFERRED.md` is empty.
+- 24 requirements, matching the task file exactly; 23 yielded, `completion-01`
+  ("Implementation") deliberately none. No invented obligations, none missing.
+- **No open questions raised**, so the Gate 1 triage table had nothing to apply.
+- One negative finding — an unreconciled linking cluster of four obligations —
+  attributed to **#242**, already filed. A comment on it is queued in
+  `docs/DEFERRED.md`.
 
-## Where #180 stands, since that is what the next session will pick up
+## The plan
 
-**#180 was split** into **#251** (re-judge only on changed inputs), **#252**
-(`strongly_supported` is `caught == total`), **#253** (determinism as one
-component) and **#254** (report an unreproducible rating). #180 stays open as the
-measurement and corpus they close into; see its comment thread for the split.
+Drop an obligation whose description already appears **under the same
+requirement**, in `src/acceptance/requirement/obligations.py`, in `decompose`'s
+`for item in entry.derived():` loop — before `_unique` mints the id, so no
+suffix is minted for a duplicate that is dropped. Record each drop as an
+`UnusableAnswer(stage=_STAGE, field="description", ...)`.
 
-**Do not start those yet.** #244 fixed one decomposition defect and found two
-more — **#248** (one requirement yields the identical obligation twice) and a
-remaining unreconciled-linking cluster. Every one of #251–#254 judges an
-obligation set that is not yet trustworthy, so `CLAUDE.md`'s sequencing rule
-(decomposition quality before evidence judgement) still points at **#181**.
+Two things settled and worth not re-deriving:
 
-**The open empirical question**, worth answering before designing #251: how much
-of #180's measured churn was decomposition redundancy rather than judgement
-variance. Redundant obligations are rated independently, so three obligations
-stating one requirement can carry three different ratings — instability with a
-perfectly consistent judge. `tests/fixtures/rating-stability/` plus the committed
-dogfood pairs are the corpus to answer it against.
+- **Exact string equality**, not normalised. It covers the observed case and
+  cannot collapse two obligations that differ in meaning. The issue recommends
+  it; recorded as a decision in the queue.
+- **Scoped to one requirement's own derivation**, deliberately not to duplicates
+  created when #244 re-files an obligation onto another requirement.
+  `_resolve_attributions`'s docstring already declares that case the linking
+  stage's, and reversing it here would undo #244.
 
-**The design in #251 is settled and was the human's**, not the agent's: do not
-re-judge a criterion whose own inputs are unchanged; when they did change, give
-the judgement the stored rating plus the input delta and require a changed rating
-to name the change it rests on. Per-criterion request partitioning was
-**considered and rejected** — under carry-forward an unchanged criterion is never
-sent to the model at all. The issue records why, so it need not be re-litigated.
-
-## Filed this session
-
-**#244** (fixed and merged), **#248**, **#249**, **#250**, **#251**, **#252**,
-**#253**, **#254**. All attached to their umbrellas.
+`_Yielded` carries at least one obligation structurally and dedup keeps the
+first, so "never left holding none" holds by construction rather than by check.
 
 ## Do not rediscover
 
 - **A prompt change invalidates only THAT STAGE's transcripts**, not the whole
-  cache — `request_key` hashes each request individually. CLAUDE.md said
-  otherwise until this session and the wrong reading had already cost one lane a
-  near-unnecessary serialisation.
+  cache — `request_key` hashes each request individually.
 - **`git branch -d` refuses every squash-merged branch.** The branch commits
-  never enter main's history. Confirm via `gh pr view <n> --json state` and then
-  `-D`; do not assume the refusal means unmerged work.
+  never enter main's history. Confirm via `gh pr view <n> --json state` then `-D`.
 - **`git stash` mid-task reverts the working tree wholesale.** Use a second
   worktree or `git show` to inspect a baseline instead.
 - **A `check` over a new task file needs `--mode record`** and makes live calls;
@@ -78,16 +70,15 @@ sent to the model at all. The issue records why, so it need not be re-litigated.
 - **Obligation ids are minted per response, not stable across runs** (#231).
 - **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
 
-## Parallel lanes — what worked
+## Where the rest of the queue stands
 
-Worktrees under `~/acceptance-worktrees/`, outside Google Drive, one `.venv`
-each, each driven from a session whose cwd is that worktree. Conditions that held
-and should hold again:
+**#180's split** — #251 (re-judge only on changed inputs), #252
+(`strongly_supported` is `caught == total`), #253 (determinism as one component),
+#254 (report an unreproducible rating) — stays parked behind #181. Each judges an
+obligation set that is not trustworthy yet. #251's design is settled and was the
+human's; see the issue.
 
-- **At most one lane may touch a model prompt.** #244 was that lane; the other
-  two touched none.
-- **Rebase early.** Both later lanes conflicted only in `current-task.md` and
-  `session-state.md`, which every lane rewrites wholesale.
-- **Lanes should tell each other what moved.** #214's handover naming the exact
-  regions it had changed in `pipeline.py` and `review_state.py` made #244's
-  rebase a single trivial conflict.
+**The open empirical question** before designing #251: how much of #180's
+measured churn was decomposition redundancy rather than judgement variance.
+`tests/fixtures/rating-stability/` plus the committed dogfood pairs are the
+corpus. #248 shrinks one source of that redundancy.
