@@ -21,6 +21,7 @@ from acceptance.review_state import (
     AdmissibleEvidence,
     CompletionVerdict,
     Obligation,
+    MandateCoverage,
     RequirementMap,
     Review,
     TestRecommendation,
@@ -80,7 +81,12 @@ def render_report(review: Review) -> str:
     lines.append("")
 
     if review.requirement_map is not None:
-        lines.extend(_mandate_coverage_block(review.requirement_map))
+        lines.extend(
+            _mandate_coverage_block(
+                review.requirement_map,
+                completion.mandate_coverage if completion is not None else None,
+            )
+        )
         lines.append("")
 
     lines.append("Unrequested changes:")
@@ -222,7 +228,34 @@ def _delta_block(delta) -> list[str]:
     return lines
 
 
-def _mandate_coverage_block(requirement_map: RequirementMap) -> list[str]:
+def _coverage_verdict_line(coverage: MandateCoverage | None) -> list[str]:
+    """What the coverage figure meant for the verdict (#214).
+
+    The count above says how many requirements yielded obligations; it does not
+    say whether that was enough to judge the mandate, and those are different
+    questions once a decline is trusted. Stated here rather than left for the
+    reader to infer, because the whole defect was a review being confident about
+    a shrinking fraction of the mandate without saying the fraction shrank.
+    """
+    if coverage is None:
+        return []
+    lines = []
+    if coverage.declined_requirements:
+        lines.append(
+            f"  {len(coverage.declined_requirements)} deliberately declined, taken at "
+            "face value and not counted against coverage"
+        )
+    if coverage.unjudged_requirements:
+        lines.append(
+            f"  {len(coverage.unjudged_requirements)} could not be judged "
+            f"({', '.join(coverage.unjudged_requirements)}) — this bounds the verdict"
+        )
+    return lines
+
+
+def _mandate_coverage_block(
+    requirement_map: RequirementMap, coverage: MandateCoverage | None = None
+) -> list[str]:
     """Which requirements of the mandate produced nothing (M1.2.r1, DR-202).
 
     This section exists because its absence was the defect. A requirement that
@@ -245,6 +278,7 @@ def _mandate_coverage_block(requirement_map: RequirementMap) -> list[str]:
     lines = [
         f"Mandate coverage: {total - len(unyielding)} of {total} requirements yielded obligations"
     ]
+    lines.extend(_coverage_verdict_line(coverage))
     if not unyielding:
         lines.append(_EMPTY)
         return lines

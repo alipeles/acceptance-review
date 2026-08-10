@@ -25,7 +25,13 @@ from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_section
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.model_base import PersistableModel
-from acceptance.review_state import ChangeSet, Link, OpenQuestion
+from acceptance.review_state import (
+    ChangeSet,
+    Link,
+    Obligation,
+    ObligationType,
+    OpenQuestion,
+)
 
 _STAGE = "open-question judgment"
 
@@ -47,7 +53,21 @@ guess which reading the diff intends, it is not resolved. When resolved, cite
 `diff_refs` (labels like `path#0`) for the hunks that answer it, and a short
 `rationale` explaining what the diff shows. When not resolved, still return a
 short `rationale` (why the diff doesn't settle it) and leave `diff_refs`
-empty."""
+empty.
+
+When resolved, also return `implemented_behavior`: ONE sentence stating the
+behavior the change committed to, written as a requirement about the software
+— not as a comment about the diff or about this review.
+
+    good: "Retries use exponential backoff."
+    bad:  "The diff implements retries with exponential backoff, so the
+           question of which strategy was intended is settled."
+
+The difference matters: this sentence becomes an obligation that later stages
+match tests against, so it must describe the behavior a test could exercise.
+Write it in the present tense, about the system, with no reference to the
+question, the diff, or the fact that it was resolved. When NOT resolved, return
+an empty string for it."""
 
 
 class OpenQuestionResolution(PersistableModel):
@@ -57,6 +77,12 @@ class OpenQuestionResolution(PersistableModel):
     resolved: bool
     rationale: str
     diff_refs: list[DiffRef] = Field(default_factory=list)
+    # The behavior the change committed to, as a requirement-shaped sentence
+    # (#214). Empty unless resolved. This is the one thing code cannot write
+    # for itself: `rationale` explains what the diff SHOWS, which reads as
+    # commentary on the review, and an obligation built from it would be
+    # matched against tests as commentary.
+    implemented_behavior: str = ""
 
 
 class _Judged(StrictResponseModel):
@@ -64,6 +90,7 @@ class _Judged(StrictResponseModel):
     resolved: bool
     rationale: str
     diff_refs: list[str]
+    implemented_behavior: str
 
 
 class _Judgments(StrictResponseModel):
@@ -99,9 +126,7 @@ def resolve_open_questions(
         "question_id": [question.id for question in open_questions],
         "diff_refs": list(label_to_ref),
     }
-    result = client.complete(
-        messages, constrain(_Judgments, allowed), parse_as=_Judgments
-    )
+    result = client.complete(messages, constrain(_Judgments, allowed), parse_as=_Judgments)
     if unusable is not None:
         unusable.record(scan(result, allowed, _STAGE))
 
@@ -118,6 +143,9 @@ def resolve_open_questions(
                 resolved=judged.resolved,
                 rationale=judged.rationale,
                 diff_refs=resolve_refs(judged.diff_refs, label_to_ref),
+                implemented_behavior=(
+                    judged.implemented_behavior.strip() if judged.resolved else ""
+                ),
             )
         )
     # A question the model didn't return a judgment for stays open rather
@@ -161,3 +189,78 @@ def apply_open_question_resolutions(
             )
         )
     return updated
+
+
+def derived_obligation_id(question_id: str) -> str:
+    """The id of the obligation derived from a resolved question (#214).
+
+    A pure function of the question's id, computed here rather than minted by
+    the model, for two reasons that happen to point the same way. This task
+    requires byte-identical review state across two runs over identical input,
+    which a per-response id cannot give (#231). And #180's design re-judges an
+    obligation only when its own inputs changed, so an id that moved between
+    runs would present as one obligation vanishing and another appearing — it
+    would never carry forward, and would silently re-judge while looking stable.
+
+    Single-sourced because mandate coverage joins requirements to their derived
+    obligations through it; a second spelling anywhere would silently under-count
+    coverage.
+    """
+    return f"{question_id}-as-implemented"
+
+
+def derive_obligations(
+    open_questions: list[OpenQuestion], resolutions: list[OpenQuestionResolution]
+) -> list[Obligation]:
+    """Turn each resolved open question into the obligation it implies (#214).
+
+    An ambiguity the builder settled by implementing one reading is a behavior
+    they committed to, and it must not ship untested. Before this, a resolved
+    question produced nothing: it left `resolved=True` and a rationale, reached
+    none of `derive_verdict`'s inputs, and so an implementation choice nobody
+    had tested could not lower the verdict. That is the same silence #214 is
+    about, wearing a different label.
+
+    The obligation is **addressed by construction**. Resolution had to cite the
+    hunks that answer the question, so the code is already located and it is a
+    category error to ask the coverage stage whether it exists. It therefore
+    rides ONE axis — is the chosen behavior tested — and reaches the verdict
+    through the ordinary weak-evidence path rather than through any new rule.
+
+    Everything except the behavior sentence is fixed here rather than inferred:
+    `explicit=False` because the obligation is not stated in the mandate (which
+    is exactly what that field means), and `functional` because a settled
+    implementation choice is a behavior. `importance` is carried from the
+    question rather than defaulted — it is recorded data about the ambiguity,
+    not a guess.
+
+    A resolution with no citation yields nothing. The prompt forbids resolving
+    without one, so such an answer is an assertion rather than a finding, and
+    building an obligation on it would manufacture a test demand out of a claim
+    the review could not substantiate.
+    """
+    by_id = {question.id: question for question in open_questions}
+    derived: list[Obligation] = []
+    for resolution in resolutions:
+        question = by_id.get(resolution.question_id)
+        if question is None or not resolution.resolved:
+            continue
+        behavior = resolution.implemented_behavior.strip()
+        if not behavior or not resolution.diff_refs:
+            continue
+        derived.append(
+            Obligation(
+                id=derived_obligation_id(question.id),
+                description=behavior,
+                type=ObligationType.FUNCTIONAL,
+                importance=question.importance,
+                explicit=False,
+                observable_behavior=behavior,
+                # Links back to the task text that was ambiguous, so the derived
+                # obligation satisfies typed-and-linked like any other.
+                source_spans=list(question.source_spans),
+                coverage_status="addressed",
+                coverage_refs=[f"{ref.file}#{ref.hunk_header}" for ref in resolution.diff_refs],
+            )
+        )
+    return derived
