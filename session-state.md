@@ -12,87 +12,83 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## No task in flight
+## In flight — #234, branch `234-materialization-determinism`
 
-**#232 + #219 + #230 landed** as `14b2549` (PR #235, squash merge). `main` is
-synced. `current-task.md` still holds that bundle's mandate — stale, and the next
-task overwrites it at Gate 1.
+`test_materialization_is_deterministic` fails intermittently in CI: two
+materializations of `07-declaration-mismatch` in one process produced different
+`head_sha`. Child of #184. A parallel session holds #153 — do not touch it.
 
-## Next task — #153, and why it is next
+Branched from `4b78d62`; no implementation committed yet.
 
-**#153: scope exclusions carry no meaning downstream.** #235 made this *more*
-true, deliberately and with the tradeoff recorded: exclusions now decline
-uniformly, so nothing checks that one was respected. The agreed design is in
-[#153's comment](https://github.com/alipeles/acceptance-review/issues/153#issuecomment-5241310422):
+## Gate 1 — clean at `4b78d62`, confirmed by Claude, presented for human sign-off
 
-- Exclusions **yield obligations again**, marked as admitting **code evidence
-  only**, with no test-support score at Gate 2.
-- That marking is a **third axis** on `Obligation`, not an obligation type.
-  `type` is what the obligation is; `coverage_status` is whether the code
-  responds; `evidence_class` is whether the tests discriminate; this is which
-  kinds of evidence apply at all. `review_state.py` already documents keeping
-  those axes separate.
-- **Open design point, to settle when implementing:** evidence for an exclusion
-  is an *absence*, so it has no location to link to. Non-violation should
-  probably be a completeness claim over the examined change set — "every change
-  was checked against this exclusion and none breaches it" — rather than a
-  listing of every file as supporting evidence. That needs an answer for the
-  typed-and-linked invariant (link to the scope examined) and for evidence-tier
-  discipline (a partial scan must not claim completeness).
+`dogfood-logs/234-gate1-run1` and `-run2`. Run 2 is the clean one: 13
+requirements, 10 obligations, 3 exclusions disposed of uniformly, **no open
+questions**.
 
-Overlaps #148 (code-evident obligations); likely wants that mechanism.
+Run 1 raised one finding: a bare `Implementation` bullet under Completion
+expectations was disposed of with the reason *"out of scope for this change"* —
+inverting the section it came from. Queued as a filing against **#181**; the
+weak bullet was removed under the sanctioned rewrite and the gate re-armed.
 
-## What #232/#219/#230 shipped
+## The cause is identified — this is the load-bearing part
 
-- **`ObligationType.TEST_DEMAND`**, and spec §7.3 gains it.
-  `docs/DR-232-test-demand-obligation-type.md`.
-- Derivation picks the type from the requirement's own text, never because
-  another bullet asks for a test of the same behaviour.
-- Scope exclusions decline uniformly; the reason may not state anything the
-  change must hold.
-- **Linking skips a mixed pair** rather than asking
-  (`_can_state_one_requirement`).
-- `tests/prompts/test_decomposition_prompt.py` — new recorded corpus, 18 tests,
-  asserting on the type rather than on substrings.
+**`git add -A` trusted a stale index stat-cache and re-used the base blob.**
+Proven, not inferred:
 
-Measured on this repo's task file: exclusions inverted 4/6 → **0/6**; Completion
-expectations keeping their demand 0/5 → **5/5 typed**; invented framing on
-Constraints 3/8 → **0/8**; behaviour↔test merges 3 → **0**.
+- The head commit recorded `base/users.py`'s content while adding
+  `head/test_users.py`. Rebuilding exactly that tree by hand reproduces
+  `1f50fdb860fdaca912ad300bd7ae0774e0eab7eb` — the CI failure's `first.head_sha`,
+  to the digit. The correct tree is `143940c7e9c9…5d73d697f4ade`, CI's `second`.
+- **07 is the only archetype whose `base/` and `head/` counterparts are the same
+  size** — `users.py`, 60 bytes both, different content. Every other fixture's
+  head file differs in size, so git always re-hashes it. That is why exactly one
+  archetype ever failed.
+- `shutil.copy2` preserves mtime and mode. Same size + same mtime + same mode is
+  all `git add` compares before deciding a file is unchanged.
+- Deterministic repro on any platform: run materialization with
+  `core.checkStat=minimal` and `core.trustctime=false`, which is the comparison
+  the runner effectively made. Current code then emits the bad SHA every time.
 
-## Gate 2 was not clean, and #235 merged anyway
+**Fix:** empty the index before staging, so `add -A` has no cached stat to trust
+and hashes from content — `git read-tree --empty` then `git add -A`, in
+`materialize_archetype`. Verified at the git level under the hostile config:
+bad SHA before, correct SHA after.
 
-On an explicit human call. 15 obligations, all addressed, no open questions, **6
-rated below strongly supported** — none an unmet requirement. The gate does not
-converge: between Gate 2 runs 1 and 2 the only change was two added tests, and
-five untouched obligations degraded. Filed on **#180** with the evidence.
-Analysis in `dogfood-logs/232-gate2-run2/judgement.md`.
+## Gate 2 — clean at `3c9a56d`, presented for human sign-off
+
+`NO-MATERIAL-GAPS`. 10 obligations, all addressed, all strongly supported, no
+open questions, no recommended tests. `dogfood-logs/234-gate2-run1` (INCOMPLETE)
+and `-run2` (clean). Mapping transcripts checked per DR-164 — the six relevant
+tests all mapped; the empties are unrelated candidates.
+
+Run 1 found two obligations genuinely untested, and it was right: forcing the
+hostile condition is not the same claim as pinning invariance under it. Two
+tests added.
+
+Full suite green: 952 passed. Each of the three determinism tests was run
+against the unfixed code and observed to fail.
+
+## Next
+
+Human sign-off, then PR. Nothing pushed.
 
 ## Do not rediscover
 
+- **Back-to-back materialization does not reproduce this** — 20 iterations over
+  all 13 fixtures, 0 mismatches. It needs the stat-comparison condition forced.
 - **`.acceptance/ignore` is committed** (#105) and holds `dogfood-logs/`. Without
   it, `check` reads the working tree as head and a run's own redirected
-  `output.log` joins the diff it is reviewing, so the run cannot be replayed.
-  `.gitignore` names `.acceptance/cache/` and `.acceptance/reviews/`
-  individually — the directory holds input as well as output.
-- **`gh pr create` with "Closes #a, #b, #c" only closes the first.** #219 and
-  #230 had to be closed by hand after #235 merged.
-- **Two prompt attempts failed before typing worked.** Told to keep the test
-  framing, derivation began *inventing* it on Constraints that demand no test.
-  DR-232.
-- **The linking prompt's criteria point the wrong way on a behaviour/test pair**
-  — the test that asserts X is also the evidence for X, so "the same test would
-  demonstrate both" reads true. Hence enforcement in code.
+  `output.log` joins the diff it is reviewing.
+- **`decompose --mode record` writes nothing to stdout when redirected** — pipe
+  through `tee`, which works.
+- **`gh pr create` with "Closes #a, #b, #c" only closes the first.**
 - **Obligation ids are minted per response, not stable across runs** (#231).
-- **`decompose|check --mode record` writes nothing to stdout when redirected.**
-- **Python here is 3.10**; repo is `alipeles/acceptance-review`.
+- **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
 
 ## Queue — `docs/DEFERRED.md`
 
-One open: the missing-transcript error blames an edited prompt, which was wrong
-at Gate 2 and cost a diagnostic cycle. Needs a parent — #184 is the closest fit.
-
-Filed this session: **#234** (child of #184), comments on **#230**, **#212**,
-**#180** and **#153**.
+One open: the inverted disposal reason above, drafted against #181.
 
 ## Known open
 
