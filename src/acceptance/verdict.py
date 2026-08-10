@@ -30,6 +30,7 @@ is `no_material_gaps` even alongside an advisory declaration overclaim.
 from __future__ import annotations
 
 from acceptance.review_state import (
+    AdmissibleEvidence,
     CompletionResult,
     CompletionVerdict,
     Finding,
@@ -73,9 +74,18 @@ def derive_verdict(
     weak_evidence: list[str] = []
     non_code: list[str] = []
     indeterminate: list[str] = []
+    code_only: list[str] = []
     for obligation in obligations:
         if obligation.description in gap_obligations:
             material_gaps.append(obligation.id)  # code missing/partial — a coverage gap
+            continue
+        if obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY:
+            code_only.append(obligation.id)
+            # #153: the test-evidence axis does not apply, so no value on it —
+            # including None — is a gap. It still reached the coverage-gap check
+            # above, which is the axis that DOES apply: a breached boundary is a
+            # material gap like any other. Skipping the whole obligation instead
+            # would make an exclusion unfalsifiable.
             continue
         evidence = obligation.evidence_class
         if evidence == "requires_other_evidence":
@@ -128,9 +138,22 @@ def derive_verdict(
             limitations=[_STATIC_CAVEAT],
             escalation_candidates=indeterminate,
         )
+    # Only the obligations the test-evidence axis applies to can be described as
+    # test-supported. Saying "every obligation" while a boundary was confirmed by
+    # the absence of work would claim discriminating tests that do not and cannot
+    # exist — the §3.7 bound on positive results, applied to the sentence itself.
+    if code_only:
+        rationale = (
+            f"{len(obligations) - len(code_only)} obligation(s) addressed and strongly "
+            f"supported by discriminating tests; {len(code_only)} boundary "
+            "obligation(s) confirmed from code evidence, which is the only kind "
+            "that applies to them."
+        )
+    else:
+        rationale = "Every obligation is addressed and strongly supported by discriminating tests."
     return CompletionResult(
         verdict=CompletionVerdict.NO_MATERIAL_GAPS,
-        rationale="Every obligation is addressed and strongly supported by discriminating tests.",
+        rationale=rationale,
         limitations=[_POSITIVE_CAVEAT],
     )
 
@@ -138,7 +161,9 @@ def derive_verdict(
 def _incomplete_rationale(material_gaps: list[str], weak_evidence: list[str]) -> str:
     parts = []
     if material_gaps:
-        parts.append(f"{len(material_gaps)} obligation(s) not fully implemented ({', '.join(material_gaps)})")
+        parts.append(
+            f"{len(material_gaps)} obligation(s) not fully implemented ({', '.join(material_gaps)})"
+        )
     if weak_evidence:
         parts.append(
             f"{len(weak_evidence)} obligation(s) with non-discriminating test evidence "

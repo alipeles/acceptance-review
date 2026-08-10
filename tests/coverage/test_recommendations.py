@@ -11,7 +11,14 @@ import pytest
 from acceptance.coverage.recommendations import recommend_tests
 from acceptance.llm import SchemaValidationError
 from acceptance.evidence.discrimination import ObligationDiscrimination, PlausibleDefect
-from acceptance.review_state import ChangeSet, DiffHunk, FileChange, Obligation, ObligationType
+from acceptance.review_state import (
+    AdmissibleEvidence,
+    ChangeSet,
+    DiffHunk,
+    FileChange,
+    Obligation,
+    ObligationType,
+)
 from tests.support import client_returning as _client_returning
 
 
@@ -235,3 +242,69 @@ def test_every_weak_obligation_gets_exactly_one_recommendation():
     )
 
     assert [r.obligation_id for r in recommendations] == ["daily-rate", "proration"]
+
+
+# --- #153: no test is prescribed for a boundary obligation --------------------
+
+
+def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
+    """#153's acceptance, and #146's original complaint. The exclusion
+    "Converting the rest of the suite is out of scope" was rated
+    partially_supported and earned a test recommendation — but there is no
+    behavioural test for "we didn't also do something else", so the prescription
+    named evidence that cannot exist.
+
+    The exploding client is the assertion that matters: a boundary obligation
+    must not merely be dropped from the output, it must not reach the model at
+    all. A recommendation call that ran and returned nothing would pass a
+    check on the result alone while still costing a call and a transcript.
+    """
+    boundary = Obligation(
+        id="pagination",
+        description="The change does not alter how the invoice list is paginated",
+        type=ObligationType.INVARIANT,
+        importance="critical",
+        explicit=True,
+        observable_behavior="pagination code appearing in the diff",
+        evidence_class="unsupported",
+        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+    )
+
+    result = recommend_tests([boundary], [], _change_set(), _exploding_client())
+
+    assert result == []
+
+
+def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+    """The boundary the test above cannot draw on its own: filtering must remove
+    the boundary obligation from the batch without suppressing the real gap
+    sitting next to it. Asserting the recommendation names the ordinary
+    obligation, not merely that something came back."""
+    ordinary = _obligation(
+        "daily-rate", "Daily rate is monthly_price divided by days_in_month", "nominally_supported"
+    )
+    boundary = Obligation(
+        id="pagination",
+        description="The change does not alter how the invoice list is paginated",
+        type=ObligationType.INVARIANT,
+        importance="critical",
+        explicit=True,
+        observable_behavior="pagination code appearing in the diff",
+        evidence_class="unsupported",
+        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+    )
+    client = _client_returning({
+        "recommendations": [{
+            "obligation_id": "daily-rate",
+            "required_inputs": "A month whose length is not 30, e.g. days_in_month=28.",
+            "boundary_conditions": "0 days used and a full month.",
+            "expected_output": "price/28 differs from price/30.",
+            "required_assertions": ["assert prorate(280, 14, 28) == 140.0"],
+            "plausible_defect": "hard-codes /30 instead of /days_in_month",
+            "repo_conventions": "test_billing.py",
+        }]
+    })
+
+    result = recommend_tests([ordinary, boundary], [], _change_set(), client)
+
+    assert [r.obligation_id for r in result] == ["daily-rate"]

@@ -45,6 +45,7 @@ from acceptance.partition import partition
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import ParsedTaskFile
 from acceptance.review_state import (
+    AdmissibleEvidence,
     Disposition,
     Obligation,
     ObligationType,
@@ -52,6 +53,7 @@ from acceptance.review_state import (
     RequirementDisposition,
     RequirementMap,
     RequirementRef,
+    RequirementSection,
 )
 from acceptance.source_ref import find_span
 from acceptance.supplied_ids import (
@@ -168,10 +170,11 @@ Each disposition is one of:
   a question instead of inventing an obligation. List the question ids in
   `open_question_ids`.
 - `no_obligation` — the requirement imposes nothing checkable on the delivered
-  change. Give the `reason`. Two narrow cases, and no others: a section marker
+  change. Give the `reason`. One narrow case, and no other: a section marker
   such as "Implementation" or "Deliverable", standing alone with no requirement
-  under it; and a scope exclusion, per SCOPE EXCLUSIONS below. It is NOT the
-  answer for a requirement that is merely hard to phrase.
+  under it. It is NOT the answer for a requirement that is merely hard to
+  phrase, and it is NOT the answer for a scope exclusion — see SCOPE EXCLUSIONS
+  below.
 
 REFERENCES YOU CANNOT RESOLVE
 
@@ -196,35 +199,44 @@ answer with `no_obligation`.
 
 SCOPE EXCLUSIONS
 
-A `## Scope exclusions` section names work this change must NOT do. Dispose of
-every requirement in it as `no_obligation`.
+A `## Scope exclusions` section names work this change must NOT do. Every bullet
+under it is `yielded`, and produces EXACTLY ONE obligation stating the ABSENCE
+of the excluded work:
+
+    "How finely a requirement is split into obligations, which is #117."
+    ->  "The change does not alter how finely a requirement is split into
+         obligations."
+
+Read that form closely, because a wrong form sits on either side of it.
+
+WRONG — the excluded work restated as work to do:
+
+    NOT -> "Split each requirement at the level of distinct computations."
+
+WRONG — the excluded work asserted as a property to hold:
+
+    NOT -> "Keep the current split granularity."
+    NOT -> "Preserve the current split granularity."
+
+Both make the boundary into a requirement OF the change, which is the opposite
+of what the bullet says. The right form asserts only that the change did not go
+there. Its presence in the diff refutes it; nothing else about the change bears
+on it at all.
 
 This is the one place the positive-restatement rule above does not apply,
 because the rule inverts here. "Don't change the checkout behavior" names a
 PROPERTY, and its positive form — "the checkout behavior is preserved" — says
-the same thing. A scope exclusion names WORK, and work has no positive form.
-Restating "whether obligation ids are stable across edits, which is #231" as a
-property that must hold produces "keep obligation ids stable across edits" —
-the excluded work, asserted as a requirement of this change. That is the
-opposite of what the bullet says, and it is the failure this rule exists to
-prevent.
+the same thing. A scope exclusion names WORK, and work has no positive form, so
+the only faithful statement of it is the negative one.
 
-The `reason` names what is out of scope, in the bullet's own terms, and asserts
-nothing about the delivered change:
+`observable_behavior` names what a reader would look for IN THE CHANGE to find a
+breach — the work whose presence would refute the obligation — and never what a
+test would assert. No test can demonstrate that work was not done, and none will
+be asked for.
 
-    "How finely a requirement is split into obligations, which is #117."
-    reason -> "Names split granularity as out of scope for this change."
-    NOT    -> "Preserve the current split granularity."
-    NOT    -> "Split each requirement at the level of distinct computations."
-
-A reason that says the change must preserve, keep, or maintain something is
-wrong, and so is one that restates the excluded work as a thing to do. Both are
-an obligation written into a free-text field, where nothing downstream can act
-on it.
-
-Every bullet under one `## Scope exclusions` heading gets the same disposition
-as its siblings — they are the same kind of statement. If one of them reads like
-it demands work, re-read it: it is naming the work it excludes.
+Every bullet under one `## Scope exclusions` heading is treated the same way as
+its siblings — they are the same kind of statement. If one of them reads like it
+demands work, re-read it: it is naming the work it excludes.
 
 Each requirement's obligations are carried INSIDE its own disposition, so every
 obligation belongs to exactly one requirement. Account for each requirement on
@@ -483,9 +495,27 @@ def decompose(
         # Obligations are lifted out of their dispositions in registry order, so
         # the flat list downstream reads in document order and two runs over the
         # same input produce it identically.
+        # Which kinds of evidence apply is decided from the parse, never from
+        # the model's answer. The section a requirement was parsed out of is
+        # already known here (`RequirementRef.section`), so an obligation
+        # derived from `## Scope exclusions` is marked code-evidence-only
+        # structurally — the same move #232 made for TEST_DEMAND and #219 for
+        # sibling dispositions, both of which failed while they depended on the
+        # model restating a distinction it had already been told.
+        exclusion_ids = {
+            requirement.id
+            for requirement in registry
+            if requirement.section is RequirementSection.EXCLUSION
+        }
+
         for entry in kept:
             if not isinstance(entry, _Yielded):
                 continue
+            admissible = (
+                AdmissibleEvidence.CODE_ONLY
+                if entry.requirement_id in exclusion_ids
+                else AdmissibleEvidence.CODE_AND_TESTS
+            )
             for item in entry.derived():
                 final_id = _unique(item.id, seen_ids)
                 derived_ids.setdefault(entry.requirement_id, []).append(final_id)
@@ -498,6 +528,7 @@ def decompose(
                         explicit=item.explicit,
                         observable_behavior=item.observable_behavior,
                         source_spans=_spans(parsed.source, item.source_quote),
+                        admissible_evidence=admissible,
                     )
                 )
 

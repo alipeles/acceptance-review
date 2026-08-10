@@ -392,12 +392,12 @@ _APPROVED_TRANSCRIPTS = {
     # batched — and the invoice task's remaining pairs fit a single call. The
     # count dropping is the structural skip, visible in the corpus.
     # derivation
-    "260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json": (
+    "a0b2b1ae94a56b20cc78a174c09dfdfbe3911d4d862ebfcf6cd074faa1ae8f2a.json": (
         "invoice",
         "CSV",
     ),
     # linking sweep
-    "56722b85b43e95eb9db01f44f8368dc897e47b66854ce8967c727ba2a5080f19.json": (
+    "1592dda569022768575a581e725051052a34353bf51c6f283b2e31b461381f5a.json": (
         "invoice",
         "CSV",
     ),
@@ -412,11 +412,11 @@ _APPROVED_TRANSCRIPTS = {
     # derivation at 8 requirements per call and this file states 11. Both
     # batches carry the fixture-level markers: DR-204 puts the WHOLE registry
     # in every batch's prompt, and only `answer_for` is scoped.
-    "2664c74347ca65d1a37f2ce03fe5ef447e860e2a495e3e1184e9cf86d72b109c.json": (
+    "4f885a7a6159669b7a6d63db59b006886ae3225718c569c7d7bf20b0e1fe1fd3.json": (
         "invoice",
         "CSV",
     ),
-    "b6bc9aab905d31161fabaa5943a6858cb9e126edc11cdfdbe0fa48f2fd192c75.json": (
+    "4294015ff795c4ca1570817fb4f68cbd02a844d5a18f7201a770972038666590.json": (
         "invoice",
         "CSV",
     ),

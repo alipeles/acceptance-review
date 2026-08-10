@@ -194,6 +194,13 @@ def _apply_coverage_status(
                         if coverage
                         else []
                     ),
+                    # #153: what the completeness claim covered, for a boundary
+                    # obligation confirmed by non-violation.
+                    "scope_examined": (
+                        [f"{ref.file}#{ref.hunk_header}" for ref in coverage.scope_examined]
+                        if coverage
+                        else []
+                    ),
                 }
             )
         )

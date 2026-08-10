@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
+    AdmissibleEvidence,
     CompletionVerdict,
     Obligation,
     RequirementMap,
@@ -28,6 +29,29 @@ from acceptance.review_state import (
 _EMPTY = "  (none)"
 _NO_CODE = "(no corresponding change)"
 _NO_TESTS = "(no mapped test)"
+# Deliberately not phrased as an absence. "(no mapped test)" under a boundary
+# obligation would read as a gap; this says the axis does not apply (#153).
+_NOT_APPLICABLE = "not applicable — confirmed by code evidence alone"
+
+
+def _examined_claim(scope_examined: list[str]) -> str:
+    """The non-violation claim, stated over the scope it actually covered.
+
+    Names the number of changes and files compared rather than asserting
+    "everything": the change set is itself filtered, so "everything" would claim
+    more than was inspected. With nothing examined there is no claim to make —
+    an empty diff cannot evidence non-violation, and saying so is the honest
+    answer rather than a vacuous pass.
+    """
+    if not scope_examined:
+        return "(no changes were examined — non-violation is not established)"
+    files = {ref.split("#", 1)[0] for ref in scope_examined}
+    changes = "change" if len(scope_examined) == 1 else "changes"
+    file_word = "file" if len(files) == 1 else "files"
+    return (
+        f"examined {len(scope_examined)} {changes} across {len(files)} {file_word}; "
+        "none breaches this boundary"
+    )
 
 
 def render_report(review: Review) -> str:
@@ -218,7 +242,9 @@ def _mandate_coverage_block(requirement_map: RequirementMap) -> list[str]:
         return []
 
     unyielding = requirement_map.unyielding()
-    lines = [f"Mandate coverage: {total - len(unyielding)} of {total} requirements yielded obligations"]
+    lines = [
+        f"Mandate coverage: {total - len(unyielding)} of {total} requirements yielded obligations"
+    ]
     if not unyielding:
         lines.append(_EMPTY)
         return lines
@@ -294,19 +320,35 @@ def _obligation_block(
         for ref in obligation.coverage_refs:
             item += 1
             lines.append(f"         {index}.{item}  {ref}")
+    elif obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY:
+        # #153: one completeness claim over the examined set, never a listing.
+        # Printing every hunk here would read as "these changes support the
+        # obligation" when the claim is "these were checked and none breaches
+        # it" — and under a boundary obligation that is the whole diff, which
+        # is noise on top of being wrong. The count is what makes the claim
+        # auditable: it says how much "none of them" ranged over.
+        lines.append(f"         {_examined_claim(obligation.scope_examined)}")
     else:
         lines.append(f"         {_NO_CODE}")
 
-    evidence = (obligation.evidence_class or "unclassified").replace("_", " ")
-    tier = obligation.achieved_evidence_tier
-    tier_name = tier.name.lower().replace("_", "-") if tier is not None else "none"
-    lines.append(f"       test evidence: {evidence}  [tier: {tier_name}]")
-    if obligation.test_evidence:
-        for test_id in obligation.test_evidence:
-            item += 1
-            lines.append(f"         {index}.{item}  {test_id}")
+    # #153: a boundary obligation is confirmed by the absence of excluded work,
+    # so it has no test axis to render. Printing "test evidence: unsupported /
+    # no tests" under it is not merely noise — it reads identically to a
+    # requirement whose tests are missing, which is the distinction this line
+    # exists to preserve. State instead that the axis does not apply.
+    if obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY:
+        lines.append(f"       test evidence: {_NOT_APPLICABLE}")
     else:
-        lines.append(f"         {_NO_TESTS}")
+        evidence = (obligation.evidence_class or "unclassified").replace("_", " ")
+        tier = obligation.achieved_evidence_tier
+        tier_name = tier.name.lower().replace("_", "-") if tier is not None else "none"
+        lines.append(f"       test evidence: {evidence}  [tier: {tier_name}]")
+        if obligation.test_evidence:
+            for test_id in obligation.test_evidence:
+                item += 1
+                lines.append(f"         {index}.{item}  {test_id}")
+        else:
+            lines.append(f"         {_NO_TESTS}")
 
     # The recommendation belongs to the axis it explains. It used to render in a
     # separate block at the foot of the report, identified only by a

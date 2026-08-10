@@ -1,0 +1,140 @@
+Requirements: 26   with obligations: 18   deliberately none: 8
+
+[task-01] A requirement stating a boundary the change must not cross is confirmed by
+    examining the change for a breach, and never by demanding a test of it.
+    -> boundary-breach-vs-test-demand  [functional/explicit]
+       Confirm a requirement stating a boundary the change must not cross by examining
+       the change for a breach, rather than by demanding a test of it.
+
+[constraint-01] A bullet under a scope exclusions heading yields an obligation.
+    -> scope-exclusion-bullet-yields-obligation  [functional/explicit]
+       A bullet under a scope exclusions heading yields an obligation.
+
+[constraint-02] An obligation derived from a scope exclusion admits code evidence only.
+    -> scope-exclusion-code-evidence-only  [invariant/explicit]
+       An obligation derived from a scope exclusion admits code evidence only.
+
+[constraint-03] No test is recommended for an obligation that admits code evidence only.
+    -> no-test-recommended-for-code-evidence-only  [test_demand/explicit]
+       No test is recommended for an obligation that admits code evidence only.
+
+[constraint-04] An obligation that admits code evidence only is never rated on test
+    evidence, and its want of test evidence never makes the completion verdict
+    incomplete.
+    -> code-evidence-only-not-rated-on-test-evidence  [invariant/explicit]
+       An obligation that admits code evidence only is never rated on test evidence, and
+       its want of test evidence never makes the completion verdict incomplete.
+
+[constraint-05] A change that crosses a stated boundary is reported as a breach, citing
+    the place in the change where it crosses.
+    -> boundary-breach-reported-with-location  [functional/explicit]
+       A change that crosses a stated boundary is reported as a breach, citing the place
+       in the change where it crosses.
+
+[constraint-06] A boundary the change respects is confirmed by a single claim over the
+    whole set of changes examined, not by listing the individual changes in that set.
+    -> boundary-respected-confirmed-by-single-claim-over-whole-set  [functional/explicit]
+       A boundary the change respects is confirmed by a single claim over the whole set
+       of changes examined, not by listing the individual changes in that set.
+
+[constraint-07] A confirmation that a boundary was respected names the set of changes
+    that was examined to reach it.
+    -> boundary-confirmation-names-examined-set  [functional/explicit]
+       A confirmation that a boundary was respected names the set of changes that was
+       examined to reach it.
+
+[constraint-08] A confirmation that a boundary was respected is not stated more strongly
+    than the examination that produced it supports.
+    -> boundary-confirmation-not-stronger-than-examination  [invariant/explicit]
+       A confirmation that a boundary was respected is not stated more strongly than the
+       examination that produced it supports.
+
+[constraint-09] A reader of the report can tell an obligation that admits code evidence
+    only from an obligation whose test evidence is missing.
+    -> reader-distinguishes-code-evidence-only-from-missing-test-evidence  [explanation_observability/explicit]
+       A reader of the report can tell an obligation that admits code evidence only from
+       an obligation whose test evidence is missing.
+
+[constraint-10] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-review-state  [invariant/explicit]
+       Two runs over byte-identical task text produce byte-identical review state.
+
+[constraint-11] Tests issue no live model calls.
+    -> tests-no-live-model-calls  [invariant/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] Which obligations other than those derived from scope exclusions admit
+    code evidence only, which is #148.
+    -- no obligation, deliberately
+       Names which obligations admit code evidence only as out of scope for this change.
+
+[exclusion-02] Assigning obligation types, which is #205.
+    -- no obligation, deliberately
+       Names assigning obligation types as out of scope for this change.
+
+[exclusion-03] Which open questions are raised, and what they cite, which is #206.
+    -- no obligation, deliberately
+       Names which open questions are raised and what they cite as out of scope for this
+       change.
+
+[exclusion-04] How finely a single requirement is split into obligations, which is #117.
+    -- no obligation, deliberately
+       Names how finely a single requirement is split into obligations as out of scope
+       for this change.
+
+[exclusion-05] Whether obligation identifiers are stable across task-file edits, which
+    is #231.
+    -- no obligation, deliberately
+       Names whether obligation identifiers are stable across task-file edits as out of
+       scope for this change.
+
+[exclusion-06] Measuring how accurate decomposition is, which is #211.
+    -- no obligation, deliberately
+       Names measuring how accurate decomposition is as out of scope for this change.
+
+[exclusion-07] Which tests are discovered, and which obligations they are mapped to.
+    -- no obligation, deliberately
+       Names which tests are discovered and which obligations they are mapped to as out
+       of scope for this change.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Names a section marker with no requirement under it.
+
+[completion-02] A test asserts that a bullet under a scope exclusions heading yields an
+    obligation admitting code evidence only.
+    -> test-scope-exclusion-yields-code-evidence-only  [test_demand/explicit]
+       A test asserts that a bullet under a scope exclusions heading yields an
+       obligation admitting code evidence only.
+
+[completion-03] A test asserts that no test is recommended for an obligation admitting
+    code evidence only.
+    -> test-no-test-recommended-for-code-evidence-only  [test_demand/explicit]
+       A test asserts that no test is recommended for an obligation admitting code
+       evidence only.
+
+[completion-04] A test asserts that an obligation admitting code evidence only does not
+    make the completion verdict incomplete for want of test evidence.
+    -> test-code-evidence-only-not-incomplete-for-test-evidence  [test_demand/explicit]
+       A test asserts that an obligation admitting code evidence only does not make the
+       completion verdict incomplete for want of test evidence.
+
+[completion-05] A test asserts that a change crossing a stated boundary is reported as a
+    breach citing where it crosses.
+    -> test-boundary-crossing-reported-as-breach-with-location  [test_demand/explicit]
+       A test asserts that a change crossing a stated boundary is reported as a breach
+       citing where it crosses.
+
+[completion-06] A test asserts that a respected boundary is confirmed by one claim
+    naming the set of changes examined, rather than by listing each change in it.
+    -> test-respected-boundary-confirmed-by-one-claim-over-set  [test_demand/explicit]
+       A test asserts that a respected boundary is confirmed by one claim naming the set
+       of changes examined, rather than by listing each change in it.
+
+[completion-07] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> test-byte-identical-task-text-produces-byte-identical-review-state  [test_demand/explicit]
+       A test asserts that two runs over byte-identical task text produce byte-identical
+       review state.
+

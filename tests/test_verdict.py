@@ -10,6 +10,7 @@ model call is involved in the headline result at all."""
 import inspect
 
 from acceptance.review_state import (
+    AdmissibleEvidence,
     CompletionVerdict,
     Finding,
     Link,
@@ -161,3 +162,84 @@ def test_the_weak_count_is_read_off_the_obligations_not_the_recommendations():
 
     assert "2 obligation(s) with non-discriminating test evidence" in result.rationale
     assert "recommendation" not in inspect.signature(derive_verdict).parameters
+
+# --- #153: the code-evidence-only axis ---------------------------------------
+
+
+def _boundary_obligation(obligation_id: str, evidence_class: str | None = None) -> Obligation:
+    """An obligation derived from a `## Scope exclusions` bullet."""
+    return Obligation(
+        id=obligation_id,
+        description=f"The change does not alter {obligation_id}",
+        type=ObligationType.INVARIANT,
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
+        evidence_class=evidence_class,
+        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+    )
+
+
+def test_a_code_evidence_only_obligation_does_not_make_the_verdict_incomplete():
+    """#153's acceptance. `unsupported` on a boundary obligation is not a gap:
+    no test can assert that excluded work was not done, so the absence of one
+    is the expected state rather than a missing deliverable.
+
+    Paired with an ordinary strongly-supported obligation so the verdict has
+    something to be positive about, and the boundary one is the only candidate
+    gap in the set."""
+    result = derive_verdict(
+        [_obligation("ok", "strongly_supported"), _boundary_obligation("pagination", "unsupported")],
+        [],
+        [],
+    )
+
+    assert result.verdict is CompletionVerdict.NO_MATERIAL_GAPS
+
+
+def test_an_unclassified_code_evidence_only_obligation_is_not_indeterminate():
+    """The None case, separately: an ordinary obligation with no evidence_class
+    is treated as indeterminate (test_unclassified_evidence_is_treated_as_
+    indeterminate). A boundary obligation is never classified on that axis at
+    all, so the same None must not escalate."""
+    result = derive_verdict(
+        [_obligation("ok", "strongly_supported"), _boundary_obligation("currencies", None)],
+        [],
+        [],
+    )
+
+    assert result.verdict is CompletionVerdict.NO_MATERIAL_GAPS
+    assert result.escalation_candidates == []
+
+
+def test_a_breached_boundary_is_still_a_material_gap():
+    """The other half, and the one that keeps the exclusion falsifiable. #153
+    exempts boundary obligations from the TEST axis only. A coverage gap against
+    one — the diff crossing the boundary — is a material gap like any other, and
+    a change that exempted the whole obligation would make an exclusion
+    impossible to violate."""
+    breached = _boundary_obligation("pagination", None)
+    result = derive_verdict(
+        [_obligation("ok", "strongly_supported"), breached],
+        [_coverage_gap(breached.description)],
+        [],
+    )
+
+    assert result.verdict is CompletionVerdict.INCOMPLETE
+    assert breached.id in result.rationale
+
+
+def test_a_positive_rationale_does_not_claim_tests_for_a_boundary_obligation():
+    """§3.7 applied to the sentence itself. "Every obligation is addressed and
+    strongly supported by discriminating tests" is false when one of them was
+    confirmed by an absence, and claiming discriminating tests that cannot exist
+    is the overclaim the bound exists to prevent."""
+    result = derive_verdict(
+        [_obligation("ok", "strongly_supported"), _boundary_obligation("currencies")],
+        [],
+        [],
+    )
+
+    assert result.verdict is CompletionVerdict.NO_MATERIAL_GAPS
+    assert "Every obligation" not in result.rationale
+    assert "boundary" in result.rationale
