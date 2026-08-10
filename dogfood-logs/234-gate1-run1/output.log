@@ -1,0 +1,86 @@
+Requirements: 14   with obligations: 10   deliberately none: 4
+
+[task-01] Materializing an archetype fixture into a git repository must commit exactly
+    the files the fixture describes, and must produce the same commit identifiers every
+    time it runs.
+    -> materialize-exact-fixture-files-and-deterministic-commits  [functional/explicit]
+       Materializing an archetype fixture into a git repository commits exactly the
+       files the fixture describes and produces the same commit identifiers every time
+       it runs.
+
+[constraint-01] The base commit's tree holds exactly the files of the fixture's `base`
+    directory, each carrying that file's content.
+    -> base-commit-tree-matches-base-directory  [functional/explicit]
+       The base commit's tree holds exactly the files of the fixture's `base` directory,
+       each carrying that file's content.
+
+[constraint-02] The head commit's tree holds exactly the files of the fixture's `head`
+    directory, each carrying that file's content.
+    -> head-commit-tree-matches-head-directory  [functional/explicit]
+       The head commit's tree holds exactly the files of the fixture's `head` directory,
+       each carrying that file's content.
+
+[constraint-03] A file whose content differs between `base` and `head` is committed with
+    its head content even when the head file has the same size, mode and modification
+    time as the base file it replaced.
+    -> head-content-wins-over-same-metadata-replacement  [functional/explicit]
+       A file whose content differs between `base` and `head` is committed with its head
+       content even when the head file has the same size, mode and modification time as
+       the base file it replaced.
+
+[constraint-04] What a commit records is determined by file content alone, not by the
+    modification times of the files on disk.
+    -> commit-records-content-only  [invariant/explicit]
+       What a commit records is determined by file content alone, not by the
+       modification times of the files on disk.
+
+[constraint-05] What a commit records does not change when git is configured to compare
+    a working-tree file against its recorded status using fewer fields.
+    -> commit-records-independent-of-working-tree-status-fields  [functional/explicit]
+       Preserve the commit-recorded content when git compares a working-tree file
+       against its recorded status using fewer fields.
+
+[constraint-06] Materializing one fixture twice produces the same base commit identifier
+    both times, and the same head commit identifier both times.
+    -> deterministic-base-and-head-commit-ids  [invariant/explicit]
+       Materializing one fixture twice produces the same base commit identifier both
+       times and the same head commit identifier both times.
+
+[exclusion-01] Whether a fixture's `base` and `head` trees describe the change they are
+    meant to describe.
+    -- no obligation, deliberately
+       Names whether the fixture's base and head trees describe the intended change as
+       out of scope for this change.
+
+[exclusion-02] Which archetype fixtures exist, and the ground-truth labels attached to
+    them.
+    -- no obligation, deliberately
+       Names which archetype fixtures exist and their ground-truth labels as out of
+       scope for this change.
+
+[exclusion-03] How long materialization takes.
+    -- no obligation, deliberately
+       Names materialization time as out of scope for this change.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Names implementation work as out of scope for this change.
+
+[completion-02] A test asserts that a file replaced between base and head by content of
+    the same size, mode and modification time is committed with its head content.
+    -> test-head-content-preserved-for-same-size-mode-mtime-replacement  [test_demand/explicit]
+       A test asserts that a file replaced between base and head by content of the same
+       size, mode and modification time is committed with its head content.
+
+[completion-03] A test asserts that the committed content of every file in a
+    materialized fixture equals that file's content in the fixture directory.
+    -> test-every-materialized-file-commits-fixture-content  [test_demand/explicit]
+       A test asserts that the committed content of every file in a materialized fixture
+       equals that file's content in the fixture directory.
+
+[completion-04] A test asserts that materializing one fixture twice produces the same
+    base commit identifier and the same head commit identifier.
+    -> test-repeat-materialization-stable-commit-identifiers  [test_demand/explicit]
+       A test asserts that materializing one fixture twice produces the same base commit
+       identifier and the same head commit identifier.
+

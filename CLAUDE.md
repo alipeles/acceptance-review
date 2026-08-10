@@ -405,9 +405,14 @@ by command *shape*, not by missing vocabulary.**
 - **Don't `source .venv/bin/activate`** — 385 occurrences. The `.venv/bin/*` entry
   points above are allowlisted and `source` is not, so activating costs a prompt
   and then changes nothing.
-- **Don't write files with `cat > f <<'EOF'`** — 107 occurrences. Use the `Write`
-  tool; edits are already allowed. Heredocs also defeat segment matching, so the
-  whole call prompts.
+- **No heredocs at all** — 107 occurrences of `cat > f <<'EOF'`. Use the `Write`
+  tool; edits are already allowed. Heredocs defeat segment matching, so the whole
+  call prompts. **This is about the `<<` shape, not about `cat`**, so
+  `.venv/bin/python - <<'PY'` prompts exactly the same way despite
+  `Bash(.venv/bin/python *)` being allowlisted — write the script to the
+  scratchpad and run it by path. `git commit -F -` is the one worth keeping: it
+  is the only way to write a multi-paragraph message, and one prompt per commit
+  is a fair price.
 - **One command per call. Don't batch.** This is the big one: **63% of Bash calls
   would prompt**, and compound shapes account for 32 of the 34 recorded Bash
   denials. A compound command is only as permitted as its least-permitted

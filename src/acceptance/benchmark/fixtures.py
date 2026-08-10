@@ -17,8 +17,10 @@ nested .git), so each is kept as reviewable source trees under
 
 `materialize_archetype` turns one of those into a real two-commit git repo on
 demand, which is exactly the shape M-B0.2's runner consumes (repo +
-base/head revisions). Commit timestamps are fixed, so the same fixture always
-materializes to the same base/head SHAs — reproducible, in the spirit of M0.5.
+base/head revisions). Commit timestamps are fixed and staging is driven from
+file content rather than from git's cached stat data (see `_stage_worktree`),
+so the same fixture always materializes to the same base/head SHAs —
+reproducible, in the spirit of M0.5.
 
 `build_benchmark_case` goes one step further, assembling a full labeled
 BenchmarkCase (M-B0.1 schema): the inputs come from materialization, the
@@ -85,9 +87,7 @@ def build_benchmark_case(fixture_dir: Path, dest: Path) -> BenchmarkCase:
             task_text=(fixture_dir / "task.md").read_text(),
             base_revision=fixture.base_sha,
             head_revision=fixture.head_sha,
-            declaration_text=(
-                declaration_path.read_text() if declaration_path.is_file() else None
-            ),
+            declaration_text=(declaration_path.read_text() if declaration_path.is_file() else None),
         ),
         ground_truth=load_labels(fixture_dir),
     )
@@ -104,21 +104,48 @@ def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
     _git(repo, "config", "user.email", _FIXTURE_EMAIL)
 
     _replace_worktree(repo, fixture_dir / "base")
-    _git(repo, "add", "-A")
+    _stage_worktree(repo)
     _commit(repo, "base")
     base_sha = _rev_parse(repo, "HEAD")
 
     _replace_worktree(repo, fixture_dir / "head")
-    _git(repo, "add", "-A")
+    _stage_worktree(repo)
     _commit(repo, "head")
     head_sha = _rev_parse(repo, "HEAD")
 
     return MaterializedFixture(repo_path=repo, base_sha=base_sha, head_sha=head_sha, meta=meta)
 
 
+def _stage_worktree(repo: Path) -> None:
+    """Stage the working tree as the whole of the next commit.
+
+    The index is emptied first, which is what makes the commit a function of
+    file *content*. `git add` normally decides whether a file changed from its
+    cached stat data — size, mode and mtime — and re-reads the file only when
+    one of them moved. `_replace_worktree` copies with `shutil.copy2`, which
+    preserves mtime and mode, so a head file that happens to be the same size
+    as the base file it replaced can match on all three and never be re-read:
+    the head commit then records the *base* blob, silently, and materialization
+    stops being reproducible.
+
+    That is not hypothetical. `07-declaration-mismatch` is the one archetype
+    whose `base/users.py` and `head/users.py` are both 60 bytes, and it is the
+    one that produced a differing `head_sha` on CI (#234) — a head commit
+    carrying base content. Every other fixture changes size across the pair, so
+    git always re-hashed it.
+
+    With no index entries there is no stat to trust, so every file is hashed
+    from disk. Emptying it also subsumes what `add -A` was doing for deletions:
+    a file present in base and absent from head is simply never staged, so the
+    commit tree is exactly the working tree.
+    """
+    _git(repo, "read-tree", "--empty")
+    _git(repo, "add", "-A")
+
+
 def _replace_worktree(repo: Path, tree: Path) -> None:
-    """Clear the working tree (keeping .git) and copy `tree` into it, so a
-    file removed between base and head is staged as a deletion by `git add -A`.
+    """Clear the working tree (keeping .git) and copy `tree` into it, so the
+    tree staged by `_stage_worktree` is exactly the fixture's own directory.
 
     `__pycache__` is excluded because it is build output, not source. It is
     untracked, so it exists in a working copy only if something imported the
@@ -140,9 +167,7 @@ def _replace_worktree(repo: Path, tree: Path) -> None:
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["git", *args], cwd=repo, check=True, capture_output=True, text=True
-    )
+    return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
 
 
 def _commit(repo: Path, message: str) -> None:
