@@ -14,86 +14,101 @@ Clear it out when the task lands rather than letting it accrete.
 
 ## In flight: #228 — a benchmark case yielding zero requirements must fail, not score
 
-Branch `228-benchmark-empty-registry`, worktree
-`~/acceptance-worktrees/228-benchmark-empty-registry`, branched from `0923f77`
-(= `origin/main`). Child of **#186**.
+Branch `228-benchmark-empty-registry`, branched from `0923f77` (= `origin/main`).
+Child of **#186**. Two commits: `e67c615`, `0514119`.
 
 **One of three parallel lanes** — #180 and #214 are running in their own
-sessions. **This lane touches no model prompt**, so it forces no transcript
-re-record and cannot collide with theirs on the request key.
+sessions. **This lane touches no model prompt.**
 
-## Gate 1: PASSED at `0923f77`
+## Gate 1: PASSED. Gate 2: NOT CLEAN — blocked on a mapping defect, awaiting a human call
 
-Two runs, both saved: `dogfood-logs/228-gate1-run1/` and `-run2/`.
+Four runs saved under `dogfood-logs/228-gate1-run{1,2}/` and
+`dogfood-logs/228-gate2-run{1,2}/`, each with its judgement.
 
-- **Run 1** — 18 requirements, 17 obligations, 1 deliberately none, **no open
-  questions**. Decomposition accurate. Two of my own bullets were weak:
-  `constraint-05` overreached beyond what #228 asks, `completion-03` was
-  ungrammatical. Both are authoring defects, not tool defects.
-- **Run 2** — re-run after rewriting three bullets (`constraint-05`,
-  `completion-03`, `completion-05`). Same shape, clean, no open questions.
+## Where it stands
 
-Decomposition confirmed accurate by **Claude, awaiting human confirmation** —
-presented at the gate, not yet signed off.
+**The code is done and verified.** Suite green (**1005 passed**), ruff clean,
+and **defect injection confirms the tests bite**: short-circuiting
+`require_nonempty_registry` fails 8 of the guard file's 31 tests, including the
+new paired control, while the control half keeps passing.
 
-## The finding that shaped the plan
+**Gate 2 will not converge.** Run 1 named three obligations; all three were real
+and all three are fixed. Run 2 named a **disjoint two** — both of which were
+*strongly supported in run 1*, over tests that did not change.
 
-`constraint-05` originally said *"No case reaches a scoring hook without having
-been checked."* That is not achievable and not what #228 asks. Benchmark scoring
-hooks are also driven by synthetic cases built inline in tests whose task text
-(`"## Deliverable\n...\n"`, `"..."`) has no `# Task` heading and therefore
-**yields an empty registry too**. An unconditional guard at hook entry would
-fail `test_runner.py`, `test_scoring.py`, `test_alignment.py`, `test_case.py`.
+## The blocking finding — #182, cross-referenced #180
 
-So the guard goes on the **corpus case builders**, which is exactly the scope
-#228's Acceptance names. The synthetic-case problem is queued as a filing.
+Where a Completion expectation ("A test asserts that X") sits beside its
+Constraint twin ("X"), mapping attaches the tests to one or the other, unstably.
+Run-2's report **contradicts itself**: obligation 3 says no test iterates both
+corpora; obligation 8 cites those exact tests as strong evidence; unrequested
+change #5 calls them surplus. Full evidence in
+`dogfood-logs/228-gate2-run2/judgement.md`.
 
-## Plan (presented at Gate 1, not yet approved)
+Not addressable in code — the tests it asks for exist. Writing duplicates to
+move a label is the "fix the output, not the wording" failure CLAUDE.md forbids.
 
-- `benchmark/case.py` — `EmptyRequirementRegistryError` + a guard function.
-  `case.py` is the home because `fixtures.py` and `corpus.py` both already
-  import from it, and it has no cycle with `requirement/`.
-- Call the guard from all three builders: `fixtures.py::build_benchmark_case`,
-  `corpus.py::build_decompose_case`, `corpus.py::build_corpus_case`.
-- New `tests/benchmark/test_empty_registry_guard.py`.
-- `requirement/obligations.py:443-446` — the comment claiming all thirteen
-  archetypes produce an empty registry is **stale** since `1c53592`. Fix it.
+**Decision needed:** merge on an explicit human call as #153 and #235 did, or
+hold #228 behind a mapping fix.
 
-## Verified at `0923f77`, before any change
+## What run 1 caught that was real
 
-- Full suite **green: 972 passed** in 3m45s.
-- **Every** task file in `archetypes/` (13), `decompose-regression/` (8) and
-  `rating-stability/` (6) parses to a non-empty registry. The guard therefore
-  changes no current outcome, and cannot be demonstrated by the corpus — which
-  is why Acceptance item 3 demands a test-supplied unparseable file.
+- **`byte-identical-review-state`** was a Constraint with no corresponding
+  change. My authoring defect — a standing invariant, not a requirement of this
+  change. Moved to Scope exclusions; confirmed by non-violation in run 2.
+- **task-01 `instead of being scored`** had no test aimed at it. Ten tests
+  asserted the guard raises; none asserted no number is produced. Added the
+  paired control test the recommendation prescribed. Strongly supported in run 2.
+
+## The change
+
+- `benchmark/case.py` — `EmptyRequirementRegistryError` + `require_nonempty_registry`,
+  which runs the real `parse_task_file` → `build_registry`, not a heading proxy.
+- Called by all three corpus builders **before** materialization:
+  `build_benchmark_case`, `build_decompose_case`, `build_corpus_case`.
+- `tests/benchmark/test_empty_registry_guard.py` — 31 tests.
+- `requirement/obligations.py` — corrected a comment stale since `1c53592`.
+
+## Verified facts worth keeping
+
+- Every task file in `archetypes/` (13), `decompose-regression/` (8) and
+  `rating-stability/` (6) parses non-empty. The guard changes no current
+  outcome, so the corpus cannot demonstrate it — hence the test-supplied file.
+- `test_region_coverage.py` parametrizes over `dogfood-logs/*/current-task.md`,
+  so **adding a dogfood log adds tests**. That is why the suite count jumps by
+  more than the tests you wrote.
+- Synthetic cases in `test_runner.py`, `test_scoring.py`, `test_alignment.py`,
+  `test_case.py` use task text with no `# Task` heading and therefore yield
+  **empty registries too**. That is why the guard is on the builders, not at
+  hook entry. Filed as **#243**.
 
 ## Queue — `docs/DEFERRED.md`
 
-**One open filing:** `run_case`'s own acceptance test cannot fail, because its
-task file yields no requirements (`test_runner.py:46`, `:73`). Child of #186.
-Drafted in full with evidence; needs approval before filing.
+**One open filing:** the mapping defect above, drafted in full as a child of
+**#182**. Needs approval before filing.
+
+Filed this session: **#243** (`run_case`'s acceptance test cannot fail), child
+of #186.
 
 ## Do not rediscover
 
 - **`.acceptance/ignore` is committed** (#105) and holds `dogfood-logs/`.
 - **`decompose|check --mode record` writes nothing to stdout when redirected** —
-  pipe through `tee`, which works.
+  pipe through `tee`. A first `check` on new task text needs `--mode record`.
 - **A `PostToolUse` formatter hook reformats files after every edit.** It strips
-  imports added ahead of their first use — so some churn in a diff is not the
-  author's.
+  imports added ahead of their first use — add the import in the same edit as
+  the code that uses it, or it silently vanishes.
 - **Permission prompts are caused by command shape, not vocabulary.** One command
-  per Bash call; patterns may wildcard mid-string; naming `.env` in any command
-  prompts regardless. **Approvals are not recorded anywhere** — only denials are.
+  per Bash call; naming `.env` in any command prompts regardless.
 - **`pytest` must run from its own tree** — `addopts`/`pythonpath` are
-  cwd-relative. Each parallel lane needs its own `.venv` (editable installs bake
-  an absolute path).
+  cwd-relative. Each parallel lane needs its own `.venv`.
+- **`gh api … -f` sends strings; sub-issue ids need `-F`** to be integers.
 - **`gh pr create` with "Closes #a, #b, #c" only closes the first.**
-- **Obligation ids are minted per response, not stable across runs** (#231), and
-  obligation *types* move too when the task text changes at all (#205).
+- **Obligation ids are minted per response** (#231); types move too (#205).
 - **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
 
 ## Known open
 
 **#210**, **#180**, **#193**, **#191**, **#196**, **#178**, **#214**, **#129**,
 **#223**, **#224**, **#173**, **#225**, **#227**, **#228**, **#212**, **#231**,
-**#236**, **#237**, **#239**.
+**#236**, **#237**, **#239**, **#243**.
