@@ -9,6 +9,8 @@ share its scenario number (8) but a distinct `name`, one per unrequested-change
 disposition (in_service / separable / risky) that #8 alone doesn't cover.
 """
 
+import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -83,6 +85,104 @@ def test_materialization_is_deterministic(fixture_dir, tmp_path):
     # Fixed identity + commit dates => stable SHAs across materializations.
     assert first.base_sha == second.base_sha
     assert first.head_sha == second.head_sha
+
+
+def _committed_files(repo: Path, sha: str) -> dict[str, bytes]:
+    listing = subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", sha],
+        cwd=repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+    return {
+        name: subprocess.run(
+            ["git", "show", f"{sha}:{name}"],
+            cwd=repo,
+            check=True,
+            capture_output=True,
+        ).stdout
+        for name in listing
+    }
+
+
+def _fixture_files(tree: Path) -> dict[str, bytes]:
+    return {
+        str(p.relative_to(tree)): p.read_bytes()
+        for p in sorted(tree.rglob("*"))
+        if p.is_file() and "__pycache__" not in p.parts and p.suffix not in {".pyc", ".pyo"}
+    }
+
+
+def test_each_commit_records_the_fixture_tree_verbatim(fixture_dir, tmp_path):
+    """Both commits must hold exactly the fixture's own files, byte for byte.
+
+    Stable SHAs alone do not say the SHAs are *right*: a materialization that
+    consistently committed the wrong blob would satisfy the determinism test and
+    still hand the benchmark a repo whose head does not contain the change under
+    review. This pins content, so the two together mean reproducible *and*
+    faithful.
+    """
+    fixture = materialize_archetype(fixture_dir, tmp_path / "repo")
+
+    for stage, sha in (("base", fixture.base_sha), ("head", fixture.head_sha)):
+        assert _committed_files(fixture.repo_path, sha) == _fixture_files(fixture_dir / stage), (
+            f"{stage} commit does not match {fixture_dir.name}/{stage}"
+        )
+
+
+def _write_fixture(root: Path, base: dict[str, bytes], head: dict[str, bytes]) -> Path:
+    """A minimal archetype whose base and head files can be dictated exactly."""
+    for stage, files in (("base", base), ("head", head)):
+        (root / stage).mkdir(parents=True)
+        for name, content in files.items():
+            (root / stage / name).write_bytes(content)
+    (root / "meta.json").write_text(
+        json.dumps(
+            {"scenario": 0, "name": "synthetic", "intended_pytest": "pass", "summary": "synthetic"}
+        )
+    )
+    return root
+
+
+def test_head_content_wins_when_the_replacement_has_matching_metadata(tmp_path, monkeypatch):
+    """A head file the same size, mode and mtime as the base file it replaces
+    must still be committed with its head content.
+
+    `git add` skips re-reading a file whose cached stat data is unchanged, and
+    `shutil.copy2` preserves both mtime and mode — so size is the only field
+    left to give the replacement away. `core.checkStat=minimal` with
+    `core.trustctime=false` is git comparing exactly those fields, which is what
+    a CI runner did in #234: the head commit silently kept the base blob and
+    `head_sha` differed between two materializations of one fixture.
+
+    Forcing that comparison makes the failure deterministic on any platform
+    rather than something that surfaces once every few CI runs.
+    """
+    fixture = _write_fixture(
+        tmp_path / "fixture",
+        base={"mod.py": b"VALUE = 1\n"},
+        # `mod.py` is the same size as its base counterpart; `test_mod.py` is new,
+        # so the head commit is non-empty either way and the stale blob shows up as
+        # wrong content rather than as a failure to commit — #234's exact signature.
+        head={"mod.py": b"VALUE = 2\n", "test_mod.py": b"from mod import VALUE\n"},
+    )
+    for path in sorted((fixture / "base").iterdir()) + sorted((fixture / "head").iterdir()):
+        os.utime(path, (1_600_000_000, 1_600_000_000))
+
+    for key, value in {
+        "GIT_CONFIG_COUNT": "2",
+        "GIT_CONFIG_KEY_0": "core.checkStat",
+        "GIT_CONFIG_VALUE_0": "minimal",
+        "GIT_CONFIG_KEY_1": "core.trustctime",
+        "GIT_CONFIG_VALUE_1": "false",
+    }.items():
+        monkeypatch.setenv(key, value)
+
+    materialized = materialize_archetype(fixture, tmp_path / "repo")
+
+    committed = _committed_files(materialized.repo_path, materialized.head_sha)
+    assert committed == {"mod.py": b"VALUE = 2\n", "test_mod.py": b"from mod import VALUE\n"}
 
 
 def test_head_pytest_runs_with_the_intended_outcome(fixture_dir, tmp_path):

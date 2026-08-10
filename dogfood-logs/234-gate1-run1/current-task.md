@@ -25,6 +25,7 @@ time it runs.
 - How long materialization takes.
 
 ## Completion expectations
+- Implementation
 - A test asserts that a file replaced between base and head by content of the
   same size, mode and modification time is committed with its head content.
 - A test asserts that the committed content of every file in a materialized
