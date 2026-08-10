@@ -1,7 +1,8 @@
 # Task
 Requirement decomposition must preserve two distinctions when it reads a task
 file: an acceptance criterion demanding a test, against the behaviour that test
-is about; and a scope exclusion, against work the change must do.
+is about; and a scope exclusion, against work the change must do. The
+constraints below state both.
 
 ## Constraints
 - An acceptance criterion that demands a test yields an obligation whose demand

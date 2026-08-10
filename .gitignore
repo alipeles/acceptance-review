@@ -20,10 +20,13 @@ htmlcov/
 .env
 .env.*
 
-# Recorded model transcripts / local run artifacts (plan M0.4/M0.5)
+# Recorded model transcripts (M0.4/M0.5) and the checker's own output when
+# dogfooding this repo (M7.3) — regenerated per run, not source files.
+#
+# Named individually rather than ignoring `.acceptance/` wholesale: the
+# directory holds input as well as output. `.acceptance/ignore` (#105) is config
+# the checker reads and is committed. Judge anything new here on its own merits.
 .acceptance/cache/
-# The checker's own output when dogfooding this repo (M7.3) — a per-run
-# artifact regenerated from the current review, not a source file to commit.
 .acceptance/reviews/
 *.local
 

@@ -12,7 +12,6 @@ attributable.
 from __future__ import annotations
 
 
-
 from acceptance.requirement.linking import (
     _PairVerdict,
     _confirmed_clusters,
@@ -123,7 +122,11 @@ def test_one_requirement_stated_in_two_sections_yields_one_obligation_linked_to_
     )
 
     linked = link_duplicate_obligations(
-        decomposition, _client_confirming(["typed-links", "typed-links-tested"], {frozenset(("typed-links", "typed-links-tested"))})
+        decomposition,
+        _client_confirming(
+            ["typed-links", "typed-links-tested"],
+            {frozenset(("typed-links", "typed-links-tested"))},
+        ),
     )
 
     assert [o.id for o in linked.obligations] == ["typed-links"]
@@ -410,9 +413,7 @@ _DERIVED = {
 def _verdicts(same: bool):
     """Two derived obligations means exactly one pair to answer."""
     return {
-        "verdicts": [
-            {"pair_id": "pair-0000", "same_requirement": same, "reason": "test double"}
-        ]
+        "verdicts": [{"pair_id": "pair-0000", "same_requirement": same, "reason": "test double"}]
     }
 
 
@@ -591,3 +592,91 @@ def test_the_constrained_response_schema_is_still_a_pydantic_model():
 
     assert issubclass(narrowed, BaseModel)
     assert issubclass(narrowed, _Verdicts)
+
+
+# --- a test demand and its behavior never merge (#232, DR-232) ---------------
+
+
+def _typed_decomposition(*specs: tuple[str, str, ObligationType]) -> Decomposition:
+    """Like `_decomposition`, but each obligation carries a chosen type."""
+    base = _decomposition(
+        *[(requirement_id, obligation_id) for requirement_id, obligation_id, _ in specs]
+    )
+    retyped = [
+        obligation.model_copy(update={"type": obligation_type})
+        for obligation, (_, _, obligation_type) in zip(base.obligations, specs)
+    ]
+    return base.model_copy(update={"obligations": retyped})
+
+
+def _behaviour_and_its_test() -> Decomposition:
+    return _typed_decomposition(
+        ("constraint-01", "alpha", ObligationType.FUNCTIONAL),
+        ("completion-01", "beta", ObligationType.TEST_DEMAND),
+    )
+
+
+def test_a_behaviour_and_a_demand_for_a_test_of_it_are_never_asked_about():
+    """The pair is not a question. Skipping it, rather than asking and hoping
+    for `false`, is what makes the non-merger a property of the code.
+
+    Two prompt attempts failed to stop this merge, because the prompt's own
+    sameness criteria point the wrong way: the test that asserts X is also the
+    evidence for X, so "the same test would demonstrate both" reads true."""
+    decomposition = _behaviour_and_its_test()
+
+    assert _pairs(["alpha", "beta"], {o.id: o for o in decomposition.obligations}) == []
+
+
+def test_a_behaviour_and_a_demand_for_a_test_of_it_are_not_merged_even_if_confirmed():
+    """The stronger property: a model that says `true` cannot merge them.
+
+    Asserting on the outcome and not merely on which questions were asked —
+    a later change that reinstated the question would still have to keep the
+    obligations apart to pass this."""
+    decomposition = _behaviour_and_its_test()
+
+    linked = link_duplicate_obligations(
+        decomposition, _client_confirming(["alpha", "beta"], {frozenset(("alpha", "beta"))})
+    )
+
+    assert [obligation.id for obligation in linked.obligations] == ["alpha", "beta"]
+    behaviour = linked.requirement_map.disposition_for("constraint-01").obligation_ids
+    its_test = linked.requirement_map.disposition_for("completion-01").obligation_ids
+    assert set(behaviour).isdisjoint(its_test)
+
+
+def test_two_test_demands_can_still_merge_with_each_other():
+    """The rule is about a MIXED pair. Two obligations that both demand a test
+    are ordinary candidates, and a rule that skipped every `test_demand` pair
+    would silently stop de-duplicating them."""
+    decomposition = _typed_decomposition(
+        ("constraint-01", "alpha", ObligationType.TEST_DEMAND),
+        ("completion-01", "beta", ObligationType.TEST_DEMAND),
+    )
+
+    linked = link_duplicate_obligations(
+        decomposition, _client_confirming(["alpha", "beta"], {frozenset(("alpha", "beta"))})
+    )
+
+    assert len(linked.obligations) == 1
+
+
+def test_no_model_call_is_made_when_every_pair_is_structurally_settled():
+    """Two obligations, one pair, and that pair cannot merge — so there is
+    nothing to ask. The stage already skips the call for a single obligation;
+    this is the same economy for a set whose every pair is decided."""
+
+    calls: list[str] = []
+
+    def counting(**kwargs):
+        calls.append(kwargs["response_format"]["json_schema"]["name"])
+        raise AssertionError("linking made a call about a structurally settled pair")
+
+    client = client_dispatching({})
+    client.completion_fn = counting
+
+    linked = link_duplicate_obligations(_behaviour_and_its_test(), client)
+
+    assert len(linked.obligations) == 2
+    assert calls == []

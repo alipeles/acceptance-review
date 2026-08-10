@@ -1,0 +1,138 @@
+Requirements: 24   with obligations: 23   deliberately none: 1
+
+[task-01] Requirement decomposition mis-shapes two kinds of task-file text.
+    -> mis-shape-two-text-kinds  [functional/explicit]
+       Handle both kinds of task-file text correctly when decomposing requirements.
+
+[task-02] An acceptance criterion phrased "a test asserts that X" is derived into an
+    obligation stating X, with the demand for a test removed. That obligation is
+    indistinguishable from an obligation to implement X, so a review can report the
+    behaviour delivered while the demanded test was never written.
+    -> test-assertion-derives-behaviour-obligation  [functional/explicit]
+       Derive an obligation stating the asserted behaviour from an acceptance criterion
+       phrased as a test assertion, without carrying forward the demand for a test.
+    -> behaviour-and-test-not-same-requirement  [invariant/explicit]   (also serves constraint-02, completion-03)
+       Treat an obligation demanding a behaviour and an obligation demanding a test of
+       that behaviour as distinct requirements.
+
+[task-03] A bullet under a scope exclusions heading is dispositioned inconsistently.
+    Siblings worded alike receive different treatment within a single run and different
+    treatment between runs, and some are disposed of with a reason that states a
+    property the change must preserve — an obligation written into a free-text field
+    instead of yielded.
+    -> scope-exclusion-siblings-consistent  [functional/explicit]
+       Disposition sibling bullets under a scope exclusions heading consistently within
+       a run and across runs, and keep free-text reasons from stating preserved
+       properties.
+
+[task-04] Make both kinds of text derive predictably.
+    -> predictable-derivation-for-both-text-kinds  [functional/explicit]
+       Make derivation predictable for both kinds of task-file text.
+
+[constraint-01] An acceptance criterion that demands a test yields an obligation whose
+    demand is the test, not the behaviour the test is about.
+    -> acceptance-test-demand-is-test  [functional/explicit]   (also serves completion-02)
+       Derive an obligation whose demand is the test itself when an acceptance criterion
+       says that a test asserts something.
+
+[constraint-02] An obligation demanding a behaviour and an obligation demanding a test
+    of that behaviour are never recognised as stating the same requirement.
+    -> behaviour-and-test-not-same-requirement  [invariant/explicit]   (also serves task-02, completion-03)
+       Treat an obligation demanding a behaviour and an obligation demanding a test of
+       that behaviour as distinct requirements.
+
+[constraint-03] A sentence of a given shape yields the same kind of obligation
+    regardless of which task file it appears in.
+    -> same-shape-same-obligation-kind  [invariant/explicit]
+       A sentence with a given shape yields the same kind of obligation regardless of
+       which task file it appears in.
+
+[constraint-04] Sibling bullets under one scope exclusions heading receive the same
+    disposition as each other.
+    -> sibling-exclusions-same-disposition  [functional/explicit]   (also serves completion-04)
+       Apply the same disposition to sibling bullets worded alike under one scope
+       exclusions heading.
+
+[constraint-05] A requirement disposed of without an obligation carries a reason that
+    does not itself state a property the change must preserve.
+    -> no-preserve-property-reason  [invariant/explicit]   (also serves completion-05)
+       Use a reason for no-obligation dispositions that does not state a property the
+       change must preserve.
+
+[constraint-06] No obligation is produced whose only satisfying evidence would be a test
+    that an excluded thing did not happen.
+    -> no-obligation-for-excluded-thing-not-happening  [invariant/explicit]
+       No obligation is produced whose only satisfying evidence would be a test that an
+       excluded thing did not happen.
+
+[constraint-07] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-task-text-byte-identical-review-state  [regression/explicit]   (also serves completion-06)
+       Produce byte-identical review state for two runs over byte-identical task text.
+
+[constraint-08] Tests issue no live model calls.
+    -> tests-issue-no-live-model-calls  [invariant/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] Whether an obligation needs test evidence at all, which is #148.
+    -> scope-of-test-evidence-outside-this-change  [human_review/explicit]
+       Whether an obligation needs test evidence at all remains outside the scope of
+       this change.
+
+[exclusion-02] Assigning obligation types, which is #205.
+    -> obligation-types-assigned-separately  [human_review/explicit]
+       Assigning obligation types remains a separate concern from this change.
+
+[exclusion-03] Which open questions are raised, and what they cite, which is #206.
+    -> open-questions-and-citations  [human_review/explicit]
+       Raise open questions only for materially underspecified requirements, and include
+       what each question cites.
+
+[exclusion-04] How finely a single requirement is split into obligations, which is #117.
+    -> requirement-splitting-granularity  [invariant/explicit]
+       Split a single requirement into obligations at the level of distinct computations
+       while keeping cohesive behaviors whole.
+
+[exclusion-05] Whether obligation identifiers are stable across task-file edits, which
+    is #231.
+    -> stable-obligation-identifiers  [compatibility/explicit]
+       Keep obligation identifiers stable across task-file edits.
+
+[exclusion-06] Measuring how accurate decomposition is, which is #211.
+    -> decomposition-accuracy-measurement  [explanation_observability/explicit]
+       Measure how accurate the decomposition is.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       A standalone section label with no actionable requirement.
+
+[completion-02] A test asserts that an acceptance criterion demanding a test derives an
+    obligation whose demand is the test.
+    -> acceptance-test-demand-is-test  [functional/explicit]   (also serves constraint-01)
+       Derive an obligation whose demand is the test itself when an acceptance criterion
+       says that a test asserts something.
+
+[completion-03] A test asserts that an obligation demanding a behaviour and an
+    obligation demanding a test of that behaviour are not recognised as stating the same
+    requirement.
+    -> behaviour-and-test-not-same-requirement  [invariant/explicit]   (also serves task-02, constraint-02)
+       Treat an obligation demanding a behaviour and an obligation demanding a test of
+       that behaviour as distinct requirements.
+
+[completion-04] A test asserts that sibling bullets worded alike under one scope
+    exclusions heading receive the same disposition as each other.
+    -> sibling-exclusions-same-disposition  [functional/explicit]   (also serves constraint-04)
+       Apply the same disposition to sibling bullets worded alike under one scope
+       exclusions heading.
+
+[completion-05] A test asserts that a requirement disposed of without an obligation has
+    a reason stating no property the change must preserve.
+    -> no-preserve-property-reason  [invariant/explicit]   (also serves constraint-05)
+       Use a reason for no-obligation dispositions that does not state a property the
+       change must preserve.
+
+[completion-06] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> byte-identical-task-text-byte-identical-review-state  [regression/explicit]   (also serves constraint-07)
+       Produce byte-identical review state for two runs over byte-identical task text.
+

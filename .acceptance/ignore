@@ -1,0 +1,10 @@
+# Paths excluded from the change set under review (#105).
+#
+# dogfood-logs/ holds this repo's own recorded review runs. It must be ignored
+# for a mechanical reason, not a cosmetic one: `check` reads the working tree as
+# head, and the dogfooding convention writes each run's output.log INTO the run
+# directory. The shell creates that file before the process starts, so without
+# this rule the review's own log joins the diff it is reviewing, the coverage
+# request key moves between the record run and the replay, and the run cannot be
+# replayed at all.
+dogfood-logs/

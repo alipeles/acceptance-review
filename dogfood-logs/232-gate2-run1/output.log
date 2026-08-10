@@ -1,0 +1,227 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) with non-discriminating test evidence (test-sibling-scope-exclusions-same-disposition).
+
+Obligations:
+
+  1. A test asserts that an acceptance criterion demanding a test derives an obligation whose demand is the test.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+         1.2  src/acceptance/review_state.py#@@ -63,7 +63,20 @@ __all__ = [
+         1.3  src/acceptance/requirement/obligations.py#@@ -96,6 +97,40 @@ positive form, because it states what must be TRUE rather than what must be
+         1.4  tests/fixtures/transcripts/260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json#@@ -0,0 +1 @@
+       test evidence: strongly supported  [tier: static]
+         1.5  tests/prompts/test_decomposition_prompt.py::test_a_criterion_demanding_a_test_yields_an_obligation_demanding_a_test
+
+  2. A test asserts that an obligation demanding a behaviour and an obligation demanding a test of that behaviour are not recognised as stating the same requirement.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  tests/requirement/test_linking.py#@@ -591,3 +592,91 @@ def test_the_constrained_response_schema_is_still_a_pydantic_model():
+         2.2  src/acceptance/requirement/linking.py#@@ -138,8 +135,30 @@ class _Verdicts(StrictResponseModel):
+         2.3  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+       test evidence: strongly supported  [tier: static]
+         2.4  tests/prompts/test_linking_prompt.py::test_a_behaviour_and_a_requirement_to_test_it_are_not_merged
+         2.5  tests/requirement/test_linking.py::test_both_requirements_name_the_surviving_obligation_in_the_stored_map
+         2.6  tests/requirement/test_linking.py::test_no_requirement_is_left_without_an_obligation_by_a_merge
+         2.7  tests/requirement/test_linking.py::test_obligations_the_model_does_not_link_are_left_separate
+         2.8  tests/requirement/test_linking.py::test_one_requirement_stated_in_two_sections_yields_one_obligation_linked_to_both
+         2.9  tests/requirement/test_linking.py::test_the_pipeline_links_duplicates_before_the_rest_of_the_review_runs
+         2.10  tests/requirement/test_linking.py::test_two_test_demands_can_still_merge_with_each_other
+
+  3. A test asserts that sibling bullets worded alike under one scope exclusions heading receive the same disposition as each other.
+       requirements: completion-04
+       code evidence: addressed
+         3.1  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+         3.2  src/acceptance/requirement/obligations.py#@@ -158,11 +194,37 @@ reference genuinely leaves you unable to tell WHAT is required — not merely
+         3.3  tests/fixtures/transcripts/260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json#@@ -0,0 +1 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The test suite includes a test that verifies sibling bullets under one scope exclusions heading are disposed of identically.
+           inputs:  A task file or fixture containing at least two sibling bullets under one `## Scope exclusions` heading with the same surface shape, where one bullet is a clear out-of-scope item and the other is another sibling of the same form. The test must exercise the decomposition path on that text and compare the dispositions for both bullets.
+           detects: Sibling bullets under one scope exclusions heading are treated inconsistently, with one or more siblings inverted into obligations while another sibling is declined or otherwise disposed differently.
+           full detail: acceptance recommendation --criterion test-sibling-scope-exclusions-same-disposition
+
+  4. A test asserts that a requirement disposed of without an obligation has a reason stating no property the change must preserve.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+         4.2  src/acceptance/requirement/obligations.py#@@ -146,11 +182,11 @@ DO have.** Never dispose of a requirement as `no_obligation` on the grounds that
+         4.3  src/acceptance/requirement/obligations.py#@@ -158,11 +194,37 @@ reference genuinely leaves you unable to tell WHAT is required — not merely
+         4.4  tests/fixtures/transcripts/260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json#@@ -0,0 +1 @@
+       test evidence: strongly supported  [tier: static]
+         4.5  tests/prompts/test_decomposition_prompt.py::test_a_declined_exclusion_states_no_property_to_preserve
+
+  5. A test asserts that two runs over byte-identical task text produce byte-identical review state.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+         5.2  tests/prompts/test_corpus_mechanism.py#@@ -386,20 +386,37 @@ _APPROVED_TRANSCRIPTS = {
+         5.3  tests/fixtures/transcripts/260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json#@@ -0,0 +1 @@
+       test evidence: strongly supported  [tier: static]
+         5.4  tests/requirement/test_linking.py::test_the_pre_link_obligations_are_persisted_in_the_review_state
+
+  6. An acceptance criterion that demands a test yields an obligation whose demand is the test, not the behaviour the test is about.
+       requirements: constraint-01
+       code evidence: addressed
+         6.1  src/acceptance/review_state.py#@@ -74,6 +87,7 @@ class ObligationType(str, Enum):
+         6.2  src/acceptance/requirement/obligations.py#@@ -70,7 +70,8 @@ the ambiguities that need human judgment.
+         6.3  src/acceptance/requirement/obligations.py#@@ -96,6 +97,40 @@ positive form, because it states what must be TRUE rather than what must be
+         6.4  tests/fixtures/transcripts/260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json#@@ -0,0 +1 @@
+       test evidence: strongly supported  [tier: static]
+         6.5  tests/prompts/test_decomposition_prompt.py::test_a_criterion_demanding_a_test_yields_an_obligation_demanding_a_test
+
+  7. An obligation demanding a behaviour and an obligation demanding a test of that behaviour are never recognised as stating the same requirement.
+       requirements: constraint-02
+       code evidence: addressed
+         7.1  src/acceptance/review_state.py#@@ -74,6 +87,7 @@ class ObligationType(str, Enum):
+         7.2  src/acceptance/requirement/obligations.py#@@ -96,6 +97,40 @@ positive form, because it states what must be TRUE rather than what must be
+         7.3  src/acceptance/requirement/linking.py#@@ -138,8 +135,30 @@ class _Verdicts(StrictResponseModel):
+         7.4  tests/requirement/test_linking.py#@@ -591,3 +592,91 @@ def test_the_constrained_response_schema_is_still_a_pydantic_model():
+       test evidence: strongly supported  [tier: static]
+         7.5  tests/prompts/test_linking_prompt.py::test_a_behavior_and_the_technology_implementing_it_are_not_merged
+         7.6  tests/prompts/test_linking_prompt.py::test_a_behaviour_and_a_requirement_to_test_it_are_not_merged
+         7.7  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_ends_on_one_obligation
+         7.8  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_never_asked_about
+         7.9  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_not_merged_even_if_confirmed
+         7.10  tests/requirement/test_linking.py::test_both_requirements_name_the_surviving_obligation_in_the_stored_map
+         7.11  tests/requirement/test_linking.py::test_no_requirement_is_left_without_an_obligation_by_a_merge
+         7.12  tests/requirement/test_linking.py::test_obligations_the_model_does_not_link_are_left_separate
+         7.13  tests/requirement/test_linking.py::test_one_requirement_stated_in_two_sections_yields_one_obligation_linked_to_both
+         7.14  tests/requirement/test_linking.py::test_the_pipeline_links_duplicates_before_the_rest_of_the_review_runs
+         7.15  tests/requirement/test_linking.py::test_two_test_demands_can_still_merge_with_each_other
+
+  8. A sentence of a given shape yields the same kind of obligation regardless of which task file it appears in.
+       requirements: constraint-03
+       code evidence: addressed
+         8.1  src/acceptance/requirement/obligations.py#@@ -96,6 +97,40 @@ positive form, because it states what must be TRUE rather than what must be
+         8.2  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+         8.3  tests/fixtures/transcripts/260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json#@@ -0,0 +1 @@
+       test evidence: strongly supported  [tier: static]
+         8.4  tests/prompts/test_decomposition_prompt.py::test_every_criterion_of_the_same_shape_is_treated_the_same_way
+
+  9. Sibling bullets under one scope exclusions heading receive the same disposition as each other.
+       requirements: constraint-04
+       code evidence: addressed
+         9.1  src/acceptance/requirement/obligations.py#@@ -158,11 +194,37 @@ reference genuinely leaves you unable to tell WHAT is required — not merely
+         9.2  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+         9.3  tests/fixtures/transcripts/260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json#@@ -0,0 +1 @@
+       test evidence: strongly supported  [tier: static]
+         9.4  tests/requirement/test_linking.py::test_an_inconsistency_does_not_block_an_unrelated_confirmed_pair
+
+  10. A requirement disposed of without an obligation carries a reason that does not itself state a property the change must preserve.
+       requirements: constraint-05
+       code evidence: addressed
+         10.1  src/acceptance/requirement/obligations.py#@@ -132,10 +167,11 @@ Each disposition is one of:
+         10.2  src/acceptance/requirement/obligations.py#@@ -158,11 +194,37 @@ reference genuinely leaves you unable to tell WHAT is required — not merely
+         10.3  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+       test evidence: strongly supported  [tier: static]
+         10.4  tests/coverage/test_classify.py::test_preserve_obligation_not_violated_is_addressed_with_no_refs
+         10.5  tests/coverage/test_classify.py::test_violated_preserve_obligation_is_not_addressed_but_cites_the_breach
+         10.6  tests/prompts/test_decomposition_prompt.py::test_a_declined_exclusion_states_no_property_to_preserve
+
+  11. No obligation is produced whose only satisfying evidence would be a test that an excluded thing did not happen.
+       requirements: constraint-06
+       code evidence: addressed
+         11.1  src/acceptance/requirement/obligations.py#@@ -132,10 +167,11 @@ Each disposition is one of:
+         11.2  src/acceptance/requirement/obligations.py#@@ -158,11 +194,37 @@ reference genuinely leaves you unable to tell WHAT is required — not merely
+         11.3  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+         11.4  tests/fixtures/transcripts/260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json#@@ -0,0 +1 @@
+       test evidence: strongly supported  [tier: static]
+         11.5  tests/prompts/test_decomposition_prompt.py::test_no_obligation_anywhere_demands_the_excluded_work
+
+  12. Two runs over byte-identical task text produce byte-identical review state.
+       requirements: constraint-07
+       code evidence: addressed
+         12.1  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+         12.2  tests/prompts/test_corpus_mechanism.py#@@ -386,20 +386,37 @@ _APPROVED_TRANSCRIPTS = {
+         12.3  tests/fixtures/transcripts/260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json#@@ -0,0 +1 @@
+       test evidence: strongly supported  [tier: static]
+         12.4  tests/coverage/test_classify.py::test_coverage_round_trips_through_persistence
+         12.5  tests/evidence/test_mapping.py::test_repeating_a_run_reuses_the_recorded_batches
+         12.6  tests/prompts/test_corpus_mechanism.py::test_the_corpus_is_recorded_under_production_determinism_controls
+         12.7  tests/requirement/test_linking.py::test_the_pre_link_obligations_are_persisted_in_the_review_state
+         12.8  tests/requirement/test_linking.py::test_the_same_derived_obligations_produce_the_same_links
+         12.9  tests/requirement/test_linking.py::test_the_two_stages_are_separately_readable_from_the_stored_review
+         12.10  tests/requirement/test_linking.py::test_two_runs_over_identical_task_text_produce_identical_state_at_both_stages
+
+  13. Tests issue no live model calls.
+       requirements: constraint-08
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         13.1  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         13.2  tests/prompts/test_corpus_mechanism.py::test_replay_needs_no_api_key
+         13.3  tests/prompts/test_corpus_mechanism.py::test_the_corpus_replays_rather_than_calling_live_by_default
+         13.4  tests/prompts/test_corpus_mechanism.py::test_the_prompt_corpus_replays_with_no_live_call_at_all
+         13.5  tests/requirement/test_linking.py::test_a_single_obligation_makes_no_model_call_at_all
+         13.6  tests/requirement/test_linking.py::test_no_model_call_is_made_when_every_pair_is_structurally_settled
+
+  14. Requirement decomposition preserves the distinction between an acceptance criterion that demands a test and the behaviour that test is about.
+       requirements: task-01
+       code evidence: addressed
+         14.1  src/acceptance/review_state.py#@@ -63,7 +63,20 @@ __all__ = [
+         14.2  src/acceptance/requirement/obligations.py#@@ -96,6 +97,40 @@ positive form, because it states what must be TRUE rather than what must be
+         14.3  src/acceptance/requirement/linking.py#@@ -138,8 +135,30 @@ class _Verdicts(StrictResponseModel):
+         14.4  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+         14.5  tests/requirement/test_linking.py#@@ -591,3 +592,91 @@ def test_the_constrained_response_schema_is_still_a_pydantic_model():
+       test evidence: strongly supported  [tier: static]
+         14.6  tests/prompts/test_decomposition_prompt.py::test_a_constraint_stating_a_behaviour_is_not_given_test_framing
+         14.7  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_ends_on_one_obligation
+         14.8  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_never_asked_about
+         14.9  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_not_merged_even_if_confirmed
+
+  15. Requirement decomposition preserves the distinction between a scope exclusion and the work the change must do.
+       requirements: task-01
+       code evidence: addressed
+         15.1  src/acceptance/requirement/obligations.py#@@ -132,10 +167,11 @@ Each disposition is one of:
+         15.2  src/acceptance/requirement/obligations.py#@@ -158,11 +194,37 @@ reference genuinely leaves you unable to tell WHAT is required — not merely
+         15.3  tests/prompts/test_decomposition_prompt.py#@@ -0,0 +1,206 @@
+       test evidence: strongly supported  [tier: static]
+         15.4  tests/coverage/test_unrequested.py::test_archetype_8_public_interface_change_is_flagged
+         15.5  tests/prompts/test_corpus_mechanism.py::test_only_the_designated_capability_uses_recorded_responses
+         15.6  tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_is_declined
+         15.7  tests/requirement/test_requirement_map.py::test_every_batch_sees_the_whole_task_file_and_answers_for_its_own_share
+         15.8  tests/requirement/test_requirement_map.py::test_the_prompt_carries_identified_requirements_not_raw_markdown
+
+Mandate coverage: 14 of 21 requirements yielded obligations
+  1. [no_obligation] exclusion-01: Whether an obligation needs test evidence at all, which is #148.
+       reason: Names whether an obligation needs test evidence as out of scope for this change.
+  2. [no_obligation] exclusion-02: Assigning obligation types, which is #205.
+       reason: Names assigning obligation types as out of scope for this change.
+  3. [no_obligation] exclusion-03: Which open questions are raised, and what they cite, which is #206.
+       reason: Names open questions and their citations as out of scope for this change.
+  4. [no_obligation] exclusion-04: How finely a single requirement is split into obligations, which is #117.
+       reason: Names requirement split granularity as out of scope for this change.
+  5. [no_obligation] exclusion-05: - Whether obligation identifiers are stable across task-file edits, which is
+  #231.
+       reason: Names obligation identifier stability across task-file edits as out of scope for this change.
+  6. [no_obligation] exclusion-06: Measuring how accurate decomposition is, which is #211.
+       reason: Names decomposition accuracy measurement as out of scope for this change.
+  7. [no_obligation] completion-01: Implementation
+       reason: Names an implementation section marker with no checkable requirement.
+
+Unrequested changes:
+  1. [in_service] The linking prompt was changed to skip mixed test-demand/behavior pairs entirely and the linker now filters them out before batching. That is a behavior change beyond merely adding the new obligation type, and the task did not ask to alter pair selection or batching semantics.
+       src/acceptance/requirement/linking.py#@@ -138,8 +135,30 @@ class _Verdicts(StrictResponseModel):
+       src/acceptance/requirement/linking.py#@@ -164,19 +183,20 @@ def _pairs(ordered_ids: list[str]) -> list[tuple[str, str, str]]:
+       src/acceptance/requirement/linking.py#@@ -333,9 +353,14 @@ def link_duplicate_obligations(
+  2. [in_service] The derivation prompt now treats scope exclusions as `no_obligation` and rewrites their reasons to name only what is out of scope. The obligations in the task require preserving the distinction between scope exclusions and work, but they do not ask to change the prompt's handling of exclusions in this specific way.
+       src/acceptance/requirement/obligations.py#@@ -132,10 +167,11 @@ Each disposition is one of:
+       src/acceptance/requirement/obligations.py#@@ -146,11 +182,11 @@ DO have.** Never dispose of a requirement as `no_obligation` on the grounds that
+       src/acceptance/requirement/obligations.py#@@ -158,11 +194,37 @@ reference genuinely leaves you unable to tell WHAT is required — not merely
+  3. [in_service] The `ObligationType` docstring was expanded with explanatory prose about `TEST_DEMAND`. This is documentation-only internal commentary not required by the obligations themselves.
+       src/acceptance/review_state.py#@@ -63,7 +63,20 @@ __all__ = [
+  4. [in_service] The corpus mechanism test was updated to add a new transcript fixture and to assert a new prompt corpus user. The obligations ask for prompt/behavior changes and tests for them, but not for this specific corpus bookkeeping edit.
+       tests/prompts/test_corpus_mechanism.py#@@ -386,20 +386,37 @@ _APPROVED_TRANSCRIPTS = {
+       tests/prompts/test_corpus_mechanism.py#@@ -475,6 +492,7 @@ def test_only_the_designated_capability_uses_recorded_responses():
+  5. [separable] The session-state note was rewritten extensively to describe the new task bundle and workflow. None of the listed obligations require updating session-state documentation.
+       session-state.md#@@ -12,99 +12,89 @@ Clear it out when the task lands rather than letting it accrete.
+  6. [separable] The deferred-items document was expanded with new filing notes and status changes. The task obligations do not call for these issue-tracking/documentation edits.
+       docs/DEFERRED.md#@@ -150,4 +150,57 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

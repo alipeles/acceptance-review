@@ -1,0 +1,125 @@
+Requirements: 21   with obligations: 14   deliberately none: 7
+
+[task-01] Requirement decomposition must preserve two distinctions when it reads a task
+    file: an acceptance criterion demanding a test, against the behaviour that test is
+    about; and a scope exclusion, against work the change must do.
+    -> preserve-test-vs-behavior-distinction  [functional/explicit]
+       Requirement decomposition preserves the distinction between an acceptance
+       criterion demanding a test and the behaviour that test is about.
+    -> preserve-scope-exclusion-vs-work-distinction  [functional/explicit]
+       Requirement decomposition preserves the distinction between a scope exclusion and
+       work the change must do.
+
+[constraint-01] An acceptance criterion that demands a test yields an obligation whose
+    demand is the test, not the behaviour the test is about.
+    -> acceptance-criterion-test-demand-becomes-test-obligation  [functional/explicit]
+       An acceptance criterion that demands a test yields an obligation whose demand is
+       the test, not the behaviour the test is about.
+
+[constraint-02] An obligation demanding a behaviour and an obligation demanding a test
+    of that behaviour are never recognised as stating the same requirement.
+    -> test-behaviour-vs-test-obligation-distinct  [regression/explicit]   (also serves completion-03)
+       A test asserts that an obligation demanding a behaviour and an obligation
+       demanding a test of that behaviour are not recognised as stating the same
+       requirement.
+
+[constraint-03] A sentence of a given shape yields the same kind of obligation
+    regardless of which task file it appears in.
+    -> same-obligation-kind-across-task-files  [invariant/explicit]
+       A sentence of a given shape yields the same kind of obligation regardless of
+       which task file it appears in.
+
+[constraint-04] Sibling bullets under one scope exclusions heading receive the same
+    disposition as each other.
+    -> sibling-scope-exclusions-same-disposition  [invariant/explicit]
+       Sibling bullets under one scope exclusions heading receive the same disposition
+       as each other.
+
+[constraint-05] A requirement disposed of without an obligation carries a reason that
+    does not itself state a property the change must preserve.
+    -> test-no-preserve-property-reason  [regression/explicit]   (also serves completion-05)
+       A test asserts that a requirement disposed of without an obligation has a reason
+       stating no property the change must preserve.
+
+[constraint-06] No obligation is produced whose only satisfying evidence would be a test
+    that an excluded thing did not happen.
+    -> no-test-only-evidence-for-excluded-nonoccurrence  [invariant/explicit]
+       No obligation is produced whose only satisfying evidence would be a test that an
+       excluded thing did not happen.
+
+[constraint-07] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> test-byte-identical-review-state  [regression/explicit]   (also serves completion-06)
+       A test asserts that two runs over byte-identical task text produce byte-identical
+       review state.
+
+[constraint-08] Tests issue no live model calls.
+    -> tests-no-live-model-calls  [functional/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] Whether an obligation needs test evidence at all, which is #148.
+    -- no obligation, deliberately
+       Names whether an obligation needs test evidence as out of scope for this change.
+
+[exclusion-02] Assigning obligation types, which is #205.
+    -- no obligation, deliberately
+       Names assigning obligation types as out of scope for this change.
+
+[exclusion-03] Which open questions are raised, and what they cite, which is #206.
+    -- no obligation, deliberately
+       Names open questions as out of scope for this change.
+
+[exclusion-04] How finely a single requirement is split into obligations, which is #117.
+    -- no obligation, deliberately
+       Names requirement split granularity as out of scope for this change.
+
+[exclusion-05] Whether obligation identifiers are stable across task-file edits, which
+    is #231.
+    -- no obligation, deliberately
+       Names obligation identifier stability across task-file edits as out of scope for
+       this change.
+
+[exclusion-06] Measuring how accurate decomposition is, which is #211.
+    -- no obligation, deliberately
+       Names decomposition accuracy measurement as out of scope for this change.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker only; it names the implementation section without a checkable
+       requirement.
+
+[completion-02] A test asserts that an acceptance criterion demanding a test derives an
+    obligation whose demand is the test.
+    -> test-acceptance-criterion-yields-test-obligation  [regression/explicit]
+       A test asserts that an acceptance criterion demanding a test derives an
+       obligation whose demand is the test.
+
+[completion-03] A test asserts that an obligation demanding a behaviour and an
+    obligation demanding a test of that behaviour are not recognised as stating the same
+    requirement.
+    -> test-behaviour-vs-test-obligation-distinct  [regression/explicit]   (also serves constraint-02)
+       A test asserts that an obligation demanding a behaviour and an obligation
+       demanding a test of that behaviour are not recognised as stating the same
+       requirement.
+
+[completion-04] A test asserts that sibling bullets worded alike under one scope
+    exclusions heading receive the same disposition as each other.
+    -> test-sibling-scope-exclusions-same-disposition  [regression/explicit]
+       A test asserts that sibling bullets worded alike under one scope exclusions
+       heading receive the same disposition as each other.
+
+[completion-05] A test asserts that a requirement disposed of without an obligation has
+    a reason stating no property the change must preserve.
+    -> test-no-preserve-property-reason  [regression/explicit]   (also serves constraint-05)
+       A test asserts that a requirement disposed of without an obligation has a reason
+       stating no property the change must preserve.
+
+[completion-06] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> test-byte-identical-review-state  [regression/explicit]   (also serves constraint-07)
+       A test asserts that two runs over byte-identical task text produce byte-identical
+       review state.
+
+
+Unreconciled linking answers: answers contradict each other: these obligations are linked transitively but at least one pair among them was denied, so none of them were merged
+  affected: test-acceptance-criterion-yields-test-obligation, test-sibling-scope-exclusions-same-disposition, acceptance-criterion-test-demand-becomes-test-obligation, sibling-scope-exclusions-same-disposition, preserve-test-vs-behavior-distinction

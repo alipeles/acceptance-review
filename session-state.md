@@ -12,99 +12,82 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## No task in flight
+## Task in flight — #232 + #219 + #230, at Gate 2
 
-**#144 landed** as `7c8928d` (PR #233, squash merge). `main` is synced.
-`current-task.md` still holds #144's mandate — it is stale, and the next task
-overwrites it at Gate 1.
+Branch `232-decomposition-prompt-shaping`, off `eb182de`. Nothing pushed, no PR.
+**Gate 2 not clean; the human's call is recorded: note the findings, do not let
+them hold the change up.** They are #180/#182, filed. Ready to push and open a
+PR on request.
 
-## Next task — #232, and why it is next
+## What shipped
 
-**#232 (→ #181): derivation drops the test framing from a Completion
-expectation.** One phrased *"A test asserts that X"* is derived into an
-obligation stating **X**, so an acceptance criterion becomes indistinguishable
-from the behaviour it tests.
+- **`ObligationType.TEST_DEMAND`** — a demand for a test is its own type, and
+  spec §7.3 gains it. `docs/DR-232-test-demand-obligation-type.md`.
+- **Derivation prompt** picks the type from the requirement's own text, never
+  because another bullet asks for a test of the same behaviour.
+- **Scope exclusions decline uniformly**, with the reason barred from stating
+  anything the change must hold. The positive-restatement rule explicitly does
+  not apply to them — it inverts, because an exclusion names *work* and work has
+  no positive form.
+- **Linking skips a mixed pair** rather than asking (`_can_state_one_requirement`).
+  A question with one admissible answer is not a question, and a wrong `true`
+  lands in a transitive component where the clique rule suppresses every other
+  merge in it.
+- **`tests/prompts/test_decomposition_prompt.py`** — new recorded corpus, 18
+  tests, asserting on the type rather than on substrings.
 
-It is next because it is lossy and everything downstream inherits it:
+Measured on this repo's own task file: exclusions inverted 4/6 → **0/6**;
+Completion expectations keeping their demand 0/5 → **5/5 typed**; invented
+framing on Constraints 3/8 → **0/8**; behaviour↔test merges 3 → **0**.
 
-- It is why #144's linking merges `constraint-06` with `completion-04` when it
-  should not. The linking prompt already carries the negative example for that
-  case and it **cannot fire**, because it keys on text that no longer exists by
-  the time linking runs. No linking-prompt wording reaches this.
-- The framing is unstable across task files. The invoice fixture in
-  `tests/prompts/test_linking_prompt.py` keeps *"Add a test that asserts…"* and
-  linking correctly declines to merge; this repo's task file drops it.
-- Beyond linking: mapping, discrimination and coverage cannot tell the two apart
-  either, so a review can report a behaviour addressed while the demanded test
-  was never written.
+## Gate 2 — not clean, and not because of unmet requirements
 
-CLAUDE.md's sequencing rule — decomposition quality before evidence quality —
-puts it ahead of the #183 / #185 work.
+15 obligations, all *addressed*, no open questions, **6 rated below strongly
+supported**. Full analysis in `dogfood-logs/232-gate2-run2/judgement.md`.
 
-## What #144 shipped
+The blocker is that the gate **does not converge**. Between run 1 and run 2 the
+only change was two added tests, which fixed run 1's one finding — and five
+untouched obligations degraded. `tests-no-live-model-calls` went strongly →
+partially while its mapped set **grew** from 6 tests to 8. That is #180
+(judgement stability) plus #182 (mapping churn).
 
-- `requirement/linking.py` — post-derivation pass. **One question per obligation
-  pair**, swept completely, batched through `partition.py` at
-  `DEFAULT_LINK_PAIR_BATCH_SIZE = 25`.
-- Pairs ordered **by distance** between obligations, not by first obligation.
-  The natural nesting put all N-1 pairs of obligation 0 into the opening batches
-  and reproduced the selection framing one level down.
-- `_PairVerdict` declares **`reason` before `same_requirement`** — structured
-  output generates in field order, so a verdict first meant committing then
-  rationalising.
-- A cluster merges only if it is a **complete clique**; a contradicted component
-  merges nothing and is recorded through `UnusableAnswerLog`.
-- `Review.derived_obligation_map` persists stage 1's output; `rerun.py` gained
-  `derivation_changed`.
-- **`decompose` runs the pass too**, and carries the log — otherwise its
-  breakdown is not the set `check` reviews.
-- `docs/DR-144-pairwise-linking.md`.
-
-Final measurement on this repo's task file: **24 derived → 19 linked, 5 merges,
-0 contradictions.**
-
-## Gate 2 never came back clean, and #144 merged anyway
-
-On an explicit human call, recorded in the PR body and in
-`dogfood-logs/144-gate2-run5/judgement.md`. The one blocker the task **owned**
-(`typed-schemas-pydantic-models`) was closed. What remained:
-
-- four unsupported obligations, all from the mandate's problem statement — **#212**;
-- one rated *partially addressed* because the rule is implemented as prompt text
-  rather than code, which is a property of the stage.
+**Do not try to close this by adding tests.** That is what produced the
+regression.
 
 ## Do not rediscover
 
-- **The whole registry is in every derivation prompt** (`obligations.py`,
-  `_user_prompt(registry, answer_for)`) — DR-204, on purpose. Any task-file edit
-  re-derives everything, so per-requirement stability is not available by
-  construction. That is **#231**.
-- **Obligation ids are minted per response and are not stable across runs.** Not
-  cosmetic: findings link by id and `rerun.py` decides staleness by id.
-- **A single call asked to find duplicates among N obligations is a SELECTION
-  task** and answers with the nearest plausible partner. That is what DR-144
-  replaced, and it over-merged twice first.
+- **`.acceptance/ignore` exists (#105)** — gitignore syntax, read from the
+  reviewed repo, and **committed** (only `.acceptance/cache/` and
+  `.acceptance/reviews/` are gitignored; CLAUDE.md's "never committed" is
+  imprecise). `dogfood-logs/` is now in it. Without that rule, redirecting a
+  run's output into its own directory put the log in the diff under review and
+  replay failed with `no recorded transcript` — verified fixed in
+  `dogfood-logs/232-gate2-run3/`.
+- **Two prompt attempts failed before typing worked.** Told to keep the test
+  framing, derivation began *inventing* it on Constraints that demand no test.
+  The prompt cannot carry this distinction; the type can. DR-232.
+- **The linking prompt's own criteria point the wrong way here** — the test that
+  asserts X is also the evidence for X, so "the same test would demonstrate
+  both" reads true. That is why it is enforced in code.
+- **Gate 1 could not be clean for this task by construction** — every Completion
+  expectation in this repo's convention used the framing #232 dropped.
+- **#153 looks stale** — open as "decompose never learns the exclusion section
+  exists", but #219's body says #202 fixed exactly that. Candidate to close.
+- **Obligation ids are minted per response, not stable across runs** (#231).
 - **`decompose|check --mode record` writes nothing to stdout when redirected.**
-  Record once, then re-run in replay to capture.
-- **The corpus manifest carries provenance markers per recording**
-  (`tests/prompts/test_corpus_mechanism.py`). Markers must be fixture-level: a
-  pair batch holds only the pairs it was given, so a marker naming one obligation
-  is absent from any batch that does not include it.
-- **The pair-verdict probe is the highest-yield diagnostic of the #144 work** —
-  dump every pair with its verdict, its reason and its batch index. It found both
-  root causes. ~20 lines against `_pairs`, `_user_prompt` and
-  `_confirmed_clusters`; method described in DR-144.
-- **Python here is 3.10**; the repo is `alipeles/acceptance-review`.
+- **Python here is 3.10**; repo is `alipeles/acceptance-review`.
 
 ## Queue — `docs/DEFERRED.md`
 
-One entry open and unfiled: **`test_materialization_is_deterministic` is itself
-non-deterministic in CI** (drafted against #184). Observed on PR #233: run
-31346367369 failed on `07-declaration-mismatch`; the next run passed on a
-markdown-only commit.
+One residual open: the missing-transcript error message blames an edited prompt,
+which was wrong at Gate 2 and cost a diagnostic cycle. Needs a call on where it
+belongs.
+
+Filed this session: **#234** (child of #184), comments on **#230**, **#212** and
+**#180**.
 
 ## Known open
 
 **#210**, **#180**, **#193**, **#153**, **#191**, **#196**, **#178**, **#214**,
 **#129**, **#223**, **#224**, **#173**, **#225**, **#227**, **#228**, **#212**,
-**#230**, **#231**, **#232**.
+**#230**, **#231**, **#232**, **#219**, **#234**.

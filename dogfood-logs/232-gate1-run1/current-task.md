@@ -1,7 +1,18 @@
 # Task
-Requirement decomposition must preserve two distinctions when it reads a task
-file: an acceptance criterion demanding a test, against the behaviour that test
-is about; and a scope exclusion, against work the change must do.
+Requirement decomposition mis-shapes two kinds of task-file text.
+
+An acceptance criterion phrased "a test asserts that X" is derived into an
+obligation stating X, with the demand for a test removed. That obligation is
+indistinguishable from an obligation to implement X, so a review can report the
+behaviour delivered while the demanded test was never written.
+
+A bullet under a scope exclusions heading is dispositioned inconsistently.
+Siblings worded alike receive different treatment within a single run and
+different treatment between runs, and some are disposed of with a reason that
+states a property the change must preserve — an obligation written into a
+free-text field instead of yielded.
+
+Make both kinds of text derive predictably.
 
 ## Constraints
 - An acceptance criterion that demands a test yields an obligation whose demand

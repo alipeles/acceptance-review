@@ -386,20 +386,37 @@ _APPROVED_TRANSCRIPTS = {
     # a pair batch holds only the pairs it was given, so a marker naming one
     # obligation is absent from every batch that does not include it.
     #
-    # TWO linking recordings for one derivation, because the sweep asks about
-    # every pair of obligations and the invoice task exceeds one pair-batch.
-    # linking sweep
-    "102d48565911ff6200bb40075760526db774d1018934a99e4003698629d00381.json": (
-        "invoice",
-        "CSV",
-    ),
+    # ONE linking sweep, where the same fixture needed two before DR-232. The
+    # sweep no longer asks about a `test_demand` obligation paired with a
+    # behavior one — that pair cannot merge, so it is settled in code and never
+    # batched — and the invoice task's remaining pairs fit a single call. The
+    # count dropping is the structural skip, visible in the corpus.
     # derivation
-    "19f90ca774d3cc690b8a9637a21a15bfef54c537d1bb9d02f38f39b4e86811a5.json": (
+    "260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json": (
         "invoice",
         "CSV",
     ),
     # linking sweep
-    "311f732282beacd35a69e53fd04e48250deb4f48234558dfdad2d089bf3db6e0.json": (
+    "56722b85b43e95eb9db01f44f8368dc897e47b66854ce8967c727ba2a5080f19.json": (
+        "invoice",
+        "CSV",
+    ),
+    # --- obligation derivation (#232, #219, #230), the invoice-export task in
+    # tests/prompts/test_decomposition_prompt.py. Same control domain as the
+    # linking fixture and a different task file: this one carries the two
+    # shapes those issues are about — Completion expectations phrased "A test
+    # asserts that ...", and a Scope exclusions section whose bullets name work
+    # rather than a property.
+    #
+    # TWO derivation recordings for one task file, because #204 partitions
+    # derivation at 8 requirements per call and this file states 11. Both
+    # batches carry the fixture-level markers: DR-204 puts the WHOLE registry
+    # in every batch's prompt, and only `answer_for` is scoped.
+    "2664c74347ca65d1a37f2ce03fe5ef447e860e2a495e3e1184e9cf86d72b109c.json": (
+        "invoice",
+        "CSV",
+    ),
+    "b6bc9aab905d31161fabaa5943a6858cb9e126edc11cdfdbe0fa48f2fd192c75.json": (
         "invoice",
         "CSV",
     ),
@@ -475,6 +492,7 @@ def test_only_the_designated_capability_uses_recorded_responses():
 
     assert users == {
         "prompts/test_corpus_mechanism.py",
+        "prompts/test_decomposition_prompt.py",
         "prompts/test_disposition_prompt.py",
         "prompts/test_linking_prompt.py",
     }, f"recorded responses spread beyond the designated capability: {sorted(users)}"

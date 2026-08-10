@@ -1,7 +1,14 @@
 # Task
 Requirement decomposition must preserve two distinctions when it reads a task
-file: an acceptance criterion demanding a test, against the behaviour that test
-is about; and a scope exclusion, against work the change must do.
+file.
+
+An acceptance criterion that demands a test states a different requirement from
+the behaviour that test is about. Code that already exhibits the behaviour, with
+nobody having written the test, satisfies one of those requirements and violates
+the other.
+
+A bullet under a scope exclusions heading names work the change must not do. It
+never names work the change must do.
 
 ## Constraints
 - An acceptance criterion that demands a test yields an obligation whose demand

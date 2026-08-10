@@ -63,7 +63,20 @@ __all__ = [
 
 
 class ObligationType(str, Enum):
-    """§7.3 obligation types."""
+    """§7.3 obligation types.
+
+    `TEST_DEMAND` is the one addition to the spec's original nine, and it exists
+    because the distinction it carries was previously expressible only in free
+    text (#232, DR-232). A mandate saying "a test asserts that X" demands a
+    different thing from one saying "X": code that already does X, with nobody
+    having written the test, satisfies the second and violates the first.
+
+    With no type for it, derivation encoded the difference in the description or
+    lost it — and it lost it, repeatedly and unstably, which made an acceptance
+    criterion indistinguishable from the behavior it tests. Every consumer then
+    had to recover the distinction by reading English. Typing it is what lets
+    linking refuse the merge structurally rather than being asked to notice it.
+    """
 
     FUNCTIONAL = "functional"
     BOUNDARY = "boundary"
@@ -74,6 +87,7 @@ class ObligationType(str, Enum):
     EXPLANATION_OBSERVABILITY = "explanation_observability"
     DOCS_CONFIG = "docs_config"
     HUMAN_REVIEW = "human_review"
+    TEST_DEMAND = "test_demand"
 
 
 # The canonical `Finding.type` string for a §9.2 unrequested-change finding.

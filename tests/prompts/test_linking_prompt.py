@@ -24,6 +24,7 @@ import pytest
 from acceptance.requirement.linking import link_duplicate_obligations
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
+from acceptance.review_state import ObligationType
 from tests.support import recorded_client
 
 # Three properties in one file, so one recording covers all of them:
@@ -89,7 +90,14 @@ def test_a_behaviour_and_a_requirement_to_test_it_are_not_merged(linked):
     requirements, and adding each is separate work.
 
     This case used to be listed in the prompt as one that SHOULD merge, which
-    contradicted the prompt's own criterion. Flipping it is what this asserts."""
+    contradicted the prompt's own criterion. Flipping it is what this asserts.
+
+    Disjointness alone is a weak assertion, and #232 is why: it passes whenever
+    linking merges nothing at all. This bundle's Gate 1 run 2 produced exactly
+    that — an 8-obligation transitive clique was contradicted, so #144's clique
+    rule suppressed every merge in it, and the pair came back disjoint while
+    both obligations had lost the distinction the test is named after. So also
+    assert the framing is still there for linking to key on."""
     _, after = linked
 
     behaviour = _obligations_of(after, "constraint-01")
@@ -97,6 +105,12 @@ def test_a_behaviour_and_a_requirement_to_test_it_are_not_merged(linked):
 
     assert behaviour and its_test
     assert set(behaviour).isdisjoint(its_test)
+
+    by_id = {obligation.id: obligation for obligation in after.obligations}
+    assert any(by_id[i].type is ObligationType.TEST_DEMAND for i in its_test), (
+        "completion-01 demands a TEST; nothing survived typed test_demand, so "
+        f"the non-merger above is not evidence: {[by_id[i].type for i in its_test]}"
+    )
 
 
 def test_two_requirements_sharing_vocabulary_are_not_merged(linked):
