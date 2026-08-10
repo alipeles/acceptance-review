@@ -1,0 +1,383 @@
+Task completion: INCOMPLETE
+
+4 obligation(s) with non-discriminating test evidence (completion-09-test-demand-verdict-derived-with-dispositions-in-hand, completion-10-test-demand-byte-identical-review-state, verdict-from-recorded-state-no-model, tests-issue-no-live-model-calls).
+
+Obligations:
+
+  1. A test asserts that a requirement deliberately declined with a stated reason does not count against how much of the mandate the review covered.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  tests/test_mandate_coverage.py#@@ -0,0 +1,403 @@
+         1.2  src/acceptance/verdict.py#@@ -51,17 +55,75 @@ _STATIC_CAVEAT = (
+         1.3  src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+         1.4  src/acceptance/report.py#@@ -222,7 +228,34 @@ def _delta_block(delta) -> list[str]:
+       test evidence: strongly supported  [tier: static]
+         1.5  tests/test_mandate_coverage.py::test_a_decline_is_not_re_judged_even_when_the_text_reads_like_a_requirement
+         1.6  tests/test_mandate_coverage.py::test_a_declined_requirement_does_not_count_against_coverage
+         1.7  tests/test_mandate_coverage.py::test_a_review_whose_only_unyielding_requirement_is_declined_stays_positive
+         1.8  tests/test_mandate_coverage.py::test_the_report_states_the_same_coverage_the_result_carries
+         1.9  tests/test_mandate_coverage_wiring.py::test_the_verdict_is_derived_with_each_requirements_disposition_in_hand
+
+  2. A requirement deliberately declined with a stated reason does not count against how much of the mandate the review covered.
+       requirements: constraint-01, completion-02
+       code evidence: addressed
+         2.1  src/acceptance/review_state.py#@@ -624,6 +625,52 @@ class CompletionVerdict(str, Enum):
+         2.2  src/acceptance/verdict.py#@@ -51,17 +55,75 @@ _STATIC_CAVEAT = (
+         2.3  src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+       test evidence: strongly supported  [tier: static]
+         2.4  tests/test_mandate_coverage.py::test_a_decline_is_not_re_judged_even_when_the_text_reads_like_a_requirement
+         2.5  tests/test_mandate_coverage.py::test_a_declined_requirement_does_not_count_against_coverage
+         2.6  tests/test_mandate_coverage.py::test_a_review_whose_only_unyielding_requirement_is_declined_stays_positive
+         2.7  tests/test_mandate_coverage.py::test_the_report_states_the_same_coverage_the_result_carries
+         2.8  tests/test_mandate_coverage_wiring.py::test_the_verdict_is_derived_with_each_requirements_disposition_in_hand
+
+  3. A test asserts that an open question answered by the change yields an obligation stating the behaviour the change committed to.
+       requirements: completion-03
+       code evidence: addressed
+         3.1  tests/test_mandate_coverage.py#@@ -0,0 +1,403 @@
+         3.2  tests/coverage/test_open_questions.py#@@ -54,6 +62,7 @@ def test_diff_resolves_the_question():
+       test evidence: strongly supported  [tier: static]
+         3.3  tests/coverage/test_open_questions.py::test_diff_resolves_the_question
+         3.4  tests/test_mandate_coverage.py::test_a_requirement_whose_question_the_diff_resolved_counts_as_judged
+         3.5  tests/test_mandate_coverage.py::test_a_resolved_question_yields_an_obligation_stating_the_chosen_behavior
+         3.6  tests/test_mandate_coverage_wiring.py::test_a_resolved_questions_obligation_reaches_the_obligation_map
+
+  4. An open question answered by the change yields an obligation stating the behaviour the change committed to.
+       requirements: constraint-02, completion-03
+       code evidence: addressed
+         4.1  src/acceptance/coverage/open_questions.py#@@ -47,7 +53,21 @@ guess which reading the diff intends, it is not resolved. When resolved, cite
+         4.2  src/acceptance/coverage/open_questions.py#@@ -57,6 +77,12 @@ class OpenQuestionResolution(PersistableModel):
+         4.3  src/acceptance/coverage/open_questions.py#@@ -118,6 +143,9 @@ def resolve_open_questions(
+         4.4  src/acceptance/coverage/open_questions.py#@@ -161,3 +189,78 @@ def apply_open_question_resolutions(
+       test evidence: strongly supported  [tier: static]
+         4.5  tests/coverage/test_open_questions.py::test_diff_resolves_the_question
+         4.6  tests/test_mandate_coverage.py::test_a_requirement_whose_question_the_diff_resolved_counts_as_judged
+         4.7  tests/test_mandate_coverage.py::test_a_resolution_without_a_citation_yields_no_obligation
+         4.8  tests/test_mandate_coverage.py::test_a_resolved_question_yields_an_obligation_stating_the_chosen_behavior
+         4.9  tests/test_mandate_coverage_wiring.py::test_a_resolved_questions_obligation_reaches_the_obligation_map
+         4.10  tests/test_report.py::test_open_questions_and_recommendations_are_numbered
+
+  5. A test asserts that an obligation derived from an answered open question is treated as implemented and cites the places in the change that answer it.
+       requirements: completion-04
+       code evidence: addressed
+         5.1  tests/test_mandate_coverage.py#@@ -0,0 +1,403 @@
+         5.2  tests/test_mandate_coverage_wiring.py#@@ -0,0 +1,191 @@
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/test_mandate_coverage.py::test_a_derived_obligation_is_addressed_and_cites_what_resolved_it
+         5.4  tests/test_mandate_coverage_wiring.py::test_a_resolved_questions_obligation_reaches_the_obligation_map
+         5.5  tests/test_report.py::test_every_test_evidence_line_shows_a_tier
+         5.6  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         5.7  tests/test_report.py::test_test_citations_name_the_test_not_just_the_file
+
+  6. An obligation derived from an answered open question is treated as implemented and cites the places in the change that answer it.
+       requirements: constraint-03, completion-04
+       code evidence: addressed
+         6.1  src/acceptance/coverage/open_questions.py#@@ -161,3 +189,78 @@ def apply_open_question_resolutions(
+         6.2  src/acceptance/pipeline.py#@@ -272,14 +285,19 @@ def run_review(
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/test_mandate_coverage.py::test_a_derived_obligation_is_addressed_and_cites_what_resolved_it
+         6.4  tests/test_mandate_coverage.py::test_a_resolution_without_a_citation_yields_no_obligation
+         6.5  tests/test_mandate_coverage_wiring.py::test_a_resolved_questions_obligation_reaches_the_obligation_map
+         6.6  tests/test_report.py::test_a_review_with_gaps_closes_by_pointing_at_the_retrieval_command
+         6.7  tests/test_report.py::test_the_report_states_what_closed_since_the_prior_review
+
+  7. A test asserts that an obligation derived from an answered open question that no test exercises prevents a report of no material gaps.
+       requirements: completion-05
+       code evidence: addressed
+         7.1  tests/test_mandate_coverage.py#@@ -0,0 +1,403 @@
+         7.2  src/acceptance/verdict.py#@@ -51,17 +55,75 @@ _STATIC_CAVEAT = (
+         7.3  src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+       test evidence: strongly supported  [tier: static]
+         7.4  tests/test_mandate_coverage.py::test_an_untested_derived_obligation_prevents_a_positive_verdict
+
+  8. An obligation derived from an answered open question that no test exercises prevents a report of no material gaps.
+       requirements: constraint-04, completion-05
+       code evidence: addressed
+         8.1  src/acceptance/verdict.py#@@ -51,17 +55,75 @@ _STATIC_CAVEAT = (
+         8.2  src/acceptance/verdict.py#@@ -102,41 +164,53 @@ def derive_verdict(
+         8.3  src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+       test evidence: strongly supported  [tier: static]
+         8.4  tests/test_mandate_coverage.py::test_an_untested_derived_obligation_prevents_a_positive_verdict
+
+  9. A test asserts that an open question the change does not answer yields no obligation.
+       requirements: completion-06
+       code evidence: addressed
+         9.1  tests/test_mandate_coverage.py#@@ -0,0 +1,403 @@
+         9.2  tests/coverage/test_open_questions.py#@@ -77,6 +86,7 @@ def test_diff_does_not_resolve_the_question():
+         9.3  tests/test_mandate_coverage_wiring.py#@@ -0,0 +1,191 @@
+       test evidence: strongly supported  [tier: static]
+         9.4  tests/coverage/test_open_questions.py::test_question_missing_from_the_model_response_stays_open
+         9.5  tests/test_mandate_coverage.py::test_a_requirement_whose_question_produced_nothing_is_unjudged
+         9.6  tests/test_mandate_coverage.py::test_an_unresolved_question_yields_no_obligation
+
+  10. An open question the change does not answer yields no obligation.
+       requirements: completion-06
+       code evidence: addressed
+         10.1  src/acceptance/coverage/open_questions.py#@@ -161,3 +189,78 @@ def apply_open_question_resolutions(
+       test evidence: strongly supported  [tier: static]
+         10.2  tests/coverage/test_open_questions.py::test_question_missing_from_the_model_response_stays_open
+         10.3  tests/test_mandate_coverage.py::test_a_requirement_whose_question_produced_nothing_is_unjudged
+         10.4  tests/test_mandate_coverage.py::test_an_unresolved_question_yields_no_obligation
+         10.5  tests/test_mandate_coverage_wiring.py::test_a_resolved_questions_obligation_reaches_the_obligation_map
+         10.6  tests/test_report.py::test_a_review_with_no_obligations_does_not_advertise_retrieval
+
+  11. A test asserts that task-file text yielding no requirement at all prevents a report of no material gaps.
+       requirements: completion-07
+       code evidence: addressed
+         11.1  tests/test_mandate_coverage.py#@@ -0,0 +1,403 @@
+         11.2  src/acceptance/review_state.py#@@ -624,6 +625,52 @@ class CompletionVerdict(str, Enum):
+         11.3  src/acceptance/verdict.py#@@ -51,17 +55,75 @@ _STATIC_CAVEAT = (
+         11.4  src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+       test evidence: strongly supported  [tier: static]
+         11.5  tests/test_mandate_coverage.py::test_task_text_that_yielded_no_requirement_prevents_a_positive_verdict
+
+  12. Task-file text that yielded no requirement at all prevents a report of no material gaps.
+       requirements: constraint-06, completion-07
+       code evidence: addressed
+         12.1  src/acceptance/review_state.py#@@ -624,6 +625,52 @@ class CompletionVerdict(str, Enum):
+         12.2  src/acceptance/verdict.py#@@ -51,17 +55,75 @@ _STATIC_CAVEAT = (
+         12.3  src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+       test evidence: strongly supported  [tier: static]
+         12.4  tests/test_mandate_coverage.py::test_task_text_that_yielded_no_requirement_prevents_a_positive_verdict
+
+  13. A test asserts that how much of the mandate the review covered is recorded on the completion result.
+       requirements: completion-08
+       code evidence: addressed
+         13.1  tests/test_mandate_coverage.py#@@ -0,0 +1,403 @@
+         13.2  tests/test_mandate_coverage_wiring.py#@@ -0,0 +1,191 @@
+       test evidence: strongly supported  [tier: static]
+         13.3  tests/test_mandate_coverage.py::test_coverage_is_recorded_even_when_complete
+         13.4  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  14. How much of the mandate the review covered is recorded on the completion result.
+       requirements: completion-08
+       code evidence: addressed
+         14.1  src/acceptance/review_state.py#@@ -624,6 +625,52 @@ class CompletionVerdict(str, Enum):
+         14.2  src/acceptance/verdict.py#@@ -51,17 +55,75 @@ _STATIC_CAVEAT = (
+         14.3  src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+       test evidence: strongly supported  [tier: static]
+         14.4  tests/test_mandate_coverage.py::test_coverage_is_recorded_even_when_complete
+         14.5  tests/test_mandate_coverage.py::test_identical_evidence_with_different_coverage_differs_in_the_result
+         14.6  tests/test_mandate_coverage.py::test_no_requirement_map_leaves_the_verdict_untouched
+         14.7  tests/test_mandate_coverage.py::test_the_report_states_the_same_coverage_the_result_carries
+         14.8  tests/test_report.py::test_the_report_states_what_closed_since_the_prior_review
+
+  15. A test asserts that the verdict is derived with each requirement's disposition in hand, by the same path a review run takes.
+       requirements: completion-09
+       code evidence: addressed
+         15.1  tests/test_mandate_coverage_wiring.py#@@ -0,0 +1,191 @@
+         15.2  src/acceptance/pipeline.py#@@ -245,11 +246,23 @@ def run_review(
+         15.3  src/acceptance/pipeline.py#@@ -316,7 +334,9 @@ def run_review(
+       test evidence: partially supported  [tier: static]
+         15.4  tests/test_mandate_coverage_wiring.py::test_the_verdict_is_derived_with_each_requirements_disposition_in_hand
+         15.5  tests/test_verdict.py::test_indeterminate_is_unable_to_determine_and_an_escalation_candidate
+         15.6  tests/test_verdict.py::test_no_obligations_is_unable_to_determine
+         15.7  tests/test_verdict.py::test_requires_non_code_evidence_is_needs_non_code_review
+         15.8  tests/test_verdict.py::test_resolved_open_question_does_not_block
+         15.9  tests/test_verdict.py::test_the_weak_count_is_read_off_the_obligations_not_the_recommendations
+         15.10  tests/test_verdict.py::test_unclassified_evidence_is_treated_as_indeterminate
+         15.11  tests/test_verdict.py::test_unresolved_open_question_blocks_positive_and_needs_clarification
+         15.12  tests/test_verdict.py::test_weak_evidence_is_incomplete
+         recommended test: A test exists that exercises verdict derivation using each requirement's disposition along the same execution path as a review run.
+           inputs:  Use a review run that includes at least one requirement in each of these dispositions: yielded, no_obligation, and open_question resolved by the diff into a derived obligation. The task text should be the same as the wiring test’s real pipeline input, but the assertion must inspect the completion produced by run_review, not a direct helper call.
+           detects: The verdict logic works in isolation, but the pipeline does not actually feed requirement dispositions into the same review-run path exercised by the wiring test.
+           full detail: acceptance recommendation --criterion completion-09-test-demand-verdict-derived-with-dispositions-in-hand
+
+  16. A test asserts that two runs over byte-identical task text produce byte-identical review state.
+       requirements: completion-10
+       code evidence: addressed
+         16.1  tests/test_mandate_coverage_wiring.py#@@ -0,0 +1,191 @@
+         16.2  src/acceptance/coverage/open_questions.py#@@ -161,3 +189,78 @@ def apply_open_question_resolutions(
+       test evidence: partially supported  [tier: static]
+         16.3  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         recommended test: A test exists that compares two runs over identical task text and observes identical review state.
+           inputs:  Run the full review twice over the same nontrivial task text and the same repository state, but make the input rich enough to include a resolved open question and at least one declined requirement. The task should not be a fixture that is trivially deterministic by construction; it should exercise the derived-obligation path and the mandate-coverage path together.
+           detects: The review state is byte-identical only on the current deterministic fixture, but the implementation would still diverge on other identical inputs because derived obligations are minted nondeterministically or ordered via an unstable collection.
+           full detail: acceptance recommendation --criterion completion-10-test-demand-byte-identical-review-state
+
+  17. An open question the change does not answer yields no obligation.
+       requirements: constraint-05
+       code evidence: addressed
+         17.1  src/acceptance/coverage/open_questions.py#@@ -161,3 +189,78 @@ def apply_open_question_resolutions(
+       test evidence: strongly supported  [tier: static]
+         17.2  tests/coverage/test_open_questions.py::test_question_missing_from_the_model_response_stays_open
+         17.3  tests/test_mandate_coverage.py::test_an_unresolved_question_yields_no_obligation
+         17.4  tests/test_mandate_coverage_wiring.py::test_a_resolved_questions_obligation_reaches_the_obligation_map
+
+  18. Record how much of the mandate the review covered on the completion result and state it in the report.
+       requirements: constraint-07
+       code evidence: addressed
+         18.1  src/acceptance/review_state.py#@@ -624,6 +625,52 @@ class CompletionVerdict(str, Enum):
+         18.2  src/acceptance/review_state.py#@@ -637,6 +684,10 @@ class CompletionResult(_Model):
+         18.3  src/acceptance/report.py#@@ -80,7 +81,12 @@ def render_report(review: Review) -> str:
+         18.4  src/acceptance/report.py#@@ -222,7 +228,34 @@ def _delta_block(delta) -> list[str]:
+         18.5  src/acceptance/report.py#@@ -245,6 +278,7 @@ def _mandate_coverage_block(requirement_map: RequirementMap) -> list[str]:
+       test evidence: strongly supported  [tier: static]
+         18.6  tests/test_mandate_coverage.py::test_coverage_is_recorded_even_when_complete
+         18.7  tests/test_mandate_coverage.py::test_identical_evidence_with_different_coverage_differs_in_the_result
+         18.8  tests/test_mandate_coverage.py::test_the_report_states_the_same_coverage_the_result_carries
+         18.9  tests/test_report.py::test_a_recommendation_sits_under_its_own_obligation_and_no_other
+         18.10  tests/test_report.py::test_multi_word_verdict_renders_as_the_16_headline
+
+  19. Treat reduced mandate coverage as a one-way bound on the verdict so that covering less of the mandate never improves the reported result.
+       requirements: constraint-08
+       code evidence: addressed
+         19.1  src/acceptance/verdict.py#@@ -102,41 +164,53 @@ def derive_verdict(
+         19.2  src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+       test evidence: strongly supported  [tier: static]
+         19.3  tests/test_mandate_coverage.py::test_a_shortfall_never_improves_an_already_negative_verdict
+         19.4  tests/test_mandate_coverage.py::test_dropping_a_requirement_never_produces_a_better_verdict
+         19.5  tests/test_mandate_coverage.py::test_identical_evidence_with_different_coverage_differs_in_the_result
+         19.6  tests/test_report.py::test_a_respected_boundary_is_one_claim_over_the_examined_set_not_a_listing
+         19.7  tests/test_verdict.py::test_coverage_gap_is_incomplete
+         19.8  tests/test_verdict.py::test_definite_gap_outranks_indeterminate
+
+  20. Derive the completion verdict from the review's recorded state without consulting a model.
+       requirements: constraint-09
+       code evidence: addressed
+         20.1  src/acceptance/verdict.py#@@ -51,17 +55,75 @@ _STATIC_CAVEAT = (
+         20.2  src/acceptance/verdict.py#@@ -102,41 +164,53 @@ def derive_verdict(
+         20.3  src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+       test evidence: nominally supported  [tier: static]
+         20.4  tests/test_mandate_coverage_wiring.py::test_the_verdict_is_derived_with_each_requirements_disposition_in_hand
+         recommended test: The verdict computation uses only the review's recorded state and does not depend on model consultation.
+           inputs:  Construct a Review or verdict input from already-recorded state: a requirement_map with dispositions, a set of obligations, and open questions/resolutions already persisted. Use a model client that would fail if consulted, and ensure the recorded state is sufficient to compute the verdict without any new judgments.
+           detects: Verdict derivation consults the model again instead of using the recorded review state, or it ignores the recorded requirement map and coincidentally matches the fixture’s coverage counts.
+           full detail: acceptance recommendation --criterion verdict-from-recorded-state-no-model
+
+  21. Produce byte-identical review state for two runs over byte-identical task text.
+       requirements: constraint-10
+       code evidence: addressed
+         21.1  src/acceptance/coverage/open_questions.py#@@ -161,3 +189,78 @@ def apply_open_question_resolutions(
+         21.2  tests/test_mandate_coverage_wiring.py#@@ -0,0 +1,191 @@
+       test evidence: strongly supported  [tier: static]
+         21.3  tests/test_mandate_coverage.py::test_a_derived_obligation_id_is_stable_across_runs
+         21.4  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+
+  22. Keep tests free of live model calls.
+       requirements: constraint-11
+       code evidence: addressed
+         22.1  tests/test_mandate_coverage.py#@@ -0,0 +1,403 @@
+         22.2  tests/test_mandate_coverage_wiring.py#@@ -0,0 +1,191 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: Test execution does not make live model requests.
+           inputs:  Run the relevant test suite with a model client fixture that would fail on any live request, or with network access disabled and the client stubbed to record calls. The test inputs should exercise both open-question resolution and verdict derivation so any hidden live call would be triggered.
+           detects: Test execution makes live model requests, either because a stage bypasses recorded transcripts or because a helper silently falls back to the real client.
+           full detail: acceptance recommendation --criterion tests-issue-no-live-model-calls
+
+  23. Preserve the stated reason for a deliberately declined requirement as accepted at face value when assessing coverage.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 32 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  24. Leave the rating stage for an obligation's test evidence outside this change's scope.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 32 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  25. Leave decomposition stability from one run to the next outside this change's scope.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 32 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  26. The change does not measure how accurate decomposition is.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 32 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  27. The change does not alter how finely a single requirement is split into obligations.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 32 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  28. The change does not address whether obligation identifiers are stable across task-file edits.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 32 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  29. The change does not determine which tests are discovered or which obligations they are mapped to.
+       requirements: exclusion-07
+       code evidence: addressed
+         examined 32 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  30. The completion verdict accounts for every requirement of the mandate, so no part of the mandate can produce nothing it is able to judge while the review reports no material gaps.
+       requirements: task-01
+       code evidence: addressed
+         30.1  src/acceptance/verdict.py#@@ -51,17 +55,75 @@ _STATIC_CAVEAT = (
+         30.2  src/acceptance/verdict.py#@@ -102,41 +164,53 @@ def derive_verdict(
+         30.3  src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+         30.4  src/acceptance/review_state.py#@@ -624,6 +625,52 @@ class CompletionVerdict(str, Enum):
+       test evidence: strongly supported  [tier: static]
+         30.5  tests/test_mandate_coverage.py::test_dropping_a_requirement_never_produces_a_better_verdict
+         30.6  tests/test_mandate_coverage.py::test_task_text_that_yielded_no_requirement_prevents_a_positive_verdict
+
+Mandate coverage: 28 of 29 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: This section marker stands alone with no requirement under it.
+
+Unrequested changes:
+  1. [separable] Reformatted the `client.complete(...)` call onto one line without any functional or requested behavioral change.
+       src/acceptance/coverage/open_questions.py#@@ -99,9 +126,7 @@ def resolve_open_questions(
+  2. [in_service] Added a `derived_obligation_id` helper and deterministic-id plumbing. The obligations ask for derived obligations from resolved open questions and byte-identical review state, but they do not require this specific helper or id scheme; it is an implementation choice beyond the stated scope.
+       src/acceptance/coverage/open_questions.py#@@ -161,3 +189,78 @@ def apply_open_question_resolutions(
+       src/acceptance/pipeline.py#@@ -245,11 +246,23 @@ def run_review(
+       tests/test_mandate_coverage.py#@@ -0,0 +1,403 @@
+       tests/test_mandate_coverage_wiring.py#@@ -0,0 +1,191 @@
+  3. [in_service] Changed pipeline ordering so open-question resolution now runs before coverage classification and verdict derivation, and derived obligations are held out of coverage classification. The task requires derived obligations and mandate coverage accounting, but not this specific reordering or the special-casing of derived obligations in coverage classification.
+       src/acceptance/pipeline.py#@@ -245,11 +246,23 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -272,14 +285,19 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -316,7 +334,9 @@ def run_review(
+  4. [in_service] Extended the report to render mandate-coverage details such as declined and unjudged counts. The obligations require recording coverage on the result and stating it in the report, but not this particular extra disclosure format or wording.
+       src/acceptance/report.py#@@ -80,7 +81,12 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -222,7 +228,34 @@ def _delta_block(delta) -> list[str]:
+       src/acceptance/report.py#@@ -245,6 +278,7 @@ def _mandate_coverage_block(requirement_map: RequirementMap) -> list[str]:
+  5. [in_service] Introduced a new `MandateCoverage` model and changed `CompletionResult` to carry it. Recording coverage on the result is requested, but this specific schema and its extra fields/properties are an implementation choice not explicitly required.
+       src/acceptance/review_state.py#@@ -624,6 +625,52 @@ class CompletionVerdict(str, Enum):
+       src/acceptance/review_state.py#@@ -637,6 +684,10 @@ class CompletionResult(_Model):
+  6. [in_service] Changed verdict derivation so reduced mandate coverage can downgrade an otherwise `no_material_gaps` result to `unable_to_determine`, and added mandate-coverage assessment logic. The obligations require coverage to bound the verdict, but this exact downgrade rule and the new assessment algorithm go beyond what was explicitly asked.
+       src/acceptance/verdict.py#@@ -51,17 +55,75 @@ _STATIC_CAVEAT = (
+       src/acceptance/verdict.py#@@ -102,41 +164,53 @@ def derive_verdict(
+       src/acceptance/verdict.py#@@ -151,13 +225,82 @@ def derive_verdict(
+  7. [separable] The session-state note was heavily rewritten with new task-specific narrative, lane coordination, and queue details. This documentation churn is not called for by the listed obligations.
+       session-state.md#@@ -12,74 +12,128 @@ Clear it out when the task lands rather than letting it accrete.
+       session-state.md#@@ -91,19 +145,15 @@ these conditions:
+  8. [in_service] Added a large new test file covering many scenarios beyond the minimum implied by the obligations, including specific implementation details like deterministic IDs, report wording, and pipeline wiring. These tests may be related, but the breadth and exact cases are not directly required by the obligations as stated.
+       tests/test_mandate_coverage.py#@@ -0,0 +1,403 @@
+       tests/test_mandate_coverage_wiring.py#@@ -0,0 +1,191 @@
+
+Changes since be4367df:
+  closed:
+    - A requirement deliberately declined with a stated reason does not count against how much of the mandate the review covered.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - A test asserts that two runs over byte-identical task text produce byte-identical review state.
+        code evidence: unclear -> addressed
+        test evidence: strongly supported -> partially supported
+    - Record how much of the mandate the review covered on the completion result and state it in the report.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Produce byte-identical review state for two runs over byte-identical task text.
+        code evidence: unclear -> addressed
+        test evidence: strongly supported -> strongly supported
+  moved:
+    - A test asserts that the verdict is derived with each requirement's disposition in hand, by the same path a review run takes.
+        test evidence: strongly supported -> partially supported
+    - Derive the completion verdict from the review's recorded state without consulting a model.
+        test evidence: strongly supported -> nominally supported
+    - Keep tests free of live model calls.
+        test evidence: strongly supported -> unsupported
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

@@ -96,6 +96,31 @@ re-judging while looking stable. Hence the deterministic id above.
 Expect textual merge conflicts with #180 in `review_state.py` (both adding
 fields) and `pipeline.py` (different regions). **Rebase early.**
 
+## Gate 2 — NOT CLEAN, runs 1 and 2
+
+Implementation is complete and committed (`bb1f1ef`); **993 tests pass, ruff
+clean**. Gate 2 is INCOMPLETE, and this is a human call, not mine.
+
+**Run 1's four findings were all real and all are fixed.** Two coverage gaps
+(byte-identical review state had no test at all — it was in my mandate and I did
+not write it) and two weak ratings (a declined-requirement test that could not
+fail, and a coverage figure asserted on the result but never in the report).
+Run 2 confirms: both gaps closed, both weak ratings moved to strongly supported.
+Determinism test verified by injection — `uuid4()` in `derived_obligation_id`
+fails it.
+
+**Run 2's four findings are attributed to #180/#182.** The heads differ by three
+added tests and no source change, yet 7 of 21 obligations moved rating and four
+fell. `constraint-11` went `strongly supported` (two mapped tests) →
+`unsupported` **with no mapped test at all**, both tests still present and
+untouched. I read every recommendation first: three describe tests that already
+exist — one of them cited by the same run as evidence for the obligation it says
+lacks it — and the fourth asks for a test of something `derive_verdict`'s
+signature already guarantees.
+
+Same call as #153 and #235, same cause. Evidence in
+`dogfood-logs/214-gate2-run1/` and `-run2/`.
+
 ## Gate 1 — passed, run 2
 
 `dogfood-logs/214-gate1-run2/`. 29 requirements, 28 yielded, 1 deliberately
@@ -131,9 +156,13 @@ human's approval as a backlog write.
 
 ## Queue — `docs/DEFERRED.md`
 
-One entry: **filing (should-fix)** — the linking defect above, drafted as a child
-of #181 with acceptance criteria. The earlier exemption-rule decision entry is
-resolved and deleted (ruling 1 settled it).
+One entry: **filing (blocker)** — a drafted comment on #180 carrying the
+`constraint-11` evidence (a mapped set collapsing from two tests to zero across
+an additive diff), which is a cleaner reproduction than the corpus holds.
+
+Already filed this session: **#242** (linking merges nothing when one spurious
+link joins a cluster), child of #181. The exemption-rule decision entry is
+resolved and deleted — ruling 1 settled it.
 
 ## Do not rediscover
 
