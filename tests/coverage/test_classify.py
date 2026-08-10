@@ -357,3 +357,56 @@ def test_a_breached_boundary_cites_where_it_crosses(tmp_path):
 
     assert coverage.status is CoverageStatus.NOT_ADDRESSED
     assert [ref.file for ref in coverage.diff_refs] == [receipt]
+
+
+def test_a_respected_boundary_drops_hunks_the_model_cited_anyway(tmp_path):
+    """The defect #153's own Gate 2 caught, and the one the tests above could
+    not: every other case here feeds a COMPLIANT response, so they all pass
+    against an implementation that simply trusts the model.
+
+    The prompt tells the classifier to leave `diff_refs` empty for a respected
+    boundary. On #153's Gate 2 the model returned hunks anyway for 3 of 7
+    exclusions, and the report rendered them as a listing — reading as evidence
+    FOR the obligation, which is precisely what the acceptance forbids.
+
+    A respected boundary has no supporting hunks by construction, so this is
+    enforced in code rather than asked for.
+    """
+    change_set = _archetype_change_set("01-missed-obligation", tmp_path)
+    receipt = _source_file(change_set, "receipt.py")
+    client = _client_returning({
+        "classifications": [{
+            "obligation_id": "pagination",
+            "status": "addressed",
+            "rationale": "Nothing here touches pagination.",
+            # Non-compliant: the prompt forbids these for a respected boundary.
+            "diff_refs": [f"{receipt}#0"],
+        }]
+    })
+
+    [coverage] = classify_coverage([_boundary_obligation()], change_set, client)
+
+    assert coverage.status is CoverageStatus.ADDRESSED
+    assert coverage.diff_refs == []
+    # The scope claim survives — dropping the citations must not drop the claim.
+    assert coverage.scope_examined
+
+
+def test_a_breached_boundary_keeps_the_hunks_the_model_cited(tmp_path):
+    """The boundary of the rule above. Enforcement applies to `addressed` only:
+    a breach DOES have a location, and stripping it would leave a violation
+    finding with nothing to point at — worse than the listing it fixes."""
+    change_set = _archetype_change_set("01-missed-obligation", tmp_path)
+    receipt = _source_file(change_set, "receipt.py")
+    client = _client_returning({
+        "classifications": [{
+            "obligation_id": "pagination",
+            "status": "not_addressed",
+            "rationale": "This change rewrites the pagination helper.",
+            "diff_refs": [f"{receipt}#0"],
+        }]
+    })
+
+    [coverage] = classify_coverage([_boundary_obligation()], change_set, client)
+
+    assert [ref.file for ref in coverage.diff_refs] == [receipt]

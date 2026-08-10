@@ -173,6 +173,19 @@ def classify_coverage(
             )
             continue
         refs = resolve_refs(classification.diff_refs, label_to_ref)
+        boundary = obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY
+        if boundary and classification.status is CoverageStatus.ADDRESSED:
+            # A respected boundary has no supporting hunks BY CONSTRUCTION: it is
+            # satisfied by an absence, so any hunk cited under it is a change
+            # that was checked, not one that supports it. The prompt says to
+            # leave `diff_refs` empty here and the model returned them anyway on
+            # 3 of 7 exclusions in #153's own Gate 2 — which rendered the listing
+            # the acceptance forbids, reading as evidence FOR the obligation.
+            #
+            # So it is enforced rather than asked for, the same move as marking
+            # the axis from the parse. A breach keeps its citations: that is the
+            # one case where a location exists and carries the whole finding.
+            refs = []
         coverages.append(
             ImplementationCoverage(
                 obligation_id=obligation.id,
@@ -182,11 +195,7 @@ def classify_coverage(
                 # Only a boundary obligation makes a completeness claim; for an
                 # ordinary one the evidence IS the cited hunks, and recording
                 # the whole diff under it would say nothing.
-                scope_examined=(
-                    list(label_to_ref.values())
-                    if obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY
-                    else []
-                ),
+                scope_examined=list(label_to_ref.values()) if boundary else [],
             )
         )
     return coverages
