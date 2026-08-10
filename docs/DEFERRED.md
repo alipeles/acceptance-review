@@ -253,4 +253,6 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   clean" is not a convergent procedure while this holds. Both runs are committed
   under `dogfood-logs/232-gate2-run{1,2}/` and are candidate rating-stability
   fixtures alongside `tests/fixtures/rating-stability/`.
-- **Status:** open
+- **Status:** filed (comment on #180). Run 3 added: the verdict reproduces
+  exactly at a later SHA, so this is sensitivity to an unrelated part of the
+  diff, not irreproducibility over identical input.

@@ -15,7 +15,9 @@ Clear it out when the task lands rather than letting it accrete.
 ## Task in flight — #232 + #219 + #230, at Gate 2
 
 Branch `232-decomposition-prompt-shaping`, off `eb182de`. Nothing pushed, no PR.
-**Gate 2 presented and not clean** — see below. Awaiting the human's call.
+**Gate 2 not clean; the human's call is recorded: note the findings, do not let
+them hold the change up.** They are #180/#182, filed. Ready to push and open a
+PR on request.
 
 ## What shipped
 
@@ -54,12 +56,13 @@ regression.
 
 ## Do not rediscover
 
-- **`acceptance check ... > dogfood-logs/<run>/output.log` cannot be replayed.**
-  `check` reads the working tree as head, the shell creates the redirect target
-  first, so the log joins the diff under review and the coverage request key
-  moves between record and replay. It fails with `no recorded transcript`, under
-  a message blaming a prompt edit. **Capture outside the repo and copy in.**
-  Queued as a filing.
+- **`.acceptance/ignore` exists (#105)** — gitignore syntax, read from the
+  reviewed repo, and **committed** (only `.acceptance/cache/` and
+  `.acceptance/reviews/` are gitignored; CLAUDE.md's "never committed" is
+  imprecise). `dogfood-logs/` is now in it. Without that rule, redirecting a
+  run's output into its own directory put the log in the diff under review and
+  replay failed with `no recorded transcript` — verified fixed in
+  `dogfood-logs/232-gate2-run3/`.
 - **Two prompt attempts failed before typing worked.** Told to keep the test
   framing, derivation began *inventing* it on Constraints that demand no test.
   The prompt cannot carry this distinction; the type can. DR-232.
@@ -76,15 +79,12 @@ regression.
 
 ## Queue — `docs/DEFERRED.md`
 
-Two open, both filings, both from Gate 2:
+One residual open: the missing-transcript error message blames an edited prompt,
+which was wrong at Gate 2 and cost a diagnostic cycle. Needs a call on where it
+belongs.
 
-1. `acceptance check` reviews its own output file — needs your call on the parent
-   umbrella (#185, or a new change-stage one).
-2. Adding two tests moved five unrelated obligations — comment on #180,
-   cross-referencing #182.
-
-Filed earlier this session: **#234** (child of #184), comments on **#230** and
-**#212**.
+Filed this session: **#234** (child of #184), comments on **#230**, **#212** and
+**#180**.
 
 ## Known open
 
