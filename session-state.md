@@ -12,103 +12,103 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## In flight: #228 — a benchmark case yielding zero requirements must fail, not score
+## No task in flight
 
-Branch `228-benchmark-empty-registry`, branched from `0923f77` (= `origin/main`).
-Child of **#186**. Two commits: `e67c615`, `0514119`.
+**#214 landed** as `7573697` (PR #247). **#228 is merging** as PR #246 — Gate 2
+not clean, on an explicit human call. **#180 is still in flight** in its own
+session.
 
-**One of three parallel lanes** — #180 and #214 are running in their own
-sessions. **This lane touches no model prompt.**
+`current-task.md` holds #228's mandate; stale, and the next task overwrites it
+at Gate 1.
 
-## Gate 1: PASSED. Gate 2: NOT CLEAN — blocked on a mapping defect, awaiting a human call
+## Why #228 merged without a clean gate
 
-Four runs saved under `dogfood-logs/228-gate1-run{1,2}/` and
-`dogfood-logs/228-gate2-run{1,2}/`, each with its judgement.
+Third time, same cause. **#153** and **#235** made the same call before it. The
+new part is that #228's evidence isolates the failure to the **mapping call**,
+filed as **#245** against #182, and does it without needing to compare runs.
 
-## Where it stands
+Run 2's report contradicts itself three ways:
 
-**The code is done and verified.** Suite green (**1005 passed**), ruff clean,
-and **defect injection confirms the tests bite**: short-circuiting
-`require_nonempty_registry` fails 8 of the guard file's 31 tests, including the
-new paired control, while the control half keeps passing.
+- obligation 3 (`completion-04`): `unsupported`, *"no mapped test"*, recommending
+  a test that iterates both corpora;
+- obligation 8 (`constraint-04`): **strongly supported**, citing
+  `test_every_archetype_task_file_yields_requirements` and its
+  decompose-regression twin — the very tests obligation 3 says do not exist;
+- unrequested change #5: calls those same tests surplus to requirements.
 
-**Gate 2 will not converge.** Run 1 named three obligations; all three were real
-and all three are fixed. Run 2 named a **disjoint two** — both of which were
-*strongly supported in run 1*, over tests that did not change.
+Across runs, the mapper moved the tests between a Completion expectation ("A test
+asserts that X") and its Constraint twin ("X"), and in run 2 handed one to a
+**scope exclusion** — a code-evidence-only obligation that should attract no test
+mapping at all.
 
-## The blocking finding — #182, cross-referenced #180
+Run 1 named three obligations; **all three were real and all three were fixed**.
+Run 2 then named a disjoint two that run 1 had passed, over unchanged tests.
 
-Where a Completion expectation ("A test asserts that X") sits beside its
-Constraint twin ("X"), mapping attaches the tests to one or the other, unstably.
-Run-2's report **contradicts itself**: obligation 3 says no test iterates both
-corpora; obligation 8 cites those exact tests as strong evidence; unrequested
-change #5 calls them surplus. Full evidence in
-`dogfood-logs/228-gate2-run2/judgement.md`.
+Evidence: `dogfood-logs/228-gate2-run1/` and `-run2/`, judgement in run 2.
 
-Not addressable in code — the tests it asks for exist. Writing duplicates to
-move a label is the "fix the output, not the wording" failure CLAUDE.md forbids.
+## What #228 shipped
 
-**Decision needed:** merge on an explicit human call as #153 and #235 did, or
-hold #228 behind a mapping fix.
-
-## What run 1 caught that was real
-
-- **`byte-identical-review-state`** was a Constraint with no corresponding
-  change. My authoring defect — a standing invariant, not a requirement of this
-  change. Moved to Scope exclusions; confirmed by non-violation in run 2.
-- **task-01 `instead of being scored`** had no test aimed at it. Ten tests
-  asserted the guard raises; none asserted no number is produced. Added the
-  paired control test the recommendation prescribed. Strongly supported in run 2.
-
-## The change
-
-- `benchmark/case.py` — `EmptyRequirementRegistryError` + `require_nonempty_registry`,
-  which runs the real `parse_task_file` → `build_registry`, not a heading proxy.
-- Called by all three corpus builders **before** materialization:
+- **`benchmark/case.py::require_nonempty_registry`** + `EmptyRequirementRegistryError`.
+  Runs the real `parse_task_file` → `build_registry`, **not** a `# Task` heading
+  proxy: a proxy would pass exactly when the parser changed its mind about what
+  a requirement is, which is the case worth catching.
+- Called by all three corpus builders **before materialization** —
   `build_benchmark_case`, `build_decompose_case`, `build_corpus_case`.
-- `tests/benchmark/test_empty_registry_guard.py` — 31 tests.
-- `requirement/obligations.py` — corrected a comment stale since `1c53592`.
+- 31 tests. **Injection-verified:** short-circuiting the guard fails 8 of them.
 
-## Verified facts worth keeping
+## The lesson worth keeping from #228
 
-- Every task file in `archetypes/` (13), `decompose-regression/` (8) and
-  `rating-stability/` (6) parses non-empty. The guard changes no current
-  outcome, so the corpus cannot demonstrate it — hence the test-supplied file.
-- `test_region_coverage.py` parametrizes over `dogfood-logs/*/current-task.md`,
-  so **adding a dogfood log adds tests**. That is why the suite count jumps by
-  more than the tests you wrote.
-- Synthetic cases in `test_runner.py`, `test_scoring.py`, `test_alignment.py`,
-  `test_case.py` use task text with no `# Task` heading and therefore yield
-  **empty registries too**. That is why the guard is on the builders, not at
-  hook entry. Filed as **#243**.
+**A test that cannot fail is not evidence, and neither is a passing corpus.**
+Every task file in all three corpora parses non-empty today, so the corpus can
+never demonstrate the guard — the firing tests must supply their own unreadable
+file. The same reasoning found the defect in the *runner's* own acceptance test
+(**#243**): it asserts `gap_recall == 0.0` over an input with nothing to find,
+so it would pass against a checker that found every gap.
 
-## Queue — `docs/DEFERRED.md`
+Corollary that keeps recurring: **assert the consequence, not just the
+mechanism.** Ten tests asserted the guard raises; none asserted that no number
+is produced. Gate 2 caught that, and the recommendation correctly demanded a
+*control* — "no score" is worthless without showing the harness would have
+produced one.
 
-**One open filing:** the mapping defect above, drafted in full as a child of
-**#182**. Needs approval before filing.
+## Parallel lanes — what worked
 
-Filed this session: **#243** (`run_case`'s acceptance test cannot fail), child
-of #186.
+Three lanes, two landed the same day, no code conflict. Conditions that held:
+
+- **No lane touched a model prompt except its own** — the request key hashes it.
+- **Each lane had its own `.venv`** (editable installs bake an absolute path).
+- **Each ran from a session whose cwd was its worktree** — absolute paths match
+  none of the relative allow rules and prompt on every call.
+- **Conflicts were only ever `current-task.md` and `session-state.md`**, which
+  every lane rewrites wholesale. Resolve with `git checkout --ours` and move on.
+- Cross-lane messaging was worth it: #214's session confirmed no API overlap
+  before I looked, which saved a full audit of `verdict.py`/`pipeline.py`.
 
 ## Do not rediscover
 
 - **`.acceptance/ignore` is committed** (#105) and holds `dogfood-logs/`.
 - **`decompose|check --mode record` writes nothing to stdout when redirected** —
-  pipe through `tee`. A first `check` on new task text needs `--mode record`.
-- **A `PostToolUse` formatter hook reformats files after every edit.** It strips
-  imports added ahead of their first use — add the import in the same edit as
-  the code that uses it, or it silently vanishes.
-- **Permission prompts are caused by command shape, not vocabulary.** One command
-  per Bash call; naming `.env` in any command prompts regardless.
-- **`pytest` must run from its own tree** — `addopts`/`pythonpath` are
-  cwd-relative. Each parallel lane needs its own `.venv`.
+  pipe through `tee`. A first `check` over new task text needs `--mode record`.
+- **The `PostToolUse` formatter strips imports added ahead of their first use.**
+  Add the import in the same edit as the code using it, or it silently vanishes.
+- **`test_region_coverage.py` parametrizes over `dogfood-logs/*/current-task.md`**,
+  so adding a dogfood log adds tests — the suite count grows by more than you wrote.
+- **Synthetic cases in `test_runner.py`, `test_scoring.py`, `test_alignment.py`
+  and `test_case.py` yield empty registries too** (`## Deliverable` is not a
+  recognised heading). That is why #228's guard is on the builders and not at
+  hook entry. Filed as **#243**.
 - **`gh api … -f` sends strings; sub-issue ids need `-F`** to be integers.
 - **`gh pr create` with "Closes #a, #b, #c" only closes the first.**
 - **Obligation ids are minted per response** (#231); types move too (#205).
+- **`pytest` must run from its own tree** — `addopts`/`pythonpath` are cwd-relative.
 - **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
+
+## Queue — `docs/DEFERRED.md`
+
+Empty. Filed this session: **#243** (child of #186), **#245** (child of #182).
 
 ## Known open
 
-**#210**, **#180**, **#193**, **#191**, **#196**, **#178**, **#214**, **#129**,
-**#223**, **#224**, **#173**, **#225**, **#227**, **#228**, **#212**, **#231**,
-**#236**, **#237**, **#239**, **#243**.
+**#210**, **#180**, **#193**, **#191**, **#196**, **#178**, **#129**, **#223**,
+**#224**, **#173**, **#225**, **#227**, **#212**, **#231**, **#236**, **#237**,
+**#239**, **#243**, **#245**.
