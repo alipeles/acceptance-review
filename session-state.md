@@ -26,6 +26,11 @@ is closed; the four unsupported are #212's and the one partially-addressed
 obligation is a prompt-implemented rule.
 
 Gate 1 passed at `e34aebc`, human-confirmed on run 3.
+
+**CI is green on the PR head** (`57d1c8a`). The commit before it failed on
+`test_materialization_is_deterministic[07-declaration-mismatch]` and the next run
+passed on a markdown-only change, so that test is **flaky, not fixed** — drafted
+against #184 in `docs/DEFERRED.md`, unfiled.
 Three runs in `dogfood-logs/144-gate1-run{1,2,3}/`. Run 3 is the current one:
 27 requirements, 21 with obligations, 6 deliberately none, 24 obligations,
 **no open questions**. All 11 Constraints and all 7 Completion expectations

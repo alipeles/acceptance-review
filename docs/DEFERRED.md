@@ -125,3 +125,29 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   treatment across runs whose own text is unchanged. Cross-reference **#231**, which is
   the same instability observed on a different section.
 - **Status:** filed (comment on #230)
+
+### [2026-08-09] `test_materialization_is_deterministic` is itself non-deterministic in CI
+
+- **Kind:** filing
+- **Found during:** #144, after Gate 2 — checking CI on PR #233
+- **Where:** `tests/benchmark/test_fixtures.py:85`, `benchmark/fixtures.py::materialize_archetype`
+- **Severity:** should-fix
+- **What's wrong:** CI run 31346367369 failed on
+  `test_materialization_is_deterministic[07-declaration-mismatch]`: two
+  materializations of the same archetype produced different `head_sha`
+  (`143940c7…` vs `1f50fdb8…`). The very next run passed, on a commit that
+  changed only `session-state.md` — which cannot affect SHA generation. So it is
+  flaky, not fixed.
+- **Why I didn't act:** outside #144 entirely; it is benchmark fixture
+  machinery, and #144's branch neither touches it nor caused it.
+- **Drafted fix:** File as a child of **#184** (determinism & reproducibility).
+  Title: *`test_materialization_is_deterministic` fails intermittently in CI —
+  archetype materialization does not always produce stable SHAs*
+  Body: the two runs above with their conclusions and the commit each ran
+  against, the assertion diff, and the observation that the passing commit
+  touched only a markdown file. Note that `materialize_archetype` pins identity
+  and commit dates for exactly this reason, so a differing `head_sha` means
+  something else varies — tree content or ordering — and that a flaky
+  determinism test is worse than none, because it trains readers to re-run.
+  Labels: `track:benchmark`. Parent umbrella: #184.
+- **Status:** open
