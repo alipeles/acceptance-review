@@ -43,19 +43,9 @@ deterministic failure on any platform. The three tests in
 
 ## Queue — `docs/DEFERRED.md`
 
-One open: **`ruff check .` reports 85 pre-existing errors.** Verified as ruff's
-own defaults widening (`ruff check --isolated` still flags them), not repo
-config and not new code; ruff is unpinned in `[project.optional-dependencies]`.
-CI cannot catch it — step 4 is `ruff check . || echo "…skipping"`, which
-swallows the exit code.
-
-**Fold in with it, found on #238's CI run:** `actions/checkout@v4` and
-`actions/setup-python@v5` declare Node 20, which runners now force onto Node 24
-and will eventually stop shimming. Current majors are **v7.0.1** and **v7.0.0**.
-Check `fetch-depth: 0` still behaves across the bump — #190's cases materialize
-worktrees at pinned revisions and fail by name under a shallow clone.
-
-Both are `ci.yml` maintenance and sensibly become one issue.
+Empty. Both of #234's findings were filed: **#237** (decomposition, child of
+#181) and **#239** (CI lint cannot fail — 85 pre-existing ruff errors, unpinned
+ruff, Node 20 actions).
 
 ## Do not rediscover
 
@@ -75,4 +65,4 @@ Both are `ci.yml` maintenance and sensibly become one issue.
 
 **#210**, **#180**, **#193**, **#153**, **#191**, **#196**, **#178**, **#214**,
 **#129**, **#223**, **#224**, **#173**, **#225**, **#227**, **#228**, **#212**,
-**#231**, **#237**.
+**#231**, **#237**, **#239**.
