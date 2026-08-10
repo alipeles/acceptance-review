@@ -204,3 +204,53 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   narrative describing *current behaviour to be changed* from narrative giving context,
   since the former is the case that inverts.
 - **Status:** filed (comment on #212)
+
+### [2026-08-09] `acceptance check` reviews its own output file, so a dogfood log cannot be replayed
+
+- **Kind:** filing
+- **Found during:** #232/#219/#230 bundle, Gate 2
+- **Where:** `src/acceptance/pipeline.py` / `change/` — head resolution, observed in `dogfood-logs/232-gate2-run1/`
+- **Severity:** should-fix
+- **What's wrong:** `check` reads the working tree as head, so
+  `acceptance check ... > dogfood-logs/<run>/output.log` puts its own log into the
+  diff under review. The shell creates the redirect target before the process
+  starts, so the record run and the replay run see different trees, the coverage
+  request key differs, and replay fails with `no recorded transcript for request
+  9671a174…` — under a message blaming an edited prompt, which sends the reader
+  to re-record the corpus for no reason.
+- **Why I didn't act:** it is head resolution in the change stage, outside a
+  decomposition-prompt bundle, and the workaround (capture outside the repo, copy
+  in) is one line.
+- **Drafted fix:** File as a child of **#185** or a new change-stage umbrella —
+  needs your call on which. Body: the two commands and their differing outcomes,
+  the observation that CLAUDE.md's dogfooding convention *requires* `output.log`
+  inside the committed run directory, so the tool's own documented workflow
+  cannot be followed literally. Suggest either excluding the output path from the
+  change set, or resolving head to a commit rather than the working tree, or at
+  minimum correcting the error message so a missing transcript is not attributed
+  to a prompt edit. Labels: `track:checker`, `bug`.
+- **Status:** open
+
+### [2026-08-09] Adding two tests moved five unrelated obligations from strongly supported to partially
+
+- **Kind:** filing
+- **Found during:** #232/#219/#230 bundle, Gate 2 runs 1 and 2
+- **Where:** `evidence/strength.py`, `evidence/mapping.py`
+- **Severity:** should-fix
+- **What's wrong:** The only change between the two runs was two added tests, which
+  fixed run 1's single finding. Five untouched obligations degraded:
+  `test-byte-identical-review-state` strongly → **unsupported (no mapped test)**,
+  and four more strongly → partially. `tests-no-live-model-calls` is the sharpest:
+  its mapped set **grew** from 6 tests to 8 and its rating fell, while dropping
+  `test_no_model_call_is_made_when_every_pair_is_structurally_settled` — the test
+  added in this change that most directly demonstrates the property.
+- **Why I didn't act:** it is #180 (judgement stability) plus #182 (mapping
+  churn), both already owned, and neither is in a decomposition-prompt bundle.
+- **Drafted fix:** Comment on **#180**, cross-referencing #182, with the run 1 /
+  run 2 rating table and the mapped-set-grew-rating-fell detail. Note the
+  consequence for the gate specifically: a Gate 2 finding cannot be closed by
+  adding a test when adding a test moves five unrelated ratings, so "re-run until
+  clean" is not a convergent procedure while this holds. Both runs are committed
+  under `dogfood-logs/232-gate2-run{1,2}/` and are candidate rating-stability
+  fixtures alongside `tests/fixtures/rating-stability/`.
+- **Status:** open

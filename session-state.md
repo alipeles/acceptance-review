@@ -12,86 +12,79 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## Task in flight — the decomposition-prompt bundle: #232 + #219 + #230
+## Task in flight — #232 + #219 + #230, at Gate 2
 
-Branch `232-decomposition-prompt-shaping`, off `eb182de`. Nothing pushed.
+Branch `232-decomposition-prompt-shaping`, off `eb182de`. Nothing pushed, no PR.
+**Gate 2 presented and not clean** — see below. Awaiting the human's call.
 
-**Bundled on an explicit human call.** All three are derivation-prompt shaping
-defects in `src/acceptance/requirement/obligations.py` — prompt text only, no new
-stage, no schema change, one transcript re-record. #219 and #230 are inseparable:
-#219 wants exclusions to yield preservation obligations instead of being declined,
-#230 says the preservation obligations that *were* produced are the harm. Fixing
-either alone picks the other's answer by accident.
+## What shipped
 
-**#205 and #206 were deliberately excluded** — each is a new pipeline stage with a
-live-run acceptance item, and would not reach Gate 2 in one session. **#231** was
-excluded as architectural (reversing DR-204's whole-registry prompt, or deriving
-ids from the requirement).
+- **`ObligationType.TEST_DEMAND`** — a demand for a test is its own type, and
+  spec §7.3 gains it. `docs/DR-232-test-demand-obligation-type.md`.
+- **Derivation prompt** picks the type from the requirement's own text, never
+  because another bullet asks for a test of the same behaviour.
+- **Scope exclusions decline uniformly**, with the reason barred from stating
+  anything the change must hold. The positive-restatement rule explicitly does
+  not apply to them — it inverts, because an exclusion names *work* and work has
+  no positive form.
+- **Linking skips a mixed pair** rather than asking (`_can_state_one_requirement`).
+  A question with one admissible answer is not a question, and a wrong `true`
+  lands in a transitive component where the clique rule suppresses every other
+  merge in it.
+- **`tests/prompts/test_decomposition_prompt.py`** — new recorded corpus, 18
+  tests, asserting on the type rather than on substrings.
 
-## Gate 1 — done, four runs, not clean and cannot be
+Measured on this repo's own task file: exclusions inverted 4/6 → **0/6**;
+Completion expectations keeping their demand 0/5 → **5/5 typed**; invented
+framing on Constraints 3/8 → **0/8**; behaviour↔test merges 3 → **0**.
 
-`dogfood-logs/232-gate1-run{1,2,3,4}/`. Run 4 is the task file to implement
-against. **No open questions in any run**, so the three-case triage is empty.
+## Gate 2 — not clean, and not because of unmet requirements
 
-Runs 2–4 were sanctioned rewrites of `current-task.md`, each re-arming the gate.
-What they fixed was mine; what remains is the tool's, and all of it is #232 /
-#219 / #230 — the bundle's own subject. **Human gave explicit go-ahead to code on
-that basis.** Gate 2 is the gate that must come back clean.
+15 obligations, all *addressed*, no open questions, **6 rated below strongly
+supported**. Full analysis in `dogfood-logs/232-gate2-run2/judgement.md`.
 
-Read `dogfood-logs/232-gate1-run4/judgement.md` before implementing — it states
-what the fix must achieve.
+The blocker is that the gate **does not converge**. Between run 1 and run 2 the
+only change was two added tests, which fixed run 1's one finding — and five
+untouched obligations degraded. `tests-no-live-model-calls` went strongly →
+partially while its mapped set **grew** from 6 tests to 8. That is #180
+(judgement stability) plus #182 (mapping churn).
 
-## The three findings that shape the implementation
-
-1. **#232 is unstable within a single run, not just across task files.** Run 4:
-   five Completion expectations of one shape, framing kept for `completion-02`
-   and `-03` ("Produce a test that asserts …"), dropped for `-04`, `-05`, `-06`
-   — and those three then merged with their Constraint twin. Run 1 was 0 kept / 5
-   dropped. So the fix's test must assert the framing is kept for **every**
-   sentence of the shape, not that it is usually kept.
-2. **A test asserting "these two obligations did not merge" is worthless.** Run 2
-   showed four merges absent only because an 8-obligation transitive clique was
-   contradicted, so #144's clique rule merged nothing. It would pass with the fix
-   reverted. Assert that the **derived obligation demands a test**.
-3. **Scope exclusions invert, they do not merely differ.** Four of six yield
-   obligations to *do the excluded work* — `exclusion-05` (#231) →
-   "Keep obligation identifiers stable across task-file edits". Stable across all
-   four runs. This is the sharpened #230.
-
-## Design call to make, recommended not yet decided
-
-#219 leaves the branch open: an exclusion *yields a preservation obligation* or
-*declines with a reason stating no preservable property*. **Recommended: decline,
-uniformly**, with the reason constrained to naming what is out of scope. It
-satisfies both of #230's clauses and does not depend on #148 landing. Cost —
-nothing checks the exclusion was not violated — stays tracked on #133/#148/#214;
-an obligation no test can support is worse, because it blocks clean verdicts.
-
-## Filed this session
-
-- **#234** — `test_materialization_is_deterministic` flaky in CI, child of #184.
-- **Comment on #230** — exclusions invert into obligations to do the excluded
-  work; proposed acceptance clause added.
-- **Comment on #212** — the problem statement derived an obligation contradicting
-  `constraint-01`; notes that nothing detects a contradictory obligation pair.
+**Do not try to close this by adding tests.** That is what produced the
+regression.
 
 ## Do not rediscover
 
-- **Gate 1 cannot be clean for this task by construction.** Every Completion
-  expectation in this repo's convention uses the framing #232 drops.
+- **`acceptance check ... > dogfood-logs/<run>/output.log` cannot be replayed.**
+  `check` reads the working tree as head, the shell creates the redirect target
+  first, so the log joins the diff under review and the coverage request key
+  moves between record and replay. It fails with `no recorded transcript`, under
+  a message blaming a prompt edit. **Capture outside the repo and copy in.**
+  Queued as a filing.
+- **Two prompt attempts failed before typing worked.** Told to keep the test
+  framing, derivation began *inventing* it on Constraints that demand no test.
+  The prompt cannot carry this distinction; the type can. DR-232.
+- **The linking prompt's own criteria point the wrong way here** — the test that
+  asserts X is also the evidence for X, so "the same test would demonstrate
+  both" reads true. That is why it is enforced in code.
+- **Gate 1 could not be clean for this task by construction** — every Completion
+  expectation in this repo's convention used the framing #232 dropped.
 - **#153 looks stale** — open as "decompose never learns the exclusion section
   exists", but #219's body says #202 fixed exactly that. Candidate to close.
-- **The whole registry is in every derivation prompt** (DR-204). Any task-file
-  edit re-derives everything — that is why `exclusion-01`/`-02` took three
-  different types across four runs on byte-identical text. #231.
-- **Obligation ids are minted per response, not stable across runs.**
-- **`decompose --mode record` writes nothing to stdout when redirected.** Record
-  once, then re-run in replay to capture.
+- **Obligation ids are minted per response, not stable across runs** (#231).
+- **`decompose|check --mode record` writes nothing to stdout when redirected.**
 - **Python here is 3.10**; repo is `alipeles/acceptance-review`.
 
 ## Queue — `docs/DEFERRED.md`
 
-Empty of open items. All three entries from this session are filed.
+Two open, both filings, both from Gate 2:
+
+1. `acceptance check` reviews its own output file — needs your call on the parent
+   umbrella (#185, or a new change-stage one).
+2. Adding two tests moved five unrelated obligations — comment on #180,
+   cross-referencing #182.
+
+Filed earlier this session: **#234** (child of #184), comments on **#230** and
+**#212**.
 
 ## Known open
 
