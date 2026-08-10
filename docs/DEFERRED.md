@@ -64,6 +64,28 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   condition on each child, not a child of its own.
 - **Status:** open
 
+### [2026-08-10] A recommendation asks for the test it is already citing
+- **Kind:** filing
+- **Found during:** #244, Gate 2 run 2 (`dogfood-logs/244-gate2-run2/`)
+- **Where:** src/acceptance/evidence/discrimination.py, strength.py
+- **Severity:** should-fix
+- **What's wrong:** Run 1 rated `test-obligation-keeps-own-span` partially supported and
+  recommended a test using two requirements whose text both contain the quotation, the
+  obligation attributed to the later one. That was correct and I wrote it. Run 2 maps the
+  new test to the obligation, cites it as evidence `1.2`, keeps the rating at partially
+  supported, and recommends the same test again in different words. Its `detects:` clause
+  names a defect that a neighbouring mapped test already catches. So the gate cannot be
+  converged on by doing what it asks.
+- **Why I didn't act:** evidence judgement is #183; #244 is a decomposition fix.
+- **Drafted fix:** file as a child of **#183**, labels `bug`, `track:checker`.
+  Title: *"A recommendation restates the test the same run cites as evidence"*. Body: the
+  run 1 → run 2 pair above, noting the recommendation text changed while the rating did
+  not, so the model re-derived the demand rather than checking it against the mapped set
+  it was given. Relate to #180: this is the non-convergence that makes "re-run until
+  clean" a non-terminating procedure, observed here on a two-run pair with a one-test
+  diff.
+- **Status:** open
+
 ### [2026-08-10] Mapping misses the three on-point tests for "no live model calls"
 - **Kind:** filing
 - **Found during:** #244, Gate 2 (`dogfood-logs/244-gate2-run1/`)
@@ -78,6 +100,10 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   `tests/test_llm.py::test_replay_without_a_transcript_raises_rather_than_calling_live`.
   The resulting recommendation asks for network-blocked execution of the suite —
   infrastructure the replay-default architecture already makes unnecessary.
+
+  **Run 2 made it sharper: the mapped set collapsed from two tests to zero**, on an
+  obligation nothing in the interval touched — the only change was a test added to a
+  different obligation's area. Rating fell nominally supported → unsupported.
 - **Why I didn't act:** mapping is #182, a different umbrella, and #244's Scope
   exclusions do not cover it either way.
 - **Drafted fix:** file as a child of **#182**, labels `bug`, `track:checker`.
