@@ -34,7 +34,9 @@ from acceptance.benchmark.corpus import (
     build_decompose_case,
     load_decompose_meta,
 )
+from acceptance.benchmark.decomposition import decompose_case
 from acceptance.benchmark.fixtures import build_benchmark_case
+from tests.support import client_returning
 
 REPO = Path(__file__).resolve().parents[2]
 ARCHETYPES_DIR = REPO / "tests" / "fixtures" / "archetypes"
@@ -171,6 +173,90 @@ def test_a_corpus_case_cannot_be_built_from_an_unreadable_task_file(tmp_path):
         build_corpus_case(case_dir, REPO, corpus_root, tmp_path / "wt")
 
     assert "999-unreadable" in str(excinfo.value)
+
+
+def _decompose_case_dir(root: Path, name: str, task_text: str) -> Path:
+    """A synthetic decompose case directory, ready for `build_decompose_case`."""
+    run_dir = root / "runs" / name
+    run_dir.mkdir(parents=True)
+    (run_dir / "current-task.md").write_text(task_text)
+
+    case_dir = root / name
+    case_dir.mkdir()
+    (case_dir / "case.json").write_text(
+        json.dumps(
+            {
+                "run": name,
+                "run_dir": f"runs/{name}",
+                "judgement": "synthetic",
+                "summary": "synthetic",
+            }
+        )
+    )
+    (case_dir / "labels.json").write_text(
+        json.dumps(
+            {
+                "obligations": [
+                    {
+                        "id": "csv-export",
+                        "description": "Add CSV export with active filters.",
+                        "explicit": True,
+                        "evidence_class": "strongly_supported",
+                        "evidence_rationale": "synthetic",
+                    }
+                ]
+            }
+        )
+    )
+    return case_dir
+
+
+def test_an_unreadable_case_is_never_scored_while_a_readable_one_still_is(tmp_path):
+    """The *"instead of being scored"* half of #228, with its control.
+
+    Every other test in this file asserts that the guard raises. None of them
+    asserts the consequence that matters, which is that no number is ever
+    produced — and "no score" is worthless as evidence without showing the
+    harness would have produced one. So this runs both:
+
+    * the **control** is the same case with a readable task file, taken all the
+      way through `decompose_case` to a real `decomposition_accuracy`. That is
+      what the unreadable case would have received before #228: a float, not an
+      error, indistinguishable in a report from a decomposition that ran and
+      recovered nothing.
+    * the **subject** differs only in its task text and never reaches scoring.
+
+    Without the control this test would still pass if `decompose_case` were
+    broken for every input.
+    """
+    readable = _decompose_case_dir(tmp_path, "999-readable", READABLE_TASK)
+    client = client_returning(
+        {
+            "obligations": [
+                {
+                    "id": "o1",
+                    "description": "Add CSV export with active filters.",
+                    "type": "functional",
+                    "importance": "normal",
+                    "explicit": True,
+                    "observable_behavior": "...",
+                    "source_quote": "Add CSV export with active filters.",
+                }
+            ],
+            "open_questions": [],
+            "requirement_dispositions": [],
+        }
+    )
+
+    scored = decompose_case(build_decompose_case(readable, tmp_path), client)
+    assert scored.score is not None
+    assert scored.score.decomposition_accuracy is not None
+
+    unreadable = _decompose_case_dir(tmp_path, "999-unreadable-pair", UNREADABLE_TASK)
+    with pytest.raises(EmptyRequirementRegistryError) as excinfo:
+        build_decompose_case(unreadable, tmp_path)
+
+    assert "999-unreadable-pair" in str(excinfo.value)
 
 
 @pytest.mark.parametrize("fixture_dir", ARCHETYPE_DIRS, ids=lambda p: p.name)
