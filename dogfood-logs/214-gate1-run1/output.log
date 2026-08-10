@@ -1,0 +1,141 @@
+Requirements: 25   with obligations: 24   deliberately none: 1
+
+[task-01] The completion verdict accounts for how much of the mandate the review
+    actually covered, so a review that spoke to only part of the mandate cannot report
+    that it found no material gaps.
+    -> completion-verdict-reflects-coverage  [functional/explicit]
+       The completion verdict accounts for how much of the mandate the review actually
+       covered, so partial coverage cannot be reported as having no material gaps.
+
+[constraint-01] The share of the mandate's requirements that produced at least one
+    obligation is recorded on the completion result.
+    -> record-share-on-completion-result  [functional/explicit]
+       The share of the mandate's requirements that produced at least one obligation is
+       recorded on the completion result.
+
+[constraint-02] A requirement that produced no obligation lowers the recorded share.
+    -> lower-recorded-share-for-no-obligation  [functional/explicit]
+       A requirement that produced no obligation lowers the recorded share.
+
+[constraint-03] A review whose recorded share is short of the whole mandate is never
+    reported as free of material gaps.
+    -> short-share-never-free-of-gaps  [functional/explicit]
+       A review whose recorded share is short of the whole mandate is never reported as
+       free of material gaps.
+
+[constraint-04] A share short of the whole mandate only ever bounds the verdict and
+    never raises it, so a review that covers less of the mandate never reports a better
+    result than the same review covering more of it.
+    -> short-share-only-bounds-verdict  [functional/explicit]
+       A share short of the whole mandate only ever bounds the verdict and never raises
+       it, so a review that covers less of the mandate never reports a better result
+       than the same review covering more of it.
+
+[constraint-05] A requirement that states no checkable expectation does not lower the
+    recorded share.
+    -> no-checkable-expectation-does-not-lower-share  [functional/explicit]
+       A requirement that states no checkable expectation does not lower the recorded
+       share.
+
+[constraint-06] Task-file text that produced no requirement at all bounds the verdict in
+    the same way as a requirement that produced no obligation.
+    -> no-requirement-text-bounds-verdict-like-no-obligation  [functional/explicit]
+       Task-file text that produced no requirement at all bounds the verdict in the same
+       way as a requirement that produced no obligation.
+
+[constraint-07] The completion verdict states the share it was derived under and names
+    the requirements that produced nothing.
+    -> verdict-states-share-and-empty-requirements  [explanation_observability/explicit]
+       The completion verdict states the share it was derived under and names the
+       requirements that produced nothing.
+
+[constraint-08] The completion verdict is derived from the review's own recorded state
+    without consulting a model.
+    -> verdict-derived-from-recorded-state-without-model  [functional/explicit]
+       The completion verdict is derived from the review's own recorded state without
+       consulting a model.
+
+[constraint-09] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-task-text-yields-byte-identical-review-state  [regression/explicit]
+       Two runs over byte-identical task text produce byte-identical review state.
+
+[constraint-10] Tests issue no live model calls.
+    -> no-live-model-calls-in-tests  [functional/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] Whether a requirement that produced no obligation was correctly declined;
+    the stated reason is taken at face value and not re-judged.
+    -> no-rejudging-declined-no-obligation-requirements  [functional/explicit]
+       The change does not re-judge whether a requirement that produced no obligation
+       was correctly declined; the stated reason is taken at face value.
+
+[exclusion-02] How stable decomposition is from one run to the next, which is #193.
+    -> no-change-to-decomposition-stability-from-run-to-run  [regression/explicit]
+       The change does not alter how stable decomposition is from one run to the next.
+
+[exclusion-03] Measuring how accurate decomposition is, which is #211.
+    -> no-change-to-decomposition-accuracy-measurement  [regression/explicit]
+       The change does not alter how decomposition accuracy is measured.
+
+[exclusion-04] How finely a single requirement is split into obligations, which is #117.
+    -> no-change-to-requirement-splitting-granularity  [regression/explicit]
+       The change does not alter how finely a single requirement is split into
+       obligations.
+
+[exclusion-05] Whether obligation identifiers are stable across task-file edits, which
+    is #231.
+    -> no-change-to-obligation-identifier-stability-across-edits  [compatibility/explicit]
+       The change does not alter whether obligation identifiers are stable across task-
+       file edits.
+
+[exclusion-06] How an obligation's evidence is rated, which is #180.
+    -> no-change-to-obligation-evidence-rating  [regression/explicit]
+       The change does not alter how an obligation's evidence is rated.
+
+[exclusion-07] Which tests are discovered, and which obligations they are mapped to.
+    -> no-change-to-test-discovery-and-obligation-mapping  [compatibility/explicit]
+       The change does not alter which tests are discovered or which obligations they
+       are mapped to.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       A standalone section marker with no requirement under it.
+
+[completion-02] A test asserts that two reviews with identical obligation-level evidence
+    and a different share of the mandate covered do not produce the same completion
+    result.
+    -> test-review-share-affects-completion-result  [test_demand/explicit]
+       A test asserts that two reviews with identical obligation-level evidence and a
+       different share of the mandate covered do not produce the same completion result.
+
+[completion-03] A test asserts that a review in which a requirement produced no
+    obligation is not reported as free of material gaps.
+    -> test-no-obligation-no-free-of-gaps  [test_demand/explicit]
+       A test asserts that a review in which a requirement produced no obligation is not
+       reported as free of material gaps.
+
+[completion-04] A test asserts that a requirement stating no checkable expectation does
+    not lower the recorded share.
+    -> test-no-checkable-expectation-does-not-lower-share  [test_demand/explicit]
+       A test asserts that a requirement stating no checkable expectation does not lower
+       the recorded share.
+
+[completion-05] A test asserts that a review covering less of the mandate never reports
+    a better result than the same review covering more of it.
+    -> test-monotonic-result-with-more-mandate-covered  [test_demand/explicit]
+       A test asserts that a review covering less of the mandate never reports a better
+       result than the same review covering more of it.
+
+[completion-06] A test asserts that the verdict is derived with the mandate's
+    requirements in hand, by the same path a review run takes.
+    -> test-verdict-derived-with-mandate-requirements-in-hand  [test_demand/explicit]
+       A test asserts that the verdict is derived with the mandate's requirements in
+       hand, by the same path a review run takes.
+
+[completion-07] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> test-byte-identical-task-text-yields-byte-identical-review-state  [test_demand/explicit]
+       A test asserts that two runs over byte-identical task text produce byte-identical
+       review state.
+

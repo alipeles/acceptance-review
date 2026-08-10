@@ -55,6 +55,7 @@ __all__ = [
     "TestRecommendation",
     "CompletionVerdict",
     "CompletionResult",
+    "MandateCoverage",
     "DeterminismControls",
     "ReviewProvenance",
     "ObligationChange",
@@ -624,6 +625,52 @@ class CompletionVerdict(str, Enum):
     UNABLE_TO_DETERMINE = "unable_to_determine"
 
 
+class MandateCoverage(_Model):
+    """How much of the mandate the review was actually able to judge (#214).
+
+    Recorded beside the verdict rather than folded into it. A review can be
+    confident about a shrinking fraction of the mandate, and until this existed
+    nothing said the fraction shrank: a requirement that yielded no obligation
+    reached none of `derive_verdict`'s inputs, so mandate coverage could not
+    move the verdict in either direction. A decomposer that dropped requirements
+    therefore scored BETTER, because the requirements it dropped could not
+    generate gaps.
+
+    Which requirements count is decided by their `Disposition`, never by reading
+    their text: `yielded` cannot be obligation-free (the validator forbids it),
+    `no_obligation` is a decision the decomposer made and is taken at face
+    value, and only a requirement whose open questions produced nothing is
+    unjudged. Whether a decline was CORRECT is decomposition quality (#193,
+    #211) and deliberately not re-litigated here — the verdict's job is to say
+    what it could not judge, not to second-guess what it declined.
+
+    Counts are derived, never stored beside the lists they summarize, so the
+    figure and its evidence cannot disagree.
+    """
+
+    total_requirements: int = 0
+    # Requirements deliberately declined with a reason. Disclosed rather than
+    # penalised: trusting the decline is a decision, and a reader is entitled to
+    # see how many were trusted before believing a clean verdict.
+    declined_requirements: list[str] = Field(default_factory=list)
+    # Requirements the review could not judge: their open questions produced no
+    # obligation, so nothing downstream can ever bear on them.
+    unjudged_requirements: list[str] = Field(default_factory=list)
+    # Task-file text that became no requirement at all. Not a disposition — the
+    # loss happens one hop earlier, at the parse — but the same unambiguous
+    # silence, so it bounds the verdict the same way.
+    unread_source_blocks: int = 0
+
+    @property
+    def judged_requirements(self) -> int:
+        return self.total_requirements - len(self.unjudged_requirements)
+
+    @property
+    def complete(self) -> bool:
+        """Whether the review spoke to the whole mandate."""
+        return not self.unjudged_requirements and self.unread_source_blocks == 0
+
+
 class CompletionResult(_Model):
     """The overall completion verdict, derived deterministically from the
     findings (M7.2). Kept a pure rollup so the headline result is auditable —
@@ -637,6 +684,10 @@ class CompletionResult(_Model):
     rationale: str
     limitations: list[str] = Field(default_factory=list)
     escalation_candidates: list[str] = Field(default_factory=list)
+    # #214. Always recorded, so two reviews with identical obligation-level
+    # evidence and different mandate coverage differ HERE even when the verdict
+    # enum matches — the figure is part of the result, not a rendering of it.
+    mandate_coverage: MandateCoverage | None = None
 
 
 class DeterminismControls(_Model):

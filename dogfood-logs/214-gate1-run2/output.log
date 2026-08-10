@@ -1,0 +1,191 @@
+Requirements: 29   with obligations: 28   deliberately none: 1
+
+[task-01] The completion verdict accounts for every requirement of the mandate, so a
+    review cannot report that it found no material gaps while part of the mandate
+    produced nothing it was able to judge.
+    -> completion-verdict-covers-all-requirements  [functional/explicit]
+       The completion verdict accounts for every requirement of the mandate, so no part
+       of the mandate can produce nothing it is able to judge while the review reports
+       no material gaps.
+
+[constraint-01] A requirement deliberately declined with a stated reason does not count
+    against how much of the mandate the review covered.
+    -> declined-requirement-coverage-accounting  [functional/explicit]   (also serves completion-02)
+       A requirement deliberately declined with a stated reason does not count against
+       how much of the mandate the review covered.
+
+[constraint-02] An open question that the change itself answers yields an obligation
+    stating the behaviour the change committed to.
+    -> answered-open-question-yields-obligation  [functional/explicit]   (also serves completion-03)
+       An open question answered by the change yields an obligation stating the
+       behaviour the change committed to.
+
+[constraint-03] An obligation derived from an answered open question cites the places in
+    the change that answer it, and is treated as implemented on the strength of those
+    citations rather than being reported as missing.
+    -> answered-open-question-implemented-with-citations  [functional/explicit]   (also serves completion-04)
+       An obligation derived from an answered open question is treated as implemented
+       and cites the places in the change that answer it.
+
+[constraint-04] An obligation derived from an answered open question is carried on the
+    test evidence axis like any other, so a settled implementation choice that no test
+    exercises prevents a report of no material gaps.
+    -> answered-open-question-untested-blocks-no-gaps  [functional/explicit]   (also serves completion-05)
+       An obligation derived from an answered open question that no test exercises
+       prevents a report of no material gaps.
+
+[constraint-05] An open question the change does not answer yields no obligation.
+    -> constraint-05-unanswered-open-question-yields-no-obligation  [functional/explicit]
+       An open question the change does not answer yields no obligation.
+
+[constraint-06] Task-file text that yielded no requirement at all prevents a report of
+    no material gaps.
+    -> no-requirement-text-blocks-no-gaps  [functional/explicit]   (also serves completion-07)
+       Task-file text that yielded no requirement at all prevents a report of no
+       material gaps.
+
+[constraint-07] How much of the mandate the review covered is recorded on the completion
+    result and stated in the report.
+    -> record-coverage-on-result-and-report  [functional/explicit]
+       Record how much of the mandate the review covered on the completion result and
+       state it in the report.
+
+[constraint-08] Covering less than the whole mandate only ever bounds the verdict and
+    never raises it, so a review that covers less of the mandate never reports a better
+    result than the same review covering more of it.
+    -> coverage-only-bounds-verdict  [invariant/explicit]
+       Treat reduced mandate coverage as a one-way bound on the verdict so that covering
+       less of the mandate never improves the reported result.
+
+[constraint-09] The completion verdict is derived from the review's own recorded state
+    without consulting a model.
+    -> verdict-from-recorded-state-no-model  [functional/explicit]
+       Derive the completion verdict from the review's recorded state without consulting
+       a model.
+
+[constraint-10] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-inputs-byte-identical-review-state  [invariant/explicit]
+       Produce byte-identical review state for two runs over byte-identical task text.
+
+[constraint-11] Tests issue no live model calls.
+    -> tests-issue-no-live-model-calls  [compatibility/explicit]
+       Keep tests free of live model calls.
+
+[exclusion-01] Whether a requirement that was deliberately declined was correctly
+    declined; the stated reason is taken at face value and not re-judged.
+    -> decline-reason-not-rejudged  [invariant/explicit]
+       Preserve the stated reason for a deliberately declined requirement as accepted at
+       face value when assessing coverage.
+
+[exclusion-02] How an obligation's test evidence is rated once it reaches the rating
+    stage, which is #180.
+    -> exclude-test-evidence-rating-stage  [invariant/explicit]
+       Leave the rating stage for an obligation's test evidence outside this change's
+       scope.
+
+[exclusion-03] How stable decomposition is from one run to the next, which is #193.
+    -> exclude-stable-decomposition-across-runs  [invariant/explicit]
+       Leave decomposition stability from one run to the next outside this change's
+       scope.
+
+[exclusion-04] Measuring how accurate decomposition is, which is #211.
+    -> exclude-decomposition-accuracy  [functional/explicit]
+       The change does not measure how accurate decomposition is.
+
+[exclusion-05] How finely a single requirement is split into obligations, which is #117.
+    -> exclude-split-granularity  [functional/explicit]
+       The change does not alter how finely a single requirement is split into
+       obligations.
+
+[exclusion-06] Whether obligation identifiers are stable across task-file edits, which
+    is #231.
+    -> exclude-obligation-id-stability-across-edits  [functional/explicit]
+       The change does not address whether obligation identifiers are stable across
+       task-file edits.
+
+[exclusion-07] Which tests are discovered, and which obligations they are mapped to.
+    -> exclude-test-discovery-and-mapping  [functional/explicit]
+       The change does not determine which tests are discovered or which obligations
+       they are mapped to.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       This section marker stands alone with no requirement under it.
+
+[completion-02] A test asserts that a requirement deliberately declined with a stated
+    reason does not count against how much of the mandate the review covered.
+    -> test-coverage-declined-requirement  [test_demand/explicit]
+       A test asserts that a requirement deliberately declined with a stated reason does
+       not count against how much of the mandate the review covered.
+    -> declined-requirement-coverage-accounting  [functional/explicit]   (also serves constraint-01)
+       A requirement deliberately declined with a stated reason does not count against
+       how much of the mandate the review covered.
+
+[completion-03] A test asserts that an open question answered by the change yields an
+    obligation stating the behaviour the change committed to.
+    -> test-open-question-answered-yields-obligation  [test_demand/explicit]
+       A test asserts that an open question answered by the change yields an obligation
+       stating the behaviour the change committed to.
+    -> answered-open-question-yields-obligation  [functional/explicit]   (also serves constraint-02)
+       An open question answered by the change yields an obligation stating the
+       behaviour the change committed to.
+
+[completion-04] A test asserts that an obligation derived from an answered open question
+    is treated as implemented and cites the places in the change that answer it.
+    -> test-answered-open-question-implemented-and-cited  [test_demand/explicit]
+       A test asserts that an obligation derived from an answered open question is
+       treated as implemented and cites the places in the change that answer it.
+    -> answered-open-question-implemented-with-citations  [functional/explicit]   (also serves constraint-03)
+       An obligation derived from an answered open question is treated as implemented
+       and cites the places in the change that answer it.
+
+[completion-05] A test asserts that an obligation derived from an answered open question
+    that no test exercises prevents a report of no material gaps.
+    -> test-answered-open-question-no-test-prevents-no-gaps  [test_demand/explicit]
+       A test asserts that an obligation derived from an answered open question that no
+       test exercises prevents a report of no material gaps.
+    -> answered-open-question-untested-blocks-no-gaps  [functional/explicit]   (also serves constraint-04)
+       An obligation derived from an answered open question that no test exercises
+       prevents a report of no material gaps.
+
+[completion-06] A test asserts that an open question the change does not answer yields
+    no obligation.
+    -> test-unanswered-open-question-yields-no-obligation  [test_demand/explicit]
+       A test asserts that an open question the change does not answer yields no
+       obligation.
+    -> unanswered-open-question-no-obligation  [functional/explicit]
+       An open question the change does not answer yields no obligation.
+
+[completion-07] A test asserts that task-file text yielding no requirement at all
+    prevents a report of no material gaps.
+    -> test-no-requirement-text-blocks-no-gaps  [test_demand/explicit]
+       A test asserts that task-file text yielding no requirement at all prevents a
+       report of no material gaps.
+    -> no-requirement-text-blocks-no-gaps  [functional/explicit]   (also serves constraint-06)
+       Task-file text that yielded no requirement at all prevents a report of no
+       material gaps.
+
+[completion-08] A test asserts that how much of the mandate the review covered is
+    recorded on the completion result.
+    -> test-coverage-recorded-on-completion-result  [test_demand/explicit]
+       A test asserts that how much of the mandate the review covered is recorded on the
+       completion result.
+    -> coverage-recorded-on-completion-result  [functional/explicit]
+       How much of the mandate the review covered is recorded on the completion result.
+
+[completion-09] A test asserts that the verdict is derived with each requirement's
+    disposition in hand, by the same path a review run takes.
+    -> completion-09-test-demand-verdict-derived-with-dispositions-in-hand  [test_demand/explicit]
+       A test asserts that the verdict is derived with each requirement's disposition in
+       hand, by the same path a review run takes.
+
+[completion-10] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> completion-10-test-demand-byte-identical-review-state  [test_demand/explicit]
+       A test asserts that two runs over byte-identical task text produce byte-identical
+       review state.
+
+
+Unreconciled linking answers: answers contradict each other: these obligations are linked transitively but at least one pair among them was denied, so none of them were merged
+  affected: unanswered-open-question-no-obligation, constraint-05-unanswered-open-question-yields-no-obligation, exclude-split-granularity
