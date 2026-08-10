@@ -118,6 +118,20 @@ Apply this to EVERY requirement of that shape in the file. Two bullets of the
 same shape get the same treatment; keeping the framing on one and dropping it
 on another makes them different kinds of requirement on no evidence.
 
+**The converse matters just as much: never ADD the framing.** A requirement
+that does not mention a test does not get one.
+
+    "The export writes a header row naming every column."
+    ->  "The export writes a header row naming every column."
+    NOT "A test asserts that the export writes a header row naming every
+         column."
+
+This is the same loss in the other direction. A Constraint states the behavior
+and a Completion expectation demands a test of it; if you put test framing on
+both, they become one statement, and the demand for the test disappears into
+it just as surely as if you had stripped the framing off. Carry the framing
+where the requirement has it. Never supply it.
+
 Granularity — isolate distinct computations, keep cohesive behaviors whole:
 
 - Isolate a sub-clause that defines a DISTINCT COMPUTATION or derived value — a

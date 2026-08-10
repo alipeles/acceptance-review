@@ -63,6 +63,18 @@ these two obligations state exactly the same requirement?
 Most pairs will not, and "no" is the right answer for most of them. You are not \
 choosing the best partner for anything and you are not searching for duplicates.
 
+**One pair shape is never the same requirement, and it is decided before the \
+criteria below.** If one obligation demands that a TEST assert something and \
+the other demands the thing itself, answer `false`. Do not weigh the criteria \
+for such a pair; they do not apply to it.
+
+The criteria below would mislead you here, which is why this comes first: the \
+same test that asserts X is also the evidence for X, so "the same test would \
+demonstrate both" looks true. It is the wrong question. Code that already does \
+X, with nobody having written the test, satisfies "X" and violates "a test \
+asserts X" — they are separate pieces of work, and merging them silently drops \
+the demand for the test.
+
 **The test for sameness, and the only one that matters.** Two obligations state \
 the exact same requirement if and only if BOTH hold:
 
@@ -106,6 +118,7 @@ the redundancy.
 
 Answer every pair you are given. Answering `false` for all of them is a valid \
 and common outcome."""
+
 
 class _PairVerdict(StrictResponseModel):
     """One answer about one pair.
@@ -164,9 +177,7 @@ def _pairs(ordered_ids: list[str]) -> list[tuple[str, str, str]]:
     # pure function of derivation order.
     count = len(ordered_ids)
     ordered = [
-        (left, left + distance)
-        for distance in range(1, count)
-        for left in range(count - distance)
+        (left, left + distance) for distance in range(1, count) for left in range(count - distance)
     ]
     return [
         (f"pair-{index:04d}", ordered_ids[left], ordered_ids[right])
@@ -174,9 +185,7 @@ def _pairs(ordered_ids: list[str]) -> list[tuple[str, str, str]]:
     ]
 
 
-def _user_prompt(
-    decomposition: Decomposition, batch: Sequence[tuple[str, str, str]]
-) -> str:
+def _user_prompt(decomposition: Decomposition, batch: Sequence[tuple[str, str, str]]) -> str:
     """One batch of pairs, as typed identified fields.
 
     Never the task file's markdown. The parse has already computed this

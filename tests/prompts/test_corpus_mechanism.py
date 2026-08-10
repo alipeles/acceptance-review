@@ -389,17 +389,17 @@ _APPROVED_TRANSCRIPTS = {
     # TWO linking recordings for one derivation, because the sweep asks about
     # every pair of obligations and the invoice task exceeds one pair-batch.
     # derivation
-    "62b5a535021096221233c1321113b9f21bffb02b7e51d52e3ef3ba42d3b89cca.json": (
+    "7a8a87ec5e688e50b6d3eb120e0347b34d6839a8e7736c5b12c470f068bc1889.json": (
         "invoice",
         "CSV",
     ),
     # linking sweep
-    "3cbeceb991a57d70a229b2698d4cd18e196cc023bda8b00dca11ca58698c7a46.json": (
+    "c803becefff1019c06fc639369a6ae169b08c82747e94cb74eb42e7b5feee066.json": (
         "invoice",
         "CSV",
     ),
     # linking sweep
-    "ca93712b9e6bf3947121438ed7f3b3c0a9141b1daf26cfca55f68b7759e7d09d.json": (
+    "dad9dfeeacebdbd74e061ceb2a66cac4f0ce33420932b5dc110a83063c2ef009.json": (
         "invoice",
         "CSV",
     ),
@@ -414,11 +414,11 @@ _APPROVED_TRANSCRIPTS = {
     # derivation at 8 requirements per call and this file states 11. Both
     # batches carry the fixture-level markers: DR-204 puts the WHOLE registry
     # in every batch's prompt, and only `answer_for` is scoped.
-    "02bdd4fd0818f6d9fac0536e2135bfa02f35db5bb27d9efaff9c26be22af2dd7.json": (
+    "28d5f0aa6ee8d13341f3171c5726b964bdf14949d572f1b3ff304aa33185383a.json": (
         "invoice",
         "CSV",
     ),
-    "c6e4155237af09e3efd2f0985c708535d85b4d9bcd5a92db211740e8a4eaa981.json": (
+    "a570eaf5ff9a685beb00d9bc5f39dc57aee54332f66ee691b45915357c174b61.json": (
         "invoice",
         "CSV",
     ),

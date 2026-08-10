@@ -135,6 +135,23 @@ def test_every_criterion_of_the_same_shape_is_treated_the_same_way(derived):
     )
 
 
+@pytest.mark.parametrize("requirement_id", ["constraint-01", "constraint-02", "constraint-03"])
+def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, requirement_id):
+    """The converse, and it is not hypothetical: the first cut of the #232 fix
+    caused it. Told emphatically to keep the framing on every requirement of
+    that shape, derivation began SUPPLYING it — this repo's `constraint-05`,
+    which says nothing about a test, derived as "A test asserts that ...".
+
+    That is the same loss in the other direction. Once the Constraint and the
+    Completion expectation both read "a test asserts X" they are one statement,
+    linking merges them correctly, and the demand for the test disappears
+    exactly as it did before the fix.
+    """
+    framed = [o.description for o in _obligations_of(derived, requirement_id) if _demands_a_test(o)]
+
+    assert not framed, f"{requirement_id} demands no test; framing was invented: {framed}"
+
+
 # --- #219 / #230: scope exclusions ------------------------------------------
 
 
