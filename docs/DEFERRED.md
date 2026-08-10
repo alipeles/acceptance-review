@@ -177,7 +177,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   obligation requiring the excluded work*. Cross-reference **#219** (the decline branch
   of the same surface) and **#210** (exclusion mapped onto a neighbour's obligation).
   Labels: none new. Parent umbrella: #181 (already, via #230).
-- **Status:** open
+- **Status:** filed (comment on #230)
 
 ### [2026-08-09] The problem statement derived an obligation to implement the defect it describes
 
@@ -203,4 +203,4 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   obligations that contradict each other. Suggest #212's acceptance distinguish
   narrative describing *current behaviour to be changed* from narrative giving context,
   since the former is the case that inverts.
-- **Status:** open
+- **Status:** filed (comment on #212)

@@ -1,0 +1,121 @@
+Requirements: 21   with obligations: 20   deliberately none: 1
+
+[task-01] Requirement decomposition must preserve two distinctions when it reads a task
+    file: an acceptance criterion demanding a test, against the behaviour that test is
+    about; and a scope exclusion, against work the change must do.
+    -> preserve-test-vs-behaviour-distinction  [functional/explicit]
+       Preserve the distinction between an acceptance criterion that demands a test and
+       the behaviour that test is about.
+    -> preserve-scope-exclusion-distinction  [functional/explicit]
+       Preserve the distinction between a scope exclusion and the work the change must
+       do.
+
+[constraint-01] An acceptance criterion that demands a test yields an obligation whose
+    demand is the test, not the behaviour the test is about.
+    -> acceptance-criterion-yields-test-obligation  [functional/explicit]
+       Map an acceptance criterion that demands a test to an obligation whose demand is
+       the test rather than the behavior under test.
+
+[constraint-02] An obligation demanding a behaviour and an obligation demanding a test
+    of that behaviour are never recognised as stating the same requirement.
+    -> behavior-and-test-distinct-requirements  [invariant/explicit]
+       Keep an obligation demanding a behaviour distinct from an obligation demanding a
+       test of that behaviour when recognizing requirements.
+
+[constraint-03] A sentence of a given shape yields the same kind of obligation
+    regardless of which task file it appears in.
+    -> sentence-shape-consistent-obligation-kind  [invariant/explicit]
+       A sentence of a given shape yields the same kind of obligation in every task
+       file.
+
+[constraint-04] Sibling bullets under one scope exclusions heading receive the same
+    disposition as each other.
+    -> sibling-bullets-same-disposition  [invariant/explicit]   (also serves completion-04)
+       Preserve the rule that sibling bullets worded alike under one scope exclusions
+       heading receive the same disposition as each other.
+
+[constraint-05] A requirement disposed of without an obligation carries a reason that
+    does not itself state a property the change must preserve.
+    -> reason-no-preserved-property  [docs_config/explicit]   (also serves completion-05)
+       Produce a reason for no-obligation dispositions that states no property the
+       change must preserve.
+
+[constraint-06] No obligation is produced whose only satisfying evidence would be a test
+    that an excluded thing did not happen.
+    -> no-obligation-for-excluded-thing-not-happened-test-evidence  [invariant/explicit]
+       No obligation is produced whose only satisfying evidence would be a test that an
+       excluded thing did not happen.
+
+[constraint-07] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-review-state  [regression/explicit]   (also serves completion-06)
+       Preserve byte-identical review state across two runs over byte-identical task
+       text.
+
+[constraint-08] Tests issue no live model calls.
+    -> tests-issue-no-live-model-calls  [invariant/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] Whether an obligation needs test evidence at all, which is #148.
+    -> test-evidence-question-out-of-scope  [compatibility/explicit]
+       Whether an obligation needs test evidence at all is out of scope for this change.
+
+[exclusion-02] Assigning obligation types, which is #205.
+    -> obligation-types-assignment-out-of-scope  [compatibility/explicit]
+       Assigning obligation types is out of scope for this change.
+
+[exclusion-03] Which open questions are raised, and what they cite, which is #206.
+    -> open-questions-and-citations  [human_review/explicit]
+       Raise open questions when the task text is materially underspecified, and include
+       what each question cites.
+
+[exclusion-04] How finely a single requirement is split into obligations, which is #117.
+    -> requirement-splitting-granularity  [functional/explicit]
+       Split a single requirement into obligations at the level of distinct computations
+       or behaviors, keeping cohesive behaviors whole.
+
+[exclusion-05] Whether obligation identifiers are stable across task-file edits, which
+    is #231.
+    -> stable-obligation-identifiers  [invariant/explicit]
+       Keep obligation identifiers stable across edits to the task file.
+
+[exclusion-06] Measuring how accurate decomposition is, which is #211.
+    -> decomposition-accuracy-measurement  [human_review/explicit]
+       Measure how accurate the decomposition is.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       A standalone section marker with no checkable requirement.
+
+[completion-02] A test asserts that an acceptance criterion demanding a test derives an
+    obligation whose demand is the test.
+    -> test-demand-not-behavior  [functional/explicit]
+       Produce a test that asserts an acceptance criterion demanding a test yields an
+       obligation whose demand is the test itself.
+
+[completion-03] A test asserts that an obligation demanding a behaviour and an
+    obligation demanding a test of that behaviour are not recognised as stating the same
+    requirement.
+    -> behavior-test-not-same-requirement  [functional/explicit]
+       Produce a test that asserts an obligation demanding a behaviour and an obligation
+       demanding a test of that behaviour are not recognised as stating the same
+       requirement.
+
+[completion-04] A test asserts that sibling bullets worded alike under one scope
+    exclusions heading receive the same disposition as each other.
+    -> sibling-bullets-same-disposition  [invariant/explicit]   (also serves constraint-04)
+       Preserve the rule that sibling bullets worded alike under one scope exclusions
+       heading receive the same disposition as each other.
+
+[completion-05] A test asserts that a requirement disposed of without an obligation has
+    a reason stating no property the change must preserve.
+    -> reason-no-preserved-property  [docs_config/explicit]   (also serves constraint-05)
+       Produce a reason for no-obligation dispositions that states no property the
+       change must preserve.
+
+[completion-06] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> byte-identical-review-state  [regression/explicit]   (also serves constraint-07)
+       Preserve byte-identical review state across two runs over byte-identical task
+       text.
+

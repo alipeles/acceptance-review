@@ -12,99 +12,89 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## No task in flight
+## Task in flight — the decomposition-prompt bundle: #232 + #219 + #230
 
-**#144 landed** as `7c8928d` (PR #233, squash merge). `main` is synced.
-`current-task.md` still holds #144's mandate — it is stale, and the next task
-overwrites it at Gate 1.
+Branch `232-decomposition-prompt-shaping`, off `eb182de`. Nothing pushed.
 
-## Next task — #232, and why it is next
+**Bundled on an explicit human call.** All three are derivation-prompt shaping
+defects in `src/acceptance/requirement/obligations.py` — prompt text only, no new
+stage, no schema change, one transcript re-record. #219 and #230 are inseparable:
+#219 wants exclusions to yield preservation obligations instead of being declined,
+#230 says the preservation obligations that *were* produced are the harm. Fixing
+either alone picks the other's answer by accident.
 
-**#232 (→ #181): derivation drops the test framing from a Completion
-expectation.** One phrased *"A test asserts that X"* is derived into an
-obligation stating **X**, so an acceptance criterion becomes indistinguishable
-from the behaviour it tests.
+**#205 and #206 were deliberately excluded** — each is a new pipeline stage with a
+live-run acceptance item, and would not reach Gate 2 in one session. **#231** was
+excluded as architectural (reversing DR-204's whole-registry prompt, or deriving
+ids from the requirement).
 
-It is next because it is lossy and everything downstream inherits it:
+## Gate 1 — done, four runs, not clean and cannot be
 
-- It is why #144's linking merges `constraint-06` with `completion-04` when it
-  should not. The linking prompt already carries the negative example for that
-  case and it **cannot fire**, because it keys on text that no longer exists by
-  the time linking runs. No linking-prompt wording reaches this.
-- The framing is unstable across task files. The invoice fixture in
-  `tests/prompts/test_linking_prompt.py` keeps *"Add a test that asserts…"* and
-  linking correctly declines to merge; this repo's task file drops it.
-- Beyond linking: mapping, discrimination and coverage cannot tell the two apart
-  either, so a review can report a behaviour addressed while the demanded test
-  was never written.
+`dogfood-logs/232-gate1-run{1,2,3,4}/`. Run 4 is the task file to implement
+against. **No open questions in any run**, so the three-case triage is empty.
 
-CLAUDE.md's sequencing rule — decomposition quality before evidence quality —
-puts it ahead of the #183 / #185 work.
+Runs 2–4 were sanctioned rewrites of `current-task.md`, each re-arming the gate.
+What they fixed was mine; what remains is the tool's, and all of it is #232 /
+#219 / #230 — the bundle's own subject. **Human gave explicit go-ahead to code on
+that basis.** Gate 2 is the gate that must come back clean.
 
-## What #144 shipped
+Read `dogfood-logs/232-gate1-run4/judgement.md` before implementing — it states
+what the fix must achieve.
 
-- `requirement/linking.py` — post-derivation pass. **One question per obligation
-  pair**, swept completely, batched through `partition.py` at
-  `DEFAULT_LINK_PAIR_BATCH_SIZE = 25`.
-- Pairs ordered **by distance** between obligations, not by first obligation.
-  The natural nesting put all N-1 pairs of obligation 0 into the opening batches
-  and reproduced the selection framing one level down.
-- `_PairVerdict` declares **`reason` before `same_requirement`** — structured
-  output generates in field order, so a verdict first meant committing then
-  rationalising.
-- A cluster merges only if it is a **complete clique**; a contradicted component
-  merges nothing and is recorded through `UnusableAnswerLog`.
-- `Review.derived_obligation_map` persists stage 1's output; `rerun.py` gained
-  `derivation_changed`.
-- **`decompose` runs the pass too**, and carries the log — otherwise its
-  breakdown is not the set `check` reviews.
-- `docs/DR-144-pairwise-linking.md`.
+## The three findings that shape the implementation
 
-Final measurement on this repo's task file: **24 derived → 19 linked, 5 merges,
-0 contradictions.**
+1. **#232 is unstable within a single run, not just across task files.** Run 4:
+   five Completion expectations of one shape, framing kept for `completion-02`
+   and `-03` ("Produce a test that asserts …"), dropped for `-04`, `-05`, `-06`
+   — and those three then merged with their Constraint twin. Run 1 was 0 kept / 5
+   dropped. So the fix's test must assert the framing is kept for **every**
+   sentence of the shape, not that it is usually kept.
+2. **A test asserting "these two obligations did not merge" is worthless.** Run 2
+   showed four merges absent only because an 8-obligation transitive clique was
+   contradicted, so #144's clique rule merged nothing. It would pass with the fix
+   reverted. Assert that the **derived obligation demands a test**.
+3. **Scope exclusions invert, they do not merely differ.** Four of six yield
+   obligations to *do the excluded work* — `exclusion-05` (#231) →
+   "Keep obligation identifiers stable across task-file edits". Stable across all
+   four runs. This is the sharpened #230.
 
-## Gate 2 never came back clean, and #144 merged anyway
+## Design call to make, recommended not yet decided
 
-On an explicit human call, recorded in the PR body and in
-`dogfood-logs/144-gate2-run5/judgement.md`. The one blocker the task **owned**
-(`typed-schemas-pydantic-models`) was closed. What remained:
+#219 leaves the branch open: an exclusion *yields a preservation obligation* or
+*declines with a reason stating no preservable property*. **Recommended: decline,
+uniformly**, with the reason constrained to naming what is out of scope. It
+satisfies both of #230's clauses and does not depend on #148 landing. Cost —
+nothing checks the exclusion was not violated — stays tracked on #133/#148/#214;
+an obligation no test can support is worse, because it blocks clean verdicts.
 
-- four unsupported obligations, all from the mandate's problem statement — **#212**;
-- one rated *partially addressed* because the rule is implemented as prompt text
-  rather than code, which is a property of the stage.
+## Filed this session
+
+- **#234** — `test_materialization_is_deterministic` flaky in CI, child of #184.
+- **Comment on #230** — exclusions invert into obligations to do the excluded
+  work; proposed acceptance clause added.
+- **Comment on #212** — the problem statement derived an obligation contradicting
+  `constraint-01`; notes that nothing detects a contradictory obligation pair.
 
 ## Do not rediscover
 
-- **The whole registry is in every derivation prompt** (`obligations.py`,
-  `_user_prompt(registry, answer_for)`) — DR-204, on purpose. Any task-file edit
-  re-derives everything, so per-requirement stability is not available by
-  construction. That is **#231**.
-- **Obligation ids are minted per response and are not stable across runs.** Not
-  cosmetic: findings link by id and `rerun.py` decides staleness by id.
-- **A single call asked to find duplicates among N obligations is a SELECTION
-  task** and answers with the nearest plausible partner. That is what DR-144
-  replaced, and it over-merged twice first.
-- **`decompose|check --mode record` writes nothing to stdout when redirected.**
-  Record once, then re-run in replay to capture.
-- **The corpus manifest carries provenance markers per recording**
-  (`tests/prompts/test_corpus_mechanism.py`). Markers must be fixture-level: a
-  pair batch holds only the pairs it was given, so a marker naming one obligation
-  is absent from any batch that does not include it.
-- **The pair-verdict probe is the highest-yield diagnostic of the #144 work** —
-  dump every pair with its verdict, its reason and its batch index. It found both
-  root causes. ~20 lines against `_pairs`, `_user_prompt` and
-  `_confirmed_clusters`; method described in DR-144.
-- **Python here is 3.10**; the repo is `alipeles/acceptance-review`.
+- **Gate 1 cannot be clean for this task by construction.** Every Completion
+  expectation in this repo's convention uses the framing #232 drops.
+- **#153 looks stale** — open as "decompose never learns the exclusion section
+  exists", but #219's body says #202 fixed exactly that. Candidate to close.
+- **The whole registry is in every derivation prompt** (DR-204). Any task-file
+  edit re-derives everything — that is why `exclusion-01`/`-02` took three
+  different types across four runs on byte-identical text. #231.
+- **Obligation ids are minted per response, not stable across runs.**
+- **`decompose --mode record` writes nothing to stdout when redirected.** Record
+  once, then re-run in replay to capture.
+- **Python here is 3.10**; repo is `alipeles/acceptance-review`.
 
 ## Queue — `docs/DEFERRED.md`
 
-One entry open and unfiled: **`test_materialization_is_deterministic` is itself
-non-deterministic in CI** (drafted against #184). Observed on PR #233: run
-31346367369 failed on `07-declaration-mismatch`; the next run passed on a
-markdown-only commit.
+Empty of open items. All three entries from this session are filed.
 
 ## Known open
 
 **#210**, **#180**, **#193**, **#153**, **#191**, **#196**, **#178**, **#214**,
 **#129**, **#223**, **#224**, **#173**, **#225**, **#227**, **#228**, **#212**,
-**#230**, **#231**, **#232**.
+**#230**, **#231**, **#232**, **#219**, **#234**.
