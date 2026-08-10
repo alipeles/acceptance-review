@@ -42,6 +42,8 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from acceptance.model_base import PersistableModel
+from acceptance.requirement.registry import build_registry
+from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import (
     EvidenceClassification,
     ObligationType,
@@ -232,9 +234,7 @@ class GroundTruthLabels(PersistableModel):
             raise ValueError("open-question ids must be unique")
         for question in self.open_questions:
             if not question.rationale.strip():
-                raise ValueError(
-                    f"open question {question.id!r} must have a non-empty rationale"
-                )
+                raise ValueError(f"open question {question.id!r} must have a non-empty rationale")
 
         unrequested_ids = [u.id for u in self.unrequested_changes]
         if any(not uid.strip() for uid in unrequested_ids):
@@ -277,3 +277,54 @@ class BenchmarkCase(PersistableModel):
     ground_truth: GroundTruthLabels
     reviewer_output: Review | None = None
     score: BenchmarkScore | None = None
+
+
+class EmptyRequirementRegistryError(RuntimeError):
+    """A case's task file yields no requirements, so the case cannot run.
+
+    Raised rather than scored, and raised for the same reason
+    `UnresolvableRevisionError` and `MissingRunInputError` are: a case that
+    quietly degrades is worse than one that breaks. Those two lose an input that
+    is visibly absent. This one loses an input that is visibly *present* — the
+    task file is right there and reads fine — but that the parser routes into
+    `unclaimed` rather than into requirements, so nothing downstream ever sees a
+    requirement to decompose.
+
+    That failure produced no error for as long as it existed (#228). Every
+    archetype headed its mandate `# Task: <title>`, which is not the `task`
+    heading `parse_task_file` recognises, so all thirteen built an empty
+    registry; `decompose` correctly made no model call over no requirements, and
+    the scorer correctly reported that nothing was recovered. Each stage was
+    right and the number was meaningless: it measured a decomposition of
+    nothing, not a degraded decomposition.
+
+    **A zero here is not a score.** It is the absence of a run, and the two are
+    indistinguishable once a float reaches a report — which is why this is an
+    exception and not a metric of 0.0.
+    """
+
+
+def require_nonempty_registry(case_id: str, task_text: str) -> None:
+    """Raise unless `task_text` yields at least one identified requirement.
+
+    Called by every corpus case builder before it returns a case, so an
+    unreadable task file fails at the point the case is assembled rather than
+    surfacing as a plausible-looking zero several stages later.
+
+    The check is deliberately the *real* parse — `parse_task_file` then
+    `build_registry`, the same two calls `decompose` makes — rather than a
+    cheaper proxy such as looking for a `# Task` heading. A proxy would pass
+    exactly when the parser changed its mind about what a requirement is, which
+    is the case worth catching.
+    """
+    if build_registry(parse_task_file(task_text)):
+        return
+    raise EmptyRequirementRegistryError(
+        f"case {case_id!r} has a task file that yields no requirements, so the "
+        f"case did not run. This is not a score of zero: there was nothing for "
+        f"the checker to decompose, map or judge, and any metric computed over "
+        f"it would measure the absence of input rather than the quality of the "
+        f"output. Check that the task file uses the section headings "
+        f"`parse_task_file` recognises — a mandate headed `# Task: <title>` is "
+        f"not the `task` heading, and puts the whole mandate in `unclaimed`."
+    )

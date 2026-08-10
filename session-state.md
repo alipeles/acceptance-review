@@ -12,74 +12,66 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## No task in flight
+## In flight: #228 — a benchmark case yielding zero requirements must fail, not score
 
-**#234 landed** as `64ed0c4` (PR #238), CI green. **#153 is merging** as PR #241
-— Gate 2 not clean, on an explicit human call. `current-task.md` holds #153's
-mandate; stale, and the next task overwrites it at Gate 1.
+Branch `228-benchmark-empty-registry`, worktree
+`~/acceptance-worktrees/228-benchmark-empty-registry`, branched from `0923f77`
+(= `origin/main`). Child of **#186**.
 
-Both lanes ran in parallel worktrees and both are now done.
+**One of three parallel lanes** — #180 and #214 are running in their own
+sessions. **This lane touches no model prompt**, so it forces no transcript
+re-record and cannot collide with theirs on the request key.
 
-## Why #153 merged without a clean gate
+## Gate 1: PASSED at `0923f77`
 
-Same call as #235, same cause: **#180**. Two Gate 2 runs each named **three**
-obligations below strongly supported, with **no overlap**, over a diff of one
-code fix and two added tests. None was an unmet requirement. A gate that names a
-different three each run cannot be converged on by fixing what it names.
+Two runs, both saved: `dogfood-logs/228-gate1-run1/` and `-run2/`.
 
-Evidence: `dogfood-logs/153-gate2-run1/` and `-run2/`, judgement in run 2, filed
-on #180.
+- **Run 1** — 18 requirements, 17 obligations, 1 deliberately none, **no open
+  questions**. Decomposition accurate. Two of my own bullets were weak:
+  `constraint-05` overreached beyond what #228 asks, `completion-03` was
+  ungrammatical. Both are authoring defects, not tool defects.
+- **Run 2** — re-run after rewriting three bullets (`constraint-05`,
+  `completion-03`, `completion-05`). Same shape, clean, no open questions.
 
-## What #153 shipped
+Decomposition confirmed accurate by **Claude, awaiting human confirmation** —
+presented at the gate, not yet signed off.
 
-- **`AdmissibleEvidence{CODE_AND_TESTS, CODE_ONLY}`** on `Obligation` — a third
-  axis, separate from `type` / `coverage_status` / `evidence_class`. Scope
-  exclusions yield obligations again, in **absence form** ("The change does not
-  alter X"), marked from the parse.
-- **`scope_examined`** — the completeness claim's link, satisfying
-  typed-and-linked for evidence that is an absence. Refines #133's "empty
-  `diff_refs`" into a recorded claim.
-- Recommendations skip them before the batch; the verdict skips their test axis
-  only (a breach is still a material gap); the report says "not applicable —
-  confirmed by code evidence alone" and "examined N changes across M files; none
-  breaches this boundary".
+## The finding that shaped the plan
 
-## What #234 fixed
+`constraint-05` originally said *"No case reaches a scoring hook without having
+been checked."* That is not achievable and not what #228 asks. Benchmark scoring
+hooks are also driven by synthetic cases built inline in tests whose task text
+(`"## Deliverable\n...\n"`, `"..."`) has no `# Task` heading and therefore
+**yields an empty registry too**. An unconditional guard at hook entry would
+fail `test_runner.py`, `test_scoring.py`, `test_alignment.py`, `test_case.py`.
 
-`materialize_archetype` committed the **base** blob for a file the head tree
-changed. `git add -A` trusts cached stat data — size, mode, mtime — and
-`shutil.copy2` preserves mtime and mode, leaving **size** as the only giveaway;
-`07-declaration-mismatch` is the one archetype whose base and head `users.py` are
-both 60 bytes. Fix: `git read-tree --empty` before `git add -A`.
+So the guard goes on the **corpus case builders**, which is exactly the scope
+#228's Acceptance names. The synthetic-case problem is queued as a filing.
 
-**Reproducing a stat-cache bug:** run under `core.checkStat=minimal` +
-`core.trustctime=false` via `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_n`, which
-subprocesses inherit. Turns a one-in-ten flake into a deterministic failure.
+## Plan (presented at Gate 1, not yet approved)
 
-## The lesson that repeated three times in #153
+- `benchmark/case.py` — `EmptyRequirementRegistryError` + a guard function.
+  `case.py` is the home because `fixtures.py` and `corpus.py` both already
+  import from it, and it has no cycle with `requirement/`.
+- Call the guard from all three builders: `fixtures.py::build_benchmark_case`,
+  `corpus.py::build_decompose_case`, `corpus.py::build_corpus_case`.
+- New `tests/benchmark/test_empty_registry_guard.py`.
+- `requirement/obligations.py:443-446` — the comment claiming all thirteen
+  archetypes produce an empty registry is **stale** since `1c53592`. Fix it.
 
-**Do not ask the model to honour a distinction — enforce it in code.** The axis
-is set from `RequirementRef.section`; recommendations are filtered before the
-batch; and cited hunks are dropped for a respected boundary, because the model
-returned them anyway on 3 of 7 exclusions despite the prompt forbidding it.
-#232 and #219 each landed the same move. Assume the next one will too.
+## Verified at `0923f77`, before any change
 
-## Parallel lanes — what to repeat and what not to
+- Full suite **green: 972 passed** in 3m45s.
+- **Every** task file in `archetypes/` (13), `decompose-regression/` (8) and
+  `rating-stability/` (6) parses to a non-empty registry. The guard therefore
+  changes no current outcome, and cannot be demonstrated by the corpus — which
+  is why Acceptance item 3 demands a test-supplied unparseable file.
 
-Worktrees live in `~/acceptance-worktrees/`, outside Google Drive. It worked, on
-these conditions:
+## Queue — `docs/DEFERRED.md`
 
-- **At most one lane may touch a model prompt** — the request key hashes it, so
-  two lanes editing prompts merge into a state neither recorded against.
-- **Each lane needs its own `.venv`.** An editable install bakes an absolute
-  path, so a shared venv imports main's `src/acceptance` and silently tests the
-  wrong tree.
-- **Run each lane from a session whose cwd is that worktree.** Driving one from
-  elsewhere means absolute paths, which match none of the relative allow rules
-  and prompt on every call.
-- **Rebase early.** #153 was branched from `4b78d62` and merged five commits
-  later; the conflicts were all in `session-state.md` / `current-task.md`, which
-  both lanes rewrite wholesale.
+**One open filing:** `run_case`'s own acceptance test cannot fail, because its
+task file yields no requirements (`test_runner.py:46`, `:73`). Child of #186.
+Drafted in full with evidence; needs approval before filing.
 
 ## Do not rediscover
 
@@ -91,18 +83,14 @@ these conditions:
   author's.
 - **Permission prompts are caused by command shape, not vocabulary.** One command
   per Bash call; patterns may wildcard mid-string; naming `.env` in any command
-  prompts regardless. **Approvals are not recorded anywhere** — only denials are;
-  a new exact-command rule in `.claude/settings.local.json` is the only trace.
+  prompts regardless. **Approvals are not recorded anywhere** — only denials are.
 - **`pytest` must run from its own tree** — `addopts`/`pythonpath` are
-  cwd-relative.
+  cwd-relative. Each parallel lane needs its own `.venv` (editable installs bake
+  an absolute path).
 - **`gh pr create` with "Closes #a, #b, #c" only closes the first.**
-- **Obligation ids are minted per response, not stable across runs** (#231).
+- **Obligation ids are minted per response, not stable across runs** (#231), and
+  obligation *types* move too when the task text changes at all (#205).
 - **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
-
-## Queue — `docs/DEFERRED.md`
-
-Empty. Filed this session: **#237**, **#239**, comments on **#180**, **#205**,
-**#234**, **#239**. **#240** was filed and closed as a duplicate of #239.
 
 ## Known open
 

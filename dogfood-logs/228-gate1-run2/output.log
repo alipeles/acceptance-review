@@ -1,0 +1,93 @@
+Requirements: 18   with obligations: 17   deliberately none: 1
+
+[task-01] A benchmark case whose task file yields no requirements fails, naming the
+    case, instead of being scored.
+    -> benchmark-no-requirements-fails-naming-case  [functional/explicit]
+       A benchmark case whose task file yields no requirements fails, naming the case,
+       instead of being scored.
+
+[constraint-01] A benchmark case whose task file yields no requirements raises an error
+    rather than being built.
+    -> error-instead-of-build-for-no-requirements  [functional/explicit]
+       A benchmark case whose task file yields no requirements raises an error rather
+       than being built.
+
+[constraint-02] The error names the case it was raised for.
+    -> error-names-case  [functional/explicit]
+       The error names the case it was raised for.
+
+[constraint-03] The error says the case did not run, so the outcome cannot be read as a
+    score of zero.
+    -> error-says-case-did-not-run  [functional/explicit]
+       The error says the case did not run, so the outcome cannot be read as a score of
+       zero.
+
+[constraint-04] The check covers every case in the archetype corpus and every case in
+    the decomposition-regression corpus.
+    -> cover-all-corpus-cases  [functional/explicit]
+       The check covers every case in the archetype corpus and every case in the
+       decomposition-regression corpus.
+
+[constraint-05] A case built from either corpus is checked before it can be scored.
+    -> pre-score-check-before-build  [invariant/explicit]
+       A case built from either corpus is checked before it can be scored.
+
+[constraint-06] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-review-state  [regression/explicit]
+       Two runs over byte-identical task text produce byte-identical review state.
+
+[constraint-07] Tests issue no live model calls.
+    -> tests-no-live-model-calls  [invariant/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] Which text in a task file counts as a requirement, which is #216.
+    -> exclude-requirement-text-classification  [functional/explicit]
+       The change does not alter which text in a task file counts as a requirement.
+
+[exclusion-02] How finely a requirement is split into obligations, which is #117.
+    -> exclude-obligation-granularity-change  [functional/explicit]
+       The change does not alter how finely a requirement is split into obligations.
+
+[exclusion-03] How accurately decomposition is measured, which is #211.
+    -> exclude-decomposition-accuracy-measurement-change  [functional/explicit]
+       The change does not alter how accurately decomposition is measured.
+
+[exclusion-04] Whether accuracy figures recorded before the archetype corpus was
+    reshaped are comparable with later ones, which is #204.
+    -> exclude-pre-reshaping-accuracy-comparability-change  [functional/explicit]
+       The change does not alter whether accuracy figures recorded before the archetype
+       corpus was reshaped are comparable with later ones.
+
+[exclusion-05] The wording of the task files already in either corpus.
+    -> exclude-task-file-wording-in-corpora  [regression/explicit]
+       The change does not alter the wording of the task files already in either corpus.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker standing alone with no requirement under it.
+
+[completion-02] A test asserts that a case whose task file yields no requirements fails,
+    naming the case.
+    -> test-fails-no-requirements-naming-case  [test_demand/explicit]
+       A test asserts that a case whose task file yields no requirements fails, naming
+       the case.
+
+[completion-03] A test demonstrates that failure with a task file the test supplies, not
+    with a task file taken from either corpus.
+    -> test-supplied-task-file-failure  [test_demand/explicit]
+       A test demonstrates that failure with a task file the test supplies, not with a
+       task file taken from either corpus.
+
+[completion-04] A test asserts that every case in the archetype corpus and every case in
+    the decomposition-regression corpus passes the check.
+    -> test-all-corpus-cases-pass-check  [test_demand/explicit]
+       A test asserts that every case in the archetype corpus and every case in the
+       decomposition-regression corpus passes the check.
+
+[completion-05] A test asserts that a case cannot be built from either corpus without
+    the check being performed.
+    -> test-build-performs-check-before-scoring  [test_demand/explicit]
+       A test asserts that a case cannot be built from either corpus without the check
+       being performed.
+

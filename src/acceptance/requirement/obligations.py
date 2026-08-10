@@ -440,10 +440,14 @@ def decompose(
     # to decompose an empty requirement list. What came back could only be
     # invented, since the prompt carried no task content at all.
     #
-    # This is how `tests/fixtures/archetypes/` behaves today: every task.md
-    # there heads its mandate `# Task: <title>`, which is not the `task` heading
-    # the parser recognises, so all thirteen produce an empty registry. Tracked
-    # separately — it is a property of that corpus, not of this stage.
+    # `tests/fixtures/archetypes/` used to reach here that way: every task.md
+    # headed its mandate `# Task: <title>`, which is not the `task` heading the
+    # parser recognises, so all thirteen produced an empty registry and were
+    # scored anyway. `1c53592` reshaped the corpus and #228 added the guard —
+    # `benchmark/case.py::require_nonempty_registry` — so a case that yields no
+    # requirements now fails at construction instead of arriving here. Returning
+    # nothing over nothing is still the right behaviour for this stage; it is
+    # just no longer how the benchmark reaches it.
 
     seen_ids: set[str] = set()
     obligations: list[Obligation] = []

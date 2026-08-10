@@ -62,6 +62,7 @@ from acceptance.benchmark.case import (
     BenchmarkCaseInputs,
     BenchmarkCaseSource,
     GroundTruthLabels,
+    require_nonempty_registry,
 )
 from acceptance.model_base import PersistableModel
 
@@ -158,10 +159,17 @@ def remove_corpus_worktree(repo: Path, dest: Path) -> None:
     _git(repo, "worktree", "prune")
 
 
-def build_corpus_case(
-    case_dir: Path, repo: Path, corpus_root: Path, dest: Path
-) -> BenchmarkCase:
+def build_corpus_case(case_dir: Path, repo: Path, corpus_root: Path, dest: Path) -> BenchmarkCase:
     """Materialize a corpus run and assemble its labeled BenchmarkCase."""
+    # Checked before materializing a worktree, for the reason
+    # `build_benchmark_case` gives. These runs are `check` runs rather than
+    # `decompose` runs, but an unreadable task file costs them more, not less:
+    # the whole pipeline downstream of decomposition would run over no
+    # obligations and report that it found nothing wrong.
+    require_nonempty_registry(
+        case_dir.name, corpus_task_text(corpus_root, load_corpus_meta(case_dir))
+    )
+
     run = materialize_corpus_run(case_dir, repo, dest)
     return BenchmarkCase(
         case_id=case_dir.name,
@@ -238,6 +246,13 @@ def decompose_task_text(repo: Path, meta: DecomposeCaseMeta) -> str:
 def build_decompose_case(case_dir: Path, repo: Path) -> BenchmarkCase:
     """Assemble a labeled BenchmarkCase for one decompose run."""
     meta = load_decompose_meta(case_dir)
+    task_text = decompose_task_text(repo, meta)
+    # `decompose` is the only stage these cases exercise, so an empty registry
+    # here means the case measures nothing at all: no batch is issued, no model
+    # call is made, and decomposition_accuracy reports 0.0 against ground truth
+    # the input never had a chance to produce.
+    require_nonempty_registry(case_dir.name, task_text)
+
     return BenchmarkCase(
         case_id=case_dir.name,
         source=BenchmarkCaseSource(kind="agent_run", identifier=meta.run),
@@ -246,7 +261,7 @@ def build_decompose_case(case_dir: Path, repo: Path) -> BenchmarkCase:
             # task_text and stops. `repo` is carried so a case that is later
             # extended to a full review has somewhere to start.
             repo=str(repo),
-            task_text=decompose_task_text(repo, meta),
+            task_text=task_text,
             # Empty rather than a plausible-looking SHA. These runs recorded no
             # revision — `decompose` does not take one — and a fabricated value
             # would be an invented input in a case set whose whole argument is
@@ -277,6 +292,4 @@ def _resolve(repo: Path, revision: str, corpus_run: str) -> str:
 
 
 def _git(repo: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        ["git", *args], cwd=repo, check=True, capture_output=True, text=True
-    )
+    return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
