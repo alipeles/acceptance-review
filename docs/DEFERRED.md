@@ -69,7 +69,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   alternative:** dropping the split for a plain `obligations` list with a code
   check — that reverses #217, which settled that an empty `yielded` must be
   unrepresentable rather than rejected after the fact.
-- **Status:** open
+- **Status:** filed (#256)
 
 ### [2026-08-10] #248's Deliverable is mis-specified — correct the issue body
 - **Kind:** filing (edit to existing issue #248)
@@ -134,7 +134,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   Also worth noting on the issue: this defect was **introduced by the fix for
   #217**, which is worth recording so the tradeoff is visible next time a
   structural-shape fix is chosen.
-- **Status:** open
+- **Status:** filed (#248 — body and title replaced)
 
 ### [2026-08-10] #223: a spurious link that COMPLETED, destroying the headline requirement's obligation
 - **Kind:** filing (comment on existing issue #223)
@@ -181,7 +181,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > Not caused by task-file wording: run 3's headline is a near-identical
   > sentence and the severe failure vanished, so it is instability rather than a
   > response to better input.
-- **Status:** open
+- **Status:** filed (#223 comment)
 
 ### [2026-08-10] #242 gains a second, cleaner instance from #248's Gate 1
 - **Kind:** filing (comment on existing issue #242)
@@ -216,4 +216,4 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > Useful because the cluster is 4 obligations over 24 requirements, small
   > enough to reason about whole, and the task file was not written to provoke
   > it. Committed input and output are in the dogfood log above.
-- **Status:** open
+- **Status:** filed (#242 comment)
