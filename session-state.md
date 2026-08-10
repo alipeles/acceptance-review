@@ -8,102 +8,103 @@ Committed, so it survives a context reset or a machine change — but still a
 scratch record, not a plan. **The GitHub issue stays authoritative** (#168).
 Clear it out when the task lands rather than letting it accrete.
 
-*Last updated: 2026-08-08*
+*Last updated: 2026-08-09*
 
 ---
 
-## Task in flight — #144, merge semantically duplicate obligations
+## No task in flight
 
-Branch `144-merge-duplicate-obligations`, cut from `main` at `9724df4`.
-`main` is pushed; nothing on this branch is pushed.
+**#144 landed** as `7c8928d` (PR #233, squash merge). `main` is synced.
+`current-task.md` still holds #144's mandate — it is stale, and the next task
+overwrites it at Gate 1.
 
-**PR #233 open.** Branch pushed. **Gate 2 was NOT clean and the PR was opened
-anyway, on an explicit human call** — recorded in the PR body, not only here.
-Five check runs in `dogfood-logs/144-gate2-run{1..5}/`; run 5 is the current one:
-24 derived → 19 linked, 5 merges, 0 contradictions, 15 strongly supported,
-4 unsupported. The one blocker this task owned (`typed-schemas-pydantic-models`)
-is closed; the four unsupported are #212's and the one partially-addressed
-obligation is a prompt-implemented rule.
+## Next task — #232, and why it is next
 
-Gate 1 passed at `e34aebc`, human-confirmed on run 3.
+**#232 (→ #181): derivation drops the test framing from a Completion
+expectation.** One phrased *"A test asserts that X"* is derived into an
+obligation stating **X**, so an acceptance criterion becomes indistinguishable
+from the behaviour it tests.
 
-**CI is green on the PR head** (`57d1c8a`). The commit before it failed on
-`test_materialization_is_deterministic[07-declaration-mismatch]` and the next run
-passed on a markdown-only change, so that test is **flaky, not fixed** — drafted
-against #184 in `docs/DEFERRED.md`, unfiled.
-Three runs in `dogfood-logs/144-gate1-run{1,2,3}/`. Run 3 is the current one:
-27 requirements, 21 with obligations, 6 deliberately none, 24 obligations,
-**no open questions**. All 11 Constraints and all 7 Completion expectations
-carry exactly one obligation; the six declines are the five Scope exclusions
-and `Implementation`.
+It is next because it is lossy and everything downstream inherits it:
 
-## Two decisions taken at this gate
+- It is why #144's linking merges `constraint-06` with `completion-04` when it
+  should not. The linking prompt already carries the negative example for that
+  case and it **cannot fire**, because it keys on text that no longer exists by
+  the time linking runs. No linking-prompt wording reaches this.
+- The framing is unstable across task files. The invoice fixture in
+  `tests/prompts/test_linking_prompt.py` keeps *"Add a test that asserts…"* and
+  linking correctly declines to merge; this repo's task file drops it.
+- Beyond linking: mapping, discrimination and coverage cannot tell the two apart
+  either, so a review can report a behaviour addressed while the demanded test
+  was never written.
 
-1. **Do not partition the linking pass.** It reasons across all obligations at
-   once, so batching decides which pairs *can* be compared — a duplicate split
-   across batches is silently under-merged, and under-merging is the failure this
-   issue deliberately tolerates, so the damage would be invisible. Record the
-   observed obligation count in provenance instead, and measure the ceiling.
-2. **Stage-1 determinism is a task-file-level guarantee, not per-requirement.**
-   Unchanged task text ⇒ byte-identical review state at both stages
-   (`constraint-10`). Per-requirement locality was removed from the task file
-   after being measured false, and is now **#231**.
+CLAUDE.md's sequencing rule — decomposition quality before evidence quality —
+puts it ahead of the #183 / #185 work.
 
-## What #144 must build
+## What #144 shipped
 
-| File | Change |
-|---|---|
-| `requirement/linking.py` | **new** — post-derivation pass, schema-constrained, typed links |
-| `review_state.py` | new persisted field: the pre-link per-requirement obligation set |
-| `serialization.py` | canonical form for it — byte-identical reruns depend on it |
-| `pipeline.py` | call it after `decompose`, before mapping |
-| `rerun.py` | second staleness question: derivation output vs. the merge |
+- `requirement/linking.py` — post-derivation pass. **One question per obligation
+  pair**, swept completely, batched through `partition.py` at
+  `DEFAULT_LINK_PAIR_BATCH_SIZE = 25`.
+- Pairs ordered **by distance** between obligations, not by first obligation.
+  The natural nesting put all N-1 pairs of obligation 0 into the opening batches
+  and reproduced the selection framing one level down.
+- `_PairVerdict` declares **`reason` before `same_requirement`** — structured
+  output generates in field order, so a verdict first meant committing then
+  rationalising.
+- A cluster merges only if it is a **complete clique**; a contradicted component
+  merges nothing and is recorded through `UnusableAnswerLog`.
+- `Review.derived_obligation_map` persists stage 1's output; `rerun.py` gained
+  `derivation_changed`.
+- **`decompose` runs the pass too**, and carries the log — otherwise its
+  breakdown is not the set `check` reviews.
+- `docs/DR-144-pairwise-linking.md`.
 
-Interface others depend on: an `Obligation` gains a **list** of requirement
-links, not a single owner; the response schema has no free-text path to a link.
+Final measurement on this repo's task file: **24 derived → 19 linked, 5 merges,
+0 contradictions.**
 
-## Filed this session
+## Gate 2 never came back clean, and #144 merged anyway
 
-- **#230** (→ #181) — scope exclusions reframed inconsistently within one section.
-  **Widen it**: run 3 declined all five uniformly with the bullets unchanged, so
-  the defect is instability, not inconsistency. Widening comment filed.
-- **#231** (→ #184) — derived obligations are not local to their requirement; a
-  two-line edit re-split two untouched requirements and churned 27 of 33 ids.
-- **#232** (→ #181) — derivation drops "A test asserts that" from a Completion
-  expectation, so an acceptance criterion becomes indistinguishable from the
-  behaviour it tests. **This is the load-bearing remaining defect**: it is why
-  `constraint-06` and `completion-04` merge when they should not, and no
-  linking-prompt wording reaches it.
-- Comment on **#144** — 30 obligations from 19 distinct requirements, nine
-  clusters, and a third source-span shape (Task prose ↔ Constraints, three-way).
+On an explicit human call, recorded in the PR body and in
+`dogfood-logs/144-gate2-run5/judgement.md`. The one blocker the task **owned**
+(`typed-schemas-pydantic-models`) was closed. What remained:
+
+- four unsupported obligations, all from the mandate's problem statement — **#212**;
+- one rated *partially addressed* because the rule is implemented as prompt text
+  rather than code, which is a property of the stage.
 
 ## Do not rediscover
 
-- **The whole registry is in every derivation prompt** (`obligations.py:289`,
-  `_user_prompt(registry, answer_for)`). That is DR-204 on purpose. It means any
-  task-file edit changes every batch's request key and re-derives everything, so
-  per-requirement stability is not available by construction. This is #231.
-- **Obligation ids are minted per response and are not stable across runs.**
-  Between runs 1 and 2, 27 of 33 ids changed while 27 of 29 requirements kept the
-  same obligation *count* — most of the churn was a naming-convention shift. Ids
-  are not cosmetic: findings link by id and `rerun.py` decides staleness by id.
-- **The model minted the same obligation id twice in run 3**
-  (`reason-clause-counts-as-same-requirement` and `…-2`) for `constraint-06` and
-  `completion-04`. Its own naming says they are one requirement.
-- **`decompose --mode record` writes nothing to stdout when redirected.** Record
-  once, then re-run in replay to capture.
+- **The whole registry is in every derivation prompt** (`obligations.py`,
+  `_user_prompt(registry, answer_for)`) — DR-204, on purpose. Any task-file edit
+  re-derives everything, so per-requirement stability is not available by
+  construction. That is **#231**.
+- **Obligation ids are minted per response and are not stable across runs.** Not
+  cosmetic: findings link by id and `rerun.py` decides staleness by id.
+- **A single call asked to find duplicates among N obligations is a SELECTION
+  task** and answers with the nearest plausible partner. That is what DR-144
+  replaced, and it over-merged twice first.
+- **`decompose|check --mode record` writes nothing to stdout when redirected.**
+  Record once, then re-run in replay to capture.
+- **The corpus manifest carries provenance markers per recording**
+  (`tests/prompts/test_corpus_mechanism.py`). Markers must be fixture-level: a
+  pair batch holds only the pairs it was given, so a marker naming one obligation
+  is absent from any batch that does not include it.
+- **The pair-verdict probe is the highest-yield diagnostic of the #144 work** —
+  dump every pair with its verdict, its reason and its batch index. It found both
+  root causes. ~20 lines against `_pairs`, `_user_prompt` and
+  `_confirmed_clusters`; method described in DR-144.
 - **Python here is 3.10**; the repo is `alipeles/acceptance-review`.
 
-## Repo housekeeping landed this session
+## Queue — `docs/DEFERRED.md`
 
-`4acc5fe` — the working agreement now points at the real dogfood gates instead of
-an invented milestone pair; non-blocking defects, filings and decisions bundle
-into `docs/DEFERRED.md` and are reviewed at the next gate. `.claude/commands/gate.md`
-deleted. `9724df4` — allowlist the `.venv/bin/` commands the repo actually runs;
-`settings.local.json` pruned 115 → 5 entries.
+One entry open and unfiled: **`test_materialization_is_deterministic` is itself
+non-deterministic in CI** (drafted against #184). Observed on PR #233: run
+31346367369 failed on `07-declaration-mismatch`; the next run passed on a
+markdown-only commit.
 
-## Known open, not this task's problem
+## Known open
 
 **#210**, **#180**, **#193**, **#153**, **#191**, **#196**, **#178**, **#214**,
 **#129**, **#223**, **#224**, **#173**, **#225**, **#227**, **#228**, **#212**,
-**#230**, **#231**.
+**#230**, **#231**, **#232**.
