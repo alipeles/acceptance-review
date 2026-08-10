@@ -26,7 +26,12 @@ from acceptance.coverage.prompt import render_diff_section
 from acceptance.evidence.discrimination import ObligationDiscrimination
 from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
 from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
-from acceptance.review_state import ChangeSet, Obligation, TestRecommendation
+from acceptance.review_state import (
+    AdmissibleEvidence,
+    ChangeSet,
+    Obligation,
+    TestRecommendation,
+)
 
 # §9.3 classes that represent a real evidence gap — anything short of
 # strongly_supported earns a recommendation (the M7.1 trigger). An obligation
@@ -75,11 +80,20 @@ class _Recommendations(StrictResponseModel):
 
 def _weak_obligations(obligations: list[Obligation]) -> list[Obligation]:
     """Obligations with a real evidence gap — evidence_class set and below
-    strongly_supported (the M7.1 trigger)."""
+    strongly_supported (the M7.1 trigger).
+
+    Code-evidence-only obligations are excluded (#153). Theirs is not a gap a
+    test could close: they are satisfied by the absence of excluded work, and no
+    test can assert that work was not done. Recommending one would prescribe
+    evidence that cannot exist, which is worse than recommending nothing —
+    #146's review demanded a test for "we didn't also do something else".
+    """
     return [
         obligation
         for obligation in obligations
-        if obligation.evidence_class is not None and obligation.evidence_class != _STRONG
+        if obligation.admissible_evidence is not AdmissibleEvidence.CODE_ONLY
+        and obligation.evidence_class is not None
+        and obligation.evidence_class != _STRONG
     ]
 
 

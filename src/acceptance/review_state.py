@@ -28,6 +28,7 @@ __all__ = [
     "EvidenceTier",
     "TextSpan",
     "ObligationType",
+    "AdmissibleEvidence",
     "EvidenceClassification",
     "UnrequestedChangeDisposition",
     "UNREQUESTED_CHANGE",
@@ -88,6 +89,28 @@ class ObligationType(str, Enum):
     DOCS_CONFIG = "docs_config"
     HUMAN_REVIEW = "human_review"
     TEST_DEMAND = "test_demand"
+
+
+class AdmissibleEvidence(str, Enum):
+    """Which kinds of evidence can bear on an obligation at all (#153).
+
+    A third axis, deliberately separate from the ones beside it: `type` is what
+    the obligation is, `coverage_status` is whether the code responds,
+    `evidence_class` is whether the tests discriminate. This is which kinds of
+    evidence are applicable in the first place.
+
+    `CODE_ONLY` exists for obligations satisfied by an *absence* — the ones
+    derived from `## Scope exclusions`, where the requirement is that some work
+    was not done. No test can demonstrate an absence, so demanding test evidence
+    of such an obligation is a category error rather than a gap, and rating it
+    on the §9.3 strength axis measures nothing. Distinct from
+    `requires_other_evidence`, which says tests are the wrong *instrument* for a
+    thing that still needs evidencing (docs, visual, deploy); here the code
+    itself is the right and sufficient instrument.
+    """
+
+    CODE_AND_TESTS = "code_and_tests"
+    CODE_ONLY = "code_only"
 
 
 # The canonical `Finding.type` string for a §9.2 unrequested-change finding.
@@ -417,6 +440,11 @@ class Obligation(_Model):
     achieved_evidence_tier: EvidenceTier | None = None
     test_evidence: list[str] = Field(default_factory=list)
     evidence_class: EvidenceClassification | None = None
+    # #153's third axis: which kinds of evidence bear on this obligation at all,
+    # as opposed to how strong the evidence is (`evidence_class`) or whether the
+    # code responds (`coverage_status`). Defaults so every existing producer
+    # keeps its current meaning without restating it.
+    admissible_evidence: AdmissibleEvidence = AdmissibleEvidence.CODE_AND_TESTS
     # M3.1 implementation-coverage status, as its string value (the
     # `CoverageStatus` enum lives in coverage/classify.py, which imports from
     # here — same reason ReviewProvenance stores determinism_mode as a string).

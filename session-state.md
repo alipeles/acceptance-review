@@ -12,90 +12,77 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## No task in flight
+## Task in flight — #153, in a worktree
 
-**#232 + #219 + #230 landed** as `14b2549` (PR #235, squash merge). `main` is
-synced. `current-task.md` still holds that bundle's mandate — stale, and the next
-task overwrites it at Gate 1.
+**Scope exclusions carry no meaning downstream.** Working the revised acceptance
+in [#153's 2026-08-10 comment](https://github.com/alipeles/acceptance-review/issues/153#issuecomment-5241310422),
+not the original issue body: exclusions **yield obligations again**, marked as
+admitting **code evidence only**, with no test-support score.
 
-## Next task — #153, and why it is next
+Branch `153-scope-exclusion-obligations`, worktree at
+`/Users/alipeles1/acceptance-worktrees/153-scope-exclusion-obligations`.
 
-**#153: scope exclusions carry no meaning downstream.** #235 made this *more*
-true, deliberately and with the tradeoff recorded: exclusions now decline
-uniformly, so nothing checks that one was respected. The agreed design is in
-[#153's comment](https://github.com/alipeles/acceptance-review/issues/153#issuecomment-5241310422):
+## Parallel lanes — two worktrees, outside Google Drive
 
-- Exclusions **yield obligations again**, marked as admitting **code evidence
-  only**, with no test-support score at Gate 2.
-- That marking is a **third axis** on `Obligation`, not an obligation type.
-  `type` is what the obligation is; `coverage_status` is whether the code
-  responds; `evidence_class` is whether the tests discriminate; this is which
-  kinds of evidence apply at all. `review_state.py` already documents keeping
-  those axes separate.
-- **Open design point, to settle when implementing:** evidence for an exclusion
-  is an *absence*, so it has no location to link to. Non-violation should
-  probably be a completeness claim over the examined change set — "every change
-  was checked against this exclusion and none breaches it" — rather than a
-  listing of every file as supporting evidence. That needs an answer for the
-  typed-and-linked invariant (link to the scope examined) and for evidence-tier
-  discipline (a partial scan must not claim completeness).
+| Worktree | Branch | Lane |
+|---|---|---|
+| `~/acceptance-worktrees/153-scope-exclusion-obligations` | `153-…` | checker (this one) |
+| `~/acceptance-worktrees/234-materialization-determinism` | `234-…` | benchmark |
 
-Overlaps #148 (code-evident obligations); likely wants that mechanism.
+Chosen because at most one lane may touch a model prompt: #153 changes the
+decomposition prompt, #234 is `benchmark/fixtures.py` git materialization with
+no model call at all. **Each lane needs its own `.venv`** — an editable install
+bakes an absolute path, so a shared venv would import main's `src/acceptance`
+and silently test the wrong tree. `.env` is symlinked. `.acceptance/cache/` is
+per-lane and starts empty; the suite doesn't need it (933 pass), only
+`decompose`/`check` re-record.
 
-## What #232/#219/#230 shipped
+## Gate 1 — PASSED at 4b78d62
 
-- **`ObligationType.TEST_DEMAND`**, and spec §7.3 gains it.
-  `docs/DR-232-test-demand-obligation-type.md`.
-- Derivation picks the type from the requirement's own text, never because
-  another bullet asks for a test of the same behaviour.
-- Scope exclusions decline uniformly; the reason may not state anything the
-  change must hold.
-- **Linking skips a mixed pair** rather than asking
-  (`_can_state_one_requirement`).
-- `tests/prompts/test_decomposition_prompt.py` — new recorded corpus, 18 tests,
-  asserting on the type rather than on substrings.
+Decomposition confirmed accurate by Claude, presented to the human 2026-08-10.
+26 requirements → 18 obligations, 8 deliberately none; every constraint
+accounted for, none invented, **zero open questions**. Full triage in
+`dogfood-logs/153-gate1-run1/judgement.md`.
 
-Measured on this repo's task file: exclusions inverted 4/6 → **0/6**; Completion
-expectations keeping their demand 0/5 → **5/5 typed**; invented framing on
-Constraints 3/8 → **0/8**; behaviour↔test merges 3 → **0**.
+Two things carried forward:
 
-## Gate 2 was not clean, and #235 merged anyway
+- **All 7 scope exclusions declined** — correct today, and the defect being
+  removed. After the change this task file should yield **25** obligations, not
+  18, with 7 on the code-evidence-only axis. That is the Gate 2 tell.
+- **`constraint-03` typed `test_demand` and inverted** — the requirement forbids
+  a test recommendation. Queued as a filing on **#205**; type assignment is a
+  scope exclusion of this task.
 
-On an explicit human call. 15 obligations, all addressed, no open questions, **6
-rated below strongly supported** — none an unmet requirement. The gate does not
-converge: between Gate 2 runs 1 and 2 the only change was two added tests, and
-five untouched obligations degraded. Filed on **#180** with the evidence.
-Analysis in `dogfood-logs/232-gate2-run2/judgement.md`.
+## The delicate part of the implementation
+
+`obligations.py`'s prompt currently says *"Dispose of every requirement in
+[Scope exclusions] as `no_obligation`"*, and its rationale is sound: the only
+way it knew to produce an obligation was by **inversion**, which is what
+#219/#230 fixed (4/6 inverted → 0/6). #153 needs a **third** form — an
+obligation whose demand is the *absence* of the excluded work — without
+reopening inversion. New tests must pin non-inversion, not just presence.
 
 ## Do not rediscover
 
-- **`.acceptance/ignore` is committed** (#105) and holds `dogfood-logs/`. Without
-  it, `check` reads the working tree as head and a run's own redirected
-  `output.log` joins the diff it is reviewing, so the run cannot be replayed.
-  `.gitignore` names `.acceptance/cache/` and `.acceptance/reviews/`
-  individually — the directory holds input as well as output.
-- **`gh pr create` with "Closes #a, #b, #c" only closes the first.** #219 and
-  #230 had to be closed by hand after #235 merged.
-- **Two prompt attempts failed before typing worked.** Told to keep the test
-  framing, derivation began *inventing* it on Constraints that demand no test.
-  DR-232.
-- **The linking prompt's criteria point the wrong way on a behaviour/test pair**
-  — the test that asserts X is also the evidence for X, so "the same test would
-  demonstrate both" reads true. Hence enforcement in code.
+- **Prompts are matched by shape, not vocabulary** — see CLAUDE.md's habits
+  section, rewritten at 41a4af9/813fa71/4b78d62. One command per Bash call;
+  `(cd <dir> && …)` subshells; patterns may wildcard mid-string
+  (`Bash(git -C * add *)`); a specific `allow` beats a broad `ask`
+  (`git merge --ff-only` verified).
+- **Naming `.env` in any command prompts**, overriding `Bash(ls *)`.
+- **`pytest` must run from its own tree** — `addopts`/`pythonpath` are
+  cwd-relative; absolute-path invocation collects `tests/fixtures/archetypes`
+  as suite tests and errors.
 - **Obligation ids are minted per response, not stable across runs** (#231).
 - **`decompose|check --mode record` writes nothing to stdout when redirected.**
 - **Python here is 3.10**; repo is `alipeles/acceptance-review`.
 
 ## Queue — `docs/DEFERRED.md`
 
-One open: the missing-transcript error blames an edited prompt, which was wrong
-at Gate 2 and cost a diagnostic cycle. Needs a parent — #184 is the closest fit.
-
-Filed this session: **#234** (child of #184), comments on **#230**, **#212**,
-**#180** and **#153**.
+One open: the `constraint-03` mis-type, drafted as a comment on #205.
 
 ## Known open
 
 **#210**, **#180**, **#193**, **#153**, **#191**, **#196**, **#178**, **#214**,
 **#129**, **#223**, **#224**, **#173**, **#225**, **#227**, **#228**, **#212**,
-**#231**, **#234**.
+**#231**, **#234**, **#236**.

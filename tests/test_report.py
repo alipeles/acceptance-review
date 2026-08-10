@@ -3,6 +3,7 @@ evidence with a per-line evidence tier, advisory unrequested changes, and the
 computed verdict."""
 
 from acceptance.review_state import (
+    AdmissibleEvidence,
     UNREQUESTED_CHANGE,
     CompletionResult,
     CompletionVerdict,
@@ -452,3 +453,47 @@ def test_a_review_with_no_obligations_does_not_advertise_retrieval():
     )
 
     assert render_report(review).endswith("Recommended next instruction: (none)")
+
+
+# --- #153: a respected boundary must not read as a missing test ---------------
+
+
+def test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test():
+    """#153's acceptance: a reader can tell "this boundary was respected" from
+    "this requirement lacks tests".
+
+    The negative assertion is the load-bearing one. Rendering "(no mapped test)"
+    under a boundary obligation is textually identical to an ordinary
+    requirement whose tests are missing, so a reader scanning the report cannot
+    distinguish a satisfied exclusion from a genuine evidence gap — which is
+    exactly what #146 observed when the exclusion came back
+    "test evidence: partially supported".
+    """
+    boundary = Obligation(
+        id="pagination",
+        description="The change does not alter how the invoice list is paginated",
+        type=ObligationType.INVARIANT,
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
+        coverage_status="addressed",
+        evidence_class=None,
+        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+    )
+    ordinary = _obligation("Active filters applied", "not_addressed", "unsupported")
+
+    report = render_report(
+        Review(mode="local", reviewed_revision="abc", obligation_map=[boundary, ordinary])
+    )
+
+    lines = report.splitlines()
+    boundary_line = next(
+        line for line in lines if "test evidence" in line and "not applicable" in line
+    )
+    assert "confirmed by code evidence alone" in boundary_line
+
+    # The ordinary obligation still reports its missing tests, so the
+    # distinction is between the two renderings rather than a blanket change.
+    assert any("(no mapped test)" in line for line in lines)
+    boundary_index = lines.index(boundary_line)
+    assert "(no mapped test)" not in lines[boundary_index + 1]

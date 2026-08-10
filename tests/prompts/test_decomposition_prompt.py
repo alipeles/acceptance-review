@@ -22,7 +22,7 @@ import pytest
 
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import Disposition, ObligationType
+from acceptance.review_state import AdmissibleEvidence, Disposition, ObligationType
 from tests.support import recorded_client
 
 # Both properties in one file, so one recording covers them.
@@ -164,13 +164,24 @@ def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, req
 
 
 @pytest.mark.parametrize("requirement_id", _EXCLUSION_IDS)
-def test_every_scope_exclusion_is_declined(derived, requirement_id):
-    """#230: five siblings under one heading were split three ways in one call,
-    and #219 recorded the opposite half — declined despite the prompt then
-    forbidding it. Neither is a stable rule, so the rule is now uniform: a
-    scope exclusion names work the change must not do, and yields nothing.
+def test_every_scope_exclusion_yields_a_code_evidence_only_obligation(derived, requirement_id):
+    """#153. #230 split five siblings three ways in one call; #219 recorded the
+    opposite half. #235 made the rule uniform by declining them all, which was
+    stable but left nothing downstream to check that the boundary was respected.
+
+    So they yield again — and the thing that makes that safe, rather than a
+    return to #230, is that the obligation is marked `CODE_ONLY` rather than
+    being an ordinary obligation nobody wrote a test for.
     """
-    assert _disposition(derived, requirement_id).disposition is Disposition.NO_OBLIGATION
+    disposition = _disposition(derived, requirement_id)
+    assert disposition.disposition is Disposition.YIELDED
+
+    obligations = _obligations_of(derived, requirement_id)
+    assert obligations, f"{requirement_id} yielded no obligation"
+    for obligation in obligations:
+        assert obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY, (
+            f"{obligation.id} is not on the code-evidence-only axis"
+        )
 
 
 def test_sibling_exclusions_share_one_disposition(derived):
@@ -199,7 +210,7 @@ def test_sibling_exclusions_differing_in_content_still_share_a_disposition(deriv
     compression — so passing the test above cannot be an artifact of them
     saying the same thing. Consistency of disposition, not of content."""
     subjects = {
-        _disposition(derived, i).reason for i in _EXCLUSION_IDS if _disposition(derived, i).reason
+        obligation.description for i in _EXCLUSION_IDS for obligation in _obligations_of(derived, i)
     }
 
     assert len(subjects) == len(_EXCLUSION_IDS), (
@@ -208,16 +219,22 @@ def test_sibling_exclusions_differing_in_content_still_share_a_disposition(deriv
 
 
 @pytest.mark.parametrize("requirement_id", _EXCLUSION_IDS)
-def test_a_declined_exclusion_states_no_property_to_preserve(derived, requirement_id):
-    """The #219 defect exactly: declining, and then performing the positive
-    reframing in the reason field anyway — "it preserves the existing strength
-    classifier unchanged" IS the obligation, written where nothing downstream
-    can act on it."""
-    reason = (_disposition(derived, requirement_id).reason or "").lower()
+def test_an_exclusion_obligation_states_no_property_to_preserve(derived, requirement_id):
+    """The #219 defect, moved to where it can now recur. #219 was the positive
+    reframing performed in the `reason` field of a declined exclusion; with the
+    exclusion yielding again (#153), the same reframing has a better place to
+    hide — the obligation's own text.
 
-    assert reason.strip(), f"{requirement_id} declined without a reason"
-    offending = [word for word in _PRESERVATION_WORDS if word in reason]
-    assert not offending, f"{requirement_id} states a property to preserve: {reason!r}"
+    "The change does not alter how the invoice list is paginated" is the form
+    that is wanted. "Keep the existing pagination" is #219 verbatim, and would
+    now be a real obligation rather than dead free text.
+    """
+    for obligation in _obligations_of(derived, requirement_id):
+        text = f"{obligation.description} {obligation.observable_behavior}".lower()
+        offending = [word for word in _PRESERVATION_WORDS if word in text]
+        assert not offending, (
+            f"{obligation.id} states a property to preserve: {obligation.description!r}"
+        )
 
 
 def test_no_obligation_anywhere_demands_the_excluded_work(derived):
@@ -229,12 +246,35 @@ def test_no_obligation_anywhere_demands_the_excluded_work(derived):
     Checked across the WHOLE obligation set, not just the exclusion
     dispositions, because #210 shows an exclusion's content can surface under a
     neighbouring requirement's obligation instead of its own.
+
+    #153 sharpened this rather than relaxing it. While exclusions were declined
+    outright, "no obligation anywhere names the excluded subject" was a sound
+    proxy for the inversion. It no longer is: an exclusion's own obligation must
+    name its subject to say the change stayed away from it. So the two halves
+    are now asserted separately —
+
+      * the exclusion's OWN obligation may name the subject, but only in the
+        absence form; and
+      * NO OTHER obligation may name it at all, which is the #210 leak.
+
+    Dropping to only the second half would let "Support these currencies" pass
+    as long as it landed under `exclusion-01`, which is the original defect.
     """
-    inverted = [
+    own_ids = {obligation.id for i in _EXCLUSION_IDS for obligation in _obligations_of(derived, i)}
+
+    leaked = [
         (obligation.id, obligation.description)
         for obligation in derived.obligations
+        if obligation.id not in own_ids
         for subject in _EXCLUDED_SUBJECTS
         if subject in f"{obligation.description} {obligation.observable_behavior}".lower()
     ]
+    assert not leaked, f"excluded work surfaced under another requirement: {leaked}"
 
-    assert not inverted, f"excluded work asserted as an obligation: {inverted}"
+    not_absence = [
+        (obligation.id, obligation.description)
+        for i in _EXCLUSION_IDS
+        for obligation in _obligations_of(derived, i)
+        if "does not" not in obligation.description.lower()
+    ]
+    assert not not_absence, f"an exclusion obligation is not in the absence form: {not_absence}"
