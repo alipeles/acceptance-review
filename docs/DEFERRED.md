@@ -36,24 +36,151 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
-### [2026-08-10] Duplicate-description comparison is exact, not normalised
+### [2026-08-10] Disambiguate the `_Yielded` obligation fields — spend at the next decompose re-record
 - **Kind:** decision
 - **Found during:** #248, Gate 1
-- **Where:** `src/acceptance/requirement/obligations.py`, `decompose`
+- **Where:** `src/acceptance/requirement/obligations.py:302-313` (`_Yielded`), and
+  `_SYSTEM_PROMPT` in the same module
 - **Severity:** should-fix
-- **What's wrong:** #248 leaves open whether two obligation descriptions count as
-  duplicates on exact string equality or after normalising case, whitespace and
-  a trailing period.
-- **Why I didn't act:** resolving a design decision quietly is forbidden; it is
-  queued with a recommendation rather than stopping the work.
-- **Drafted fix:** **exact equality.** It covers the observed case — the two
-  descriptions in #248 are byte-identical — and cannot collapse two obligations
-  that differ in meaning, which a normalising comparison eventually will. The
-  issue itself recommends starting exact. **Rejected alternative:** normalise
-  first, which would catch a near-miss duplicate but makes the drop a judgement
-  call, and a wrongly dropped obligation is the failure this project treats as
-  worst (#202, #214). If normalisation is wanted later it is a separate change
-  with its own evidence.
+- **What's wrong:** `_Yielded` encodes a non-empty obligation list as a required
+  `obligation` plus `more_obligations`, because strict mode rejects `minItems`
+  and the split is the only way to make "at least one" structural (#217). The
+  two fields have no stated relationship and the prompt never mentions them, so
+  in the **one-obligation** case the model fills the required slot and then
+  emits the same object again as the whole of `more_obligations`. Measured over
+  all 1,055 recorded transcripts: 4 duplicate-bearing dispositions, **all four**
+  byte-identical head vs `more_obligations[0]` with `len(more_obligations) == 1`,
+  and **zero** duplicates in any other position. In the same response,
+  requirements yielding 2 and 3 obligations used the split correctly.
+- **Why I didn't act:** it changes the schema the model is sent, so it re-records
+  the whole decompose corpus and makes benchmark accuracy non-comparable across
+  the change. `CLAUDE.md` says pay that cost once — this should ride along with
+  the next change that already forces a decompose re-record, not spend it alone.
+- **Drafted fix:** two parts, both at the same time:
+  1. Rename `obligation` → `first_obligation` and `more_obligations` →
+     `remaining_obligations`, so the field names state the relationship.
+  2. Add a sentence to `_SYSTEM_PROMPT`: when a requirement yields exactly one
+     obligation, `remaining_obligations` is empty — never a copy of the first.
+
+  **This reduces the frequency; it cannot eliminate the case.** Head+rest is the
+  only structural encoding of a non-empty list available, so the ambiguity is
+  inherent to the shape and the decoder guard landing in #248 stays load-bearing
+  regardless. Do not remove the guard when this is done. **Rejected
+  alternative:** dropping the split for a plain `obligations` list with a code
+  check — that reverses #217, which settled that an empty `yielded` must be
+  unrepresentable rather than rejected after the fact.
+- **Status:** open
+
+### [2026-08-10] #248's Deliverable is mis-specified — correct the issue body
+- **Kind:** filing (edit to existing issue #248)
+- **Found during:** #248, Gate 1
+- **Where:** issue #248, "Deliverable" and "Acceptance"
+- **Severity:** blocker — #248's Acceptance as written prescribes the wrong fix
+- **What's wrong:** #248 reads the defect as the model emitting one requirement's
+  obligation twice, and prescribes dropping "an obligation whose description
+  already appears under the same requirement", leaving exact-vs-normalised string
+  comparison open. The transcript evidence above shows the duplicate is not a
+  content repeat at all: it is a byte-identical echo of the required
+  `obligation` field at `more_obligations[0]`, induced by the schema shape. A
+  description-comparison drop would blame the model for an answer the schema
+  invited, and would also collapse genuine repeats elsewhere in the list, which
+  is real signal.
+- **Why I didn't act:** backlog content needs human review before it reaches
+  GitHub.
+- **Drafted fix:** replace #248's Deliverable and Acceptance with:
+
+  > ## Deliverable
+  >
+  > Read `more_obligations` as *the rest of the list*: when its first entry is
+  > byte-identical to the required `obligation` field, the requirement yielded
+  > one obligation, not two. Record the reading on `UnusableAnswerLog`,
+  > attributed to the response shape rather than to a faulty answer.
+  >
+  > Scoped to the head of the remainder deliberately. A repeat anywhere else is
+  > kept, because that would be the model genuinely restating itself and is the
+  > linking stage's call — and because a guard that drops repeats anywhere
+  > destroys the signal that something upstream is wrong.
+  >
+  > The exact-vs-normalised comparison question is withdrawn: fields are
+  > compared as whole objects for exact equality, and no description matching is
+  > involved.
+  >
+  > ## Acceptance
+  >
+  > - A disposition whose `more_obligations[0]` is byte-identical to `obligation`
+  >   yields one obligation.
+  > - The reading is recorded, not silent.
+  > - A `more_obligations[0]` differing from `obligation` in any single field
+  >   yields both.
+  > - An entry identical to `obligation` appearing later than position 0 is kept.
+  > - The surviving obligation carries no `_unique` suffix earned only by the echo.
+  > - Two runs over byte-identical task text still produce byte-identical review
+  >   state.
+  >
+  > ## Evidence
+  >
+  > Scanned all 1,055 recorded transcripts. 4 duplicate-bearing dispositions,
+  > all four `obligation == more_obligations[0]` byte-for-byte including `id`,
+  > all with `len(more_obligations) == 1`; zero duplicates in any other
+  > position. Requirements in the same response yielding 2 and 3 obligations
+  > showed no duplication — the failure is specific to the one-obligation case,
+  > where the head/rest encoding is ambiguous.
+  >
+  > The instance originally quoted here (`constraint-10`) is no longer in the
+  > cache — its transcript was orphaned — so that specific case is inferred from
+  > a matching signature (identical ids forcing the `-2` suffix), not directly
+  > re-observed.
+
+  Also worth noting on the issue: this defect was **introduced by the fix for
+  #217**, which is worth recording so the tradeoff is visible next time a
+  structural-shape fix is chosen.
+- **Status:** open
+
+### [2026-08-10] #223: a spurious link that COMPLETED, destroying the headline requirement's obligation
+- **Kind:** filing (comment on existing issue #223)
+- **Found during:** #248, Gate 1, run 2
+- **Where:** `dogfood-logs/248-gate1-run2/output.log`, first block
+- **Severity:** should-fix — worst finding across the three Gate 1 runs
+- **What's wrong:** the mandate's headline requirement was given an unrelated
+  requirement's obligation and its own was never produced. Nothing in the two
+  texts is shared, so no rewrite would have prevented it.
+- **Why I didn't act:** #223 is a separate issue; fixing it is out of scope for
+  #248, which is a decoder change in `_Yielded`.
+- **Drafted fix:** comment on #223:
+
+  > Another instance, from #248's Gate 1 run 2 (`dogfood-logs/248-gate1-run2/`):
+  >
+  > ```
+  > [task-01] A requirement that yields one obligation is not read as yielding two.
+  >     -> preserve-decomposition-accuracy-measurement  [compatibility/explicit]   (also serves exclusion-06)
+  >        The change does not alter measuring how accurate decomposition is.
+  > ```
+  >
+  > The **headline** requirement of the task file is represented by a
+  > preservation invariant about benchmark accuracy measurement — `exclusion-06`'s
+  > content, sharing no subject, vocabulary or purpose with it. `task-01`'s own
+  > obligation was never produced.
+  >
+  > Worth noting the direction, because it argues #223, #210 and #242 are one
+  > underlying problem seen from three sides. #242 is a spurious link that
+  > **blocks** a merge, so nothing merges and everything is reported
+  > unreconciled. This is a spurious link that **completed**, and the merge
+  > destroyed the surviving content. Same defective similarity judgement, opposite
+  > failure, and the blocking case is the safe one — it is loud, whereas this is
+  > silent and leaves a plausible-looking breakdown.
+  >
+  > A milder instance of the same content-bleed survived into run 3
+  > (`dogfood-logs/248-gate1-run3/`), where `exclusion-05`'s obligation appends
+  > `exclusion-06`'s subject to its own description without losing anything:
+  >
+  > ```
+  > [exclusion-05] Which open questions are raised, and what they cite, which is #206.
+  >     -> "...or what they cite, and it does not alter the measurement of decomposition accuracy."
+  > ```
+  >
+  > Not caused by task-file wording: run 3's headline is a near-identical
+  > sentence and the severe failure vanished, so it is instability rather than a
+  > response to better input.
 - **Status:** open
 
 ### [2026-08-10] #242 gains a second, cleaner instance from #248's Gate 1

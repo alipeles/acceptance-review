@@ -1,0 +1,58 @@
+# Judgement — #248 Gate 1, run 3 (accepted)
+
+Command: `.venv/bin/acceptance decompose --task current-task.md --mode record`
+Run at `4332228`, on branch `248-drop-duplicate-obligations`.
+
+## Decomposition accuracy — confirmed
+
+```
+Requirements: 27   with obligations: 26   deliberately none: 1
+```
+
+27 matches the task file exactly: 1 task line, 12 constraints, 6 scope
+exclusions, 8 completion expectations. **Every requirement yielded exactly one
+obligation**, restating it verbatim, and no requirement went missing. The single
+deliberate non-yield is `completion-01` ("Implementation"), a bare section
+marker.
+
+No invented obligations. **No unreconciled linking cluster** — the finding that
+appeared in runs 1 and 2 is absent here, because splitting the compound
+constraints removed the near-duplicate obligations that produced it.
+
+## Open questions — none raised
+
+Nothing to triage under the Gate 1 three-case table.
+
+## Finding — `exclusion-05`'s obligation over-reaches into `exclusion-06`
+
+```
+[exclusion-05] Which open questions are raised, and what they cite, which is #206.
+    -> exclude-open-question-citation-measurement
+       The change does not alter which open questions are raised or what they cite,
+       and it does not alter the measurement of decomposition accuracy.
+```
+
+The trailing clause is `exclusion-06`'s subject, not `exclusion-05`'s. The
+obligation asserts something its requirement does not state.
+
+Mild compared with run 2: **nothing is lost**. `exclusion-06` still holds its own
+correct obligation, and both exclusions are code-evidence-only preservation
+invariants, so the over-reach cannot change what evidence is demanded of the
+change. It is the same content-bleed between adjacent requirements that run 2
+showed in its severe form, and is queued as supporting evidence on the same
+comment rather than as a separate finding.
+
+## Type instability, noted and not acted on
+
+`constraint-12` ("Tests issue no live model calls") is typed `test_demand` here
+and `invariant` in run 1's equivalent. Obligation typing is a scope exclusion of
+this task (#205) and a known instability (#196, #193). Not a blocker.
+
+## Task-file wording
+
+Accepted as written. Run 3's constraints are one statement each, and every one
+produced exactly one obligation quoting it.
+
+## Verdict
+
+Gate 1 passed on this run, subject to human confirmation of the breakdown.
