@@ -22,7 +22,7 @@ import pytest
 
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import Disposition
+from acceptance.review_state import Disposition, ObligationType
 from tests.support import recorded_client
 
 # Both properties in one file, so one recording covers them.
@@ -86,7 +86,15 @@ def _obligations_of(decomposition, requirement_id: str):
 
 
 def _demands_a_test(obligation) -> bool:
-    return "test" in f"{obligation.description} {obligation.observable_behavior}".lower()
+    """The typed field, not a substring of the description.
+
+    This started as `"test" in description.lower()` — a heuristic over free
+    text, which is the shape this project's markdown-never-as-interchange
+    invariant exists to forbid, and it could not tell "a test asserts X" from a
+    behavior obligation that merely mentions testing. DR-232 added the type so
+    the question has an answer that does not require reading English.
+    """
+    return obligation.type is ObligationType.TEST_DEMAND
 
 
 # --- #232: a requirement for a test is a requirement for a test ---------------

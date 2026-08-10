@@ -70,7 +70,8 @@ the ambiguities that need human judgment.
 For each obligation: a short stable `id` slug (kebab-case, unique); a
 `description`; a `type` from the fixed set (functional, boundary,
 error_handling, invariant, regression, compatibility,
-explanation_observability, docs_config, human_review); `importance` (critical
+explanation_observability, docs_config, human_review, test_demand — see THE
+`test_demand` TYPE below); `importance` (critical
 or normal); `explicit` (true if directly stated in the task, false if
 reasonably inferred); an `observable_behavior`; and `source_quote`, an EXACT
 substring of the task text this obligation derives from.
@@ -96,41 +97,39 @@ positive form, because it states what must be TRUE rather than what must be
 absent — an obligation that only says what must be absent can never be shown
 addressed by looking at what the diff contains.
 
-A REQUIREMENT FOR A TEST IS A REQUIREMENT FOR A TEST
+THE `test_demand` TYPE
 
-A requirement that demands a test — "a test asserts that X", "add a test
-covering X", "X is demonstrated by a test" — yields an obligation whose demand
-is THE TEST. Not X.
+A requirement that asks for a TEST — "a test asserts that X", "add a test
+covering X", "X is demonstrated by a test" — yields an obligation typed
+`test_demand`. Its `description` states the demand for the test, not X.
 
     "A test asserts that an embedded comma in the customer name is escaped."
-    ->  "A test asserts that an embedded comma in the customer name is
-         escaped."
-    NOT "An embedded comma in the customer name is escaped."
+    -> type: test_demand
+       description: "A test asserts that an embedded comma in the customer
+                     name is escaped."
 
-Dropping the framing loses a requirement. Code that already escapes the comma,
-with nobody having written the test, satisfies the second statement and
-violates the first. They are separate pieces of work and only the first is what
-the bullet asked for. Keep the demand for the test in `description` and in
-`observable_behavior` — what is observable is that the test exists and that it
-fails if the behavior is removed.
+The demand for the test is the requirement. Code that already escapes the
+comma, with nobody having written the test, satisfies "the comma is escaped"
+and violates "a test asserts the comma is escaped" — separate pieces of work,
+and only the second is what the bullet asked for.
 
-Apply this to EVERY requirement of that shape in the file. Two bullets of the
-same shape get the same treatment; keeping the framing on one and dropping it
-on another makes them different kinds of requirement on no evidence.
-
-**The converse matters just as much: never ADD the framing.** A requirement
-that does not mention a test does not get one.
+**The type is decided by the requirement text alone, and by nothing else.** Use
+`test_demand` when THIS requirement asks for a test. Do not use it because
+another bullet elsewhere in the file asks for a test of the same behavior:
 
     "The export writes a header row naming every column."
-    ->  "The export writes a header row naming every column."
-    NOT "A test asserts that the export writes a header row naming every
-         column."
+    -> type: functional     (a behavior; this bullet demands no test)
+    NOT test_demand
 
-This is the same loss in the other direction. A Constraint states the behavior
-and a Completion expectation demands a test of it; if you put test framing on
-both, they become one statement, and the demand for the test disappears into
-it just as surely as if you had stripped the framing off. Carry the framing
-where the requirement has it. Never supply it.
+Both directions lose a requirement. Typing a test demand as something else
+collapses it into the behavior it is about; typing a behavior `test_demand`
+collapses the behavior into the test. A Constraints bullet stating a behavior
+and a Completion bullet demanding a test of it are two requirements, and they
+stay two only if they carry different types.
+
+Every requirement of the same shape gets the same type. If two bullets both
+ask for a test and you typed only one `test_demand`, you have drawn a
+distinction the task file does not make.
 
 Granularity — isolate distinct computations, keep cohesive behaviors whole:
 

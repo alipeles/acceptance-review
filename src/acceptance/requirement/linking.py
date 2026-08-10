@@ -47,6 +47,7 @@ from acceptance.partition import partition
 from acceptance.requirement.obligations import Decomposition
 from acceptance.review_state import (
     Obligation,
+    ObligationType,
     RequirementDisposition,
     RequirementMap,
 )
@@ -62,18 +63,6 @@ these two obligations state exactly the same requirement?
 
 Most pairs will not, and "no" is the right answer for most of them. You are not \
 choosing the best partner for anything and you are not searching for duplicates.
-
-**One pair shape is never the same requirement, and it is decided before the \
-criteria below.** If one obligation demands that a TEST assert something and \
-the other demands the thing itself, answer `false`. Do not weigh the criteria \
-for such a pair; they do not apply to it.
-
-The criteria below would mislead you here, which is why this comes first: the \
-same test that asserts X is also the evidence for X, so "the same test would \
-demonstrate both" looks true. It is the wrong question. Code that already does \
-X, with nobody having written the test, satisfies "X" and violates "a test \
-asserts X" — they are separate pieces of work, and merging them silently drops \
-the demand for the test.
 
 **The test for sameness, and the only one that matters.** Two obligations state \
 the exact same requirement if and only if BOTH hold:
@@ -98,11 +87,6 @@ Cases that pass the test:
 is not separately checkable, so no test can distinguish them.
 
 Cases that FAIL the test, and are the common mistakes:
-- A behavior and a requirement to TEST that behavior. "The export writes a header \
-row" and "a test asserts the export writes a header row" are different \
-requirements: code that already writes the header row, with nobody having written \
-the test, satisfies the first and violates the second. Adding the behavior and \
-adding its test are separate pieces of work and separate obligations.
 - A behavior and the technology used to implement it. "The amount is written with \
 two decimal places" and "the file is produced with the standard CSV library" can \
 each hold while the other fails, and no single test shows both.
@@ -151,8 +135,30 @@ class _Verdicts(StrictResponseModel):
     verdicts: list[_PairVerdict]
 
 
-def _pairs(ordered_ids: list[str]) -> list[tuple[str, str, str]]:
-    """Every unordered pair, with a stable id, in derivation order.
+def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+    """False for a pair that cannot be the same requirement whatever the model
+    thinks — one demands a test, the other demands a behavior (#232, DR-232).
+
+    Enforced here rather than asked for in the prompt, because the prompt's own
+    criteria point the wrong way on this pair: the test that asserts X is also
+    the evidence for X, so "the same test would demonstrate both" reads true.
+    The rule survived two prompt attempts and the merges kept happening.
+
+    Skipping the pair rather than overriding its answer afterwards is the point.
+    A question that has only one admissible answer is not a question, and asking
+    it costs twice: it spends a slot in a pair batch, and a wrong `true` lands
+    in a transitive component, where #144's clique rule then suppresses every
+    OTHER merge in that component. Both of this bundle's Gate 1 runs 2 and 5 lost
+    real merges exactly that way.
+    """
+    return (left.type is ObligationType.TEST_DEMAND) == (right.type is ObligationType.TEST_DEMAND)
+
+
+def _pairs(
+    ordered_ids: list[str], by_id: dict[str, Obligation] | None = None
+) -> list[tuple[str, str, str]]:
+    """Every unordered pair that could state one requirement, with a stable id,
+    in derivation order.
 
     Quadratic and deliberately so. Every pair is asked, which is what makes the
     sweep complete — no duplicate can be invisible the way it would be if the
@@ -179,9 +185,14 @@ def _pairs(ordered_ids: list[str]) -> list[tuple[str, str, str]]:
     ordered = [
         (left, left + distance) for distance in range(1, count) for left in range(count - distance)
     ]
+    # Numbered before filtering, so a pair id names the same pair whether or not
+    # its neighbours were skipped. Ids that are stable under an unrelated
+    # obligation's type changing is worth more than ids without gaps.
     return [
         (f"pair-{index:04d}", ordered_ids[left], ordered_ids[right])
         for index, (left, right) in enumerate(ordered)
+        if by_id is None
+        or _can_state_one_requirement(by_id[ordered_ids[left]], by_id[ordered_ids[right]])
     ]
 
 
@@ -342,9 +353,14 @@ def link_duplicate_obligations(
         return decomposition
 
     ordered_ids = [obligation.id for obligation in obligations]
+    by_id = {obligation.id: obligation for obligation in obligations}
     confirmed: set[frozenset[str]] = set()
 
-    for batch in partition(_pairs(ordered_ids), pair_batch_size, key=lambda pair: pair[0]):
+    askable = _pairs(ordered_ids, by_id)
+    if not askable:
+        return decomposition
+
+    for batch in partition(askable, pair_batch_size, key=lambda pair: pair[0]):
         by_pair_id = {pair_id: (left, right) for pair_id, left, right in batch.items}
         allowed = {"pair_id": list(by_pair_id)}
         result = client.complete(

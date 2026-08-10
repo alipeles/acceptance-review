@@ -137,7 +137,9 @@ Default is the linked Issue: title, description, explicit acceptance criteria, c
 
 ### 7.3 Requirement interpretation
 
-Convert task/issue into discrete obligations, typed as: functional, boundary, error handling, invariant, regression, compatibility, explanation/observability, docs/config, or human-review. Distinguish **explicit** obligations (directly supported by source text), **reasonable inferred** obligations, and **open ambiguities** needing user judgment. Material inferred obligations are labeled and, where necessary, confirmed by the user.
+Convert task/issue into discrete obligations, typed as: functional, boundary, error handling, invariant, regression, compatibility, explanation/observability, docs/config, human-review, or **test-demand**. Distinguish **explicit** obligations (directly supported by source text), **reasonable inferred** obligations, and **open ambiguities** needing user judgment. Material inferred obligations are labeled and, where necessary, confirmed by the user.
+
+**test-demand** is the obligation a mandate states when it asks for a *test* rather than for a behavior — "a test asserts that X", "add a test covering X". It is not the same obligation as X, and the difference is not stylistic: an implementation that already exhibits X, with nobody having written the test, satisfies the obligation to deliver X and violates the demand for the test. Adding the behavior and adding its test are separate pieces of work. The type exists so that difference survives decomposition; without it the two collapse into one statement, and the review reports the behavior delivered while the demanded test was never written (DR-232).
 
 ### 7.4 Builder declaration
 

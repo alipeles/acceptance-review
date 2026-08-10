@@ -24,6 +24,7 @@ import pytest
 from acceptance.requirement.linking import link_duplicate_obligations
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
+from acceptance.review_state import ObligationType
 from tests.support import recorded_client
 
 # Three properties in one file, so one recording covers all of them:
@@ -106,9 +107,9 @@ def test_a_behaviour_and_a_requirement_to_test_it_are_not_merged(linked):
     assert set(behaviour).isdisjoint(its_test)
 
     by_id = {obligation.id: obligation for obligation in after.obligations}
-    assert any("test" in by_id[i].description.lower() for i in its_test), (
-        "completion-01 demands a TEST; nothing survived saying so, so the "
-        f"non-merger above is not evidence: {[by_id[i].description for i in its_test]}"
+    assert any(by_id[i].type is ObligationType.TEST_DEMAND for i in its_test), (
+        "completion-01 demands a TEST; nothing survived typed test_demand, so "
+        f"the non-merger above is not evidence: {[by_id[i].type for i in its_test]}"
     )
 
 

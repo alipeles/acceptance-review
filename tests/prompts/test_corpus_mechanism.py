@@ -386,20 +386,18 @@ _APPROVED_TRANSCRIPTS = {
     # a pair batch holds only the pairs it was given, so a marker naming one
     # obligation is absent from every batch that does not include it.
     #
-    # TWO linking recordings for one derivation, because the sweep asks about
-    # every pair of obligations and the invoice task exceeds one pair-batch.
+    # ONE linking sweep, where the same fixture needed two before DR-232. The
+    # sweep no longer asks about a `test_demand` obligation paired with a
+    # behavior one — that pair cannot merge, so it is settled in code and never
+    # batched — and the invoice task's remaining pairs fit a single call. The
+    # count dropping is the structural skip, visible in the corpus.
     # derivation
-    "7a8a87ec5e688e50b6d3eb120e0347b34d6839a8e7736c5b12c470f068bc1889.json": (
+    "260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json": (
         "invoice",
         "CSV",
     ),
     # linking sweep
-    "c803becefff1019c06fc639369a6ae169b08c82747e94cb74eb42e7b5feee066.json": (
-        "invoice",
-        "CSV",
-    ),
-    # linking sweep
-    "dad9dfeeacebdbd74e061ceb2a66cac4f0ce33420932b5dc110a83063c2ef009.json": (
+    "56722b85b43e95eb9db01f44f8368dc897e47b66854ce8967c727ba2a5080f19.json": (
         "invoice",
         "CSV",
     ),
@@ -414,11 +412,11 @@ _APPROVED_TRANSCRIPTS = {
     # derivation at 8 requirements per call and this file states 11. Both
     # batches carry the fixture-level markers: DR-204 puts the WHOLE registry
     # in every batch's prompt, and only `answer_for` is scoped.
-    "28d5f0aa6ee8d13341f3171c5726b964bdf14949d572f1b3ff304aa33185383a.json": (
+    "2664c74347ca65d1a37f2ce03fe5ef447e860e2a495e3e1184e9cf86d72b109c.json": (
         "invoice",
         "CSV",
     ),
-    "a570eaf5ff9a685beb00d9bc5f39dc57aee54332f66ee691b45915357c174b61.json": (
+    "b6bc9aab905d31161fabaa5943a6858cb9e126edc11cdfdbe0fa48f2fd192c75.json": (
         "invoice",
         "CSV",
     ),
