@@ -497,3 +497,59 @@ def test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test()
     assert any("(no mapped test)" in line for line in lines)
     boundary_index = lines.index(boundary_line)
     assert "(no mapped test)" not in lines[boundary_index + 1]
+
+
+def test_a_respected_boundary_is_one_claim_over_the_examined_set_not_a_listing():
+    """#153's acceptance: non-violation is reported as a completeness claim over
+    the examined change set, not as a list of every change in the diff.
+
+    The listing is the failure mode this rules out. Under a boundary obligation
+    the examined set IS the whole diff, so printing it reads as "these changes
+    support the obligation" when the claim is "these were checked and none
+    contradicts it" — wrong as well as noisy. The count is what keeps the claim
+    auditable: it says how much "none of them" ranged over.
+    """
+    boundary = Obligation(
+        id="pagination",
+        description="The change does not alter how the invoice list is paginated",
+        type=ObligationType.INVARIANT,
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
+        coverage_status="addressed",
+        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        scope_examined=["export.py#@@ -1 +9 @@", "export.py#@@ -20 +30 @@", "billing.py#@@ -1 +2 @@"],
+    )
+
+    report = render_report(
+        Review(mode="local", reviewed_revision="abc", obligation_map=[boundary])
+    )
+
+    assert "examined 3 changes across 2 files; none breaches this boundary" in report
+    # The individual refs must NOT appear: that is the listing being ruled out.
+    assert "export.py#@@ -1 +9 @@" not in report
+    assert "billing.py#@@ -1 +2 @@" not in report
+
+
+def test_a_boundary_with_nothing_examined_does_not_claim_non_violation():
+    """Evidence-tier discipline: a claim may not be stated more strongly than
+    the examination behind it. An empty change set establishes nothing, so the
+    report says so rather than rendering a vacuous pass."""
+    boundary = Obligation(
+        id="pagination",
+        description="The change does not alter how the invoice list is paginated",
+        type=ObligationType.INVARIANT,
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
+        coverage_status="addressed",
+        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        scope_examined=[],
+    )
+
+    report = render_report(
+        Review(mode="local", reviewed_revision="abc", obligation_map=[boundary])
+    )
+
+    assert "non-violation is not established" in report
+    assert "none breaches this boundary" not in report

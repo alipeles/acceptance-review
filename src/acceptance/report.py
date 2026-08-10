@@ -34,6 +34,26 @@ _NO_TESTS = "(no mapped test)"
 _NOT_APPLICABLE = "not applicable — confirmed by code evidence alone"
 
 
+def _examined_claim(scope_examined: list[str]) -> str:
+    """The non-violation claim, stated over the scope it actually covered.
+
+    Names the number of changes and files compared rather than asserting
+    "everything": the change set is itself filtered, so "everything" would claim
+    more than was inspected. With nothing examined there is no claim to make —
+    an empty diff cannot evidence non-violation, and saying so is the honest
+    answer rather than a vacuous pass.
+    """
+    if not scope_examined:
+        return "(no changes were examined — non-violation is not established)"
+    files = {ref.split("#", 1)[0] for ref in scope_examined}
+    changes = "change" if len(scope_examined) == 1 else "changes"
+    file_word = "file" if len(files) == 1 else "files"
+    return (
+        f"examined {len(scope_examined)} {changes} across {len(files)} {file_word}; "
+        "none breaches this boundary"
+    )
+
+
 def render_report(review: Review) -> str:
     lines: list[str] = [f"Task completion: {_completion_status(review)}", ""]
 
@@ -300,6 +320,14 @@ def _obligation_block(
         for ref in obligation.coverage_refs:
             item += 1
             lines.append(f"         {index}.{item}  {ref}")
+    elif obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY:
+        # #153: one completeness claim over the examined set, never a listing.
+        # Printing every hunk here would read as "these changes support the
+        # obligation" when the claim is "these were checked and none breaches
+        # it" — and under a boundary obligation that is the whole diff, which
+        # is noise on top of being wrong. The count is what makes the claim
+        # auditable: it says how much "none of them" ranged over.
+        lines.append(f"         {_examined_claim(obligation.scope_examined)}")
     else:
         lines.append(f"         {_NO_CODE}")
 

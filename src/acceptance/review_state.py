@@ -445,6 +445,12 @@ class Obligation(_Model):
     # code responds (`coverage_status`). Defaults so every existing producer
     # keeps its current meaning without restating it.
     admissible_evidence: AdmissibleEvidence = AdmissibleEvidence.CODE_AND_TESTS
+    # #153: the scope a non-violation claim covered, as "path#hunk" refs. Empty
+    # for every ordinary obligation, whose evidence is `coverage_refs` instead.
+    # This is what keeps the typed-and-linked invariant satisfied for a finding
+    # whose evidence is an absence: it cannot link to the lines that satisfy it,
+    # because there are none, so it links to the scope that was compared.
+    scope_examined: list[str] = Field(default_factory=list)
     # M3.1 implementation-coverage status, as its string value (the
     # `CoverageStatus` enum lives in coverage/classify.py, which imports from
     # here — same reason ReviewProvenance stores determinism_mode as a string).

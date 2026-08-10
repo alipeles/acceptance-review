@@ -18,7 +18,12 @@ from acceptance.coverage.classify import (
     ImplementationCoverage,
     classify_coverage,
 )
-from acceptance.review_state import ChangeSet, ObligationType
+from acceptance.review_state import (
+    AdmissibleEvidence,
+    ChangeSet,
+    Obligation,
+    ObligationType,
+)
 from tests.support import client_returning as _client_returning
 from tests.support import make_obligation as _obligation
 
@@ -39,7 +44,9 @@ def test_archetype_1_missing_instruction_is_not_addressed(tmp_path):
     receipt = _source_file(change_set, "receipt.py")
 
     obligations = [
-        _obligation("show-fields", "Show item name, quantity, unit price", ObligationType.FUNCTIONAL),
+        _obligation(
+            "show-fields", "Show item name, quantity, unit price", ObligationType.FUNCTIONAL
+        ),
         _obligation(
             "returns-in-parens",
             "Show negative-quantity returns in parentheses",
@@ -125,7 +132,8 @@ def test_preserve_obligation_not_violated_is_addressed_with_no_refs(tmp_path):
     change_set = _archetype_change_set("01-missed-obligation", tmp_path)
     obligations = [
         _obligation(
-            "preserve-auth", "Preserve the existing authentication behavior",
+            "preserve-auth",
+            "Preserve the existing authentication behavior",
             ObligationType.COMPATIBILITY,
         ),
     ]
@@ -154,7 +162,8 @@ def test_violated_preserve_obligation_is_not_addressed_but_cites_the_breach(tmp_
     cart = _source_file(change_set, "cart.py")
     obligations = [
         _obligation(
-            "preserve-checkout", "Preserve the existing checkout behavior",
+            "preserve-checkout",
+            "Preserve the existing checkout behavior",
             ObligationType.COMPATIBILITY,
         ),
     ]
@@ -180,7 +189,9 @@ def test_missing_classification_defaults_to_unclear(tmp_path):
     change_set = _archetype_change_set("01-missed-obligation", tmp_path)
     obligations = [_obligation("only", "Some obligation", ObligationType.FUNCTIONAL)]
     # Model returned no classification for this obligation.
-    coverages = classify_coverage(obligations, change_set, _client_returning({"classifications": []}))
+    coverages = classify_coverage(
+        obligations, change_set, _client_returning({"classifications": []})
+    )
 
     assert len(coverages) == 1
     assert coverages[0].status == CoverageStatus.UNCLEAR
@@ -219,3 +230,130 @@ def test_coverage_round_trips_through_persistence(tmp_path):
     }
     coverage = classify_coverage(obligations, change_set, _client_returning(response))[0]
     assert ImplementationCoverage.from_dict(coverage.to_dict()) == coverage
+
+
+# --- #153: a boundary obligation is confirmed by non-violation ----------------
+
+
+def _boundary_obligation():
+    return Obligation(
+        id="pagination",
+        description="The change does not alter how the invoice list is paginated",
+        type=ObligationType.INVARIANT,
+        importance="critical",
+        explicit=True,
+        observable_behavior="pagination code appearing in the diff",
+        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+    )
+
+
+def test_a_respected_boundary_records_the_scope_examined_not_the_changes(tmp_path):
+    """#153's acceptance: non-violation is a completeness claim over the
+    examined change set, not a listing of every change in it.
+
+    `diff_refs` must stay empty — no hunk supports the obligation — while
+    `scope_examined` records what "none of them" ranged over. That is what keeps
+    the typed-and-linked invariant satisfied for a finding whose evidence is an
+    absence: it links to the scope compared, since there are no lines to link.
+    """
+    change_set = _archetype_change_set("01-missed-obligation", tmp_path)
+    hunk_count = sum(len(f.hunks) for f in change_set.files)
+    client = _client_returning(
+        {
+            "classifications": [
+                {
+                    "obligation_id": "pagination",
+                    "status": "addressed",
+                    "rationale": "No change touches pagination.",
+                    "diff_refs": [],
+                }
+            ]
+        }
+    )
+
+    [coverage] = classify_coverage([_boundary_obligation()], change_set, client)
+
+    assert coverage.status is CoverageStatus.ADDRESSED
+    assert coverage.diff_refs == []
+    assert len(coverage.scope_examined) == hunk_count
+
+
+def test_the_scope_examined_comes_from_the_diff_not_from_the_model(tmp_path):
+    """Evidence-tier discipline. A completeness claim asserted by the thing
+    whose completeness is in question is worth nothing, so `scope_examined` is
+    populated in code from the hunks actually rendered into the prompt.
+
+    The model here returns a `diff_refs` list naming ONE hunk; the recorded
+    scope must still be the whole change set, because what was examined is a
+    fact about the request rather than about the answer.
+    """
+    change_set = _archetype_change_set("01-missed-obligation", tmp_path)
+    hunk_count = sum(len(f.hunks) for f in change_set.files)
+    assert hunk_count > 1, "fixture must have several hunks for this to mean anything"
+    client = _client_returning(
+        {
+            "classifications": [
+                {
+                    "obligation_id": "pagination",
+                    "status": "addressed",
+                    "rationale": "checked",
+                    "diff_refs": [],
+                }
+            ]
+        }
+    )
+
+    [coverage] = classify_coverage([_boundary_obligation()], change_set, client)
+
+    assert len(coverage.scope_examined) == hunk_count
+
+
+def test_an_ordinary_obligation_records_no_scope_examined(tmp_path):
+    """The boundary of the feature: for an ordinary obligation the evidence IS
+    the cited hunks, so recording the whole diff alongside them would say
+    nothing and would make every obligation look like a completeness claim."""
+    change_set = _archetype_change_set("01-missed-obligation", tmp_path)
+    client = _client_returning(
+        {
+            "classifications": [
+                {
+                    "obligation_id": "ordinary",
+                    "status": "addressed",
+                    "rationale": "done",
+                    "diff_refs": [],
+                }
+            ]
+        }
+    )
+
+    [coverage] = classify_coverage(
+        [_obligation("ordinary", "Totals are rounded to two places", ObligationType.FUNCTIONAL)],
+        change_set,
+        client,
+    )
+
+    assert coverage.scope_examined == []
+
+
+def test_a_breached_boundary_cites_where_it_crosses(tmp_path):
+    """#153's acceptance: a breach DOES have a location even though respect does
+    not, and citing it is the whole value of the finding."""
+    change_set = _archetype_change_set("01-missed-obligation", tmp_path)
+    receipt = _source_file(change_set, "receipt.py")
+    client = _client_returning(
+        {
+            "classifications": [
+                {
+                    "obligation_id": "pagination",
+                    "status": "not_addressed",
+                    "rationale": "This change rewrites the pagination helper.",
+                    "diff_refs": [f"{receipt}#0"],
+                }
+            ]
+        }
+    )
+
+    [coverage] = classify_coverage([_boundary_obligation()], change_set, client)
+
+    assert coverage.status is CoverageStatus.NOT_ADDRESSED
+    assert [ref.file for ref in coverage.diff_refs] == [receipt]

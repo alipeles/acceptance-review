@@ -24,7 +24,7 @@ from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_prompt,
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.model_base import PersistableModel
-from acceptance.review_state import ChangeSet, Obligation
+from acceptance.review_state import AdmissibleEvidence, ChangeSet, Obligation
 
 __all__ = ["CoverageStatus", "DiffRef", "ImplementationCoverage", "classify_coverage"]
 
@@ -46,6 +46,18 @@ class ImplementationCoverage(PersistableModel):
     status: CoverageStatus
     rationale: str
     diff_refs: list[DiffRef] = Field(default_factory=list)
+    # #153. For a boundary obligation, "addressed" is a claim about the whole
+    # change set — every change was compared against the exclusion and none
+    # breaches it — rather than about particular lines. That claim has no
+    # location to link to, so what it links to instead is the SCOPE it covered.
+    #
+    # Populated from the hunks actually rendered into the prompt, in code, never
+    # from the model's answer: a completeness claim asserted by the thing whose
+    # completeness is in question is worth nothing, and evidence-tier discipline
+    # requires the claim to reflect what was really inspected. The change set is
+    # itself filtered (`.acceptance/ignore`), which is why this records what was
+    # examined rather than claiming "everything".
+    scope_examined: list[DiffRef] = Field(default_factory=list)
 
 
 _STAGE = "coverage classification"
@@ -95,7 +107,25 @@ obligation. `diff_refs` is empty when there is nothing to point at — a
 positive obligation that is not_addressed (no responding region), or a
 preserve/maintain obligation that is addressed by the ABSENCE of any relevant
 change. When a preserve/maintain obligation is not_addressed because the diff
-VIOLATES it, cite the violating hunk(s) so a reviewer can see the breach."""
+VIOLATES it, cite the violating hunk(s) so a reviewer can see the breach.
+
+BOUNDARY OBLIGATIONS
+
+Some obligations state that the change does NOT do some particular work — "The
+change does not alter how the invoice list is paginated". These are satisfied by
+an ABSENCE, and they are the sharpest case of the rule above.
+
+- `addressed` means you compared every hunk you were shown against the boundary
+  and none of them does the excluded work. Leave `diff_refs` EMPTY. There is no
+  hunk that "supports" it: listing the changes you examined would read as
+  evidence FOR the obligation when the claim is that they were checked and none
+  contradicts it.
+- `not_addressed` means the diff DOES the excluded work. Cite the hunk(s) that
+  do it. A breach has a location even though respect does not, and that citation
+  is the whole value of the finding.
+
+Do not answer `unclear` merely because no hunk relates to the boundary — that is
+the `addressed` case, and the most common one."""
 
 
 class _Classification(StrictResponseModel):
@@ -149,6 +179,14 @@ def classify_coverage(
                 status=classification.status,
                 rationale=classification.rationale,
                 diff_refs=refs,
+                # Only a boundary obligation makes a completeness claim; for an
+                # ordinary one the evidence IS the cited hunks, and recording
+                # the whole diff under it would say nothing.
+                scope_examined=(
+                    list(label_to_ref.values())
+                    if obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY
+                    else []
+                ),
             )
         )
     return coverages
