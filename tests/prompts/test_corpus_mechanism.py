@@ -34,9 +34,7 @@ def _no_ambient_recording(monkeypatch):
     monkeypatch.delenv("ACCEPTANCE_RECORD", raising=False)
 
 
-def test_editing_a_prompt_fails_with_guidance_naming_the_unverified_change(
-    tmp_path, monkeypatch
-):
+def test_editing_a_prompt_fails_with_guidance_naming_the_unverified_change(tmp_path, monkeypatch):
     """The enforcement mechanism, end to end.
 
     `request_key` hashes the whole request including the system prompt, so
@@ -54,8 +52,12 @@ def test_editing_a_prompt_fails_with_guidance_naming_the_unverified_change(
 
     with pytest.raises(TranscriptNotFoundError) as excinfo:
         classify_dispositions(
-            [change], obligations, [], change_set,
-            ScopeExpansionPolicy.LOOSE, replaying_client(),
+            [change],
+            obligations,
+            [],
+            change_set,
+            ScopeExpansionPolicy.LOOSE,
+            replaying_client(),
         )
 
     message = str(excinfo.value)
@@ -245,8 +247,8 @@ def test_the_corpus_holds_exactly_the_transcripts_the_tests_replay():
     """
     corpus = sorted(RECORDED_TRANSCRIPTS.glob("*.json"))
 
-    assert len(corpus) == 3, (
-        f"expected 3 recorded transcripts, found {len(corpus)}: "
+    assert len(corpus) == len(_APPROVED_TRANSCRIPTS), (
+        f"expected {len(_APPROVED_TRANSCRIPTS)} recorded transcripts, found {len(corpus)}: "
         f"{[p.name for p in corpus]}. An unexpected entry usually means "
         "something recorded when it should have replayed."
     )
@@ -260,6 +262,7 @@ def test_the_prompt_corpus_replays_with_no_live_call_at_all(tmp_path):
     would satisfy it. Prove it properly: give the client a completion_fn that
     raises if called, and replay a committed transcript through it.
     """
+
     def must_not_be_called(**kwargs):
         raise AssertionError("replay made a live call")
 
@@ -287,8 +290,12 @@ def test_the_prompt_quality_test_actually_consumes_a_committed_transcript(tmp_pa
 
     with pytest.raises(TranscriptNotFoundError):
         classify_dispositions(
-            [change], obligations, [], change_set,
-            ScopeExpansionPolicy.LOOSE, empty_store_client,
+            [change],
+            obligations,
+            [],
+            change_set,
+            ScopeExpansionPolicy.LOOSE,
+            empty_store_client,
         )
 
 
@@ -310,8 +317,12 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
 
     # Unedited: the committed recording is found, so the case still evaluates.
     baseline = classify_dispositions(
-        [change], obligations, [], change_set,
-        ScopeExpansionPolicy.LOOSE, replaying_client(),
+        [change],
+        obligations,
+        [],
+        change_set,
+        ScopeExpansionPolicy.LOOSE,
+        replaying_client(),
     )[0]
     assert baseline.disposition.value == "separable"
 
@@ -325,26 +336,73 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
         )
         with pytest.raises(TranscriptNotFoundError):
             classify_dispositions(
-                [change], obligations, [], change_set,
-                ScopeExpansionPolicy.LOOSE, replaying_client(),
+                [change],
+                obligations,
+                [],
+                change_set,
+                ScopeExpansionPolicy.LOOSE,
+                replaying_client(),
             )
 
     # ...and the committed corpus is untouched by the attempt.
-    assert len(list(RECORDED_TRANSCRIPTS.glob("*.json"))) == 3
+    assert len(list(RECORDED_TRANSCRIPTS.glob("*.json"))) == len(_APPROVED_TRANSCRIPTS)
 
 
 # The exact recordings this suite replays. A count alone is not enough: if an
 # approved transcript were REPLACED by a stray, the count would still be 2 and
 # the guard would pass. (Corpus pollution happened twice while building #146,
 # so this is an observed hazard, not a hypothetical one.)
+#
+# Each entry carries the marker that proves where it came from, so provenance is
+# asserted per recording rather than against one hardcoded fixture. A second
+# recorded capability (#144) made the single-fixture check untenable: it would
+# have had to be loosened to an OR, and an OR over markers passes for a
+# transcript containing neither.
 _APPROVED_TRANSCRIPTS = {
+    # --- unrequested-change disposition (#146), 08-unrequested-change-risky-adjacent
     # gpt-5.4-mini, LOOSE -> separable
-    "4b42b8d09463c45c7a7dbcd16e04a81da478e920d86884c725880ade4a616841.json",
+    "4b42b8d09463c45c7a7dbcd16e04a81da478e920d86884c725880ade4a616841.json": (
+        "orders.py",
+        "ship_order",
+    ),
     # gpt-5.4-mini, STRICT -> risky
-    "da0e5bd015e737c58fc0c9171c13f7811d0c093a42cef011ff9868ec3b562b78.json",
+    "da0e5bd015e737c58fc0c9171c13f7811d0c093a42cef011ff9868ec3b562b78.json": (
+        "orders.py",
+        "ship_order",
+    ),
     # claude-sonnet-5, STRICT -> risky. The provider-agnosticism claim (M0.4)
     # held to recorded evidence rather than a hand-run experiment (#158).
-    "1da205e181df6f1daf95e807191775b81bf73437acf2eec9d2a14fdc32ae2cb5.json",
+    "1da205e181df6f1daf95e807191775b81bf73437acf2eec9d2a14fdc32ae2cb5.json": (
+        "orders.py",
+        "ship_order",
+    ),
+    # --- obligation linking (#144), the invoice-export task in
+    # tests/prompts/test_linking_prompt.py. Subject matter unrelated to
+    # decomposition on purpose: #204 established that a control task file
+    # reproduces a decomposition defect exactly, which is what rules out
+    # dogfood contamination as the cause of a result.
+    #
+    # Markers are fixture-level ("invoice"/"CSV") rather than requirement-level:
+    # a pair batch holds only the pairs it was given, so a marker naming one
+    # obligation is absent from every batch that does not include it.
+    #
+    # TWO linking recordings for one derivation, because the sweep asks about
+    # every pair of obligations and the invoice task exceeds one pair-batch.
+    # linking sweep
+    "102d48565911ff6200bb40075760526db774d1018934a99e4003698629d00381.json": (
+        "invoice",
+        "CSV",
+    ),
+    # derivation
+    "19f90ca774d3cc690b8a9637a21a15bfef54c537d1bb9d02f38f39b4e86811a5.json": (
+        "invoice",
+        "CSV",
+    ),
+    # linking sweep
+    "311f732282beacd35a69e53fd04e48250deb4f48234558dfdad2d089bf3db6e0.json": (
+        "invoice",
+        "CSV",
+    ),
 }
 
 
@@ -352,26 +410,30 @@ def test_the_corpus_matches_an_exact_manifest_not_merely_a_count():
     """Pin WHICH recordings are committed, not just how many."""
     present = {p.name for p in RECORDED_TRANSCRIPTS.glob("*.json")}
 
-    assert present == _APPROVED_TRANSCRIPTS, (
+    assert present == set(_APPROVED_TRANSCRIPTS), (
         "the committed corpus does not match its manifest; an unapproved "
         "recording usually means something recorded when it should have replayed"
     )
 
 
-def test_every_committed_transcript_is_archetype_derived():
+def test_every_committed_transcript_is_fixture_derived():
     """Positively confirm provenance, not merely the absence of repo markers.
 
     `test_the_committed_corpus_holds_only_archetype_content` is a NEGATIVE
     check: a transcript from some third source contains no repo markers either,
-    so it would pass. Assert each recording actually came from the archetype
-    fixture it is supposed to exercise."""
+    so it would pass. Assert each recording actually came from the fixture it is
+    supposed to exercise, using the markers the manifest declares for it — so a
+    recording cannot be traced to *some* fixture, only to its own."""
     for path in sorted(RECORDED_TRANSCRIPTS.glob("*.json")):
+        markers = _APPROVED_TRANSCRIPTS.get(path.name)
+        assert markers is not None, f"{path.name} is not in the manifest"
         record = json.loads(path.read_text())
         prompt = record["request"]["messages"][-1]["content"]
-        assert "orders.py" in prompt and "ship_order" in prompt, (
-            f"{path.name} is not derived from the 08-unrequested-change-risky-adjacent "
-            "archetype; every committed recording must be traceable to a fixture"
-        )
+        for marker in markers:
+            assert marker in prompt, (
+                f"{path.name} does not carry {marker!r}, the marker its manifest "
+                "entry claims; every committed recording must be traceable to a fixture"
+            )
 
 
 def test_replay_needs_no_api_key(tmp_path, monkeypatch):
@@ -385,8 +447,12 @@ def test_replay_needs_no_api_key(tmp_path, monkeypatch):
 
     change, obligations, change_set = _adjacent_edit_case(tmp_path)
     result = classify_dispositions(
-        [change], obligations, [], change_set,
-        ScopeExpansionPolicy.LOOSE, replaying_client(),
+        [change],
+        obligations,
+        [],
+        change_set,
+        ScopeExpansionPolicy.LOOSE,
+        replaying_client(),
     )[0]
 
     assert result.disposition.value == "separable"
@@ -410,6 +476,7 @@ def test_only_the_designated_capability_uses_recorded_responses():
     assert users == {
         "prompts/test_corpus_mechanism.py",
         "prompts/test_disposition_prompt.py",
+        "prompts/test_linking_prompt.py",
     }, f"recorded responses spread beyond the designated capability: {sorted(users)}"
 
 

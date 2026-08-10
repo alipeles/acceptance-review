@@ -280,7 +280,10 @@ def test_the_scoreboard_is_committed_as_fixtures_for_every_run():
 
     tracked = subprocess.run(
         ["git", "ls-files", "tests/fixtures/rating-regression"],
-        cwd=REPO, capture_output=True, text=True, check=True,
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.split()
     runs = {Path(p).parent.name for p in tracked}
     assert runs == {p.name for p in CASE_DIRS}
@@ -486,7 +489,20 @@ def test_no_transcript_lives_anywhere_under_the_fixture_tree():
     assert not suspects, f"transcript-like files outside the sanctioned corpus: {suspects}"
 
 
-def test_this_task_added_nothing_to_the_sanctioned_transcript_corpus():
-    """#146's corpus is for prompt-quality tests recorded against archetypes,
-    never against this repository's own dogfood runs."""
-    assert len(list(SANCTIONED_TRANSCRIPTS.glob("*.json"))) == 3
+def test_the_sanctioned_corpus_grows_only_by_explicit_approval():
+    """#146's corpus is for prompt-quality tests recorded against fixtures,
+    never against this repository's own dogfood runs.
+
+    This was a literal count, which said "this task added nothing" and expired
+    the moment another task legitimately recorded one (#144 added two, against a
+    synthetic invoice-export task). A number in a second file is a proxy for the
+    real rule and re-arms the same failure on every sanctioned recording, so it
+    delegates to the manifest instead: a new transcript still cannot appear
+    without an explicit entry there, and `test_corpus_mechanism.py` proves each
+    entry carries the markers of the fixture it claims to come from.
+    """
+    from tests.prompts.test_corpus_mechanism import _APPROVED_TRANSCRIPTS
+
+    present = {path.name for path in SANCTIONED_TRANSCRIPTS.glob("*.json")}
+
+    assert present == set(_APPROVED_TRANSCRIPTS)

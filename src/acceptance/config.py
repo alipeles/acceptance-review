@@ -57,6 +57,31 @@ DEFAULT_MAPPING_BATCH_SIZE = 12
 # quotes and disposes for every requirement in the batch.
 DEFAULT_DECOMPOSE_BATCH_SIZE = 8
 
+# Obligation PAIRS per linking call (#144). Same determinism-control status as
+# the two above.
+#
+# The unit is a pair, not an obligation, and that is the whole point. Asking one
+# call to find every duplicate among N obligations is an all-pairs search — 276
+# comparisons at N=24 — and it failed the way DR-164 predicts, by answering with
+# the nearest plausible partner rather than the right one: a behaviour merged
+# with the library implementing it, and an acceptance criterion attached to the
+# wrong rule while its own rule sat unmerged beside it.
+#
+# Sweeping every pair removes the choice. Each judgment is one yes/no about two
+# obligations, so "no" is as available as "yes", and no pair is ever uncompared —
+# which is what partitioning the obligations themselves would have cost.
+#
+# It also makes inconsistency detectable. The relation is transitive by
+# definition (identical truth conditions), so yes/yes/no over a triangle is not
+# an intransitive relation but three answers that cannot all be right. Only a
+# complete sweep can see that; inferring the third pair would destroy the
+# evidence. See `docs/DR-144-pairwise-linking.md`.
+#
+# 25 rather than 12: a pair judgment is the smallest ask in the pipeline — two
+# descriptions, one boolean — where a mapping item carries a test and an
+# obligation, and a derivation item enumerates, types and quotes.
+DEFAULT_LINK_PAIR_BATCH_SIZE = 25
+
 
 class ScopeExpansionPolicy(str, Enum):
     """How tolerant the review is of changes beyond the mandate (DR-081
@@ -90,6 +115,9 @@ class RunConfig(BaseModel):
     # The same kind of control for obligation derivation (#204), reaching the
     # stage the same way and for the same reason.
     decompose_batch_size: int = Field(default=DEFAULT_DECOMPOSE_BATCH_SIZE, ge=1)
+    # And for obligation linking (#144), whose unit is a PAIR of obligations
+    # rather than an obligation — see the constant's note.
+    link_pair_batch_size: int = Field(default=DEFAULT_LINK_PAIR_BATCH_SIZE, ge=1)
     # A review-interpretation knob (consumed by the M3.5.3 separability
     # classifier), not a determinism control — so it deliberately does not
     # feed build_client() or provenance_for(). If we later want it recorded for
@@ -123,11 +151,7 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
     return ReviewProvenance(
         determinism_mode=client.mode.value,
         model=client.model,
-        controls_requested=DeterminismControls(
-            temperature=client.temperature, seed=client.seed
-        ),
-        controls_in_force=(
-            None if in_force is None else DeterminismControls(**in_force)
-        ),
+        controls_requested=DeterminismControls(temperature=client.temperature, seed=client.seed),
+        controls_in_force=(None if in_force is None else DeterminismControls(**in_force)),
         request_partition_sizes=client.partition_sizes_in_force,
     )

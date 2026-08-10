@@ -315,9 +315,7 @@ class RequirementDisposition(_Model):
         if self.disposition is Disposition.YIELDED and not self.obligation_ids:
             raise ValueError("a 'yielded' disposition must name at least one obligation")
         if self.disposition is Disposition.OPEN_QUESTION and not self.open_question_ids:
-            raise ValueError(
-                "an 'open_question' disposition must name at least one open question"
-            )
+            raise ValueError("an 'open_question' disposition must name at least one open question")
         if self.disposition is Disposition.NO_OBLIGATION and not (self.reason or "").strip():
             raise ValueError("a 'no_obligation' disposition must carry a reason")
         return self
@@ -539,8 +537,7 @@ class Finding(_Model):
     def _disposition_only_for_unrequested_change(self) -> "Finding":
         if self.disposition is not None and self.type != UNREQUESTED_CHANGE:
             raise ValueError(
-                f"disposition is only valid on an {UNREQUESTED_CHANGE!r} finding, "
-                f"not {self.type!r}"
+                f"disposition is only valid on an {UNREQUESTED_CHANGE!r} finding, not {self.type!r}"
             )
         return self
 
@@ -717,6 +714,20 @@ class Review(_Model):
     declaration: BuilderDeclaration | None = None
     change_set: ChangeSet | None = None
     obligation_map: list[Obligation] = Field(default_factory=list)
+    # The obligations derivation produced, BEFORE de-duplication linked them
+    # (#144). Provenance, not report content: no reader sees this, and the §16
+    # report renders `obligation_map` alone.
+    #
+    # It is persisted because obligation determination is two stages now, and
+    # determinism has to be checkable at each independently. `obligation_map` is
+    # the product of both, so a movement in it is ambiguous on its own — did
+    # derivation re-split a requirement, or did linking merge a different pair
+    # over an unchanged derivation? Those are different defects owned by
+    # different issues (#231 and #211), and one stored artifact cannot tell them
+    # apart. Same reasoning DR-164 used to separate mapping from evidence
+    # judgement, and the reason #182 and #183 are separate umbrellas: #167's
+    # Gate 2 showed a byte-identical mapped set with a flipped judgement over it.
+    derived_obligation_map: list[Obligation] = Field(default_factory=list)
     # The requirement -> obligation mapping (M1.2.r1). Persisted rather than
     # derived at render time: coverage of the MANDATE is a property of review
     # state, so every later stage and the rendered report read the same record

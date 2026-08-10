@@ -39,6 +39,8 @@ from acceptance.recommendation import lookup as lookup_recommendation
 from acceptance.recommendation import render as render_recommendation
 from acceptance.report import render_report
 from acceptance.rerun import find_prior_review
+from acceptance.requirement.linking import link_duplicate_obligations
+from acceptance.supplied_ids import UnusableAnswerLog
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import ChangeSet, OpenQuestion, Review
@@ -174,6 +176,7 @@ def run_check(
         policy=config.scope_expansion_policy,
         mapping_batch_size=config.mapping_batch_size,
         decompose_batch_size=config.decompose_batch_size,
+        link_pair_batch_size=config.link_pair_batch_size,
         task_identifier=task,
         prior=prior,
     )
@@ -206,13 +209,30 @@ def remove_legacy_instruction_file(repo: Path) -> Path | None:
     return _LEGACY_INSTRUCTION_PATH
 
 
-def run_decompose(task: str, config: RunConfig) -> Decomposition:
+def run_decompose(task: str, config: RunConfig) -> tuple[Decomposition, UnusableAnswerLog]:
     """Parse a task file and decompose it into obligations + open questions.
 
     Uses a live model call (in RECORD mode) — the dogfooding path for M1.2/M1.3.
     """
     parsed = parse_task_file(_read_task(task))
-    return decompose(parsed, config.build_client(), batch_size=config.decompose_batch_size)
+    client = config.build_client()
+    # The log is created HERE and rendered below. Linking can reject a whole
+    # group of obligations as self-contradictory, and that rejection is the
+    # difference between "nothing looked like a duplicate" and "the answers
+    # could not be reconciled, so nothing was merged" (#144). Dropping the log
+    # would make a decompose silently report the former while the latter
+    # happened — the exact silence this project exists to remove.
+    unusable = UnusableAnswerLog()
+    derived = decompose(parsed, client, batch_size=config.decompose_batch_size)
+    # De-duplication runs here too, not only in `check` (#144). Obligation
+    # determination is two stages, and `decompose` reports the OUTPUT of that
+    # determination — a decompose that skipped linking would show a different
+    # obligation set from the one `check` reviews, so the Gate 1 breakdown a
+    # reader confirms would not be the set every later stage judges.
+    linked = link_duplicate_obligations(
+        derived, client, unusable, pair_batch_size=config.link_pair_batch_size
+    )
+    return linked, unusable
 
 
 _WIDTH = 88
@@ -478,8 +498,11 @@ def run_classify(
     `decompose` standalone (#113)."""
     repo_path = Path(repo)
     parsed = parse_task_file(_read_task(task))
-    decomposition = decompose(
-        parsed, config.build_client(), batch_size=config.decompose_batch_size
+    client = config.build_client()
+    decomposition = link_duplicate_obligations(
+        decompose(parsed, client, batch_size=config.decompose_batch_size),
+        client,
+        pair_batch_size=config.link_pair_batch_size,
     )
     obligations = decomposition.obligations
 
@@ -774,7 +797,7 @@ def main(argv: list[str] | None = None) -> int:
             decompose_batch_size=args.decompose_batch_size,
         )
         try:
-            result = run_decompose(args.task, config)
+            result, unusable = run_decompose(args.task, config)
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)
             return 1
@@ -785,6 +808,9 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result.to_dict(), indent=2))
         else:
             print(render_decomposition(result))
+            for answer in unusable.answers:
+                print(f"\nUnreconciled linking answers: {answer.reason}")
+                print(f"  affected: {answer.returned_id}")
         return 0
 
     if args.command == "diff":

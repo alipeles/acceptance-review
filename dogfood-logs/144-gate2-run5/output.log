@@ -1,0 +1,374 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) not fully implemented (reason-clause-counts-as-same-requirement); 4 obligation(s) with non-discriminating test evidence (duplication-per-requirement, later-stages-per-obligation, duplication-is-ordinary-restatement, duplication-not-input-fault).
+
+Obligations:
+
+  1. A task file that states one requirement in two sections yields one obligation linked to both requirements, with source spans covering both statements.
+       requirements: task-03, completion-02
+       code evidence: addressed
+         1.1  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         1.2  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         1.3  tests/prompts/test_linking_prompt.py#@@ -0,0 +1,155 @@
+         1.4  dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+       test evidence: strongly supported  [tier: static]
+         1.5  tests/prompts/test_linking_prompt.py::test_every_requirement_still_names_an_obligation_after_linking
+         1.6  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_ends_on_one_obligation
+         1.7  tests/requirement/test_linking.py::test_a_confirmed_triangle_merges_into_one_cluster
+         1.8  tests/requirement/test_linking.py::test_both_requirements_name_the_surviving_obligation_in_the_stored_map
+         1.9  tests/requirement/test_linking.py::test_one_requirement_stated_in_two_sections_yields_one_obligation_linked_to_both
+         1.10  tests/requirement/test_linking.py::test_the_surviving_obligation_carries_the_source_spans_of_both_statements
+         1.11  tests/requirement/test_linking.py::test_the_survivor_is_chosen_by_derivation_order_not_by_the_models_nomination
+
+  2. Two distinct requirements that merely share vocabulary remain unlinked to the same obligation.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         2.2  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         2.3  tests/prompts/test_linking_prompt.py#@@ -0,0 +1,155 @@
+         2.4  dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+       test evidence: strongly supported  [tier: static]
+         2.5  tests/prompts/test_linking_prompt.py::test_a_behavior_and_the_technology_implementing_it_are_not_merged
+         2.6  tests/prompts/test_linking_prompt.py::test_a_behaviour_and_a_requirement_to_test_it_are_not_merged
+         2.7  tests/prompts/test_linking_prompt.py::test_two_requirements_sharing_vocabulary_are_not_merged
+         2.8  tests/requirement/test_linking.py::test_a_review_whose_pair_comes_back_false_keeps_both_obligations
+         2.9  tests/requirement/test_linking.py::test_obligations_the_model_does_not_link_are_left_separate
+
+  3. A requirement followed by a clause giving its reason yields one obligation rather than two.
+       requirements: constraint-06, completion-04
+       code evidence: partially addressed
+         3.1  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         3.2  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         3.3  tests/prompts/test_linking_prompt.py#@@ -0,0 +1,155 @@
+         3.4  dogfood-logs/144-gate2-run4/output.log#@@ -0,0 +1,394 @@
+       test evidence: strongly supported  [tier: static]
+         3.5  tests/prompts/test_linking_prompt.py::test_a_requirement_and_its_reason_clause_are_one_requirement
+         3.6  tests/prompts/test_linking_prompt.py::test_every_requirement_still_names_an_obligation_after_linking
+         3.7  tests/requirement/test_linking.py::test_a_confirmed_triangle_merges_into_one_cluster
+
+  4. The obligations derivation produced before linking is present in the persisted review state.
+       requirements: constraint-07, completion-05
+       code evidence: addressed
+         4.1  src/acceptance/review_state.py#@@ -717,6 +714,20 @@ class Review(_Model):
+         4.2  src/acceptance/pipeline.py#@@ -316,6 +323,10 @@ def run_review(
+         4.3  src/acceptance/rerun.py#@@ -185,8 +185,47 @@ def stale_obligation_ids(prior: Review, change_set: ChangeSet) -> set[str]:
+         4.4  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+       test evidence: strongly supported  [tier: static]
+         4.5  tests/requirement/test_linking.py::test_the_linking_schemas_are_pydantic_models
+         4.6  tests/requirement/test_linking.py::test_the_pre_link_obligations_are_persisted_in_the_review_state
+         4.7  tests/requirement/test_linking.py::test_the_two_stages_are_separately_readable_from_the_stored_review
+         4.8  tests/test_cli.py::test_check_persists_the_review_to_the_store
+         4.9  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+
+  5. A link is expressed as a typed field, and the response schema cannot express a link as free text.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         5.2  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         5.3  tests/prompts/test_linking_prompt.py#@@ -0,0 +1,155 @@
+       test evidence: strongly supported  [tier: static]
+         5.4  tests/requirement/test_linking.py::test_a_link_is_read_from_the_typed_ids_and_never_from_free_text
+         5.5  tests/requirement/test_linking.py::test_the_prompt_shows_typed_fields_and_never_the_task_files_markdown
+         5.6  tests/requirement/test_linking.py::test_the_response_schema_offers_no_free_text_route_to_a_link
+         5.7  tests/test_review_state.py::test_review_round_trips_populated
+
+  6. Two runs over byte-identical task text produce byte-identical review state at both the derived and the linked stage.
+       requirements: constraint-09, completion-07
+       code evidence: addressed
+         6.1  src/acceptance/rerun.py#@@ -185,8 +185,47 @@ def stale_obligation_ids(prior: Review, change_set: ChangeSet) -> set[str]:
+         6.2  src/acceptance/rerun.py#@@ -194,7 +233,13 @@ def obligations_to_rederive(
+         6.3  docs/DR-144-pairwise-linking.md#@@ -0,0 +1,103 @@
+         6.4  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         6.5  dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+       test evidence: strongly supported  [tier: static]
+         6.6  tests/benchmark/test_rating_regression.py::test_running_the_suite_does_not_alter_the_judgement_stage
+         6.7  tests/requirement/test_linking.py::test_two_runs_over_identical_task_text_produce_identical_state_at_both_stages
+         6.8  tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+         6.9  tests/test_cli.py::test_no_seed_is_the_deliberate_way_to_run_unpinned
+         6.10  tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical
+         6.11  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         6.12  tests/test_config.py::test_scope_expansion_policy_is_not_a_determinism_control
+         6.13  tests/test_config.py::test_the_default_seed_reaches_both_the_model_call_and_the_provenance
+         6.14  tests/test_config.py::test_the_seed_is_part_of_the_request_so_changing_it_invalidates_transcripts
+         6.15  tests/test_determinism.py::test_canonical_json_is_sorted_and_stable
+         6.16  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         6.17  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+         6.18  tests/test_review_store.py::test_rerun_over_the_same_head_overwrites_in_place
+         6.19  tests/test_review_store.py::test_review_round_trips_through_the_store
+         6.20  tests/test_review_store.py::test_stored_form_is_canonical
+
+  7. The links remain unchanged when the derived obligations they were computed from are unchanged.
+       requirements: constraint-08, completion-08
+       code evidence: addressed
+         7.1  src/acceptance/rerun.py#@@ -185,8 +185,47 @@ def stale_obligation_ids(prior: Review, change_set: ChangeSet) -> set[str]:
+         7.2  src/acceptance/rerun.py#@@ -194,7 +233,13 @@ def obligations_to_rederive(
+         7.3  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         7.4  dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+       test evidence: strongly supported  [tier: static]
+         7.5  tests/requirement/test_linking.py::test_the_same_derived_obligations_produce_the_same_links
+         7.6  tests/requirement/test_linking.py::test_two_runs_over_identical_task_text_produce_identical_state_at_both_stages
+
+  8. Run the duplicate-recognition pass after obligation derivation, operating on the obligations derivation output rather than inside derivation.
+       requirements: constraint-01
+       code evidence: addressed
+         8.1  src/acceptance/cli.py#@@ -206,13 +209,30 @@ def remove_legacy_instruction_file(repo: Path) -> Path | None:
+         8.2  src/acceptance/cli.py#@@ -478,8 +498,11 @@ def run_classify(
+         8.3  src/acceptance/pipeline.py#@@ -224,7 +230,14 @@ def run_review(
+         8.4  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         8.5  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+       test evidence: strongly supported  [tier: static]
+         8.6  tests/benchmark/test_rating_regression.py::test_scoring_goes_through_the_shared_benchmark_path
+         8.7  tests/prompts/test_linking_prompt.py::test_linking_reduces_the_obligation_count_it_was_given
+         8.8  tests/requirement/test_linking.py::test_a_single_obligation_makes_no_model_call_at_all
+         8.9  tests/requirement/test_linking.py::test_the_decompose_command_runs_the_linking_pass
+         8.10  tests/requirement/test_linking.py::test_the_two_stages_are_separately_readable_from_the_stored_review
+
+  9. Represent a recognized duplicate as a link from the later requirement to an existing obligation while preserving both the obligation and the requirement text.
+       requirements: constraint-02
+       code evidence: addressed
+         9.1  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         9.2  src/acceptance/pipeline.py#@@ -224,7 +230,14 @@ def run_review(
+         9.3  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         9.4  dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+       test evidence: strongly supported  [tier: static]
+         9.5  tests/prompts/test_linking_prompt.py::test_every_requirement_still_names_an_obligation_after_linking
+         9.6  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_ends_on_one_obligation
+         9.7  tests/requirement/test_linking.py::test_a_confirmed_triangle_merges_into_one_cluster
+         9.8  tests/requirement/test_linking.py::test_both_requirements_name_the_surviving_obligation_in_the_stored_map
+         9.9  tests/requirement/test_linking.py::test_no_requirement_is_left_without_an_obligation_by_a_merge
+         9.10  tests/requirement/test_linking.py::test_one_requirement_stated_in_two_sections_yields_one_obligation_linked_to_both
+         9.11  tests/requirement/test_linking.py::test_the_pipeline_links_duplicates_before_the_rest_of_the_review_runs
+         9.12  tests/requirement/test_linking.py::test_the_survivor_is_chosen_by_derivation_order_not_by_the_models_nomination
+
+  10. Carry forward the union of requirement links and the union of source spans from everything merged into a linked obligation.
+       requirements: constraint-03
+       code evidence: addressed
+         10.1  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         10.2  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         10.3  dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+       test evidence: strongly supported  [tier: static]
+         10.4  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_ends_on_one_obligation
+         10.5  tests/requirement/test_linking.py::test_a_confirmed_triangle_merges_into_one_cluster
+         10.6  tests/requirement/test_linking.py::test_both_requirements_name_the_surviving_obligation_in_the_stored_map
+         10.7  tests/requirement/test_linking.py::test_no_requirement_is_left_without_an_obligation_by_a_merge
+         10.8  tests/requirement/test_linking.py::test_one_requirement_stated_in_two_sections_yields_one_obligation_linked_to_both
+         10.9  tests/requirement/test_linking.py::test_the_surviving_obligation_carries_the_source_spans_of_both_statements
+
+  11. Represent links as typed schema fields, so only schema-typed link fields count as links and free-text mentions do not.
+       requirements: constraint-04
+       code evidence: addressed
+         11.1  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         11.2  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         11.3  tests/prompts/test_linking_prompt.py#@@ -0,0 +1,155 @@
+       test evidence: strongly supported  [tier: static]
+         11.4  tests/requirement/test_linking.py::test_a_link_is_read_from_the_typed_ids_and_never_from_free_text
+         11.5  tests/requirement/test_linking.py::test_the_prompt_shows_typed_fields_and_never_the_task_files_markdown
+         11.6  tests/test_review_state.py::test_review_round_trips_populated
+
+  12. Preserve separate obligations when duplicate recognition is uncertain, even if the obligations concern the same area of the change.
+       requirements: constraint-05
+       code evidence: addressed
+         12.1  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         12.2  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         12.3  tests/prompts/test_linking_prompt.py#@@ -0,0 +1,155 @@
+         12.4  dogfood-logs/144-gate2-run3/output.log#@@ -0,0 +1,395 @@
+       test evidence: strongly supported  [tier: static]
+         12.5  tests/prompts/test_linking_prompt.py::test_two_requirements_sharing_vocabulary_are_not_merged
+         12.6  tests/requirement/test_linking.py::test_a_review_whose_pair_comes_back_false_keeps_both_obligations
+         12.7  tests/requirement/test_linking.py::test_an_inconsistency_does_not_block_an_unrelated_confirmed_pair
+         12.8  tests/requirement/test_linking.py::test_an_inconsistent_triangle_merges_nothing_and_is_recorded
+         12.9  tests/requirement/test_linking.py::test_obligations_the_model_does_not_link_are_left_separate
+
+  13. Represent the typed schemas as pydantic models.
+       requirements: constraint-10
+       code evidence: addressed
+         13.1  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         13.2  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         13.3  src/acceptance/review_state.py#@@ -717,6 +714,20 @@ class Review(_Model):
+       test evidence: strongly supported  [tier: static]
+         13.4  tests/benchmark/test_rating_regression.py::test_labels_load_against_the_shared_ground_truth_schema
+         13.5  tests/requirement/test_linking.py::test_the_constrained_response_schema_is_still_a_pydantic_model
+         13.6  tests/requirement/test_linking.py::test_the_linking_schemas_are_pydantic_models
+         13.7  tests/test_review_state.py::test_review_round_trips_populated
+
+  14. Keep tests free of live model calls.
+       requirements: constraint-11
+       code evidence: addressed
+         14.1  tests/support.py#@@ -312,9 +310,15 @@ def client_dispatching(
+         14.2  tests/support.py#@@ -340,6 +344,15 @@ _EMPTY_BY_SCHEMA = {
+         14.3  tests/support.py#@@ -423,9 +434,7 @@ def replaying_client(model: str | None = None, completion_fn=None) -> ModelClien
+         14.4  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         14.5  tests/prompts/test_corpus_mechanism.py#@@ -352,26 +410,30 @@ def test_the_corpus_matches_an_exact_manifest_not_merely_a_count():
+       test evidence: strongly supported  [tier: static]
+         14.6  tests/benchmark/test_rating_regression.py::test_no_case_issues_a_live_model_call
+         14.7  tests/benchmark/test_rating_regression.py::test_no_provider_is_ever_contacted
+         14.8  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         14.9  tests/prompts/test_corpus_mechanism.py::test_only_the_designated_capability_uses_recorded_responses
+         14.10  tests/prompts/test_corpus_mechanism.py::test_replay_needs_no_api_key
+         14.11  tests/prompts/test_corpus_mechanism.py::test_the_corpus_covers_every_approved_model_not_just_one
+         14.12  tests/prompts/test_corpus_mechanism.py::test_the_corpus_holds_exactly_the_transcripts_the_tests_replay
+         14.13  tests/prompts/test_corpus_mechanism.py::test_the_corpus_is_recorded_under_production_determinism_controls
+         14.14  tests/prompts/test_corpus_mechanism.py::test_the_corpus_matches_an_exact_manifest_not_merely_a_count
+         14.15  tests/prompts/test_corpus_mechanism.py::test_the_corpus_replays_rather_than_calling_live_by_default
+         14.16  tests/prompts/test_corpus_mechanism.py::test_the_default_model_is_one_the_corpus_actually_holds
+         14.17  tests/prompts/test_corpus_mechanism.py::test_the_prompt_corpus_replays_with_no_live_call_at_all
+         14.18  tests/prompts/test_corpus_mechanism.py::test_the_prompt_quality_test_actually_consumes_a_committed_transcript
+         14.19  tests/requirement/test_linking.py::test_a_single_obligation_makes_no_model_call_at_all
+         14.20  tests/test_cli.py::test_classify_replay_without_transcript_fails_cleanly
+         14.21  tests/test_cli.py::test_decompose_replay_without_transcript_fails_cleanly
+         14.22  tests/test_cli.py::test_retrieval_makes_no_model_call
+         14.23  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         14.24  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+
+  15. Derive obligations one requirement at a time so that a requirement stated in two places produces two obligations that each assert the same thing.
+       requirements: task-01
+       code evidence: addressed
+         15.1  src/acceptance/cli.py#@@ -206,13 +209,30 @@ def remove_legacy_instruction_file(repo: Path) -> Path | None:
+         15.2  src/acceptance/pipeline.py#@@ -224,7 +230,14 @@ def run_review(
+         15.3  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         15.4  dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: When the same requirement appears in two places in the task file, the derivation stage emits two obligations, one for each requirement occurrence.
+           inputs:  Use a task file where the exact same requirement text appears in two distinct locations that both independently yield obligations during derivation, with both occurrences in the same derivation batch so partitioning cannot hide the defect. The two occurrences should be byte-identical in wording but have different source spans/section locations.
+           detects: The derivation stage incorrectly deduplicates repeated requirements and emits only one obligation for two requirement occurrences.
+           full detail: acceptance recommendation --criterion duplication-per-requirement
+
+  16. Run every later stage once per obligation, so duplicated obligations multiply downstream work and report length.
+       requirements: task-01
+       code evidence: addressed
+         16.1  src/acceptance/pipeline.py#@@ -224,7 +230,14 @@ def run_review(
+         16.2  src/acceptance/pipeline.py#@@ -232,7 +245,9 @@ def run_review(
+         16.3  src/acceptance/pipeline.py#@@ -241,9 +256,7 @@ def run_review(
+         16.4  src/acceptance/pipeline.py#@@ -258,13 +271,9 @@ def run_review(
+         16.5  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         16.6  dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: If derivation emits duplicate obligations, downstream stages process each obligation separately and the report grows accordingly.
+           inputs:  Use a derived review state that contains at least one duplicated obligation pair, then run the full downstream pipeline stages that are supposed to execute once per obligation. The input must be large enough that the downstream work count or rendered report length differs measurably between a one-obligation and two-obligation outcome.
+           detects: Downstream stages do not actually process each obligation separately, so duplicated obligations do not multiply work or report length as intended.
+           full detail: acceptance recommendation --criterion later-stages-per-obligation
+
+  17. Treat ordinary restatements such as a mandate and its acceptance criteria, or a requirement followed by its reason, as separate requirement statements that currently produce a second obligation.
+       requirements: task-02
+       code evidence: addressed
+         17.1  dogfood-logs/144-gate1-run1/current-task.md#@@ -0,0 +1,69 @@
+         17.2  dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+         17.3  tests/prompts/test_linking_prompt.py#@@ -0,0 +1,155 @@
+         17.4  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: A mandate plus matching acceptance criteria, or a requirement plus its reason clause, each contribute their own obligation during derivation.
+           inputs:  Use a valid task file containing an ordinary restatement pair: either a mandate plus matching acceptance criteria, or a requirement followed by its reason clause. The wording should be normal and valid, not malformed, and should be one where a correct derivation yields two obligations from two requirement occurrences.
+           detects: The derivation logic fails to treat ordinary restatements as separate requirement occurrences, so it under-emits obligations for mandate/acceptance-criteria or reason-clause phrasing.
+           full detail: acceptance recommendation --criterion duplication-is-ordinary-restatement
+
+  18. Preserve the interpretation that the duplication arises from ordinary requirement wording rather than from a fault in the input.
+       requirements: task-02
+       code evidence: addressed
+         18.1  dogfood-logs/144-gate1-run1/current-task.md#@@ -0,0 +1,69 @@
+         18.2  dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+         18.3  tests/prompts/test_linking_prompt.py#@@ -0,0 +1,155 @@
+         18.4  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The system continues to accept restated requirements as valid input structure rather than treating them as malformed or erroneous.
+           inputs:  Use a structurally valid task file that intentionally restates a requirement in ordinary prose, plus a malformed-input negative control that is actually invalid. The valid input must be accepted by parsing and decomposition, not rejected as malformed.
+           detects: The system incorrectly treats restated requirements as malformed or erroneous input instead of valid requirement structure.
+           full detail: acceptance recommendation --criterion duplication-not-input-fault
+
+  19. Add a post-derivation pass that recognises when two obligations state the same requirement and outputs a link instead of deleting either obligation.
+       requirements: task-03
+       code evidence: addressed
+         19.1  src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+         19.2  src/acceptance/pipeline.py#@@ -224,7 +230,14 @@ def run_review(
+         19.3  tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+         19.4  tests/prompts/test_linking_prompt.py#@@ -0,0 +1,155 @@
+       test evidence: strongly supported  [tier: static]
+         19.5  tests/prompts/test_linking_prompt.py::test_linking_reduces_the_obligation_count_it_was_given
+         19.6  tests/requirement/test_linking.py::test_the_pipeline_links_duplicates_before_the_rest_of_the_review_runs
+
+Mandate coverage: 21 of 27 requirements yielded obligations
+  1. [no_obligation] exclusion-01: How finely a single requirement is split into obligations, which is #117.
+       reason: This is a scope exclusion naming work handled elsewhere, and it does not itself impose a checkable change in this task.
+  2. [no_obligation] exclusion-02: Measuring how accurate the links are, which is #211.
+       reason: This is a scope exclusion naming work handled elsewhere, and it does not itself impose a checkable change in this task.
+  3. [no_obligation] exclusion-03: - The wording of the decomposition prompt beyond what this pass requires, which
+  is #205, #206 and #219.
+       reason: This is a scope exclusion naming work handled elsewhere, and it does not itself impose a checkable change in this task.
+  4. [no_obligation] exclusion-04: Whether an obligation needs test evidence at all, which is #148.
+       reason: This is a scope exclusion naming work handled elsewhere, and it does not itself impose a checkable change in this task.
+  5. [no_obligation] exclusion-05: Recovering requirements that an earlier run dropped.
+       reason: This is a scope exclusion naming work handled elsewhere, and it does not itself impose a checkable change in this task.
+  6. [no_obligation] completion-01: Implementation
+       reason: This is a section marker naming the deliverable area, but it does not itself state a checkable requirement.
+
+Unrequested changes:
+  1. [in_service] `run_decompose` now returns a `(Decomposition, UnusableAnswerLog)` tuple instead of a single decomposition, and `run_check`/CLI call sites gained a new `link_pair_batch_size` parameter. The task asked for a post-derivation linking pass and persisted pre-link derivation, not a changed public CLI/API surface.
+       src/acceptance/cli.py#@@ -206,13 +209,30 @@ def remove_legacy_instruction_file(repo: Path) -> Path | None:
+       src/acceptance/cli.py#@@ -174,6 +176,7 @@ def run_check(
+       src/acceptance/cli.py#@@ -774,7 +797,7 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/cli.py#@@ -785,6 +808,9 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/pipeline.py#@@ -205,6 +210,7 @@ def run_review(
+  2. [in_service] A new tunable `DEFAULT_LINK_PAIR_BATCH_SIZE` / `link_pair_batch_size` configuration knob was added. The obligations require linking after derivation and determinism, but do not require introducing a new batching dependency or config surface for the linking pass.
+       src/acceptance/config.py#@@ -57,6 +57,31 @@ DEFAULT_MAPPING_BATCH_SIZE = 12
+       src/acceptance/config.py#@@ -90,6 +115,9 @@ class RunConfig(BaseModel):
+       src/acceptance/pipeline.py#@@ -205,6 +210,7 @@ def run_review(
+       src/acceptance/cli.py#@@ -174,6 +176,7 @@ def run_check(
+       src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+  3. [in_service] `run_review` now re-derives all obligations whenever `derived_obligation_map` changes, and `obligations_to_rederive` gained a new `derived` parameter plus a new `derivation_changed` check. The task asked for a linking pass and persistence of pre-link derivation, not a new rerun/staleness policy for when everything must be re-derived.
+       src/acceptance/rerun.py#@@ -185,8 +185,47 @@ def stale_obligation_ids(prior: Review, change_set: ChangeSet) -> set[str]:
+       src/acceptance/rerun.py#@@ -194,7 +233,13 @@ def obligations_to_rederive(
+       src/acceptance/pipeline.py#@@ -232,7 +245,9 @@ def run_review(
+  4. [in_service] `Review` gained a new persisted field `derived_obligation_map`, changing the review-state schema. Persisting pre-link derivation is requested, but exposing it as a new public model field is an interface change beyond the explicit obligations.
+       src/acceptance/review_state.py#@@ -717,6 +714,20 @@ class Review(_Model):
+       src/acceptance/pipeline.py#@@ -316,6 +323,10 @@ def run_review(
+       src/acceptance/rerun.py#@@ -185,8 +185,47 @@ def stale_obligation_ids(prior: Review, change_set: ChangeSet) -> set[str]:
+       src/acceptance/rerun.py#@@ -194,7 +233,13 @@ def obligations_to_rederive(
+  5. [in_service] The new linking pass changes merge semantics substantially: it sweeps all pairs, requires complete cliques, chooses survivors by derivation order, and records unusable contradictory components. The obligations require a post-derivation duplicate-linking pass and stable links, but they do not specify this clique-rejection/selection algorithm.
+       src/acceptance/requirement/linking.py#@@ -0,0 +1,378 @@
+       tests/requirement/test_linking.py#@@ -0,0 +1,593 @@
+       tests/prompts/test_linking_prompt.py#@@ -0,0 +1,155 @@
+  6. [in_service] A new decision record and extensive deferred-log/session-state updates were added documenting design choices and run history. None of the listed obligations require documentation or backlog/process artifacts.
+       docs/DEFERRED.md#@@ -33,3 +33,95 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
+       docs/DR-144-pairwise-linking.md#@@ -0,0 +1,103 @@
+       dogfood-logs/144-gate1-run1/current-task.md#@@ -0,0 +1,69 @@
+       dogfood-logs/144-gate1-run1/judgement.md#@@ -0,0 +1,64 @@
+       dogfood-logs/144-gate1-run1/output.log#@@ -0,0 +1,183 @@
+       dogfood-logs/144-gate1-run2/current-task.md#@@ -0,0 +1,69 @@
+       dogfood-logs/144-gate1-run2/output.log#@@ -0,0 +1,193 @@
+       dogfood-logs/144-gate1-run3/current-task.md#@@ -0,0 +1,65 @@
+       dogfood-logs/144-gate1-run3/judgement.md#@@ -0,0 +1,71 @@
+       dogfood-logs/144-gate1-run3/output.log#@@ -0,0 +1,174 @@
+       dogfood-logs/144-gate1-run4/current-task.md#@@ -0,0 +1,65 @@
+       dogfood-logs/144-gate1-run4/output.log#@@ -0,0 +1,174 @@
+       dogfood-logs/144-gate2-run1/current-task.md#@@ -0,0 +1,65 @@
+       dogfood-logs/144-gate2-run1/judgement.md#@@ -0,0 +1,93 @@
+       dogfood-logs/144-gate2-run1/output.log#@@ -0,0 +1,303 @@
+       dogfood-logs/144-gate2-run1/revisions.txt#@@ -0,0 +1,2 @@
+       dogfood-logs/144-gate2-run2/current-task.md#@@ -0,0 +1,65 @@
+       dogfood-logs/144-gate2-run2/judgement.md#@@ -0,0 +1,65 @@
+       dogfood-logs/144-gate2-run2/output.log#@@ -0,0 +1,330 @@
+       dogfood-logs/144-gate2-run2/revisions.txt#@@ -0,0 +1,2 @@
+       dogfood-logs/144-gate2-run3/current-task.md#@@ -0,0 +1,65 @@
+       dogfood-logs/144-gate2-run3/judgement.md#@@ -0,0 +1,62 @@
+       dogfood-logs/144-gate2-run3/output.log#@@ -0,0 +1,395 @@
+       dogfood-logs/144-gate2-run3/revisions.txt#@@ -0,0 +1,2 @@
+       dogfood-logs/144-gate2-run4/current-task.md#@@ -0,0 +1,65 @@
+       dogfood-logs/144-gate2-run4/judgement.md#@@ -0,0 +1,56 @@
+       dogfood-logs/144-gate2-run4/output.log#@@ -0,0 +1,394 @@
+       dogfood-logs/144-gate2-run4/revisions.txt#@@ -0,0 +1,2 @@
+       session-state.md#@@ -12,126 +12,81 @@ Clear it out when the task lands rather than letting it accrete.
+
+Changes since bb2af166:
+  closed:
+    - Represent the typed schemas as pydantic models.
+        code evidence: addressed -> addressed
+        test evidence: nominally supported -> strongly supported
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

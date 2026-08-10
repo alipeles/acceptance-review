@@ -1,0 +1,174 @@
+Requirements: 27   with obligations: 21   deliberately none: 6
+
+[task-01] Obligation derivation reads one requirement at a time and produces obligations
+    for it alone, so a requirement stated in two places yields two obligations that
+    assert the same thing. On one observed task file, 34 requirements produced 71
+    obligations. Every later stage runs once per obligation, so the duplication
+    multiplies the work and the length of the report while adding nothing.
+    -> duplication-per-requirement  [functional/explicit]
+       Derive obligations one requirement at a time so that a requirement stated in two
+       places produces two obligations that each assert the same thing.
+    -> later-stages-per-obligation  [invariant/explicit]
+       Run every later stage once per obligation, so duplicated obligations multiply
+       downstream work and report length.
+
+[task-02] The duplication is not a fault in the input. A mandate and its acceptance
+    criteria naturally restate each other, and a requirement is often followed by a
+    clause giving the reason for it. Both are ordinary ways to write a requirement, and
+    both currently produce a second obligation.
+    -> duplication-is-ordinary-restatement  [functional/explicit]
+       Treat ordinary restatements such as a mandate and its acceptance criteria, or a
+       requirement followed by its reason, as separate requirement statements that
+       currently produce a second obligation.
+    -> duplication-not-input-fault  [invariant/explicit]
+       Preserve the interpretation that the duplication arises from ordinary requirement
+       wording rather than from a fault in the input.
+
+[task-03] Add a pass that runs after derivation and recognises when two obligations
+    state the same requirement. Its output is a link rather than a deletion: the
+    surviving obligation is named by every requirement that stated it.
+    -> post-derivation-duplicate-linking  [functional/explicit]
+       Add a post-derivation pass that recognises when two obligations state the same
+       requirement and outputs a link instead of deleting either obligation.
+    -> surviving-obligation-named-by-all-requirements  [invariant/explicit]
+       Ensure the surviving obligation is named by every requirement that stated it.
+
+[constraint-01] The pass runs after obligation derivation, over the obligations
+    derivation produced, rather than inside derivation.
+    -> post-derivation-linking-pass  [functional/explicit]
+       Run the duplicate-recognition pass after obligation derivation, operating on the
+       obligations derivation output rather than inside derivation.
+
+[constraint-02] Recognising a duplicate produces a link from a second requirement to an
+    existing obligation. No obligation is deleted and no requirement text is discarded.
+    -> duplicate-recognition-links-existing-obligation  [functional/explicit]
+       Represent a recognized duplicate as a link from the later requirement to an
+       existing obligation while preserving both the obligation and the requirement
+       text.
+
+[constraint-03] A linked obligation carries the union of the requirement links and the
+    union of the source spans of everything merged into it, so it still traces to every
+    piece of task text that produced it.
+    -> linked-obligation-preserves-union-of-provenance  [invariant/explicit]
+       Carry forward the union of requirement links and the union of source spans from
+       everything merged into a linked obligation.
+
+[constraint-04] The links are typed fields in the schema-constrained response. A link
+    stated in an obligation's description, rationale, or any other free-text field does
+    not count as a link.
+    -> typed-link-fields-only  [compatibility/explicit]
+       Represent links as typed schema fields, so only schema-typed link fields count as
+       links and free-text mentions do not.
+
+[constraint-05] Two obligations about the same area of the change are not necessarily
+    the same requirement. Where the judgement is uncertain, leave them separate.
+    -> uncertain-duplicates-remain-separate  [human_review/explicit]
+       Preserve separate obligations when duplicate recognition is uncertain, even if
+       the obligations concern the same area of the change.
+
+[constraint-06] A requirement and a clause giving the reason for that requirement state
+    one requirement, not two.
+    -> reason-clause-counts-as-same-requirement-2  [functional/explicit]
+       Treat a requirement and its reason clause as one requirement for duplicate
+       recognition.
+
+[constraint-07] The obligations derivation produced, before any linking, are persisted
+    in the review state. They are provenance rather than report content.
+    -> persist-pre-link-derivation-state  [invariant/explicit]
+       Persist the obligations derivation output before linking in the review state as
+       provenance rather than report content.
+
+[constraint-08] The links this pass produces are identical unless the derived
+    obligations they were computed from change.
+    -> stable-links-unless-derived-obligations-change  [regression/explicit]
+       Keep produced links identical whenever the derived obligations they were computed
+       from are unchanged.
+
+[constraint-09] Two runs over byte-identical task text produce byte-identical review
+    state, both for the derived obligations and for the linked result.
+    -> deterministic-review-state  [invariant/explicit]
+       Preserve byte-identical review state across two runs over byte-identical task
+       text, including both the derived obligations and the linked result.
+
+[constraint-10] Typed schemas are pydantic models, as the rest of the repository defines
+    them.
+    -> typed-schemas-pydantic-models  [compatibility/explicit]
+       Represent the typed schemas as pydantic models.
+
+[constraint-11] Tests issue no live model calls.
+    -> tests-no-live-model-calls  [invariant/explicit]
+       Keep tests free of live model calls.
+
+[exclusion-01] How finely a single requirement is split into obligations, which is #117.
+    -- no obligation, deliberately
+       This is a scope exclusion naming work handled elsewhere, and it does not itself
+       impose a checkable change in this task.
+
+[exclusion-02] Measuring how accurate the links are, which is #211.
+    -- no obligation, deliberately
+       This is a scope exclusion naming work handled elsewhere, and it does not itself
+       impose a checkable change in this task.
+
+[exclusion-03] The wording of the decomposition prompt beyond what this pass requires,
+    which is #205, #206 and #219.
+    -- no obligation, deliberately
+       This is a scope exclusion naming work handled elsewhere, and it does not itself
+       impose a checkable change in this task.
+
+[exclusion-04] Whether an obligation needs test evidence at all, which is #148.
+    -- no obligation, deliberately
+       This is a scope exclusion naming work handled elsewhere, and it does not itself
+       impose a checkable change in this task.
+
+[exclusion-05] Recovering requirements that an earlier run dropped.
+    -- no obligation, deliberately
+       This is a scope exclusion naming work handled elsewhere, and it does not itself
+       impose a checkable change in this task.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       This is a section marker naming the deliverable area, but it does not itself
+       state a checkable requirement.
+
+[completion-02] A task file stating one requirement in two sections yields one
+    obligation linked to both requirements, whose source spans cover both statements.
+    -> linked-obligation-for-two-sections  [functional/explicit]
+       A task file that states one requirement in two sections yields one obligation
+       linked to both requirements, with source spans covering both statements.
+
+[completion-03] A test asserts that two distinct requirements sharing vocabulary are not
+    linked to one obligation.
+    -> distinct-requirements-not-merged-by-vocabulary  [invariant/explicit]
+       Two distinct requirements that merely share vocabulary remain unlinked to the
+       same obligation.
+
+[completion-04] A test asserts that a requirement followed by a clause giving its reason
+    yields one obligation rather than two.
+    -> reason-clause-counts-as-same-requirement  [functional/explicit]
+       A requirement followed by a clause giving its reason yields one obligation rather
+       than two.
+
+[completion-05] A test asserts that the obligations derivation produced, before linking,
+    are present in the persisted review state.
+    -> prelink-derivation-persisted-in-review-state  [invariant/explicit]
+       The obligations derivation produced before linking is present in the persisted
+       review state.
+
+[completion-06] A test asserts that a link is expressed as a typed field, and that the
+    response schema cannot express a link as free text.
+    -> typed-link-field-not-free-text  [compatibility/explicit]
+       A link is expressed as a typed field, and the response schema cannot express a
+       link as free text.
+
+[completion-07] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state at both the derived and the linked stage.
+    -> byte-identical-review-state-for-identical-input  [regression/explicit]
+       Two runs over byte-identical task text produce byte-identical review state at
+       both the derived and the linked stage.
+
+[completion-08] A test asserts that the links are unchanged when the derived obligations
+    they were computed from are unchanged.
+    -> links-stable-when-derived-obligations-unchanged  [invariant/explicit]
+       The links remain unchanged when the derived obligations they were computed from
+       are unchanged.
+

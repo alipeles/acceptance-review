@@ -185,8 +185,47 @@ def stale_obligation_ids(prior: Review, change_set: ChangeSet) -> set[str]:
     return stale
 
 
+def _linking_inputs(obligations: list[Obligation]) -> list[tuple[str, str, str]]:
+    """What the linking pass is shown about each obligation, in order."""
+    return [
+        (obligation.id, obligation.description, obligation.observable_behavior)
+        for obligation in obligations
+    ]
+
+
+def derivation_changed(prior: Review, derived: list[Obligation]) -> bool:
+    """Whether stage 1's output moved since the prior review (#144).
+
+    The second staleness question, and it is asked separately from
+    `stale_obligation_ids` on purpose. That one asks whether the *change* could
+    have affected an obligation's judgment; this asks whether the obligation set
+    itself was computed from different inputs. The stages fail independently —
+    #167's Gate 2 showed a byte-identical mapped set with a flipped judgement
+    over it — so one question cannot stand in for the other.
+
+    It matters because linking can merge a different pair over an unchanged id.
+    An obligation that survived both runs under the same id may have absorbed a
+    different set of requirements, which makes it a different obligation wearing
+    a familiar slug, and carrying a prior judgment onto it would launder a stale
+    conclusion.
+
+    A prior review recorded before `derived_obligation_map` existed reports
+    unchanged, and that is correct rather than merely convenient: the risk this
+    question guards against is a slug whose meaning moved because linking merged
+    a different set behind it, and linking did not run for such a review. With no
+    merges there is no hidden change of meaning, and the older staleness question
+    still covers everything else.
+    """
+    if not prior.derived_obligation_map:
+        return False
+    return _linking_inputs(prior.derived_obligation_map) != _linking_inputs(derived)
+
+
 def obligations_to_rederive(
-    fresh: list[Obligation], prior: Review, change_set: ChangeSet
+    fresh: list[Obligation],
+    prior: Review,
+    change_set: ChangeSet,
+    derived: list[Obligation] | None = None,
 ) -> list[Obligation]:
     """The fresh obligations this run must judge from scratch: those the new work
     could have affected, plus any the prior review never saw.
@@ -194,7 +233,13 @@ def obligations_to_rederive(
     Matched by obligation id, a stable slug over the task text — so the same task
     yields the same ids and a prior judgment lands on the obligation it was
     actually made about.
+
+    When `derived` is supplied and stage 1's output moved, nothing is carried
+    forward: every id is suspect, because the same slug may now stand for a
+    different set of merged requirements (#144).
     """
+    if derived is not None and derivation_changed(prior, derived):
+        return list(fresh)
     stale = stale_obligation_ids(prior, change_set)
     prior_ids = {obligation.id for obligation in prior.obligation_map}
     return [
@@ -247,16 +292,10 @@ def carried_findings(prior: Review, carried: list[Obligation]) -> list[Finding]:
     the obligation's description.
     """
     descriptions = {obligation.description for obligation in carried}
-    return [
-        finding
-        for finding in prior.findings
-        if finding.related_obligation in descriptions
-    ]
+    return [finding for finding in prior.findings if finding.related_obligation in descriptions]
 
 
-def carried_recommendations(
-    prior: Review, carried: list[Obligation]
-) -> list[TestRecommendation]:
+def carried_recommendations(prior: Review, carried: list[Obligation]) -> list[TestRecommendation]:
     """Prior test recommendations for obligations this run did not re-derive —
     otherwise the agent loses the instruction for a gap that is still open."""
     carried_ids = {obligation.id for obligation in carried}
