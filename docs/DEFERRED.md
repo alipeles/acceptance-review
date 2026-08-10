@@ -36,42 +36,72 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
-### [2026-08-10] What exempts a declined requirement from the coverage bound
-- **Kind:** decision
-- **Found during:** #214, Gate 1
-- **Where:** `src/acceptance/verdict.py` (new coverage bound), reading
-  `RequirementMap.unyielding()`
-- **Severity:** blocker
-- **What's wrong:** #214's Acceptance items 2 and 4 are in direct tension. Item 2:
-  *"A review in which requirements produced no obligation cannot return
-  `no_material_gaps`."* Item 4: *"A task file whose only unyielding requirement is
-  a bare section marker is not penalised."* Both can hold only if some declines
-  are exempt from the bound, and the issue does not say which — its Deliverable is
-  explicitly *"Not settled"*. It gives the discriminator in prose only: *"nine of
-  ten scope exclusions declining with one boilerplate reason is not the same as
-  one section marker."*
-- **Why I didn't act:** picking silently would resolve an open design decision
-  inside the code, which CLAUDE.md forbids; the recommendation below is
-  implemented, and this entry is the surfacing.
-- **Drafted fix — recommended: structural exemption.** A `no_obligation` decline
-  is exempt from the bound only when the requirement's own text is structurally
-  non-normative, decided in code from the parse, never from the model's reason:
-  normalized text of ≤3 words with no terminal punctuation. `- Implementation`
-  (1 word) is exempt; `The change does not alter X` (6 words) is not. Deterministic,
-  needs no NLP dep, and — the point — it judges *the requirement*, not the
-  decomposer's story about it, so a decomposer cannot talk its way out of the
-  bound. Gate 1 run 1 supplies the live fixture: `completion-01` is exactly this
-  case, declined as *"A standalone section marker with no requirement under it."*
-  **Its weakness, stated plainly:** a word count is a crude proxy for "states no
-  checkable expectation", and a terse real requirement (`- Idempotent retries`)
-  would be wrongly exempted. It fails toward *under*-bounding, which is the
-  permissive direction #214 exists to close — so it is the part to revisit first
-  if the bound proves too weak in practice.
-- **Alternative rejected — uniformity of the decline reason.** Count declines
-  whose normalized reason is shared by 2+ requirements as systemic (a rule the
-  decomposer applied), and exempt a decline whose reason is unique. This is what
-  the issue's own prose gestures at, and it fires exactly on the #202 evidence.
-  Rejected on two grounds: it is evadable by varying the wording, and — worse —
-  it lets a *single* silently-dropped real requirement through unbounded, which
-  is the common case and the one item 2 is written to catch.
+### [2026-08-10] One spurious link stops a genuine duplicate from merging
+- **Kind:** filing (new issue, child of #181)
+- **Found during:** #214, Gate 1 run 2
+- **Where:** `src/acceptance/requirement/linking.py:382` (`_confirmed_clusters`)
+- **Severity:** should-fix
+- **What's wrong:** de-duplication asks the model pairwise "same requirement?",
+  then merges confirmed clusters. When a cluster is transitively linked but one
+  pair inside it was denied, the cluster is inconsistent and **nothing in it is
+  merged**. So a single false link can prevent a correct merge that had nothing
+  to do with it. Observed live: `constraint-05` and `completion-06` produced two
+  functional obligations with byte-identical descriptions ("An open question the
+  change does not answer yields no obligation.") and stayed unmerged, because
+  `exclude-split-granularity` — from an unrelated scope exclusion — was linked
+  into the same cluster. Six other constraint/completion pairs in the same run
+  merged correctly, so the pattern is sound and this is not a task-file wording
+  problem.
+- **Why I didn't act:** `requirement/linking.py` is decomposition, outside
+  #214's area, and #214's obligation set is usable with the redundancy present.
+- **Drafted fix — issue body as it would be filed:**
+
+  > **Title:** One spurious link blocks a correct merge: an inconsistent cluster
+  > merges nothing, so a false positive protects a true duplicate
+  >
+  > Child of #181. Found in #214's Gate 1 run 2
+  > (`dogfood-logs/214-gate1-run2/`).
+  >
+  > `_confirmed_clusters` treats a transitively-linked cluster containing any
+  > denied pair as inconsistent and merges **none** of it
+  > (`linking.py:382-396`). The intent is sound — do not guess which answer to
+  > believe — but the failure mode is inverted: **the presence of a false link
+  > preserves a true duplicate.**
+  >
+  > Observed on an ordinary mandate. Three obligations formed one cluster:
+  >
+  > | obligation | from | relationship |
+  > |---|---|---|
+  > | `constraint-05-unanswered-open-question-yields-no-obligation` | constraint-05 | genuine duplicate of the next |
+  > | `unanswered-open-question-no-obligation` | completion-06 | genuine duplicate of the previous |
+  > | `exclude-split-granularity` | exclusion-05 | unrelated |
+  >
+  > The first two have byte-identical descriptions. They did not merge, because
+  > the third was linked in and some pair among the three was denied. Six other
+  > constraint/completion pairs in the same run merged correctly, so the
+  > redundancy is caused entirely by the spurious third member.
+  >
+  > This is the inverse of #210 (mapping over-merges), and the same root cause
+  > drives both: an over-eager `same_requirement` judgement. There it merges
+  > what it shouldn't; here it drags an unrelated obligation into a cluster and
+  > the conservative policy then discards a correct merge with it.
+  >
+  > Redundancy in the obligation set is not cosmetic — CLAUDE.md makes
+  > non-redundancy a property the obligation set must have, and every downstream
+  > stage judges the set. A duplicated obligation is rated twice, recommended
+  > for twice, and counted twice in any coverage figure.
+  >
+  > **Candidate directions** (not settled): drop only the denied pair and merge
+  > the rest of the cluster; or keep the all-or-nothing policy but exclude a
+  > member whose links are contradicted by every other member; or re-ask the
+  > contradicted pairs.
+  >
+  > **Acceptance**
+  > - Two obligations with identical descriptions merge even when a third,
+  >   unrelated obligation is linked into their cluster by one answer.
+  > - A genuinely ambiguous cluster still refuses to merge rather than guessing.
+  > - The reported unusable answer names which pair was denied, not only the
+  >   cluster.
+  >
+  > Labels: `bug`, `track:checker`. Parent umbrella: #181.
 - **Status:** open

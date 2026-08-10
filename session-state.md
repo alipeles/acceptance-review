@@ -16,72 +16,124 @@ Clear it out when the task lands rather than letting it accrete.
 
 **The completion verdict cannot see mandate coverage.** Child of #185. Branch
 `214-verdict-mandate-coverage`, worktree `~/acceptance-worktrees/`, branched at
-`0923f77`. **Gate 1 passed** at `0923f77`; decomposition confirmed accurate by
-Claude, awaiting human confirmation at the gate presentation.
+`0923f77`. **Gate 1 passed at run 2** (`078d216`); no code written yet.
 
-Three lanes in parallel: **#180** (determinism/judgement — owns `llm.py` and the
-request key), **#228** (benchmark guard), **#214** (this one). #214 stays inside
-`verdict.py` / `report.py` and touches **no model prompt and no request key**, so
-it cannot collide with #180's transcript re-record.
+Three lanes in parallel: **#180** (evidence-rating stability), **#228**
+(benchmark guard), **#214** (this one).
 
-## Gate 1 — passed, run 1
+## The design — settled with the human, two rulings
 
-`dogfood-logs/214-gate1-run1/`. 25 requirements, 24 yielded, 1 deliberately
-declined, **0 open questions**, **0 unread source**. Nothing invented, nothing
-missing, so no rewrite of `current-task.md` was warranted.
+**Ruling 1: coverage keys off the requirement's disposition, not its text.**
+Disposition is already structured and *enforced*, in two layers: the model-facing
+discriminated union `_Yielded` / `_NoObligation` / `_RaisedOpenQuestion`
+(`obligations.py:300-340`, `Literal` tags, and `_Yielded` splits its first
+obligation into its own required field so "at least one" is unrepresentable
+otherwise), and the persisted `RequirementDisposition` whose validator rejects
+`yielded` with no obligations and `no_obligation` with no reason.
 
-The single decline is `completion-01` = the bullet `- Implementation`, declined
-as *"A standalone section marker with no requirement under it."* That is #214's
-Acceptance item 4 arriving live in this task's own file — the item-4 fixture is
-observed behaviour, not an invention for the test.
+So there is a hard rule with no judgement call in it, and the four cases are:
 
-## The design (settled against the code, not yet built)
+| disposition | can a requirement vanish? |
+|---|---|
+| `yielded` | No — validator makes obligation-free `yielded` unrepresentable |
+| `no_obligation` | No — **trusted**, exempt by rule |
+| `open_question`, unresolved | No — already forces `needs_clarification` |
+| `open_question`, **resolved by the diff** | **Yes — this is the hole** |
 
-**Mechanism — a bound, not a branch.** Derive the verdict exactly as today, then
-apply a coverage bound afterwards: a shortfall may only *cap* the verdict below
-`no_material_gaps`, never move it. If the verdict was already `incomplete`, it
-stays `incomplete`. This is what makes Acceptance item 3 (a dropping decomposer
-never scores better) hold monotonically, and it adds no enum value and re-ranks
-no existing precedence.
+A bare section marker is exempt because it is `no_obligation`, not because it is
+short. **My earlier ≤3-words heuristic is dead** — do not resurrect it.
 
-**Where a shortfall lands:** `unable_to_determine`. The existing
-`if not obligations: -> UNABLE_TO_DETERMINE` is this same rule at its limit
-(zero coverage), so generalising from "no coverage" to "partial coverage" keeps
-one meaning, and matches the "uncertainty is first-class" invariant — an
-uncovered requirement is uncertainty, not a pass.
+The accepted price: ten declines with identical boilerplate now return clean.
+Defensible because #153 made scope exclusions yield obligations at source, and
+re-judging whether a decline was *correct* is #193/#211's job, not the verdict's.
 
-**Item 1 (identical evidence, different coverage → different verdict)** is
-satisfied on the `CompletionResult` *object*: the coverage figure is a new
-first-class field and the rationale names the shortfall, so two such reviews
-differ always, and differ in the enum whenever it would otherwise be positive.
+**Ruling 2: derived obligations from resolved open questions are in scope.** An
+implementation choice that settles an ambiguity cannot ship untested.
 
-**Schema:** `CompletionResult` gains a coverage field. Additive with a default;
-no later work depends on it yet.
+## How the derived obligation is built
 
-## Two things the issue assumes that the code has already settled
+One field added to the open-question resolution schema: when `resolved=true`, the
+model also returns the behaviour the diff commits to, as one requirement-shaped
+sentence. **Everything else is fixed in code, not inferred:**
 
-1. **`undisposed` does not exist.** M1.2.r2 removed it — a response that fails to
-   account for a requirement does not parse. The Deliverable's second bullet is
-   literally unimplementable. **Resolved:** corrected on #214 itself
-   (`issuecomment-5244447965`); the bullet is implemented against `unread_source`,
-   which carries the same meaning — unambiguous loss, still invisible to the
-   verdict.
-2. **Scope exclusions yield obligations again** since #153 (`0923f77`), in
-   `CODE_ONLY` absence form. The #202 evidence in the issue body ("nine of ten
-   scope exclusions stopped producing obligations") predates that, so the
-   headline failure mode is partly closed at source. The verdict blindness this
-   issue is about is not, and is independent of it.
+- `explicit=False` — the field already means "inferred, not stated in the mandate"
+- `type=functional`, `importance=normal` — constants
+- `coverage_status="addressed"`, `coverage_refs` = the `diff_refs` the resolution
+  already cited. **So a derived obligation can never be a coverage gap** — it
+  rides the test-evidence axis only, and reaches the verdict through the existing
+  weak-evidence path. Untested choice -> `incomplete`.
+- **`id` computed deterministically from the question id, never model-minted.**
+  Required by this task's own byte-identical-rerun constraint, and by #180's
+  carry-forward design (see below).
+- Only questions that are resolved **and** cite at least one hunk qualify.
+
+Why not synthesize from the existing `rationale` instead, avoiding the prompt
+change: `rationale` is written to explain *what the diff shows*, not to state
+required behaviour. Templating it produces obligations phrased as commentary,
+which mapping and discrimination then run on — a false red the builder cannot fix
+by changing anything of theirs.
+
+## Coordination with #180 — asked and answered
+
+Asked whether the `open_questions.py` prompt/schema change collides. Answer: **no
+overlap, and no request-key change in its lane.** A determinism-component child
+(provisionally #180.3) *would* touch the key, but is unfiled and out of its
+session's scope; re-ask if it is picked up.
+
+**Correction from #180, verified in `llm.py:81-108` rather than taken on trust:**
+`request_key` hashes each *individual* request dict and `TranscriptStore` files
+per key, so editing one stage's prompt orphans **only that stage's** recordings.
+CLAUDE.md's "changing a prompt invalidates recorded transcripts" reads broader
+than it is. Global invalidation needs a change to `request_key` itself or to
+something folded into every request (model id, seed).
+
+**#180's warning, acted on:** its design is heading toward re-judging an
+obligation only when that obligation's own inputs changed, so ratings carry
+forward across runs. A derived obligation whose id moved between runs would look
+like one vanishing and a new one appearing — never carrying forward, and silently
+re-judging while looking stable. Hence the deterministic id above.
+
+Expect textual merge conflicts with #180 in `review_state.py` (both adding
+fields) and `pipeline.py` (different regions). **Rebase early.**
+
+## Gate 1 — passed, run 2
+
+`dogfood-logs/214-gate1-run2/`. 29 requirements, 28 yielded, 1 deliberately
+declined, **0 open questions**. Run 1 (`dogfood-logs/214-gate1-run1/`, 25
+requirements) is superseded — it predates ruling 1.
+
+`completion-01` = `- Implementation`, declined both runs on identical text as a
+standalone section marker. That is #214's Acceptance item 4 live in this task's
+own file, and under ruling 1 it is exempt for the right reason.
+
+**One flag, attributed to the tool and queued:** `constraint-05` and
+`completion-06` produced byte-identically-described obligations that failed to
+merge, because an unrelated obligation was linked into their cluster and
+`_confirmed_clusters` (`linking.py:382`) merges nothing in a cluster containing a
+denied pair. Six other constraint/completion pairs merged correctly, so it is not
+a wording problem. Everything stayed attached to its correct requirement, so the
+set is sound to build against — but **if those two ids wobble at Gate 2, read it
+as this defect, not as new evidence.**
+
+## #214's Acceptance is partly stale — issue needs updating
+
+- **Item 2** ("a review in which requirements produced no obligation cannot
+  return `no_material_gaps`") is stale, per the human: it predates the
+  realisation that some requirements legitimately yield none. Under ruling 1 it
+  is wrong as written.
+- **Item 4** (bare section marker not penalised) is now satisfied structurally
+  rather than by a rule aimed at it.
+- The `undisposed` bullet is already corrected on the issue
+  (`issuecomment-5244447965`); implemented against `unread_source`.
+
+**Not yet done: updating #214's Acceptance to match rulings 1 and 2.** Needs the
+human's approval as a backlog write.
 
 ## Queue — `docs/DEFERRED.md`
 
-One entry, open, awaiting the human's call:
-
-- **decision (blocker):** what exempts a declined requirement from the coverage
-  bound — #214's Acceptance items 2 and 4 are in tension. Recommended structural
-  exemption (≤3 words, no terminal punctuation); rejected uniformity-of-reason.
-
-The `undisposed` entry is resolved and deleted — it was a correction to #214, not
-a new filing, and it is posted.
+One entry: **filing (should-fix)** — the linking defect above, drafted as a child
+of #181 with acceptance criteria. The earlier exemption-rule decision entry is
+resolved and deleted (ruling 1 settled it).
 
 ## Do not rediscover
 
