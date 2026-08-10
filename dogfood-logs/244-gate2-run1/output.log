@@ -1,0 +1,248 @@
+Task completion: INCOMPLETE
+
+2 obligation(s) with non-discriminating test evidence (test-obligation-keeps-own-span, tests-issue-no-live-model-calls).
+
+Obligations:
+
+  1. A test asserts that an obligation quoting text inside its own requirement's span keeps that requirement.
+       requirements: completion-02, completion-09
+       code evidence: addressed
+         1.1  tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+       test evidence: partially supported  [tier: static]
+         1.2  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_its_own_requirement_keeps_it
+         recommended test: A test is added that verifies an obligation whose quotation lies within its attributed requirement span remains attributed to that requirement.
+           inputs:  Construct a task file with at least two requirements whose text overlaps enough that one obligation’s quotation appears inside both spans, but attribute that obligation to the requirement whose own span already contains the quotation. The key input characteristic is a same-requirement match that is also a plausible cross-requirement match, so a buggy implementation that always re-files by span containment will change the owning requirement even though the correct implementation must not.
+           detects: A developer always re-files an obligation to the requirement whose span contains its quotation, even when that is the same requirement it was originally attributed to.
+           full detail: acceptance recommendation --criterion test-obligation-keeps-own-span
+
+  2. A test asserts that an obligation quoting text belonging to a different requirement is re-attributed to that requirement.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+       test evidence: strongly supported  [tier: static]
+         2.2  tests/requirement/test_obligation_attribution.py::test_an_obligation_is_not_refiled_onto_a_requirement_that_declined
+         2.3  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_another_requirement_is_refiled_under_it
+
+  3. A test asserts that an obligation whose quotation matches no requirement's span stays where it was attributed, and that the disagreement is recorded.
+       requirements: completion-04
+       code evidence: addressed
+         3.1  tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+       test evidence: strongly supported  [tier: static]
+         3.2  tests/requirement/test_obligation_attribution.py::test_a_quotation_matching_no_requirement_is_recorded
+
+  4. A test asserts that a requirement that yielded obligations is not left holding none by re-attribution.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+       test evidence: strongly supported  [tier: static]
+         4.2  tests/requirement/test_obligation_attribution.py::test_a_requirement_never_loses_its_last_obligation_to_refiling
+
+  5. A test asserts that a quotation is located whether or not the text it comes from is broken across lines.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+       test evidence: strongly supported  [tier: static]
+         5.2  tests/requirement/test_obligation_attribution.py::test_a_quotation_is_found_across_a_line_break
+
+  6. A test asserts that re-attribution leaves the obligation's content unchanged.
+       requirements: completion-07
+       code evidence: addressed
+         6.1  tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+       test evidence: strongly supported  [tier: static]
+         6.2  tests/requirement/test_obligation_attribution.py::test_refiling_leaves_the_obligations_own_content_alone
+
+  7. A test asserts that a re-attributed obligation admits the evidence its new requirement's section admits.
+       requirements: completion-08
+       code evidence: addressed
+         7.1  tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+       test evidence: strongly supported  [tier: static]
+         7.2  tests/requirement/test_obligation_attribution.py::test_refiling_takes_the_admissible_evidence_of_the_requirement_it_lands_in
+
+  8. An obligation carries a quotation of the task text it derives from.
+       requirements: constraint-01
+       code evidence: addressed
+         8.1  src/acceptance/requirement/obligations.py#@@ -515,24 +632,41 @@ def decompose(
+         8.2  src/acceptance/requirement/obligations.py#@@ -740,6 +876,77 @@ def _spans(source: str, quote: str) -> list:
+       test evidence: strongly supported  [tier: static]
+         8.3  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         8.4  tests/requirement/test_obligations.py::test_each_obligation_links_to_its_source_span
+
+  9. An obligation's quotation is located within the span of the requirement it is attributed to, not merely somewhere in the task file.
+       requirements: constraint-02
+       code evidence: addressed
+         9.1  src/acceptance/requirement/obligations.py#@@ -740,6 +876,77 @@ def _spans(source: str, quote: str) -> list:
+         9.2  src/acceptance/requirement/obligations.py#@@ -515,24 +632,41 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         9.4  tests/requirement/test_obligations.py::test_each_obligation_links_to_its_source_span
+
+  10. A quotation is located without regard to where lines are broken, so the same sentence is found whether the text wraps or not.
+       requirements: constraint-03
+       code evidence: addressed
+         10.1  src/acceptance/requirement/obligations.py#@@ -740,6 +876,77 @@ def _spans(source: str, quote: str) -> list:
+       test evidence: strongly supported  [tier: static]
+         10.2  tests/requirement/test_obligation_attribution.py::test_a_quotation_is_found_across_a_line_break
+
+  11. An obligation whose quotation falls outside the span of the requirement it was attributed to is re-attributed to the requirement whose span contains the quotation, when that requirement also yielded obligations.
+       requirements: constraint-04
+       code evidence: addressed
+         11.1  src/acceptance/requirement/obligations.py#@@ -415,6 +417,120 @@ def _importance(value: str) -> str:
+         11.2  src/acceptance/requirement/obligations.py#@@ -515,24 +632,41 @@ def decompose(
+         11.3  src/acceptance/requirement/obligations.py#@@ -554,6 +688,8 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         11.4  tests/requirement/test_obligation_attribution.py::test_an_obligation_is_not_refiled_onto_a_requirement_that_declined
+         11.5  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_another_requirement_is_refiled_under_it
+
+  12. Re-attribution never leaves a requirement that yielded obligations holding none.
+       requirements: constraint-05
+       code evidence: addressed
+         12.1  src/acceptance/requirement/obligations.py#@@ -415,6 +417,120 @@ def _importance(value: str) -> str:
+       test evidence: strongly supported  [tier: static]
+         12.2  tests/requirement/test_obligation_attribution.py::test_a_requirement_never_loses_its_last_obligation_to_refiling
+
+  13. An obligation is never discarded for a quotation that cannot be placed; it stays where it was attributed.
+       requirements: constraint-06
+       code evidence: addressed
+         13.1  src/acceptance/requirement/obligations.py#@@ -415,6 +417,120 @@ def _importance(value: str) -> str:
+         13.2  src/acceptance/requirement/obligations.py#@@ -740,6 +876,77 @@ def _spans(source: str, quote: str) -> list:
+       test evidence: strongly supported  [tier: static]
+         13.3  tests/requirement/test_obligation_attribution.py::test_a_quotation_matching_no_requirement_is_recorded
+
+  14. A test asserts that two runs over byte-identical task text produce byte-identical review state.
+       requirements: completion-10
+       code evidence: addressed
+         14.1  tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+       test evidence: strongly supported  [tier: static]
+         14.2  tests/requirement/test_obligation_attribution.py::test_two_runs_over_identical_task_text_produce_identical_review_state
+
+  15. Every disagreement between an obligation's quotation and the requirement it was attributed to is recorded, whether or not it was acted on.
+       requirements: constraint-07
+       code evidence: addressed
+         15.1  src/acceptance/requirement/obligations.py#@@ -415,6 +417,120 @@ def _importance(value: str) -> str:
+       test evidence: strongly supported  [tier: static]
+         15.2  tests/requirement/test_obligation_attribution.py::test_a_quotation_matching_no_requirement_is_recorded
+         15.3  tests/requirement/test_obligation_attribution.py::test_a_refiling_is_recorded_even_though_it_was_acted_on
+
+  16. Re-attributing an obligation leaves the obligation's own content unchanged.
+       requirements: constraint-08
+       code evidence: addressed
+         16.1  src/acceptance/requirement/obligations.py#@@ -415,6 +417,120 @@ def _importance(value: str) -> str:
+       test evidence: strongly supported  [tier: static]
+         16.2  tests/requirement/test_obligation_attribution.py::test_refiling_leaves_the_obligations_own_content_alone
+
+  17. A re-attributed obligation admits the evidence its new requirement's section admits.
+       requirements: constraint-09
+       code evidence: addressed
+         17.1  src/acceptance/requirement/obligations.py#@@ -515,24 +632,41 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         17.2  tests/requirement/test_obligation_attribution.py::test_refiling_takes_the_admissible_evidence_of_the_requirement_it_lands_in
+
+  18. A requirement keeps every obligation whose quotation lies within its span.
+       requirements: constraint-10
+       code evidence: addressed
+         18.1  src/acceptance/requirement/obligations.py#@@ -740,6 +876,77 @@ def _spans(source: str, quote: str) -> list:
+       test evidence: strongly supported  [tier: static]
+         18.2  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_another_requirement_is_refiled_under_it
+         18.3  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_its_own_requirement_keeps_it
+
+  19. A requirement keeps every obligation whose quotation lies within its span.
+       requirements: constraint-10
+       code evidence: addressed
+         19.1  src/acceptance/requirement/obligations.py#@@ -740,6 +876,77 @@ def _spans(source: str, quote: str) -> list:
+       test evidence: strongly supported  [tier: static]
+         19.2  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_another_requirement_is_refiled_under_it
+         19.3  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_its_own_requirement_keeps_it
+
+  20. Two runs over byte-identical task text produce byte-identical review state.
+       requirements: constraint-11
+       code evidence: addressed
+         20.1  tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+       test evidence: strongly supported  [tier: static]
+         20.2  tests/requirement/test_obligation_attribution.py::test_two_runs_over_identical_task_text_produce_identical_review_state
+
+  21. Tests issue no live model calls.
+       requirements: constraint-12
+       code evidence: addressed
+         21.1  tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+       test evidence: nominally supported  [tier: static]
+         21.2  tests/requirement/test_requirement_map.py::test_decompose_cannot_reach_a_diff_or_a_head_revision
+         21.3  tests/test_cli.py::test_decompose_replay_without_transcript_fails_cleanly
+         recommended test: The test suite runs without making live model requests.
+           inputs:  Run the test suite or the specific acceptance test module under conditions where any network access to a model provider would fail immediately, while also including a fixture/helper path that would be exercised during the test run. The input characteristic needed is not a special data value but an execution environment with live model calls blocked, so a hidden live request in a helper or production path becomes observable as a failure.
+           detects: A developer adds a test helper or fixture that makes a live model request during test execution, or changes production code to call a live model while the mapped tests still appear to pass via mocked/non-network paths.
+           full detail: acceptance recommendation --criterion tests-issue-no-live-model-calls
+
+  22. The change does not alter how finely a single requirement is split into obligations, or how many obligations one requirement may yield.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 10 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  23. The change does not alter whether two obligations on the same requirement are merged.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 10 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  24. The change does not alter assigning obligation types.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 10 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  25. The change does not alter which open questions are raised or what they cite.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 10 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  26. The change does not alter whether requirement identifiers survive an edit to the task file.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 10 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  27. The change does not alter how decomposition accuracy is measured.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 10 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  28. An obligation is attributed to the requirement whose quoted text it comes from.
+       requirements: task-01
+       code evidence: addressed
+         28.1  src/acceptance/requirement/obligations.py#@@ -415,6 +417,120 @@ def _importance(value: str) -> str:
+         28.2  src/acceptance/requirement/obligations.py#@@ -515,24 +632,41 @@ def decompose(
+         28.3  src/acceptance/requirement/obligations.py#@@ -740,6 +876,77 @@ def _spans(source: str, quote: str) -> list:
+       test evidence: strongly supported  [tier: static]
+         28.4  tests/requirement/test_obligation_attribution.py::test_an_obligation_is_not_refiled_onto_a_requirement_that_declined
+         28.5  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_another_requirement_is_refiled_under_it
+         28.6  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_its_own_requirement_keeps_it
+         28.7  tests/requirement/test_requirement_map.py::test_two_requirements_minting_the_same_id_keep_separate_obligations
+
+Mandate coverage: 28 of 29 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: A standalone section marker with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] Added a new internal attribution-resolution layer (`_Attribution`, `_resolve_attributions`) and deferred obligation/derived-id assembly until after all dispositions are known. The obligations require re-attribution behavior and tests, but not this specific refactor or the new helper structure.
+       src/acceptance/requirement/obligations.py#@@ -415,6 +417,120 @@ def _importance(value: str) -> str:
+       src/acceptance/requirement/obligations.py#@@ -450,18 +566,19 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -554,6 +688,8 @@ def decompose(
+  2. [in_service] Changed quotation lookup to search the attributed requirement first, then other requirements, and to use regex whitespace-insensitive matching plus line-break-aware span reconstruction. The obligations require line-wrap-insensitive quotation location and re-attribution, but not this broader search-order behavior or the new span reconstruction details, which can affect which requirement wins when text overlaps.
+       src/acceptance/requirement/obligations.py#@@ -515,24 +632,41 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -740,6 +876,77 @@ def _spans(source: str, quote: str) -> list:
+  3. [in_service] Added recording of disagreement entries for both re-filed and kept obligations, including cases where the obligation is acted on. The obligations do require recording disagreements, but the specific policy of logging re-filed obligations as `UnusableAnswer` entries even when successfully re-attributed is an extra behavior change beyond the stated tests and invariants.
+       src/acceptance/requirement/obligations.py#@@ -415,6 +417,120 @@ def _importance(value: str) -> str:
+  4. [in_service] The new test file includes a broad suite of scenarios beyond the explicitly requested obligations, including byte-identical review-state checks, no-live-model-call framing, declined-requirement behavior, admissible-evidence propagation, and line-break handling. Some of these are requested, but several test cases appear to go beyond the listed obligations and assert additional behavior not explicitly demanded.
+       tests/requirement/test_obligation_attribution.py#@@ -0,0 +1,354 @@
+  5. [separable] Documentation edits in CLAUDE.md and docs/DEFERRED.md are unrelated to the obligation-attribution task and introduce process/backlog content not called for by the listed obligations.
+       CLAUDE.md#@@ -73,10 +73,14 @@ whether the checker works. GitHub Acceptance Review is Stage 2 — out of scope.
+       docs/DEFERRED.md#@@ -35,3 +35,104 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

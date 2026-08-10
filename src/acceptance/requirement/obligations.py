@@ -34,6 +34,8 @@ destroys the one thing the review exists to detect. Pinned by a test.
 
 from __future__ import annotations
 
+import re
+from dataclasses import dataclass
 from typing import Literal, Union
 
 from pydantic import Field
@@ -55,7 +57,7 @@ from acceptance.review_state import (
     RequirementRef,
     RequirementSection,
 )
-from acceptance.source_ref import find_span
+from acceptance.source_ref import TextSpan, find_span
 from acceptance.supplied_ids import (
     UnusableAnswer,
     UnusableAnswerLog,
@@ -415,6 +417,120 @@ def _importance(value: str) -> str:
     return "critical" if value == "critical" else "normal"
 
 
+@dataclass(frozen=True)
+class _Attribution:
+    """One derived obligation, the requirement that carried it, and the
+    requirement its quotation actually lands in.
+
+    Attribution cannot be settled inside the batch loop: an obligation may quote
+    a requirement another batch answers for, and whether that requirement was
+    disposed `yielded` is not known until every batch has returned.
+    """
+
+    attributed_to: str
+    owner_id: str | None
+    obligation: Obligation
+
+
+def _resolve_attributions(
+    attributions: list[_Attribution],
+    dispositions: list[_RequirementDisposition],
+    unusable_answers: UnusableAnswerLog | None,
+) -> tuple[list[Obligation], dict[str, list[str]]]:
+    """File each obligation under the requirement its quotation lands in.
+
+    - The quotation is inside the requirement that carried it — file it there,
+      which is every correctly attributed obligation and the overwhelming
+      majority.
+    - It is inside a different requirement that also yielded — re-file it there,
+      content untouched. The duplicate this creates when both requirements
+      derived the same obligation is an ordinary two-on-one case the linking
+      stage already merges, rather than the cross-requirement contradiction it
+      could not reconcile and reported as unreconciled (#244).
+    - Otherwise — keep it where it was attributed. See `emptied` below for why
+      moving is not always safe.
+
+    **No obligation is ever discarded here.** Losing a requirement is the
+    failure this project treats as worst (#202, #214), and a decomposer that
+    quotes badly is not evidence that the obligation it derived is unreal. Every
+    disagreement between quotation and attribution is instead recorded on the
+    `UnusableAnswerLog`, whether it was acted on or not, so a re-filing is
+    visible and a discrepancy that could not be acted on does not become silent.
+    """
+    yielded = {entry.requirement_id for entry in dispositions if isinstance(entry, _Yielded)}
+
+    def _movable(attribution: _Attribution) -> bool:
+        owner_id = attribution.owner_id
+        if owner_id is None or owner_id == attribution.attributed_to:
+            return False
+        # Only onto a requirement that also yielded. Filing under one the
+        # response deliberately declined would contradict that decline, and
+        # `_requirement_map` never reads `derived_ids` for a declined
+        # requirement, so the obligation would end up linked to nothing.
+        return owner_id in yielded
+
+    carried: dict[str, list[_Attribution]] = {}
+    for attribution in attributions:
+        carried.setdefault(attribution.attributed_to, []).append(attribution)
+
+    # A requirement whose obligations would ALL move keeps them. Its disposition
+    # is an explicit claim that it yielded, and a `_Yielded` requirement left
+    # carrying nothing raises out of `_requirement_map` — so moving the last one
+    # would turn a mild quoting slip into a failed review. That slip is common,
+    # because requirements restate each other: a completion expectation quoting
+    # the constraint it demands a test for is the DR-204 shape, and is far more
+    # likely than a decomposer that read some other requirement entirely. Where
+    # quotation and disposition disagree and the disposition would otherwise be
+    # falsified, the disposition is the stronger evidence; the quotation only
+    # corroborates it.
+    emptied = {
+        requirement_id
+        for requirement_id, group in carried.items()
+        if all(_movable(attribution) for attribution in group)
+    }
+
+    obligations: list[Obligation] = []
+    derived_ids: dict[str, list[str]] = {}
+    discrepancies: list[UnusableAnswer] = []
+
+    for attribution in attributions:
+        obligation = attribution.obligation
+        filed_under = attribution.attributed_to
+
+        if _movable(attribution) and attribution.attributed_to not in emptied:
+            filed_under = attribution.owner_id or filed_under
+            discrepancies.append(
+                UnusableAnswer(
+                    stage=_STAGE,
+                    field="source_quote",
+                    returned_id=obligation.id,
+                    reason=(
+                        f"attributed to '{attribution.attributed_to}' but its quotation "
+                        f"is inside requirement '{filed_under}'; re-filed there"
+                    ),
+                )
+            )
+        elif attribution.owner_id != attribution.attributed_to:
+            discrepancies.append(
+                UnusableAnswer(
+                    stage=_STAGE,
+                    field="source_quote",
+                    returned_id=obligation.id,
+                    reason=(
+                        f"attributed to '{attribution.attributed_to}' but its quotation "
+                        f"is not inside it; kept there, having nowhere to be re-filed"
+                    ),
+                )
+            )
+
+        obligations.append(obligation)
+        derived_ids.setdefault(filed_under, []).append(obligation.id)
+
+    if unusable_answers is not None:
+        unusable_answers.record(discrepancies)
+    return obligations, derived_ids
+
+
 def decompose(
     parsed: ParsedTaskFile,
     client: ModelClient,
@@ -450,18 +566,19 @@ def decompose(
     # just no longer how the benchmark reaches it.
 
     seen_ids: set[str] = set()
-    obligations: list[Obligation] = []
     open_questions: list[OpenQuestion] = []
     dispositions: list[_RequirementDisposition] = []
-    # requirement id -> the final ids of the obligations it derived. Built as
-    # the dispositions are read, because an obligation now arrives inside the
-    # disposition that owns it: there is no flat list to reconcile against and
-    # no model-minted reference that could dangle or be written twice.
+    # Every derived obligation with the requirement that carried it and the one
+    # its quotation lands in. Resolved into the obligation list and the
+    # requirement -> obligation-ids map by `_resolve_attributions` once all the
+    # batches are in, because re-filing an obligation onto another requirement
+    # depends on how THAT requirement was disposed, which a later batch may
+    # still be answering.
     #
-    # `_unique` still runs, because two requirements may independently mint the
-    # same slug — but a rename can no longer mis-resolve anyone else's
-    # disposition, since nobody else names it.
-    derived_ids: dict[str, list[str]] = {}
+    # `_unique` still runs as the obligations are built, because two
+    # requirements may independently mint the same slug — but a rename can no
+    # longer mis-resolve anyone else's disposition, since nobody else names it.
+    attributions: list[_Attribution] = []
     # Open questions stay flat and referenced by id (see `_Decomposition`), so
     # they still need per-batch resolution: each response mints its own ids.
     question_final: dict[str, dict[str, str]] = {}
@@ -515,24 +632,41 @@ def decompose(
         for entry in kept:
             if not isinstance(entry, _Yielded):
                 continue
-            admissible = (
-                AdmissibleEvidence.CODE_ONLY
-                if entry.requirement_id in exclusion_ids
-                else AdmissibleEvidence.CODE_AND_TESTS
-            )
             for item in entry.derived():
+                # Which requirement an obligation belongs to is decided by where
+                # its quotation lands, not by which disposition carried it. The
+                # section that decides `admissible_evidence` then comes from the
+                # OWNING requirement — an obligation re-attributed into a scope
+                # exclusion is code-evidence-only, exactly as one derived there
+                # directly would be (#153).
+                span, owner = _locate_quotation(
+                    registry, parsed.source, item.source_quote, entry.requirement_id
+                )
+                section_id = owner.id if owner is not None else entry.requirement_id
+                admissible = (
+                    AdmissibleEvidence.CODE_ONLY
+                    if section_id in exclusion_ids
+                    else AdmissibleEvidence.CODE_AND_TESTS
+                )
+                # Ids are minted here, in the order they always were, so an
+                # obligation that was attributed correctly keeps the id it had
+                # before this check existed. Only which requirement claims it —
+                # settled below, once every disposition is known — can change.
                 final_id = _unique(item.id, seen_ids)
-                derived_ids.setdefault(entry.requirement_id, []).append(final_id)
-                obligations.append(
-                    Obligation(
-                        id=final_id,
-                        description=item.description,
-                        type=item.type,
-                        importance=_importance(item.importance),
-                        explicit=item.explicit,
-                        observable_behavior=item.observable_behavior,
-                        source_spans=_spans(parsed.source, item.source_quote),
-                        admissible_evidence=admissible,
+                attributions.append(
+                    _Attribution(
+                        attributed_to=entry.requirement_id,
+                        owner_id=owner.id if owner is not None else None,
+                        obligation=Obligation(
+                            id=final_id,
+                            description=item.description,
+                            type=item.type,
+                            importance=_importance(item.importance),
+                            explicit=item.explicit,
+                            observable_behavior=item.observable_behavior,
+                            source_spans=[span] if span is not None else [],
+                            admissible_evidence=admissible,
+                        ),
                     )
                 )
 
@@ -553,6 +687,8 @@ def decompose(
             )
         for requirement_id in batch_ids:
             question_final[requirement_id] = batch_question_final
+
+    obligations, derived_ids = _resolve_attributions(attributions, dispositions, unusable_answers)
 
     return Decomposition(
         obligations=obligations,
@@ -738,6 +874,77 @@ def _resolve(ids: list[str], final: dict[str, str]) -> list[str]:
 def _spans(source: str, quote: str) -> list:
     span = find_span(source, quote)
     return [span] if span is not None else []
+
+
+def _locate_quotation(
+    registry: list[RequirementRef],
+    source: str,
+    quote: str,
+    attributed_to: str,
+) -> tuple[TextSpan | None, RequirementRef | None]:
+    """Locate `quote` and name the requirement it lands in.
+
+    The attribution check the prompt cannot make. `_user_prompt` shows every call
+    the whole registry and asks it not to derive obligations for the requirements
+    another call owns; nothing enforced that, and the quote was resolved against
+    `parsed.source` — the whole file — so an obligation filed under one
+    requirement while quoting another's text produced a valid span and was
+    accepted. Misattribution was undetectable by construction (#244).
+
+    **The requirement it was attributed to is searched first, and that is
+    load-bearing, not an optimisation.** `find_span` returns the FIRST occurrence
+    in the file, and requirements restate each other constantly — a completion
+    expectation is usually a rephrasing of the constraint it demands a test for.
+    Resolving globally would let an earlier identical string steal a quotation
+    from the requirement it truly belongs to, turning correct attribution into a
+    spurious re-filing. Searching the attributed requirement first means an
+    obligation is only ever re-filed when its quotation does not appear in its
+    own requirement at all.
+    """
+    if not quote:
+        return None, None
+
+    # Whitespace-insensitive, and that is load-bearing rather than lenient. Task
+    # prose is hard-wrapped and bullets usually are not, so the SAME sentence
+    # appears as "...naming every\ncolumn." in one requirement and "...naming
+    # every column." in another. An exact-substring test then reports the quote
+    # as belonging to whichever one happens not to be wrapped, and re-files a
+    # correctly attributed obligation on the strength of a line break. Observed
+    # on `tests/prompts/test_linking_prompt.py`'s corpus, where it moved the
+    # Task prose's obligation onto the constraint that restates it — deleting
+    # the cross-section duplicate that corpus exists to exercise.
+    words = quote.split()
+    if not words:
+        return None, None
+    pattern = re.compile(r"\s+".join(re.escape(word) for word in words))
+
+    def _within(requirement: RequirementRef) -> TextSpan | None:
+        found = pattern.search(requirement.span.text)
+        if found is None:
+            return None
+        start = requirement.span.start + found.start()
+        return TextSpan(
+            text=requirement.span.text[found.start() : found.end()],
+            start=start,
+            end=start + (found.end() - found.start()),
+        )
+
+    by_id = {requirement.id: requirement for requirement in registry}
+    attributed = by_id.get(attributed_to)
+    if attributed is not None:
+        span = _within(attributed)
+        if span is not None:
+            return span, attributed
+
+    for requirement in registry:
+        span = _within(requirement)
+        if span is not None:
+            return span, requirement
+
+    # Inside no requirement. The span is still reported when the quote exists
+    # somewhere in the file, so a rejected obligation can be traced back to the
+    # text that produced it.
+    return find_span(source, quote), None
 
 
 def _unique(candidate: str, seen: set[str]) -> str:

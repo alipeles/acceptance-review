@@ -12,103 +12,102 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## No task in flight
+## In flight: #244, at Gate 2, not clean
 
-**#214 landed** as `7573697` (PR #247). **#228 is merging** as PR #246 — Gate 2
-not clean, on an explicit human call. **#180 is still in flight** in its own
-session.
+**#244** — *an obligation's `source_quote` is not checked against the requirement
+it is attached to* — filed this session as a child of **#181**. Branch
+`180-evidence-rating-stability`, rebased onto `75fefc4`, two commits:
+`3471623` (the fix) and `dd4caf5` (one test added in response to Gate 2 run 1).
 
-`current-task.md` holds #228's mandate; stale, and the next task overwrites it
-at Gate 1.
+Gate 1 passed at `0923f77`; re-armed after the mandate changed and passed again
+with one queued defect. Gate 2 ran twice and is **not clean** — INCOMPLETE both
+times, two obligations below strongly supported, neither an unmet requirement.
+Full analysis in `dogfood-logs/244-gate2-run2/judgement.md`. Awaiting a human
+call on whether to open the PR.
 
-## Why #228 merged without a clean gate
+Full suite green on the rebased tree: **1048 passed**. Ruff clean.
 
-Third time, same cause. **#153** and **#235** made the same call before it. The
-new part is that #228's evidence isolates the failure to the **mapping call**,
-filed as **#245** against #182, and does it without needing to compare runs.
+## Why this lane is on #244 and not #180
 
-Run 2's report contradicts itself three ways:
+Assigned #180 (rating stability). Its Gate 1 failed: a one-sentence Task
+requirement produced **seven** obligations, three paraphrasing it and three
+carrying other requirements' content, which the linking stage reported as
+unreconcilable. Deleting a redundant seven-word clause took it from 2 obligations
+to 7. Reproducible — a repeat run was byte-identical.
 
-- obligation 3 (`completion-04`): `unsupported`, *"no mapped test"*, recommending
-  a test that iterates both corpora;
-- obligation 8 (`constraint-04`): **strongly supported**, citing
-  `test_every_archetype_task_file_yields_requirements` and its
-  decompose-regression twin — the very tests obligation 3 says do not exist;
-- unrequested change #5: calls those same tests surplus to requirements.
+Human call: fix decomposition first. #180's own Gate 1 became the evidence for
+#244, and the split of #180 into four children is still queued, unfiled.
 
-Across runs, the mapper moved the tests between a Completion expectation ("A test
-asserts that X") and its Constraint twin ("X"), and in run 2 handed one to a
-**scope exclusion** — a code-evidence-only obligation that should attract no test
-mapping at all.
+## What #244 changed
 
-Run 1 named three obligations; **all three were real and all three were fixed**.
-Run 2 then named a disjoint two that run 1 had passed, over unchanged tests.
+`_locate_quotation` + `_resolve_attributions` in `requirement/obligations.py`.
+Two things the issue did not anticipate, both found by the tests:
 
-Evidence: `dogfood-logs/228-gate2-run1/` and `-run2/`, judgement in run 2.
+- **Matching ignores line breaks.** Task prose is hard-wrapped, bullets are not,
+  so one sentence appears wrapped in one requirement and flat in another. Exact
+  substring matching found it only in the unwrapped one — on the linking corpus
+  that moved the Task prose's obligation onto the constraint restating it,
+  deleting the cross-section duplicate that corpus exists to exercise.
+- **Nothing is discarded, and re-filing never empties a requirement.**
+  `_requirement_map` raises when a `yielded` requirement carries none, so moving
+  a requirement's last obligation turns a quoting slip into a failed review.
 
-## What #228 shipped
+The second forced a **mandate change mid-implementation** — `current-task.md`
+originally said an unplaceable obligation is dropped. Disclosed as a design
+change, not a wording fix; see `dogfood-logs/244-gate1-run2/judgement.md`.
 
-- **`benchmark/case.py::require_nonempty_registry`** + `EmptyRequirementRegistryError`.
-  Runs the real `parse_task_file` → `build_registry`, **not** a `# Task` heading
-  proxy: a proxy would pass exactly when the parser changed its mind about what
-  a requirement is, which is the case worth catching.
-- Called by all three corpus builders **before materialization** —
-  `build_benchmark_case`, `build_decompose_case`, `build_corpus_case`.
-- 31 tests. **Injection-verified:** short-circuiting the guard fails 8 of them.
+## Gate 2's two findings, both attributed to tool defects
 
-## The lesson worth keeping from #228
+1. **A recommendation asks for the test it is already citing.** Run 1's finding
+   was real, I wrote the test, run 2 maps and cites it — then recommends it
+   again. #183.
+2. **`tests-issue-no-live-model-calls` lost its whole mapped set**, two tests →
+   zero, between runs that did not touch it. #182. **Independently reproduces
+   the #214 lane's finding on the same obligation** (`issuecomment-5245416368`).
 
-**A test that cannot fail is not evidence, and neither is a passing corpus.**
-Every task file in all three corpora parses non-empty today, so the corpus can
-never demonstrate the guard — the firing tests must supply their own unreadable
-file. The same reasoning found the defect in the *runner's* own acceptance test
-(**#243**): it asserts `gap_recall == 0.0` over an input with nothing to find,
-so it would pass against a checker that found every gap.
+Both queued in `docs/DEFERRED.md`; neither filed.
 
-Corollary that keeps recurring: **assert the consequence, not just the
-mechanism.** Ten tests asserted the guard raises; none asserted that no number
-is produced. Gate 2 caught that, and the recommendation correctly demanded a
-*control* — "no score" is worthless without showing the harness would have
-produced one.
+## Parallel lanes — both finished
 
-## Parallel lanes — what worked
+**#214** merged as `7573697`, **#228** as `75fefc4`. This lane is the only one
+left. Two things #214 handed over that are worth keeping:
 
-Three lanes, two landed the same day, no code conflict. Conditions that held:
-
-- **No lane touched a model prompt except its own** — the request key hashes it.
-- **Each lane had its own `.venv`** (editable installs bake an absolute path).
-- **Each ran from a session whose cwd was its worktree** — absolute paths match
-  none of the relative allow rules and prompt on every call.
-- **Conflicts were only ever `current-task.md` and `session-state.md`**, which
-  every lane rewrites wholesale. Resolve with `git checkout --ours` and move on.
-- Cross-lane messaging was worth it: #214's session confirmed no API overlap
-  before I looked, which saved a full audit of `verdict.py`/`pipeline.py`.
-
-## Do not rediscover
-
-- **`.acceptance/ignore` is committed** (#105) and holds `dogfood-logs/`.
-- **`decompose|check --mode record` writes nothing to stdout when redirected** —
-  pipe through `tee`. A first `check` over new task text needs `--mode record`.
-- **The `PostToolUse` formatter strips imports added ahead of their first use.**
-  Add the import in the same edit as the code using it, or it silently vanishes.
-- **`test_region_coverage.py` parametrizes over `dogfood-logs/*/current-task.md`**,
-  so adding a dogfood log adds tests — the suite count grows by more than you wrote.
-- **Synthetic cases in `test_runner.py`, `test_scoring.py`, `test_alignment.py`
-  and `test_case.py` yield empty registries too** (`## Deliverable` is not a
-  recognised heading). That is why #228's guard is on the builders and not at
-  hook entry. Filed as **#243**.
-- **`gh api … -f` sends strings; sub-issue ids need `-F`** to be integers.
-- **`gh pr create` with "Closes #a, #b, #c" only closes the first.**
-- **Obligation ids are minted per response** (#231); types move too (#205).
-- **`pytest` must run from its own tree** — `addopts`/`pythonpath` are cwd-relative.
-- **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
+- Open-question resolution moved in `pipeline.py`: it now runs immediately after
+  `link_duplicate_obligations`, before `discover_tests`, not after the evidence
+  stages.
+- Derived obligations from resolved questions get ids computed in code from the
+  question id, so they are stable across runs by construction.
 
 ## Queue — `docs/DEFERRED.md`
 
-Empty. Filed this session: **#243** (child of #186), **#245** (child of #182).
+Five open, none filed: the #180 four-way split, the duplicate-obligation defect,
+the mapping miss, the recommendation restatement, and the DR-164 revisit (now
+moot — recommend dropping).
+
+Filed this session: **#244**.
+
+## Do not rediscover
+
+- **A prompt change invalidates only THAT STAGE's transcripts**, not the whole
+  cache — `request_key` hashes each request individually. CLAUDE.md said
+  otherwise and was corrected this session; it had already cost the #214 lane a
+  near-unnecessary serialisation.
+- **`git stash` mid-task reverts the working tree wholesale.** Used it to check a
+  baseline and lost the tree until `stash pop`. Use a second worktree or
+  `git show` instead.
+- **A `check` over a new task file needs `--mode record`** and makes live calls;
+  replay has nothing to replay.
+- **`.acceptance/ignore` is committed** (#105) and holds `dogfood-logs/`.
+- **`decompose|check --mode record` writes nothing to stdout when redirected** —
+  pipe through `tee`.
+- **A `PostToolUse` formatter hook reformats files after every edit**, so some
+  churn in a diff is not the author's, and an `Edit` right after one may need a
+  re-read.
+- **Obligation ids are minted per response, not stable across runs** (#231).
+- **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
 
 ## Known open
 
 **#210**, **#180**, **#193**, **#191**, **#196**, **#178**, **#129**, **#223**,
 **#224**, **#173**, **#225**, **#227**, **#212**, **#231**, **#236**, **#237**,
-**#239**, **#243**, **#245**.
+**#239**, **#244**.
