@@ -156,13 +156,16 @@ human's approval as a backlog write.
 
 ## Queue — `docs/DEFERRED.md`
 
-One entry: **filing (blocker)** — a drafted comment on #180 carrying the
-`constraint-11` evidence (a mapped set collapsing from two tests to zero across
-an additive diff), which is a cleaner reproduction than the corpus holds.
+**Empty.** Filed this session:
 
-Already filed this session: **#242** (linking merges nothing when one spurious
-link joins a cluster), child of #181. The exemption-rule decision entry is
-resolved and deleted — ruling 1 settled it.
+- **#242** — linking merges nothing when one spurious link joins a cluster, so a
+  false positive protects a true duplicate. Child of #181.
+- **Comment on #180** (`issuecomment-5245416368`) — a mapped set collapsing from
+  two tests to zero across an additive diff; a cleaner reproduction than the
+  corpus holds, because mapping alone accounts for it.
+- **Comment on #214** (`issuecomment-5244447965`) — the `undisposed` correction.
+
+The exemption-rule decision entry is resolved and deleted — ruling 1 settled it.
 
 ## Do not rediscover
 
