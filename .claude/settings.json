@@ -104,6 +104,8 @@
       "Bash(gh project item-add *)",
       "Bash(git grep *)",
       "Bash(git ls-remote *)",
+      "Bash(git -C * add *)",
+      "Bash(git -C * commit *)",
 
       "Bash(gh project item-list *)",
       "Bash(gh project field-list *)",

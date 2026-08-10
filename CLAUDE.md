@@ -418,8 +418,11 @@ by command *shape*, not by missing vocabulary.**
   matcher decomposes it and `cd` is auto-allowed, so `(cd <worktree> && .venv/bin/pytest -q)`
   matches the existing `.venv/bin/*` rules, and the `cd` cannot leak into the next
   call. `git -C <dir>` is fine for *read-only* subcommands (built-in git detection
-  handles it), but **mutating ones miss** — every `git *` rule assumes the
-  subcommand comes first, so `git -C <dir> commit` matches nothing and prompts.
+  handles it); mutating ones need an explicit rule, because every plain `git *`
+  rule assumes the subcommand comes first. `add` and `commit` have one —
+  **patterns may wildcard mid-string**, as `Bash(git -C * add *)`, so any further
+  gap of that shape is one line. Never write a bare `Bash(git -C *)`: it would
+  swallow `push` and `merge`, which must keep prompting (*Working agreement* §3).
   Absolute tool paths miss too. `pytest` is worse than either: `addopts = "--ignore=tests/fixtures"`
   and `pythonpath = ["."]` are cwd-relative, so driving it by absolute path
   *silently collects the archetype fixtures as suite tests* and errors.
