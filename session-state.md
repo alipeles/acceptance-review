@@ -12,89 +12,61 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## In flight: #244, at Gate 2, not clean
+## No task in flight
 
-**#244** — *an obligation's `source_quote` is not checked against the requirement
-it is attached to* — filed this session as a child of **#181**. Branch
-`180-evidence-rating-stability`, rebased onto `75fefc4`, two commits:
-`3471623` (the fix) and `dd4caf5` (one test added in response to Gate 2 run 1).
+Three parallel lanes ran and all three landed, CI green on each:
 
-Gate 1 passed at `0923f77`; re-armed after the mandate changed and passed again
-with one queued defect. Gate 2 ran twice and is **not clean** — INCOMPLETE both
-times, two obligations below strongly supported, neither an unmet requirement.
-Full analysis in `dogfood-logs/244-gate2-run2/judgement.md`. Awaiting a human
-call on whether to open the PR.
+| | | |
+|---|---|---|
+| **#214** | `7573697` (PR #247) | mandate coverage bounds the completion verdict |
+| **#228** | `75fefc4` (PR #246) | a benchmark case yielding no requirements fails instead of scoring |
+| **#244** | `5047088` (PR #255) | an obligation is filed under the requirement its quotation comes from |
 
-Full suite green on the rebased tree: **1048 passed**. Ruff clean.
+Worktrees and branches for all three are removed. `docs/DEFERRED.md` is empty.
 
-## Why this lane is on #244 and not #180
+## Where #180 stands, since that is what the next session will pick up
 
-Assigned #180 (rating stability). Its Gate 1 failed: a one-sentence Task
-requirement produced **seven** obligations, three paraphrasing it and three
-carrying other requirements' content, which the linking stage reported as
-unreconcilable. Deleting a redundant seven-word clause took it from 2 obligations
-to 7. Reproducible — a repeat run was byte-identical.
+**#180 was split** into **#251** (re-judge only on changed inputs), **#252**
+(`strongly_supported` is `caught == total`), **#253** (determinism as one
+component) and **#254** (report an unreproducible rating). #180 stays open as the
+measurement and corpus they close into; see its comment thread for the split.
 
-Human call: fix decomposition first. #180's own Gate 1 became the evidence for
-#244, and the split of #180 into four children is still queued, unfiled.
+**Do not start those yet.** #244 fixed one decomposition defect and found two
+more — **#248** (one requirement yields the identical obligation twice) and a
+remaining unreconciled-linking cluster. Every one of #251–#254 judges an
+obligation set that is not yet trustworthy, so `CLAUDE.md`'s sequencing rule
+(decomposition quality before evidence judgement) still points at **#181**.
 
-## What #244 changed
+**The open empirical question**, worth answering before designing #251: how much
+of #180's measured churn was decomposition redundancy rather than judgement
+variance. Redundant obligations are rated independently, so three obligations
+stating one requirement can carry three different ratings — instability with a
+perfectly consistent judge. `tests/fixtures/rating-stability/` plus the committed
+dogfood pairs are the corpus to answer it against.
 
-`_locate_quotation` + `_resolve_attributions` in `requirement/obligations.py`.
-Two things the issue did not anticipate, both found by the tests:
+**The design in #251 is settled and was the human's**, not the agent's: do not
+re-judge a criterion whose own inputs are unchanged; when they did change, give
+the judgement the stored rating plus the input delta and require a changed rating
+to name the change it rests on. Per-criterion request partitioning was
+**considered and rejected** — under carry-forward an unchanged criterion is never
+sent to the model at all. The issue records why, so it need not be re-litigated.
 
-- **Matching ignores line breaks.** Task prose is hard-wrapped, bullets are not,
-  so one sentence appears wrapped in one requirement and flat in another. Exact
-  substring matching found it only in the unwrapped one — on the linking corpus
-  that moved the Task prose's obligation onto the constraint restating it,
-  deleting the cross-section duplicate that corpus exists to exercise.
-- **Nothing is discarded, and re-filing never empties a requirement.**
-  `_requirement_map` raises when a `yielded` requirement carries none, so moving
-  a requirement's last obligation turns a quoting slip into a failed review.
+## Filed this session
 
-The second forced a **mandate change mid-implementation** — `current-task.md`
-originally said an unplaceable obligation is dropped. Disclosed as a design
-change, not a wording fix; see `dogfood-logs/244-gate1-run2/judgement.md`.
-
-## Gate 2's two findings, both attributed to tool defects
-
-1. **A recommendation asks for the test it is already citing.** Run 1's finding
-   was real, I wrote the test, run 2 maps and cites it — then recommends it
-   again. #183.
-2. **`tests-issue-no-live-model-calls` lost its whole mapped set**, two tests →
-   zero, between runs that did not touch it. #182. **Independently reproduces
-   the #214 lane's finding on the same obligation** (`issuecomment-5245416368`).
-
-Both queued in `docs/DEFERRED.md`; neither filed.
-
-## Parallel lanes — both finished
-
-**#214** merged as `7573697`, **#228** as `75fefc4`. This lane is the only one
-left. Two things #214 handed over that are worth keeping:
-
-- Open-question resolution moved in `pipeline.py`: it now runs immediately after
-  `link_duplicate_obligations`, before `discover_tests`, not after the evidence
-  stages.
-- Derived obligations from resolved questions get ids computed in code from the
-  question id, so they are stable across runs by construction.
-
-## Queue — `docs/DEFERRED.md`
-
-Five open, none filed: the #180 four-way split, the duplicate-obligation defect,
-the mapping miss, the recommendation restatement, and the DR-164 revisit (now
-moot — recommend dropping).
-
-Filed this session: **#244**.
+**#244** (fixed and merged), **#248**, **#249**, **#250**, **#251**, **#252**,
+**#253**, **#254**. All attached to their umbrellas.
 
 ## Do not rediscover
 
 - **A prompt change invalidates only THAT STAGE's transcripts**, not the whole
   cache — `request_key` hashes each request individually. CLAUDE.md said
-  otherwise and was corrected this session; it had already cost the #214 lane a
+  otherwise until this session and the wrong reading had already cost one lane a
   near-unnecessary serialisation.
-- **`git stash` mid-task reverts the working tree wholesale.** Used it to check a
-  baseline and lost the tree until `stash pop`. Use a second worktree or
-  `git show` instead.
+- **`git branch -d` refuses every squash-merged branch.** The branch commits
+  never enter main's history. Confirm via `gh pr view <n> --json state` and then
+  `-D`; do not assume the refusal means unmerged work.
+- **`git stash` mid-task reverts the working tree wholesale.** Use a second
+  worktree or `git show` to inspect a baseline instead.
 - **A `check` over a new task file needs `--mode record`** and makes live calls;
   replay has nothing to replay.
 - **`.acceptance/ignore` is committed** (#105) and holds `dogfood-logs/`.
@@ -106,8 +78,16 @@ Filed this session: **#244**.
 - **Obligation ids are minted per response, not stable across runs** (#231).
 - **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
 
-## Known open
+## Parallel lanes — what worked
 
-**#210**, **#180**, **#193**, **#191**, **#196**, **#178**, **#129**, **#223**,
-**#224**, **#173**, **#225**, **#227**, **#212**, **#231**, **#236**, **#237**,
-**#239**, **#244**.
+Worktrees under `~/acceptance-worktrees/`, outside Google Drive, one `.venv`
+each, each driven from a session whose cwd is that worktree. Conditions that held
+and should hold again:
+
+- **At most one lane may touch a model prompt.** #244 was that lane; the other
+  two touched none.
+- **Rebase early.** Both later lanes conflicted only in `current-task.md` and
+  `session-state.md`, which every lane rewrites wholesale.
+- **Lanes should tell each other what moved.** #214's handover naming the exact
+  regions it had changed in `pipeline.py` and `review_state.py` made #244's
+  rebase a single trivial conflict.
