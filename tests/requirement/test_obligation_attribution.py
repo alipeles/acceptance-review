@@ -291,6 +291,46 @@ Render each invoice line.
     assert refiled.admissible_evidence == "code_only"
 
 
+def test_a_quotation_matching_two_requirements_stays_with_the_one_it_was_attributed_to():
+    """The case that makes searching the attributed requirement FIRST
+    load-bearing rather than an optimisation.
+
+    Both requirements contain the quoted sentence, so containment alone cannot
+    decide between them. An implementation that scans the registry in order and
+    re-files on the first containing requirement would move this obligation to
+    `task-01`, which comes first — silently, and on a quotation that was never
+    wrong.
+    """
+    task = """# Task
+The export writes a header row naming every column.
+
+## Constraints
+- The export writes a header row naming every column.
+"""
+    response = {
+        "obligations": [
+            _obligation("prose", "Write a header row.", "writes a header row"),
+            # Attributed to the SECOND requirement, quoting text both contain.
+            _obligation("bullet", "Write a header row.", "writes a header row"),
+        ],
+        "open_questions": [],
+        "requirement_dispositions": [
+            _yielded("task-01", "prose"),
+            _yielded("constraint-01", "bullet"),
+        ],
+    }
+    log = UnusableAnswerLog()
+    result = decompose(parse_task_file(task), client_returning(response), log)
+
+    assert result.requirement_map.requirements_for_obligation("bullet") == ["constraint-01"]
+    assert result.requirement_map.requirements_for_obligation("prose") == ["task-01"]
+    assert log.answers == []
+    # Each span points inside its own requirement, not at the first match in the file.
+    bullet = next(o for o in result.obligations if o.id == "bullet")
+    prose = next(o for o in result.obligations if o.id == "prose")
+    assert bullet.source_spans[0].start > prose.source_spans[0].start
+
+
 def test_a_quotation_is_found_across_a_line_break():
     """Task prose is hard-wrapped and bullets usually are not, so one sentence
     appears wrapped in one requirement and flat in another. Matching on the exact

@@ -64,6 +64,32 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   condition on each child, not a child of its own.
 - **Status:** open
 
+### [2026-08-10] Mapping misses the three on-point tests for "no live model calls"
+- **Kind:** filing
+- **Found during:** #244, Gate 2 (`dogfood-logs/244-gate2-run1/`)
+- **Where:** src/acceptance/evidence/mapping.py
+- **Severity:** should-fix
+- **What's wrong:** `tests-issue-no-live-model-calls` was rated **nominally supported**,
+  mapped to `test_decompose_cannot_reach_a_diff_or_a_head_revision` and
+  `test_decompose_replay_without_transcript_fails_cleanly` — both only loosely related.
+  The three tests that directly evidence the property were not mapped at all:
+  `tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call`,
+  `tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls`, and
+  `tests/test_llm.py::test_replay_without_a_transcript_raises_rather_than_calling_live`.
+  The resulting recommendation asks for network-blocked execution of the suite —
+  infrastructure the replay-default architecture already makes unnecessary.
+- **Why I didn't act:** mapping is #182, a different umbrella, and #244's Scope
+  exclusions do not cover it either way.
+- **Drafted fix:** file as a child of **#182**, labels `bug`, `track:checker`.
+  Title: *"An architecture-level property is rated nominally supported because its
+  on-point tests are never mapped"*. Body: the evidence above, with the observation
+  that the mapped set was not empty but *wrong* — so the partitioning guard from
+  DR-164, which watches for shed work, cannot see this. Worth relating to the #214
+  lane's evidence on #180 (`issuecomment-5245416368`), where a mapped set collapsed
+  from two tests to zero on an untouched obligation: both are mapping selecting badly
+  rather than judgement rating badly, which is why the umbrellas are separate.
+- **Status:** open
+
 ### [2026-08-10] One requirement yields the identical obligation twice
 - **Kind:** filing
 - **Found during:** #244, Gate 1 re-run (`dogfood-logs/244-gate1-run2/`)
