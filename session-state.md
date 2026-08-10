@@ -12,86 +12,67 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## In flight — #234, branch `234-materialization-determinism`
+## No task in flight here
 
-`test_materialization_is_deterministic` fails intermittently in CI: two
-materializations of `07-declaration-mismatch` in one process produced different
-`head_sha`. Child of #184. A parallel session holds #153 — do not touch it.
+**#234 landed** as `64ed0c4` (PR #238, squash merge), CI green. `current-task.md`
+still holds its mandate — stale, and the next task overwrites it at Gate 1.
 
-Branched from `4b78d62`; no implementation committed yet.
+**#153 is in flight in a parallel session**, on branch
+`153-scope-exclusion-obligations`. Do not pick it up, and expect that session to
+rewrite this file when it lands.
 
-## Gate 1 — clean at `4b78d62`, confirmed by Claude, presented for human sign-off
+## What #234 fixed, and the part worth keeping
 
-`dogfood-logs/234-gate1-run1` and `-run2`. Run 2 is the clean one: 13
-requirements, 10 obligations, 3 exclusions disposed of uniformly, **no open
-questions**.
+`materialize_archetype` committed the **base** blob for a file the head tree
+changed, so `test_materialization_is_deterministic` failed about one CI run in
+ten on `07-declaration-mismatch`.
 
-Run 1 raised one finding: a bare `Implementation` bullet under Completion
-expectations was disposed of with the reason *"out of scope for this change"* —
-inverting the section it came from. Queued as a filing against **#181**; the
-weak bullet was removed under the sanctioned rewrite and the gate re-armed.
+`git add -A` decides a file is unchanged from cached stat data — size, mode,
+mtime — and `shutil.copy2` preserves mtime and mode, leaving **size** as the only
+field that can give a replacement away. `07-declaration-mismatch` is the one
+archetype whose base and head `users.py` are both 60 bytes. Fix: `git read-tree
+--empty` before `git add -A`, so there is no stat to trust and every file is
+hashed from content.
 
-## The cause is identified — this is the load-bearing part
-
-**`git add -A` trusted a stale index stat-cache and re-used the base blob.**
-Proven, not inferred:
-
-- The head commit recorded `base/users.py`'s content while adding
-  `head/test_users.py`. Rebuilding exactly that tree by hand reproduces
-  `1f50fdb860fdaca912ad300bd7ae0774e0eab7eb` — the CI failure's `first.head_sha`,
-  to the digit. The correct tree is `143940c7e9c9…5d73d697f4ade`, CI's `second`.
-- **07 is the only archetype whose `base/` and `head/` counterparts are the same
-  size** — `users.py`, 60 bytes both, different content. Every other fixture's
-  head file differs in size, so git always re-hashes it. That is why exactly one
-  archetype ever failed.
-- `shutil.copy2` preserves mtime and mode. Same size + same mtime + same mode is
-  all `git add` compares before deciding a file is unchanged.
-- Deterministic repro on any platform: run materialization with
-  `core.checkStat=minimal` and `core.trustctime=false`, which is the comparison
-  the runner effectively made. Current code then emits the bad SHA every time.
-
-**Fix:** empty the index before staging, so `add -A` has no cached stat to trust
-and hashes from content — `git read-tree --empty` then `git add -A`, in
-`materialize_archetype`. Verified at the git level under the hostile config:
-bad SHA before, correct SHA after.
-
-## Gate 2 — clean at `3c9a56d`, presented for human sign-off
-
-`NO-MATERIAL-GAPS`. 10 obligations, all addressed, all strongly supported, no
-open questions, no recommended tests. `dogfood-logs/234-gate2-run1` (INCOMPLETE)
-and `-run2` (clean). Mapping transcripts checked per DR-164 — the six relevant
-tests all mapped; the empties are unrelated candidates.
-
-Run 1 found two obligations genuinely untested, and it was right: forcing the
-hostile condition is not the same claim as pinning invariance under it. Two
-tests added.
-
-Full suite green: 952 passed. Each of the three determinism tests was run
-against the unfixed code and observed to fail.
-
-## Next
-
-Human sign-off, then PR. Nothing pushed.
-
-## Do not rediscover
-
-- **Back-to-back materialization does not reproduce this** — 20 iterations over
-  all 13 fixtures, 0 mismatches. It needs the stat-comparison condition forced.
-- **`.acceptance/ignore` is committed** (#105) and holds `dogfood-logs/`. Without
-  it, `check` reads the working tree as head and a run's own redirected
-  `output.log` joins the diff it is reviewing.
-- **`decompose --mode record` writes nothing to stdout when redirected** — pipe
-  through `tee`, which works.
-- **`gh pr create` with "Closes #a, #b, #c" only closes the first.**
-- **Obligation ids are minted per response, not stable across runs** (#231).
-- **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
+**Reproducing a stat-cache bug:** run materialization under
+`core.checkStat=minimal` + `core.trustctime=false` (via `GIT_CONFIG_COUNT`/
+`GIT_CONFIG_KEY_n` env vars, which the subprocesses inherit). That is git
+comparing exactly those three fields, and it turns a one-in-ten flake into a
+deterministic failure on any platform. The three tests in
+`tests/benchmark/test_fixtures.py` use it.
 
 ## Queue — `docs/DEFERRED.md`
 
-One open: the inverted disposal reason above, drafted against #181.
+One open: **`ruff check .` reports 85 pre-existing errors.** Verified as ruff's
+own defaults widening (`ruff check --isolated` still flags them), not repo
+config and not new code; ruff is unpinned in `[project.optional-dependencies]`.
+CI cannot catch it — step 4 is `ruff check . || echo "…skipping"`, which
+swallows the exit code.
+
+**Fold in with it, found on #238's CI run:** `actions/checkout@v4` and
+`actions/setup-python@v5` declare Node 20, which runners now force onto Node 24
+and will eventually stop shimming. Current majors are **v7.0.1** and **v7.0.0**.
+Check `fetch-depth: 0` still behaves across the bump — #190's cases materialize
+worktrees at pinned revisions and fail by name under a shallow clone.
+
+Both are `ci.yml` maintenance and sensibly become one issue.
+
+## Do not rediscover
+
+- **`.acceptance/ignore` is committed** (#105) and holds `dogfood-logs/`. Without
+  it, `check` reads the working tree as head and a run's own redirected
+  `output.log` joins the diff it is reviewing.
+- **`decompose|check --mode record` writes nothing to stdout when redirected** —
+  pipe through `tee`, which works.
+- **A `PostToolUse` formatter hook reformats files after every edit.** It strips
+  imports added ahead of their first use, and re-collapses line wrapping if you
+  revert it — so some formatting churn in a diff is not the author's.
+- **`gh pr create` with "Closes #a, #b, #c" only closes the first.**
+- **Obligation ids are minted per response, not stable across runs** (#231).
+- **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
 
 ## Known open
 
 **#210**, **#180**, **#193**, **#153**, **#191**, **#196**, **#178**, **#214**,
 **#129**, **#223**, **#224**, **#173**, **#225**, **#227**, **#228**, **#212**,
-**#231**, **#234**.
+**#231**, **#237**.
