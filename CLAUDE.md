@@ -190,10 +190,10 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
   are tracked as `decision`-labeled issues, each owned by a milestone — that
   label *is* the list. Raise a new one rather than picking quietly; raising it
   means queueing it (*Working agreement* §4), not stopping the work.
-- **Never write to the backlog without human review.** Draft the item — title,
-  body, labels, parent umbrella — and show it *alongside the evidence that
-  produced it*, then wait for approval. This covers `gh issue create`, attaching
-  a sub-issue, and any comment that asserts a new finding on an existing issue.
+- **The backlog's _content_ needs human review; its _commands_ do not.** Draft the
+  item — title, body, labels, parent umbrella — and show it *alongside the
+  evidence that produced it*. This covers `gh issue create`, attaching a
+  sub-issue, and any comment that asserts a new finding on an existing issue.
   Editing your own draft after feedback is not a second approval; re-show it.
   The backlog is the plan (see *How work is tracked*), so filing is a change to
   the plan, and an agent that files as it goes writes the plan unsupervised.
@@ -201,6 +201,11 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
   judgement, put it in the queue (*Working agreement* §4), and keep working;
   the queue is presented for approval at the next gate. Approval is what
   authorises the filing — the wait is until the gate, not until each item.
+  Once the gate approves it, **file it without asking again**: the issue-writing
+  commands are allowlisted, so nothing mechanically prevents an unreviewed
+  filing. The rail is this rule now, not a permission prompt. Opening a PR,
+  merging and pushing are a different category and still stop for approval
+  (*Working agreement* §3).
 - **Write a Decision Record when one is resolved**, or when a non-obvious finding
   changes the design: `docs/DR-<issue>-<slug>.md`, referenced from the issue. A
   decision that lives only in a commit message or a chat session is lost. See
@@ -390,7 +395,19 @@ because everything after it is judged against a broken gate.
 gh issue view <n>                   # read a task
 ```
 
-Other subcommands: `decompose`, `diff`, `classify`.
+Other subcommands: `decompose`, `diff`, `classify`, `recommendation`.
+
+**Three habits that cost permission prompts and buy nothing.** Measured across 23
+transcripts; together they outnumbered every genuinely missing allowlist rule.
+
+- **Don't `source .venv/bin/activate`** — 385 occurrences. The `.venv/bin/*` entry
+  points above are allowlisted and `source` is not, so activating costs a prompt
+  and then changes nothing.
+- **Don't write files with `cat > f <<'EOF'`** — 107 occurrences. Use the `Write`
+  tool; edits are already allowed.
+- **Don't `cd dir && …`** — use absolute paths. A compound command is only as
+  permitted as its least-permitted segment, and a stray `cd` persists into the
+  next call, which has already caused a wrong-directory bug.
 
 ---
 
