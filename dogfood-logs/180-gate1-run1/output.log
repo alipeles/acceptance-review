@@ -1,0 +1,128 @@
+Requirements: 22   with obligations: 21   deliberately none: 1
+
+[task-01] A criterion's test-evidence rating is determined by that criterion's own
+    inputs, so an edit elsewhere in the change cannot move it.
+    -> editing-unrelated-test-preserves-other-criterion-rating  [regression/explicit]   (also serves constraint-03)
+       Editing a test that is mapped to one criterion and not to another leaves the
+       other criterion's test-evidence rating unchanged.
+    -> criterion-rating-not-moved-by-other-edits  [invariant/explicit]
+       An edit elsewhere in the change cannot move a criterion's test-evidence rating.
+
+[constraint-01] The judgement of whether a criterion's mapped tests discriminate is
+    requested separately for each criterion.
+    -> criterion-discrimination-request-separate-per-criterion  [functional/explicit]
+       The judgement of whether a criterion's mapped tests discriminate is requested
+       separately for each criterion.
+
+[constraint-02] A criterion's discrimination request carries that criterion and its
+    mapped tests, and no other criterion's.
+    -> criterion-discrimination-request-scoped-to-criterion-and-mapped-tests  [functional/explicit]
+       A criterion's discrimination request carries that criterion and its mapped tests,
+       and no other criterion's.
+
+[constraint-03] Editing a test that is mapped to one criterion and not to another leaves
+    the other criterion's test-evidence rating unchanged.
+    -> editing-unrelated-test-preserves-other-criterion-rating  [regression/explicit]   (also serves task-01)
+       Editing a test that is mapped to one criterion and not to another leaves the
+       other criterion's test-evidence rating unchanged.
+
+[constraint-04] Adding or removing a criterion leaves an unrelated criterion's test-
+    evidence rating unchanged.
+    -> adding-or-removing-criterion-preserves-unrelated-rating  [regression/explicit]
+       Adding or removing a criterion leaves an unrelated criterion's test-evidence
+       rating unchanged.
+
+[constraint-05] How many criteria one discrimination request carries is a run control,
+    and changing it invalidates the recorded transcripts.
+    -> request-criterion-count-is-run-control-and-invalidates-transcripts  [invariant/explicit]
+       How many criteria one discrimination request carries is a run control, and
+       changing it invalidates the recorded transcripts.
+
+[constraint-06] A criterion for which no usable judgement is obtained is rated
+    indeterminate, and never rated as though its tests discriminate.
+    -> no-usable-judgement-means-indeterminate-rating  [functional/explicit]
+       A criterion for which no usable judgement is obtained is rated indeterminate, and
+       never rated as though its tests discriminate.
+
+[constraint-07] Two runs over byte-identical inputs produce byte-identical review state.
+    -> byte-identical-inputs-produce-byte-identical-review-state  [invariant/explicit]
+       Two runs over byte-identical inputs produce byte-identical review state.
+
+[constraint-08] Tests issue no live model calls.
+    -> tests-make-no-live-model-calls  [compatibility/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] Which tests are discovered, and which criteria they are mapped to, which
+    is #182.
+    -> test-discovery-and-mapping-not-changed  [regression/explicit]
+       The change does not alter which tests are discovered or which criteria they are
+       mapped to.
+
+[exclusion-02] How many plausible defects a criterion's judgement names, and whether a
+    rating requires every one of them to be caught, which is #183.
+    -> exclude-plausible-defect-count-and-all-caught-rule  [functional/explicit]
+       The change does not alter how many plausible defects a criterion's judgement
+       names, or whether a rating requires every one of them to be caught.
+
+[exclusion-03] Whether the controls that make a run reproducible are consolidated into a
+    single component, which is #184.
+    -> exclude-reproducibility-controls-consolidation  [functional/explicit]
+       The change does not consolidate the controls that make a run reproducible into a
+       single component.
+
+[exclusion-04] Whether a rating that could not be reproduced is reported as
+    unreproducible.
+    -> exclude-unreproducible-rating-reporting  [functional/explicit]
+       The change does not add reporting that a rating that could not be reproduced is
+       unreproducible.
+
+[exclusion-05] Which part of the change a criterion's judgement is shown, beyond the
+    whole set of changed source.
+    -> exclude-judgement-display-beyond-whole-changed-source  [functional/explicit]
+       The change does not alter which part of the change a criterion's judgement is
+       shown beyond the whole set of changed source.
+
+[exclusion-06] Assigning obligation types, which is #205.
+    -> exclude-obligation-type-assignment  [functional/explicit]
+       The change does not assign obligation types.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       A standalone section marker with no substantive requirement under it.
+
+[completion-02] A test asserts that each criterion's discrimination judgement is
+    requested separately, rather than all criteria in one request.
+    -> test-criterion-discrimination-request-separate  [test_demand/explicit]
+       A test asserts that each criterion's discrimination judgement is requested
+       separately, rather than all criteria in one request.
+
+[completion-03] A test asserts that editing a test mapped to one criterion leaves
+    another criterion's test-evidence rating unchanged.
+    -> test-editing-mapped-test-leaves-other-rating-unchanged  [test_demand/explicit]
+       A test asserts that editing a test mapped to one criterion leaves another
+       criterion's test-evidence rating unchanged.
+
+[completion-04] A test asserts that adding a criterion leaves an unrelated criterion's
+    test-evidence rating unchanged.
+    -> test-adding-criterion-leaves-unrelated-rating-unchanged  [test_demand/explicit]
+       A test asserts that adding a criterion leaves an unrelated criterion's test-
+       evidence rating unchanged.
+
+[completion-05] A test asserts that how many criteria one discrimination request carries
+    is folded into the recorded request key.
+    -> test-request-count-folded-into-recorded-request-key  [test_demand/explicit]
+       A test asserts that how many criteria one discrimination request carries is
+       folded into the recorded request key.
+
+[completion-06] A test asserts that a criterion for which no usable judgement is
+    obtained is rated indeterminate.
+    -> test-indeterminate-rating-when-no-usable-judgement  [test_demand/explicit]
+       A test asserts that a criterion for which no usable judgement is obtained is
+       rated indeterminate.
+
+[completion-07] A test asserts that two runs over byte-identical inputs produce byte-
+    identical review state.
+    -> test-byte-identical-inputs-produce-byte-identical-review-state  [test_demand/explicit]
+       A test asserts that two runs over byte-identical inputs produce byte-identical
+       review state.
+

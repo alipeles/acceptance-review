@@ -1,0 +1,154 @@
+Requirements: 25   with obligations: 24   deliberately none: 1
+
+[task-01] A repeated review changes a criterion's test-evidence rating only when
+    something that criterion depends on has changed, and says what that change was.
+    -> repeated-review-conditional-rating-update  [functional/explicit]
+       A repeated review changes a criterion's test-evidence rating only when that
+       criterion's dependencies have changed, and it reports what change occurred.
+    -> repeated-review-change-explanation  [functional/explicit]
+       A repeated review reports the change to a criterion's dependencies that its
+       rating change rests on.
+
+[constraint-01] A review that has no stored earlier review judges every criterion
+    without reference to an earlier rating.
+    -> no-stored-earlier-review-judges-each-criterion-fresh  [functional/explicit]
+       A review with no stored earlier review judges every criterion without reference
+       to an earlier rating.
+
+[constraint-02] A repeated review matches each criterion to the stored review's
+    criterion for the same requirement, by something that does not move between runs.
+    -> stable-criterion-matching-for-repeated-review  [functional/explicit]
+       A repeated review matches each criterion to the stored review's criterion for the
+       same requirement by something that does not move between runs.
+
+[constraint-03] A criterion depends on its requirement text, the set of tests mapped to
+    it, and the content of those tests.
+    -> criterion-dependency-set  [invariant/explicit]
+       A criterion depends on its requirement text, the set of tests mapped to it, and
+       the content of those tests.
+
+[constraint-04] When a repeated review finds a criterion's dependencies unchanged, it
+    carries that criterion's stored test-evidence rating forward and makes no model call
+    for it.
+    -> carry-forward-unchanged-rating-without-model-call  [functional/explicit]
+       When a repeated review finds a criterion's dependencies unchanged, it carries
+       that criterion's stored test-evidence rating forward and makes no model call for
+       it.
+
+[constraint-05] When a repeated review finds a criterion's dependencies changed, it
+    judges that criterion again, and the judgement is given the stored rating and the
+    changes.
+    -> rejudge-changed-dependencies-with-stored-rating-and-changes  [functional/explicit]
+       When a repeated review finds a criterion's dependencies changed, it judges that
+       criterion again, and the judgement is given the stored rating and the changes.
+
+[constraint-06] A repeated judgement that alters a criterion's rating gives a reason,
+    and names the change to that criterion's dependencies the reason rests on.
+    -> changed-rating-explains-dependency-change  [explanation_observability/explicit]
+       A repeated judgement that alters a criterion's rating gives a reason, and names
+       the change to that criterion's dependencies the reason rests on.
+
+[constraint-07] The change a repeated judgement names is one of the changes it was
+    given.
+    -> named-change-must-come-from-given-changes  [invariant/explicit]
+       The change a repeated judgement names is one of the changes it was given.
+
+[constraint-08] The stored earlier review is an input to a repeated review, and two
+    repeated reviews from the same stored review and the same inputs produce byte-
+    identical review state.
+    -> stored-earlier-review-input-and-byte-identical-state  [compatibility/explicit]
+       The stored earlier review is an input to a repeated review, and two repeated
+       reviews from the same stored review and the same inputs produce byte-identical
+       review state.
+
+[constraint-09] Tests issue no live model calls.
+    -> tests-no-live-model-calls  [functional/explicit]
+       Tests avoid live model calls.
+
+[exclusion-01] Which tests are discovered, and which criteria they are mapped to, which
+    is #182.
+    -> exclude-discovery-and-mapping-scope  [functional/explicit]
+       The change does not alter which tests are discovered or which criteria they are
+       mapped to.
+
+[exclusion-02] Whether a mapping change must likewise be explained, which is #182.
+    -> exclude-mapping-change-explanation-scope  [functional/explicit]
+       The change does not require explaining a mapping change.
+
+[exclusion-03] How many plausible defects a criterion's judgement names, and whether a
+    rating requires every one of them to be caught, which is #183.
+    -> exclude-plausible-defects-count-and-catch-all-scope  [functional/explicit]
+       The change does not alter how many plausible defects a criterion's judgement
+       names or whether a rating requires every one of them to be caught.
+
+[exclusion-04] Whether a rating that could not be reproduced is reported as
+    unreproducible.
+    -> exclude-unreproducible-reporting-scope  [functional/explicit]
+       The change does not alter whether a rating that could not be reproduced is
+       reported as unreproducible.
+
+[exclusion-05] Whether a carried-forward rating is shown differently from a freshly
+    judged one.
+    -> exclude-carried-forward-vs-freshly-judged-display-scope  [functional/explicit]
+       The change does not alter whether a carried-forward rating is shown differently
+       from a freshly judged one.
+
+[exclusion-06] Whether the controls that make a run reproducible are consolidated into a
+    single component, which is #184.
+    -> exclude-reproducibility-controls-consolidation-scope  [functional/explicit]
+       The change does not alter whether the controls that make a run reproducible are
+       consolidated into a single component.
+
+[exclusion-07] Assigning obligation types, which is #205.
+    -> exclude-obligation-type-assignment-scope  [functional/explicit]
+       The change does not alter assigning obligation types.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       This is a section marker standing alone with no requirement under it.
+
+[completion-02] A test asserts that a review with no stored earlier review judges every
+    criterion without reference to an earlier rating.
+    -> test-asserts-no-stored-earlier-review-judges-every-criterion  [test_demand/explicit]
+       A test asserts that a review with no stored earlier review judges every criterion
+       without reference to an earlier rating.
+
+[completion-03] A test asserts that a criterion whose dependencies are unchanged keeps
+    its stored rating and costs no model call.
+    -> test-asserts-unchanged-dependencies-keep-rating-and-cost-no-model-call  [test_demand/explicit]
+       A test asserts that a criterion whose dependencies are unchanged keeps its stored
+       rating and costs no model call.
+
+[completion-04] A test asserts that a criterion whose mapped test set has changed is
+    judged again.
+    -> test-asserts-changed-mapped-test-set-rejudged  [test_demand/explicit]
+       A test asserts that a criterion whose mapped test set has changed is judged
+       again.
+
+[completion-05] A test asserts that a criterion is judged again when the content of a
+    mapped test has changed, though the mapped set has not.
+    -> test-asserts-test-content-change-triggers-rejudgment  [test_demand/explicit]
+       A test asserts that a criterion is judged again when the content of a mapped test
+       has changed, though the mapped set has not.
+
+[completion-06] A test asserts that a repeated judgement is given the stored rating and
+    the changes to that criterion's dependencies.
+    -> test-asserts-repeated-judgement-gets-stored-rating-and-changes  [test_demand/explicit]
+       A test asserts that a repeated judgement is given the stored rating and the
+       changes to that criterion's dependencies.
+
+[completion-07] A test asserts that a repeated judgement altering a rating names a
+    change it was given, and that a named change it was not given is rejected.
+    -> test-asserts-altering-rating-names-given-change-and-rejects-ungiven-change  [test_demand/explicit]
+       A test asserts that a repeated judgement altering a rating names a change it was
+       given, and that a named change it was not given is rejected.
+
+[completion-08] A test asserts that two repeated reviews from the same stored review and
+    the same inputs produce byte-identical review state.
+    -> test-asserts-byte-identical-review-state-for-same-stored-review-and-inputs  [test_demand/explicit]
+       A test asserts that two repeated reviews from the same stored review and the same
+       inputs produce byte-identical review state.
+
+
+Unreconciled linking answers: answers contradict each other: these obligations are linked transitively but at least one pair among them was denied, so none of them were merged
+  affected: changed-rating-explains-dependency-change, named-change-must-come-from-given-changes, repeated-review-conditional-rating-update, repeated-review-change-explanation

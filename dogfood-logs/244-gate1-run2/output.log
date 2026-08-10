@@ -1,0 +1,165 @@
+Requirements: 29   with obligations: 28   deliberately none: 1
+
+[task-01] An obligation is attributed to the requirement its quoted text comes from.
+    -> obligation-attribution-by-quoted-text  [invariant/explicit]
+       An obligation is attributed to the requirement whose quoted text it comes from.
+
+[constraint-01] An obligation carries a quotation of the task text it derives from.
+    -> obligation-carries-quotation  [functional/explicit]
+       An obligation carries a quotation of the task text it derives from.
+
+[constraint-02] An obligation's quotation is located within the span of the requirement
+    the obligation is attributed to, not merely somewhere in the task file.
+    -> quotation-within-requirement-span  [invariant/explicit]
+       An obligation's quotation is located within the span of the requirement it is
+       attributed to, not merely somewhere in the task file.
+
+[constraint-03] A quotation is located without regard to where lines are broken, so the
+    same sentence is found whether the text wraps or not.
+    -> quotation-linebreak-insensitive  [functional/explicit]
+       A quotation is located without regard to where lines are broken, so the same
+       sentence is found whether the text wraps or not.
+
+[constraint-04] An obligation whose quotation falls outside the span of the requirement
+    it was attributed to is re-attributed to the requirement whose span contains the
+    quotation, when that requirement also yielded obligations.
+    -> reattribute-out-of-span-quotation  [functional/explicit]
+       An obligation whose quotation falls outside the span of the requirement it was
+       attributed to is re-attributed to the requirement whose span contains the
+       quotation, when that requirement also yielded obligations.
+
+[constraint-05] Re-attribution never leaves a requirement that yielded obligations
+    holding none.
+    -> reattribution-preserves-nonempty-yield  [invariant/explicit]
+       Re-attribution never leaves a requirement that yielded obligations holding none.
+
+[constraint-06] An obligation is never discarded for a quotation that cannot be placed;
+    it stays where it was attributed.
+    -> unplaceable-quotation-stays-attributed  [error_handling/explicit]
+       An obligation is never discarded for a quotation that cannot be placed; it stays
+       where it was attributed.
+
+[constraint-07] Every disagreement between an obligation's quotation and the requirement
+    it was attributed to is recorded, whether or not it was acted on.
+    -> record-all-quotation-disagreements  [functional/explicit]
+       Every disagreement between an obligation's quotation and the requirement it was
+       attributed to is recorded, whether or not it was acted on.
+
+[constraint-08] Re-attributing an obligation leaves the obligation's own content
+    unchanged.
+    -> reattribution-preserves-obligation-content  [invariant/explicit]
+       Re-attributing an obligation leaves the obligation's own content unchanged.
+
+[constraint-09] A re-attributed obligation admits the evidence its new requirement's
+    section admits.
+    -> reattributed-obligation-admits-new-section-evidence  [compatibility/explicit]
+       A re-attributed obligation admits the evidence its new requirement's section
+       admits.
+
+[constraint-10] A requirement keeps every obligation whose quotation lies within its
+    span.
+    -> keep-within-span-obligations-with-their-requirement  [invariant/explicit]
+       A requirement keeps every obligation whose quotation lies within its span.
+    -> keep-within-span-obligations-with-their-requirement-2  [invariant/explicit]
+       A requirement keeps every obligation whose quotation lies within its span.
+
+[constraint-11] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-inputs-yield-byte-identical-review-state  [regression/explicit]
+       Two runs over byte-identical task text produce byte-identical review state.
+
+[constraint-12] Tests issue no live model calls.
+    -> tests-issue-no-live-model-calls  [test_demand/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] How finely a single requirement is split into obligations, and how many
+    obligations one requirement may yield, which is #117.
+    -> no-scope-splitting-granularity-change  [regression/explicit]
+       The change does not alter how finely a single requirement is split into
+       obligations, or how many obligations one requirement may yield.
+
+[exclusion-02] Whether two obligations on the same requirement are merged, which the
+    linking stage decides.
+    -> no-obligation-merging-on-same-requirement  [regression/explicit]
+       The change does not alter whether two obligations on the same requirement are
+       merged.
+
+[exclusion-03] Assigning obligation types, which is #205.
+    -> assigning-obligation-types-excluded  [functional/explicit]
+       The change does not alter assigning obligation types.
+
+[exclusion-04] Which open questions are raised, and what they cite, which is #206.
+    -> which-open-questions-are-raised-excluded  [functional/explicit]
+       The change does not alter which open questions are raised or what they cite.
+
+[exclusion-05] Whether requirement identifiers survive an edit to the task file, which
+    is #209.
+    -> requirement-identifiers-survive-edit-excluded  [compatibility/explicit]
+       The change does not alter whether requirement identifiers survive an edit to the
+       task file.
+
+[exclusion-06] Measuring how accurate decomposition is, which is #211.
+    -> measuring-decomposition-accuracy-excluded  [functional/explicit]
+       The change does not alter how decomposition accuracy is measured.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       A standalone section marker with no requirement under it.
+
+[completion-02] A test asserts that an obligation quoting text inside its own
+    requirement's span keeps that requirement.
+    -> test-obligation-keeps-own-span  [test_demand/explicit]   (also serves completion-09)
+       A test asserts that an obligation quoting text inside its own requirement's span
+       keeps that requirement.
+
+[completion-03] A test asserts that an obligation quoting text belonging to a different
+    requirement is re-attributed to that requirement.
+    -> test-obligation-reattributed-to-containing-requirement  [test_demand/explicit]
+       A test asserts that an obligation quoting text belonging to a different
+       requirement is re-attributed to that requirement.
+
+[completion-04] A test asserts that an obligation whose quotation matches no
+    requirement's span stays where it was attributed, and that the disagreement is
+    recorded.
+    -> test-obligation-unplaceable-quotation-stays-and-records-disagreement  [test_demand/explicit]
+       A test asserts that an obligation whose quotation matches no requirement's span
+       stays where it was attributed, and that the disagreement is recorded.
+
+[completion-05] A test asserts that a requirement that yielded obligations is not left
+    holding none by re-attribution.
+    -> test-obligation-reattribution-does-not-empty-source-requirement  [test_demand/explicit]
+       A test asserts that a requirement that yielded obligations is not left holding
+       none by re-attribution.
+
+[completion-06] A test asserts that a quotation is located whether or not the text it
+    comes from is broken across lines.
+    -> test-obligation-line-wrap-insensitive-quotation-location  [test_demand/explicit]
+       A test asserts that a quotation is located whether or not the text it comes from
+       is broken across lines.
+
+[completion-07] A test asserts that re-attribution leaves the obligation's content
+    unchanged.
+    -> test-obligation-reattribution-preserves-content  [test_demand/explicit]
+       A test asserts that re-attribution leaves the obligation's content unchanged.
+
+[completion-08] A test asserts that a re-attributed obligation admits the evidence its
+    new requirement's section admits.
+    -> test-obligation-new-section-evidence-admitted  [test_demand/explicit]
+       A test asserts that a re-attributed obligation admits the evidence its new
+       requirement's section admits.
+
+[completion-09] A test asserts that no requirement loses an obligation whose quotation
+    lies within its span.
+    -> test-obligation-keeps-own-span  [test_demand/explicit]   (also serves completion-02)
+       A test asserts that an obligation quoting text inside its own requirement's span
+       keeps that requirement.
+
+[completion-10] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> test-byte-identical-review-state  [test_demand/explicit]
+       A test asserts that two runs over byte-identical task text produce byte-identical
+       review state.
+
+
+Unreconciled linking answers: answers contradict each other: these obligations are linked transitively but at least one pair among them was denied, so none of them were merged
+  affected: quotation-within-requirement-span, quotation-linebreak-insensitive, keep-within-span-obligations-with-their-requirement, keep-within-span-obligations-with-their-requirement-2, obligation-attribution-by-quoted-text

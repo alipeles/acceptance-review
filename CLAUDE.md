@@ -73,10 +73,14 @@ whether the checker works. GitHub Acceptance Review is Stage 2 — out of scope.
   key. Opt into `RECORD` explicitly to call a provider.
 - **Transcripts and cached reviews live in `.acceptance/cache/`** (gitignored).
   Record-if-missing, then replay.
-- **Changing a prompt, the model, or the seed invalidates recorded transcripts**
-  — the request key hashes all three, deliberately: a determinism control changed,
-  so recordings must be re-verified. It also makes benchmark accuracy figures
-  non-comparable across the change, so sequence prompt work to pay that cost once.
+- **Changing the model or the seed invalidates every recorded transcript;
+  changing a prompt or a response schema invalidates that stage's.** The request
+  key hashes each request individually, so a stage's recordings orphan when its
+  own request changes, while every other stage keeps replaying — one lane's
+  prompt edit does not force another lane to re-record. Either way a determinism
+  control moved, so the recordings must be re-verified, and benchmark figures
+  spanning that stage stop being comparable. Sequence prompt work to pay that
+  cost once.
 - Interpreter is `.venv/`. Provider keys, needed only when recording, come from
   `.env` (gitignored).
 
