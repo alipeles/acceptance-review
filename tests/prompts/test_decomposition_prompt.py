@@ -184,6 +184,28 @@ def test_every_scope_exclusion_yields_a_code_evidence_only_obligation(derived, r
         )
 
 
+def test_only_exclusions_are_on_the_code_evidence_only_axis(derived):
+    """The negative case, and the reason the test above cannot stand alone: it
+    asserts exclusions ARE code-only, which an implementation marking EVERY
+    obligation code-only would satisfy — and that implementation would silently
+    exempt the whole mandate from test evidence.
+
+    Raised by the tool's own recommendation on #153's Gate 2, which asked for
+    "assert the ordinary non-exclusion requirement is not marked CODE_ONLY".
+    """
+    exclusion_obligation_ids = {
+        obligation.id for i in _EXCLUSION_IDS for obligation in _obligations_of(derived, i)
+    }
+    misfiled = [
+        obligation.id
+        for obligation in derived.obligations
+        if obligation.id not in exclusion_obligation_ids
+        and obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY
+    ]
+
+    assert not misfiled, f"non-exclusion obligations marked code-evidence-only: {misfiled}"
+
+
 def test_sibling_exclusions_share_one_disposition(derived):
     """#230's own property, and distinct from the parametrized test above.
 

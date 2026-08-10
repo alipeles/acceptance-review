@@ -1,0 +1,312 @@
+Task completion: INCOMPLETE
+
+3 obligation(s) with non-discriminating test evidence (test-scope-exclusion-yields-code-only, test-code-only-obligation-does-not-incomplete-verdict, no-test-recommended-for-code-evidence-only).
+
+Obligations:
+
+  1. A test asserts that a bullet under a scope exclusions heading yields an obligation admitting code evidence only.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  tests/prompts/test_decomposition_prompt.py#@@ -164,13 +164,24 @@ def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, req
+         1.2  src/acceptance/requirement/obligations.py#@@ -483,9 +495,27 @@ def decompose(
+         1.3  src/acceptance/review_state.py#@@ -90,6 +91,28 @@ class ObligationType(str, Enum):
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The change includes a test covering that a scope-exclusion bullet yields an obligation admitting code evidence only.
+           inputs:  Use a task/decomposition fixture that contains at least one scope-exclusion bullet and one ordinary non-exclusion bullet, so the test can distinguish the exclusion path from normal yielded obligations. The exclusion should be phrased as excluded work (e.g. pagination/currency/scheduling) and the expected decomposition must include an obligation for that exclusion with code-only admissible evidence.
+           detects: Scope exclusions are still declined entirely, or they are yielded but not marked as code-evidence-only, so the new axis is not actually exercised.
+           full detail: acceptance recommendation --criterion test-scope-exclusion-yields-code-only
+
+  2. A test asserts that no test is recommended for an obligation admitting code evidence only.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  src/acceptance/coverage/recommendations.py#@@ -75,11 +80,20 @@ class _Recommendations(StrictResponseModel):
+         2.2  tests/coverage/test_recommendations.py#@@ -235,3 +242,69 @@ def test_every_weak_obligation_gets_exactly_one_recommendation():
+       test evidence: strongly supported  [tier: static]
+         2.3  tests/coverage/test_recommendations.py::test_a_duplicate_recommendation_is_rejected
+         2.4  tests/coverage/test_recommendations.py::test_a_response_naming_a_non_weak_obligation_is_rejected
+         2.5  tests/coverage/test_recommendations.py::test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends
+         2.6  tests/coverage/test_recommendations.py::test_no_test_is_recommended_for_a_code_evidence_only_obligation
+         2.7  tests/test_verdict.py::test_a_code_evidence_only_obligation_does_not_make_the_verdict_incomplete
+         2.8  tests/test_verdict.py::test_a_positive_rationale_does_not_claim_tests_for_a_boundary_obligation
+         2.9  tests/test_verdict.py::test_an_unclassified_code_evidence_only_obligation_is_not_indeterminate
+
+  3. A test asserts that an obligation admitting code evidence only does not make the completion verdict incomplete for want of test evidence.
+       requirements: completion-04
+       code evidence: addressed
+         3.1  src/acceptance/verdict.py#@@ -73,10 +74,19 @@ def derive_verdict(
+         3.2  tests/test_verdict.py#@@ -161,3 +162,84 @@ def test_the_weak_count_is_read_off_the_obligations_not_the_recommendations():
+       test evidence: partially supported  [tier: static]
+         3.3  tests/coverage/test_classify.py::test_preserve_obligation_not_violated_is_addressed_with_no_refs
+         3.4  tests/test_report.py::test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test
+         3.5  tests/test_verdict.py::test_a_code_evidence_only_obligation_does_not_make_the_verdict_incomplete
+         3.6  tests/test_verdict.py::test_an_unclassified_code_evidence_only_obligation_is_not_indeterminate
+         recommended test: The change includes a test covering that missing test evidence for a code-only obligation does not make the completion verdict incomplete.
+           inputs:  Construct a verdict input with at least one ordinary strongly-supported obligation and one code-only obligation whose evidence_class is unsupported or None, but with no coverage gap for the code-only obligation. This isolates the bug where the report still talks about missing mapped tests even though the verdict should remain complete.
+           detects: The verdict path still treats code-only obligations as missing mapped tests or otherwise incomplete, even though the verdict-state assertion alone passes.
+           full detail: acceptance recommendation --criterion test-code-only-obligation-does-not-incomplete-verdict
+
+  4. A test asserts that a change crossing a stated boundary is reported as a breach citing where it crosses.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  tests/coverage/test_classify.py#@@ -180,7 +189,9 @@ def test_missing_classification_defaults_to_unclear(tmp_path):
+       test evidence: strongly supported  [tier: static]
+         4.2  tests/coverage/test_classify.py::test_a_breached_boundary_cites_where_it_crosses
+         4.3  tests/coverage/test_classify.py::test_a_breached_boundary_keeps_the_hunks_the_model_cited
+         4.4  tests/coverage/test_classify.py::test_violated_preserve_obligation_is_not_addressed_but_cites_the_breach
+         4.5  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         4.6  tests/test_report.py::test_a_boundary_with_nothing_examined_does_not_claim_non_violation
+         4.7  tests/test_verdict.py::test_a_breached_boundary_is_still_a_material_gap
+
+  5. A test asserts that a respected boundary is confirmed by one claim naming the set of changes examined, rather than by listing each change in it.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  src/acceptance/report.py#@@ -28,6 +29,29 @@ from acceptance.review_state import (
+         5.2  tests/test_report.py#@@ -452,3 +453,103 @@ def test_a_review_with_no_obligations_does_not_advertise_retrieval():
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/coverage/test_classify.py::test_a_respected_boundary_drops_hunks_the_model_cited_anyway
+         5.4  tests/coverage/test_classify.py::test_a_respected_boundary_records_the_scope_examined_not_the_changes
+
+  6. A test asserts that two runs over byte-identical task text produce byte-identical review state.
+       requirements: completion-07
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         6.1  tests/prompts/test_corpus_mechanism.py::test_a_known_defect_survives_an_unrelated_prompt_edit
+         6.2  tests/prompts/test_corpus_mechanism.py::test_editing_a_prompt_fails_with_guidance_naming_the_unverified_change
+         6.3  tests/test_review_state.py::test_review_round_trips_populated
+
+  7. A bullet under a scope exclusions heading yields an obligation.
+       requirements: constraint-01
+       code evidence: addressed
+         7.1  src/acceptance/requirement/obligations.py#@@ -196,35 +199,44 @@ answer with `no_obligation`.
+         7.2  src/acceptance/requirement/obligations.py#@@ -483,9 +495,27 @@ def decompose(
+         7.3  src/acceptance/requirement/obligations.py#@@ -498,6 +528,7 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         7.4  tests/prompts/test_decomposition_prompt.py::test_a_constraint_stating_a_behaviour_is_not_given_test_framing
+         7.5  tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_yields_a_code_evidence_only_obligation
+         7.6  tests/prompts/test_decomposition_prompt.py::test_sibling_exclusions_share_one_disposition
+         7.7  tests/requirement/test_requirement_map.py::test_a_fully_accounted_response_disposes_every_requirement
+
+  8. An obligation derived from a scope exclusion is supported by code evidence only.
+       requirements: constraint-02, constraint-04
+       code evidence: addressed
+         8.1  src/acceptance/review_state.py#@@ -90,6 +91,28 @@ class ObligationType(str, Enum):
+         8.2  src/acceptance/requirement/obligations.py#@@ -483,9 +495,27 @@ def decompose(
+         8.3  src/acceptance/requirement/obligations.py#@@ -498,6 +528,7 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         8.4  tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_yields_a_code_evidence_only_obligation
+
+  9. No test is recommended for an obligation that admits code evidence only.
+       requirements: constraint-03
+       code evidence: addressed
+         9.1  src/acceptance/coverage/recommendations.py#@@ -75,11 +80,20 @@ class _Recommendations(StrictResponseModel):
+       test evidence: partially supported  [tier: static]
+         9.2  tests/test_cli.py::test_render_classify_output
+         9.3  tests/test_report.py::test_a_recommendation_sits_under_its_own_obligation_and_no_other
+         recommended test: The review output does not recommend a test for an obligation whose evidence is code only.
+           inputs:  Use a recommendation batch containing one weak ordinary obligation that should still receive a recommendation and one code-only obligation that would otherwise qualify as weak if evidence_class alone were considered. The code-only obligation should be the only candidate that must be filtered out.
+           detects: Code-only obligations are either omitted from the rendered report or still get a test recommendation because filtering only checks evidence_class and not admissible_evidence.
+           full detail: acceptance recommendation --criterion no-test-recommended-for-code-evidence-only
+
+  10. A change that crosses a stated boundary is reported as a breach, citing the place in the change where it crosses.
+       requirements: constraint-05
+       code evidence: addressed
+         10.1  tests/coverage/test_classify.py#@@ -180,7 +189,9 @@ def test_missing_classification_defaults_to_unclear(tmp_path):
+       test evidence: strongly supported  [tier: static]
+         10.2  tests/coverage/test_classify.py::test_a_breached_boundary_cites_where_it_crosses
+         10.3  tests/coverage/test_classify.py::test_a_breached_boundary_keeps_the_hunks_the_model_cited
+
+  11. A boundary the change respects is confirmed by a single claim over the whole set of changes examined, not by listing the individual changes in that set.
+       requirements: constraint-06
+       code evidence: addressed
+         11.1  src/acceptance/report.py#@@ -28,6 +29,29 @@ from acceptance.review_state import (
+         11.2  tests/test_report.py#@@ -452,3 +453,103 @@ def test_a_review_with_no_obligations_does_not_advertise_retrieval():
+       test evidence: strongly supported  [tier: static]
+         11.3  tests/coverage/test_classify.py::test_a_respected_boundary_drops_hunks_the_model_cited_anyway
+         11.4  tests/coverage/test_classify.py::test_a_respected_boundary_records_the_scope_examined_not_the_changes
+         11.5  tests/test_report.py::test_a_respected_boundary_is_one_claim_over_the_examined_set_not_a_listing
+
+  12. A confirmation that a boundary was respected names the set of changes that was examined to reach it.
+       requirements: constraint-07
+       code evidence: addressed
+         12.1  src/acceptance/report.py#@@ -28,6 +29,29 @@ from acceptance.review_state import (
+         12.2  src/acceptance/pipeline.py#@@ -194,6 +194,13 @@ def _apply_coverage_status(
+       test evidence: strongly supported  [tier: static]
+         12.3  tests/coverage/test_classify.py::test_a_respected_boundary_records_the_scope_examined_not_the_changes
+         12.4  tests/requirement/test_obligations.py::test_each_obligation_links_to_its_source_span
+         12.5  tests/test_report.py::test_a_carried_forward_obligation_says_so_and_names_the_revision
+         12.6  tests/test_report.py::test_a_respected_boundary_is_one_claim_over_the_examined_set_not_a_listing
+         12.7  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  13. A confirmation that a boundary was respected is not stated more strongly than the examination that produced it supports.
+       requirements: constraint-08
+       code evidence: addressed
+         13.1  src/acceptance/report.py#@@ -28,6 +29,29 @@ from acceptance.review_state import (
+         13.2  tests/test_report.py#@@ -452,3 +453,103 @@ def test_a_review_with_no_obligations_does_not_advertise_retrieval():
+       test evidence: strongly supported  [tier: static]
+         13.3  tests/coverage/test_classify.py::test_a_respected_boundary_drops_hunks_the_model_cited_anyway
+         13.4  tests/coverage/test_classify.py::test_an_ordinary_obligation_records_no_scope_examined
+         13.5  tests/test_report.py::test_a_respected_boundary_is_one_claim_over_the_examined_set_not_a_listing
+
+  14. A reader of the report can tell an obligation that admits code evidence only from an obligation whose test evidence is missing.
+       requirements: constraint-09
+       code evidence: addressed
+         14.1  src/acceptance/report.py#@@ -28,6 +29,29 @@ from acceptance.review_state import (
+         14.2  tests/test_report.py#@@ -452,3 +453,103 @@ def test_a_review_with_no_obligations_does_not_advertise_retrieval():
+       test evidence: strongly supported  [tier: static]
+         14.3  tests/test_cli.py::test_render_classify_output
+         14.4  tests/test_report.py::test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test
+         14.5  tests/test_report.py::test_unclassified_obligation_renders_as_unclassified
+         14.6  tests/test_verdict.py::test_a_positive_rationale_does_not_claim_tests_for_a_boundary_obligation
+
+  15. Two runs over byte-identical task text produce byte-identical review state.
+       requirements: constraint-10
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         15.1  tests/prompts/test_corpus_mechanism.py::test_a_known_defect_survives_an_unrelated_prompt_edit
+         15.2  tests/prompts/test_corpus_mechanism.py::test_editing_a_prompt_fails_with_guidance_naming_the_unverified_change
+         15.3  tests/test_cli.py::test_decompose_replay_without_transcript_fails_cleanly
+         15.4  tests/test_review_state.py::test_review_round_trips_populated
+
+  16. Tests issue no live model calls.
+       requirements: constraint-11
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         16.1  tests/coverage/test_disposition.py::test_docstring_update_of_in_service_change_is_in_service_without_a_model_call
+         16.2  tests/coverage/test_disposition.py::test_load_bearing_change_is_in_service_without_a_model_call
+         16.3  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         16.4  tests/prompts/test_corpus_mechanism.py::test_recording_returns_the_fresh_response_so_assertions_run_on_it
+         16.5  tests/prompts/test_corpus_mechanism.py::test_replay_needs_no_api_key
+         16.6  tests/prompts/test_corpus_mechanism.py::test_the_corpus_covers_every_approved_model_not_just_one
+         16.7  tests/prompts/test_corpus_mechanism.py::test_the_prompt_corpus_replays_with_no_live_call_at_all
+         16.8  tests/test_cli.py::test_decompose_replay_without_transcript_fails_cleanly
+
+  17. The change does not alter which obligations other than those derived from scope exclusions admit code evidence only.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 53 changes across 23 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  18. The change does not alter assigning obligation types.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 53 changes across 23 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  19. The change does not alter which open questions are raised or what they cite.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 53 changes across 23 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  20. The change does not alter how finely a single requirement is split into obligations.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 53 changes across 23 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  21. The change does not alter whether obligation identifiers are stable across task-file edits.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 53 changes across 23 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  22. The change does not alter how decomposition accuracy is measured.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 53 changes across 23 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  23. The change does not determine which tests are discovered or how they are mapped to obligations.
+       requirements: exclusion-07
+       code evidence: addressed
+         examined 53 changes across 23 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  24. A requirement stating a boundary the change must not cross is confirmed by examining the change for a breach, not by demanding a test of it.
+       requirements: task-01
+       code evidence: addressed
+         24.1  src/acceptance/coverage/classify.py#@@ -95,7 +107,25 @@ obligation. `diff_refs` is empty when there is nothing to point at — a
+         24.2  tests/coverage/test_classify.py#@@ -180,7 +189,9 @@ def test_missing_classification_defaults_to_unclear(tmp_path):
+         24.3  src/acceptance/report.py#@@ -28,6 +29,29 @@ from acceptance.review_state import (
+       test evidence: strongly supported  [tier: static]
+         24.4  tests/coverage/test_classify.py::test_a_breached_boundary_cites_where_it_crosses
+         24.5  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         24.6  tests/test_report.py::test_a_boundary_with_nothing_examined_does_not_claim_non_violation
+         24.7  tests/test_verdict.py::test_a_breached_boundary_is_still_a_material_gap
+
+Mandate coverage: 25 of 26 requirements yielded obligations
+  1. [no_obligation] completion-01: Implementation
+       reason: A standalone section marker with no requirement under it.
+
+Unrequested changes:
+  1. [separable] The task only asked to decompose the listed requirements; changing `docs/DEFERRED.md` to add new defect filings and session notes is unrelated to that decomposition work.
+       docs/DEFERRED.md#@@ -20,18 +20,94 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
+  2. [separable] The task did not ask to change the session log, but this edit rewrites the in-flight task narrative and operational notes in `session-state.md`.
+       session-state.md#@@ -12,90 +12,77 @@ Clear it out when the task lands rather than letting it accrete.
+  3. [in_service] Adding `scope_examined` to `ImplementationCoverage` changes an internal data model beyond the requested decomposition/reporting behavior, and the task did not ask for this new persisted field.
+       src/acceptance/coverage/classify.py#@@ -46,6 +46,18 @@ class ImplementationCoverage(PersistableModel):
+       src/acceptance/pipeline.py#@@ -194,6 +194,13 @@ def _apply_coverage_status(
+       src/acceptance/review_state.py#@@ -417,6 +440,17 @@ class Obligation(_Model):
+  4. [in_service] The task asked for decomposition of the specified requirements, not a new boundary-obligation classification rule in coverage classification; the added `boundary` handling and prompt text change alter how coverage is interpreted.
+       src/acceptance/coverage/classify.py#@@ -95,7 +107,25 @@ obligation. `diff_refs` is empty when there is nothing to point at — a
+       src/acceptance/coverage/classify.py#@@ -143,12 +173,29 @@ def classify_coverage(
+  5. [in_service] Filtering out code-only obligations from test recommendations changes recommendation behavior for obligations outside the explicitly listed decomposition requirements.
+       src/acceptance/coverage/recommendations.py#@@ -26,7 +26,12 @@ from acceptance.coverage.prompt import render_diff_section
+       src/acceptance/coverage/recommendations.py#@@ -75,11 +80,20 @@ class _Recommendations(StrictResponseModel):
+  6. [in_service] The new `scope_examined` serialization in the pipeline adds report data plumbing that was not requested by the decomposition task.
+       src/acceptance/pipeline.py#@@ -194,6 +194,13 @@ def _apply_coverage_status(
+  7. [in_service] Rendering code-only obligations as 'not applicable' and adding examined-scope prose changes report output beyond the requested requirement decomposition.
+       src/acceptance/report.py#@@ -28,6 +29,29 @@ from acceptance.review_state import (
+       src/acceptance/report.py#@@ -218,7 +242,9 @@ def _mandate_coverage_block(requirement_map: RequirementMap) -> list[str]:
+       src/acceptance/report.py#@@ -294,19 +320,35 @@ def _obligation_block(
+  8. [in_service] Changing `no_obligation` handling for scope exclusions to yield code-only obligations is a behavior change to requirement decomposition that the task context did not ask for in this run, which only supplied the CSV-export requirements.
+       src/acceptance/requirement/obligations.py#@@ -168,10 +170,11 @@ Each disposition is one of:
+       src/acceptance/requirement/obligations.py#@@ -196,35 +199,44 @@ answer with `no_obligation`.
+       src/acceptance/requirement/obligations.py#@@ -483,9 +495,27 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -498,6 +528,7 @@ def decompose(
+  9. [in_service] Adding `AdmissibleEvidence` and `scope_examined` to review state is an internal schema expansion not called for by the listed obligations.
+       src/acceptance/review_state.py#@@ -28,6 +28,7 @@ __all__ = [
+       src/acceptance/review_state.py#@@ -90,6 +91,28 @@ class ObligationType(str, Enum):
+       src/acceptance/review_state.py#@@ -417,6 +440,17 @@ class Obligation(_Model):
+  10. [in_service] The verdict logic now treats code-only obligations specially and changes the completion rationale text; that is outside the requested decomposition work.
+       src/acceptance/verdict.py#@@ -30,6 +30,7 @@ is `no_material_gaps` even alongside an advisory declaration overclaim.
+       src/acceptance/verdict.py#@@ -73,10 +74,19 @@ def derive_verdict(
+       src/acceptance/verdict.py#@@ -128,9 +138,22 @@ def derive_verdict(
+       src/acceptance/verdict.py#@@ -138,7 +161,9 @@ def derive_verdict(
+  11. [in_service] The added coverage tests assert new boundary-obligation semantics and report formatting, which are unrelated to the CSV-export decomposition requirements supplied in the task.
+       tests/coverage/test_classify.py#@@ -219,3 +230,183 @@ def test_coverage_round_trips_through_persistence(tmp_path):
+       tests/coverage/test_recommendations.py#@@ -235,3 +242,69 @@ def test_every_weak_obligation_gets_exactly_one_recommendation():
+  12. [in_service] The transcript fixture additions/deletions replace recorded prompts and model outputs for unrelated decomposition/linking scenarios, which were not requested by the task.
+       tests/fixtures/transcripts/1592dda569022768575a581e725051052a34353bf51c6f283b2e31b461381f5a.json#@@ -0,0 +1 @@
+       tests/fixtures/transcripts/260b8b5e090db302a4807d96745a0a62c4d152b8052b14fa624cbccfd388500c.json#@@ -1 +0,0 @@
+       tests/fixtures/transcripts/2664c74347ca65d1a37f2ce03fe5ef447e860e2a495e3e1184e9cf86d72b109c.json#@@ -1 +0,0 @@
+       tests/fixtures/transcripts/4294015ff795c4ca1570817fb4f68cbd02a844d5a18f7201a770972038666590.json#@@ -0,0 +1 @@
+       tests/fixtures/transcripts/4f885a7a6159669b7a6d63db59b006886ae3225718c569c7d7bf20b0e1fe1fd3.json#@@ -0,0 +1 @@
+       tests/fixtures/transcripts/56722b85b43e95eb9db01f44f8368dc897e47b66854ce8967c727ba2a5080f19.json#@@ -1 +0,0 @@
+       tests/fixtures/transcripts/a0b2b1ae94a56b20cc78a174c09dfdfbe3911d4d862ebfcf6cd074faa1ae8f2a.json#@@ -0,0 +1 @@
+       tests/fixtures/transcripts/b6bc9aab905d31161fabaa5943a6858cb9e126edc11cdfdbe0fa48f2fd192c75.json#@@ -1 +0,0 @@
+  13. [in_service] The prompt-corpus mapping changes swap approved transcript IDs for unrelated corpus entries; this is test fixture maintenance outside the listed obligations.
+       tests/prompts/test_corpus_mechanism.py#@@ -392,12 +392,12 @@ _APPROVED_TRANSCRIPTS = {
+       tests/prompts/test_corpus_mechanism.py#@@ -412,11 +412,11 @@ _APPROVED_TRANSCRIPTS = {
+  14. [in_service] The decomposition prompt tests now assert new code-only-exclusion semantics and altered sibling-exclusion behavior, which go beyond the CSV-export requirements in the task.
+       tests/prompts/test_decomposition_prompt.py#@@ -22,7 +22,7 @@ import pytest
+       tests/prompts/test_decomposition_prompt.py#@@ -164,13 +164,24 @@ def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, req
+       tests/prompts/test_decomposition_prompt.py#@@ -199,7 +210,7 @@ def test_sibling_exclusions_differing_in_content_still_share_a_disposition(deriv
+       tests/prompts/test_decomposition_prompt.py#@@ -208,16 +219,22 @@ def test_sibling_exclusions_differing_in_content_still_share_a_disposition(deriv
+       tests/prompts/test_decomposition_prompt.py#@@ -229,12 +246,35 @@ def test_no_obligation_anywhere_demands_the_excluded_work(derived):
+  15. [in_service] The report tests add new assertions about boundary obligations and examined-scope rendering, which are unrelated to the requested decomposition of CSV-export requirements.
+       tests/test_report.py#@@ -3,6 +3,7 @@ evidence with a per-line evidence tier, advisory unrequested changes, and the
+       tests/test_report.py#@@ -452,3 +453,103 @@ def test_a_review_with_no_obligations_does_not_advertise_retrieval():
+  16. [in_service] The verdict tests add new code-only-boundary cases and rationale checks, which are outside the scope of the CSV-export decomposition task.
+       tests/test_verdict.py#@@ -10,6 +10,7 @@ model call is involved in the headline result at all."""
+       tests/test_verdict.py#@@ -161,3 +162,84 @@ def test_the_weak_count_is_read_off_the_obligations_not_the_recommendations():
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

@@ -20,6 +20,43 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 ---
 
+### [2026-08-10] #180 reproduced: two Gate 2 runs name three disjoint weak obligations
+- **Kind:** filing
+- **Found during:** #153, Gate 2
+- **Where:** `dogfood-logs/153-gate2-run1/`, `dogfood-logs/153-gate2-run2/`
+- **Severity:** should-fix
+- **What's wrong:** Two `check` runs over near-identical input each reported
+  exactly 3 obligations below strongly supported, and **no obligation appears in
+  both sets**. Between them the diff gained one code fix and two tests.
+- **Why I didn't act:** it is #180, not #153, and it is the reason this task
+  cannot reach a clean Gate 2 by iterating.
+- **Drafted fix:** comment on **#180**:
+
+  > Reproduced on #153, with a run pair committed under `dogfood-logs/`.
+  >
+  > | | run 1 (`0d6349d`) | run 2 (`7e6e1ea`) |
+  > |---|---|---|
+  > | below strongly supported | 3 | 3 |
+  > | which | `test-byte-identical-task-text-yields-byte-identical-review-state`, `deterministic-review-state`, `no-live-model-calls-in-tests` | `test-scope-exclusion-yields-code-only`, `test-code-only-obligation-does-not-incomplete-verdict`, `no-test-recommended-for-code-evidence-only` |
+  >
+  > **Disjoint.** Run 1's three are all determinism/no-live-call obligations;
+  > run 2's are all code-only-axis obligations. The diff between the runs is one
+  > code fix and two added tests, neither touching determinism.
+  >
+  > What #232's pair showed was ratings *degrading* on untouched obligations.
+  > This pair is sharper: the count is identical and the membership is entirely
+  > different, so the figure "3 below strongly supported" carries no information
+  > about *which* obligations are weak. A gate that names a different three each
+  > run cannot be converged on by fixing what it names.
+  >
+  > Worth noting the recommendations themselves were not noise — run 2's
+  > recommendation for `test-scope-exclusion-yields-code-only` identified a real
+  > hole (the test asserted exclusions are code-only but not that ordinary
+  > obligations are not, so it passed against an implementation marking
+  > everything code-only). The instability is in the *rating*, not obviously in
+  > the *prescription*.
+- **Status:** open
+
 ### [2026-08-10] Dev tool versions are unpinned, so two checkouts lint differently
 - **Kind:** defect
 - **Found during:** #153, implementation
