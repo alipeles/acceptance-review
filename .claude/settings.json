@@ -93,6 +93,18 @@
       "Bash(.venv/bin/pip show *)",
       "Bash(.venv/bin/pip list *)",
 
+      "Bash(.venv/bin/python *)",
+      "Bash(.venv/bin/python -m pytest *)",
+      "Bash(.venv/bin/python -m ruff *)",
+
+      "Bash(gh run watch *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh label list *)",
+      "Bash(gh project item-edit *)",
+      "Bash(gh project item-add *)",
+      "Bash(git grep *)",
+      "Bash(git ls-remote *)",
+
       "Bash(gh project item-list *)",
       "Bash(gh project field-list *)",
       "Bash(gh project list *)",

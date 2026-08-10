@@ -397,17 +397,36 @@ gh issue view <n>                   # read a task
 
 Other subcommands: `decompose`, `diff`, `classify`, `recommendation`.
 
-**Three habits that cost permission prompts and buy nothing.** Measured across 23
-transcripts; together they outnumbered every genuinely missing allowlist rule.
+**Habits that cost permission prompts and buy nothing.** Measured across 25
+transcripts (3,324 unique Bash calls); together they outnumber every genuinely
+missing allowlist rule. The allowlist is close to complete — **prompts are caused
+by command *shape*, not by missing vocabulary.**
 
 - **Don't `source .venv/bin/activate`** — 385 occurrences. The `.venv/bin/*` entry
   points above are allowlisted and `source` is not, so activating costs a prompt
   and then changes nothing.
 - **Don't write files with `cat > f <<'EOF'`** — 107 occurrences. Use the `Write`
-  tool; edits are already allowed.
-- **Don't `cd dir && …`** — use absolute paths. A compound command is only as
-  permitted as its least-permitted segment, and a stray `cd` persists into the
-  next call, which has already caused a wrong-directory bug.
+  tool; edits are already allowed. Heredocs also defeat segment matching, so the
+  whole call prompts.
+- **One command per call. Don't batch.** This is the big one: **63% of Bash calls
+  would prompt**, and compound shapes account for 32 of the 34 recorded Bash
+  denials. A compound command is only as permitted as its least-permitted
+  segment, so batching `echo "=== label ===" && cmd` turns N allowed calls into
+  one prompt. Round-trips are cheap; prompts are not. Independent calls issued in
+  one message run in parallel anyway — that is the way to batch.
+- **Need a different directory? Use a subshell: `(cd <dir> && <cmd>)`.** The
+  matcher decomposes it and `cd` is auto-allowed, so `(cd <worktree> && .venv/bin/pytest -q)`
+  matches the existing `.venv/bin/*` rules, and the `cd` cannot leak into the next
+  call. `git -C <dir>` is fine for *read-only* subcommands (built-in git detection
+  handles it), but **mutating ones miss** — every `git *` rule assumes the
+  subcommand comes first, so `git -C <dir> commit` matches nothing and prompts.
+  Absolute tool paths miss too. `pytest` is worse than either: `addopts = "--ignore=tests/fixtures"`
+  and `pythonpath = ["."]` are cwd-relative, so driving it by absolute path
+  *silently collects the archetype fixtures as suite tests* and errors.
+- **Never name `.env` in a command.** Secret-file protection overrides the
+  allowlist, so `ls -la .env` prompts even though `Bash(ls *)` is allowed — and
+  inside a batch it blocks every other segment with it. Use `test -f .env && echo
+  present`.
 
 ---
 
