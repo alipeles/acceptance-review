@@ -11,6 +11,7 @@ instead of being scored.
 - The check covers every case in the archetype corpus and every case in the
   decomposition-regression corpus.
 - A case built from either corpus is checked before it can be scored.
+- Two runs over byte-identical task text produce byte-identical review state.
 - Tests issue no live model calls.
 
 ## Scope exclusions
@@ -20,8 +21,6 @@ instead of being scored.
 - Whether accuracy figures recorded before the archetype corpus was reshaped are
   comparable with later ones, which is #204.
 - The wording of the task files already in either corpus.
-- Whether two runs over byte-identical task text produce byte-identical review
-  state, which this change neither strengthens nor weakens.
 
 ## Completion expectations
 - Implementation

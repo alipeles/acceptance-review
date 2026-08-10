@@ -10,7 +10,8 @@ instead of being scored.
   of zero.
 - The check covers every case in the archetype corpus and every case in the
   decomposition-regression corpus.
-- A case built from either corpus is checked before it can be scored.
+- No case reaches a scoring hook without having been checked.
+- Two runs over byte-identical task text produce byte-identical review state.
 - Tests issue no live model calls.
 
 ## Scope exclusions
@@ -20,16 +21,14 @@ instead of being scored.
 - Whether accuracy figures recorded before the archetype corpus was reshaped are
   comparable with later ones, which is #204.
 - The wording of the task files already in either corpus.
-- Whether two runs over byte-identical task text produce byte-identical review
-  state, which this change neither strengthens nor weakens.
 
 ## Completion expectations
 - Implementation
 - A test asserts that a case whose task file yields no requirements fails,
   naming the case.
-- A test demonstrates that failure with a task file the test supplies, not with
-  a task file taken from either corpus.
+- A test asserts that failure by supplying a task file that yields no
+  requirements, rather than by relying on a corpus task file.
 - A test asserts that every case in the archetype corpus and every case in the
   decomposition-regression corpus passes the check.
-- A test asserts that a case cannot be built from either corpus without the
-  check being performed.
+- A test asserts that a scoring hook cannot be reached by a case that was not
+  checked.

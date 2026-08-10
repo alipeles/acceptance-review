@@ -43,6 +43,7 @@ from acceptance.benchmark.case import (
     BenchmarkCaseInputs,
     BenchmarkCaseSource,
     GroundTruthLabels,
+    require_nonempty_registry,
 )
 from acceptance.model_base import PersistableModel
 
@@ -77,6 +78,12 @@ def load_labels(fixture_dir: Path) -> GroundTruthLabels:
 
 def build_benchmark_case(fixture_dir: Path, dest: Path) -> BenchmarkCase:
     """Materialize a fixture and assemble its labeled BenchmarkCase."""
+    task_text = (fixture_dir / "task.md").read_text()
+    # Before materialization, not after: building a two-commit repo for a case
+    # that cannot run is wasted work, and the failure reads more clearly when
+    # nothing has been created yet.
+    require_nonempty_registry(fixture_dir.name, task_text)
+
     fixture = materialize_archetype(fixture_dir, dest)
     declaration_path = fixture_dir / "declaration.md"
     return BenchmarkCase(
@@ -84,7 +91,7 @@ def build_benchmark_case(fixture_dir: Path, dest: Path) -> BenchmarkCase:
         source=BenchmarkCaseSource(kind="archetype", identifier=fixture.meta.name),
         inputs=BenchmarkCaseInputs(
             repo=str(fixture.repo_path),
-            task_text=(fixture_dir / "task.md").read_text(),
+            task_text=task_text,
             base_revision=fixture.base_sha,
             head_revision=fixture.head_sha,
             declaration_text=(declaration_path.read_text() if declaration_path.is_file() else None),

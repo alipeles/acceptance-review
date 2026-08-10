@@ -12,182 +12,103 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
-## Task in flight: #214
+## No task in flight
 
-**The completion verdict cannot see mandate coverage.** Child of #185. Branch
-`214-verdict-mandate-coverage`, worktree `~/acceptance-worktrees/`, branched at
-`0923f77`. **Gate 1 passed at run 2** (`078d216`); no code written yet.
+**#214 landed** as `7573697` (PR #247). **#228 is merging** as PR #246 — Gate 2
+not clean, on an explicit human call. **#180 is still in flight** in its own
+session.
 
-Three lanes in parallel: **#180** (evidence-rating stability), **#228**
-(benchmark guard), **#214** (this one).
+`current-task.md` holds #228's mandate; stale, and the next task overwrites it
+at Gate 1.
 
-## The design — settled with the human, two rulings
+## Why #228 merged without a clean gate
 
-**Ruling 1: coverage keys off the requirement's disposition, not its text.**
-Disposition is already structured and *enforced*, in two layers: the model-facing
-discriminated union `_Yielded` / `_NoObligation` / `_RaisedOpenQuestion`
-(`obligations.py:300-340`, `Literal` tags, and `_Yielded` splits its first
-obligation into its own required field so "at least one" is unrepresentable
-otherwise), and the persisted `RequirementDisposition` whose validator rejects
-`yielded` with no obligations and `no_obligation` with no reason.
+Third time, same cause. **#153** and **#235** made the same call before it. The
+new part is that #228's evidence isolates the failure to the **mapping call**,
+filed as **#245** against #182, and does it without needing to compare runs.
 
-So there is a hard rule with no judgement call in it, and the four cases are:
+Run 2's report contradicts itself three ways:
 
-| disposition | can a requirement vanish? |
-|---|---|
-| `yielded` | No — validator makes obligation-free `yielded` unrepresentable |
-| `no_obligation` | No — **trusted**, exempt by rule |
-| `open_question`, unresolved | No — already forces `needs_clarification` |
-| `open_question`, **resolved by the diff** | **Yes — this is the hole** |
+- obligation 3 (`completion-04`): `unsupported`, *"no mapped test"*, recommending
+  a test that iterates both corpora;
+- obligation 8 (`constraint-04`): **strongly supported**, citing
+  `test_every_archetype_task_file_yields_requirements` and its
+  decompose-regression twin — the very tests obligation 3 says do not exist;
+- unrequested change #5: calls those same tests surplus to requirements.
 
-A bare section marker is exempt because it is `no_obligation`, not because it is
-short. **My earlier ≤3-words heuristic is dead** — do not resurrect it.
+Across runs, the mapper moved the tests between a Completion expectation ("A test
+asserts that X") and its Constraint twin ("X"), and in run 2 handed one to a
+**scope exclusion** — a code-evidence-only obligation that should attract no test
+mapping at all.
 
-The accepted price: ten declines with identical boilerplate now return clean.
-Defensible because #153 made scope exclusions yield obligations at source, and
-re-judging whether a decline was *correct* is #193/#211's job, not the verdict's.
+Run 1 named three obligations; **all three were real and all three were fixed**.
+Run 2 then named a disjoint two that run 1 had passed, over unchanged tests.
 
-**Ruling 2: derived obligations from resolved open questions are in scope.** An
-implementation choice that settles an ambiguity cannot ship untested.
+Evidence: `dogfood-logs/228-gate2-run1/` and `-run2/`, judgement in run 2.
 
-## How the derived obligation is built
+## What #228 shipped
 
-One field added to the open-question resolution schema: when `resolved=true`, the
-model also returns the behaviour the diff commits to, as one requirement-shaped
-sentence. **Everything else is fixed in code, not inferred:**
+- **`benchmark/case.py::require_nonempty_registry`** + `EmptyRequirementRegistryError`.
+  Runs the real `parse_task_file` → `build_registry`, **not** a `# Task` heading
+  proxy: a proxy would pass exactly when the parser changed its mind about what
+  a requirement is, which is the case worth catching.
+- Called by all three corpus builders **before materialization** —
+  `build_benchmark_case`, `build_decompose_case`, `build_corpus_case`.
+- 31 tests. **Injection-verified:** short-circuiting the guard fails 8 of them.
 
-- `explicit=False` — the field already means "inferred, not stated in the mandate"
-- `type=functional`, `importance=normal` — constants
-- `coverage_status="addressed"`, `coverage_refs` = the `diff_refs` the resolution
-  already cited. **So a derived obligation can never be a coverage gap** — it
-  rides the test-evidence axis only, and reaches the verdict through the existing
-  weak-evidence path. Untested choice -> `incomplete`.
-- **`id` computed deterministically from the question id, never model-minted.**
-  Required by this task's own byte-identical-rerun constraint, and by #180's
-  carry-forward design (see below).
-- Only questions that are resolved **and** cite at least one hunk qualify.
+## The lesson worth keeping from #228
 
-Why not synthesize from the existing `rationale` instead, avoiding the prompt
-change: `rationale` is written to explain *what the diff shows*, not to state
-required behaviour. Templating it produces obligations phrased as commentary,
-which mapping and discrimination then run on — a false red the builder cannot fix
-by changing anything of theirs.
+**A test that cannot fail is not evidence, and neither is a passing corpus.**
+Every task file in all three corpora parses non-empty today, so the corpus can
+never demonstrate the guard — the firing tests must supply their own unreadable
+file. The same reasoning found the defect in the *runner's* own acceptance test
+(**#243**): it asserts `gap_recall == 0.0` over an input with nothing to find,
+so it would pass against a checker that found every gap.
 
-## Coordination with #180 — asked and answered
+Corollary that keeps recurring: **assert the consequence, not just the
+mechanism.** Ten tests asserted the guard raises; none asserted that no number
+is produced. Gate 2 caught that, and the recommendation correctly demanded a
+*control* — "no score" is worthless without showing the harness would have
+produced one.
 
-Asked whether the `open_questions.py` prompt/schema change collides. Answer: **no
-overlap, and no request-key change in its lane.** A determinism-component child
-(provisionally #180.3) *would* touch the key, but is unfiled and out of its
-session's scope; re-ask if it is picked up.
+## Parallel lanes — what worked
 
-**Correction from #180, verified in `llm.py:81-108` rather than taken on trust:**
-`request_key` hashes each *individual* request dict and `TranscriptStore` files
-per key, so editing one stage's prompt orphans **only that stage's** recordings.
-CLAUDE.md's "changing a prompt invalidates recorded transcripts" reads broader
-than it is. Global invalidation needs a change to `request_key` itself or to
-something folded into every request (model id, seed).
+Three lanes, two landed the same day, no code conflict. Conditions that held:
 
-**#180's warning, acted on:** its design is heading toward re-judging an
-obligation only when that obligation's own inputs changed, so ratings carry
-forward across runs. A derived obligation whose id moved between runs would look
-like one vanishing and a new one appearing — never carrying forward, and silently
-re-judging while looking stable. Hence the deterministic id above.
-
-Expect textual merge conflicts with #180 in `review_state.py` (both adding
-fields) and `pipeline.py` (different regions). **Rebase early.**
-
-## Gate 2 — NOT CLEAN, runs 1 and 2
-
-Implementation is complete and committed (`bb1f1ef`); **993 tests pass, ruff
-clean**. Gate 2 is INCOMPLETE, and this is a human call, not mine.
-
-**Run 1's four findings were all real and all are fixed.** Two coverage gaps
-(byte-identical review state had no test at all — it was in my mandate and I did
-not write it) and two weak ratings (a declined-requirement test that could not
-fail, and a coverage figure asserted on the result but never in the report).
-Run 2 confirms: both gaps closed, both weak ratings moved to strongly supported.
-Determinism test verified by injection — `uuid4()` in `derived_obligation_id`
-fails it.
-
-**Run 2's four findings are attributed to #180/#182.** The heads differ by three
-added tests and no source change, yet 7 of 21 obligations moved rating and four
-fell. `constraint-11` went `strongly supported` (two mapped tests) →
-`unsupported` **with no mapped test at all**, both tests still present and
-untouched. I read every recommendation first: three describe tests that already
-exist — one of them cited by the same run as evidence for the obligation it says
-lacks it — and the fourth asks for a test of something `derive_verdict`'s
-signature already guarantees.
-
-Same call as #153 and #235, same cause. Evidence in
-`dogfood-logs/214-gate2-run1/` and `-run2/`.
-
-## Gate 1 — passed, run 2
-
-`dogfood-logs/214-gate1-run2/`. 29 requirements, 28 yielded, 1 deliberately
-declined, **0 open questions**. Run 1 (`dogfood-logs/214-gate1-run1/`, 25
-requirements) is superseded — it predates ruling 1.
-
-`completion-01` = `- Implementation`, declined both runs on identical text as a
-standalone section marker. That is #214's Acceptance item 4 live in this task's
-own file, and under ruling 1 it is exempt for the right reason.
-
-**One flag, attributed to the tool and queued:** `constraint-05` and
-`completion-06` produced byte-identically-described obligations that failed to
-merge, because an unrelated obligation was linked into their cluster and
-`_confirmed_clusters` (`linking.py:382`) merges nothing in a cluster containing a
-denied pair. Six other constraint/completion pairs merged correctly, so it is not
-a wording problem. Everything stayed attached to its correct requirement, so the
-set is sound to build against — but **if those two ids wobble at Gate 2, read it
-as this defect, not as new evidence.**
-
-## #214's Acceptance is partly stale — issue needs updating
-
-- **Item 2** ("a review in which requirements produced no obligation cannot
-  return `no_material_gaps`") is stale, per the human: it predates the
-  realisation that some requirements legitimately yield none. Under ruling 1 it
-  is wrong as written.
-- **Item 4** (bare section marker not penalised) is now satisfied structurally
-  rather than by a rule aimed at it.
-- The `undisposed` bullet is already corrected on the issue
-  (`issuecomment-5244447965`); implemented against `unread_source`.
-
-**Not yet done: updating #214's Acceptance to match rulings 1 and 2.** Needs the
-human's approval as a backlog write.
-
-## Queue — `docs/DEFERRED.md`
-
-**Empty.** Filed this session:
-
-- **#242** — linking merges nothing when one spurious link joins a cluster, so a
-  false positive protects a true duplicate. Child of #181.
-- **Comment on #180** (`issuecomment-5245416368`) — a mapped set collapsing from
-  two tests to zero across an additive diff; a cleaner reproduction than the
-  corpus holds, because mapping alone accounts for it.
-- **Comment on #214** (`issuecomment-5244447965`) — the `undisposed` correction.
-
-The exemption-rule decision entry is resolved and deleted — ruling 1 settled it.
+- **No lane touched a model prompt except its own** — the request key hashes it.
+- **Each lane had its own `.venv`** (editable installs bake an absolute path).
+- **Each ran from a session whose cwd was its worktree** — absolute paths match
+  none of the relative allow rules and prompt on every call.
+- **Conflicts were only ever `current-task.md` and `session-state.md`**, which
+  every lane rewrites wholesale. Resolve with `git checkout --ours` and move on.
+- Cross-lane messaging was worth it: #214's session confirmed no API overlap
+  before I looked, which saved a full audit of `verdict.py`/`pipeline.py`.
 
 ## Do not rediscover
 
 - **`.acceptance/ignore` is committed** (#105) and holds `dogfood-logs/`.
 - **`decompose|check --mode record` writes nothing to stdout when redirected** —
-  pipe through `tee`, which works.
-- **A `PostToolUse` formatter hook reformats files after every edit.** It strips
-  imports added ahead of their first use — so some churn in a diff is not the
-  author's.
-- **Permission prompts are caused by command shape, not vocabulary.** One command
-  per Bash call; patterns may wildcard mid-string; naming `.env` in any command
-  prompts regardless. **Approvals are not recorded anywhere** — only denials are.
-- **`pytest` must run from its own tree** — `addopts`/`pythonpath` are
-  cwd-relative.
-- **Each worktree needs its own `.venv`** — an editable install bakes an absolute
-  path. This one's is correct (verified importing from this tree).
+  pipe through `tee`. A first `check` over new task text needs `--mode record`.
+- **The `PostToolUse` formatter strips imports added ahead of their first use.**
+  Add the import in the same edit as the code using it, or it silently vanishes.
+- **`test_region_coverage.py` parametrizes over `dogfood-logs/*/current-task.md`**,
+  so adding a dogfood log adds tests — the suite count grows by more than you wrote.
+- **Synthetic cases in `test_runner.py`, `test_scoring.py`, `test_alignment.py`
+  and `test_case.py` yield empty registries too** (`## Deliverable` is not a
+  recognised heading). That is why #228's guard is on the builders and not at
+  hook entry. Filed as **#243**.
+- **`gh api … -f` sends strings; sub-issue ids need `-F`** to be integers.
 - **`gh pr create` with "Closes #a, #b, #c" only closes the first.**
-- **Obligation ids are minted per response, not stable across runs** (#231).
+- **Obligation ids are minted per response** (#231); types move too (#205).
+- **`pytest` must run from its own tree** — `addopts`/`pythonpath` are cwd-relative.
 - **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
+
+## Queue — `docs/DEFERRED.md`
+
+Empty. Filed this session: **#243** (child of #186), **#245** (child of #182).
 
 ## Known open
 
-**#210**, **#180**, **#193**, **#191**, **#196**, **#178**, **#214**, **#129**,
-**#223**, **#224**, **#173**, **#225**, **#227**, **#228**, **#212**, **#231**,
-**#236**, **#237**, **#239**.
+**#210**, **#180**, **#193**, **#191**, **#196**, **#178**, **#129**, **#223**,
+**#224**, **#173**, **#225**, **#227**, **#212**, **#231**, **#236**, **#237**,
+**#239**, **#243**, **#245**.

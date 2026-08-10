@@ -1,0 +1,177 @@
+Task completion: INCOMPLETE
+
+2 obligation(s) with non-discriminating test evidence (test-all-corpus-cases-pass-check, test-corpus-cases-require-check-before-build).
+
+Obligations:
+
+  1. A test asserts that a case whose task file yields no requirements fails, naming the case.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+       test evidence: strongly supported  [tier: static]
+         1.2  tests/benchmark/test_empty_registry_guard.py::test_a_task_file_with_no_requirements_raises_naming_the_case
+
+  2. A test demonstrates that failure with a task file the test supplies, not with a task file taken from either corpus.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+       test evidence: strongly supported  [tier: static]
+         2.2  tests/benchmark/test_empty_registry_guard.py::test_a_decompose_case_cannot_be_built_from_an_unreadable_task_file
+         2.3  tests/benchmark/test_empty_registry_guard.py::test_an_archetype_case_cannot_be_built_from_an_unreadable_task_file
+         2.4  tests/benchmark/test_empty_registry_guard.py::test_an_archetype_case_fails_before_it_materializes_a_repo
+
+  3. A test asserts that every case in the archetype corpus and every case in the decomposition-regression corpus passes the check.
+       requirements: completion-04
+       code evidence: addressed
+         3.1  tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: A test is added that iterates over both corpora and verifies each case passes the check.
+           inputs:  Use the real corpus directories from both suites: every archetype fixture under `tests/fixtures/archetypes/` and every decompose-regression fixture under `tests/fixtures/decompose-regression/`. The test should iterate each case, load its task text exactly as the builders do, and run the same nonempty-registry check on each one. Inputs must include at least one case from each corpus so the test distinguishes a partial iteration bug from a full-corpus pass.
+           detects: The current tests may only exercise one corpus, or only a hand-picked subset, so a regression where some corpus cases still produce empty registries would slip through. This test catches the defect where not all corpus cases are actually verified to pass the check.
+           full detail: acceptance recommendation --criterion test-all-corpus-cases-pass-check
+
+  4. A test asserts that a case cannot be built from either corpus without the check being performed.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+         4.2  src/acceptance/benchmark/fixtures.py#@@ -77,6 +78,12 @@ def load_labels(fixture_dir: Path) -> GroundTruthLabels:
+         4.3  src/acceptance/benchmark/corpus.py#@@ -158,10 +159,17 @@ def remove_corpus_worktree(repo: Path, dest: Path) -> None:
+         4.4  src/acceptance/benchmark/corpus.py#@@ -238,6 +246,13 @@ def decompose_task_text(repo: Path, meta: DecomposeCaseMeta) -> str:
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: A test is added that attempts to build corpus cases without running the check first and verifies the build is blocked until the check runs.
+           inputs:  Construct a synthetic corpus case whose task file is unreadable to the registry parser but otherwise looks like a valid case input, then attempt to build it through each corpus builder path (`build_benchmark_case`, `build_decompose_case`, and `build_corpus_case`) without any prior explicit check call. The input must be one that would have proceeded to materialization/build in the old behavior but now should be blocked by the guard.
+           detects: The current tests may verify the guard function itself but not that the corpus builders actually invoke it before materialization. This test catches the defect where a build still proceeds unless some external caller remembered to run the check first.
+           full detail: acceptance recommendation --criterion test-corpus-cases-require-check-before-build
+
+  5. A benchmark case whose task file yields no requirements raises an error rather than being built.
+       requirements: constraint-01
+       code evidence: addressed
+         5.1  src/acceptance/benchmark/fixtures.py#@@ -77,6 +78,12 @@ def load_labels(fixture_dir: Path) -> GroundTruthLabels:
+         5.2  src/acceptance/benchmark/case.py#@@ -277,3 +277,54 @@ class BenchmarkCase(PersistableModel):
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/benchmark/test_empty_registry_guard.py::test_a_corpus_case_cannot_be_built_from_an_unreadable_task_file
+         5.4  tests/benchmark/test_empty_registry_guard.py::test_a_task_file_with_no_requirements_raises_naming_the_case
+         5.5  tests/benchmark/test_empty_registry_guard.py::test_an_unreadable_case_is_never_scored_while_a_readable_one_still_is
+
+  6. The error names the case it was raised for.
+       requirements: constraint-02
+       code evidence: addressed
+         6.1  src/acceptance/benchmark/case.py#@@ -277,3 +277,54 @@ class BenchmarkCase(PersistableModel):
+         6.2  tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/benchmark/test_empty_registry_guard.py::test_a_corpus_case_cannot_be_built_from_an_unreadable_task_file
+         6.4  tests/benchmark/test_empty_registry_guard.py::test_a_decompose_case_cannot_be_built_from_an_unreadable_task_file
+         6.5  tests/benchmark/test_empty_registry_guard.py::test_a_task_file_with_no_requirements_raises_naming_the_case
+         6.6  tests/benchmark/test_empty_registry_guard.py::test_an_archetype_case_cannot_be_built_from_an_unreadable_task_file
+         6.7  tests/benchmark/test_empty_registry_guard.py::test_an_unreadable_case_is_never_scored_while_a_readable_one_still_is
+         6.8  tests/requirement/test_decompose_partitioning.py::test_an_id_outside_the_registry_entirely_is_still_refused_by_name
+
+  7. The error says the case did not run, so the outcome cannot be read as a score of zero.
+       requirements: constraint-03
+       code evidence: addressed
+         7.1  src/acceptance/benchmark/case.py#@@ -277,3 +277,54 @@ class BenchmarkCase(PersistableModel):
+         7.2  tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/benchmark/test_empty_registry_guard.py::test_the_error_says_the_case_did_not_run_rather_than_scored_zero
+
+  8. The check covers every case in the archetype corpus and every case in the decomposition-regression corpus.
+       requirements: constraint-04
+       code evidence: addressed
+         8.1  src/acceptance/benchmark/fixtures.py#@@ -77,6 +78,12 @@ def load_labels(fixture_dir: Path) -> GroundTruthLabels:
+         8.2  src/acceptance/benchmark/corpus.py#@@ -158,10 +159,17 @@ def remove_corpus_worktree(repo: Path, dest: Path) -> None:
+         8.3  src/acceptance/benchmark/corpus.py#@@ -238,6 +246,13 @@ def decompose_task_text(repo: Path, meta: DecomposeCaseMeta) -> str:
+         8.4  tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+       test evidence: strongly supported  [tier: static]
+         8.5  tests/benchmark/test_empty_registry_guard.py::test_both_corpora_are_actually_covered
+         8.6  tests/benchmark/test_empty_registry_guard.py::test_every_archetype_task_file_yields_requirements
+         8.7  tests/benchmark/test_empty_registry_guard.py::test_every_decompose_regression_task_file_yields_requirements
+         8.8  tests/requirement/test_region_coverage.py::test_the_decompose_stability_corpus_is_fully_covered
+
+  9. A case built from either corpus is checked before it can be scored.
+       requirements: constraint-05
+       code evidence: addressed
+         9.1  src/acceptance/benchmark/fixtures.py#@@ -77,6 +78,12 @@ def load_labels(fixture_dir: Path) -> GroundTruthLabels:
+         9.2  src/acceptance/benchmark/corpus.py#@@ -158,10 +159,17 @@ def remove_corpus_worktree(repo: Path, dest: Path) -> None:
+         9.3  src/acceptance/benchmark/corpus.py#@@ -238,6 +246,13 @@ def decompose_task_text(repo: Path, meta: DecomposeCaseMeta) -> str:
+       test evidence: strongly supported  [tier: static]
+         9.4  tests/benchmark/test_empty_registry_guard.py::test_an_unreadable_case_is_never_scored_while_a_readable_one_still_is
+         9.5  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  10. Tests issue no live model calls.
+       requirements: constraint-06
+       code evidence: addressed
+         10.1  tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+       test evidence: strongly supported  [tier: static]
+         10.2  tests/benchmark/test_instability.py::test_runs_are_recorded_live_and_never_replayed
+
+  11. The change does not alter which text in a task file counts as a requirement.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 15 changes across 6 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  12. The change does not alter how finely a requirement is split into obligations.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 15 changes across 6 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  13. The change does not alter how accurately decomposition is measured.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 15 changes across 6 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  14. The change does not alter whether accuracy figures recorded before the archetype corpus was reshaped are comparable with later ones.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 15 changes across 6 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  15. The change does not alter the wording of the task files already in either corpus.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 15 changes across 6 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  16. The change does not alter whether two runs over byte-identical task text produce byte-identical review state.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 15 changes across 6 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  17. A benchmark case whose task file yields no requirements fails and names the case instead of being scored.
+       requirements: task-01
+       code evidence: addressed
+         17.1  src/acceptance/benchmark/case.py#@@ -277,3 +277,54 @@ class BenchmarkCase(PersistableModel):
+         17.2  tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+       test evidence: strongly supported  [tier: static]
+         17.3  tests/benchmark/test_empty_registry_guard.py::test_a_task_file_with_no_requirements_raises_naming_the_case
+
+Mandate coverage: 17 of 18 requirements yielded obligations
+  1. [no_obligation] completion-01: Implementation
+       reason: Section marker standing alone with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] The new guard is applied to `build_corpus_case`, which changes corpus-case construction behavior beyond the stated need to fail benchmark cases whose task files yield no requirements. The obligations require corpus cases to be checked before scoring/building, but they do not mention adding a pre-build failure path for the rating-stability corpus builder specifically; this is an extra behavior change unless separately justified by the corpus-check obligations.
+       src/acceptance/benchmark/corpus.py#@@ -158,10 +159,17 @@ def remove_corpus_worktree(repo: Path, dest: Path) -> None:
+  2. [in_service] `build_decompose_case` now rejects empty-registry inputs before assembling the case. The obligations require corpus cases to be checked before build/scoring, but they do not explicitly call for changing decompose-regression case construction to raise this new error, so this is an added behavior change outside the named benchmark-case failure requirement unless covered by the corpus-check obligations.
+       src/acceptance/benchmark/corpus.py#@@ -238,6 +246,13 @@ def decompose_task_text(repo: Path, meta: DecomposeCaseMeta) -> str:
+       src/acceptance/benchmark/corpus.py#@@ -246,7 +261,7 @@ def build_decompose_case(case_dir: Path, repo: Path) -> BenchmarkCase:
+  3. [separable] The `_git` helper was reformatted onto one line only; this is a pure formatting/internal change with no requested functional effect.
+       src/acceptance/benchmark/corpus.py#@@ -277,6 +292,4 @@ def _resolve(repo: Path, revision: str, corpus_run: str) -> str:
+  4. [separable] `session-state.md` was extensively rewritten with new task-status narrative, planning notes, and historical commentary. None of the obligations ask for session-state documentation updates, so this is unrequested adjacent content.
+       session-state.md#@@ -12,74 +12,66 @@ Clear it out when the task lands rather than letting it accrete.
+       session-state.md#@@ -91,19 +83,15 @@ these conditions:
+  5. [in_service] The new test file includes broad corpus-wide assertions that every archetype and every decompose-regression case yields requirements, plus a count check for corpus coverage. The obligations require tests that all corpus cases pass check and that corpus cases require check before build, but they do not ask for these additional corpus-content assertions or coverage-count guard, so these are extra behavioral assertions beyond the requested failure tests.
+       tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+  6. [in_service] The new test file adds a control test that a readable synthetic case still scores successfully via `decompose_case`, which exercises scoring behavior not explicitly demanded by the obligations focused on empty-registry failures and corpus checks.
+       tests/benchmark/test_empty_registry_guard.py#@@ -0,0 +1,278 @@
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
