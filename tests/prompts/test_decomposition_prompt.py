@@ -173,6 +173,40 @@ def test_every_scope_exclusion_is_declined(derived, requirement_id):
     assert _disposition(derived, requirement_id).disposition is Disposition.NO_OBLIGATION
 
 
+def test_sibling_exclusions_share_one_disposition(derived):
+    """#230's own property, and distinct from the parametrized test above.
+
+    "Each of these is declined" and "these are all disposed of the SAME way"
+    are different assertions. The first pins a value and says nothing about
+    consistency; the second is what the requirement states, and it is the one
+    that fails on the three-declined/two-inverted split #230 was filed for.
+
+    Asserting equality rather than a fixed value on purpose: if the uniform
+    disposition ever changes, this test should still be measuring consistency
+    rather than needing to be rewritten to a new constant.
+    """
+    kinds = {_disposition(derived, i).disposition for i in _EXCLUSION_IDS}
+
+    assert len(kinds) == 1, (
+        "siblings under one Scope exclusions heading were split: "
+        f"{ {i: _disposition(derived, i).disposition for i in _EXCLUSION_IDS} }"
+    )
+
+
+def test_sibling_exclusions_differing_in_content_still_share_a_disposition(derived):
+    """The boundary the recommendation names: the four bullets name four
+    different excluded topics — currencies, pagination, scheduling,
+    compression — so passing the test above cannot be an artifact of them
+    saying the same thing. Consistency of disposition, not of content."""
+    subjects = {
+        _disposition(derived, i).reason for i in _EXCLUSION_IDS if _disposition(derived, i).reason
+    }
+
+    assert len(subjects) == len(_EXCLUSION_IDS), (
+        f"the four exclusions should name four different excluded topics; got {sorted(subjects)}"
+    )
+
+
 @pytest.mark.parametrize("requirement_id", _EXCLUSION_IDS)
 def test_a_declined_exclusion_states_no_property_to_preserve(derived, requirement_id):
     """The #219 defect exactly: declining, and then performing the positive
