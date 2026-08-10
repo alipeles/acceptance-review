@@ -1,0 +1,129 @@
+Task completion: NO-MATERIAL-GAPS
+
+Every obligation is addressed and strongly supported by discriminating tests.
+
+Obligations:
+
+  1. A test asserts that a file replaced between base and head by content of the same size, mode and modification time is committed with its head content.
+       requirements: completion-01
+       code evidence: addressed
+         1.1  tests/benchmark/test_fixtures.py#@@ -85,6 +88,191 @@ def test_materialization_is_deterministic(fixture_dir, tmp_path):
+         1.2  src/acceptance/benchmark/fixtures.py#@@ -104,21 +104,48 @@ def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
+       test evidence: strongly supported  [tier: static]
+         1.3  tests/benchmark/test_fixtures.py::test_head_content_wins_when_the_replacement_has_matching_metadata
+
+  2. A test asserts that the committed content of every file in a materialized fixture equals that file's content in the fixture directory.
+       requirements: completion-02
+       code evidence: addressed
+         2.1  tests/benchmark/test_fixtures.py#@@ -85,6 +88,191 @@ def test_materialization_is_deterministic(fixture_dir, tmp_path):
+       test evidence: strongly supported  [tier: static]
+         2.2  tests/benchmark/test_fixtures.py::test_each_commit_records_the_fixture_tree_verbatim
+
+  3. A test asserts that materializing one fixture twice produces the same base commit identifier and the same head commit identifier.
+       requirements: completion-03
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         3.1  tests/benchmark/test_fixtures.py::test_materialization_ignores_compiled_python
+         3.2  tests/benchmark/test_fixtures.py::test_materialization_is_deterministic
+
+  4. The base commit's tree holds exactly the files of the fixture's `base` directory, each carrying that file's content.
+       requirements: constraint-01
+       code evidence: addressed
+         4.1  src/acceptance/benchmark/fixtures.py#@@ -104,21 +104,48 @@ def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
+         4.2  tests/benchmark/test_fixtures.py#@@ -85,6 +88,191 @@ def test_materialization_is_deterministic(fixture_dir, tmp_path):
+       test evidence: strongly supported  [tier: static]
+         4.3  tests/benchmark/test_fixtures.py::test_each_commit_records_the_fixture_tree_verbatim
+
+  5. The head commit's tree holds exactly the files of the fixture's `head` directory, each carrying that file's content.
+       requirements: constraint-02
+       code evidence: addressed
+         5.1  src/acceptance/benchmark/fixtures.py#@@ -104,21 +104,48 @@ def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
+         5.2  tests/benchmark/test_fixtures.py#@@ -85,6 +88,191 @@ def test_materialization_is_deterministic(fixture_dir, tmp_path):
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/benchmark/test_fixtures.py::test_each_commit_records_the_fixture_tree_verbatim
+
+  6. A file whose content differs between `base` and `head` is committed with its head content even when the head file has the same size, mode and modification time as the base file it replaced.
+       requirements: constraint-03
+       code evidence: addressed
+         6.1  src/acceptance/benchmark/fixtures.py#@@ -104,21 +104,48 @@ def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
+         6.2  tests/benchmark/test_fixtures.py#@@ -85,6 +88,191 @@ def test_materialization_is_deterministic(fixture_dir, tmp_path):
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/benchmark/test_fixtures.py::test_head_content_wins_when_the_replacement_has_matching_metadata
+         6.4  tests/benchmark/test_fixtures.py::test_modification_times_do_not_change_what_is_committed
+         6.5  tests/benchmark/test_fixtures.py::test_recorded_commits_survive_git_comparing_fewer_status_fields
+
+  7. What a commit records is determined by file content alone, not by the modification times of the files on disk.
+       requirements: constraint-04
+       code evidence: addressed
+         7.1  src/acceptance/benchmark/fixtures.py#@@ -104,21 +104,48 @@ def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
+         7.2  tests/benchmark/test_fixtures.py#@@ -85,6 +88,191 @@ def test_materialization_is_deterministic(fixture_dir, tmp_path):
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/benchmark/test_fixtures.py::test_modification_times_do_not_change_what_is_committed
+
+  8. What a commit records does not change when git is configured to compare a working-tree file against its recorded status using fewer fields.
+       requirements: constraint-05
+       code evidence: addressed
+         8.1  tests/benchmark/test_fixtures.py#@@ -85,6 +88,191 @@ def test_materialization_is_deterministic(fixture_dir, tmp_path):
+       test evidence: strongly supported  [tier: static]
+         8.2  tests/benchmark/test_fixtures.py::test_recorded_commits_survive_git_comparing_fewer_status_fields
+
+  9. Materializing one fixture twice yields the same base commit identifier both times and the same head commit identifier both times.
+       requirements: constraint-06
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         9.1  tests/benchmark/test_fixtures.py::test_materialization_ignores_compiled_python
+         9.2  tests/benchmark/test_fixtures.py::test_materialization_is_deterministic
+
+  10. Materializing an archetype fixture into a git repository commits exactly the files described by the fixture and produces the same commit identifiers every time it runs.
+       requirements: task-01
+       code evidence: addressed
+         10.1  src/acceptance/benchmark/fixtures.py#@@ -104,21 +104,48 @@ def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
+         10.2  tests/benchmark/test_fixtures.py#@@ -85,6 +88,191 @@ def test_materialization_is_deterministic(fixture_dir, tmp_path):
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/benchmark/test_fixtures.py::test_each_commit_records_the_fixture_tree_verbatim
+
+Mandate coverage: 10 of 13 requirements yielded obligations
+  1. [no_obligation] exclusion-01: - Whether a fixture's `base` and `head` trees describe the change they are meant
+  to describe.
+       reason: Names whether the fixture trees describe the intended change as out of scope for this change.
+  2. [no_obligation] exclusion-02: Which archetype fixtures exist, and the ground-truth labels attached to them.
+       reason: Names which archetype fixtures exist and their ground-truth labels as out of scope for this change.
+  3. [no_obligation] exclusion-03: How long materialization takes.
+       reason: Names materialization runtime as out of scope for this change.
+
+Unrequested changes:
+  1. [separable] Added a large deferred-note entry about pre-existing ruff errors and a proposed fix. The task obligations are about materialization determinism and commit contents/tests; they do not call for documenting unrelated lint drift or CI configuration.
+       docs/DEFERRED.md#@@ -20,6 +20,30 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
+  2. [separable] Rewrote session-state notes to describe a different in-flight task, gate history, and queue status. None of the listed obligations require updating session bookkeeping or task narrative.
+       session-state.md#@@ -12,87 +12,70 @@ Clear it out when the task lands rather than letting it accrete.
+  3. [in_service] Changed explanatory comments/docstrings in the benchmark fixture module to describe the new staging approach and same-size replacement issue. The obligations require behavior and tests, not this documentation rewrite.
+       src/acceptance/benchmark/fixtures.py#@@ -17,8 +17,10 @@ nested .git), so each is kept as reviewable source trees under
+       src/acceptance/benchmark/fixtures.py#@@ -104,21 +104,48 @@ def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
+  4. [separable] Collapsed a multi-line keyword argument expression and a subprocess call into single lines. This is a formatting-only internal change unrelated to the requested functionality or tests.
+       src/acceptance/benchmark/fixtures.py#@@ -85,9 +87,7 @@ def build_benchmark_case(fixture_dir: Path, dest: Path) -> BenchmarkCase:
+       src/acceptance/benchmark/fixtures.py#@@ -140,9 +167,7 @@ def _replace_worktree(repo: Path, tree: Path) -> None:
+  5. [in_service] Introduced `_stage_worktree()` to empty the index before `git add -A`, changing the materialization algorithm. The obligations require that commits reflect fixture content and be stable; they do not specifically require this implementation detail, so this is an unrequested behavioral change unless it is considered the necessary means to satisfy the requested tests.
+       src/acceptance/benchmark/fixtures.py#@@ -104,21 +104,48 @@ def materialize_archetype(fixture_dir: Path, dest: Path) -> MaterializedFixture:
+  6. [in_service] Added new helper/test scaffolding that creates synthetic fixtures, manipulates mtimes, and sets git config via environment variables. These are extra behaviors beyond the explicitly requested tests and functional guarantees, and they broaden the test surface beyond what the obligations mention.
+       tests/benchmark/test_fixtures.py#@@ -9,8 +9,11 @@ share its scenario number (8) but a distinct `name`, one per unrequested-change
+       tests/benchmark/test_fixtures.py#@@ -85,6 +88,191 @@ def test_materialization_is_deterministic(fixture_dir, tmp_path):
+
+Changes since 2fc8c122:
+  closed:
+    - What a commit records is determined by file content alone, not by the modification times of the files on disk.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - What a commit records does not change when git is configured to compare a working-tree file against its recorded status using fewer fields.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - Materializing an archetype fixture into a git repository commits exactly the files described by the fixture and produces the same commit identifiers every time it runs.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+  verdict: INCOMPLETE -> NO-MATERIAL-GAPS
+
+Evidence limitations:
+  1. No material gaps found at the achievable evidence tier — not proof of correctness. The full application was not independently executed (§3.7).
+
+Recommended next instruction: (none)

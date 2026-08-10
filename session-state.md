@@ -55,10 +55,23 @@ and hashes from content — `git read-tree --empty` then `git add -A`, in
 `materialize_archetype`. Verified at the git level under the hostile config:
 bad SHA before, correct SHA after.
 
+## Gate 2 — clean at `3c9a56d`, presented for human sign-off
+
+`NO-MATERIAL-GAPS`. 10 obligations, all addressed, all strongly supported, no
+open questions, no recommended tests. `dogfood-logs/234-gate2-run1` (INCOMPLETE)
+and `-run2` (clean). Mapping transcripts checked per DR-164 — the six relevant
+tests all mapped; the empties are unrelated candidates.
+
+Run 1 found two obligations genuinely untested, and it was right: forcing the
+hostile condition is not the same claim as pinning invariance under it. Two
+tests added.
+
+Full suite green: 952 passed. Each of the three determinism tests was run
+against the unfixed code and observed to fail.
+
 ## Next
 
-Implement the fix in `src/acceptance/benchmark/fixtures.py`, add the three
-demanded tests to `tests/benchmark/test_fixtures.py`, then Gate 2 (`check`).
+Human sign-off, then PR. Nothing pushed.
 
 ## Do not rediscover
 
