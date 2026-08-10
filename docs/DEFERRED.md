@@ -150,4 +150,57 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   something else varies — tree content or ordering — and that a flaky
   determinism test is worse than none, because it trains readers to re-run.
   Labels: `track:benchmark`. Parent umbrella: #184.
+- **Status:** filed (#234, attached to #184)
+
+### [2026-08-09] Scope exclusions are inverted into obligations to do the excluded work
+
+- **Kind:** filing
+- **Found during:** #232/#219/#230 bundle, Gate 1 run 1
+- **Where:** `src/acceptance/requirement/obligations.py` (derivation prompt), observed in `dogfood-logs/232-gate1-run1/output.log`
+- **Severity:** blocker — an Acceptance property of the task in flight (#230) depends on it
+- **What's wrong:** Six sibling `## Scope exclusions` bullets, all shaped `X, which is
+  #N`, received four different treatments. Two were correctly read as out of scope. The
+  other four yielded obligations **to do the excluded work**: `exclusion-05`
+  ("Whether obligation identifiers are stable across task-file edits, which is #231")
+  became `compatibility` obligation *"Keep obligation identifiers stable across
+  task-file edits"*, and `exclusion-06` (#211) became *"Measure how accurate the
+  decomposition is."* This is a sense inversion, not the inconsistency #230 records —
+  #230's reframings kept the exclusion's meaning ("Preserve the scope exclusion
+  that …"), these assert the excluded work as a requirement of the change under review.
+- **Why I didn't act:** filings wait for the gate; this is the gate.
+- **Drafted fix:** Comment on **#230**, widening it. Quote the six `exclusion-*` entries
+  verbatim from the run log with their types (`human_review` ×3, `invariant`,
+  `compatibility`, `explanation_observability`), and state the sharpened finding: the
+  failure is not only that siblings are treated differently but that an exclusion can
+  invert into its own negation, which no amount of consistency between siblings would
+  catch. Propose #230's acceptance gain a clause: *a scope exclusion never yields an
+  obligation requiring the excluded work*. Cross-reference **#219** (the decline branch
+  of the same surface) and **#210** (exclusion mapped onto a neighbour's obligation).
+  Labels: none new. Parent umbrella: #181 (already, via #230).
+- **Status:** open
+
+### [2026-08-09] The problem statement derived an obligation to implement the defect it describes
+
+- **Kind:** filing
+- **Found during:** #232/#219/#230 bundle, Gate 1 run 1
+- **Where:** `src/acceptance/requirement/obligations.py` (derivation prompt), observed in `dogfood-logs/232-gate1-run1/output.log`
+- **Severity:** should-fix
+- **What's wrong:** `task-02`, prose describing the bug being fixed, yielded
+  `test-assertion-derives-behaviour-obligation` — *"Derive an obligation stating the
+  asserted behaviour from an acceptance criterion phrased as a test assertion, without
+  carrying forward the demand for a test."* That is an obligation to perform the defect,
+  and it **contradicts `constraint-01` in the same obligation set**. #212 records that
+  narrative context becomes a requirement; this is a sharper case — the narrative
+  describes current *wrong* behaviour, so the derived obligation is not merely
+  unsupportable but actively inverted, and two obligations in one set now demand
+  opposite things.
+- **Why I didn't act:** #212 is its own issue and this is evidence for it, not a fix.
+  Part of the cause is my task-file wording, which the sanctioned rewrite addresses.
+- **Drafted fix:** Comment on **#212** with the `task-02` entry and `constraint-01`
+  quoted side by side, noting that the two obligations are mutually contradictory and
+  that nothing in the pipeline detects a contradictory pair — #217 made a
+  self-contradictory *disposition* unrepresentable, but says nothing about two
+  obligations that contradict each other. Suggest #212's acceptance distinguish
+  narrative describing *current behaviour to be changed* from narrative giving context,
+  since the former is the case that inverts.
 - **Status:** open
