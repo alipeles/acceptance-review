@@ -141,6 +141,34 @@ def test_the_verdict_is_derived_with_each_requirements_disposition_in_hand(tmp_p
     assert coverage.declined_requirements == ["task-01"]
 
 
+def test_two_runs_over_identical_task_text_produce_byte_identical_review_state(tmp_path):
+    """Two runs, byte-identical review state — over the real pipeline.
+
+    The determinism this change could plausibly break is its own: a derived
+    obligation is minted during the run rather than parsed from the task, so an
+    id from a counter or a uuid, or an obligation order taken from the `set` the
+    pipeline uses to hold derived ids out of coverage classification, would each
+    diverge between runs while every other test here still passed.
+
+    Compared as canonical JSON, which is what "byte-identical review state"
+    means — `tests/test_determinism.py` covers the separate claim that
+    determinism survives a *drifting provider* via transcript reuse.
+    """
+    repo, base, head = _repo(tmp_path)
+    change_set = extract_change_set(repo, base, head)
+
+    def once():
+        return run_review(
+            task_text=_TASK,
+            change_set=change_set,
+            repo=repo,
+            client=client_dispatching(_JUDGMENTS),
+            reviewed_revision=head,
+        ).to_canonical_json()
+
+    assert once() == once()
+
+
 def test_a_resolved_questions_obligation_reaches_the_obligation_map(tmp_path):
     """The derived obligation must be a first-class member of the review, not a
     thing `derive_obligations` can produce in isolation. If the pipeline drops

@@ -129,6 +129,41 @@ def test_a_declined_requirement_does_not_count_against_coverage():
     assert coverage.complete is True
 
 
+def test_a_decline_is_not_re_judged_even_when_the_text_reads_like_a_requirement():
+    """The discriminating version of the test above.
+
+    A decline of `- Implementation` is credited by any implementation, including
+    one that re-reads the requirement and forms its own view — a bare marker
+    looks declinable either way. So that case cannot tell a trusting
+    implementation from a re-judging one. This one can: the requirement text is
+    a plain, checkable-sounding statement, and only an implementation that takes
+    the recorded disposition at face value credits it.
+    """
+    convincing = RequirementDisposition(
+        requirement_id="constraint-02",
+        disposition=Disposition.NO_OBLIGATION,
+        reason="Restates constraint-01; adds no separate expectation.",
+    )
+    requirement_map = RequirementMap(
+        requirements=[
+            _requirement("constraint-01", RequirementSection.CONSTRAINT, 1),
+            RequirementRef(
+                id="constraint-02",
+                section=RequirementSection.CONSTRAINT,
+                ordinal=2,
+                span=_span("Amounts are rounded to two decimal places."),
+            ),
+        ],
+        dispositions=[_yielded("constraint-01", "o1"), convincing],
+    )
+
+    coverage = assess_mandate_coverage(requirement_map, [_obligation("o1")])
+
+    assert coverage.declined_requirements == ["constraint-02"]
+    assert coverage.unjudged_requirements == []
+    assert coverage.complete is True
+
+
 def test_a_review_whose_only_unyielding_requirement_is_declined_stays_positive():
     """The whole point of trusting the decline: it must not bound the verdict."""
     requirement_map = _map(_yielded("constraint-01", "o1"), _declined("completion-01"))
@@ -322,6 +357,41 @@ def test_dropping_a_requirement_never_produces_a_better_verdict(evidence_class, 
         with_dropped.mandate_coverage.judged_requirements
         < with_all.mandate_coverage.judged_requirements
     )
+
+
+def test_the_report_states_the_same_coverage_the_result_carries():
+    """Acceptance: recorded on the result AND stated in the report.
+
+    Recording it without rendering it would leave the figure true and invisible,
+    which is the defect one level down: a reader who cannot see the shortfall
+    cannot act on it. Asserted against the numbers on the result rather than
+    against fixed text, so the two cannot drift apart.
+    """
+    from acceptance.report import render_report
+    from acceptance.review_state import Review
+
+    requirement_map = _map(
+        _yielded("constraint-01", "o1"),
+        _declined("completion-01"),
+        _questioned("constraint-02", "q-1"),
+    )
+    completion = derive_verdict([_obligation("o1")], [], [], requirement_map)
+    review = Review(
+        mode="local",
+        reviewed_revision="deadbeef",
+        obligation_map=[_obligation("o1")],
+        requirement_map=requirement_map,
+        completion=completion,
+    )
+
+    rendered = render_report(review)
+
+    coverage = completion.mandate_coverage
+    assert f"{len(coverage.declined_requirements)} deliberately declined" in rendered
+    assert f"{len(coverage.unjudged_requirements)} could not be judged" in rendered
+    # The requirement that could not be judged is named, not just counted.
+    assert "constraint-02" in rendered
+    assert "this bounds the verdict" in rendered
 
 
 def test_no_requirement_map_leaves_the_verdict_untouched():
