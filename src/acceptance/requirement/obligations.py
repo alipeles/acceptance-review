@@ -96,6 +96,28 @@ positive form, because it states what must be TRUE rather than what must be
 absent — an obligation that only says what must be absent can never be shown
 addressed by looking at what the diff contains.
 
+A REQUIREMENT FOR A TEST IS A REQUIREMENT FOR A TEST
+
+A requirement that demands a test — "a test asserts that X", "add a test
+covering X", "X is demonstrated by a test" — yields an obligation whose demand
+is THE TEST. Not X.
+
+    "A test asserts that an embedded comma in the customer name is escaped."
+    ->  "A test asserts that an embedded comma in the customer name is
+         escaped."
+    NOT "An embedded comma in the customer name is escaped."
+
+Dropping the framing loses a requirement. Code that already escapes the comma,
+with nobody having written the test, satisfies the second statement and
+violates the first. They are separate pieces of work and only the first is what
+the bullet asked for. Keep the demand for the test in `description` and in
+`observable_behavior` — what is observable is that the test exists and that it
+fails if the behavior is removed.
+
+Apply this to EVERY requirement of that shape in the file. Two bullets of the
+same shape get the same treatment; keeping the framing on one and dropping it
+on another makes them different kinds of requirement on no evidence.
+
 Granularity — isolate distinct computations, keep cohesive behaviors whole:
 
 - Isolate a sub-clause that defines a DISTINCT COMPUTATION or derived value — a
@@ -132,10 +154,11 @@ Each disposition is one of:
 - `open_question` — the requirement is materially underspecified, so you raised
   a question instead of inventing an obligation. List the question ids in
   `open_question_ids`.
-- `no_obligation` — the requirement genuinely imposes nothing checkable. Give
-  the `reason`. This is rare and narrow: a section marker such as
-  "Implementation" or "Deliverable", standing alone with no requirement under
-  it. It is NOT the answer for a requirement that is merely hard to phrase.
+- `no_obligation` — the requirement imposes nothing checkable on the delivered
+  change. Give the `reason`. Two narrow cases, and no others: a section marker
+  such as "Implementation" or "Deliverable", standing alone with no requirement
+  under it; and a scope exclusion, per SCOPE EXCLUSIONS below. It is NOT the
+  answer for a requirement that is merely hard to phrase.
 
 REFERENCES YOU CANNOT RESOLVE
 
@@ -146,11 +169,11 @@ DO have.** Never dispose of a requirement as `no_obligation` on the grounds that
 it points at something outside your view; that is a fact about your inputs, not
 about the mandate.
 
-    "Assigning obligation types in a separate pass, which is #205."
+    "The report totals are rounded the way #205 settled."
 
-states a requirement — obligation types are not assigned in this change —
-whether or not you know what #205 is. The clause "which is #205" is an
-attribution, not the content. Read past it and decompose the rest.
+states a requirement — the totals are rounded some particular way — whether or
+not you know what #205 is. The clause "the way #205 settled" is an attribution,
+not the content. Read past it and decompose the rest.
 
 The test is whether the sentence constrains the delivered change for a reader
 who also cannot resolve the reference. Almost always it does. If the unresolved
@@ -158,11 +181,37 @@ reference genuinely leaves you unable to tell WHAT is required — not merely
 unable to see the related material — raise an `open_question` instead. Do not
 answer with `no_obligation`.
 
-In particular, a **scope exclusion is a requirement and yields an obligation**.
-"Don't do X" is the invariant "X is preserved unchanged", which is exactly the
-positive restatement described above, and it is checkable — the delivered change
-either touched X or it did not. Do not dispose of a scope exclusion as
-`no_obligation` because it is phrased as a prohibition; restate it and yield.
+SCOPE EXCLUSIONS
+
+A `## Scope exclusions` section names work this change must NOT do. Dispose of
+every requirement in it as `no_obligation`.
+
+This is the one place the positive-restatement rule above does not apply,
+because the rule inverts here. "Don't change the checkout behavior" names a
+PROPERTY, and its positive form — "the checkout behavior is preserved" — says
+the same thing. A scope exclusion names WORK, and work has no positive form.
+Restating "whether obligation ids are stable across edits, which is #231" as a
+property that must hold produces "keep obligation ids stable across edits" —
+the excluded work, asserted as a requirement of this change. That is the
+opposite of what the bullet says, and it is the failure this rule exists to
+prevent.
+
+The `reason` names what is out of scope, in the bullet's own terms, and asserts
+nothing about the delivered change:
+
+    "How finely a requirement is split into obligations, which is #117."
+    reason -> "Names split granularity as out of scope for this change."
+    NOT    -> "Preserve the current split granularity."
+    NOT    -> "Split each requirement at the level of distinct computations."
+
+A reason that says the change must preserve, keep, or maintain something is
+wrong, and so is one that restates the excluded work as a thing to do. Both are
+an obligation written into a free-text field, where nothing downstream can act
+on it.
+
+Every bullet under one `## Scope exclusions` heading gets the same disposition
+as its siblings — they are the same kind of statement. If one of them reads like
+it demands work, re-read it: it is naming the work it excludes.
 
 Each requirement's obligations are carried INSIDE its own disposition, so every
 obligation belongs to exactly one requirement. Account for each requirement on
@@ -172,7 +221,13 @@ When two requirements state the same thing — commonly one bullet under
 Constraints and another under Completion expectations — give an obligation to
 EACH of them. Two obligations saying nearly the same thing is the correct
 output here; a later pass merges them. Write each one out in full under its own
-requirement rather than trying to avoid the duplication."""
+requirement rather than trying to avoid the duplication.
+
+A behavior and a demand for a TEST of that behavior are NOT the same thing,
+even when the Constraints bullet and the Completion bullet are worded almost
+identically. Give each its own obligation and keep the test framing on the one
+that has it, per A REQUIREMENT FOR A TEST above. The later pass is told these
+two do not merge, and it can only see that if you left the framing in."""
 
 
 # Empty arrays are returned explicitly (StrictResponseModel: no defaults).
@@ -319,8 +374,7 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
     lines.extend(
         [
             "",
-            "Return exactly one disposition for each of these requirement ids, and "
-            "for no others:",
+            "Return exactly one disposition for each of these requirement ids, and for no others:",
             "",
             ", ".join(sorted(answer_for)),
             "",
@@ -619,9 +673,7 @@ def _requirement_map(
             )
         )
 
-    return RequirementMap(
-        requirements=registry, dispositions=dispositions, unread_source=unread
-    )
+    return RequirementMap(requirements=registry, dispositions=dispositions, unread_source=unread)
 
 
 def _resolve(ids: list[str], final: dict[str, str]) -> list[str]:

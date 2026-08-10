@@ -388,18 +388,37 @@ _APPROVED_TRANSCRIPTS = {
     #
     # TWO linking recordings for one derivation, because the sweep asks about
     # every pair of obligations and the invoice task exceeds one pair-batch.
-    # linking sweep
-    "102d48565911ff6200bb40075760526db774d1018934a99e4003698629d00381.json": (
-        "invoice",
-        "CSV",
-    ),
     # derivation
-    "19f90ca774d3cc690b8a9637a21a15bfef54c537d1bb9d02f38f39b4e86811a5.json": (
+    "62b5a535021096221233c1321113b9f21bffb02b7e51d52e3ef3ba42d3b89cca.json": (
         "invoice",
         "CSV",
     ),
     # linking sweep
-    "311f732282beacd35a69e53fd04e48250deb4f48234558dfdad2d089bf3db6e0.json": (
+    "3cbeceb991a57d70a229b2698d4cd18e196cc023bda8b00dca11ca58698c7a46.json": (
+        "invoice",
+        "CSV",
+    ),
+    # linking sweep
+    "ca93712b9e6bf3947121438ed7f3b3c0a9141b1daf26cfca55f68b7759e7d09d.json": (
+        "invoice",
+        "CSV",
+    ),
+    # --- obligation derivation (#232, #219, #230), the invoice-export task in
+    # tests/prompts/test_decomposition_prompt.py. Same control domain as the
+    # linking fixture and a different task file: this one carries the two
+    # shapes those issues are about — Completion expectations phrased "A test
+    # asserts that ...", and a Scope exclusions section whose bullets name work
+    # rather than a property.
+    #
+    # TWO derivation recordings for one task file, because #204 partitions
+    # derivation at 8 requirements per call and this file states 11. Both
+    # batches carry the fixture-level markers: DR-204 puts the WHOLE registry
+    # in every batch's prompt, and only `answer_for` is scoped.
+    "02bdd4fd0818f6d9fac0536e2135bfa02f35db5bb27d9efaff9c26be22af2dd7.json": (
+        "invoice",
+        "CSV",
+    ),
+    "c6e4155237af09e3efd2f0985c708535d85b4d9bcd5a92db211740e8a4eaa981.json": (
         "invoice",
         "CSV",
     ),
@@ -475,6 +494,7 @@ def test_only_the_designated_capability_uses_recorded_responses():
 
     assert users == {
         "prompts/test_corpus_mechanism.py",
+        "prompts/test_decomposition_prompt.py",
         "prompts/test_disposition_prompt.py",
         "prompts/test_linking_prompt.py",
     }, f"recorded responses spread beyond the designated capability: {sorted(users)}"
