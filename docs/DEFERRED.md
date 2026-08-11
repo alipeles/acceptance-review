@@ -65,15 +65,50 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   run. The finding is right, which is the problem: a caveat that appears
   unconditionally carries no information and trains the reader to skip the
   section that also carries real `separable` findings.
+  A second, separate problem shares the cause: the **PR diff** is dominated by
+  artifacts nobody reviews. On #257, 14 files changed and only 2 are the
+  delivery. `.acceptance/ignore` cannot help there — it governs the review's
+  change set, not git.
 - **Why I didn't act:** it is a process question about how this repo dogfoods,
   not a defect in the tool, and resolving it quietly is forbidden.
-- **Drafted fix:** **recommendation — commit process artifacts on a separate
-  branch or after the gate**, so the reviewed diff holds only the change under
-  review. **Rejected alternative:** teach the tool to ignore known bookkeeping
-  paths, which makes the tool aware it is being dogfooded and violates the
-  standing rule that it must never be. A third option, accepting the noise, is
-  what happens today.
-- **Status:** open
+- **Drafted fix — agreed with the human, execute after #257 merges.** Four
+  parts; the first three need `git`, the fourth is `CLAUDE.md`:
+
+  1. **`docs/DEFERRED.md` → commit to `main` directly**, pushed immediately. It
+     is a queue reviewed at gates, gates are the sync points, and it is rarely
+     touched mid-task.
+  2. **`session-state.md` → commit to `main` at the gates only**, leaving
+     mid-task edits uncommitted in the working tree. Uncommitted changes survive
+     `git checkout main`, so the move is checkout / add / commit / push /
+     checkout back — no `git stash`, which reverts the working tree wholesale.
+     Deliberately NOT main-on-every-update: the file is written mid-task by
+     design, and a branch switch per update makes the one practice built to be
+     cheap expensive enough to get skipped.
+  3. **`current-task.md` → untrack and gitignore** (`git rm --cached`). The
+     durable record is the copy inside each `dogfood-logs/<run>/`, paired with
+     the output it actually produced, which is the more useful artifact anyway;
+     the root file's git history adds nothing that pairing does not already
+     carry. Note the gitignore rule must land on `main` — a rule only protects
+     branches that carry it.
+  4. **Add `session-state.md` and `docs/DEFERRED.md` to `.acceptance/ignore`**
+     as a backstop, so the tool's output stays right when one of them reaches a
+     branch by accident.
+
+  **This reverses the rejection recorded here earlier**, which held that
+  ignoring bookkeeping paths would make the tool aware it is being dogfooded.
+  That was wrong: `cli.py:138` already hard-excludes the task file with exactly
+  this reasoning — *"the specification, not part of the reviewed deliverable"* —
+  and `.acceptance/ignore` is a product feature any client would point at a
+  changelog or an ADR directory. Excluding a path does not tell the tool it is
+  being dogfooded; it tells the tool the path is not part of the delivery.
+
+  **Consequences to handle in the same change:** `CLAUDE.md`'s startup sequence
+  says to read `current-task.md` at session start, which will not exist on a
+  fresh clone once it is untracked — the step needs a note. Main-direct commits
+  also skip CI; verified that nothing under `src/` or `tests/` reads
+  `session-state.md` or `docs/DEFERRED.md`, so the risk is markdown-only, but
+  "main is always green" becomes a slightly weaker claim.
+- **Status:** deferred — approved, execute after #257 merges
 
 ### [2026-08-10] Disambiguate the `_Yielded` obligation fields — spend at the next decompose re-record
 - **Kind:** decision
