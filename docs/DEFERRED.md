@@ -91,15 +91,13 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
      carry. Note the gitignore rule must land on `main` — a rule only protects
      branches that carry it.
 
-     **BLOCKED — this part was not done.** `tests/requirement/test_task_file.py::test_parses_the_projects_own_current_task_file`
-     reads the live file unconditionally and asserts it parses with behavior,
-     constraints and completion expectations; untracking it fails CI on a fresh
-     clone. (`test_region_coverage.py` is fine — it guards with `if f.is_file()`
-     and already globs `dogfood-logs/*/current-task.md`.) Fixing it means
-     repointing that test, which changes what it asserts — today it checks *the
-     task in flight* parses, and the natural replacement checks *the most recent
-     committed dogfood task file* parses. That is a real code change and wants
-     its own issue and gates, not a drive-by edit on `main`.
+     **BLOCKED on #258 — this part was not done.** Two tests read the live file:
+     `test_task_file.py::test_parses_the_projects_own_current_task_file` reads it
+     unconditionally, and `test_region_coverage.py::_committed_task_files` feeds
+     it into a parametrize computed at collection time. Untracking the file fails
+     CI on a fresh clone. #258 repoints both at the 79 committed
+     `dogfood-logs/*/current-task.md` files and is the prerequisite for this
+     part; do it first, then untrack.
   4. **Add `session-state.md` and `docs/DEFERRED.md` to `.acceptance/ignore`**
      as a backstop, so the tool's output stays right when one of them reaches a
      branch by accident.
@@ -119,8 +117,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   `session-state.md` or `docs/DEFERRED.md`, so the risk is markdown-only, but
   "main is always green" becomes a slightly weaker claim.
 - **Status:** parts 1, 2 and 4 done on `main` after #257 merged, with the
-  `CLAUDE.md` convention written up. **Part 3 still open**, blocked on the test
-  above — needs an issue.
+  `CLAUDE.md` convention written up. **Part 3 blocked on #258**, now filed.
 
 ### [2026-08-10] Disambiguate the `_Yielded` obligation fields — spend at the next decompose re-record
 - **Kind:** decision

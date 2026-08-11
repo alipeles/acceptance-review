@@ -74,7 +74,9 @@ set that is not trustworthy yet. #251's design is settled and was the human's.
 
 ## Queued — see `docs/DEFERRED.md`
 
-One open item: untracking `current-task.md`, blocked on a test. See the entry.
+One open item: untracking `current-task.md`, **blocked on #258** (two tests read
+the live file; #258 repoints them at the committed dogfood corpus). Do #258
+first, then untrack.
 
 ## Do not rediscover
 
