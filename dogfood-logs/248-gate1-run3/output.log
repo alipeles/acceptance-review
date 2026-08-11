@@ -1,0 +1,138 @@
+Requirements: 27   with obligations: 26   deliberately none: 1
+
+[task-01] An obligation that a response states twice is read as one obligation.
+    -> dedupe-repeated-obligation-response  [functional/explicit]
+       An obligation stated twice in a response is read as one obligation.
+
+[constraint-01] A requirement's obligations are read as a first obligation followed by
+    the remaining ones.
+    -> read-obligations-as-head-plus-remainder  [functional/explicit]
+       A requirement's obligations are read as a first obligation followed by the
+       remaining ones.
+
+[constraint-02] A first obligation that reappears at the head of the remainder is one
+    obligation, not two.
+    -> head-repeat-counts-as-one-obligation  [functional/explicit]
+       A first obligation that reappears at the head of the remainder is one obligation,
+       not two.
+
+[constraint-03] A remaining obligation is a repeat of the first only when every one of
+    its fields is exactly equal to the first's.
+    -> repeat-only-on-exact-field-equality  [invariant/explicit]
+       A remaining obligation is a repeat of the first only when every one of its fields
+       is exactly equal to the first's.
+
+[constraint-04] A remaining obligation that differs from the first in any field is kept.
+    -> field-difference-keeps-obligation  [functional/explicit]
+       A remaining obligation that differs from the first in any field is kept.
+
+[constraint-05] The same obligation appearing later than the head of the remainder is
+    kept.
+    -> later-repeat-is-kept  [functional/explicit]
+       The same obligation appearing later than the head of the remainder is kept.
+
+[constraint-06] Reading a repeat as one obligation is recorded.
+    -> repeat-reading-is-recorded  [explanation_observability/explicit]
+       Reading a repeat as one obligation is recorded.
+
+[constraint-07] The record attributes the repeat to the shape of the response rather
+    than to a faulty answer.
+    -> repeat-record-attribution  [explanation_observability/explicit]
+       The record attributes the repeat to the shape of the response rather than to a
+       faulty answer.
+
+[constraint-08] A requirement that yielded obligations is never left holding none.
+    -> yielding-requirement-never-empty  [invariant/explicit]
+       A requirement that yielded obligations is never left holding none.
+
+[constraint-09] The surviving obligation keeps its content unchanged.
+    -> surviving-content-unchanged  [invariant/explicit]
+       The surviving obligation keeps its content unchanged.
+
+[constraint-10] The surviving obligation carries no identifier suffix earned only by a
+    repeat.
+    -> surviving-no-repeat-suffix  [invariant/explicit]
+       The surviving obligation carries no identifier suffix earned only by a repeat.
+
+[constraint-11] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-review-state  [regression/explicit]
+       Two runs over byte-identical task text produce byte-identical review state.
+
+[constraint-12] Tests issue no live model calls.
+    -> tests-no-live-model-calls  [test_demand/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] What the response's obligation fields are called, and any instruction
+    given about how to fill them.
+    -> exclude-obligation-field-names-and-fill-instructions  [compatibility/explicit]
+       The change does not alter what the response's obligation fields are called or any
+       instruction given about how to fill them.
+
+[exclusion-02] Whether two obligations stating the same thing in different words are
+    merged, which the linking stage decides.
+    -> exclude-linking-stage-merging-same-meaning-obligations  [compatibility/explicit]
+       The change does not alter whether two obligations stating the same thing in
+       different words are merged, which the linking stage decides.
+
+[exclusion-03] How finely a single requirement is split into obligations, and how many
+    obligations one requirement may yield, which is #117.
+    -> exclude-splitting-granularity-and-yield-count  [compatibility/explicit]
+       The change does not alter how finely a single requirement is split into
+       obligations or how many obligations one requirement may yield.
+
+[exclusion-04] Assigning obligation types, which is #205.
+    -> exclude-obligation-typing  [compatibility/explicit]
+       The change does not alter assigning obligation types.
+
+[exclusion-05] Which open questions are raised, and what they cite, which is #206.
+    -> exclude-open-question-citation-measurement  [regression/explicit]
+       The change does not alter which open questions are raised or what they cite, and
+       it does not alter the measurement of decomposition accuracy.
+
+[exclusion-06] Measuring how accurate decomposition is, which is #211.
+    -> exclude-measuring-decomposition-accuracy  [regression/explicit]
+       The change does not alter the measurement of how accurate decomposition is.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker standing alone with no requirement under it.
+
+[completion-02] A test asserts that a requirement whose remaining obligations begin with
+    an exact repeat of its first obligation yields one obligation.
+    -> test-repeat-head-yields-one  [test_demand/explicit]
+       A test asserts that a requirement whose remaining obligations begin with an exact
+       repeat of its first obligation yields one obligation.
+
+[completion-03] A test asserts that reading such a repeat as one obligation is recorded.
+    -> test-repeat-recorded  [test_demand/explicit]
+       A test asserts that reading such a repeat as one obligation is recorded.
+
+[completion-04] A test asserts that a remaining obligation differing from the first in
+    any single field is kept.
+    -> test-single-field-difference-kept  [test_demand/explicit]
+       A test asserts that a remaining obligation differing from the first in any single
+       field is kept.
+
+[completion-05] A test asserts that a repeat appearing later than the head of the
+    remainder is kept.
+    -> test-later-repeat-kept  [test_demand/explicit]
+       A test asserts that a repeat appearing later than the head of the remainder is
+       kept.
+
+[completion-06] A test asserts that the surviving obligation carries no identifier
+    suffix earned only by a repeat.
+    -> test-no-repeat-suffix  [test_demand/explicit]
+       A test asserts that the surviving obligation carries no identifier suffix earned
+       only by a repeat.
+
+[completion-07] A test asserts that the surviving obligation's content is unchanged.
+    -> test-surviving-content-unchanged  [test_demand/explicit]
+       A test asserts that the surviving obligation's content is unchanged.
+
+[completion-08] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> test-byte-identical-review-state  [test_demand/explicit]
+       A test asserts that two runs over byte-identical task text produce byte-identical
+       review state.
+
