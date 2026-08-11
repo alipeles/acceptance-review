@@ -310,7 +310,22 @@ class _Yielded(StrictResponseModel):
     more_obligations: list[_DecomposedObligation]
 
     def derived(self) -> list[_DecomposedObligation]:
+        """Exactly what the response said, echo and all.
+
+        The decoded list — what the requirement actually yielded — is
+        `_decode_obligations`. This stays raw so a test can assert on the
+        response as received.
+        """
         return [self.obligation, *self.more_obligations]
+
+    def echoes_head(self) -> bool:
+        """`more_obligations` opens with a byte-identical copy of `obligation`.
+
+        Model equality compares every field, so this is exact: an entry
+        differing in `id`, `type`, `source_quote` or a single character of
+        `description` is a second obligation, not an echo.
+        """
+        return bool(self.more_obligations) and self.more_obligations[0] == self.obligation
 
 
 class _NoObligation(StrictResponseModel):
@@ -415,6 +430,66 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
 
 def _importance(value: str) -> str:
     return "critical" if value == "critical" else "normal"
+
+
+def _decode_obligations(
+    entry: _Yielded,
+    unusable_answers: UnusableAnswerLog | None,
+) -> list[_DecomposedObligation]:
+    """What a `yielded` disposition actually yielded.
+
+    `_Yielded` splits the list into a required `obligation` plus
+    `more_obligations` because strict mode rejects `minItems`, and that split is
+    the only way to make "at least one" a property of the SHAPE rather than a
+    rule the model is asked to follow (#217). The cost is an ambiguity: the two
+    fields carry no stated relationship and the prompt never names them, so in
+    the ONE-obligation case the model may fill the required slot and then emit
+    the same object again as the whole list. That is a defensible reading of
+    what it was handed, not a faulty answer — and `_unique` then turns the echo
+    into a second obligation with a `-2` suffix (#248).
+
+    Measured over all 1,055 recorded transcripts at the time of writing: four
+    duplicate-bearing dispositions, every one of them a byte-identical head
+    versus `more_obligations[0]` with exactly one entry in the remainder, and
+    zero duplicates anywhere else. Requirements yielding two and three
+    obligations in the same response used the split correctly.
+
+    So `more_obligations` is read as THE REST, and an echo at its head is the
+    same obligation rather than a second one.
+
+    **Position 0 only, deliberately.** An identical entry further down would be
+    the model genuinely restating itself, which is the linking stage's call. A
+    guard that dropped repeats anywhere would also destroy the signal that
+    something upstream is wrong — and the whole premise here is that suppressing
+    a finding is worse than reporting one that turns out to be benign.
+
+    Head+rest is the only structural non-empty encoding available, so no schema
+    edit can remove this case; #256 queues a field rename and a prompt sentence
+    to make it rarer, and this guard stays load-bearing when that lands.
+    """
+    if not entry.echoes_head():
+        return entry.derived()
+
+    if unusable_answers is not None:
+        unusable_answers.record(
+            [
+                UnusableAnswer(
+                    stage=_STAGE,
+                    field="more_obligations",
+                    returned_id=entry.obligation.id,
+                    reason=(
+                        "more_obligations[0] repeats the required 'obligation' field "
+                        f"exactly, for requirement '{entry.requirement_id}'; read as a "
+                        "single-obligation answer. The head/rest encoding of a non-empty "
+                        "list does not distinguish the two, so this is the response's "
+                        "shape rather than an unusable answer"
+                    ),
+                )
+            ]
+        )
+
+    # The head survives, so a requirement that yielded can never be emptied here.
+    return [entry.obligation, *entry.more_obligations[1:]]
 
 
 @dataclass(frozen=True)
@@ -632,7 +707,7 @@ def decompose(
         for entry in kept:
             if not isinstance(entry, _Yielded):
                 continue
-            for item in entry.derived():
+            for item in _decode_obligations(entry, unusable_answers):
                 # Which requirement an obligation belongs to is decided by where
                 # its quotation lands, not by which disposition carried it. The
                 # section that decides `admissible_evidence` then comes from the

@@ -1,0 +1,145 @@
+Requirements: 25   with obligations: 24   deliberately none: 1
+
+[task-01] A requirement that yields one obligation is not read as yielding two.
+    -> preserve-decomposition-accuracy-measurement  [compatibility/explicit]   (also serves exclusion-06)
+       The change does not alter measuring how accurate decomposition is.
+
+[constraint-01] A requirement's obligations are read as a first obligation followed by
+    the remaining ones, so a first obligation that reappears at the head of the
+    remainder is one obligation, not two.
+    -> first-and-remainder-deduplication  [functional/explicit]
+       A requirement's obligations are interpreted as a first obligation followed by the
+       remaining ones, and an exact reappearance of that first obligation at the head of
+       the remainder is treated as one obligation.
+    -> head-repeat-counts-as-one  [functional/explicit]
+       A first obligation that reappears at the head of the remainder is treated as one
+       obligation rather than two.
+    -> repeat-head-counts-as-one  [invariant/inferred]
+       A first obligation that reappears at the head of the remainder is treated as the
+       same obligation, not a second one.
+
+[constraint-02] A remaining obligation is a repeat of the first only when every one of
+    its fields is exactly equal to the first's.
+    -> exact-field-equality-repeat  [invariant/explicit]
+       A remaining obligation is treated as a repeat of the first only when every field
+       is exactly equal to the first's fields.
+    -> exact-field-equality-for-repeat  [invariant/explicit]
+       A remaining obligation is considered a repeat of the first only when every field
+       is exactly equal to the first obligation's fields.
+
+[constraint-03] A remaining obligation that differs from the first in any field is kept,
+    however similarly it reads.
+    -> field-difference-keeps-obligation  [functional/explicit]
+       A remaining obligation that differs from the first in any field is kept as a
+       distinct obligation, regardless of similarity in wording.
+
+[constraint-04] Only a repeat at the head of the remainder is read as a repeat; the same
+    obligation appearing anywhere later is kept.
+    -> only-head-repeat-is-merged  [functional/explicit]
+       Only a repeat at the head of the remainder is treated as a repeat; the same
+       obligation appearing later in the remainder is kept.
+
+[constraint-05] Reading a repeated obligation as one is recorded, and the record
+    attributes it to the shape of the response rather than to a faulty answer.
+    -> repeat-dedup-recorded-as-shape  [explanation_observability/explicit]
+       Reading a repeated obligation as one is recorded, and the record attributes that
+       outcome to the shape of the response rather than to a faulty answer.
+
+[constraint-06] A requirement that yielded obligations is never left holding none.
+    -> yielded-requirement-never-empty  [invariant/explicit]
+       A requirement that yields obligations always retains at least one obligation.
+
+[constraint-07] The obligation that survives keeps its own content unchanged.
+    -> surviving-obligation-content-preserved  [invariant/explicit]
+       The obligation that survives keeps its own content unchanged.
+
+[constraint-08] The obligation that survives carries no disambiguating identifier suffix
+    that was earned only by a repeat.
+    -> no-repeat-earned-suffix-on-survivor  [invariant/explicit]
+       The surviving obligation carries no disambiguating identifier suffix that was
+       earned only by a repeat.
+
+[constraint-09] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-review-state  [invariant/explicit]
+       Two runs over byte-identical task text produce byte-identical review state.
+
+[constraint-10] Tests issue no live model calls.
+    -> no-live-model-calls-in-tests  [functional/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] What the response's obligation fields are called, and any instruction
+    given about how to fill them.
+    -> preserve-response-field-names-and-fill-instructions  [compatibility/explicit]
+       The change does not alter what the response's obligation fields are called or any
+       instruction given about how to fill them.
+
+[exclusion-02] Whether two obligations stating the same thing in different words are
+    merged, which the linking stage decides.
+    -> preserve-linking-stage-merge-determination  [compatibility/explicit]
+       The change does not alter whether two obligations stating the same thing in
+       different words are merged, which remains decided by the linking stage.
+
+[exclusion-03] How finely a single requirement is split into obligations, and how many
+    obligations one requirement may yield, which is #117.
+    -> preserve-obligation-splitting-granularity  [compatibility/explicit]
+       The change does not alter how finely a single requirement is split into
+       obligations or how many obligations one requirement may yield.
+
+[exclusion-04] Assigning obligation types, which is #205.
+    -> preserve-obligation-type-assignment  [compatibility/explicit]
+       The change does not alter assigning obligation types.
+
+[exclusion-05] Which open questions are raised, and what they cite, which is #206.
+    -> preserve-open-question-selection-and-citations  [compatibility/explicit]
+       The change does not alter which open questions are raised or what they cite.
+
+[exclusion-06] Measuring how accurate decomposition is, which is #211.
+    -> preserve-decomposition-accuracy-measurement  [compatibility/explicit]   (also serves task-01)
+       The change does not alter measuring how accurate decomposition is.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker standing alone with no requirement under it.
+
+[completion-02] A test asserts that a requirement whose remaining obligations begin with
+    an exact repeat of its first obligation yields one obligation.
+    -> test-requirement-yields-one-obligation-with-head-repeat  [test_demand/explicit]
+       A test asserts that a requirement whose remaining obligations begin with an exact
+       repeat of its first obligation yields one obligation.
+
+[completion-03] A test asserts that reading such a repeat as one obligation is recorded.
+    -> test-records-reading-repeat-as-one-obligation  [test_demand/explicit]
+       A test asserts that reading such a repeat as one obligation is recorded.
+
+[completion-04] A test asserts that a remaining obligation differing from the first in
+    any single field is kept.
+    -> test-different-remaining-obligation-is-kept  [test_demand/explicit]
+       A test asserts that a remaining obligation differing from the first in any single
+       field is kept.
+
+[completion-05] A test asserts that a repeat appearing later than the head of the
+    remainder is kept.
+    -> test-later-repeat-is-kept  [test_demand/explicit]
+       A test asserts that a repeat appearing later than the head of the remainder is
+       kept.
+
+[completion-06] A test asserts that the surviving obligation carries no identifier
+    suffix earned only by a repeat.
+    -> test-surviving-obligation-has-no-repeat-earned-suffix  [test_demand/explicit]
+       A test asserts that the surviving obligation carries no identifier suffix earned
+       only by a repeat.
+
+[completion-07] A test asserts that the surviving obligation's content is unchanged.
+    -> test-surviving-obligation-content-unchanged  [test_demand/explicit]
+       A test asserts that the surviving obligation's content is unchanged.
+
+[completion-08] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> test-byte-identical-task-text-produces-byte-identical-review-state  [test_demand/explicit]
+       A test asserts that two runs over byte-identical task text produce byte-identical
+       review state.
+
+
+Unreconciled linking answers: answers contradict each other: these obligations are linked transitively but at least one pair among them was denied, so none of them were merged
+  affected: first-and-remainder-deduplication, head-repeat-counts-as-one, exact-field-equality-repeat, repeat-head-counts-as-one, exact-field-equality-for-repeat

@@ -1,21 +1,22 @@
 # Task
-An obligation that a response states twice is read as one obligation.
+A requirement that yields one obligation is not read as yielding two.
 
 ## Constraints
 - A requirement's obligations are read as a first obligation followed by the
-  remaining ones.
-- A first obligation that reappears at the head of the remainder is one
-  obligation, not two.
+  remaining ones, so a first obligation that reappears at the head of the
+  remainder is one obligation, not two.
 - A remaining obligation is a repeat of the first only when every one of its
   fields is exactly equal to the first's.
-- A remaining obligation that differs from the first in any field is kept.
-- The same obligation appearing later than the head of the remainder is kept.
-- Reading a repeat as one obligation is recorded.
-- The record attributes the repeat to the shape of the response rather than to a
-  faulty answer.
+- A remaining obligation that differs from the first in any field is kept,
+  however similarly it reads.
+- Only a repeat at the head of the remainder is read as a repeat; the same
+  obligation appearing anywhere later is kept.
+- Reading a repeated obligation as one is recorded, and the record attributes it
+  to the shape of the response rather than to a faulty answer.
 - A requirement that yielded obligations is never left holding none.
-- The surviving obligation keeps its content unchanged.
-- The surviving obligation carries no identifier suffix earned only by a repeat.
+- The obligation that survives keeps its own content unchanged.
+- The obligation that survives carries no disambiguating identifier suffix that
+  was earned only by a repeat.
 - Two runs over byte-identical task text produce byte-identical review state.
 - Tests issue no live model calls.
 

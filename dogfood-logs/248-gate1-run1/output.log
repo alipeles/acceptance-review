@@ -1,0 +1,132 @@
+Requirements: 24   with obligations: 23   deliberately none: 1
+
+[task-01] A requirement does not yield the same obligation twice.
+    -> dedupe-identical-obligations-2  [invariant/explicit]
+       A requirement does not yield the same obligation twice.
+
+[constraint-01] Where one requirement yields two obligations whose descriptions are
+    identical, only one of them is kept.
+    -> dedupe-identical-obligations  [functional/explicit]
+       Where one requirement yields two obligations whose descriptions are identical,
+       only one of them is kept.
+
+[constraint-02] Two obligations yielded by one requirement whose descriptions differ are
+    both kept.
+    -> keep-distinct-obligations  [functional/explicit]
+       Two obligations yielded by one requirement whose descriptions differ are both
+       kept.
+
+[constraint-03] Two descriptions count as identical only when they match exactly,
+    character for character.
+    -> exact-description-identity  [invariant/explicit]
+       Two descriptions count as identical only when they match exactly, character for
+       character.
+
+[constraint-04] Dropping a duplicate obligation is recorded, not silent.
+    -> record-duplicate-drop  [explanation_observability/explicit]
+       Dropping a duplicate obligation is recorded, not silent.
+
+[constraint-05] The obligation that survives is the first one the requirement yielded,
+    so which one survives does not vary between runs over the same text.
+    -> first-obligation-survives  [invariant/explicit]
+       The obligation that survives is the first one the requirement yielded, so which
+       one survives does not vary between runs over the same text.
+
+[constraint-06] A surviving obligation's identifier carries no disambiguating suffix
+    that was earned only by a duplicate that was dropped.
+    -> no-suffix-from-dropped-duplicate  [invariant/explicit]
+       A surviving obligation's identifier carries no disambiguating suffix that was
+       earned only by a duplicate that was dropped.
+
+[constraint-07] A requirement that yielded obligations is never left holding none.
+    -> nonempty-after-yield  [invariant/explicit]
+       A requirement that yielded obligations is never left holding none.
+
+[constraint-08] Dropping a duplicate leaves the surviving obligation's own content
+    unchanged.
+    -> survivor-content-unchanged  [invariant/explicit]
+       Dropping a duplicate leaves the surviving obligation's own content unchanged.
+
+[constraint-09] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-review-state  [regression/explicit]
+       Two runs over byte-identical task text produce byte-identical review state.
+
+[constraint-10] Tests issue no live model calls.
+    -> no-live-model-calls  [invariant/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] How finely a single requirement is split into obligations, and how many
+    obligations one requirement may yield, which is #117.
+    -> split-granularity-not-changed  [invariant/explicit]
+       The change does not alter how finely a single requirement is split into
+       obligations or how many obligations one requirement may yield.
+
+[exclusion-02] Whether two obligations stating the same thing in different words are
+    merged, which the linking stage decides.
+    -> same-thing-merge-not-changed  [invariant/explicit]
+       The change does not alter whether two obligations stating the same thing in
+       different words are merged.
+
+[exclusion-03] Whether an obligation that lands on a requirement because its quotation
+    was traced there duplicates one that requirement already yielded, which the linking
+    stage decides.
+    -> trace-duplicate-detection-not-changed  [invariant/explicit]
+       The change does not alter whether an obligation that lands on a requirement
+       because its quotation was traced there duplicates one that requirement already
+       yielded.
+
+[exclusion-04] Assigning obligation types, which is #205.
+    -> type-assignment-not-changed  [invariant/explicit]
+       The change does not alter assigning obligation types.
+
+[exclusion-05] Which open questions are raised, and what they cite, which is #206.
+    -> open-question-citation-not-changed  [invariant/explicit]
+       The change does not alter which open questions are raised or what they cite.
+
+[exclusion-06] Measuring how accurate decomposition is, which is #211.
+    -> decomposition-accuracy-not-changed  [invariant/explicit]
+       The change does not alter measuring how accurate decomposition is.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       A standalone section marker with no requirement content imposes nothing checkable
+       on the delivered change.
+
+[completion-02] A test asserts that a requirement yielding two obligations with
+    identical descriptions keeps one of them.
+    -> test-duplicate-identical-kept-one  [test_demand/explicit]
+       A test asserts that a requirement yielding two obligations with identical
+       descriptions keeps one of them.
+
+[completion-03] A test asserts that the dropped obligation is recorded.
+    -> test-dropped-obligation-recorded  [test_demand/explicit]
+       A test asserts that the dropped obligation is recorded.
+
+[completion-04] A test asserts that a requirement yielding two obligations with
+    differing descriptions keeps both.
+    -> test-differing-descriptions-kept-both  [test_demand/explicit]
+       A test asserts that a requirement yielding two obligations with differing
+       descriptions keeps both.
+
+[completion-05] A test asserts that a surviving obligation's identifier carries no
+    disambiguating suffix earned only by a dropped duplicate.
+    -> test-surviving-id-no-suffix  [test_demand/explicit]
+       A test asserts that a surviving obligation's identifier carries no disambiguating
+       suffix earned only by a dropped duplicate.
+
+[completion-06] A test asserts that dropping a duplicate leaves the surviving
+    obligation's content unchanged.
+    -> test-dropping-duplicate-preserves-content  [test_demand/explicit]
+       A test asserts that dropping a duplicate leaves the surviving obligation's
+       content unchanged.
+
+[completion-07] A test asserts that two runs over byte-identical task text produce byte-
+    identical review state.
+    -> test-byte-identical-review-state  [test_demand/explicit]
+       A test asserts that two runs over byte-identical task text produce byte-identical
+       review state.
+
+
+Unreconciled linking answers: answers contradict each other: these obligations are linked transitively but at least one pair among them was denied, so none of them were merged
+  affected: dedupe-identical-obligations, exact-description-identity, record-duplicate-drop, dedupe-identical-obligations-2

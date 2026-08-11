@@ -1,0 +1,232 @@
+Task completion: INCOMPLETE
+
+3 obligation(s) with non-discriminating test evidence (read-obligations-as-head-plus-remainder, repeat-only-on-exact-field-equality, dedupe-repeated-obligation-response).
+
+Obligations:
+
+  1. A test asserts that a requirement whose remaining obligations begin with an exact repeat of its first obligation yields one obligation.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         1.2  tests/requirement/test_obligation_echo.py::test_an_echoed_required_obligation_yields_one_obligation
+         1.3  tests/requirement/test_obligation_echo.py::test_derived_still_reports_the_response_as_received
+
+  2. A test asserts that reading such a repeat as one obligation is recorded.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         2.2  tests/requirement/test_obligation_echo.py::test_collapsing_an_echo_is_recorded
+         2.3  tests/requirement/test_obligation_echo.py::test_derived_still_reports_the_response_as_received
+
+  3. A test asserts that a remaining obligation differing from the first in any single field is kept.
+       requirements: completion-04
+       code evidence: addressed
+         3.1  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         3.2  tests/requirement/test_obligation_echo.py::test_a_remainder_differing_in_any_single_field_is_kept
+
+  4. A test asserts that a repeat appearing later than the head of the remainder is kept.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         4.2  tests/requirement/test_obligation_echo.py::test_an_identical_entry_later_than_position_zero_is_kept
+
+  5. A test asserts that the surviving obligation carries no identifier suffix earned only by a repeat.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         5.2  tests/requirement/test_obligation_echo.py::test_the_surviving_obligation_carries_no_suffix_earned_by_the_echo
+
+  6. A test asserts that the surviving obligation's content is unchanged.
+       requirements: completion-07
+       code evidence: addressed
+         6.1  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         6.2  tests/requirement/test_obligation_echo.py::test_the_surviving_obligation_keeps_its_content
+
+  7. A test asserts that two runs over byte-identical task text produce byte-identical review state.
+       requirements: completion-08
+       code evidence: addressed
+         7.1  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         7.2  tests/requirement/test_obligation_echo.py::test_two_runs_over_identical_task_text_produce_identical_review_state
+
+  8. A requirement's obligations are read as a first obligation followed by the remaining ones.
+       requirements: constraint-01
+       code evidence: addressed
+         8.1  src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+         8.2  src/acceptance/requirement/obligations.py#@@ -632,7 +707,7 @@ def decompose(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The decomposition logic treats each requirement's obligations as an ordered head element plus the rest of the obligations.
+           inputs:  Use a yielded disposition with exactly one remainder obligation, where `obligation` and `more_obligations[0]` are byte-identical objects. Also include a separate yielded disposition with two or more obligations so the test can distinguish the one-obligation echo case from the normal multi-obligation case.
+           detects: Implementation treats `more_obligations` as an unrelated list or fails to read it as the remainder of the head-plus-rest encoding, so the one-obligation echo is not collapsed correctly.
+           full detail: acceptance recommendation --criterion read-obligations-as-head-plus-remainder
+
+  9. A first obligation that reappears at the head of the remainder is one obligation, not two.
+       requirements: constraint-02
+       code evidence: addressed
+         9.1  src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+         9.2  src/acceptance/requirement/obligations.py#@@ -632,7 +707,7 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/requirement/test_obligation_echo.py::test_an_echoed_required_obligation_yields_one_obligation
+         9.4  tests/requirement/test_obligation_echo.py::test_derived_still_reports_the_response_as_received
+
+  10. A remaining obligation is a repeat of the first only when every one of its fields is exactly equal to the first's.
+       requirements: constraint-03
+       code evidence: addressed
+         10.1  src/acceptance/requirement/obligations.py#@@ -310,8 +310,23 @@ class _Yielded(StrictResponseModel):
+         10.2  src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The repeat-detection rule treats a remainder obligation as a repeat only if all of its fields match the first obligation exactly.
+           inputs:  Construct a yielded response where `more_obligations[0]` differs from `obligation` in exactly one field at a time, across several fields (`description`, `type`, `observable_behavior`, `source_quote`, `importance`), while keeping the rest identical. Also include a later identical obligation after position 0 to prove only the head of the remainder is special.
+           detects: Implementation collapses repeats using description-only comparison, normalized text comparison, or any non-exact field subset, so a remainder obligation that differs in one field is incorrectly treated as a repeat.
+           full detail: acceptance recommendation --criterion repeat-only-on-exact-field-equality
+
+  11. A remaining obligation that differs from the first in any field is kept.
+       requirements: constraint-04
+       code evidence: addressed
+         11.1  src/acceptance/requirement/obligations.py#@@ -310,8 +310,23 @@ class _Yielded(StrictResponseModel):
+         11.2  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         11.3  tests/requirement/test_obligation_echo.py::test_a_remainder_differing_in_any_single_field_is_kept
+
+  12. The same obligation appearing later than the head of the remainder is kept.
+       requirements: constraint-05
+       code evidence: addressed
+         12.1  src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+       test evidence: strongly supported  [tier: static]
+         12.2  tests/requirement/test_obligation_echo.py::test_an_identical_entry_later_than_position_zero_is_kept
+
+  13. Reading a repeat as one obligation is recorded.
+       requirements: constraint-06
+       code evidence: addressed
+         13.1  src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+       test evidence: strongly supported  [tier: static]
+         13.2  tests/requirement/test_obligation_echo.py::test_collapsing_an_echo_is_recorded
+         13.3  tests/requirement/test_obligation_echo.py::test_derived_still_reports_the_response_as_received
+
+  14. The record attributes the repeat to the shape of the response rather than to a faulty answer.
+       requirements: constraint-07
+       code evidence: addressed
+         14.1  src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+         14.2  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         14.3  tests/requirement/test_obligation_echo.py::test_the_record_attributes_the_echo_to_the_response_shape
+         14.4  tests/requirement/test_requirement_map.py::test_a_supplied_reason_is_preserved_rather_than_replaced
+
+  15. A requirement that yielded obligations is never left holding none.
+       requirements: constraint-08
+       code evidence: addressed
+         15.1  src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+       test evidence: strongly supported  [tier: static]
+         15.2  tests/requirement/test_obligation_echo.py::test_a_requirement_that_yielded_is_never_emptied_by_the_collapse
+
+  16. The surviving obligation keeps its content unchanged.
+       requirements: constraint-09
+       code evidence: addressed
+         16.1  src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+         16.2  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         16.3  tests/requirement/test_obligation_echo.py::test_the_surviving_obligation_keeps_its_content
+         16.4  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         16.5  tests/requirement/test_requirement_map.py::test_two_requirements_minting_the_same_id_keep_separate_obligations
+
+  17. The surviving obligation carries no identifier suffix earned only by a repeat.
+       requirements: constraint-10
+       code evidence: addressed
+         17.1  src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+         17.2  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         17.3  tests/requirement/test_obligation_echo.py::test_the_surviving_obligation_carries_no_suffix_earned_by_the_echo
+
+  18. Two runs over byte-identical task text produce byte-identical review state.
+       requirements: constraint-11
+       code evidence: addressed
+         18.1  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         18.2  tests/requirement/test_obligation_echo.py::test_two_runs_over_identical_task_text_produce_identical_review_state
+
+  19. Tests issue no live model calls.
+       requirements: constraint-12
+       code evidence: addressed
+         19.1  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: strongly supported  [tier: static]
+         19.2  tests/test_cli.py::test_decompose_replay_without_transcript_fails_cleanly
+
+  20. The change does not alter what the response's obligation fields are called or any instruction given about how to fill them.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  21. The change does not alter whether two obligations stating the same thing in different words are merged, which the linking stage decides.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  22. The change does not alter how finely a single requirement is split into obligations or how many obligations one requirement may yield.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  23. The change does not alter assigning obligation types.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  24. The change does not alter which open questions are raised or what they cite, and it does not alter the measurement of decomposition accuracy.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  25. The change does not alter the measurement of how accurate decomposition is.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  26. An obligation stated twice in a response is read as one obligation.
+       requirements: task-01
+       code evidence: addressed
+         26.1  src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+         26.2  src/acceptance/requirement/obligations.py#@@ -632,7 +707,7 @@ def decompose(
+         26.3  tests/requirement/test_obligation_echo.py#@@ -0,0 +1,292 @@
+       test evidence: partially supported  [tier: static]
+         26.4  tests/requirement/test_obligation_echo.py::test_an_echoed_required_obligation_yields_one_obligation
+         26.5  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         26.6  tests/requirement/test_requirement_map.py::test_two_requirements_stating_the_same_thing_yield_two_obligations
+         recommended test: A response that repeats the same obligation is interpreted as containing a single obligation.
+           inputs:  Use at least two repeated-obligation response shapes: the existing one-obligation echo shape (`obligation` plus `more_obligations[0]` identical) and another response shape where the same repeated-obligation pattern appears in a different disposition arrangement or with additional obligations around it. The key is that the duplicate-bearing response is not limited to one exact fixture shape.
+           detects: Implementation only dedupes exact repeats in one specific response shape, but misses other repeated-obligation responses that express the same head-echo pattern differently.
+           full detail: acceptance recommendation --criterion dedupe-repeated-obligation-response
+
+Mandate coverage: 26 of 27 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: Section marker standing alone with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] The task obligations are about tests asserting repeat-handling behavior and byte-identical review state. Adding a new `_decode_obligations` helper that changes `decompose` to collapse echoes and record unusable answers is a production behavior change beyond the requested test coverage, and it alters how obligations are processed at runtime.
+       src/acceptance/requirement/obligations.py#@@ -417,6 +432,66 @@ def _importance(value: str) -> str:
+       src/acceptance/requirement/obligations.py#@@ -632,7 +707,7 @@ def decompose(
+  2. [in_service] `_Yielded.derived()` was expanded with a new docstring and an `echoes_head()` helper. The obligations did not ask for this API or refactor; it is supporting machinery for the new runtime behavior and not itself required by the listed test demands.
+       src/acceptance/requirement/obligations.py#@@ -310,8 +310,23 @@ class _Yielded(StrictResponseModel):
+  3. [separable] `docs/DEFERRED.md` and `session-state.md` were heavily rewritten with planning/status narrative unrelated to the requested repeat-handling tests. None of the obligations call for updating deferred decisions or session notes.
+       docs/DEFERRED.md#@@ -35,3 +35,185 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
+       session-state.md#@@ -12,82 +12,111 @@ Clear it out when the task lands rather than letting it accrete.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
