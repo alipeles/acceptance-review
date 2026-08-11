@@ -36,6 +36,45 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-10] #225 reproduced on #248's Gate 2 — 11 untouched ratings fell when two tests were added
+- **Kind:** filing (comment on existing issue #225)
+- **Found during:** #248, Gate 2, runs 1 and 2
+- **Where:** `dogfood-logs/248-gate2-run1/` and `dogfood-logs/248-gate2-run2/`
+- **Severity:** blocker — #248's Gate 2 cannot be made clean while this holds
+- **What's wrong:** two tests added, nothing removed; one obligation improved
+  and eleven untouched ones fell from strongly to partially supported, taking
+  non-discriminating obligations from 3 to 13. Three recommendations make
+  checkable, false claims about the code, one of them prescribing a test for the
+  negation of a requirement the same report rates satisfied.
+- **Why I didn't act:** *Working agreement* §3 — failed the same way twice, and
+  a third attempt would be a different approach rather than a fix. Writing more
+  tests to move these ratings is chasing a judge that is unstable and in places
+  wrong about the file it is reading.
+- **Drafted fix:** filed as a comment; see #225.
+- **Status:** filed (#225 comment)
+
+### [2026-08-10] Every dogfood run flags `session-state.md` and `docs/DEFERRED.md` as separable
+- **Kind:** decision
+- **Found during:** #248, Gate 2, runs 1 and 2
+- **Where:** the `Unrequested changes` section of every `check` over a branch
+  that follows the working agreement
+- **Severity:** nice-to-have
+- **What's wrong:** the working agreement requires `session-state.md` and
+  `docs/DEFERRED.md` to be updated on every branch, and neither is ever demanded
+  by the mandate — so `check` correctly reports them as `separable` on every
+  run. The finding is right, which is the problem: a caveat that appears
+  unconditionally carries no information and trains the reader to skip the
+  section that also carries real `separable` findings.
+- **Why I didn't act:** it is a process question about how this repo dogfoods,
+  not a defect in the tool, and resolving it quietly is forbidden.
+- **Drafted fix:** **recommendation — commit process artifacts on a separate
+  branch or after the gate**, so the reviewed diff holds only the change under
+  review. **Rejected alternative:** teach the tool to ignore known bookkeeping
+  paths, which makes the tool aware it is being dogfooded and violates the
+  standing rule that it must never be. A third option, accepting the noise, is
+  what happens today.
+- **Status:** open
+
 ### [2026-08-10] Disambiguate the `_Yielded` obligation fields — spend at the next decompose re-record
 - **Kind:** decision
 - **Found during:** #248, Gate 1

@@ -12,6 +12,31 @@ Clear it out when the task lands rather than letting it accrete.
 
 ---
 
+## STOPPED AT GATE 2 — read this first
+
+**#248's code is written, tested and committed; Gate 2 will not come clean, and
+the blocker is the tool, not the change.** Do not "finish" this by writing more
+tests — that was tried once and made the report worse.
+
+Two runs, both committed. Between them **two tests were added and nothing
+removed**. The tool's own diff section reports one obligation improving and
+**eleven untouched obligations falling** from strongly to partially supported,
+taking non-discriminating obligations from 3 to 13. Three recommendations make
+false, checkable claims about the code, one prescribing a test for the negation
+of a requirement the same report rates satisfied.
+
+Filed as evidence on **#225**. Escalated to the human, who chose to stop
+chasing the rating rather than revert the tests or keep iterating.
+
+**The change's own evidence is independent of that rating** and is what should
+be trusted: four defect injections, each failing the tests that claim the
+behaviour — guard removed (7 fail), description-only comparison (4 of 5
+parametrised cases fail), dedupe-anywhere (position-0 test fails), collapse the
+whole remainder (surrounded-echo test fails). Full suite 1070 passed, ruff clean.
+
+**Open question for the next session:** whether #248 opens a PR on that evidence
+despite a non-clean Gate 2, or waits behind #225/#180. Not decided.
+
 ## In flight: #248 — a repeated obligation is read as one
 
 Branch `248-drop-duplicate-obligations`, off `4619e78`. Child of #181, picked up
