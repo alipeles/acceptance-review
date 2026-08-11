@@ -181,6 +181,19 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
 
 - **One issue per branch and PR.** Keep diffs small and reviewable — that's how
   the human builds understanding without reading every line.
+- **Process artifacts are committed to `main`, never to the branch under
+  review.** `session-state.md` and `docs/DEFERRED.md` are working records that
+  no mandate ever asks for, so on a branch they are pure noise in two places at
+  once: `check` reports them as `separable` on every run, and they crowd the PR
+  diff — #257 changed 14 files of which 2 were the delivery. Commit
+  `docs/DEFERRED.md` to `main` as it changes; commit `session-state.md` to
+  `main` **at the gates**, leaving mid-task edits uncommitted in the working
+  tree. Uncommitted changes survive `git checkout main`, so the move is
+  checkout / add / commit / push / checkout back — never `git stash`, which
+  reverts the working tree wholesale. **Push immediately**: an unpushed `main`
+  commit reaches origin only inside the next branch's squash, attributed to the
+  wrong PR. Both paths are also in `.acceptance/ignore`, as a backstop for when
+  one reaches a branch anyway.
 - **Before coding**, read the issue body and its Acceptance check, and state the
   plan before editing.
 - **Dogfooding is a hard gate on shipping.** See *Dogfooding — the review gates*

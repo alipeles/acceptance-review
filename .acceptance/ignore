@@ -8,3 +8,23 @@
 # request key moves between the record run and the replay, and the run cannot be
 # replayed at all.
 dogfood-logs/
+
+# session-state.md and docs/DEFERRED.md are working records, not deliverables:
+# the rolling state of the task in flight, and the queue of things found but
+# deliberately not acted on. No mandate ever asks for either, so `check`
+# correctly reported them as `separable` on every single run — a caveat that
+# appears unconditionally carries no information and trains the reader to skip
+# the section that also holds real findings.
+#
+# The primary fix is that they are committed to main rather than to the branch
+# under review (see CLAUDE.md). This is the backstop for when one reaches a
+# branch anyway, so the review's output stays right instead of depending on the
+# author having remembered.
+#
+# Excluding them is the same judgement `cli.py` already applies to the task
+# file — "the specification, not part of the reviewed deliverable" — and not a
+# way of hiding a finding: they genuinely are not part of any change under
+# review. It does NOT make the tool aware it is being dogfooded; it tells the
+# tool which paths are not the delivery, which is what this file is for.
+/session-state.md
+/docs/DEFERRED.md
