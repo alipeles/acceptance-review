@@ -227,6 +227,51 @@ def test_an_identical_entry_later_than_position_zero_is_kept():
     assert [o.id for o in result.obligations] == ["usd", "csv", "usd-2"]
 
 
+def test_an_echo_surrounded_by_genuine_obligations_collapses_only_the_echo():
+    """The echo is not always the whole remainder.
+
+    Every other echo test here uses the shape actually observed in the
+    transcripts — one obligation, emitted twice, nothing else. That leaves
+    `more_obligations[1:]` exercised only when it is empty, so an
+    implementation that collapsed the whole remainder rather than its head
+    would pass all of them. Here the remainder carries a real obligation behind
+    the echo, and it must survive.
+    """
+    csv = ("csv", "Preserve the CSV export.", "existing CSV export")
+    result = _decompose(
+        [_obligation(*USD), _obligation(*USD), _obligation(*csv)],
+        [
+            _declined("task-01"),
+            _yielded("constraint-01", "usd", "usd", "csv"),
+            _declined("constraint-02"),
+            _declined("completion-01"),
+        ],
+    )
+
+    assert [o.id for o in result.obligations] == ["usd", "csv"]
+
+
+def test_two_requirements_each_echoing_are_both_collapsed():
+    """One echo per disposition, not one per response. The guard runs inside
+    the per-disposition loop, so a second echoing requirement in the same
+    response must collapse too."""
+    csv = ("csv", "Preserve the CSV export.", "existing CSV export")
+    log = UnusableAnswerLog()
+    result = _decompose(
+        [_obligation(*USD), _obligation(*USD), _obligation(*csv), _obligation(*csv)],
+        [
+            _declined("task-01"),
+            _yielded("constraint-01", "usd", "usd"),
+            _yielded("constraint-02", "csv", "csv"),
+            _declined("completion-01"),
+        ],
+        log,
+    )
+
+    assert [o.id for o in result.obligations] == ["usd", "csv"]
+    assert len([a for a in log.answers if a.field == "more_obligations"]) == 2
+
+
 def test_a_requirement_yielding_two_genuinely_different_obligations_keeps_both():
     """The unchanged majority path, and the one that must not regress."""
     csv = ("csv", "Preserve the CSV export.", "existing CSV export")
