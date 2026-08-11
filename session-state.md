@@ -19,6 +19,9 @@ rather than letting it accrete.
 echoes the required `obligation` field into `more_obligations` is now read as one
 obligation, not two.
 
+**`current-task.md` is stale** — it still holds #248's mandate, which has
+shipped. Ignore it; the next task writes its own at Gate 1.
+
 ## What #248 changed about how we read defect reports
 
 Worth carrying forward, because the issue as filed was wrong and building to it
