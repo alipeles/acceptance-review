@@ -36,6 +36,92 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-12] A one-sided requirement is derived as a two-sided one — "does not reduce" became "preserves the number"
+- **Kind:** filing (new issue, child of #181)
+- **Found during:** #191, Gate 1
+- **Where:** `dogfood-logs/191-gate1-run1/output.log`, `constraint-11`
+- **Severity:** should-fix
+- **What's wrong:** the requirement reads *"The change does not reduce the
+  defects the tool identifies."* The derived obligation reads *"The change
+  preserves the number of defects the tool identifies."* A one-sided bound became
+  a two-sided equality. "Does not reduce" permits finding **more** defects, which
+  is the desirable direction; "preserves the number" forbids it. The obligation
+  as derived is one a correct implementation fails, and on this task file it
+  inverts DR-180's governing constraint — *stability must not be bought by
+  blunting the judge*, whose whole point is that the defect count may rise.
+- **Why I didn't act:** the source wording is not weak, so this is not the
+  sanctioned rewrite. "Does not reduce" is unambiguous; the decomposer dropped a
+  quantifier. Rewriting the task file to work around it would hide a real defect,
+  which is the one thing the gate forbids.
+- **Drafted fix:** file as a child of #181, `bug` / `track:checker`:
+
+  > **Title:** A one-sided requirement is derived as a two-sided one, inverting what it permits
+  >
+  > From #191's Gate 1 (`dogfood-logs/191-gate1-run1/`):
+  >
+  > | | text |
+  > |---|---|
+  > | requirement `constraint-11` | The change does not reduce the defects the tool identifies. |
+  > | derived obligation | The change **preserves the number of** defects the tool identifies. |
+  >
+  > `does not reduce` is a lower bound. `preserves the number` is an equality. The
+  > derivation silently added an upper bound the mandate does not state, and the
+  > added bound forbids the improvement the requirement exists to protect — on
+  > this task file, a defect count that *rises* is the success condition
+  > (DR-180: *stability must not be bought by blunting the judge*).
+  >
+  > Worth separating from #223 and #210, which are about an obligation being
+  > attached to the **wrong requirement**. Here the link is correct and the
+  > requirement is faithfully identified; the loss is inside the restatement, in
+  > a single quantifier. That is a different failure and probably a different
+  > fix — #223's is a similarity judgement, this is a paraphrase that does not
+  > preserve entailment.
+  >
+  > Suggested acceptance: an obligation derived from a one-sided requirement
+  > (`does not reduce`, `at least`, `no more than`, `never fewer than`) states the
+  > same bound in the same direction, and does not close the open side.
+  >
+  > The remaining 27 obligations in this run are faithful, and the run is
+  > otherwise the cleanest in the logs — 1:1, no composites, no open questions —
+  > so this is a narrow defect, not a symptom of a bad run.
+- **Status:** open
+
+### [2026-08-12] Structurally identical scope exclusions get two different obligation types in one run
+- **Kind:** filing (comment on existing issue #205)
+- **Found during:** #191, Gate 1
+- **Where:** `dogfood-logs/191-gate1-run1/output.log`, `exclusion-01`…`exclusion-06`
+- **Severity:** nice-to-have
+- **What's wrong:** all six scope exclusions in the mandate are the same
+  construct, and were typed `regression` twice and `functional` four times in one
+  response. The descriptions split on the same line — "The change does not alter
+  X" for the two `regression` ones, "The change leaves X out of scope" for the
+  four `functional` ones — so the type and the phrasing co-vary, which suggests
+  the type is being chosen as a by-product of how the sentence came out rather
+  than from the requirement's kind.
+- **Why I didn't act:** #205 already owns assigning types in a separate pass, and
+  nothing downstream of this gate depends on the exclusions' type.
+- **Drafted fix:** comment on #205:
+
+  > A clean instance from #191's Gate 1 (`dogfood-logs/191-gate1-run1/`), useful
+  > because the six requirements are structurally identical, in one section, in
+  > one response:
+  >
+  > | requirement | type | description form |
+  > |---|---|---|
+  > | `exclusion-01` | `regression` | The change does not alter … |
+  > | `exclusion-02` | `regression` | The change does not alter … |
+  > | `exclusion-03` | `functional` | The change leaves … out of scope |
+  > | `exclusion-04` | `functional` | The change leaves … out of scope |
+  > | `exclusion-05` | `functional` | The change leaves … out of scope |
+  > | `exclusion-06` | `functional` | The change leaves … out of scope |
+  >
+  > The type tracks the **phrasing** perfectly and the requirement's kind not at
+  > all — six scope exclusions, one construct, two types. That is the argument for
+  > typing in a pass of its own: as long as the type is emitted alongside the
+  > restatement, it is a function of the sentence that came out rather than of the
+  > requirement that went in.
+- **Status:** open
+
 ### [2026-08-12] #245: one test cited for two obligations and withheld from a third, in the same run
 - **Kind:** filing (comment on existing issue #245)
 - **Found during:** #259, Gate 2, run 3

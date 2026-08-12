@@ -13,109 +13,106 @@ rather than letting it accrete.
 
 ---
 
-## Next up: another de-duplication experiment
+## Task in flight: #191 — partition discrimination, split enumeration from verdict
 
-**Start here: `docs/experiments/obligation-dedup/README.md`.** It carries the
-extraction code (`linking_corpus.py`), a survey of what the transcript cache
-currently holds, and the seven traps DR-259 hit — several of which cost a full
-wrong analysis pass. Do not rebuild the method from the DR alone; the DR is the
-conclusion, that file is how to get there.
+**Gate 1 passed at `4e6c9af`, agent-confirmed, awaiting human confirmation.**
+Log: `dogfood-logs/191-gate1-run1/`. 29 requirements → 28 obligations, 1:1, no
+composites, no spurious links, **no open questions**, no unreconciled cluster —
+the cleanest Gate 1 in the logs. One drift (`constraint-11`: "does not reduce"
+derived as "preserves the number") and one type inconsistency, both queued.
 
-Two things to know before starting:
+**Zero open questions is not confirmed, only observed.** #193 says membership
+oscillates; a second `--mode record` run would replay by construction and prove
+nothing. Distinguishing needs #189's harness with determinism off. Recorded as
+unresolved.
 
-- **The cache is not an archive.** Run `linking_corpus.py` first and copy what
-  you need somewhere durable. DR-259 lost two runs' transcripts mid-analysis.
-- **Only one embedding transcript exists** (46 texts, #259's own run). Vectors
-  for the other five sweeps mean live calls — budget for it.
+## Three sessions running in parallel
 
-## No task in flight
+Checked for collisions, not assumed. `discrimination.py` and `strength.py` are
+format-clean and lint-clean, so #191 does not collide with the reformat.
 
-**#259 landed** — `c3ebc42` (PR #260), CI green. Obligation pairs are prefiltered
-by cosine distance before the linking call, with an embedding path recorded and
-replayed through the same transcript store as every other model call.
+| session | issue | collision risk |
+|---|---|---|
+| this one | **#191** | `partition.py` is format-dirty — if #191 edits it, use the checkout+script workaround |
+| — | **#258** | none; both its test files are already format-clean |
+| — | **#261 + #239** | repo-wide; adds `ruff format --check` to CI, so later merges must be clean |
 
-`current-task.md` still holds #259's mandate, which has shipped. Ignore it; the
-next task writes its own at Gate 1.
+`session-state.md` is owned by this session. Agreed general fix if it recurs:
+shard to `session-state/<issue>.md`, one per task in flight.
 
-## What #259 settled about the threshold
+## Where #191 sits
 
-Carry this forward — the number is right but the *reasoning* in the original DR
-was not, and re-deriving it from the DR alone would resurrect the wrong claim.
+Step **5 of 6** in the judgement-stability program: #189 harness (closed) → #190
+rating-regression suite (closed) → #195 decompose-regression (closed) → #193
+decompose instability (open, order 414) → **#191** → #192 (open, order 416).
 
-DR-259 justified 0.10 as a clean separator. **It is not.** #259's own Gate 1 run
-was a fifth task file, held out from the calibration, and carries a **genuine**
-merge at **0.2257** — far outside the 0.094–0.115 band. The nearest calibration
-*spurious* merge sits at **0.116**, below it, so the two overlap:
+Taken **before** #193 despite the board order, deliberately: #191's scoreboard is
+the checked-in `tests/fixtures/rating-regression/` corpus, not live decompose
+output, so decompose instability cannot contaminate its measurement. Human call.
 
-```
-              calibration          held-out
-threshold   genuine  spurious      genuine    asked
-  0.10       20/20    0/10          11/12      2.1%   <- chosen
-  0.15       20/20    2/10          11/12      3.4%
-  0.25       20/20    9/10          12/12      8.1%
-```
+## Baselines — one taken, one still owed
 
-At 0.25 the filter admits 9 of 10 spurious merges and stops being a quality
-filter at all. **No threshold does both.** 0.10 ships as the deliberate
-under-merging side of a real trade, matching `linking.py`'s declared bias.
-Recorded in DR-259's *Held-out check*; the clean-separation claim is withdrawn.
-**#211 is now load-bearing** for settling the number properly.
+- **#190 regression suite: 34 passed** at `4e6c9af`, pre-change. This is the
+  "real findings still found / unearned STRONGs not issued" direction.
+- **#189 harness baseline NOT yet taken.** #191's Costs section requires it
+  *before* starting, and implementing first invalidates the discrimination
+  transcripts that would produce it. Recoverable only by checking out old code
+  and re-recording. **Do this first when coding starts.**
+  Harness: `src/acceptance/benchmark/instability.py`.
 
-## Gate 2 was NOT clean, and #259 merged anyway — deliberately
+## The mechanism #191 fixes
 
-29 of 30 obligations strongly supported. The single blocker was `completion-10`
-reported as having no mapped test while **the same report cited that exact test
-twice elsewhere** — on its Constraint twin and on an unrelated obligation. That
-is #245; no code change answers it. Merged on the strength of **seven defect
-injections**, with the human's explicit call.
+`judge_discrimination` (`evidence/discrimination.py:133`) makes **one**
+`client.complete` carrying every obligation's every defect verdict, and passes
+neither a partition nor a `stage=` — so it is invisible to
+`partition_sizes_in_force`. Two changes in one PR (do not split; the transcript
+re-record is paid once):
 
-**This is the second consecutive issue merged on a non-clean gate** (#248 was the
-first). `CLAUDE.md`'s sequencing rule says a gate that moves under unchanged
-evidence cannot validate anything downstream — so #225/#180 deserve weighing
-against more capability work before the next task.
-
-## The #225 evidence is now two-directional
-
-Newly filed on #225, and it changes what the defect *is*:
-
-- run 1 → 2: an obligation fell strongly → partially on **byte-identical**
-  evidence; non-discriminating went 3 → 13 while only *adding* tests.
-- run 2 → 3: **two** boundary tests moved **twelve** obligations *up* to
-  strongly supported, most untouched by them.
-
-Every prior instance showed ratings falling, readable as a conservative judge.
-Twelve unearned promotions rules that out — it is instability, not bias, so
-"write more tests until the gate is clean" is not a convergent strategy.
+- **(a)** partition by obligation via `partition(obligations, size, key=...)`,
+  mirroring `mapping.py:126`.
+- **(b)** separate enumeration from verdict, keyed differently. **The enumeration
+  request carries no test evidence at all** — that is what makes "adding a test
+  leaves the defect set unchanged" true *by construction*: same request bytes →
+  cache hit → replay. Testable with no model call.
 
 ## Do not rediscover
 
 - **A prompt change invalidates only THAT STAGE's transcripts** — `request_key`
   hashes each request individually.
-- **52 of 116 files fail `ruff format --check`** and the `PostToolUse` hook
-  reflows any file it touches — 457 changed lines for a 5-line edit on
-  `tests/test_cli.py`. Filed as **#261**. **Workaround:** `git checkout <base> --
-  <path>`, then re-apply the real edit **by script**, never with the Edit tool.
+- **52 of 117 files fail `ruff format --check`** and the `PostToolUse` hook
+  reflows any file it touches — 457 changed lines for a 5-line edit. Filed as
+  **#261**. **Workaround:** `git checkout <base> -- <path>`, then re-apply the
+  real edit **by script**, never with the Edit tool.
 - **The formatter strips an import you add before you add its usage.** Add the
   usage first; it silently reverted two edits, surfacing only as a later
   `NameError`.
 - **`decompose --mode record` writes a 0-byte log through `tee`.** Rebuild with
   `--mode replay` into the log — byte-identical, no live call. Check `wc -l`.
 - **Transcript responses are JSON *strings*** — `json.loads` the `response`
-  field before reading `verdicts`. Cost one wrong analysis pass.
-- **Transcripts live in `.acceptance/cache/transcripts/`**, not `cache/`.
+  field before reading `verdicts`.
+- **Transcripts live in `.acceptance/cache/transcripts/`** (1,205 of them), not
+  `cache/`. **The cache is not an archive** — DR-259 lost two runs mid-analysis.
 - **`load_dotenv()` walks up from the calling *file*, not cwd.** A scratchpad
   script sees no project `.env`; pass the path explicitly.
 - **`litellm.__version__` does not exist.**
 - **`Review` requires `mode`** — `Review(mode="local", reviewed_revision=...)`.
-- **A `check` over a new task file needs `--mode record`** and makes live calls.
+- **A `check` or `decompose` over a new task file needs `--mode record`** and
+  makes live calls.
 - **`git branch -d` refuses every squash-merged branch.** `gh pr view <n> --json
   state`, then `-D`.
 - **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
 
+## Carried forward from #259
+
+- **DR-259's "0.10 is a clean separator" claim is withdrawn.** The held-out task
+  file carries a genuine merge at **0.2257**; the nearest spurious sits at
+  **0.116**, so the bands overlap and no threshold does both jobs. 0.10 ships as
+  the deliberate under-merging side of a real trade. **#211** settles it properly.
+- **Two consecutive issues merged on non-clean gates** (#248, #259). That is the
+  reason this session is on judgement stability rather than more capability work.
+
 ## Queued — see `docs/DEFERRED.md`
 
-**One open**, unchanged: untracking `current-task.md`, still **blocked on #258**
-(two tests read the live file). Do #258 first, then untrack.
-
-Four filed this session: #245 comment, #225 comment, **#261** (formatter churn,
-new), #223 comment.
+**Three open.** Two new from this gate (the `constraint-11` quantifier drift as a
+child of #181; the exclusion-typing inconsistency as a comment on #205), plus
+untracking `current-task.md`, still **blocked on #258**.
