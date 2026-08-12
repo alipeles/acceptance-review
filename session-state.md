@@ -32,27 +32,36 @@ deliberately none. **Zero open questions**, no unreconciled clusters. Every
 requirement represented; nothing missing. No rewrite of `current-task.md` — the
 wording is not the cause of the one defect seen.
 
-## The finding that matters — 0.10 is lossy on held-out data
+## Threshold: 0.10 CONFIRMED — but for a different reason than DR-259 first gave
 
-#259's own Gate 1 run is a fourth task file, held out from DR-259's calibration.
-Same method, labels from the model's own verdicts: 12 confirmed merges over
-1,035 pairs.
+#259's Gate 1 run is a fifth task file, held out from DR-259's calibration. Same
+method, labels from the model's own verdicts: 12 confirmed merges over 1,035
+pairs. It carries a **genuine** merge at **0.2257** — `task-01`'s headline
+obligation merging with its own constraint restatement — far outside the
+0.094–0.115 band the DR calls a clean separator.
+
+Raising the default to clear it was considered and **rejected**:
 
 ```
-0.10  ask 2.1%   keep 11/12      <- the mandated default
-0.23  ask 6.7%   keep 12/12
-0.25  ask 8.1%   keep 12/12
+              calibration          held-out
+threshold   genuine  spurious      genuine    asked
+  0.10       20/20    0/10          11/12      2.1%   <- chosen
+  0.15       20/20    2/10          11/12      3.4%
+  0.25       20/20    9/10          12/12      8.1%
 ```
 
-The lost merge is at **0.2257** and is genuine — `task-01`'s headline obligation
-merging with its own constraint restatement. DR-259 put the farthest genuine
-merge at 0.0938, so **the separating band does not generalise**. Cause: those two
-paraphrase each other across levels of abstraction (requirement vs mechanism),
-a much wider gap than the near-verbatim restatements the calibration sample was
-dominated by.
+The nearest calibration *spurious* merge is at 0.116, below the held-out genuine
+one at 0.2257. **They overlap — no threshold does both.** At 0.25 the filter
+admits 9 of 10 spurious merges and stops being a quality filter at all.
 
-**Decision queued, not taken** — the issue's Acceptance mandates 0.10, so
-implement 0.10 and let the human choose. Recommendation is 0.25.
+So 0.10 stands, now as the deliberate **under-merge** side of a real trade rather
+than a free separation: a missed merge leaves a visible redundant obligation, a
+spurious merge destroys a requirement silently. Matches `linking.py`'s declared
+bias. **Do not re-assert that the threshold separates cleanly — it does not.**
+#211 is now load-bearing for settling the number properly.
+
+Recorded in DR-259 (*Held-out check*). `current-task.md` and #259's Acceptance
+already said 0.10, so nothing re-armed and no mandate changed.
 
 ## Do not rediscover
 
@@ -79,5 +88,8 @@ implement 0.10 and let the human choose. Recommendation is 0.25.
 
 ## Queued — see `docs/DEFERRED.md`
 
-Four open: the 0.10 decision, the DR TF-IDF correction, the #223 composite-
-obligation filing, and untracking `current-task.md` (still blocked on #258).
+Two open: the #223 composite-obligation filing (drafted, **not yet approved**),
+and untracking `current-task.md` (still blocked on #258).
+
+The 0.10 decision and the DR TF-IDF correction are resolved and their entries
+deleted — both landed in DR-259.

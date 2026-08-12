@@ -21,6 +21,15 @@ wrongly filtered out costs one redundant obligation, while a spurious pair
 handed to the model can be merged, and a wrong merge destroys a requirement
 silently. `linking.py` already declares that direction load-bearing.
 
+> **Confirmed at 0.10 on 2026-08-11, against held-out evidence that weakens the
+> original case for it.** A fifth task file — #259's own Gate 1 run, held out
+> from the calibration — carries a **genuine** merge at 0.2257, far outside the
+> 0.094–0.115 band this record reports as a clean separator. Raising the default
+> to clear it was considered and rejected: at 0.25 the filter admits 9 of the 10
+> spurious merges in the calibration sample and stops being a quality filter at
+> all. **No threshold does both**, so 0.10 is now chosen as the *under-merging*
+> side of a real trade rather than as a free separation. See *Held-out check*.
+
 ## How the data was obtained
 
 The measurement is offline, over **recorded linking transcripts** in
@@ -114,6 +123,109 @@ This is #180/#193 instability, and it is a spurious-merge signal with no
 distance in it — so for those two the label does not rest on the judgement
 being validated.
 
+## Held-out check — #259's own Gate 1 run
+
+Added 2026-08-11. It did not move the default, but it changes what the default
+means and why it is defensible.
+
+The four sweeps above were the sample the threshold was fitted on. #259's Gate 1
+decompose produced a fifth task file that had no part in that fitting, so it is a
+genuine held-out test. Method identical — `description + observable_behavior`
+embedded with `voyage-3.5-lite`, raw cosine — with one improvement that
+addresses this record's own stated contamination limit: **the labels are the
+model's own `same_requirement` verdicts**, not a hand reading of pairs already
+sorted by distance.
+
+46 pre-link obligations, 1,035 pairs, 12 confirmed merges.
+
+| threshold | pairs asked | merges kept |
+|---:|---|---|
+| 0.05 | 1.1% | 9/12 |
+| 0.08 | 1.7% | 10/12 |
+| **0.10** | **2.1%** | **11/12** |
+| 0.15 | 3.4% | 11/12 |
+| 0.20 | 5.4% | 11/12 |
+| 0.23 | 6.7% | 12/12 |
+| 0.25 | 8.1% | 12/12 |
+| 0.30 | 13.3% | 12/12 |
+
+The merge lost at 0.10 sits at **0.2257**, and it is genuine beyond argument —
+the headline requirement merging with its own constraint restatement:
+
+```
+[obligation-distance-threshold-exclusion]
+  description: Pairs whose distance exceeds the threshold are not sent to the model.
+  behavior:    A pair with distance greater than the configured threshold is omitted
+               from model submission.
+
+[task-01-obligation]
+  description: Obligation pairs that are too dissimilar to state one requirement are
+               not asked about.
+  behavior:    Pairs whose distance exceeds the threshold are not sent to the model,
+               so they are not asked about.
+
+model: same_requirement=true — "effectively the same requirement ... Same truth
+conditions and same test."
+```
+
+**Why the fitted band did not generalise.** Across the four calibration sweeps
+the farthest genuine merge was 0.0938; here it is 2.4× further out. The pair
+above shows the mechanism: these two obligations paraphrase each other *across
+levels of abstraction* — one states the requirement, the other states the
+mechanism that implements it. That is a far wider gap in embedding space than
+the near-verbatim restatements which dominated the calibration sample, where the
+same task file's Constraints and Completion expectations tended to repeat
+wording. Cross-abstraction paraphrase is the general case; near-verbatim
+restatement was an artifact of the sample.
+
+Retaining that merge would need a threshold of 0.23 or above. The next section
+is why that was not done.
+
+### The two samples do not admit a common threshold
+
+Combining the held-out run with the calibration sweeps removes the separation
+this record was built on. Against the calibration sample's 30 confirmed merges:
+
+| threshold | genuine kept (calibration) | spurious **admitted** (calibration) | genuine kept (held-out) |
+|---:|---|---|---|
+| 0.10 | 20/20 | 0/10 | 11/12 |
+| 0.15 | 20/20 | 2/10 | 11/12 |
+| 0.20 | 20/20 | 8/10 | 11/12 |
+| 0.25 | 20/20 | **9/10** | 12/12 |
+
+The held-out genuine merge sits at 0.2257; the nearest calibration *spurious*
+merge sits at 0.116. **The two overlap, so no threshold both keeps every genuine
+merge and drops the spurious ones.** The perfect 0.094–0.115 band reported above
+is an artifact of a sample that happened to contain no cross-abstraction
+paraphrase.
+
+This changes what the prefilter is for, and the change should not be glossed:
+
+- **At 0.10** it is a quality filter as originally claimed — it drops every
+  spurious merge in the sample — and it costs roughly one genuine merge in
+  twelve, in the under-merge direction `linking.py` calls the safe one.
+- **At 0.25** it is a **cost optimisation only.** It admits 9 of 10 spurious
+  merges, including five of the `linked-obligation-for-two-sections` hub pairs,
+  so merge quality is essentially what it was with no filter at all. What it
+  buys is asking 8.1% of pairs instead of 100%.
+
+Both are defensible; they are not the same decision. The claim under *What the
+filter removes is disproportionately defect* holds **only at the low end**, and
+does not support 0.25.
+
+**0.10 is confirmed, on the second reading rather than the first.** The filter is
+kept as a quality filter, and the ~1-in-12 genuine merge it misses is accepted as
+the price. That is consistent with `linking.py`'s declared bias: an under-merge
+leaves a redundant obligation, which is visible in the breakdown and costs a
+reader some noise, while a spurious merge destroys a requirement silently and is
+the failure this product exists to catch. Paying in the visible currency is the
+same trade the module already makes everywhere else.
+
+What this does **not** license is repeating the original claim that the
+threshold separates cleanly. It does not. #211's link-precision measure remains
+the way to settle the number properly, and it is now load-bearing rather than
+nice-to-have.
+
 ## Rejected alternatives
 
 **Hubness corrections — rejected, they make it worse.** The concern was that a
@@ -137,13 +249,9 @@ removes almost no bias. Raw distance works *because* it is uncorrelated with
 the failure mode; coupling it to the model's own notion of centrality would
 throw that away.
 
-**A stdlib TF-IDF cosine — viable, not chosen.** Word uni/bigrams plus char
-4-grams separated just as cleanly (gap 0.646–0.773, 3.3% of pairs) and agreed
-with the embeddings on near-vs-far for all 30 merges. It needs no provider, no
-key, and no record/replay handling, which makes it the cheaper option on every
-axis except semantic generality. Embeddings were chosen deliberately; if the
-provider dependency later proves awkward, this is the fallback and it is known
-to work on this evidence.
+TF-IDF entered this analysis only as the IDF-style framing behind those hubness
+corrections, and it was rejected with them. It is not a standing fallback and an
+earlier draft of this record was wrong to present it as one.
 
 ## Limits
 
