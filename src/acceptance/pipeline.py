@@ -28,14 +28,6 @@ from acceptance.config import (
     ScopeExpansionPolicy,
     provenance_for,
 )
-from acceptance.rerun import (
-    carried_findings,
-    carried_recommendations,
-    compute_delta,
-    merge_carried_forward,
-    obligations_to_rederive,
-    task_source_for,
-)
 from acceptance.coverage.classify import CoverageStatus, ImplementationCoverage, classify_coverage
 from acceptance.coverage.declaration_comparison import (
     compare_declaration,
@@ -54,13 +46,20 @@ from acceptance.evidence.discrimination import judge_discrimination
 from acceptance.evidence.extraction import extract_test_evidence
 from acceptance.evidence.mapping import apply_test_mapping, map_tests_to_obligations
 from acceptance.evidence.strength import apply_evidence_strength, classify_strength
-from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
 from acceptance.requirement.linking import link_duplicate_obligations
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
+from acceptance.rerun import (
+    carried_findings,
+    carried_recommendations,
+    compute_delta,
+    merge_carried_forward,
+    obligations_to_rederive,
+    task_source_for,
+)
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     UNUSABLE_ANSWER,
@@ -71,6 +70,7 @@ from acceptance.review_state import (
     Review,
     UnrequestedChangeDisposition,
 )
+from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog
 from acceptance.verdict import derive_verdict
 
 _SEVERITY_BY_STATUS = {

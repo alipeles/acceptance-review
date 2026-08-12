@@ -7,6 +7,7 @@ without carrying the batch's position.
 """
 
 import pytest
+from pydantic import ValidationError
 
 from acceptance.partition import Batch, partition
 
@@ -129,5 +130,8 @@ def test_the_mechanism_does_not_depend_on_the_stage_that_uses_it():
 def test_a_batch_is_immutable():
     batch = partition(["a", "b"], 2, key=str)[0]
 
-    with pytest.raises(Exception):
+    # ValidationError, not Exception: a bare Exception would be satisfied by an
+    # AttributeError from a renamed field or a TypeError from a changed
+    # signature, so the test would keep passing after immutability was lost.
+    with pytest.raises(ValidationError):
         batch.size = 99

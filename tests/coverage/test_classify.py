@@ -11,8 +11,8 @@ diff-region links. Classification *accuracy* is measured by the benchmark (M3.3)
 
 from pathlib import Path
 
-from acceptance.change.diff import extract_change_set
 from acceptance.benchmark.fixtures import materialize_archetype
+from acceptance.change.diff import extract_change_set
 from acceptance.coverage.classify import (
     CoverageStatus,
     ImplementationCoverage,

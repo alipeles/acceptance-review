@@ -2,9 +2,10 @@
 evidence with a per-line evidence tier, advisory unrequested changes, and the
 computed verdict."""
 
+from acceptance.report import render_report
 from acceptance.review_state import (
-    AdmissibleEvidence,
     UNREQUESTED_CHANGE,
+    AdmissibleEvidence,
     CompletionResult,
     CompletionVerdict,
     Component,
@@ -18,8 +19,6 @@ from acceptance.review_state import (
     TestRecommendation,
     UnrequestedChangeDisposition,
 )
-
-from acceptance.report import render_report
 
 
 def test_empty_review_renders_the_full_shell():

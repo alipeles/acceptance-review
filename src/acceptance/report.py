@@ -20,8 +20,8 @@ from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     AdmissibleEvidence,
     CompletionVerdict,
-    Obligation,
     MandateCoverage,
+    Obligation,
     RequirementMap,
     Review,
     TestRecommendation,
@@ -306,8 +306,10 @@ def _unread_block(requirement_map: RequirementMap) -> list[str]:
         return []
     lines = [
         "",
-        f"  Not read as any requirement: {len(requirement_map.unread_source)} block(s)"
-        " — outside every recognised section, so no obligation could derive from them.",
+        (
+            f"  Not read as any requirement: {len(requirement_map.unread_source)} block(s)"
+            " — outside every recognised section, so no obligation could derive from them."
+        ),
     ]
     for span in requirement_map.unread_source:
         excerpt = " ".join(span.text.split())

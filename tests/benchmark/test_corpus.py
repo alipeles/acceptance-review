@@ -14,10 +14,10 @@ import pytest
 from acceptance.benchmark.corpus import (
     UnresolvableRevisionError,
     build_corpus_case,
-    resolve_case_revisions,
     load_corpus_meta,
     materialize_corpus_run,
     remove_corpus_worktree,
+    resolve_case_revisions,
 )
 
 REPO = Path(__file__).resolve().parents[2]

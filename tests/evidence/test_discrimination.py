@@ -59,6 +59,7 @@ def _change_set() -> ChangeSet:
 
 def _exploding_client():
     import tempfile
+
     from acceptance.llm import Mode, ModelClient, TranscriptStore
 
     def boom(**kwargs):

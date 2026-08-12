@@ -195,7 +195,7 @@ class GroundTruthLabels(PersistableModel):
     open_questions: list[GroundTruthOpenQuestion] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _check_tree_integrity(self) -> "GroundTruthLabels":
+    def _check_tree_integrity(self) -> GroundTruthLabels:
         if not self.obligations:
             raise ValueError("GroundTruthLabels requires at least one obligation")
 

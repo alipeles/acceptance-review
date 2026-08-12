@@ -204,7 +204,7 @@ def test_scoring_goes_through_the_shared_benchmark_path(monkeypatch, corpus_work
     the way the CLI and benchmark pipelines drifted before M7.4 — and the
     divergence would be invisible, because both would keep returning numbers.
     """
-    import acceptance.benchmark.scoring as scoring
+    from acceptance.benchmark import scoring
 
     calls = []
     real = scoring.score_case_set
@@ -422,7 +422,7 @@ def test_each_case_is_scored_through_score_case_itself(corpus_worktrees):
     spirit. This scores every case through `score_case` directly and requires
     the two paths to agree, so a private scorer cannot diverge unnoticed.
     """
-    import acceptance.benchmark.scoring as scoring
+    from acceptance.benchmark import scoring
 
     scored, seen = [], []
     real = scoring.score_case

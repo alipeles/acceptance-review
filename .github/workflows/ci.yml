@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # 1. Get the code onto the runner.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Full history, not the default shallow clone: the #190 rating-regression
           # cases are pinned to real commits in this repository and materialize a
@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
 
       # 2. Install the Python the project targets (see plan §3.1).
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
@@ -36,11 +36,24 @@ jobs:
           if [ -f pyproject.toml ]; then pip install -e ".[dev]" || pip install -e . ; fi
           if [ -f requirements.txt ]; then pip install -r requirements.txt ; fi
 
-      # 4. Lint. Non-blocking until ruff is configured.
-      - name: Lint (ruff)
+      # 4. Format and lint. Both fail the build.
+      #
+      #    No `pip install ruff` here: that floated the version, so CI enforced
+      #    whatever ruff had most recently released rather than what the project
+      #    pins. ruff comes from the pinned dev extra installed in step 3, and
+      #    the version is echoed so a run's findings can be attributed to it.
+      #
+      #    The `|| echo` these steps replaced dates from when this repo was
+      #    docs-only. It swallowed the exit code, so CI stayed green through 86
+      #    lint findings on an untouched tree (#239) — lint that structurally
+      #    cannot fail is lint everyone stops reading.
+      - name: Format check (ruff)
         run: |
-          pip install ruff
-          ruff check . || echo "ruff not configured yet — skipping"
+          ruff --version
+          ruff format --check .
+
+      - name: Lint (ruff)
+        run: ruff check .
 
       # 5. Tests. pytest exit code 5 means "no tests collected"; treat that as
       #    success so CI stays green until the first tests land (M0).

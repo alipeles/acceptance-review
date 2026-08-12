@@ -9,8 +9,8 @@ Recommendation *quality* against the real model is shown by the PR's record run.
 import pytest
 
 from acceptance.coverage.recommendations import recommend_tests
-from acceptance.llm import SchemaValidationError
 from acceptance.evidence.discrimination import ObligationDiscrimination, PlausibleDefect
+from acceptance.llm import SchemaValidationError
 from acceptance.review_state import (
     AdmissibleEvidence,
     ChangeSet,
@@ -59,8 +59,9 @@ def _change_set() -> ChangeSet:
 
 
 def _exploding_client():
-    from acceptance.llm import Mode, ModelClient, TranscriptStore
     import tempfile
+
+    from acceptance.llm import Mode, ModelClient, TranscriptStore
 
     def boom(**kwargs):
         raise AssertionError("a model call was issued with no weak obligations")

@@ -25,7 +25,7 @@ from markdown_it.tree import SyntaxTreeNode
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.review_state import DECLARATION_ABSENT, BuilderDeclaration, Finding, Link
 
-__all__ = ["parse_declaration", "declaration_absent_finding"]
+__all__ = ["declaration_absent_finding", "parse_declaration"]
 
 # §7.4 template section headings, normalized (lowercased), to the
 # BuilderDeclaration field each fills. A section a declaration omits is left

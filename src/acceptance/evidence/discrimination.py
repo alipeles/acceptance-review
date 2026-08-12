@@ -24,9 +24,9 @@ the predictions by execution.
 from __future__ import annotations
 
 from acceptance.llm import ModelClient, StrictResponseModel
-from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation, TestEvidence
+from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 
 _STAGE = "discrimination judgment"
 

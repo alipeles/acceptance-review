@@ -21,7 +21,6 @@ from markdown_it.tree import SyntaxTreeNode
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.source_ref import TextSpan
-
 from tests.requirement.region_coverage import assert_total_region_coverage, uncovered_regions
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

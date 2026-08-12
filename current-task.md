@@ -1,52 +1,33 @@
 # Task
-Plausible defects are enumerated for an obligation in one step, and the verdict
-on each of them is reached in a separate step that covers one obligation at a
-time.
+The repository's Python sources are formatter-clean and lint-clean, and the
+automated build fails any change that leaves them otherwise.
 
 ## Constraints
-- The plausible defects for an obligation are enumerated by a call of their own.
-- The verdict on an enumerated defect is reached by a call separate from the one
-  that enumerated it.
-- A verdict call carries the defects of a bounded number of obligations.
-- That number of obligations is configurable.
-- That number of obligations is part of the recorded request.
-- The enumeration request is determined by the obligation's text and by the
-  changed code.
-- The enumeration request is not determined by the tests mapped to the
-  obligation.
-- Editing a test mapped to one obligation leaves a different obligation's
-  enumerated defects unchanged.
-- Adding a test mapped to an obligation leaves that obligation's enumerated
-  defects unchanged.
-- The review pipeline reaches its defect verdicts through the separated steps.
-- The change does not reduce the defects the tool identifies.
-- Two runs over the same obligations and the same changed code enumerate the
-  same defects.
-- Two runs over the same obligations and the same changed code reach the same
-  verdicts.
-- Tests issue no live model calls.
+- Every Python file in the repository is formatted the way `ruff format` formats
+  it.
+- No Python file in the repository violates a selected `ruff check` rule.
+- The reformatting alters no program logic.
+- The test in `tests/test_partition.py` that expects `Exception` expects instead
+  the specific exception type the code under test raises.
+- That test is narrowed to the specific exception rather than annotated to be
+  ignored.
+- The project's development dependencies pin an exact `ruff` version.
+- The automated build runs a formatting check over the repository.
+- The automated build fails when the formatting check reports a file.
+- The automated build fails when the lint check reports an error.
+- The automated build's lint step does not discard the lint tool's exit code.
+- The automated build checks out the repository's full commit history.
+- The automated build's checkout action is at a major version that does not
+  target Node 20.
+- The automated build's Python setup action is at a major version that does not
+  target Node 20.
 
 ## Scope exclusions
-- How a rating is derived from the defect verdicts, which is #252.
-- Which tests are mapped to an obligation.
-- How an obligation is derived from a requirement.
-- Reporting a rating that could not be reproduced, which is #254.
-- Choosing the number of obligations per call for cost or latency.
-- Whether a defect verdict is correct about the test it describes.
+- Which lint rules are selected.
+- Formatting files that are not Python.
+- The behaviour of the review pipeline.
+- Which Python version the build targets.
+- Failures in the test suite that are unrelated to formatting or linting.
 
 ## Completion expectations
 - Implementation
-- A test asserts that enumerating an obligation's defects and reaching a verdict
-  on them are separate calls.
-- A test asserts that a verdict call carries the defects of no more than the
-  configured number of obligations.
-- A test asserts that the number of obligations per verdict call reaches the
-  recorded request.
-- A test asserts that editing a test mapped to one obligation leaves a different
-  obligation's enumerated defects unchanged.
-- A test asserts that adding a test mapped to an obligation leaves that
-  obligation's enumerated defects unchanged.
-- A test asserts that the review pipeline reaches its defect verdicts through the
-  separated steps.
-- A test asserts that two runs over the same obligations and the same changed
-  code enumerate the same defects and reach the same verdicts.

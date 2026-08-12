@@ -5,17 +5,16 @@ from types import SimpleNamespace
 import pytest
 from pydantic import BaseModel
 
-from acceptance.review_state import UnrequestedChangeDisposition as UnrequestedDisposition
-
 from acceptance.llm import (
     Mode,
-    inline_schema_refs,
     ModelClient,
     SchemaValidationError,
     TranscriptNotFoundError,
     TranscriptStore,
+    inline_schema_refs,
     request_key,
 )
+from acceptance.review_state import UnrequestedChangeDisposition as UnrequestedDisposition
 
 
 class Verdict(BaseModel):

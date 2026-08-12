@@ -281,6 +281,7 @@ def test_head_pytest_runs_with_the_intended_outcome(fixture_dir, tmp_path):
         cwd=fixture.repo_path,
         capture_output=True,
         text=True,
+        check=False,
     )
 
     if fixture.meta.intended_pytest == "pass":

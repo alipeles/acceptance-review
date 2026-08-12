@@ -13,7 +13,7 @@ honour is RECORDED rather than dropped.
 """
 
 import json
-from typing import Literal, Union
+from typing import Literal
 
 import pytest
 from pydantic import ValidationError
@@ -49,7 +49,7 @@ class _SecondShape(StrictResponseModel):
 
 
 class _UnionContainer(StrictResponseModel):
-    items: list[Union[_FirstShape, _SecondShape]]
+    items: list[_FirstShape | _SecondShape]
 
 
 def _test(test_id: str, source: str = "def t():\n    pass") -> DiscoveredTest:
@@ -121,14 +121,15 @@ def test_a_foreign_id_does_not_validate_against_the_constrained_schema():
     )
     assert ok.items[0].obligation_id == "ob-1"
 
-    try:
+    # ValidationError specifically: catching bare Exception here would also pass
+    # on a typo in the schema name or a JSON syntax error, neither of which is
+    # the rejection this test claims to demonstrate.
+    with pytest.raises(ValidationError) as rejection:
         constrained.model_validate_json(
             '{"items":[{"obligation_id":"show-fields","obligation_ids":[],"rationale":"r"}]}'
         )
-    except Exception as exc:
-        assert "show-fields" in str(exc)
-    else:
-        raise AssertionError("a foreign id validated against the constrained schema")
+
+    assert "show-fields" in str(rejection.value)
 
 
 def test_the_schema_name_is_preserved_so_the_request_key_stays_meaningful():

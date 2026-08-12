@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Literal, Union
+from typing import Literal
 
 from pydantic import Field
 
@@ -349,12 +349,12 @@ class _RaisedOpenQuestion(StrictResponseModel):
         return [self.open_question_id, *self.more_open_question_ids]
 
 
-# A plain `Union`, deliberately not `Field(discriminator=...)`: pydantic renders
+# A plain union, deliberately not `Field(discriminator=...)`: pydantic renders
 # a tagged union as `oneOf` + `discriminator`, and strict mode accepts neither,
 # while `inline_schema_refs` would leave the discriminator mapping pointing at
 # `$defs` it had just inlined. A plain union renders `anyOf`, which strict mode
 # does accept, and the `Literal` tags still make the match unambiguous.
-_RequirementDisposition = Union[_Yielded, _NoObligation, _RaisedOpenQuestion]
+_RequirementDisposition = _Yielded | _NoObligation | _RaisedOpenQuestion
 
 
 class _Decomposition(StrictResponseModel):
@@ -420,9 +420,11 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
             "",
             ", ".join(sorted(answer_for)),
             "",
-            "The rest are shown so you can read the mandate as a whole. Do not "
-            "dispose of them and do not derive obligations for them; another call "
-            "answers for those.",
+            (
+                "The rest are shown so you can read the mandate as a whole. Do not "
+                "dispose of them and do not derive obligations for them; another call "
+                "answers for those."
+            ),
         ]
     )
     return "\n".join(lines)

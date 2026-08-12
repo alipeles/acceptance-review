@@ -24,43 +24,43 @@ from acceptance.serialization import canonical_json
 from acceptance.source_ref import TextSpan
 
 __all__ = [
-    "Component",
-    "EvidenceTier",
-    "TextSpan",
-    "ObligationType",
-    "AdmissibleEvidence",
-    "EvidenceClassification",
-    "UnrequestedChangeDisposition",
-    "UNREQUESTED_CHANGE",
     "DECLARATION_ABSENT",
     "DECLARATION_MISMATCH",
-    "Project",
-    "TaskSource",
-    "MandateInterpretation",
+    "UNREQUESTED_CHANGE",
+    "AdmissibleEvidence",
     "BuilderDeclaration",
-    "DiffHunk",
-    "FileChange",
     "ChangeSet",
-    "RequirementSection",
-    "RequirementRef",
+    "CompletionResult",
+    "CompletionVerdict",
+    "Component",
+    "DeterminismControls",
+    "DiffHunk",
     "Disposition",
+    "EvidenceClassification",
+    "EvidenceTier",
+    "ExecutionEvidence",
+    "FileChange",
+    "Finding",
+    "Link",
+    "MandateCoverage",
+    "MandateInterpretation",
+    "Obligation",
+    "ObligationChange",
+    "ObligationType",
+    "OpenQuestion",
+    "Project",
     "RequirementDisposition",
     "RequirementMap",
-    "Obligation",
-    "OpenQuestion",
-    "TestEvidence",
-    "ExecutionEvidence",
-    "Link",
-    "Finding",
-    "TestRecommendation",
-    "CompletionVerdict",
-    "CompletionResult",
-    "MandateCoverage",
-    "DeterminismControls",
-    "ReviewProvenance",
-    "ObligationChange",
-    "ReviewDelta",
+    "RequirementRef",
+    "RequirementSection",
     "Review",
+    "ReviewDelta",
+    "ReviewProvenance",
+    "TaskSource",
+    "TestEvidence",
+    "TestRecommendation",
+    "TextSpan",
+    "UnrequestedChangeDisposition",
 ]
 
 
@@ -563,12 +563,12 @@ class Finding(_Model):
         return value
 
     @model_validator(mode="after")
-    def _require_authorized_tier(self) -> "Finding":
+    def _require_authorized_tier(self) -> Finding:
         authorize_tier(self.produced_by, self.evidence_tier)
         return self
 
     @model_validator(mode="after")
-    def _obligation_less_only_for_allowed_types(self) -> "Finding":
+    def _obligation_less_only_for_allowed_types(self) -> Finding:
         obligation_less_ok = self.type in _OBLIGATION_LESS_TYPES
         if self.related_obligation is None and not obligation_less_ok:
             raise ValueError(
@@ -583,7 +583,7 @@ class Finding(_Model):
         return self
 
     @model_validator(mode="after")
-    def _disposition_only_for_unrequested_change(self) -> "Finding":
+    def _disposition_only_for_unrequested_change(self) -> Finding:
         if self.disposition is not None and self.type != UNREQUESTED_CHANGE:
             raise ValueError(
                 f"disposition is only valid on an {UNREQUESTED_CHANGE!r} finding, not {self.type!r}"

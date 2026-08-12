@@ -63,10 +63,10 @@ class _MatchCounts:
     reported_total: int
 
     @staticmethod
-    def zero() -> "_MatchCounts":
+    def zero() -> _MatchCounts:
         return _MatchCounts(0, 0, 0)
 
-    def __add__(self, other: "_MatchCounts") -> "_MatchCounts":
+    def __add__(self, other: _MatchCounts) -> _MatchCounts:
         return _MatchCounts(
             self.matched + other.matched,
             self.ground_truth_total + other.ground_truth_total,

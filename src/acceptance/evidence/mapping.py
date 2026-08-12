@@ -19,6 +19,8 @@ the field the §11.1 mapping-accuracy metric (scoring.py) already scores.
 
 from __future__ import annotations
 
+from pydantic import Field
+
 from acceptance.config import DEFAULT_MAPPING_BATCH_SIZE
 from acceptance.evidence.discovery import DiscoveredTest
 from acceptance.llm import ModelClient, StrictResponseModel
@@ -69,8 +71,8 @@ class MappingResult(PersistableModel):
     # Obligations whose mapping could not be honoured. Disjoint from
     # `unmapped_obligation_ids` in meaning: unmapped is a substantive negative
     # answer, this is the absence of an answer.
-    indeterminate_obligation_ids: list[str] = []
-    unusable_answers: list[UnusableAnswer] = []
+    indeterminate_obligation_ids: list[str] = Field(default_factory=list)
+    unusable_answers: list[UnusableAnswer] = Field(default_factory=list)
 
 
 class _TestMapping(StrictResponseModel):

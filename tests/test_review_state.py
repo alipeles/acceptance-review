@@ -243,15 +243,15 @@ def test_finding_requires_authorized_producer():
 
 
 def _unrequested_finding(**overrides) -> Finding:
-    defaults = dict(
-        type=UNREQUESTED_CHANGE,
-        severity="medium",
-        description="checkout signature changed; not requested.",
-        evidence_tier=EvidenceTier.STATIC,
-        produced_by=Component.STATIC_ANALYZER,
-        links=[Link(kind="code", ref="cart.py:4")],
-        disposition=UnrequestedChangeDisposition.SEPARABLE,
-    )
+    defaults = {
+        "type": UNREQUESTED_CHANGE,
+        "severity": "medium",
+        "description": "checkout signature changed; not requested.",
+        "evidence_tier": EvidenceTier.STATIC,
+        "produced_by": Component.STATIC_ANALYZER,
+        "links": [Link(kind="code", ref="cart.py:4")],
+        "disposition": UnrequestedChangeDisposition.SEPARABLE,
+    }
     defaults.update(overrides)
     return Finding(**defaults)
 

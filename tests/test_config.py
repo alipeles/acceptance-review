@@ -143,7 +143,6 @@ def test_provenance_reports_the_partition_size_the_run_actually_used():
     controls (#160). A review that reported a configured partition size while
     its calls ran unpartitioned would describe a run that did not happen."""
     from acceptance.requirement.obligations import _Decomposition
-
     from tests.support import client_finding_nothing
 
     client = client_finding_nothing()
@@ -162,7 +161,6 @@ def test_provenance_of_an_unpartitioned_run_reports_no_partition_size():
     different claim from a partition of size one — the same distinction
     controls_in_force draws between "ignored" and "nothing observed"."""
     from acceptance.requirement.obligations import _Decomposition
-
     from tests.support import client_finding_nothing
 
     client = client_finding_nothing()

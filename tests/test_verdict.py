@@ -9,6 +9,7 @@ model call is involved in the headline result at all."""
 
 import inspect
 
+from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.review_state import (
     AdmissibleEvidence,
     CompletionVerdict,
@@ -18,7 +19,6 @@ from acceptance.review_state import (
     ObligationType,
     OpenQuestion,
 )
-from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.verdict import derive_verdict
 
 

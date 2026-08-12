@@ -11,11 +11,10 @@ attributable.
 
 from __future__ import annotations
 
-
 from acceptance.requirement.linking import (
-    _PairVerdict,
     _confirmed_clusters,
     _pairs,
+    _PairVerdict,
     _Verdicts,
     link_duplicate_obligations,
 )

@@ -14,8 +14,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from acceptance.benchmark.fixtures import build_benchmark_case  # noqa: E402
-from acceptance.benchmark.instability import (  # noqa: E402
+from support import _completed, client_dispatching, client_finding_nothing
+
+from acceptance.benchmark.fixtures import build_benchmark_case
+from acceptance.benchmark.instability import (
     DEFAULT_MODELS,
     DEFAULT_RUNS_PER_MODEL,
     ClassDistribution,
@@ -24,8 +26,8 @@ from acceptance.benchmark.instability import (  # noqa: E402
     InstabilityReport,
     ModelInstability,
     ObservingClient,
-    PerturbationResult,
     Perturbation,
+    PerturbationResult,
     RunKey,
     RunSnapshot,
     add_unrelated_test,
@@ -37,8 +39,7 @@ from acceptance.benchmark.instability import (  # noqa: E402
     seeds_for,
     summarize_model,
 )
-from acceptance.config import Mode, RunConfig  # noqa: E402
-from support import _completed, client_dispatching, client_finding_nothing  # noqa: E402
+from acceptance.config import Mode, RunConfig
 
 _EMPTY_BY_SCHEMA = {
     "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
@@ -504,7 +505,7 @@ def test_measure_instability_varies_the_seed_across_runs(tmp_path):
         client_factory=_observing_factory(calls),
     )
 
-    assert len(set(seed for seed, _ in calls)) == 2
+    assert len({seed for seed, _ in calls}) == 2
 
 
 def test_measure_instability_records_the_conditions_that_produced_it(tmp_path):
@@ -558,8 +559,9 @@ def test_a_perturbation_run_is_included_when_one_is_supplied(tmp_path):
 def test_observations_do_not_leak_between_clients():
     """A mutable class-level default would make every run share one list, so all
     runs would look identical — stability faked by the measuring instrument."""
-    from acceptance.llm import TranscriptStore
     import tempfile
+
+    from acceptance.llm import TranscriptStore
 
     def build():
         return ObservingClient(
