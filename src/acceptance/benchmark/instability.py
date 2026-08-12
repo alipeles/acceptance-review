@@ -715,6 +715,11 @@ def run_once(
             store=config.build_client().store,
             temperature=config.temperature,
             seed=config.seed,
+            # Hand-rolled rather than taken from `config.build_client()`, so it
+            # does not inherit parameters the factory gains. #259 added the
+            # embedding prefilter to the pipeline and this construction kept
+            # working right up until the harness next ran, which was here.
+            embedding_model=config.embedding_model,
         )
 
     scored = classify_case(case, client)
