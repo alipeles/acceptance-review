@@ -111,7 +111,72 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > for Gate 2 was whether the tool had any evidence path for a
   > configuration-only change. It has none, and the absence is fatal rather than
   > graceful.
-- **Status:** open
+  >
+  > ## Second instance, on a tests-only change (#258 Gate 2)
+  >
+  > Independently hit by #258 the same day, which matters because the two
+  > mandates have nothing in common — that one is a CI-and-formatting change, this
+  > one touches `tests/` only:
+  >
+  > ```
+  > acceptance: model error: no recommendation for 2 of 13 weak obligation(s):
+  > region-coverage-omits-missing-path, no-failures-without-root-task-file
+  > ```
+  >
+  > Deterministic over three runs (two `record`, one `replay`).
+  > `dogfood-logs/258-gate2-run1/`.
+  >
+  > The recorded transcript (`21e168cc…`) settles what the error message cannot,
+  > and rules out the two readings that would otherwise fit:
+  >
+  > - **Not truncation.** The response parses as complete JSON, terminates on
+  >   `"}]}`, and used 2,236 completion tokens with no `max_tokens` in the request.
+  > - **Not a positional or volume effect.** The skipped obligations sit at
+  >   positions **10 and 11 of 13**, and 12 and 13 were answered — it stepped over
+  >   two in the middle and carried on. All 13 ids were in the request and both
+  >   missing ids appear in the enum-constrained schema, so the model could have
+  >   named them and chose not to.
+  >
+  > What the two have in common is that **no test can close their gap**:
+  > `region-coverage-omits-missing-path` is provided by `glob` resolving a literal
+  > final component through `exists()` — verified by injection, since deleting the
+  > `is_file()` filter leaves the test green — and
+  > `no-failures-without-root-task-file` is a property of a whole suite run, not
+  > assertable from inside one without invoking pytest recursively.
+  >
+  > **This corrects one point above.** The batch-scaling reading — *"a single
+  > unanswerable obligation discards the other eleven… same shape as the
+  > `judge_discrimination` call #191 is partitioning"* — is right about the blast
+  > radius and wrong about the cause, and partitioning will **not** fix it. At a
+  > partition of five these two obligations are still unanswerable and the same
+  > error fires on a smaller call. Partitioning shrinks how much collateral each
+  > abort destroys; it does not remove the abort. The two issues are siblings in
+  > stage, not in cause.
+  >
+  > ## The design already contains this judgement, scoped too narrowly
+  >
+  > `_weak_obligations` (`recommendations.py:81`) already excludes `CODE_ONLY`
+  > obligations, and its docstring gives precisely the reasoning both instances
+  > need:
+  >
+  > > Theirs is not a gap a test could close: they are satisfied by the absence of
+  > > excluded work, and no test can assert that work was not done. Recommending
+  > > one would prescribe evidence that cannot exist, which is worse than
+  > > recommending nothing — #146's review demanded a test for "we didn't also do
+  > > something else".
+  >
+  > That is the same judgement the suggested disposition would make, already
+  > written down and already accepted — it is simply scoped to scope exclusions.
+  > #258's two are ordinary `boundary` and `functional` obligations, and #261's
+  > nine are properties of build steps and version pins. Neither set is reached.
+  >
+  > Also worth fixing while here: **the transcript records no stop reason**, on
+  > either the request or the response. Separating truncation from a
+  > short-but-complete answer required reconstructing it from token counts and
+  > JSON well-formedness, which is exactly what the recording exists to make
+  > unnecessary.
+- **Status:** open — **two independent instances**, #261/#239 and #258, both
+  blocking their Gate 2. File as one issue carrying both.
 
 ### [2026-08-12] Scope-exclusion typing flips wholesale between two runs over the same requirements
 - **Kind:** filing (comment on existing issue #205)
