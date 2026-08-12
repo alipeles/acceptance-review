@@ -36,6 +36,94 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-12] Scope-exclusion typing flips wholesale between two runs over the same requirements
+- **Kind:** filing (comment on existing issue #205)
+- **Found during:** #258, Gate 1, runs 1 and 2
+- **Where:** `dogfood-logs/258-gate1-run1/output.log` and `…-run2/output.log`, `exclusion-01`…`exclusion-05`
+- **Severity:** nice-to-have
+- **What's wrong:** the five `## Scope exclusions` requirements are **byte-identical
+  between the two runs** — the only edit between them was deleting a line from
+  `## Completion expectations` — and their types share nothing across the pair:
+  `human_review` ×5 in run 1, then `compatibility` ×1 + `functional` ×4 in run 2.
+- **Why I didn't act:** #205 already owns assigning types in a pass of their own,
+  and nothing in #258 depends on the exclusions' type.
+- **Drafted fix:** comment on #205:
+
+  > A sharper instance than #191's, from #258's Gate 1
+  > (`dogfood-logs/258-gate1-run1/` and `…-run2/`), because here the two runs are
+  > a controlled pair: the five exclusion requirements are byte-identical across
+  > them, and the only change to the task file was one deleted line in a
+  > *different* section.
+  >
+  > | requirement | run 1 | run 2 |
+  > |---|---|---|
+  > | `exclusion-01` | `human_review` | `compatibility` |
+  > | `exclusion-02` | `human_review` | `functional` |
+  > | `exclusion-03` | `human_review` | `functional` |
+  > | `exclusion-04` | `human_review` | `functional` |
+  > | `exclusion-05` | `human_review` | `functional` |
+  >
+  > Five for five, with **no overlap between the runs**. #191's instance showed
+  > the type co-varying with the phrasing *within* one response; this shows it
+  > moving wholesale *between* responses with the input held fixed. Together they
+  > argue the type is a by-product of the sentence that came out rather than a
+  > property of the requirement that went in.
+  >
+  > Worth recording what it does **not** cost today, so the priority is not
+  > overstated: the type is consumed structurally in exactly one place,
+  > `requirement/linking.py:171`, which keys on `TEST_DEMAND` alone. Neither
+  > typing changes any downstream behavior on this task file, and `human_review`
+  > as a *type* does not raise a human-review pause — that is the separate
+  > `AdmissibleEvidence` axis. The defect is that the field carries no reliable
+  > information, not that it currently misroutes anything.
+- **Status:** open
+
+### [2026-08-12] Two sessions at gates need to write `session-state.md` at once — the sharding condition has been met
+- **Kind:** decision
+- **Found during:** #258, Gate 1
+- **Where:** `session-state.md`, and `CLAUDE.md` *Working in small sessions* / *Repo layout*
+- **Severity:** should-fix
+- **What's wrong:** `session-state.md` records a single task in flight and is
+  rewritten wholesale, but three sessions are running in parallel and two have
+  now reached a gate. The file currently holds #191's state and says so
+  explicitly — *"`session-state.md` is owned by this session"* — so #258 has
+  nowhere to record that its Gate 1 passed without either clobbering #191's
+  state or appending to a file the other session will rewrite over.
+- **Why I didn't act:** it changes a documented repo convention that two other
+  live sessions depend on, so resolving it quietly is exactly what the working
+  agreement forbids. **But the gate requires a Gate 1 record**, so I took the
+  narrowest step that collides with nothing: wrote `session-state/258.md` and
+  left `session-state.md` untouched. That is the pre-agreed shape, not a new one
+  — `session-state.md` itself records the fix as *"agreed general fix if it
+  recurs: shard to `session-state/<issue>.md`, one per task in flight."* It has
+  recurred. What still needs your call is whether to make it the convention.
+- **Drafted fix — recommended:** adopt the shard. Three parts:
+  1. `session-state/<issue>.md`, one per task in flight, deleted when the task
+     lands. `session-state.md` is retired once #191 and #261 have landed theirs;
+     no migration, since each session writes its own on next update.
+  2. `CLAUDE.md` — update *Repo layout* and the session-startup sequence to name
+     `session-state/<issue>.md`, and the *Working conventions* gate-commit rule
+     to match.
+  3. `.acceptance/ignore` — the existing `session-state.md` entry becomes
+     `session-state/`, or the directory is added alongside it.
+- **Rejected alternative:** keep one file and have each session append its own
+  section. It fails on the property that makes the file cheap — *rewritten
+  wholesale rather than appended to* — and a wholesale rewrite by either session
+  silently destroys the other's state, which is the failure being fixed.
+- **Status:** **approved and already in flight elsewhere — do not implement from
+  #258.** Approved as the convention, with the human's condition that there be a
+  way to clean up rather than accrete shards for completed tasks. On landing the
+  approval, found the #261 session mid-change on exactly this in the worktree
+  holding `main`: `session-state.md` migrated to `session-state/191.md`, `261.md`
+  added, and every `CLAUDE.md` reference rewritten — including the cleanup rule,
+  *"delete it when the task lands, so the directory is the list of what is
+  actually in flight."* #258 therefore committed **only `session-state/258.md`**
+  and left `CLAUDE.md`, `.acceptance/ignore` and the migration to that session.
+  **Still owed against the human's condition:** the drafted rule is a convention,
+  not a mechanism. Worth deciding on #261 whether a stray-shard check earns its
+  keep — e.g. a `gh`-backed script listing shards whose issue is closed — or
+  whether the rule alone is enough.
+
 ### [2026-08-12] #189's harness duplicates the client contract in two places, and both had silently drifted
 - **Kind:** filing (new issue, child of #186)
 - **Found during:** #191, taking the pre-change baseline
