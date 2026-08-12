@@ -202,9 +202,7 @@ def test_a_foreign_obligation_id_is_recorded_not_silently_dropped():
     }
     log = UnusableAnswerLog()
 
-    result = map_tests_to_obligations(
-        obligations, tests, client_returning(response), unusable=log
-    )
+    result = map_tests_to_obligations(obligations, tests, client_returning(response), unusable=log)
 
     assert [a.returned_id for a in log.answers] == ["show-fields"]
     assert result.unusable_answers[0].returned_id == "show-fields"
@@ -227,9 +225,7 @@ def test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
     }
     log = UnusableAnswerLog()
 
-    result = map_tests_to_obligations(
-        obligations, tests, client_returning(response), unusable=log
-    )
+    result = map_tests_to_obligations(obligations, tests, client_returning(response), unusable=log)
 
     assert result.indeterminate_obligation_ids == ["ob-1"]
     assert result.unmapped_obligation_ids == []  # NOT a negative answer
@@ -252,9 +248,7 @@ def test_a_usable_judgment_survives_an_unusable_one_in_the_same_response():
     }
     log = UnusableAnswerLog()
 
-    result = map_tests_to_obligations(
-        obligations, tests, client_returning(response), unusable=log
-    )
+    result = map_tests_to_obligations(obligations, tests, client_returning(response), unusable=log)
 
     good = next(m for m in result.mappings if m.test_id == "t.py::test_a")
     assert good.obligation_ids == ["ob-1"]  # retained
@@ -274,9 +268,7 @@ def test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers():
     }
     log = UnusableAnswerLog()
 
-    result = map_tests_to_obligations(
-        obligations, tests, client_returning(response), unusable=log
-    )
+    result = map_tests_to_obligations(obligations, tests, client_returning(response), unusable=log)
 
     assert result.unmapped_obligation_ids == ["ob-2"]
     assert result.indeterminate_obligation_ids == []
@@ -297,9 +289,7 @@ def test_each_partition_constrains_test_ids_to_its_own_batch():
     assert enums == [["t.py::test_a"], ["t.py::test_b"]]
     # Every batch still judges every obligation.
     for schema in seen:
-        obligation_field = schema["properties"]["mappings"]["items"]["properties"][
-            "obligation_ids"
-        ]
+        obligation_field = schema["properties"]["mappings"]["items"]["properties"]["obligation_ids"]
         assert obligation_field["items"]["enum"] == ["ob-1"]
 
 
@@ -447,7 +437,9 @@ def test_a_single_supplied_id_is_still_sent_as_an_enum():
     one case where the constraint silently stopped binding."""
     from acceptance.llm import inline_schema_refs
 
-    schema = inline_schema_refs(constrain(_Container, {"obligation_id": ["only"]}).model_json_schema())
+    schema = inline_schema_refs(
+        constrain(_Container, {"obligation_id": ["only"]}).model_json_schema()
+    )
 
     field = schema["properties"]["items"]["items"]["properties"]["obligation_id"]
     assert field["enum"] == ["only"]

@@ -180,7 +180,10 @@ def test_archetype_1_includes_the_omitted_obligation():
     assert "returns-in-parentheses" in ids
     returns = next(o for o in obligations if o.id == "returns-in-parentheses")
     assert returns.source_spans
-    assert parsed.source[returns.source_spans[0].start : returns.source_spans[0].end] == returns.source_spans[0].text
+    assert (
+        parsed.source[returns.source_spans[0].start : returns.source_spans[0].end]
+        == returns.source_spans[0].text
+    )
 
 
 def test_duplicate_ids_are_made_unique():

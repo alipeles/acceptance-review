@@ -12,8 +12,10 @@ from acceptance.review_state import TestEvidence
 
 def _test(test_id: str, source: str) -> DiscoveredTest:
     return DiscoveredTest(
-        test_id=test_id, file=test_id.split("::", 1)[0],
-        reasons=[DiscoveryReason.CALLS_CHANGED_SYMBOL], source=source,
+        test_id=test_id,
+        file=test_id.split("::", 1)[0],
+        reasons=[DiscoveryReason.CALLS_CHANGED_SYMBOL],
+        source=source,
     )
 
 
@@ -26,7 +28,9 @@ def _disc(obligation_id: str, *caught: bool) -> ObligationDiscrimination:
         PlausibleDefect(description=f"defect {i}", would_be_caught=c, reason=".")
         for i, c in enumerate(caught)
     ]
-    return ObligationDiscrimination(obligation_id=obligation_id, defects=defects, discriminating=any(caught))
+    return ObligationDiscrimination(
+        obligation_id=obligation_id, defects=defects, discriminating=any(caught)
+    )
 
 
 def _patterns(findings, test_id):
@@ -39,9 +43,7 @@ def _patterns(findings, test_id):
 def test_non_discriminating_assert_not_none():
     test_id = "t.py::test_result"
     source = (
-        "def test_result():\n"
-        "    result = calculate_coupon(input)\n"
-        "    assert result is not None\n"
+        "def test_result():\n    result = calculate_coupon(input)\n    assert result is not None\n"
     )
     tests = [_test(test_id, source)]
 
@@ -52,10 +54,12 @@ def test_non_discriminating_assert_not_none():
 
 def test_circular_expected_value():
     test_id = "t.py::test_coupon"
-    evidence = [_evidence(
-        test_id,
-        expected_value_provenance="Circular: both sides derive from calculate_coupon.",
-    )]
+    evidence = [
+        _evidence(
+            test_id,
+            expected_value_provenance="Circular: both sides derive from calculate_coupon.",
+        )
+    ]
 
     findings = detect_weak_patterns([], evidence, [])
 

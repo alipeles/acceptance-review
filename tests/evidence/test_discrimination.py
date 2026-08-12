@@ -10,29 +10,49 @@ is verified by a live RECORD run, shown in the PR, not here.
 """
 
 from acceptance.evidence.discrimination import judge_discrimination
-from acceptance.review_state import ChangeSet, DiffHunk, FileChange, Obligation, ObligationType, TestEvidence
+from acceptance.review_state import (
+    ChangeSet,
+    DiffHunk,
+    FileChange,
+    Obligation,
+    ObligationType,
+    TestEvidence,
+)
 from tests.support import client_returning
 
 
 def _obligation(obligation_id: str, description: str) -> Obligation:
     return Obligation(
-        id=obligation_id, description=description, type=ObligationType.FUNCTIONAL,
-        importance="critical", explicit=True, observable_behavior="...",
+        id=obligation_id,
+        description=description,
+        type=ObligationType.FUNCTIONAL,
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
     )
 
 
 def _evidence(identifier: str, obligation_ids: list[str], assertions: list[str]) -> TestEvidence:
     return TestEvidence(
-        identifier=identifier, location=identifier.split("::", 1)[0],
-        assertions=assertions, mapped_obligations=obligation_ids,
+        identifier=identifier,
+        location=identifier.split("::", 1)[0],
+        assertions=assertions,
+        mapped_obligations=obligation_ids,
     )
 
 
 def _change_set() -> ChangeSet:
-    hunk = DiffHunk(header="@@ -1 +1 @@", old_start=1, old_lines=1, new_start=1, new_lines=1,
-                    content="+def prorate(...): ...")
+    hunk = DiffHunk(
+        header="@@ -1 +1 @@",
+        old_start=1,
+        old_lines=1,
+        new_start=1,
+        new_lines=1,
+        content="+def prorate(...): ...",
+    )
     return ChangeSet(
-        base_revision="b", head_revision="h",
+        base_revision="b",
+        head_revision="h",
         files=[FileChange(path="billing.py", status="modified", category="source", hunks=[hunk])],
     )
 
@@ -44,21 +64,32 @@ def _exploding_client():
     def boom(**kwargs):
         raise AssertionError("no criterion had a mapped test; no model call should be made")
 
-    return ModelClient(model="x", mode=Mode.RECORD, store=TranscriptStore(tempfile.mkdtemp()),
-                       completion_fn=boom)
+    return ModelClient(
+        model="x", mode=Mode.RECORD, store=TranscriptStore(tempfile.mkdtemp()), completion_fn=boom
+    )
 
 
 def test_non_discriminating_input_is_judged_non_discriminating_with_a_reason():
     obligations = [_obligation("daily-rate", "Daily rate is price / days_in_month")]
-    evidence = [_evidence("test_billing.py::test_half", ["daily-rate"],
-                          ["assert prorate(30.0, 15, 30) == 15.0"])]
-    response = {"obligations": [
-        {"obligation_id": "daily-rate", "defects": [
-            {"description": "hard-code the divisor as / 30 instead of / days_in_month",
-             "would_be_caught": False,
-             "reason": "the test uses a 30-day month, so /30 and /days_in_month coincide (both give 15.0)"},
-        ]},
-    ]}
+    evidence = [
+        _evidence(
+            "test_billing.py::test_half", ["daily-rate"], ["assert prorate(30.0, 15, 30) == 15.0"]
+        )
+    ]
+    response = {
+        "obligations": [
+            {
+                "obligation_id": "daily-rate",
+                "defects": [
+                    {
+                        "description": "hard-code the divisor as / 30 instead of / days_in_month",
+                        "would_be_caught": False,
+                        "reason": "the test uses a 30-day month, so /30 and /days_in_month coincide (both give 15.0)",
+                    },
+                ],
+            },
+        ]
+    }
 
     result = judge_discrimination(obligations, evidence, _change_set(), client_returning(response))
 
@@ -71,15 +102,25 @@ def test_non_discriminating_input_is_judged_non_discriminating_with_a_reason():
 
 def test_a_caught_defect_makes_the_criterion_discriminating():
     obligations = [_obligation("daily-rate", "Daily rate is price / days_in_month")]
-    evidence = [_evidence("test_billing.py::test_strong", ["daily-rate"],
-                          ["assert prorate(31.0, 10, 31) == 10.0"])]
-    response = {"obligations": [
-        {"obligation_id": "daily-rate", "defects": [
-            {"description": "hard-code the divisor as / 30",
-             "would_be_caught": True,
-             "reason": "for a 31-day month /30 gives 10.33, not 10.0, so the test fails under the defect"},
-        ]},
-    ]}
+    evidence = [
+        _evidence(
+            "test_billing.py::test_strong", ["daily-rate"], ["assert prorate(31.0, 10, 31) == 10.0"]
+        )
+    ]
+    response = {
+        "obligations": [
+            {
+                "obligation_id": "daily-rate",
+                "defects": [
+                    {
+                        "description": "hard-code the divisor as / 30",
+                        "would_be_caught": True,
+                        "reason": "for a 31-day month /30 gives 10.33, not 10.0, so the test fails under the defect",
+                    },
+                ],
+            },
+        ]
+    }
 
     result = judge_discrimination(obligations, evidence, _change_set(), client_returning(response))
 
@@ -89,12 +130,17 @@ def test_a_caught_defect_makes_the_criterion_discriminating():
 def test_discriminating_is_true_if_any_defect_is_caught():
     obligations = [_obligation("ob-1", "A")]
     evidence = [_evidence("t.py::test_a", ["ob-1"], ["assert f() == 1"])]
-    response = {"obligations": [
-        {"obligation_id": "ob-1", "defects": [
-            {"description": "d1", "would_be_caught": False, "reason": "."},
-            {"description": "d2", "would_be_caught": True, "reason": "."},
-        ]},
-    ]}
+    response = {
+        "obligations": [
+            {
+                "obligation_id": "ob-1",
+                "defects": [
+                    {"description": "d1", "would_be_caught": False, "reason": "."},
+                    {"description": "d2", "would_be_caught": True, "reason": "."},
+                ],
+            },
+        ]
+    }
 
     result = judge_discrimination(obligations, evidence, _change_set(), client_returning(response))
 
@@ -105,11 +151,16 @@ def test_criteria_without_mapped_tests_are_not_judged():
     obligations = [_obligation("ob-1", "A"), _obligation("ob-2", "B")]
     # Only ob-1 has a mapped test.
     evidence = [_evidence("t.py::test_a", ["ob-1"], ["assert f() == 1"])]
-    response = {"obligations": [
-        {"obligation_id": "ob-1", "defects": [
-            {"description": "d", "would_be_caught": True, "reason": "."},
-        ]},
-    ]}
+    response = {
+        "obligations": [
+            {
+                "obligation_id": "ob-1",
+                "defects": [
+                    {"description": "d", "would_be_caught": True, "reason": "."},
+                ],
+            },
+        ]
+    }
 
     result = judge_discrimination(obligations, evidence, _change_set(), client_returning(response))
 
@@ -131,11 +182,16 @@ def test_an_obligation_the_model_omits_is_conservatively_non_discriminating():
         _evidence("t.py::test_b", ["ob-2"], ["assert g() == 2"]),
     ]
     # Model only addressed ob-1.
-    response = {"obligations": [
-        {"obligation_id": "ob-1", "defects": [
-            {"description": "d", "would_be_caught": True, "reason": "."},
-        ]},
-    ]}
+    response = {
+        "obligations": [
+            {
+                "obligation_id": "ob-1",
+                "defects": [
+                    {"description": "d", "would_be_caught": True, "reason": "."},
+                ],
+            },
+        ]
+    }
 
     result = judge_discrimination(obligations, evidence, _change_set(), client_returning(response))
 

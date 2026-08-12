@@ -25,8 +25,10 @@ ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 
 def _test(test_id: str, source: str = "def t():\n    pass") -> DiscoveredTest:
     return DiscoveredTest(
-        test_id=test_id, file=test_id.split("::", 1)[0],
-        reasons=[DiscoveryReason.CALLS_CHANGED_SYMBOL], source=source,
+        test_id=test_id,
+        file=test_id.split("::", 1)[0],
+        reasons=[DiscoveryReason.CALLS_CHANGED_SYMBOL],
+        source=source,
     )
 
 
@@ -48,9 +50,15 @@ def test_a_test_maps_to_the_obligation_it_evidences():
         make_obligation("ob-2", "Result is money-formatted", ObligationType.FUNCTIONAL),
     ]
     tests = [_test("test_cart.py::test_discount")]
-    response = {"mappings": [
-        {"test_id": "test_cart.py::test_discount", "obligation_ids": ["ob-1"], "rationale": "asserts total"},
-    ]}
+    response = {
+        "mappings": [
+            {
+                "test_id": "test_cart.py::test_discount",
+                "obligation_ids": ["ob-1"],
+                "rationale": "asserts total",
+            },
+        ]
+    }
 
     result = map_tests_to_obligations(obligations, tests, client_returning(response))
 
@@ -66,9 +74,11 @@ def test_a_test_can_map_to_multiple_obligations():
         make_obligation("ob-2", "B", ObligationType.FUNCTIONAL),
     ]
     tests = [_test("t.py::test_both")]
-    response = {"mappings": [
-        {"test_id": "t.py::test_both", "obligation_ids": ["ob-1", "ob-2"], "rationale": "both"},
-    ]}
+    response = {
+        "mappings": [
+            {"test_id": "t.py::test_both", "obligation_ids": ["ob-1", "ob-2"], "rationale": "both"},
+        ]
+    }
 
     result = map_tests_to_obligations(obligations, tests, client_returning(response))
 
@@ -81,9 +91,11 @@ def test_a_test_evidencing_nothing_leaves_obligations_unmapped():
     # touches changed code but asserts nothing about an obligation maps to none.
     obligations = [make_obligation("ob-1", "A", ObligationType.FUNCTIONAL)]
     tests = [_test("t.py::test_incidental")]
-    response = {"mappings": [
-        {"test_id": "t.py::test_incidental", "obligation_ids": [], "rationale": "setup only"},
-    ]}
+    response = {
+        "mappings": [
+            {"test_id": "t.py::test_incidental", "obligation_ids": [], "rationale": "setup only"},
+        ]
+    }
 
     result = map_tests_to_obligations(obligations, tests, client_returning(response))
 
@@ -94,10 +106,20 @@ def test_a_test_evidencing_nothing_leaves_obligations_unmapped():
 def test_unknown_ids_are_dropped():
     obligations = [make_obligation("ob-1", "A", ObligationType.FUNCTIONAL)]
     tests = [_test("t.py::test_real")]
-    response = {"mappings": [
-        {"test_id": "t.py::test_ghost", "obligation_ids": ["ob-1"], "rationale": "not a real test"},
-        {"test_id": "t.py::test_real", "obligation_ids": ["ob-nope", "ob-1"], "rationale": "one bad id"},
-    ]}
+    response = {
+        "mappings": [
+            {
+                "test_id": "t.py::test_ghost",
+                "obligation_ids": ["ob-1"],
+                "rationale": "not a real test",
+            },
+            {
+                "test_id": "t.py::test_real",
+                "obligation_ids": ["ob-nope", "ob-1"],
+                "rationale": "one bad id",
+            },
+        ]
+    }
 
     result = map_tests_to_obligations(obligations, tests, client_returning(response))
 
@@ -135,9 +157,7 @@ def _mapped(prompt: str, obligation_id: str) -> dict:
 
 def _test_ids_in(prompt: str) -> list[str]:
     return [
-        line.removeprefix("### ").strip()
-        for line in prompt.splitlines()
-        if line.startswith("### ")
+        line.removeprefix("### ").strip() for line in prompt.splitlines() if line.startswith("### ")
     ]
 
 
@@ -188,9 +208,11 @@ def test_the_per_call_results_are_merged():
         # result that kept only one call's answer would lose an obligation.
         test_id = _test_ids_in(prompt)[0]
         target = "ob-1" if test_id.endswith("_a") else "ob-2"
-        return {"mappings": [
-            {"test_id": test_id, "obligation_ids": [target], "rationale": "."},
-        ]}
+        return {
+            "mappings": [
+                {"test_id": test_id, "obligation_ids": [target], "rationale": "."},
+            ]
+        }
 
     client, calls = client_answering_per_call(responder)
     result = map_tests_to_obligations(obligations, tests, client, batch_size=1)
@@ -217,10 +239,12 @@ def test_a_batch_may_not_answer_for_a_test_outside_it():
         # Every batch claims to have judged BOTH tests, mapping each to whatever
         # its own batch is about.
         target = "ob-1" if _test_ids_in(prompt)[0].endswith("_a") else "ob-2"
-        return {"mappings": [
-            {"test_id": "t.py::test_a", "obligation_ids": [target], "rationale": "."},
-            {"test_id": "t.py::test_b", "obligation_ids": [target], "rationale": "."},
-        ]}
+        return {
+            "mappings": [
+                {"test_id": "t.py::test_a", "obligation_ids": [target], "rationale": "."},
+                {"test_id": "t.py::test_b", "obligation_ids": [target], "rationale": "."},
+            ]
+        }
 
     client, _ = client_answering_per_call(responder)
     result = map_tests_to_obligations(obligations, tests, client, batch_size=1)
@@ -239,9 +263,7 @@ def test_the_merged_mapping_does_not_depend_on_the_order_the_tests_arrive_in():
     reverse, _ = client_answering_per_call(lambda p: _mapped(p, "ob-1"))
 
     first = map_tests_to_obligations(obligations, tests, forward, batch_size=2)
-    second = map_tests_to_obligations(
-        obligations, list(reversed(tests)), reverse, batch_size=2
-    )
+    second = map_tests_to_obligations(obligations, list(reversed(tests)), reverse, batch_size=2)
 
     assert first.model_dump() == second.model_dump()
 
@@ -303,10 +325,12 @@ def test_apply_test_mapping_populates_test_evidence():
         make_obligation("ob-2", "B", ObligationType.FUNCTIONAL),
     ]
     tests = [_test("t.py::test_a"), _test("t.py::test_ab")]
-    response = {"mappings": [
-        {"test_id": "t.py::test_a", "obligation_ids": ["ob-1"], "rationale": "."},
-        {"test_id": "t.py::test_ab", "obligation_ids": ["ob-1", "ob-2"], "rationale": "."},
-    ]}
+    response = {
+        "mappings": [
+            {"test_id": "t.py::test_a", "obligation_ids": ["ob-1"], "rationale": "."},
+            {"test_id": "t.py::test_ab", "obligation_ids": ["ob-1", "ob-2"], "rationale": "."},
+        ]
+    }
     result = map_tests_to_obligations(obligations, tests, client_returning(response))
 
     mapped = {o.id: o for o in apply_test_mapping(obligations, result)}
@@ -318,7 +342,9 @@ def test_apply_test_mapping_populates_test_evidence():
 def test_apply_test_mapping_does_not_mutate_the_inputs():
     obligations = [make_obligation("ob-1", "A", ObligationType.FUNCTIONAL)]
     tests = [_test("t.py::test_a")]
-    response = {"mappings": [{"test_id": "t.py::test_a", "obligation_ids": ["ob-1"], "rationale": "."}]}
+    response = {
+        "mappings": [{"test_id": "t.py::test_a", "obligation_ids": ["ob-1"], "rationale": "."}]
+    }
     result = map_tests_to_obligations(obligations, tests, client_returning(response))
 
     apply_test_mapping(obligations, result)
@@ -344,22 +370,30 @@ def test_archetype_1_mapping_accuracy_reports_a_real_number(tmp_path):
     # key today; ids reused so the injected mapping can target them).
     obligations = [
         Obligation(
-            id=o.id, description=o.description, type=ObligationType.FUNCTIONAL,
-            importance="critical", explicit=True, observable_behavior="...",
+            id=o.id,
+            description=o.description,
+            type=ObligationType.FUNCTIONAL,
+            importance="critical",
+            explicit=True,
+            observable_behavior="...",
         )
         for o in case.ground_truth.obligations
     ]
 
     # Map both tests to show-fields and line-total, but NOT money-format:
     # 4 of the 6 ground-truth (obligation, test) pairs -> mapping recall 4/6.
-    response = {"mappings": [
-        {"test_id": pos, "obligation_ids": ["show-fields", "line-total"], "rationale": "."},
-        {"test_id": two, "obligation_ids": ["show-fields", "line-total"], "rationale": "."},
-    ]}
+    response = {
+        "mappings": [
+            {"test_id": pos, "obligation_ids": ["show-fields", "line-total"], "rationale": "."},
+            {"test_id": two, "obligation_ids": ["show-fields", "line-total"], "rationale": "."},
+        ]
+    }
     result = map_tests_to_obligations(obligations, discovered.tests, client_returning(response))
     mapped = apply_test_mapping(obligations, result)
 
-    review = Review(mode="local", reviewed_revision=case.inputs.head_revision, obligation_map=mapped)
+    review = Review(
+        mode="local", reviewed_revision=case.inputs.head_revision, obligation_map=mapped
+    )
     scored = score_case(case.model_copy(update={"reviewer_output": review}))
 
     assert scored.mapping_accuracy == 4 / 6
@@ -376,17 +410,31 @@ def test_archetype_1_unmapped_obligations_are_flagged(tmp_path):
 
     obligations = [
         Obligation(
-            id=o.id, description=o.description, type=ObligationType.FUNCTIONAL,
-            importance="critical", explicit=True, observable_behavior="...",
+            id=o.id,
+            description=o.description,
+            type=ObligationType.FUNCTIONAL,
+            importance="critical",
+            explicit=True,
+            observable_behavior="...",
         )
         for o in case.ground_truth.obligations
     ]
     pos = "test_receipt.py::test_positive_line"
     two = "test_receipt.py::test_two_decimal_formatting"
-    response = {"mappings": [
-        {"test_id": pos, "obligation_ids": ["show-fields", "line-total", "money-format"], "rationale": "."},
-        {"test_id": two, "obligation_ids": ["show-fields", "line-total", "money-format"], "rationale": "."},
-    ]}
+    response = {
+        "mappings": [
+            {
+                "test_id": pos,
+                "obligation_ids": ["show-fields", "line-total", "money-format"],
+                "rationale": ".",
+            },
+            {
+                "test_id": two,
+                "obligation_ids": ["show-fields", "line-total", "money-format"],
+                "rationale": ".",
+            },
+        ]
+    }
     result = map_tests_to_obligations(obligations, discovered.tests, client_returning(response))
 
     assert "returns-in-parens" in result.unmapped_obligation_ids

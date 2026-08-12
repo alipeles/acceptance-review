@@ -85,12 +85,10 @@ from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation, UnrequestedChangeDisposition
 
 _SPLIT_RECOMMENDATION = (
-    "Consider splitting this into its own PR / backlog item — it is separable "
-    "from the mandate."
+    "Consider splitting this into its own PR / backlog item — it is separable from the mandate."
 )
 _SCRUTINIZE_RECOMMENDATION = (
-    "Scrutinize: this edits existing public/adjacent behavior and could hide a "
-    "regression."
+    "Scrutinize: this edits existing public/adjacent behavior and could hide a regression."
 )
 
 _RECOMMENDATION = {
@@ -327,9 +325,7 @@ def _is_load_bearing_via_cross_file_import(
 _TEST_DEF_RE = re.compile(r"^\+\s*(?:async\s+)?def\s+test_")
 
 
-def _is_test_support_for_a_source_change(
-    change: UnrequestedChange, change_set: ChangeSet
-) -> bool:
+def _is_test_support_for_a_source_change(change: UnrequestedChange, change_set: ChangeSet) -> bool:
     """Test scaffolding a source change in the SAME diff requires (#139).
 
     Confined to test files, adds no new test function, and accompanies a source
@@ -396,9 +392,7 @@ def _render_judgment_prompt(
     lines.append(f"kind={change.kind.value}; rationale={change.rationale}")
     lines.append("")
     lines.append("### Changed hunks")
-    hunk_by_key = {
-        (f.path, hunk.header): hunk for f in change_set.files for hunk in f.hunks
-    }
+    hunk_by_key = {(f.path, hunk.header): hunk for f in change_set.files for hunk in f.hunks}
     for ref in change.diff_refs:
         status = next((f.status for f in change_set.files if f.path == ref.file), "?")
         lines.append(f"[{ref.file} ({status})] {ref.hunk_header}")

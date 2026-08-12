@@ -40,9 +40,7 @@ def test_archetype_1_reports_the_expected_decomposition_accuracy(tmp_path):
     that reproduces 3 of the 4 exact descriptions (omitting the returns-in-
     parens obligation, matching the archetype's own missed-obligation story)
     yields decomposition_accuracy == 3/4."""
-    case = build_benchmark_case(
-        ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo"
-    )
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
     response = _obligation_response(
         [
             "Show the item name, quantity, and unit price",

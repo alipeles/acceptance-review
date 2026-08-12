@@ -138,7 +138,10 @@ def test_every_head_revision_is_kept_alive_by_a_tag(case_dir):
     tag = f"corpus/{meta.corpus_run}"
     result = subprocess.run(
         ["git", "rev-parse", "--verify", "--quiet", f"{tag}^{{commit}}"],
-        cwd=REPO, capture_output=True, text=True, check=False,
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert result.returncode == 0, f"{tag} is missing; {meta.corpus_run} will not survive a clone"
     assert result.stdout.strip().startswith(meta.head_revision)

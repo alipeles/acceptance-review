@@ -118,42 +118,56 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
             # the difference between them to be the verdict and nothing else.
             tests = _enums(schema, "test_id")
             allowed = _enums(schema, "obligation_ids") or [o["id"] for o in obligations]
-            return _fake_response(json.dumps({
-                "mappings": [
-                    {"test_id": t, "obligation_ids": allowed, "rationale": "."}
-                    for t in tests
-                ]
-            }))
+            return _fake_response(
+                json.dumps(
+                    {
+                        "mappings": [
+                            {"test_id": t, "obligation_ids": allowed, "rationale": "."}
+                            for t in tests
+                        ]
+                    }
+                )
+            )
 
         if name == "_Discrimination":
             ids = _enums(schema, "obligation_id") or [o["id"] for o in obligations]
-            return _fake_response(json.dumps({
-                "obligations": [
+            return _fake_response(
+                json.dumps(
                     {
-                        "obligation_id": oid,
-                        "defects": [{
-                            "description": "the behaviour under review is wrong",
-                            "would_be_caught": always_strong,
-                            "reason": "fixed verdict from a degenerate judge",
-                        }],
+                        "obligations": [
+                            {
+                                "obligation_id": oid,
+                                "defects": [
+                                    {
+                                        "description": "the behaviour under review is wrong",
+                                        "would_be_caught": always_strong,
+                                        "reason": "fixed verdict from a degenerate judge",
+                                    }
+                                ],
+                            }
+                            for oid in ids
+                        ]
                     }
-                    for oid in ids
-                ]
-            }))
+                )
+            )
 
         if name == "_Coverage":
             ids = _enums(schema, "obligation_id") or [o["id"] for o in obligations]
-            return _fake_response(json.dumps({
-                "classifications": [
+            return _fake_response(
+                json.dumps(
                     {
-                        "obligation_id": oid,
-                        "status": "addressed" if always_strong else "not_addressed",
-                        "rationale": "fixed verdict from a degenerate judge",
-                        "diff_refs": [],
+                        "classifications": [
+                            {
+                                "obligation_id": oid,
+                                "status": "addressed" if always_strong else "not_addressed",
+                                "rationale": "fixed verdict from a degenerate judge",
+                                "diff_refs": [],
+                            }
+                            for oid in ids
+                        ]
                     }
-                    for oid in ids
-                ]
-            }))
+                )
+            )
 
         return _fake_response(json.dumps(_completed(_EMPTY_BY_SCHEMA[name], **kwargs)))
 

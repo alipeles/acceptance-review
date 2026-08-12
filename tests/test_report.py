@@ -66,7 +66,9 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
         reviewed_revision="abc",
         obligation_map=[
             _obligation(
-                "CSV generation implemented", "addressed", "strongly_supported",
+                "CSV generation implemented",
+                "addressed",
+                "strongly_supported",
                 coverage_refs=["export.py#@@ -1 +9 @@"],
                 tests=["tests/test_export.py::test_generates_csv"],
             ),
@@ -157,7 +159,9 @@ def test_test_citations_name_the_test_not_just_the_file():
         reviewed_revision="abc",
         obligation_map=[
             _obligation(
-                "A", "addressed", "strongly_supported",
+                "A",
+                "addressed",
+                "strongly_supported",
                 tests=["tests/test_billing.py::test_half_of_a_month"],
             )
         ],
@@ -355,9 +359,7 @@ def test_a_carried_forward_obligation_says_so_and_names_the_revision():
 def test_a_fresh_obligation_carries_no_such_label():
     from acceptance.review_state import Review
 
-    review = Review(
-        mode="local", reviewed_revision="b" * 40, obligation_map=[_rerun_obligation()]
-    )
+    review = Review(mode="local", reviewed_revision="b" * 40, obligation_map=[_rerun_obligation()])
 
     assert "carried forward" not in render_report(review)
 
@@ -400,9 +402,7 @@ def test_a_first_review_renders_no_changes_section():
     """Nothing to compare against, so the section would be noise."""
     from acceptance.review_state import Review
 
-    review = Review(
-        mode="local", reviewed_revision="b" * 40, obligation_map=[_rerun_obligation()]
-    )
+    review = Review(mode="local", reviewed_revision="b" * 40, obligation_map=[_rerun_obligation()])
 
     assert "Changes since" not in render_report(review)
 
@@ -518,12 +518,14 @@ def test_a_respected_boundary_is_one_claim_over_the_examined_set_not_a_listing()
         observable_behavior="...",
         coverage_status="addressed",
         admissible_evidence=AdmissibleEvidence.CODE_ONLY,
-        scope_examined=["export.py#@@ -1 +9 @@", "export.py#@@ -20 +30 @@", "billing.py#@@ -1 +2 @@"],
+        scope_examined=[
+            "export.py#@@ -1 +9 @@",
+            "export.py#@@ -20 +30 @@",
+            "billing.py#@@ -1 +2 @@",
+        ],
     )
 
-    report = render_report(
-        Review(mode="local", reviewed_revision="abc", obligation_map=[boundary])
-    )
+    report = render_report(Review(mode="local", reviewed_revision="abc", obligation_map=[boundary]))
 
     assert "examined 3 changes across 2 files; none breaches this boundary" in report
     # The individual refs must NOT appear: that is the listing being ruled out.
@@ -547,9 +549,7 @@ def test_a_boundary_with_nothing_examined_does_not_claim_non_violation():
         scope_examined=[],
     )
 
-    report = render_report(
-        Review(mode="local", reviewed_revision="abc", obligation_map=[boundary])
-    )
+    report = render_report(Review(mode="local", reviewed_revision="abc", obligation_map=[boundary]))
 
     assert "non-violation is not established" in report
     assert "none breaches this boundary" not in report

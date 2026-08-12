@@ -22,17 +22,27 @@ from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.verdict import derive_verdict
 
 
-def _obligation(obligation_id: str, evidence_class: str | None, importance: str = "critical") -> Obligation:
+def _obligation(
+    obligation_id: str, evidence_class: str | None, importance: str = "critical"
+) -> Obligation:
     return Obligation(
-        id=obligation_id, description=f"{obligation_id} behavior", type=ObligationType.FUNCTIONAL,
-        importance=importance, explicit=True, observable_behavior="...", evidence_class=evidence_class,
+        id=obligation_id,
+        description=f"{obligation_id} behavior",
+        type=ObligationType.FUNCTIONAL,
+        importance=importance,
+        explicit=True,
+        observable_behavior="...",
+        evidence_class=evidence_class,
     )
 
 
 def _coverage_gap(obligation_description: str) -> Finding:
     return Finding(
-        type="coverage_gap", severity="high", description="missing",
-        evidence_tier=EvidenceTier.STATIC, produced_by=Component.STATIC_ANALYZER,
+        type="coverage_gap",
+        severity="high",
+        description="missing",
+        evidence_tier=EvidenceTier.STATIC,
+        produced_by=Component.STATIC_ANALYZER,
         links=[Link(kind="requirement", ref="x", text="x")],
         related_obligation=obligation_description,
     )
@@ -40,8 +50,11 @@ def _coverage_gap(obligation_description: str) -> Finding:
 
 def _advisory_finding(finding_type: str) -> Finding:
     return Finding(
-        type=finding_type, severity="low", description="advisory",
-        evidence_tier=EvidenceTier.BUILDER_CLAIM, produced_by=Component.BUILDER_DECLARATION,
+        type=finding_type,
+        severity="low",
+        description="advisory",
+        evidence_tier=EvidenceTier.BUILDER_CLAIM,
+        produced_by=Component.BUILDER_DECLARATION,
         links=[Link(kind="declaration", ref="declaration", text="claim")],
     )
 
@@ -142,6 +155,7 @@ def test_completion_result_round_trips_through_persistence():
     result = derive_verdict([_obligation("a", "strongly_supported")], [], [])
     assert CompletionResult.from_dict(result.to_dict()) == result
 
+
 def test_the_weak_count_is_read_off_the_obligations_not_the_recommendations():
     """The summary's weak count must not be derivable from the recommendation
     list (#218).
@@ -162,6 +176,7 @@ def test_the_weak_count_is_read_off_the_obligations_not_the_recommendations():
 
     assert "2 obligation(s) with non-discriminating test evidence" in result.rationale
     assert "recommendation" not in inspect.signature(derive_verdict).parameters
+
 
 # --- #153: the code-evidence-only axis ---------------------------------------
 
@@ -189,7 +204,10 @@ def test_a_code_evidence_only_obligation_does_not_make_the_verdict_incomplete():
     something to be positive about, and the boundary one is the only candidate
     gap in the set."""
     result = derive_verdict(
-        [_obligation("ok", "strongly_supported"), _boundary_obligation("pagination", "unsupported")],
+        [
+            _obligation("ok", "strongly_supported"),
+            _boundary_obligation("pagination", "unsupported"),
+        ],
         [],
         [],
     )

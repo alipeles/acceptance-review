@@ -56,8 +56,7 @@ def _constrained_field(annotation: Any, ids: Sequence[str]) -> Any:
     if get_origin(annotation) is list and get_args(annotation) == (str,):
         return list[_literal(ids)]  # type: ignore[misc]
     raise TypeError(
-        f"cannot constrain a field annotated {annotation!r}: "
-        "expected `str` or `list[str]`"
+        f"cannot constrain a field annotated {annotation!r}: expected `str` or `list[str]`"
     )
 
 
@@ -203,9 +202,7 @@ def scan(
                             if (name, item) not in seen:
                                 seen.add((name, item))
                                 found.append(
-                                    UnusableAnswer(
-                                        stage=stage, field=name, returned_id=item
-                                    )
+                                    UnusableAnswer(stage=stage, field=name, returned_id=item)
                                 )
                 else:
                     visit(value)

@@ -374,15 +374,19 @@ def test_a_respected_boundary_drops_hunks_the_model_cited_anyway(tmp_path):
     """
     change_set = _archetype_change_set("01-missed-obligation", tmp_path)
     receipt = _source_file(change_set, "receipt.py")
-    client = _client_returning({
-        "classifications": [{
-            "obligation_id": "pagination",
-            "status": "addressed",
-            "rationale": "Nothing here touches pagination.",
-            # Non-compliant: the prompt forbids these for a respected boundary.
-            "diff_refs": [f"{receipt}#0"],
-        }]
-    })
+    client = _client_returning(
+        {
+            "classifications": [
+                {
+                    "obligation_id": "pagination",
+                    "status": "addressed",
+                    "rationale": "Nothing here touches pagination.",
+                    # Non-compliant: the prompt forbids these for a respected boundary.
+                    "diff_refs": [f"{receipt}#0"],
+                }
+            ]
+        }
+    )
 
     [coverage] = classify_coverage([_boundary_obligation()], change_set, client)
 
@@ -398,14 +402,18 @@ def test_a_breached_boundary_keeps_the_hunks_the_model_cited(tmp_path):
     finding with nothing to point at — worse than the listing it fixes."""
     change_set = _archetype_change_set("01-missed-obligation", tmp_path)
     receipt = _source_file(change_set, "receipt.py")
-    client = _client_returning({
-        "classifications": [{
-            "obligation_id": "pagination",
-            "status": "not_addressed",
-            "rationale": "This change rewrites the pagination helper.",
-            "diff_refs": [f"{receipt}#0"],
-        }]
-    })
+    client = _client_returning(
+        {
+            "classifications": [
+                {
+                    "obligation_id": "pagination",
+                    "status": "not_addressed",
+                    "rationale": "This change rewrites the pagination helper.",
+                    "diff_refs": [f"{receipt}#0"],
+                }
+            ]
+        }
+    )
 
     [coverage] = classify_coverage([_boundary_obligation()], change_set, client)
 

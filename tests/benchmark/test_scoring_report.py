@@ -120,13 +120,19 @@ def _case_a() -> BenchmarkCase:
         ground_truth=GroundTruthLabels(
             obligations=[
                 GroundTruthObligation(
-                    id="alpha", description="Alpha", explicit=True,
-                    evidence_class="strongly_supported", evidence_rationale="asserted",
+                    id="alpha",
+                    description="Alpha",
+                    explicit=True,
+                    evidence_class="strongly_supported",
+                    evidence_rationale="asserted",
                     candidate_tests=["T1"],
                 ),
                 GroundTruthObligation(
-                    id="beta", description="Beta", explicit=True,
-                    evidence_class="unsupported", evidence_rationale="no test",
+                    id="beta",
+                    description="Beta",
+                    explicit=True,
+                    evidence_class="unsupported",
+                    evidence_rationale="no test",
                     candidate_tests=[],
                 ),
             ],
@@ -155,8 +161,11 @@ def _case_b() -> BenchmarkCase:
         ground_truth=GroundTruthLabels(
             obligations=[
                 GroundTruthObligation(
-                    id="gamma", description="Gamma", explicit=True,
-                    evidence_class="strongly_supported", evidence_rationale="asserted",
+                    id="gamma",
+                    description="Gamma",
+                    explicit=True,
+                    evidence_class="strongly_supported",
+                    evidence_rationale="asserted",
                     candidate_tests=["T2"],
                 ),
             ],

@@ -279,9 +279,7 @@ def test_two_batches_minting_the_same_obligation_id_stay_separate():
         }
         return _fake_response(json.dumps(payload))
 
-    result = decompose(
-        parsed, model_client_with(completion_fn), batch_size=8
-    )
+    result = decompose(parsed, model_client_with(completion_fn), batch_size=8)
 
     # Renamed, not merged.
     assert [o.id for o in result.obligations] == ["shared-slug", "shared-slug-2"]

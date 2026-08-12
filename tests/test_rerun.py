@@ -72,9 +72,7 @@ def _change_set(*paths: str) -> ChangeSet:
     return ChangeSet(
         base_revision="base",
         head_revision="head",
-        files=[
-            FileChange(path=path, status="modified", category="source") for path in paths
-        ],
+        files=[FileChange(path=path, status="modified", category="source") for path in paths],
     )
 
 
@@ -119,7 +117,9 @@ def test_an_obligation_whose_test_changed_is_re_derived():
 
 def test_an_obligation_with_no_citations_is_always_re_derived():
     """Nothing proves the new work missed it, so it cannot be assumed unaffected."""
-    prior = _review("old", [_obligation("a", coverage_status="not_addressed", evidence_class="unsupported")])
+    prior = _review(
+        "old", [_obligation("a", coverage_status="not_addressed", evidence_class="unsupported")]
+    )
 
     assert stale_obligation_ids(prior, _change_set("anything.py")) == {"a"}
 
@@ -601,8 +601,7 @@ _TWO_FILE_JUDGMENTS = {
 # file in the old shape yields an empty registry and — since #204
 # partitions by requirement — no derivation call at all.
 _TWO_FILE_TASK = (
-    "# Task\nAlpha and beta behave.\n\n"
-    "## Constraints\n- Alpha behaves\n- Beta behaves\n"
+    "# Task\nAlpha and beta behave.\n\n## Constraints\n- Alpha behaves\n- Beta behaves\n"
 )
 
 
@@ -818,7 +817,7 @@ def test_exactly_one_prior_review_is_used_even_when_several_are_candidates(tmp_p
 
 
 def test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun(tmp_path):
-    """"One prior review" at the pipeline level, not just at the selector.
+    """ "One prior review" at the pipeline level, not just at the selector.
 
     The dogfood run asked for this twice. Its literal phrasing — that the input
     model take a single review rather than a list — is a type signature, which
@@ -900,9 +899,7 @@ def test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun(tmp_path)
     alpha = next(o for o in review.obligation_map if o.id == "alpha")
     assert alpha.carried_forward_from == second
     # ...and the finding only the further review held never appears.
-    assert all(
-        "only the FURTHER review" not in finding.description for finding in review.findings
-    )
+    assert all("only the FURTHER review" not in finding.description for finding in review.findings)
 
 
 def test_a_working_tree_review_builds_on_the_review_of_head(tmp_path):
@@ -917,9 +914,7 @@ def test_a_working_tree_review_builds_on_the_review_of_head(tmp_path):
     store = ReviewStore(tmp_path / "reviews")
     store.write(_review(second, [_obligation("a")]))
 
-    prior = find_prior_review(
-        store, "<working-tree>", repo, TASK, ancestry_ref=second
-    )
+    prior = find_prior_review(store, "<working-tree>", repo, TASK, ancestry_ref=second)
 
     # The review OF head is a legitimate predecessor of the working tree.
     assert prior is not None and prior.reviewed_revision == second

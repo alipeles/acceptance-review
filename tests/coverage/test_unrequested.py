@@ -37,8 +37,14 @@ def test_archetype_8_public_interface_change_is_flagged(tmp_path):
     # The task only asked for apply_discount; leave-existing requires preserving
     # unrelated behavior. checkout's signature change is unrequested.
     obligations = [
-        _obligation("apply-discount", "Add apply_discount(total, percent)", ObligationType.FUNCTIONAL),
-        _obligation("leave-existing", "Preserve the existing checkout behavior", ObligationType.COMPATIBILITY),
+        _obligation(
+            "apply-discount", "Add apply_discount(total, percent)", ObligationType.FUNCTIONAL
+        ),
+        _obligation(
+            "leave-existing",
+            "Preserve the existing checkout behavior",
+            ObligationType.COMPATIBILITY,
+        ),
     ]
     response = {
         "unrequested_changes": [

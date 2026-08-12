@@ -40,7 +40,9 @@ def test_source_test_and_dependency_edits_are_correctly_categorized(repo):
     base = _commit(repo, "base")
 
     (repo / "pkg.py").write_text("def f():\n    return 2\n")
-    (repo / "tests" / "test_pkg.py").write_text("def test_f():\n    assert True\n\n\ndef test_g():\n    assert True\n")
+    (repo / "tests" / "test_pkg.py").write_text(
+        "def test_f():\n    assert True\n\n\ndef test_g():\n    assert True\n"
+    )
     (repo / "requirements.txt").write_text("requests==3.0\n")
     head = _commit(repo, "head")
 

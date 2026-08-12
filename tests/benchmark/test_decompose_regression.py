@@ -199,7 +199,9 @@ def test_symbols_named_in_the_task_file_are_required_of_the_obligation():
 
 
 @pytest.mark.parametrize(
-    "case_dir", [CASES_DIR / r for r in sorted(CONTESTED_READING_RUNS)], ids=sorted(CONTESTED_READING_RUNS)
+    "case_dir",
+    [CASES_DIR / r for r in sorted(CONTESTED_READING_RUNS)],
+    ids=sorted(CONTESTED_READING_RUNS),
 )
 def test_a_contested_case_records_which_reading_is_ground_truth(case_dir):
     """Runs 4 and 6 preserve both a wrong judgement and its correction. Which

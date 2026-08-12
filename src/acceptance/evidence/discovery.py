@@ -191,8 +191,7 @@ def _existing_test_files(repo: Path, budget: TestDiscoveryBudget) -> tuple[list[
     files = sorted(
         path
         for path in repo.rglob("*.py")
-        if _is_test_file(path)
-        and not (_EXCLUDED_DIRS & set(path.relative_to(repo).parts[:-1]))
+        if _is_test_file(path) and not (_EXCLUDED_DIRS & set(path.relative_to(repo).parts[:-1]))
     )
     return files[: budget.max_files_scanned], len(files) > budget.max_files_scanned
 

@@ -107,9 +107,7 @@ def detect_unrequested_changes(
         {"role": "user", "content": render_diff_prompt(obligations, change_set)},
     ]
     allowed = {"diff_refs": list(label_to_ref)}
-    result = client.complete(
-        messages, constrain(_Detections, allowed), parse_as=_Detections
-    )
+    result = client.complete(messages, constrain(_Detections, allowed), parse_as=_Detections)
     if unusable is not None:
         unusable.record(scan(result, allowed, _STAGE))
 

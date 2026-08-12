@@ -24,19 +24,38 @@ from tests.support import client_returning as _client_returning
 
 def _obligation(obligation_id: str, description: str, evidence_class: str | None) -> Obligation:
     return Obligation(
-        id=obligation_id, description=description, type=ObligationType.FUNCTIONAL,
-        importance="critical", explicit=True, observable_behavior=description,
+        id=obligation_id,
+        description=description,
+        type=ObligationType.FUNCTIONAL,
+        importance="critical",
+        explicit=True,
+        observable_behavior=description,
         evidence_class=evidence_class,
     )
 
 
 def _change_set() -> ChangeSet:
-    return ChangeSet(base_revision="a", head_revision="b", files=[
-        FileChange(path="billing.py", status="modified", category="source", hunks=[
-            DiffHunk(header="@@ -1 +3 @@", old_start=1, old_lines=1, new_start=1, new_lines=3,
-                     content="+    return round(monthly_price / days_in_month * days_used, 2)"),
-        ]),
-    ])
+    return ChangeSet(
+        base_revision="a",
+        head_revision="b",
+        files=[
+            FileChange(
+                path="billing.py",
+                status="modified",
+                category="source",
+                hunks=[
+                    DiffHunk(
+                        header="@@ -1 +3 @@",
+                        old_start=1,
+                        old_lines=1,
+                        new_start=1,
+                        new_lines=3,
+                        content="+    return round(monthly_price / days_in_month * days_used, 2)",
+                    ),
+                ],
+            ),
+        ],
+    )
 
 
 def _exploding_client():
@@ -55,16 +74,22 @@ def test_weak_criterion_gets_a_fully_populated_recommendation():
     # Archetype #4's daily-rate gap: the only test uses a 30-day month, where
     # price/days_in_month and a hard-coded price/30 give the same answer.
     obligations = [
-        _obligation("daily-rate", "Daily rate is monthly_price divided by days_in_month",
-                    "nominally_supported"),
+        _obligation(
+            "daily-rate",
+            "Daily rate is monthly_price divided by days_in_month",
+            "nominally_supported",
+        ),
     ]
     discriminations = [
         ObligationDiscrimination(
             obligation_id="daily-rate",
-            defects=[PlausibleDefect(
-                description="hard-codes price/30 instead of price/days_in_month",
-                would_be_caught=False, reason="a 30-day month gives the same result either way",
-            )],
+            defects=[
+                PlausibleDefect(
+                    description="hard-codes price/30 instead of price/days_in_month",
+                    would_be_caught=False,
+                    reason="a 30-day month gives the same result either way",
+                )
+            ],
             discriminating=False,
         )
     ]
@@ -120,8 +145,12 @@ def test_recommendation_round_trips_through_persistence():
     response = {
         "recommendations": [
             {
-                "obligation_id": "daily-rate", "required_inputs": "i", "boundary_conditions": "b",
-                "expected_output": "o", "required_assertions": ["a"], "plausible_defect": "d",
+                "obligation_id": "daily-rate",
+                "required_inputs": "i",
+                "boundary_conditions": "b",
+                "expected_output": "o",
+                "required_assertions": ["a"],
+                "plausible_defect": "d",
                 "repo_conventions": "c",
             }
         ]
@@ -178,9 +207,7 @@ def test_a_response_skipping_a_weak_obligation_is_rejected():
     response = {"recommendations": [_recommendation("daily-rate")]}
 
     with pytest.raises(SchemaValidationError) as raised:
-        recommend_tests(
-            obligations, discriminations, _change_set(), _client_returning(response)
-        )
+        recommend_tests(obligations, discriminations, _change_set(), _client_returning(response))
 
     message = str(raised.value)
     assert "proration" in message
@@ -201,9 +228,7 @@ def test_a_response_naming_a_non_weak_obligation_is_rejected():
     }
 
     with pytest.raises(SchemaValidationError) as raised:
-        recommend_tests(
-            obligations, discriminations, _change_set(), _client_returning(response)
-        )
+        recommend_tests(obligations, discriminations, _change_set(), _client_returning(response))
 
     assert "some-other-obligation" in str(raised.value)
 
@@ -219,9 +244,7 @@ def test_a_duplicate_recommendation_is_rejected():
     }
 
     with pytest.raises(SchemaValidationError) as raised:
-        recommend_tests(
-            obligations, discriminations, _change_set(), _client_returning(response)
-        )
+        recommend_tests(obligations, discriminations, _change_set(), _client_returning(response))
 
     assert "more than once" in str(raised.value)
 
@@ -293,17 +316,21 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
         evidence_class="unsupported",
         admissible_evidence=AdmissibleEvidence.CODE_ONLY,
     )
-    client = _client_returning({
-        "recommendations": [{
-            "obligation_id": "daily-rate",
-            "required_inputs": "A month whose length is not 30, e.g. days_in_month=28.",
-            "boundary_conditions": "0 days used and a full month.",
-            "expected_output": "price/28 differs from price/30.",
-            "required_assertions": ["assert prorate(280, 14, 28) == 140.0"],
-            "plausible_defect": "hard-codes /30 instead of /days_in_month",
-            "repo_conventions": "test_billing.py",
-        }]
-    })
+    client = _client_returning(
+        {
+            "recommendations": [
+                {
+                    "obligation_id": "daily-rate",
+                    "required_inputs": "A month whose length is not 30, e.g. days_in_month=28.",
+                    "boundary_conditions": "0 days used and a full month.",
+                    "expected_output": "price/28 differs from price/30.",
+                    "required_assertions": ["assert prorate(280, 14, 28) == 140.0"],
+                    "plausible_defect": "hard-codes /30 instead of /days_in_month",
+                    "repo_conventions": "test_billing.py",
+                }
+            ]
+        }
+    )
 
     result = recommend_tests([ordinary, boundary], [], _change_set(), client)
 

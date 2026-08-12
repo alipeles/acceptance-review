@@ -216,7 +216,9 @@ def test_a_requirement_deliberately_yielding_nothing_carries_its_reason():
         "open_questions": [],
         "requirement_dispositions": [
             _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
-            _disposition("constraint-01", "no_obligation", reason="A section marker, not a requirement."),
+            _disposition(
+                "constraint-01", "no_obligation", reason="A section marker, not a requirement."
+            ),
             _disposition("constraint-02", "no_obligation", reason="Restates constraint-01."),
             _disposition("exclusion-01", "no_obligation", reason="Out of scope by construction."),
             _disposition("completion-01", "no_obligation", reason="Duplicate of constraint-01."),
@@ -286,9 +288,7 @@ def test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations():
     # it — the wire form is what constrains the model, not the pydantic form.
     schema = inline_schema_refs(_Decomposition.model_json_schema())
     members = schema["properties"]["requirement_dispositions"]["items"]["anyOf"]
-    yielded = next(
-        member for member in members if "obligation" in member.get("properties", {})
-    )
+    yielded = next(member for member in members if "obligation" in member.get("properties", {}))
     assert "obligation" in yielded["required"]
     # And it carries the obligation itself, not a reference to one.
     assert yielded["properties"]["obligation"]["type"] == "object"
@@ -354,6 +354,7 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
     this union depends on it, so relaxing `extra` elsewhere would reopen the gap
     with every other test still green. Hence this guard.
     """
+
     def parse(entry: dict):
         return _Decomposition.model_validate(
             {"open_questions": [], "requirement_dispositions": [entry]}
@@ -465,9 +466,9 @@ def test_the_disposition_set_is_exactly_the_three_of_decision_3():
     for path in source.rglob("*.py"):
         tree = ast.parse(path.read_text())
         for node in ast.walk(tree):
-            named = (
-                isinstance(node, ast.Attribute) and node.attr == "UNDISPOSED"
-            ) or (isinstance(node, ast.Name) and node.id == "UNDISPOSED")
+            named = (isinstance(node, ast.Attribute) and node.attr == "UNDISPOSED") or (
+                isinstance(node, ast.Name) and node.id == "UNDISPOSED"
+            )
             if named:
                 offenders.append(f"{path.relative_to(source).as_posix()}:{node.lineno}")
     assert offenders == [], f"the removed disposition is still referenced at {offenders}"
@@ -862,7 +863,9 @@ def test_an_obligation_no_requirement_claims_is_still_shown():
     parsed = parse_task_file(TASK)
     decomposition = Decomposition(
         obligations=[
-            make_obligation("orphan", "An obligation no requirement claims.", ObligationType.FUNCTIONAL),
+            make_obligation(
+                "orphan", "An obligation no requirement claims.", ObligationType.FUNCTIONAL
+            ),
             make_obligation("render-lines", "Render each invoice line.", ObligationType.FUNCTIONAL),
         ],
         open_questions=[],

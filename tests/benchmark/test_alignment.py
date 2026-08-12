@@ -47,10 +47,12 @@ def test_alignment_is_bijective_extra_reviewer_criterion_is_dropped():
     # decomposition); only the first match is kept, so the extra stays unmatched.
     gt = ["A"]
     rv = ["A prime", "A double-prime"]
-    response = {"matches": [
-        {"ground_truth": "g0", "reviewer": "r0"},
-        {"ground_truth": "g0", "reviewer": "r1"},
-    ]}
+    response = {
+        "matches": [
+            {"ground_truth": "g0", "reviewer": "r0"},
+            {"ground_truth": "g0", "reviewer": "r1"},
+        ]
+    }
 
     alignment = align_obligations(gt, rv, client_returning(response))
 
@@ -72,8 +74,9 @@ def test_empty_sides_make_no_call():
     def boom(**kwargs):
         raise AssertionError("no model call should be made with an empty side")
 
-    client = ModelClient(model="x", mode=Mode.RECORD,
-                         store=TranscriptStore(tempfile.mkdtemp()), completion_fn=boom)
+    client = ModelClient(
+        model="x", mode=Mode.RECORD, store=TranscriptStore(tempfile.mkdtemp()), completion_fn=boom
+    )
     assert align_obligations([], ["A"], client) == {}
     assert align_obligations(["A"], [], client) == {}
 
@@ -82,26 +85,36 @@ def test_empty_sides_make_no_call():
 
 
 def _reviewer_obligation(description: str) -> Obligation:
-    return Obligation(id=description.lower().replace(" ", "-"), description=description,
-                      type=ObligationType.FUNCTIONAL, importance="critical", explicit=True,
-                      observable_behavior="...")
+    return Obligation(
+        id=description.lower().replace(" ", "-"),
+        description=description,
+        type=ObligationType.FUNCTIONAL,
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
+    )
 
 
 def _case_with_reworded_reviewer_output() -> BenchmarkCase:
     ground_truth = GroundTruthLabels(
         obligations=[
             GroundTruthObligation(
-                id="daily-rate", description="Daily rate is monthly_price divided by days_in_month",
-                explicit=True, evidence_class="strongly_supported", evidence_rationale="asserted",
+                id="daily-rate",
+                description="Daily rate is monthly_price divided by days_in_month",
+                explicit=True,
+                evidence_class="strongly_supported",
+                evidence_rationale="asserted",
                 candidate_tests=["test_billing.py::test_rate"],
             ),
         ],
         gaps=[GroundTruthGap(id="g", description="rate wrong", obligation_id="daily-rate")],
     )
     reviewer = Review(
-        mode="local", reviewed_revision="def456",
+        mode="local",
+        reviewed_revision="def456",
         provenance=ReviewProvenance(
-            determinism_mode="replay", model="m",
+            determinism_mode="replay",
+            model="m",
             controls_requested=DeterminismControls(temperature=0.0),
         ),
         obligation_map=[
@@ -110,17 +123,24 @@ def _case_with_reworded_reviewer_output() -> BenchmarkCase:
                 update={"test_evidence": ["test_billing.py::test_rate"]}
             ),
         ],
-        findings=[Finding(
-            type="coverage_gap", severity="high", description="rate not established",
-            evidence_tier=EvidenceTier.STATIC, produced_by=Component.STATIC_ANALYZER,
-            links=[Link(kind="requirement", ref="task.md:1")],
-            related_obligation="Use monthly_price / days_in_month as the daily rate",
-        )],
+        findings=[
+            Finding(
+                type="coverage_gap",
+                severity="high",
+                description="rate not established",
+                evidence_tier=EvidenceTier.STATIC,
+                produced_by=Component.STATIC_ANALYZER,
+                links=[Link(kind="requirement", ref="task.md:1")],
+                related_obligation="Use monthly_price / days_in_month as the daily rate",
+            )
+        ],
     )
     return BenchmarkCase(
         case_id="reworded",
         source=BenchmarkCaseSource(kind="archetype", identifier="reworded"),
-        inputs=BenchmarkCaseInputs(repo="r", task_text="...", base_revision="a", head_revision="def456"),
+        inputs=BenchmarkCaseInputs(
+            repo="r", task_text="...", base_revision="a", head_revision="def456"
+        ),
         ground_truth=ground_truth,
         reviewer_output=reviewer,
     )

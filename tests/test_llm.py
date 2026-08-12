@@ -356,12 +356,8 @@ def test_controls_a_provider_discards_are_recorded_as_absent_not_as_requested():
     pytest.importorskip("litellm")
     from acceptance.llm import _litellm_effective_controls
 
-    openai = _litellm_effective_controls(
-        "openai/gpt-5.4-mini", temperature=0.0, seed=0
-    )
-    anthropic = _litellm_effective_controls(
-        "anthropic/claude-sonnet-5", temperature=0.0, seed=0
-    )
+    openai = _litellm_effective_controls("openai/gpt-5.4-mini", temperature=0.0, seed=0)
+    anthropic = _litellm_effective_controls("anthropic/claude-sonnet-5", temperature=0.0, seed=0)
 
     assert openai == {"temperature": 0.0, "seed": 0}
     # Not merely absent from the dict — explicitly reported as not in force.
@@ -394,9 +390,7 @@ def _dropping_completion_fn(content: str):
     accepts only `temperature=1`, so LiteLLM's `drop_params` sends neither.
     """
     fn = _recorder(content)
-    fn.effective_controls = lambda model, **requested: {
-        name: None for name in requested
-    }
+    fn.effective_controls = lambda model, **requested: {name: None for name in requested}
     return fn
 
 

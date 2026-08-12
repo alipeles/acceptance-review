@@ -65,7 +65,9 @@ def _recording_factory(calls: list):
             return SimpleNamespace(
                 choices=[
                     SimpleNamespace(
-                        message=SimpleNamespace(content=json.dumps(_completed(_EMPTY_BY_SCHEMA[name], **kwargs)))
+                        message=SimpleNamespace(
+                            content=json.dumps(_completed(_EMPTY_BY_SCHEMA[name], **kwargs))
+                        )
                     )
                 ],
                 usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
@@ -85,6 +87,7 @@ def _recording_factory(calls: list):
         )
 
     return factory
+
 
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 
@@ -240,8 +243,16 @@ def test_a_flipped_defect_verdict_is_reported_per_defect():
     from acceptance.benchmark.instability import DefectVerdict
 
     defect = "the writer still emits the file"
-    left = _snapshot(0, {"a": "x"}, defects=[DefectVerdict(obligation_id="a", defect=defect, would_be_caught=True)])
-    right = _snapshot(1, {"a": "x"}, defects=[DefectVerdict(obligation_id="a", defect=defect, would_be_caught=False)])
+    left = _snapshot(
+        0,
+        {"a": "x"},
+        defects=[DefectVerdict(obligation_id="a", defect=defect, would_be_caught=True)],
+    )
+    right = _snapshot(
+        1,
+        {"a": "x"},
+        defects=[DefectVerdict(obligation_id="a", defect=defect, would_be_caught=False)],
+    )
     client = _coverage_client({}, alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}])
 
     differences = compare_runs(left, right, client)
@@ -260,7 +271,9 @@ def test_a_flipped_defect_verdict_is_reported_per_defect():
 def test_content_and_shape_are_reported_as_separate_figures():
     """The requirement that governs the report: the two classes have different
     fixes, so no field may carry their sum."""
-    left = _snapshot(0, {"a": "x", "b": "dropped requirement"}, evidence={"a": "strongly_supported", "b": None})
+    left = _snapshot(
+        0, {"a": "x", "b": "dropped requirement"}, evidence={"a": "strongly_supported", "b": None}
+    )
     right = _snapshot(1, {"a": "x"}, evidence={"a": "partially_supported"})
     client = _coverage_client(
         {"dropped requirement": False},
@@ -319,7 +332,9 @@ def test_the_harness_uses_the_benchmark_variance_path_and_not_a_second_one():
 def test_cross_model_agreement_is_reported_alongside_within_model_variance():
     a = ModelInstability(
         model="model-a",
-        evidence_class_distribution=[ClassDistribution(subject="x", counts={"strongly_supported": 3})],
+        evidence_class_distribution=[
+            ClassDistribution(subject="x", counts={"strongly_supported": 3})
+        ],
     )
     b = ModelInstability(
         model="model-b",
@@ -384,9 +399,7 @@ def test_the_perturbation_adds_a_test_that_asserts_nothing_about_the_change(tmp_
 
     perturbed = add_unrelated_test(case)
 
-    added = "\n".join(
-        p.read_text() for p in Path(perturbed.inputs.repo).rglob("test_*.py")
-    )
+    added = "\n".join(p.read_text() for p in Path(perturbed.inputs.repo).rglob("test_*.py"))
     assert "test_unrelated_addition_for_perturbation_measurement" in added
 
 
@@ -425,7 +438,11 @@ def _observing_factory(calls):
             name = kwargs["response_format"]["json_schema"]["name"]
             calls.append((config.seed, name))
             empty = {
-                "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
+                "_Decomposition": {
+                    "obligations": [],
+                    "open_questions": [],
+                    "requirement_dispositions": [],
+                },
                 "_Mappings": {"mappings": []},
                 "_Discrimination": {"discriminations": []},
                 "_Coverage": {"classifications": []},
@@ -462,10 +479,14 @@ def test_run_once_drives_the_real_pipeline_and_snapshots_its_output(tmp_path):
     case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
     calls: list = []
 
-    snapshot = run_once(case, RunKey(model="m", seed=7, index=0), client_factory=_observing_factory(calls))
+    snapshot = run_once(
+        case, RunKey(model="m", seed=7, index=0), client_factory=_observing_factory(calls)
+    )
 
     assert isinstance(snapshot, RunSnapshot)
-    assert "_Decomposition" in {name for _, name in calls}, "decompose must be inside the measured surface"
+    assert "_Decomposition" in {name for _, name in calls}, (
+        "decompose must be inside the measured surface"
+    )
     assert all(seed == 7 for seed, _ in calls), "the run's seed must reach the client"
 
 
@@ -685,7 +706,9 @@ def test_the_observing_client_does_not_change_what_the_pipeline_produces(tmp_pat
     case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
 
     plain = classify_case(case, client_finding_nothing(seed=5))
-    observed = classify_case(case, _recording_factory([])(RunConfig(model="m", mode=Mode.RECORD, seed=5)))
+    observed = classify_case(
+        case, _recording_factory([])(RunConfig(model="m", mode=Mode.RECORD, seed=5))
+    )
 
     assert plain.reviewer_output is not None and observed.reviewer_output is not None
     assert [o.description for o in plain.reviewer_output.obligation_map] == [
@@ -706,14 +729,18 @@ def test_cross_model_agreement_covers_every_judgement_axis():
 
     a = ModelInstability(
         model="model-a",
-        evidence_class_distribution=[ClassDistribution(subject="ob", counts={"strongly_supported": 3})],
+        evidence_class_distribution=[
+            ClassDistribution(subject="ob", counts={"strongly_supported": 3})
+        ],
         defect_verdict_distribution=[ClassDistribution(subject="ob :: d", counts={"true": 3})],
         obligation_presence=[PresenceRow(subject="ob", runs_present=3, runs_total=3)],
         open_question_presence=[PresenceRow(subject="what format?", runs_present=3, runs_total=3)],
     )
     b = ModelInstability(
         model="model-b",
-        evidence_class_distribution=[ClassDistribution(subject="ob", counts={"strongly_supported": 3})],
+        evidence_class_distribution=[
+            ClassDistribution(subject="ob", counts={"strongly_supported": 3})
+        ],
         defect_verdict_distribution=[ClassDistribution(subject="ob :: d", counts={"false": 3})],
         obligation_presence=[PresenceRow(subject="ob", runs_present=3, runs_total=3)],
         open_question_presence=[PresenceRow(subject="what format?", runs_present=0, runs_total=3)],
@@ -772,7 +799,9 @@ def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
     assert all(m.content_difference_count is not None for m in report.per_model)
     # 2. perturbation — its own field, with its own figure
     assert report.perturbation is not None
-    assert report.perturbation.sensitivity() is not None or report.perturbation.watched_judgements == 0
+    assert (
+        report.perturbation.sensitivity() is not None or report.perturbation.watched_judgements == 0
+    )
     # 3. model — its own field, keyed by axis
     assert {row.axis for row in report.cross_model_agreement} <= set(AgreementAxis)
     # and no field carries their sum

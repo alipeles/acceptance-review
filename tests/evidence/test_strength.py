@@ -15,15 +15,23 @@ from acceptance.review_state import Obligation, ObligationType, TestEvidence
 
 def _obligation(obligation_id: str) -> Obligation:
     return Obligation(
-        id=obligation_id, description=f"{obligation_id} rule", type=ObligationType.FUNCTIONAL,
-        importance="critical", explicit=True, observable_behavior="...",
+        id=obligation_id,
+        description=f"{obligation_id} rule",
+        type=ObligationType.FUNCTIONAL,
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
     )
 
 
-def _evidence(identifier: str, obligation_ids: list[str], mocks: list[str] | None = None) -> TestEvidence:
+def _evidence(
+    identifier: str, obligation_ids: list[str], mocks: list[str] | None = None
+) -> TestEvidence:
     return TestEvidence(
-        identifier=identifier, location=identifier.split("::", 1)[0],
-        mapped_obligations=obligation_ids, mocks=mocks or [],
+        identifier=identifier,
+        location=identifier.split("::", 1)[0],
+        mapped_obligations=obligation_ids,
+        mocks=mocks or [],
     )
 
 
@@ -33,7 +41,8 @@ def _disc(obligation_id: str, *caught: bool) -> ObligationDiscrimination:
         for i, c in enumerate(caught)
     ]
     return ObligationDiscrimination(
-        obligation_id=obligation_id, defects=defects,
+        obligation_id=obligation_id,
+        defects=defects,
         discriminating=any(caught),
     )
 
@@ -86,7 +95,11 @@ def test_mapped_test_but_no_defect_judged_is_indeterminate():
 
 
 def test_archetype_3_superficial_test_classes():
-    obs = [_obligation("one-per-month"), _obligation("equal-payments"), _obligation("fully-amortizing")]
+    obs = [
+        _obligation("one-per-month"),
+        _obligation("equal-payments"),
+        _obligation("fully-amortizing"),
+    ]
     test_id = "test_loan.py::test_returns_a_payment_for_each_month"
     ev = [_evidence(test_id, ["one-per-month", "equal-payments", "fully-amortizing"])]
     discriminations = [

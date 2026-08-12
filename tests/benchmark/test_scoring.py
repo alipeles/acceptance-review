@@ -84,8 +84,11 @@ def test_metrics_are_none_when_their_ground_truth_is_empty():
         ground_truth=GroundTruthLabels(
             obligations=[
                 GroundTruthObligation(
-                    id="only", description="only obligation", explicit=True,
-                    evidence_class="unsupported", evidence_rationale="No test at all.",
+                    id="only",
+                    description="only obligation",
+                    explicit=True,
+                    evidence_class="unsupported",
+                    evidence_rationale="No test at all.",
                     candidate_tests=[],
                 )
             ],

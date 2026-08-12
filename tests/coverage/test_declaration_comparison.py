@@ -40,15 +40,27 @@ def _archetype_7_inputs():
     obligations = [
         _obligation("lookup", "Return the user record matching user_id", ObligationType.FUNCTIONAL),
     ]
-    change_set = ChangeSet(base_revision="a", head_revision="b", files=[
-        FileChange(
-            path="users.py", status="modified", category="source",
-            hunks=[DiffHunk(
-                header="@@ -1,2 +1,2 @@", old_start=1, old_lines=2, new_start=1, new_lines=2,
-                content="-    raise NotImplementedError\n+    return users.get(user_id)",
-            )],
-        ),
-    ])
+    change_set = ChangeSet(
+        base_revision="a",
+        head_revision="b",
+        files=[
+            FileChange(
+                path="users.py",
+                status="modified",
+                category="source",
+                hunks=[
+                    DiffHunk(
+                        header="@@ -1,2 +1,2 @@",
+                        old_start=1,
+                        old_lines=2,
+                        new_start=1,
+                        new_lines=2,
+                        content="-    raise NotImplementedError\n+    return users.get(user_id)",
+                    )
+                ],
+            ),
+        ],
+    )
     test_evidence = [
         TestEvidence(
             identifier="test_users.py::test_existing_id_returns_the_record",
@@ -85,7 +97,10 @@ def test_truthful_declaration_flags_nothing():
     declaration, obligations, change_set, test_evidence = _archetype_7_inputs()
 
     mismatches = compare_declaration(
-        declaration, obligations, change_set, test_evidence,
+        declaration,
+        obligations,
+        change_set,
+        test_evidence,
         _client_returning({"mismatches": []}),
     )
 

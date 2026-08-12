@@ -236,9 +236,7 @@ def _from_source(test: DiscoveredTest) -> list[WeakEvidenceFinding]:
             WeakEvidenceFinding(
                 test_id=test.test_id,
                 pattern=WeakEvidencePattern.INCOMPLETE_ERROR_ASSERTION,
-                description=(
-                    f"Does not establish the error type, message, or content: `{match}`."
-                ),
+                description=(f"Does not establish the error type, message, or content: `{match}`."),
             )
         )
     if match := _unvalidated_snapshot(func):

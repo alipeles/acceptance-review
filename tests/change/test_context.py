@@ -22,7 +22,9 @@ def _change_set(*files: FileChange) -> ChangeSet:
     return ChangeSet(base_revision="base", head_revision="head", files=list(files))
 
 
-def _source_change(path: str, new_start: int, new_lines: int, status: str = "modified") -> FileChange:
+def _source_change(
+    path: str, new_start: int, new_lines: int, status: str = "modified"
+) -> FileChange:
     return FileChange(
         path=path,
         status=status,
@@ -88,7 +90,9 @@ def test_innermost_enclosing_definition_is_a_method(tmp_path):
         "    def run(self):\n"
         "        return 42\n",
     )
-    _write(repo, "client.py", "from svc import Service\n\n\ndef go():\n    return Service().run()\n")
+    _write(
+        repo, "client.py", "from svc import Service\n\n\ndef go():\n    return Service().run()\n"
+    )
     # Change lands on Service.run (lines 5-6).
     change_set = _change_set(_source_change("svc.py", new_start=5, new_lines=2))
 
@@ -107,9 +111,7 @@ def test_call_site_budget_cap_is_respected_and_flagged(tmp_path):
     _write(repo, "caller.py", CALLER)  # two target() calls
     change_set = _change_set(_source_change("mod.py", new_start=5, new_lines=2))
 
-    result = retrieve_context(
-        repo, change_set, RetrievalBudget(max_call_sites_per_definition=1)
-    )
+    result = retrieve_context(repo, change_set, RetrievalBudget(max_call_sites_per_definition=1))
 
     context = result.contexts[0]
     assert len(context.call_sites) == 1  # capped

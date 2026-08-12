@@ -82,9 +82,7 @@ def _faithful(labels: GroundTruthLabels) -> dict[str, Any]:
     return {
         "obligations": obligations,
         "open_questions": [
-            _question(q.id, q.description)
-            for q in labels.open_questions
-            if q.should_be_raised
+            _question(q.id, q.description) for q in labels.open_questions if q.should_be_raised
         ],
         # Filled in by `decomposer`'s completion_fn, which can see the
         # requirement ids the call supplied; a label-seeded builder cannot.

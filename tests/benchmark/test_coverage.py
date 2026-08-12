@@ -142,15 +142,30 @@ def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
     case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
 
     obligations = [
-        {"id": "show-fields", "description": "Show the item name, quantity, and unit price",
-         "type": "functional", "source_quote": "Show the item name, the quantity, and the unit price."},
-        {"id": "line-total", "description": "Include the line total (quantity times unit price)",
-         "type": "functional", "source_quote": "Include the line total (quantity × unit price)."},
-        {"id": "money-format", "description": "Format money as USD with two decimals and a leading $",
-         "type": "functional", "source_quote": "Format every money value as USD with exactly two decimals"},
-        {"id": "returns-in-parens",
-         "description": "Show negative-quantity returns with the quantity and total in parentheses",
-         "type": "boundary", "source_quote": "For returns (a negative quantity)"},
+        {
+            "id": "show-fields",
+            "description": "Show the item name, quantity, and unit price",
+            "type": "functional",
+            "source_quote": "Show the item name, the quantity, and the unit price.",
+        },
+        {
+            "id": "line-total",
+            "description": "Include the line total (quantity times unit price)",
+            "type": "functional",
+            "source_quote": "Include the line total (quantity × unit price).",
+        },
+        {
+            "id": "money-format",
+            "description": "Format money as USD with two decimals and a leading $",
+            "type": "functional",
+            "source_quote": "Format every money value as USD with exactly two decimals",
+        },
+        {
+            "id": "returns-in-parens",
+            "description": "Show negative-quantity returns with the quantity and total in parentheses",
+            "type": "boundary",
+            "source_quote": "For returns (a negative quantity)",
+        },
     ]
     pos = "test_receipt.py::test_positive_line"
     two = "test_receipt.py::test_two_decimal_formatting"
@@ -159,21 +174,50 @@ def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
             "_Decomposition": _decomposition_response(obligations),
             "_Mappings": {
                 "mappings": [
-                    {"test_id": pos, "obligation_ids": ["show-fields", "line-total", "money-format"], "rationale": "."},
-                    {"test_id": two, "obligation_ids": ["show-fields", "line-total", "money-format"], "rationale": "."},
+                    {
+                        "test_id": pos,
+                        "obligation_ids": ["show-fields", "line-total", "money-format"],
+                        "rationale": ".",
+                    },
+                    {
+                        "test_id": two,
+                        "obligation_ids": ["show-fields", "line-total", "money-format"],
+                        "rationale": ".",
+                    },
                 ]
             },
             "_Discrimination": {
                 "obligations": [
-                    {"obligation_id": "show-fields", "defects": [
-                        {"description": "wrong/omitted field", "would_be_caught": True, "reason": "exact line string asserted"},
-                    ]},
-                    {"obligation_id": "line-total", "defects": [
-                        {"description": "wrong total formula", "would_be_caught": True, "reason": "exact total asserted"},
-                    ]},
-                    {"obligation_id": "money-format", "defects": [
-                        {"description": "wrong currency formatting", "would_be_caught": True, "reason": "exact $ format asserted"},
-                    ]},
+                    {
+                        "obligation_id": "show-fields",
+                        "defects": [
+                            {
+                                "description": "wrong/omitted field",
+                                "would_be_caught": True,
+                                "reason": "exact line string asserted",
+                            },
+                        ],
+                    },
+                    {
+                        "obligation_id": "line-total",
+                        "defects": [
+                            {
+                                "description": "wrong total formula",
+                                "would_be_caught": True,
+                                "reason": "exact total asserted",
+                            },
+                        ],
+                    },
+                    {
+                        "obligation_id": "money-format",
+                        "defects": [
+                            {
+                                "description": "wrong currency formatting",
+                                "would_be_caught": True,
+                                "reason": "exact $ format asserted",
+                            },
+                        ],
+                    },
                     # returns-in-parens has no mapped test, so it's never sent here.
                 ]
             },
@@ -582,38 +626,64 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
     test_file = next(f.path for f in change_set.files if f.path.endswith("test_receipt.py"))
     test_id = f"{test_file}::test_positive_line"
 
-    client = _client_dispatching({
-        "_Decomposition": _decomposition_response([{
-            "id": "show-fields",
-            "description": "Show the item name, quantity, and unit price",
-            "type": "functional",
-            "source_quote": "Show the item name, the quantity, and the unit price.",
-        }]),
-        "_Mappings": {"mappings": [
-            {"test_id": test_id, "obligation_ids": ["show-fields"], "rationale": "."},
-        ]},
-        "_Discrimination": {"obligations": [
-            {"obligation_id": "show-fields", "defects": [
-                {"description": "omits a field", "would_be_caught": False, "reason": "."},
-            ]},
-        ]},
-        "_Coverage": _classification_response([
-            {"obligation_id": "show-fields", "status": "addressed",
-             "diff_refs": [f"{receipt}#0"]},
-        ]),
-        "_Detections": {"unrequested_changes": []},
-        "_Judgments": {"resolutions": []},
-        "_Recommendations": {"recommendations": [{
-            "obligation_id": "show-fields",
-            "required_inputs": "a receipt line",
-            "boundary_conditions": "none",
-            "expected_output": "all three fields",
-            "required_assertions": ["assert name in line"],
-            "plausible_defect": "omits a field",
-            "repo_conventions": "test_receipt.py",
-        }]},
-        "_Mismatches": {"mismatches": []},
-    })
+    client = _client_dispatching(
+        {
+            "_Decomposition": _decomposition_response(
+                [
+                    {
+                        "id": "show-fields",
+                        "description": "Show the item name, quantity, and unit price",
+                        "type": "functional",
+                        "source_quote": "Show the item name, the quantity, and the unit price.",
+                    }
+                ]
+            ),
+            "_Mappings": {
+                "mappings": [
+                    {"test_id": test_id, "obligation_ids": ["show-fields"], "rationale": "."},
+                ]
+            },
+            "_Discrimination": {
+                "obligations": [
+                    {
+                        "obligation_id": "show-fields",
+                        "defects": [
+                            {
+                                "description": "omits a field",
+                                "would_be_caught": False,
+                                "reason": ".",
+                            },
+                        ],
+                    },
+                ]
+            },
+            "_Coverage": _classification_response(
+                [
+                    {
+                        "obligation_id": "show-fields",
+                        "status": "addressed",
+                        "diff_refs": [f"{receipt}#0"],
+                    },
+                ]
+            ),
+            "_Detections": {"unrequested_changes": []},
+            "_Judgments": {"resolutions": []},
+            "_Recommendations": {
+                "recommendations": [
+                    {
+                        "obligation_id": "show-fields",
+                        "required_inputs": "a receipt line",
+                        "boundary_conditions": "none",
+                        "expected_output": "all three fields",
+                        "required_assertions": ["assert name in line"],
+                        "plausible_defect": "omits a field",
+                        "repo_conventions": "test_receipt.py",
+                    }
+                ]
+            },
+            "_Mismatches": {"mismatches": []},
+        }
+    )
 
     review = classify_case(case, client).reviewer_output
     obligation = review.obligation_map[0]
@@ -664,9 +734,7 @@ def test_the_shared_pipeline_partitions_the_mapping_call(tmp_path):
     # Same tests judged either way — partitioning changes the asking, not the
     # question. Each single-test call carries exactly one test.
     assert all(prompt.count("\n### ") == 1 for prompt in one_per_call)
-    assert sum(prompt.count("\n### ") for prompt in one_per_call) == all_at_once[
-        0
-    ].count("\n### ")
+    assert sum(prompt.count("\n### ") for prompt in one_per_call) == all_at_once[0].count("\n### ")
 
 
 def test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo(tmp_path):
@@ -704,21 +772,31 @@ def test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo(tmp_path
         config=RunConfig(),
         store=ReviewStore(tmp_path / "reviews"),
         repo=repo,
-        client=_client_dispatching({
-            "_Decomposition": _decomposition_response([{
-                "id": "gap-ob", "description": "Handle the empty case",
-                "type": "functional", "source_quote": "Show the item name",
-            }]),
-            "_Mappings": {"mappings": []},
-            "_Discrimination": {"discriminations": []},
-            "_Coverage": _classification_response([
-                {"obligation_id": "gap-ob", "status": "not_addressed"},
-            ]),
-            "_Detections": {"unrequested_changes": []},
-            "_Judgments": {"resolutions": []},
-            "_Recommendations": {"recommendations": []},
-            "_Mismatches": {"mismatches": []},
-        }),
+        client=_client_dispatching(
+            {
+                "_Decomposition": _decomposition_response(
+                    [
+                        {
+                            "id": "gap-ob",
+                            "description": "Handle the empty case",
+                            "type": "functional",
+                            "source_quote": "Show the item name",
+                        }
+                    ]
+                ),
+                "_Mappings": {"mappings": []},
+                "_Discrimination": {"discriminations": []},
+                "_Coverage": _classification_response(
+                    [
+                        {"obligation_id": "gap-ob", "status": "not_addressed"},
+                    ]
+                ),
+                "_Detections": {"unrequested_changes": []},
+                "_Judgments": {"resolutions": []},
+                "_Recommendations": {"recommendations": []},
+                "_Mismatches": {"mismatches": []},
+            }
+        ),
     )
     assert snapshot() == before
     assert not (repo / ".acceptance" / "next-instruction.md").exists()

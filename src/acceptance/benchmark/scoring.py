@@ -163,11 +163,7 @@ def _open_question_counts(case: BenchmarkCase) -> _MatchCounts:
     # A raised question is "reported" against this metric when the ground truth
     # has an opinion about it either way. One it says nothing about is neither
     # credited nor charged — silence in the corpus is not a label.
-    known = [
-        rid
-        for rid in raised
-        if any(q.matches(rid) for q in case.ground_truth.open_questions)
-    ]
+    known = [rid for rid in raised if any(q.matches(rid) for q in case.ground_truth.open_questions)]
     charged = [rid for rid in known if any(q.matches(rid) for q in forbidden)]
 
     return _MatchCounts(
@@ -259,9 +255,7 @@ _FAMILIES = (
 )
 
 
-def _all_counts(
-    case: BenchmarkCase, client: ModelClient | None = None
-) -> dict[str, _MatchCounts]:
+def _all_counts(case: BenchmarkCase, client: ModelClient | None = None) -> dict[str, _MatchCounts]:
     if case.reviewer_output is None:
         raise ValueError(f"case {case.case_id!r} has no reviewer_output; run it first")
     alignment = _alignment(case, client)

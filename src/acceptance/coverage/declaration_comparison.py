@@ -149,9 +149,7 @@ def compare_declaration(
         },
     ]
     result = client.complete(messages, _Mismatches)
-    return [
-        DeclarationMismatch(claim=m.claim, rationale=m.rationale) for m in result.mismatches
-    ]
+    return [DeclarationMismatch(claim=m.claim, rationale=m.rationale) for m in result.mismatches]
 
 
 def declaration_mismatch_finding(mismatch: DeclarationMismatch) -> Finding:

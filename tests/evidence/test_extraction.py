@@ -20,14 +20,21 @@ from acceptance.review_state import ChangeSet, DiffHunk, FileChange
 def _hunk(new_lines: int) -> DiffHunk:
     return DiffHunk(
         header=f"@@ -1,{new_lines} +1,{new_lines} @@",
-        old_start=1, old_lines=new_lines, new_start=1, new_lines=new_lines, content="",
+        old_start=1,
+        old_lines=new_lines,
+        new_start=1,
+        new_lines=new_lines,
+        content="",
     )
 
 
 def _change_set(path: str, new_lines: int) -> ChangeSet:
     return ChangeSet(
-        base_revision="base", head_revision="head",
-        files=[FileChange(path=path, status="modified", category="source", hunks=[_hunk(new_lines)])],
+        base_revision="base",
+        head_revision="head",
+        files=[
+            FileChange(path=path, status="modified", category="source", hunks=[_hunk(new_lines)])
+        ],
     )
 
 
@@ -73,8 +80,7 @@ def test_circular_expected_value_is_detected(tmp_path):
 
 def test_independent_literal_expected_value_is_not_circular(tmp_path):
     (tmp_path / "orders.py").write_text(
-        "def order_total(subtotal, tax_rate):\n"
-        "    return round(subtotal * (1 + tax_rate), 2)\n"
+        "def order_total(subtotal, tax_rate):\n    return round(subtotal * (1 + tax_rate), 2)\n"
     )
     (tmp_path / "test_orders.py").write_text(
         "from orders import order_total\n\n\n"
@@ -115,10 +121,7 @@ def test_extraction_captures_assertions_inputs_fixtures_and_mocks(tmp_path):
 def test_class_method_is_extracted(tmp_path):
     (tmp_path / "mod.py").write_text("def f():\n    return 1\n")
     (tmp_path / "test_mod.py").write_text(
-        "from mod import f\n\n\n"
-        "class TestC:\n"
-        "    def test_it(self):\n"
-        "        assert f() == 1\n"
+        "from mod import f\n\n\nclass TestC:\n    def test_it(self):\n        assert f() == 1\n"
     )
     change_set = _change_set("mod.py", new_lines=2)
 
@@ -137,7 +140,9 @@ ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 def test_archetype_5_circular_provenance_is_identified(tmp_path):
     from acceptance.benchmark.fixtures import materialize_archetype
 
-    fixture = materialize_archetype(ARCHETYPES_DIR / "05-circular-expected-result", tmp_path / "repo")
+    fixture = materialize_archetype(
+        ARCHETYPES_DIR / "05-circular-expected-result", tmp_path / "repo"
+    )
     repo = fixture.repo_path
     change_set = extract_change_set(repo, fixture.base_sha, fixture.head_sha)
 

@@ -78,7 +78,9 @@ def test_run_case_does_not_mutate_the_input_case(git_repo_elsewhere, tmp_path):
     )
 
     run_case(
-        case, config=RunConfig(), review_store=ReviewStore(tmp_path / "reviews"),
+        case,
+        config=RunConfig(),
+        review_store=ReviewStore(tmp_path / "reviews"),
         client=client_finding_nothing(),
     )
 

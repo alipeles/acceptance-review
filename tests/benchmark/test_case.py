@@ -38,9 +38,13 @@ def _labels(**overrides) -> GroundTruthLabels:
     defaults = dict(
         obligations=[
             _obligation(),
-            _obligation(id="filters", description="Active filters applied",
-                        evidence_class="unsupported",
-                        evidence_rationale="No test exercises filtering.", candidate_tests=[]),
+            _obligation(
+                id="filters",
+                description="Active filters applied",
+                evidence_class="unsupported",
+                evidence_rationale="No test exercises filtering.",
+                candidate_tests=[],
+            ),
         ],
         gaps=[
             GroundTruthGap(
@@ -159,7 +163,9 @@ def test_unrequested_change_round_trips():
     labels = _labels(
         unrequested_changes=[
             GroundTruthUnrequestedChange(
-                id="u1", description="an extra helper nobody asked for", file="cart.py",
+                id="u1",
+                description="an extra helper nobody asked for",
+                file="cart.py",
                 disposition="separable",
             )
         ]

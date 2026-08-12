@@ -41,9 +41,7 @@ def classify_case(
     copy of `case`. The benchmark's adapter around `run_review` — every
     capability the CLI runs is scored here, by construction."""
     repo = Path(case.inputs.repo)
-    change_set = extract_change_set(
-        repo, case.inputs.base_revision, case.inputs.head_revision
-    )
+    change_set = extract_change_set(repo, case.inputs.base_revision, case.inputs.head_revision)
     review = run_review(
         task_text=case.inputs.task_text,
         change_set=change_set,

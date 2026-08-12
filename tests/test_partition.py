@@ -115,9 +115,7 @@ def test_the_mechanism_does_not_depend_on_the_stage_that_uses_it():
 
     tree = ast.parse(pathlib.Path(module.__file__).read_text())
     imported = {
-        node.module
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom) and node.module
+        node.module for node in ast.walk(tree) if isinstance(node, ast.ImportFrom) and node.module
     } | {
         alias.name
         for node in ast.walk(tree)

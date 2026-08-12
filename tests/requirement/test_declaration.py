@@ -74,7 +74,10 @@ Raises `KeyError` with a clear message when the id is not present.
 """
     declaration = parse_declaration(text)
 
-    assert declaration.mandate_as_understood == "Provide a lookup that returns a user record by its id."
+    assert (
+        declaration.mandate_as_understood
+        == "Provide a lookup that returns a user record by its id."
+    )
     assert declaration.implementation_summary.startswith("Added `get_user")
     assert declaration.test_evidence.startswith("Covered the happy path")
     assert declaration.known_limitations.startswith("Raises `KeyError`")

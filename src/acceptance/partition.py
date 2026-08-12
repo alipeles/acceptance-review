@@ -54,9 +54,7 @@ class Batch(BaseModel, Generic[T]):
         return {"size": self.size}
 
 
-def partition(
-    items: Iterable[T], size: int, key: Callable[[T], Any]
-) -> list[Batch[T]]:
+def partition(items: Iterable[T], size: int, key: Callable[[T], Any]) -> list[Batch[T]]:
     """Split `items` into batches of at most `size`, in a stable order.
 
     Ordering is imposed here rather than trusted from upstream: batch composition

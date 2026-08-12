@@ -158,9 +158,7 @@ def map_tests_to_obligations(
             if mapping.test_id in seen_test_ids:
                 continue  # already judged, in its own batch
             seen_test_ids.add(mapping.test_id)
-            obligation_ids = [
-                oid for oid in mapping.obligation_ids if oid in valid_obligation_ids
-            ]
+            obligation_ids = [oid for oid in mapping.obligation_ids if oid in valid_obligation_ids]
             mapped_obligation_ids.update(obligation_ids)
             mappings.append(
                 TestMapping(
@@ -194,9 +192,7 @@ def map_tests_to_obligations(
     return MappingResult(mappings=mappings, unmapped_obligation_ids=unmapped)
 
 
-def apply_test_mapping(
-    obligations: list[Obligation], result: MappingResult
-) -> list[Obligation]:
+def apply_test_mapping(obligations: list[Obligation], result: MappingResult) -> list[Obligation]:
     """Return copies of `obligations` with `test_evidence` populated from the
     mapping — the join the §11.1 mapping-accuracy metric scores."""
     tests_by_obligation: dict[str, list[str]] = {}

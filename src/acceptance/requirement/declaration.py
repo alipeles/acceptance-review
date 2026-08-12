@@ -61,7 +61,9 @@ def parse_declaration(text: str) -> BuilderDeclaration:
         existing = content_by_field.get(field, "")
         content_by_field[field] = f"{existing}\n\n{block}" if existing else block
 
-    return BuilderDeclaration(**{name: content_by_field.get(name, "") for name in _SECTIONS.values()})
+    return BuilderDeclaration(
+        **{name: content_by_field.get(name, "") for name in _SECTIONS.values()}
+    )
 
 
 def _inline_content(node: SyntaxTreeNode) -> str:
@@ -82,7 +84,9 @@ def _block_text(node: SyntaxTreeNode) -> str:
     if node.type in ("bullet_list", "ordered_list"):
         return "\n".join(f"- {_block_text(item)}" for item in node.children)
     if node.type == "list_item":
-        return "\n".join(_block_text(child) for child in node.children if _block_text(child)).strip()
+        return "\n".join(
+            _block_text(child) for child in node.children if _block_text(child)
+        ).strip()
     return _inline_content(node)
 
 

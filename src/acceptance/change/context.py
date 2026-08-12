@@ -216,9 +216,7 @@ def _innermost_enclosing(
 ) -> CodeDefinition | None:
     """The smallest-range definition that contains any of the changed lines."""
     candidates = [
-        d
-        for d in definitions
-        if any(d.start_line <= line <= d.end_line for line in changed_lines)
+        d for d in definitions if any(d.start_line <= line <= d.end_line for line in changed_lines)
     ]
     if not candidates:
         return None

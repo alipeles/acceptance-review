@@ -68,6 +68,7 @@ from acceptance.review_state import Review
 DEFAULT_RUNS_PER_MODEL = 3
 DEFAULT_MODELS: tuple[str, ...] = (DEFAULT_MODEL,)
 
+
 # Seeds are derived rather than random so a measurement is repeatable from its
 # recorded provenance. Varying the seed is the point: a fixed seed is what makes
 # ordinary runs reproducible, and reproducibility is precisely what must be
@@ -380,10 +381,20 @@ def _presence_differences(
 
     differences: list[Difference] = []
     for source, target, unmatched, present, absent in (
-        (left_items, right_items, [i for i in left_items if i not in matched_left],
-         left.run.label(), right.run.label()),
-        (right_items, left_items, [i for i in right_items if i not in matched_right],
-         right.run.label(), left.run.label()),
+        (
+            left_items,
+            right_items,
+            [i for i in left_items if i not in matched_left],
+            left.run.label(),
+            right.run.label(),
+        ),
+        (
+            right_items,
+            left_items,
+            [i for i in right_items if i not in matched_right],
+            right.run.label(),
+            left.run.label(),
+        ),
     ):
         for subject, classification in classify_unmatched(unmatched, target, client).items():
             differences.append(

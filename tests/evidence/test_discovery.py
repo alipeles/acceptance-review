@@ -32,8 +32,12 @@ def _change_set(*files: FileChange) -> ChangeSet:
     return ChangeSet(base_revision="base", head_revision="head", files=list(files))
 
 
-def _source_change(path: str, new_start: int = 1, new_lines: int = 2, status: str = "modified") -> FileChange:
-    return FileChange(path=path, status=status, category="source", hunks=[_hunk(new_start, new_lines)])
+def _source_change(
+    path: str, new_start: int = 1, new_lines: int = 2, status: str = "modified"
+) -> FileChange:
+    return FileChange(
+        path=path, status=status, category="source", hunks=[_hunk(new_start, new_lines)]
+    )
 
 
 def _test_change(path: str, status: str = "added") -> FileChange:
@@ -210,9 +214,7 @@ def repo(tmp_path) -> Path:
 
 def test_existing_untouched_test_covering_a_changed_function_is_discovered(repo):
     (repo / "mod.py").write_text("def f():\n    return 1\n")
-    (repo / "test_mod.py").write_text(
-        "from mod import f\n\n\ndef test_f():\n    assert f() == 1\n"
-    )
+    (repo / "test_mod.py").write_text("from mod import f\n\n\ndef test_f():\n    assert f() == 1\n")
     base = _commit(repo, "base")
 
     (repo / "mod.py").write_text("def f():\n    return 2\n")

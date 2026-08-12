@@ -33,7 +33,10 @@ from acceptance.config import (
 )
 from acceptance.coverage.classify import ImplementationCoverage, classify_coverage
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
-from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
+from acceptance.coverage.open_questions import (
+    apply_open_question_resolutions,
+    resolve_open_questions,
+)
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode, ModelClient
 from acceptance.pipeline import run_review
@@ -391,8 +394,7 @@ def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
     this command was restructured to remove.
     """
     orphans = [
-        o for o in result.obligations
-        if not requirement_map.requirements_for_obligation(o.id)
+        o for o in result.obligations if not requirement_map.requirements_for_obligation(o.id)
     ]
     if not orphans:
         return []
@@ -406,11 +408,7 @@ def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
 
 def _unraised_questions(result: Decomposition, requirement_map) -> list[str]:
     """Open questions no requirement's disposition accounts for."""
-    claimed = {
-        qid
-        for entry in requirement_map.dispositions
-        for qid in entry.open_question_ids
-    }
+    claimed = {qid for entry in requirement_map.dispositions for qid in entry.open_question_ids}
     loose = [q for q in result.open_questions if q.id not in claimed]
     if not loose:
         return []
@@ -531,8 +529,12 @@ def run_classify(
     coverages = classify_coverage(obligations, change_set, config.build_client())
     unrequested = detect_unrequested_changes(obligations, change_set, config.build_client())
     dispositioned = classify_dispositions(
-        unrequested, obligations, coverages, change_set,
-        config.scope_expansion_policy, config.build_client(),
+        unrequested,
+        obligations,
+        coverages,
+        change_set,
+        config.scope_expansion_policy,
+        config.build_client(),
     )
     resolutions = resolve_open_questions(
         decomposition.open_questions, change_set, config.build_client()
@@ -569,7 +571,9 @@ def render_classify(
         lines.append("  (none)")
     for cov in coverages:
         refs = ", ".join(f"{r.file}" for r in cov.diff_refs) or "no corresponding change"
-        lines.append(f"  [{cov.status.value}] {cov.obligation_id}: {descriptions.get(cov.obligation_id, '')}")
+        lines.append(
+            f"  [{cov.status.value}] {cov.obligation_id}: {descriptions.get(cov.obligation_id, '')}"
+        )
         lines.append(f"      -> {refs}")
     lines.append("")
     lines.append("Unrequested changes (no obligation calls for these — your call):")
@@ -777,8 +781,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         try:
             review = run_check(
-                args.task, args.base, args.head, config, ReviewStore(),
-                declaration=args.declaration, since=args.since,
+                args.task,
+                args.base,
+                args.head,
+                config,
+                ReviewStore(),
+                declaration=args.declaration,
+                since=args.since,
             )
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)

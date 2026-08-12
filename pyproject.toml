@@ -25,7 +25,14 @@ target-version = "py310"
 line-length = 100
 # Archetype fixtures deliberately contain weak/imperfect code (circular tests,
 # superficial assertions); they are data, not code held to our own standards.
-extend-exclude = ["tests/fixtures"]
+#
+# Markdown is excluded because ruff reformats Python code blocks inside it, and
+# the snippets in the spec are didactic: `result = calculate_coupon(input);
+# assert result is not None` is written on one line precisely to illustrate a
+# non-discriminating test. Reflowing it edits the argument. The spec is the
+# product's source of truth (§13.6) and prose is not ours to mechanically
+# rewrite.
+extend-exclude = ["tests/fixtures", "*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

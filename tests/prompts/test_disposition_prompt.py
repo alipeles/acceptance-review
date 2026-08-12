@@ -51,7 +51,9 @@ def _adjacent_edit_case(tmp_path: Path):
         Obligation(
             id="cancel-order",
             description='Mark the order\'s status as "cancelled" and return True',
-            type=ObligationType.FUNCTIONAL, importance="critical", explicit=True,
+            type=ObligationType.FUNCTIONAL,
+            importance="critical",
+            explicit=True,
             observable_behavior="cancel_order sets status and returns True",
         )
     ]
@@ -83,9 +85,7 @@ CLAUDE_SONNET = "anthropic/claude-sonnet-5"
         (CLAUDE_SONNET, ScopeExpansionPolicy.STRICT, "risky"),
     ],
 )
-def test_the_policy_knob_actually_changes_the_models_disposition(
-    tmp_path, model, policy, expected
-):
+def test_the_policy_knob_actually_changes_the_models_disposition(tmp_path, model, policy, expected):
     """The prompt says a STRICT policy treats an edit to existing adjacent
     behaviour as `risky`, and a LOOSE one as merely `separable`.
 
