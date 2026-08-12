@@ -476,6 +476,52 @@ def test_a_pair_missing_a_vector_is_asked_rather_than_dropped():
     assert len(_pairs(ordered, None, vectors, 0.10)) == 1
 
 
+def test_a_pair_exactly_at_the_threshold_is_asked_about():
+    """The boundary is inclusive: `<=`, not `<`.
+
+    Verified by mutation — flipping the comparison to `<` passed the entire
+    suite before this test existed, so nothing pinned which side of the boundary
+    the threshold falls on. The threshold is taken as the pair's own computed
+    distance rather than a literal, so the equality is exact rather than
+    approximate and the test cannot pass by floating-point luck.
+    """
+    origin = _obligation("origin", "the origin obligation")
+    edge = _obligation("edge", "an obligation exactly at the boundary")
+    vectors = {
+        embedding_text(origin): _at(0.0),
+        embedding_text(edge): _vector_for_distance(0.10),
+    }
+    exact = cosine_distance(vectors[embedding_text(origin)], vectors[embedding_text(edge)])
+
+    asked: list[str] = []
+    client = _client_recording_pairs(vectors, asked)
+    link_duplicate_obligations(_decomposition(origin, edge), client, distance_threshold=exact)
+
+    assert asked, "a pair exactly at the threshold was dropped; the comparison is < not <="
+    assert provenance_for(client).link_prefilter.pairs_excluded == 0
+
+
+def test_a_pair_just_beyond_the_threshold_is_not_asked_about():
+    """The other side of the same boundary, so the pair of tests pins `<=`
+    rather than merely tolerating anything permissive."""
+    origin = _obligation("origin", "the origin obligation")
+    edge = _obligation("edge", "an obligation just past the boundary")
+    vectors = {
+        embedding_text(origin): _at(0.0),
+        embedding_text(edge): _vector_for_distance(0.10),
+    }
+    exact = cosine_distance(vectors[embedding_text(origin)], vectors[embedding_text(edge)])
+
+    asked: list[str] = []
+    client = _client_recording_pairs(vectors, asked)
+    link_duplicate_obligations(
+        _decomposition(origin, edge), client, distance_threshold=math.nextafter(exact, 0.0)
+    )
+
+    assert asked == []
+    assert provenance_for(client).link_prefilter.pairs_excluded == 1
+
+
 def test_the_linking_path_embeds_every_obligation_exactly_once():
     """Not `embed()` in isolation — the path linking actually takes.
 
