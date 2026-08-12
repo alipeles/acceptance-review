@@ -175,8 +175,8 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > short-but-complete answer required reconstructing it from token counts and
   > JSON well-formedness, which is exactly what the recording exists to make
   > unnecessary.
-- **Status:** open — **two independent instances**, #261/#239 and #258, both
-  blocking their Gate 2. File as one issue carrying both.
+- **Status:** filed (#266, child of #185) — one issue carrying both instances,
+  #261/#239's and #258's. Still blocking both Gate 2s until it lands.
 
 ### [2026-08-12] Scope-exclusion typing flips wholesale between two runs over the same requirements
 - **Kind:** filing (comment on existing issue #205)
