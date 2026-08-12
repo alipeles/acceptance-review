@@ -18,7 +18,7 @@ import json
 import tempfile
 
 from acceptance.config import DEFAULT_DEFECT_VERDICT_BATCH_SIZE
-from acceptance.evidence.discrimination import enumerate_defects, judge_discrimination
+from acceptance.evidence.discrimination import judge_discrimination
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.supplied_ids import UnusableAnswerLog
 from acceptance.review_state import (
@@ -385,28 +385,46 @@ def test_the_verdict_batch_size_defaults_to_one_criterion_per_call():
 
 
 def test_editing_a_test_leaves_a_different_obligations_enumerated_defects_unchanged():
+    """Gate 2 round 2 was right that the first version of this test edited
+    nothing: it called the stage twice with identical arguments, which
+    demonstrates the request is deterministic and says nothing at all about
+    insensitivity to a test edit.
+
+    So ob-1's mapped test really is edited between the two runs — renamed, with
+    different inputs and a different assertion, all of them distinctive enough
+    to find in the request — and ob-2's enumeration must not move.
+    """
     obligations = [_obligation("ob-1", "A"), _obligation("ob-2", "B")]
     enumeration = _enumeration(("ob-1", ["d"]), ("ob-2", ["d"]))
-
-    before: list = []
-    enumerate_defects(
-        obligations,
-        _change_set(),
-        _client(enumeration, _verdicts(), before),
-    )
-    after: list = []
-    enumerate_defects(
-        obligations,
-        _change_set(),
-        _client(enumeration, _verdicts(), after),
-    )
-
-    # The requests are byte-identical, which is stronger than "the answers
-    # matched": an identical request replays from its transcript, so the model
-    # is never asked again and cannot answer differently.
-    assert [kwargs["messages"] for _, kwargs in before] == [
-        kwargs["messages"] for _, kwargs in after
+    original = [
+        _evidence("t.py::test_original_name", ["ob-1"], ["assert f(1) == 'original'"]),
+        _evidence("t.py::test_untouched", ["ob-2"], ["assert g() == 2"]),
     ]
+    edited = [
+        _evidence("t.py::test_renamed_entirely", ["ob-1"], ["assert f(99) == 'rewritten'"]),
+        _evidence("t.py::test_untouched", ["ob-2"], ["assert g() == 2"]),
+    ]
+
+    requests = []
+    for evidence in (original, edited):
+        calls: list = []
+        judge_discrimination(
+            obligations,
+            evidence,
+            _change_set(),
+            _client(
+                enumeration, _verdicts(("ob-1::d1", True, "."), ("ob-2::d1", True, ".")), calls
+            ),
+        )
+        requests.append([kwargs["messages"] for name, kwargs in calls if name == "_Enumeration"])
+
+    # Byte-identical, which is stronger than "the answers matched": an identical
+    # request replays from its transcript, so the model is never asked again and
+    # cannot answer differently.
+    assert requests[0] == requests[1]
+    # And the edit was real — it reached the stage, just not this request.
+    sent = json.dumps(requests[1])
+    assert "test_renamed_entirely" not in sent and "rewritten" not in sent
 
 
 def test_two_runs_over_the_same_obligations_and_code_enumerate_the_same_defects():
