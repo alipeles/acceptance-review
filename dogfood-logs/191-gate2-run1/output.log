@@ -1,0 +1,385 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) not fully implemented (test-obligation-count-reaches-recorded-request); 3 obligation(s) with non-discriminating test evidence (test-verdict-call-carries-configured-bounded-obligations, bounded-obligations-per-verdict-call, tool-identifies-no-fewer-defects).
+
+Obligations:
+
+  1. A test asserts that enumerating an obligation's defects and reaching a verdict on them are separate calls.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  tests/evidence/test_discrimination.py#@@ -181,22 +221,163 @@ def test_an_obligation_the_model_omits_is_conservatively_non_discriminating():
+       test evidence: strongly supported  [tier: static]
+         1.2  tests/evidence/test_discrimination.py::test_enumeration_and_verdict_are_separate_calls
+         1.3  tests/test_discrimination_wiring.py::test_the_pipeline_reaches_its_defect_verdicts_through_the_separated_steps
+
+  2. A test asserts that a verdict call carries the defects of no more than the configured number of obligations.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  tests/evidence/test_discrimination.py#@@ -181,22 +221,163 @@ def test_an_obligation_the_model_omits_is_conservatively_non_discriminating():
+       test evidence: partially supported  [tier: static]
+         2.2  tests/evidence/test_discrimination.py::test_a_verdict_call_carries_no_more_than_the_configured_number_of_obligations
+         recommended test: The change includes a test that checks the verdict call's defect payload is bounded by the configured obligation count.
+           inputs:  Use a discrimination case with one obligation that enumerates many defects, and set the verdict batch size smaller than that defect count while keeping the obligation count larger than 1. The key input shape is: few obligations, one of them with many defects, so a correct implementation bounds each verdict call by obligations while the defective one accidentally bounds by obligations count or defect count in the wrong dimension.
+           detects: The batching logic splits verdicts by defects or tests instead of by obligations, allowing one verdict call to carry arbitrarily many obligations whenever one obligation has many defects.
+           full detail: acceptance recommendation --criterion test-verdict-call-carries-configured-bounded-obligations
+
+  3. A test asserts that the number of obligations per verdict call reaches the recorded request.
+       requirements: completion-04
+       code evidence: partially addressed
+         3.1  tests/evidence/test_discrimination.py#@@ -181,22 +221,163 @@ def test_an_obligation_the_model_omits_is_conservatively_non_discriminating():
+       test evidence: strongly supported  [tier: static]
+         3.2  tests/evidence/test_discrimination.py::test_the_number_of_obligations_per_verdict_call_reaches_the_recorded_request
+
+  4. A test asserts that editing a test mapped to one obligation leaves a different obligation's enumerated defects unchanged.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  tests/evidence/test_discrimination.py#@@ -181,22 +221,163 @@ def test_an_obligation_the_model_omits_is_conservatively_non_discriminating():
+       test evidence: strongly supported  [tier: static]
+         4.2  tests/evidence/test_discrimination.py::test_editing_a_test_leaves_a_different_obligations_enumerated_defects_unchanged
+
+  5. A test asserts that adding a test mapped to an obligation leaves that obligation's enumerated defects unchanged.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  tests/test_discrimination_wiring.py#@@ -0,0 +1,200 @@
+       test evidence: strongly supported  [tier: static]
+         5.2  tests/test_discrimination_wiring.py::test_adding_a_test_leaves_the_obligations_enumeration_request_unchanged
+         5.3  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+
+  6. A test asserts that the review pipeline reaches its defect verdicts through the separated steps.
+       requirements: completion-07
+       code evidence: addressed
+         6.1  tests/test_discrimination_wiring.py#@@ -0,0 +1,200 @@
+       test evidence: strongly supported  [tier: static]
+         6.2  tests/benchmark/test_coverage.py::test_cli_and_benchmark_share_one_pipeline
+         6.3  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         6.4  tests/benchmark/test_instability.py::test_run_once_carries_the_defect_verdicts_into_the_snapshot
+         6.5  tests/benchmark/test_rating_regression.py::test_each_case_is_scored_through_score_case_itself
+         6.6  tests/test_discrimination_wiring.py::test_the_pipeline_reaches_its_defect_verdicts_through_the_separated_steps
+         6.7  tests/test_rerun.py::test_a_prior_gap_finding_survives_a_rerun_that_did_not_re_examine_it
+         6.8  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         6.9  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  7. A test asserts that two runs over the same obligations and the same changed code enumerate the same defects and reach the same verdicts.
+       requirements: completion-08
+       code evidence: addressed
+         7.1  tests/evidence/test_discrimination.py#@@ -181,22 +221,163 @@ def test_an_obligation_the_model_omits_is_conservatively_non_discriminating():
+       test evidence: strongly supported  [tier: static]
+         7.2  tests/benchmark/test_instability.py::test_seeds_are_derived_so_a_measurement_is_repeatable_from_its_provenance
+         7.3  tests/evidence/test_discrimination.py::test_two_runs_over_the_same_obligations_and_code_enumerate_the_same_defects
+         7.4  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+
+  8. The plausible defects for an obligation are enumerated by a call of their own.
+       requirements: constraint-01
+       code evidence: addressed
+         8.1  src/acceptance/evidence/discrimination.py#@@ -97,20 +176,49 @@ def _evidence_by_obligation(
+         8.2  src/acceptance/evidence/discrimination.py#@@ -119,27 +227,99 @@ def _render_prompt(
+         8.3  src/acceptance/evidence/discrimination.py#@@ -148,47 +328,106 @@ def judge_discrimination(
+       test evidence: strongly supported  [tier: static]
+         8.4  tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating
+         8.5  tests/evidence/test_discrimination.py::test_enumeration_and_verdict_are_separate_calls
+         8.6  tests/test_discrimination_wiring.py::test_the_pipeline_reaches_its_defect_verdicts_through_the_separated_steps
+
+  9. The verdict on an enumerated defect is reached by a call separate from the one that enumerated it.
+       requirements: constraint-02
+       code evidence: addressed
+         9.1  src/acceptance/evidence/discrimination.py#@@ -119,27 +227,99 @@ def _render_prompt(
+         9.2  src/acceptance/evidence/discrimination.py#@@ -148,47 +328,106 @@ def judge_discrimination(
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/benchmark/test_instability.py::test_run_once_carries_the_defect_verdicts_into_the_snapshot
+         9.4  tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating
+         9.5  tests/evidence/test_discrimination.py::test_enumeration_and_verdict_are_separate_calls
+         9.6  tests/test_discrimination_wiring.py::test_the_pipeline_reaches_its_defect_verdicts_through_the_separated_steps
+
+  10. A verdict call carries the defects of a bounded number of obligations.
+       requirements: constraint-03
+       code evidence: addressed
+         10.1  src/acceptance/evidence/discrimination.py#@@ -119,27 +227,99 @@ def _render_prompt(
+         10.2  src/acceptance/config.py#@@ -82,6 +82,29 @@ DEFAULT_DECOMPOSE_BATCH_SIZE = 8
+         10.3  src/acceptance/config.py#@@ -142,6 +165,11 @@ class RunConfig(BaseModel):
+         10.4  src/acceptance/cli.py#@@ -640,6 +644,26 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+         10.5  src/acceptance/cli.py#@@ -776,6 +800,8 @@ def main(argv: list[str] | None = None) -> int:
+         10.6  src/acceptance/pipeline.py#@@ -220,6 +222,8 @@ def run_review(
+         10.7  src/acceptance/pipeline.py#@@ -280,7 +284,15 @@ def run_review(
+       test evidence: partially supported  [tier: static]
+         10.8  tests/evidence/test_discrimination.py::test_a_verdict_call_carries_no_more_than_the_configured_number_of_obligations
+         10.9  tests/test_config.py::test_the_mapping_batch_size_is_a_run_control_with_a_fixed_default
+         recommended test: A verdict call accepts defects only for a limited number of obligations rather than an unbounded set.
+           inputs:  Construct a verdict-stage scenario with many obligations, but make one obligation enumerate many defects while the others enumerate only one or none. Set `defect_verdict_batch_size` to a small number and ensure the verdict stage is reached. The input must make a correct implementation split by obligations, while the defective one would let a single call absorb too many obligations because it is grouping by defect volume.
+           detects: The batching logic would split by defects or tests instead of by obligations, allowing a single verdict call to include arbitrarily many obligations whenever one obligation has many defects.
+           full detail: acceptance recommendation --criterion bounded-obligations-per-verdict-call
+
+  11. The number of obligations carried by a verdict call is configurable.
+       requirements: constraint-04
+       code evidence: addressed
+         11.1  src/acceptance/config.py#@@ -82,6 +82,29 @@ DEFAULT_DECOMPOSE_BATCH_SIZE = 8
+         11.2  src/acceptance/config.py#@@ -142,6 +165,11 @@ class RunConfig(BaseModel):
+         11.3  src/acceptance/cli.py#@@ -640,6 +644,26 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+         11.4  src/acceptance/cli.py#@@ -776,6 +800,8 @@ def main(argv: list[str] | None = None) -> int:
+         11.5  src/acceptance/pipeline.py#@@ -220,6 +222,8 @@ def run_review(
+         11.6  src/acceptance/pipeline.py#@@ -280,7 +284,15 @@ def run_review(
+       test evidence: strongly supported  [tier: static]
+         11.7  tests/evidence/test_discrimination.py::test_the_number_of_obligations_per_verdict_call_reaches_the_recorded_request
+         11.8  tests/evidence/test_discrimination.py::test_the_verdict_batch_size_defaults_to_one_criterion_per_call
+         11.9  tests/test_config.py::test_the_mapping_batch_size_is_a_run_control_with_a_fixed_default
+
+  12. The number of obligations carried by a verdict call is part of the recorded request.
+       requirements: constraint-05
+       code evidence: addressed
+         12.1  src/acceptance/evidence/discrimination.py#@@ -119,27 +227,99 @@ def _render_prompt(
+         12.2  src/acceptance/evidence/discrimination.py#@@ -148,47 +328,106 @@ def judge_discrimination(
+       test evidence: strongly supported  [tier: static]
+         12.3  tests/evidence/test_discrimination.py::test_the_number_of_obligations_per_verdict_call_reaches_the_recorded_request
+         12.4  tests/test_supplied_ids.py::test_supplied_ids_become_an_enum_on_the_field_the_model_sees
+         12.5  tests/test_supplied_ids.py::test_the_schema_name_is_preserved_so_the_request_key_stays_meaningful
+
+  13. The enumeration request is determined by the obligation's text and by the changed code.
+       requirements: constraint-06
+       code evidence: addressed
+         13.1  src/acceptance/evidence/discrimination.py#@@ -19,41 +19,98 @@ would kill, §8.2), so it is a schema-constrained model call through the M0.4
+         13.2  src/acceptance/evidence/discrimination.py#@@ -97,20 +176,49 @@ def _evidence_by_obligation(
+         13.3  src/acceptance/evidence/discrimination.py#@@ -119,27 +227,99 @@ def _render_prompt(
+       test evidence: strongly supported  [tier: static]
+         13.4  tests/evidence/test_discrimination.py::test_the_enumeration_call_carries_no_test_evidence
+         13.5  tests/test_rerun.py::test_a_prior_review_of_a_different_task_is_not_used
+         13.6  tests/test_rerun.py::test_a_renamed_files_old_path_also_invalidates
+         13.7  tests/test_rerun.py::test_a_review_on_a_divergent_branch_is_not_used_as_the_prior
+         13.8  tests/test_rerun.py::test_a_review_predating_task_recording_is_not_used
+         13.9  tests/test_rerun.py::test_a_working_tree_review_builds_on_the_review_of_head
+         13.10  tests/test_rerun.py::test_an_obligation_whose_code_changed_is_re_derived
+         13.11  tests/test_rerun.py::test_an_obligation_with_no_citations_is_always_re_derived
+
+  14. The enumeration request is not determined by the tests mapped to the obligation.
+       requirements: constraint-07
+       code evidence: addressed
+         14.1  src/acceptance/evidence/discrimination.py#@@ -19,41 +19,98 @@ would kill, §8.2), so it is a schema-constrained model call through the M0.4
+         14.2  src/acceptance/evidence/discrimination.py#@@ -97,20 +176,49 @@ def _evidence_by_obligation(
+         14.3  src/acceptance/evidence/discrimination.py#@@ -119,27 +227,99 @@ def _render_prompt(
+       test evidence: strongly supported  [tier: static]
+         14.4  tests/evidence/test_discrimination.py::test_the_enumeration_call_carries_no_test_evidence
+         14.5  tests/test_discrimination_wiring.py::test_adding_a_test_leaves_the_obligations_enumeration_request_unchanged
+         14.6  tests/test_rerun.py::test_a_prior_review_of_a_different_task_is_not_used
+         14.7  tests/test_rerun.py::test_an_obligation_the_prior_review_never_saw_is_re_derived
+         14.8  tests/test_rerun.py::test_an_obligation_whose_test_changed_is_re_derived
+
+  15. Editing a test mapped to one obligation leaves a different obligation's enumerated defects unchanged.
+       requirements: constraint-08
+       code evidence: addressed
+         15.1  tests/evidence/test_discrimination.py#@@ -181,22 +221,163 @@ def test_an_obligation_the_model_omits_is_conservatively_non_discriminating():
+       test evidence: strongly supported  [tier: static]
+         15.2  tests/evidence/test_discrimination.py::test_editing_a_test_leaves_a_different_obligations_enumerated_defects_unchanged
+         15.3  tests/test_rerun.py::test_an_obligation_whose_test_changed_is_re_derived
+         15.4  tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived
+
+  16. Adding a test mapped to an obligation leaves that obligation's enumerated defects unchanged.
+       requirements: constraint-09
+       code evidence: addressed
+         16.1  tests/test_discrimination_wiring.py#@@ -0,0 +1,200 @@
+       test evidence: strongly supported  [tier: static]
+         16.2  tests/requirement/test_obligation_echo.py::test_a_remainder_differing_in_any_single_field_is_kept
+         16.3  tests/test_discrimination_wiring.py::test_adding_a_test_leaves_the_obligations_enumeration_request_unchanged
+
+  17. The review pipeline reaches its defect verdicts through the separated enumeration and verdict steps.
+       requirements: constraint-10
+       code evidence: addressed
+         17.1  src/acceptance/pipeline.py#@@ -220,6 +222,8 @@ def run_review(
+         17.2  src/acceptance/pipeline.py#@@ -280,7 +284,15 @@ def run_review(
+         17.3  tests/test_discrimination_wiring.py#@@ -0,0 +1,200 @@
+       test evidence: strongly supported  [tier: static]
+         17.4  tests/benchmark/test_coverage.py::test_cli_and_benchmark_share_one_pipeline
+         17.5  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         17.6  tests/benchmark/test_rating_regression.py::test_each_case_is_scored_through_score_case_itself
+         17.7  tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating
+         17.8  tests/test_discrimination_wiring.py::test_the_pipeline_reaches_its_defect_verdicts_through_the_separated_steps
+         17.9  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  18. The change preserves the number of defects the tool identifies.
+       requirements: constraint-11
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: nominally supported  [tier: static]
+         18.1  tests/benchmark/test_instability.py::test_a_lost_obligation_is_reported_as_a_content_difference
+         18.2  tests/benchmark/test_labels.py::test_full_loop_scores_the_noop_checker_as_all_miss
+         recommended test: After the change, the tool still identifies at least the same defects it identified before.
+           inputs:  Use a two-run or two-stage fixture where enumeration returns defects for an obligation id that is not present in the current mapped-evidence batch, and where verdict returns only a subset of the enumerated defects. Also include a case where the response model types are the new `_Enumeration` / `_DefectVerdicts` types, so the test can detect if the pipeline drops previously collected `ObligationDiscrimination` items or skips unmapped-but-enumerated defects.
+           detects: The split enumeration/verdict flow could drop defects whose enumeration response uses an obligation id not present in the current batch, the verdict stage could silently skip defects not returned in the verdict response, the new filtering logic could discard all previously collected `ObligationDiscrimination` items because it only recognizes the new response-model types, or the pipeline could return early when no mapped tests exist for an obligation.
+           full detail: acceptance recommendation --criterion tool-identifies-no-fewer-defects
+
+  19. Two runs over the same obligations and the same changed code enumerate the same defects.
+       requirements: constraint-12
+       code evidence: addressed
+         19.1  tests/evidence/test_discrimination.py#@@ -181,22 +221,163 @@ def test_an_obligation_the_model_omits_is_conservatively_non_discriminating():
+       test evidence: strongly supported  [tier: static]
+         19.2  tests/benchmark/test_instability.py::test_measure_instability_varies_the_seed_across_runs
+         19.3  tests/benchmark/test_instability.py::test_seeds_are_derived_so_a_measurement_is_repeatable_from_its_provenance
+         19.4  tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces
+         19.5  tests/evidence/test_discrimination.py::test_two_runs_over_the_same_obligations_and_code_enumerate_the_same_defects
+         19.6  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         19.7  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+         19.8  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         19.9  tests/test_rerun.py::test_an_obligation_the_prior_review_never_saw_is_re_derived
+         19.10  tests/test_rerun.py::test_an_obligation_whose_files_are_untouched_is_not_re_derived
+         19.11  tests/test_rerun.py::test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun
+         19.12  tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived
+
+  20. Two runs over the same obligations and the same changed code reach the same verdicts.
+       requirements: constraint-13
+       code evidence: addressed
+         20.1  tests/evidence/test_discrimination.py#@@ -181,22 +221,163 @@ def test_an_obligation_the_model_omits_is_conservatively_non_discriminating():
+       test evidence: strongly supported  [tier: static]
+         20.2  tests/benchmark/test_instability.py::test_measure_instability_varies_the_seed_across_runs
+         20.3  tests/benchmark/test_instability.py::test_seeds_are_derived_so_a_measurement_is_repeatable_from_its_provenance
+         20.4  tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces
+         20.5  tests/evidence/test_discrimination.py::test_two_runs_over_the_same_obligations_and_code_enumerate_the_same_defects
+         20.6  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         20.7  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+         20.8  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         20.9  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  21. Tests issue no live model calls.
+       requirements: constraint-14
+       code evidence: addressed
+         21.1  tests/benchmark/degenerate_judges.py#@@ -129,7 +129,11 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+         21.2  tests/benchmark/test_coverage.py#@@ -38,6 +38,7 @@ from tests.support import (
+         21.3  tests/benchmark/test_instability.py#@@ -38,12 +38,19 @@ from acceptance.benchmark.instability import (  # noqa: E402
+         21.4  tests/evidence/test_discrimination.py#@@ -3,13 +3,23 @@ under a named plausible defect — a non-discriminating input is judged
+         21.5  tests/test_discrimination_wiring.py#@@ -0,0 +1,200 @@
+       test evidence: strongly supported  [tier: static]
+         21.6  tests/benchmark/test_instability.py::test_no_ci_workflow_invokes_the_instability_harness
+         21.7  tests/benchmark/test_instability.py::test_runs_are_recorded_live_and_never_replayed
+         21.8  tests/benchmark/test_rating_regression.py::test_no_case_issues_a_live_model_call
+         21.9  tests/benchmark/test_rating_regression.py::test_no_provider_is_ever_contacted
+         21.10  tests/evidence/test_discrimination.py::test_no_mapped_tests_makes_no_model_call
+         21.11  tests/test_cli.py::test_retrieval_makes_no_model_call
+         21.12  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         21.13  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+         21.14  tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
+         21.15  tests/test_supplied_ids.py::test_an_unusable_answer_leaves_the_obligation_indeterminate
+         21.16  tests/test_supplied_ids.py::test_scan_finds_ids_that_were_never_supplied
+         21.17  tests/test_supplied_ids.py::test_scan_reports_each_unusable_id_once
+         21.18  tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id
+         21.19  tests/test_supplied_ids.py::test_the_schema_asked_for_differs_from_the_shape_parsed
+
+  22. The change does not alter how a rating is derived from the defect verdicts.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 54 changes across 20 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  23. The change does not alter which tests are mapped to an obligation.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 54 changes across 20 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  24. The change leaves the derivation of an obligation from a requirement out of scope.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 54 changes across 20 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  25. The change leaves reporting a rating that could not be reproduced out of scope.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 54 changes across 20 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  26. The change leaves choosing the number of obligations per call for cost or latency out of scope.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 54 changes across 20 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  27. The change leaves whether a defect verdict is correct about the test it describes out of scope.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 54 changes across 20 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  28. Plausible defects are enumerated for an obligation in one step, and the verdict on each defect is reached in a separate step that covers one obligation at a time.
+       requirements: task-01
+       code evidence: addressed
+         28.1  src/acceptance/evidence/discrimination.py#@@ -19,41 +19,98 @@ would kill, §8.2), so it is a schema-constrained model call through the M0.4
+         28.2  src/acceptance/evidence/discrimination.py#@@ -97,20 +176,49 @@ def _evidence_by_obligation(
+         28.3  src/acceptance/evidence/discrimination.py#@@ -119,27 +227,99 @@ def _render_prompt(
+         28.4  src/acceptance/evidence/discrimination.py#@@ -148,47 +328,106 @@ def judge_discrimination(
+         28.5  src/acceptance/pipeline.py#@@ -280,7 +284,15 @@ def run_review(
+         28.6  tests/test_discrimination_wiring.py#@@ -0,0 +1,200 @@
+       test evidence: strongly supported  [tier: static]
+         28.7  tests/benchmark/test_instability.py::test_run_once_carries_the_defect_verdicts_into_the_snapshot
+         28.8  tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating
+         28.9  tests/evidence/test_discrimination.py::test_enumeration_and_verdict_are_separate_calls
+         28.10  tests/test_discrimination_wiring.py::test_the_pipeline_reaches_its_defect_verdicts_through_the_separated_steps
+
+Mandate coverage: 28 of 29 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: Section marker standing alone with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] The docs/experiments baseline README and JSON add a large amount of narrative and measurement detail beyond the code/test changes needed to split discrimination into enumeration and verdict calls. That documentation content is not required by any listed obligation.
+       docs/experiments/191-discrimination-partition/README.md#@@ -0,0 +1,91 @@
+       docs/experiments/191-discrimination-partition/baseline-instability.json#@@ -462,408 +462,2119 @@
+       docs/DR-180-evidence-judgement-instability.md#@@ -123,8 +123,26 @@ Check the finding on its merits first; attribute to instability only after.
+  2. [separable] The new retake_baseline.py script is an experiment harness and provenance generator, but none of the obligations require adding this standalone script or its specific baseline reproduction workflow.
+       docs/experiments/191-discrimination-partition/retake_baseline.py#@@ -0,0 +1,121 @@
+  3. [separable] The added helper _observed_discriminations and the extra embedding_model forwarding in instability.py are implementation details not demanded by the obligations themselves; they go beyond the required separation of enumeration and verdict steps.
+       src/acceptance/benchmark/instability.py#@@ -60,7 +60,13 @@ from acceptance.benchmark.case import BenchmarkCase
+       src/acceptance/benchmark/instability.py#@@ -257,8 +263,14 @@ class ObservingClient(ModelClient):
+       src/acceptance/benchmark/instability.py#@@ -695,6 +707,65 @@ DEFAULT_PERTURBATION = Perturbation(name="add-unrelated-test", apply=add_unrelat
+       src/acceptance/benchmark/instability.py#@@ -715,6 +786,11 @@ def run_once(
+       src/acceptance/benchmark/instability.py#@@ -722,14 +798,7 @@ def run_once(
+  4. [in_service] Adding defect-enumeration and defect-verdict batch-size configuration knobs changes the public configuration surface and CLI flags, but the obligations only require that verdict calls be bounded/configurable, not that new user-facing flags be introduced here.
+       src/acceptance/cli.py#@@ -26,6 +26,8 @@ from acceptance.config import (
+       src/acceptance/cli.py#@@ -182,6 +184,8 @@ def run_check(
+       src/acceptance/cli.py#@@ -640,6 +644,26 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+       src/acceptance/cli.py#@@ -776,6 +800,8 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/cli.py#@@ -835,6 +861,8 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/cli.py#@@ -875,6 +903,8 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/config.py#@@ -82,6 +82,29 @@ DEFAULT_DECOMPOSE_BATCH_SIZE = 8
+       src/acceptance/config.py#@@ -142,6 +165,11 @@ class RunConfig(BaseModel):
+  5. [in_service] The new documentation and code in discrimination.py introduce a specific two-stage prompt structure, new response models, and batching behavior beyond the minimal requirement to separate enumeration from verdicts; several of these details are not explicitly required by the obligations and alter adjacent behavior such as prompt contents and batching strategy.
+       src/acceptance/evidence/discrimination.py#@@ -19,41 +19,98 @@ would kill, §8.2), so it is a schema-constrained model call through the M0.4
+       src/acceptance/evidence/discrimination.py#@@ -71,19 +128,41 @@ class ObligationDiscrimination(PersistableModel):
+       src/acceptance/evidence/discrimination.py#@@ -97,20 +176,49 @@ def _evidence_by_obligation(
+       src/acceptance/evidence/discrimination.py#@@ -119,27 +227,99 @@ def _render_prompt(
+       src/acceptance/evidence/discrimination.py#@@ -148,47 +328,106 @@ def judge_discrimination(
+  6. [in_service] The pipeline signature now accepts separate enumeration and verdict batch sizes and threads them through run_review. While related to the split, the exact API expansion is not explicitly demanded by the obligations and changes adjacent behavior of the pipeline interface.
+       src/acceptance/pipeline.py#@@ -22,6 +22,8 @@ from pathlib import Path
+       src/acceptance/pipeline.py#@@ -220,6 +222,8 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -280,7 +284,15 @@ def run_review(
+  7. [in_service] The added and edited tests include many specific fixture helpers, assertions, and explanatory comments beyond the obligations' requirement to cover the split and stability properties. Those concrete test contents are not individually required by the listed obligations.
+       tests/benchmark/degenerate_judges.py#@@ -129,7 +129,11 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+       tests/benchmark/degenerate_judges.py#@@ -137,13 +141,7 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+       tests/benchmark/degenerate_judges.py#@@ -151,6 +149,22 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+       tests/benchmark/test_coverage.py#@@ -38,6 +38,7 @@ from tests.support import (
+       tests/benchmark/test_coverage.py#@@ -186,41 +187,18 @@ def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
+       tests/benchmark/test_coverage.py#@@ -643,20 +621,7 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
+       tests/benchmark/test_coverage.py#@@ -785,7 +750,6 @@ def test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo(tmp_path
+       tests/benchmark/test_instability.py#@@ -38,12 +38,19 @@ from acceptance.benchmark.instability import (  # noqa: E402
+       tests/benchmark/test_instability.py#@@ -444,7 +451,8 @@ def _observing_factory(calls):
+       tests/benchmark/test_instability.py#@@ -475,6 +483,129 @@ def _observing_factory(calls):
+       tests/benchmark/test_rating_regression.py#@@ -250,7 +250,11 @@ def test_no_case_issues_a_live_model_call(corpus_worktrees, monkeypatch):
+       tests/evidence/test_discrimination.py#@@ -3,13 +3,23 @@ under a named plausible defect — a non-discriminating input is judged
+       tests/evidence/test_discrimination.py#@@ -18,7 +28,7 @@ from acceptance.review_state import (
+       tests/evidence/test_discrimination.py#@@ -57,10 +67,56 @@ def _change_set() -> ChangeSet:
+       tests/evidence/test_discrimination.py#@@ -76,22 +132,18 @@ def test_non_discriminating_input_is_judged_non_discriminating_with_a_reason():
+       tests/evidence/test_discrimination.py#@@ -107,22 +159,18 @@ def test_a_caught_defect_makes_the_criterion_discriminating():
+       tests/evidence/test_discrimination.py#@@ -130,44 +178,36 @@ def test_a_caught_defect_makes_the_criterion_discriminating():
+       tests/evidence/test_discrimination.py#@@ -181,22 +221,163 @@ def test_an_obligation_the_model_omits_is_conservatively_non_discriminating():
+       tests/support.py#@@ -17,6 +17,7 @@ import tempfile
+       tests/support.py#@@ -121,7 +122,7 @@ def _nest_obligations(response: dict) -> dict:
+       tests/support.py#@@ -402,7 +403,12 @@ _EMPTY_BY_SCHEMA = {
+       tests/support.py#@@ -411,6 +417,42 @@ _EMPTY_BY_SCHEMA = {
+       tests/test_cli.py#@@ -699,7 +699,6 @@ def _gap_client():
+       tests/test_discrimination_wiring.py#@@ -0,0 +1,200 @@
+       tests/test_mandate_coverage_wiring.py#@@ -63,7 +63,6 @@ _JUDGMENTS = {
+       tests/test_rerun.py#@@ -17,6 +17,7 @@ from acceptance.review_state import (
+       tests/test_rerun.py#@@ -421,30 +422,18 @@ _HEAD_JUDGMENTS = {
+       tests/test_rerun.py#@@ -580,7 +569,6 @@ _TWO_FILE_JUDGMENTS = {
+       tests/test_supplied_ids.py#@@ -342,7 +342,6 @@ _JUDGMENTS = {
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
