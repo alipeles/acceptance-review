@@ -29,7 +29,7 @@ import json
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, Sequence, TypeVar
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -122,6 +122,43 @@ def _default_completion_fn(**kwargs: Any) -> Any:
     return litellm.completion(drop_params=True, **kwargs)
 
 
+def _default_embedding_fn(**kwargs: Any) -> Any:
+    """Live embedding call. Imported lazily, exactly like the completion path,
+    so REPLAY still needs neither LiteLLM nor a key.
+
+    No `drop_params`: an embedding request carries no sampling controls for a
+    provider to reject, so there is nothing to drop and nothing to reconcile
+    afterwards.
+    """
+    import litellm
+
+    return litellm.embedding(**kwargs)
+
+
+def _extract_embeddings(response: Any) -> list[list[float]]:
+    """The vectors from a provider reply, in the order their inputs were sent.
+
+    Order is the only thing tying a vector back to its text — an embedding reply
+    carries no ids — so a provider that reordered `data` would silently mislabel
+    every vector. LiteLLM normalises this across providers and preserves input
+    order; `embed` additionally checks the count, which is the one part of that
+    contract a wrong reply could break observably.
+    """
+    try:
+        data = response["data"]
+    except (TypeError, KeyError, IndexError) as exc:
+        raise SchemaValidationError(f"embedding response had no data array: {exc}") from exc
+    vectors: list[list[float]] = []
+    for index, item in enumerate(data):
+        try:
+            vectors.append([float(value) for value in item["embedding"]])
+        except (TypeError, KeyError, ValueError) as exc:
+            raise SchemaValidationError(
+                f"embedding response item {index} had no numeric embedding: {exc}"
+            ) from exc
+    return vectors
+
+
 def _const_to_enum(node: Any) -> Any:
     """Rewrite `{"const": x}` as `{"enum": [x]}`.
 
@@ -133,9 +170,7 @@ def _const_to_enum(node: Any) -> Any:
     case where the constraint quietly stopped binding.
     """
     if isinstance(node, dict):
-        rewritten = {
-            key: _const_to_enum(value) for key, value in node.items() if key != "const"
-        }
+        rewritten = {key: _const_to_enum(value) for key, value in node.items() if key != "const"}
         if "const" in node:
             rewritten["enum"] = [node["const"]]
         return rewritten
@@ -247,6 +282,8 @@ class ModelClient:
         temperature: float = 0.0,
         seed: int | None = None,
         completion_fn: Callable[..., Any] | None = None,
+        embedding_model: str | None = None,
+        embedding_fn: Callable[..., Any] | None = None,
     ) -> None:
         self.model = model
         self.mode = mode
@@ -254,6 +291,13 @@ class ModelClient:
         self.temperature = temperature
         self.seed = seed
         self._completion_fn = completion_fn or _default_completion_fn
+        # A second model, on the same store and the same mode. It is not a
+        # fallback for `model` and never answers a judgment: nothing decides
+        # anything on an embedding, which only narrows which questions get
+        # asked. `None` means this client cannot embed, and `embed` says so
+        # rather than quietly skipping the work.
+        self.embedding_model = embedding_model
+        self._embedding_fn = embedding_fn or _default_embedding_fn
         # One entry per completed call: the controls that call ran under, or
         # None if nothing is known about them. Accumulated so a review's
         # provenance can report the controls actually in force rather than the
@@ -271,12 +315,20 @@ class ModelClient:
         # partitioned twice report `None` — indistinguishable from a run that
         # never partitioned at all.
         self._observed_partitions: list[tuple[str, dict]] = []
+        # One entry per stage that prefiltered its work before asking (#259).
+        # Observed, like the two above, so provenance describes the run that
+        # happened. Recorded even when nothing was excluded: "the filter ran and
+        # dropped none" and "no filter ran" are different claims, and a merge
+        # missing from a filtered run is only attributable if the reader can
+        # tell which of those they are looking at.
+        self._observed_prefilters: list[tuple[str, dict]] = []
 
     def build_request(
         self,
         messages: list[dict],
         response_model: type[BaseModel],
         partition: dict[str, Any] | None = None,
+        stage_controls: dict[str, Any] | None = None,
     ) -> dict:
         """The recorded, hashed description of a call."""
         request: dict[str, Any] = {
@@ -298,6 +350,14 @@ class ModelClient:
             # the model, so recordings made under the old partitioning must be
             # re-verified rather than silently replayed (DR-164).
             request["partition"] = partition
+        if stage_controls is not None:
+            # Same reasoning one step further out. A control that decides which
+            # work reaches the model at all — #259's distance threshold and the
+            # embedding model behind it — changes the answer as surely as the
+            # seed does, but leaves no trace in `messages` when the surviving
+            # batch happens to come out the same. Hashing it keeps a moved
+            # control from replaying as though nothing moved.
+            request["stage_controls"] = stage_controls
         return request
 
     def complete(
@@ -307,6 +367,7 @@ class ModelClient:
         partition: dict[str, Any] | None = None,
         parse_as: type[BaseModel] | None = None,
         stage: str | None = None,
+        stage_controls: dict[str, Any] | None = None,
     ) -> ResponseModelT:
         """Return a validated response, from a live call or a transcript.
 
@@ -321,7 +382,7 @@ class ModelClient:
         `SchemaValidationError` that discards every judgment in the batch. The
         stage then checks the ids itself — see `supplied_ids`.
         """
-        request = self.build_request(messages, response_model, partition)
+        request = self.build_request(messages, response_model, partition, stage_controls)
         key = request_key(request)
         record = self.store.read(key)
 
@@ -354,6 +415,163 @@ class ModelClient:
             # mapping transcript for a label that cannot change an answer.
             self._observed_partitions.append((stage or "unknown", partition))
         return self._validate(record["response"], parse_as or response_model)  # type: ignore[arg-type]
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        """Vectors for `texts`, in order, from a live call or a transcript.
+
+        Recorded and replayed exactly like `complete`, and for the same reason:
+        an embedding is a model call, so leaving it live would put a provider and
+        an API key back into `pytest` and CI, which the replay-first invariant
+        forbids. It shares the store and the mode; only the model differs.
+
+        Deliberately NOT folded into `complete`. That path is built around a
+        response schema — it hashes one, sends one, and validates against one —
+        and an embedding reply has no schema to constrain. Threading a `None`
+        schema through it would make the schema optional everywhere to serve one
+        caller that never wants it.
+
+        The result feeds no judgment (see `embedding_model`), so no determinism
+        control applies here and none is recorded: there is no temperature or
+        seed on an embedding request to honour or drop. What makes a *run*
+        reproducible is the transcript, which is keyed on the model and the exact
+        input list.
+        """
+        if self.embedding_model is None:
+            raise LLMError(
+                "this client has no embedding model configured, so it cannot embed; "
+                "pass embedding_model to ModelClient (RunConfig.embedding_model "
+                "supplies it for a normal run)"
+            )
+        # No call at all for nothing to embed — an empty request is not a
+        # transcript worth keeping, and providers reject it anyway.
+        if not texts:
+            return []
+
+        request = self.build_embedding_request(texts)
+        key = request_key(request)
+        record = self.store.read(key)
+
+        if record is None:
+            if self.mode is Mode.REPLAY:
+                raise TranscriptNotFoundError(
+                    f"no recorded transcript for embedding request {key} "
+                    f"(embedding_model={self.embedding_model}, {len(texts)} inputs); "
+                    "REPLAY mode does not fall back to a live call.\n"
+                    "\n"
+                    "The key hashes the exact input list, so this is expected "
+                    "whenever the text being embedded changes — including when an "
+                    "upstream stage rewords the obligations feeding it. Re-record "
+                    "with --mode record."
+                )
+            record = self._persist_live_embedding(key, request)
+
+        return self._validate_embeddings(record["response"], len(texts))
+
+    def build_embedding_request(self, texts: Sequence[str]) -> dict:
+        """The recorded, hashed description of an embedding call.
+
+        `kind` is explicit so an embedding request can never collide with a
+        completion one in the content-addressed store, and so a transcript says
+        what it is without the reader inferring it from which fields are absent.
+        """
+        return {
+            "kind": "embedding",
+            "model": self.embedding_model,
+            "input": list(texts),
+        }
+
+    def observe_prefilter(self, stage: str, record: dict[str, Any]) -> None:
+        """Record that a stage narrowed its own work before asking (#259).
+
+        Reported by the stage rather than derived here, because the harness
+        cannot see it: the questions the filter removed were never asked, so from
+        the client's side a filtered run and an unfiltered one are the same run
+        with fewer calls. Provenance would otherwise have no way to say that a
+        merge was never considered — see `prefilter_in_force`.
+        """
+        self._observed_prefilters.append((stage, dict(record)))
+
+    @property
+    def prefilter_in_force(self) -> dict[str, Any] | None:
+        """The prefilter a stage applied, or `None` if none did.
+
+        `None` is the positive claim that every candidate was asked about. A
+        stage that filtered and excluded nothing still reports a record, so the
+        two stay distinguishable — the whole point is that a missing merge is
+        attributable to the filter rather than invisible.
+
+        Only one stage prefilters today. Two stages reporting different records
+        would need a per-stage mapping, as `partition_sizes_in_force` already
+        has; until then a second reporter is an error rather than a silent
+        last-one-wins.
+        """
+        if not self._observed_prefilters:
+            return None
+        stages = {stage for stage, _ in self._observed_prefilters}
+        if len(stages) > 1:
+            raise LLMError(
+                f"more than one stage reported a prefilter ({sorted(stages)}); "
+                "prefilter_in_force reports a single stage and needs to become "
+                "per-stage before a second one is added"
+            )
+        merged: dict[str, Any] = {}
+        for _, record in self._observed_prefilters:
+            for name, value in record.items():
+                # Counts accumulate across calls; the controls behind them must
+                # agree, exactly as `controls_in_force` requires.
+                if isinstance(value, int) and not isinstance(value, bool):
+                    merged[name] = merged.get(name, 0) + value
+                else:
+                    merged[name] = value
+        return merged
+
+    def _persist_live_embedding(self, key: str, request: dict) -> dict:
+        """Call, validate, and only then keep — same order as `_persist_live_call`,
+        and for the same reason: a reply the harness rejects is not evidence, and
+        persisting first would let replay serve it forever (#160)."""
+        response = self._embedding_fn(
+            model=request["model"],
+            input=request["input"],
+        )
+        record = {
+            "request": request,
+            "response": _extract_embeddings(response),
+            "usage": _extract_usage(response),
+        }
+        self._validate_embeddings(record["response"], len(request["input"]))
+        self.store.write(key, record)
+        return record
+
+    @staticmethod
+    def _validate_embeddings(vectors: Any, expected: int) -> list[list[float]]:
+        """One vector per input, all the same width, all numeric.
+
+        Checked on the replay path too, not only when recording. A transcript is
+        a file on disk that a person can edit and that an older version of this
+        code may have written, so trusting its shape because it was validated
+        once is trusting the wrong thing.
+        """
+        if not isinstance(vectors, list) or len(vectors) != expected:
+            raise SchemaValidationError(
+                f"embedding response held {len(vectors) if isinstance(vectors, list) else '?'} "
+                f"vectors for {expected} inputs; a vector is matched to its text by "
+                "position, so a count mismatch makes every pairing unsafe"
+            )
+        widths = set()
+        for index, vector in enumerate(vectors):
+            if not isinstance(vector, list) or not vector:
+                raise SchemaValidationError(f"embedding {index} is not a non-empty vector")
+            if not all(
+                isinstance(value, (int, float)) and not isinstance(value, bool) for value in vector
+            ):
+                raise SchemaValidationError(f"embedding {index} holds a non-numeric component")
+            widths.add(len(vector))
+        if len(widths) > 1:
+            raise SchemaValidationError(
+                f"embedding response mixes vector widths {sorted(widths)}; "
+                "distances between them would be meaningless"
+            )
+        return vectors
 
     @property
     def controls_in_force(self) -> dict[str, Any] | None:
@@ -398,9 +616,7 @@ class ModelClient:
             if len(sizes) == 1 and isinstance(next(iter(sizes)), int)
         }
 
-    def _persist_live_call(
-        self, key: str, request: dict, response_model: type[BaseModel]
-    ) -> dict:
+    def _persist_live_call(self, key: str, request: dict, response_model: type[BaseModel]) -> dict:
         """Make the call, validate the reply, and only then keep the transcript.
 
         Validating first matters because structured output is best-effort on some

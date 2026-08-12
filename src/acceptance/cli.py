@@ -24,6 +24,8 @@ from pathlib import Path
 from acceptance.change.diff import extract_change_set, extract_working_tree_change_set
 from acceptance.config import (
     DEFAULT_DECOMPOSE_BATCH_SIZE,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_LINK_DISTANCE_THRESHOLD,
     DEFAULT_MAPPING_BATCH_SIZE,
     DEFAULT_MODEL,
     DEFAULT_SEED,
@@ -177,6 +179,7 @@ def run_check(
         mapping_batch_size=config.mapping_batch_size,
         decompose_batch_size=config.decompose_batch_size,
         link_pair_batch_size=config.link_pair_batch_size,
+        link_distance_threshold=config.link_distance_threshold,
         task_identifier=task,
         prior=prior,
     )
@@ -230,7 +233,11 @@ def run_decompose(task: str, config: RunConfig) -> tuple[Decomposition, Unusable
     # obligation set from the one `check` reviews, so the Gate 1 breakdown a
     # reader confirms would not be the set every later stage judges.
     linked = link_duplicate_obligations(
-        derived, client, unusable, pair_batch_size=config.link_pair_batch_size
+        derived,
+        client,
+        unusable,
+        pair_batch_size=config.link_pair_batch_size,
+        distance_threshold=config.link_distance_threshold,
     )
     return linked, unusable
 
@@ -503,6 +510,7 @@ def run_classify(
         decompose(parsed, client, batch_size=config.decompose_batch_size),
         client,
         pair_batch_size=config.link_pair_batch_size,
+        distance_threshold=config.link_distance_threshold,
     )
     obligations = decomposition.obligations
 
@@ -628,6 +636,27 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
             "decompose transcripts."
         ),
     )
+    parser.add_argument(
+        "--embedding-model",
+        default=DEFAULT_EMBEDDING_MODEL,
+        help=(
+            "Model used to embed obligations for the linking prefilter "
+            f"(determinism; default: {DEFAULT_EMBEDDING_MODEL}). Changing it "
+            "invalidates recorded linking transcripts, and the distance "
+            "threshold is calibrated to it."
+        ),
+    )
+    parser.add_argument(
+        "--link-distance-threshold",
+        type=float,
+        default=DEFAULT_LINK_DISTANCE_THRESHOLD,
+        help=(
+            "Cosine distance above which an obligation pair is not asked "
+            f"about (determinism; default: {DEFAULT_LINK_DISTANCE_THRESHOLD}). "
+            "Changing it invalidates recorded linking transcripts. Use 2.0 to "
+            "ask about every pair."
+        ),
+    )
 
 
 def _seed_from(args: argparse.Namespace) -> int | None:
@@ -743,6 +772,8 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
             decompose_batch_size=args.decompose_batch_size,
+            embedding_model=args.embedding_model,
+            link_distance_threshold=args.link_distance_threshold,
         )
         try:
             review = run_check(
@@ -795,6 +826,8 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
             decompose_batch_size=args.decompose_batch_size,
+            embedding_model=args.embedding_model,
+            link_distance_threshold=args.link_distance_threshold,
         )
         try:
             result, unusable = run_decompose(args.task, config)
@@ -833,6 +866,8 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
             decompose_batch_size=args.decompose_batch_size,
+            embedding_model=args.embedding_model,
+            link_distance_threshold=args.link_distance_threshold,
         )
         try:
             obligations, open_questions, coverages, dispositioned = run_classify(

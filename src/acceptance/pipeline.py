@@ -22,6 +22,7 @@ from pathlib import Path
 
 from acceptance.config import (
     DEFAULT_DECOMPOSE_BATCH_SIZE,
+    DEFAULT_LINK_DISTANCE_THRESHOLD,
     DEFAULT_LINK_PAIR_BATCH_SIZE,
     DEFAULT_MAPPING_BATCH_SIZE,
     ScopeExpansionPolicy,
@@ -219,6 +220,7 @@ def run_review(
     mapping_batch_size: int = DEFAULT_MAPPING_BATCH_SIZE,
     decompose_batch_size: int = DEFAULT_DECOMPOSE_BATCH_SIZE,
     link_pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
+    link_distance_threshold: float | None = DEFAULT_LINK_DISTANCE_THRESHOLD,
     task_identifier: str = "<inline>",
     prior: Review | None = None,
 ) -> Review:
@@ -245,7 +247,9 @@ def run_review(
     # both requirements. `derived` is kept, not discarded — it is persisted as
     # provenance so a movement in the final set can be attributed to the stage
     # that caused it.
-    decomposition = link_duplicate_obligations(derived, client, unusable, link_pair_batch_size)
+    decomposition = link_duplicate_obligations(
+        derived, client, unusable, link_pair_batch_size, link_distance_threshold
+    )
 
     # Open-question resolution runs HERE, ahead of every judging stage, because
     # a question the diff resolves yields an obligation (#214) and that

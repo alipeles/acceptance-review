@@ -33,13 +33,14 @@ import tempfile
 from typing import Any
 
 from acceptance.benchmark.case import GroundTruthLabels
-from acceptance.config import DEFAULT_MODEL
+from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from tests.support import (
     _EMPTY_BY_SCHEMA,
     _fake_response,
     _nest_obligations,
     _supplied_enum,
+    constant_embedding_fn,
 )
 
 # Obligations the permissive decomposer adds on top of a faithful set, standing
@@ -209,4 +210,9 @@ def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
         store=TranscriptStore(tempfile.mkdtemp()),
         temperature=0.0,
         completion_fn=completion_fn,
+        # As in `degenerate_judges`: the pipeline embeds before linking
+        # (#259), and neutral vectors keep the degenerate DECOMPOSER the
+        # only variable.
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
+        embedding_fn=constant_embedding_fn,
     )

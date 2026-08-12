@@ -35,9 +35,14 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from acceptance.config import DEFAULT_MODEL
+from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
-from tests.support import _EMPTY_BY_SCHEMA, _completed, _fake_response
+from tests.support import (
+    _EMPTY_BY_SCHEMA,
+    _completed,
+    _fake_response,
+    constant_embedding_fn,
+)
 
 import tempfile
 
@@ -161,4 +166,10 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
         store=TranscriptStore(tempfile.mkdtemp()),
         temperature=0.0,
         completion_fn=completion_fn,
+        # Linking prefilters before it asks (#259), so a client driving the
+        # full pipeline has to be able to embed. Neutral vectors, for the
+        # reason `constant_embedding_fn` gives: a degenerate JUDGE is the
+        # variable here, and the prefilter must not become a second one.
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
+        embedding_fn=constant_embedding_fn,
     )

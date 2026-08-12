@@ -704,6 +704,33 @@ class DeterminismControls(_Model):
     seed: int | None = None
 
 
+class LinkPrefilter(_Model):
+    """What a stage excluded from its own work before asking the model (#259).
+
+    Stored because the exclusion is otherwise undetectable. A question that was
+    never asked leaves no verdict, no unusable answer and no unreconciled
+    cluster — so a duplicate the prefilter dropped is indistinguishable from a
+    duplicate that does not exist, unless the run says how many it dropped and
+    under what threshold. That is the difference between a missed merge being
+    *attributable* and being invisible, and it is the reason DR-259 made
+    recording part of the deliverable rather than a nicety.
+
+    `pairs_excluded == 0` is a real and useful value: it says the filter ran and
+    removed nothing, which is a different claim from the filter not running —
+    the latter is `ReviewProvenance.link_prefilter is None`.
+    """
+
+    # The controls that produced the exclusion, carried alongside the count so a
+    # reader can reproduce it without consulting configuration that may since
+    # have changed.
+    distance_threshold: float
+    embedding_model: str
+    # Candidates the stage would have asked about had it not prefiltered — after
+    # any other admissibility rule, so this is what the threshold alone acted on.
+    pairs_considered: int
+    pairs_excluded: int
+
+
 class ReviewProvenance(_Model):
     """How a review was produced (§13.6 trustworthiness). Stored so a reader
     can tell what determinism controls were in force — a fixed-seed replay is
@@ -738,6 +765,10 @@ class ReviewProvenance(_Model):
     # EMPTY mapping is that claim, and a stage is absent when its own calls
     # disagreed.
     request_partition_sizes: dict[str, int] = Field(default_factory=dict)
+    # What obligation linking declined to ask about, and why (#259). `None` is
+    # the positive claim that every admissible pair was asked — see
+    # `LinkPrefilter` for why the zero case is not the same thing.
+    link_prefilter: LinkPrefilter | None = None
 
     def determinism(self) -> Literal["pinned", "unpinned", "indeterminate"]:
         """Whether this run is reproducible, derived rather than stored.

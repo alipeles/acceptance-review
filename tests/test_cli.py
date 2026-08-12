@@ -98,6 +98,11 @@ def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_pa
         # at different scale (#204); an EMPTY mapping is the "unpartitioned
         # run" claim, not a null.
         "request_partition_sizes": {"decompose": DEFAULT_DECOMPOSE_BATCH_SIZE},
+        # None, not a zero-valued record: this stub finds no obligations at
+        # all, so linking returns before it prefilters anything and the honest
+        # claim is that no filter ran (#259). A run that filtered and excluded
+        # nothing reports `pairs_excluded: 0` instead — see LinkPrefilter.
+        "link_prefilter": None,
     }
 
 

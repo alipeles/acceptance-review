@@ -22,7 +22,7 @@ from typing import Any, Callable
 from pydantic import BaseModel, ConfigDict, Field
 
 from acceptance.llm import DEFAULT_TRANSCRIPT_ROOT, Mode, ModelClient, TranscriptStore
-from acceptance.review_state import DeterminismControls, ReviewProvenance
+from acceptance.review_state import DeterminismControls, LinkPrefilter, ReviewProvenance
 
 # LiteLLM model string. Provider-agnostic: swap freely via --model / RunConfig.
 DEFAULT_MODEL = "openai/gpt-5.4-mini"
@@ -82,6 +82,30 @@ DEFAULT_DECOMPOSE_BATCH_SIZE = 8
 # obligation, and a derivation item enumerates, types and quotes.
 DEFAULT_LINK_PAIR_BATCH_SIZE = 25
 
+# The model that embeds obligations for #259's linking prefilter. Separate from
+# DEFAULT_MODEL: nothing is judged on an embedding, so the two are chosen on
+# different grounds and swapped independently.
+DEFAULT_EMBEDDING_MODEL = "voyage/voyage-3.5-lite"
+
+# Cosine distance above which an obligation pair is not asked about (#259,
+# DR-259). A determinism control in the seed's sense — it decides which
+# questions reach the model — so changing it, or the embedding model, invalidates
+# recorded linking transcripts.
+#
+# **Scale-specific to the embedding model above.** A different one needs
+# recalibration, not this number.
+#
+# 0.10 is the under-merging side of a real trade, not a clean separator. On
+# DR-259's calibration sample it kept 20/20 genuine merges and dropped 10/10
+# spurious ones; on a held-out task file it kept 11 of 12, missing a genuine
+# merge at 0.2257 where the two obligations paraphrased each other across levels
+# of abstraction. No threshold does both — the nearest spurious merge sits at
+# 0.116, below that — so this errs the way `linking.py` already errs: a missed
+# merge leaves a redundant obligation the reader can see, while a spurious merge
+# destroys a requirement silently. #211's link-precision measure is how the
+# number gets settled properly.
+DEFAULT_LINK_DISTANCE_THRESHOLD = 0.10
+
 
 class ScopeExpansionPolicy(str, Enum):
     """How tolerant the review is of changes beyond the mandate (DR-081
@@ -118,6 +142,14 @@ class RunConfig(BaseModel):
     # And for obligation linking (#144), whose unit is a PAIR of obligations
     # rather than an obligation — see the constant's note.
     link_pair_batch_size: int = Field(default=DEFAULT_LINK_PAIR_BATCH_SIZE, ge=1)
+    # #259's prefilter. Both are determinism controls that reach the linking
+    # stage through the pipeline, like the batch sizes above, and both are
+    # hashed into the linking request so a change invalidates its transcripts.
+    embedding_model: str = DEFAULT_EMBEDDING_MODEL
+    # Bounded by the range of cosine distance itself. 0 asks nothing; 2 asks
+    # every pair and is the honest way to turn the prefilter off, which is why
+    # it is not a separate boolean.
+    link_distance_threshold: float = Field(default=DEFAULT_LINK_DISTANCE_THRESHOLD, ge=0.0, le=2.0)
     # A review-interpretation knob (consumed by the M3.5.3 separability
     # classifier), not a determinism control — so it deliberately does not
     # feed build_client() or provenance_for(). If we later want it recorded for
@@ -132,6 +164,7 @@ class RunConfig(BaseModel):
             temperature=self.temperature,
             seed=self.seed,
             completion_fn=completion_fn,
+            embedding_model=self.embedding_model,
         )
 
 
@@ -148,10 +181,12 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
     it recorded or replayed, so a replay run stays free of the provider stack.
     """
     in_force = client.controls_in_force
+    prefilter = client.prefilter_in_force
     return ReviewProvenance(
         determinism_mode=client.mode.value,
         model=client.model,
         controls_requested=DeterminismControls(temperature=client.temperature, seed=client.seed),
         controls_in_force=(None if in_force is None else DeterminismControls(**in_force)),
         request_partition_sizes=client.partition_sizes_in_force,
+        link_prefilter=(None if prefilter is None else LinkPrefilter(**prefilter)),
     )

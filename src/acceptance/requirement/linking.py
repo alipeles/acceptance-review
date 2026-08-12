@@ -27,9 +27,25 @@ requests (DR-164), and this one must not. The judgement is inherently pairwise
 over the whole set, so a batch boundary decides which obligations *can* be
 compared at all: a duplicate pair split across two batches is invisible to both
 calls and silently under-merged. That failure looks exactly like the bias working
-as intended, so it would never surface. If the obligation count later forces
-partitioning, #211's link-precision measure needs to exist first, so the loss is
-measured rather than assumed small.
+as intended, so it would never surface.
+
+**But the sweep is no longer complete, and that is a real cost (#259, DR-259).**
+Pairs whose obligations are too far apart in embedding space are dropped before
+any call, so a duplicate can now be missed the way a partitioned one would be.
+This paragraph used to say that #211's link-precision measure had to exist first
+so the loss would be measured rather than assumed small; it does not exist, and
+the trade was made anyway on DR-259's evidence. Two things keep that honest:
+
+- The threshold errs *low*, toward asking too few — the same under-merging bias
+  stated above, for the same reason. On a held-out task file the default missed
+  one genuine merge in twelve. It is not a clean separator and the DR no longer
+  claims it is.
+- **Every dropped pair is counted and the count reaches review state**
+  (`LinkPrefilter`), because a question never asked leaves no other trace. A
+  missed merge has to be attributable to the filter rather than invisible.
+
+#211 remains how the number gets settled; it is now load-bearing rather than
+nice-to-have.
 
 The canonical obligation of a cluster is chosen **here, by derivation order**,
 not taken from the model's answer. Two runs that agree on which obligations are
@@ -39,6 +55,7 @@ model's judgement rather than of how it happened to order a response.
 
 from __future__ import annotations
 
+import math
 from typing import Sequence
 
 from acceptance.config import DEFAULT_LINK_PAIR_BATCH_SIZE
@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
     return (left.type is ObligationType.TEST_DEMAND) == (right.type is ObligationType.TEST_DEMAND)
 
 
+def embedding_text(obligation: Obligation) -> str:
+    """What gets embedded for an obligation, for #259's distance prefilter.
+
+    `description` and `observable_behavior` joined by a single space, because
+    that is exactly what DR-259 measured. **The threshold is calibrated against
+    this string**, so changing what goes into it — adding the type, dropping the
+    behavior — moves every distance and silently invalidates the default without
+    changing it. Change this and recalibrate, or do not change it.
+    """
+    return f"{obligation.description} {obligation.observable_behavior}".strip()
+
+
+def cosine_distance(left: Sequence[float], right: Sequence[float]) -> float:
+    """1 - cosine similarity, in [0, 2].
+
+    Raw, with no normalisation against either endpoint's neighbourhood. DR-259
+    measured z-score, CSLS and mutual-rank corrections for hub effects and all
+    three performed worse, because the obligations that attract spurious merges
+    are not the ones that are geometrically central — so normalising by
+    centrality adds noise and removes almost no bias.
+    """
+    dot = sum(x * y for x, y in zip(left, right))
+    left_norm = math.sqrt(sum(x * x for x in left))
+    right_norm = math.sqrt(sum(y * y for y in right))
+    if left_norm == 0.0 or right_norm == 0.0:
+        # A zero vector has no direction, so it has no distance to anything.
+        # Treat it as maximally far rather than dividing by zero: the pair is
+        # dropped, which is the under-merging direction this module errs in.
+        return 2.0
+    return 1.0 - dot / (left_norm * right_norm)
+
+
 def _pairs(
-    ordered_ids: list[str], by_id: dict[str, Obligation] | None = None
+    ordered_ids: list[str],
+    by_id: dict[str, Obligation] | None = None,
+    vectors: dict[str, Sequence[float]] | None = None,
+    distance_threshold: float | None = None,
 ) -> list[tuple[str, str, str]]:
     """Every unordered pair that could state one requirement, with a stable id,
     in derivation order.
 
-    Quadratic and deliberately so. Every pair is asked, which is what makes the
-    sweep complete — no duplicate can be invisible the way it would be if the
-    obligations themselves were partitioned — and what makes an inconsistent
-    answer detectable. Inferring a pair from two others would assume the model's
-    judgments are consistent, and destroy the evidence that they are not.
+    Quadratic in the pairs it *considers* — the enumeration is complete, so a
+    pair id names the same pair however the gates below fall — but the pairs it
+    returns are filtered by two independent, composable rules. A pair excluded by
+    either is not asked:
+
+    - `by_id` enables the **type gate**: one obligation demanding a test and the
+      other demanding a behavior can never be the same requirement (#232).
+    - `vectors` and `distance_threshold` enable the **distance prefilter**: pairs
+      farther apart than the threshold are not asked (#259).
+
+    Both are optional and default off, so a caller that wants the complete sweep
+    gets it. `link_duplicate_obligations` is where the product's defaults are
+    applied.
     """
     # Ordered by the DISTANCE between the two obligations, not by the first of
     # them: (0,1),(1,2),(2,3)… then (0,2),(1,3)… and so on.
@@ -185,15 +245,45 @@ def _pairs(
     ordered = [
         (left, left + distance) for distance in range(1, count) for left in range(count - distance)
     ]
+
+    def admissible(left: int, right: int) -> bool:
+        left_id, right_id = ordered_ids[left], ordered_ids[right]
+        if by_id is not None and not _can_state_one_requirement(by_id[left_id], by_id[right_id]):
+            return False
+        if vectors is None or distance_threshold is None:
+            return True
+        # A pair missing a vector is asked rather than dropped. Silently
+        # excluding it would let an embedding failure quietly shrink the sweep,
+        # which is the one outcome this filter's accounting exists to prevent.
+        if left_id not in vectors or right_id not in vectors:
+            return True
+        return cosine_distance(vectors[left_id], vectors[right_id]) <= distance_threshold
+
     # Numbered before filtering, so a pair id names the same pair whether or not
     # its neighbours were skipped. Ids that are stable under an unrelated
     # obligation's type changing is worth more than ids without gaps.
     return [
         (f"pair-{index:04d}", ordered_ids[left], ordered_ids[right])
         for index, (left, right) in enumerate(ordered)
-        if by_id is None
-        or _can_state_one_requirement(by_id[ordered_ids[left]], by_id[ordered_ids[right]])
+        if admissible(left, right)
     ]
+
+
+def _embed(obligations: Sequence[Obligation], client: ModelClient) -> dict[str, Sequence[float]]:
+    """One embedding call for the whole obligation set, keyed back by id.
+
+    A single call rather than one per obligation: the vectors are only ever
+    compared with each other, and batching keeps that comparison inside one
+    recorded request instead of scattering it across N transcripts that would
+    each have to be present for a replay to work.
+
+    Order is the contract — the provider returns vectors positionally — so the
+    inputs are built from `obligations` once and zipped straight back onto the
+    same sequence.
+    """
+    texts = [embedding_text(obligation) for obligation in obligations]
+    vectors = client.embed(texts)
+    return {obligation.id: vector for obligation, vector in zip(obligations, vectors)}
 
 
 def _user_prompt(decomposition: Decomposition, batch: Sequence[tuple[str, str, str]]) -> str:
@@ -341,12 +431,18 @@ def link_duplicate_obligations(
     client: ModelClient,
     unusable_answers: UnusableAnswerLog | None = None,
     pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
+    distance_threshold: float | None = None,
 ) -> Decomposition:
     """Link the obligations that state the same requirement.
 
-    Sweeps every pair, in batches, and merges only cliques the model confirmed
-    outright. Returns the input unchanged when there is nothing to compare —
-    fewer than two obligations means no call is made at all.
+    Sweeps the admissible pairs, in batches, and merges only cliques the model
+    confirmed outright. Returns the input unchanged when there is nothing to
+    compare — fewer than two obligations means no call is made at all.
+
+    `distance_threshold` turns on #259's prefilter and defaults to **off**, so
+    calling this directly gives the complete sweep. The product default lives in
+    `RunConfig.link_distance_threshold` and reaches here through the pipeline,
+    the same way the batch sizes do.
     """
     obligations = decomposition.obligations
     if len(obligations) < 2:
@@ -356,7 +452,31 @@ def link_duplicate_obligations(
     by_id = {obligation.id: obligation for obligation in obligations}
     confirmed: set[frozenset[str]] = set()
 
-    askable = _pairs(ordered_ids, by_id)
+    # The type gate alone, which is what the threshold then acts on. Computed
+    # even when not prefiltering, because it is the denominator that makes
+    # `pairs_excluded` mean "excluded by DISTANCE" rather than "excluded by
+    # either rule" — two different numbers that would otherwise be conflated.
+    admissible = _pairs(ordered_ids, by_id)
+    askable = admissible
+    stage_controls: dict[str, object] | None = None
+
+    if distance_threshold is not None and admissible:
+        vectors = _embed(obligations, client)
+        askable = _pairs(ordered_ids, by_id, vectors, distance_threshold)
+        stage_controls = {
+            "distance_threshold": distance_threshold,
+            "embedding_model": client.embedding_model,
+        }
+        client.observe_prefilter(
+            _STAGE,
+            {
+                "distance_threshold": distance_threshold,
+                "embedding_model": client.embedding_model,
+                "pairs_considered": len(admissible),
+                "pairs_excluded": len(admissible) - len(askable),
+            },
+        )
+
     if not askable:
         return decomposition
 
@@ -372,6 +492,7 @@ def link_duplicate_obligations(
             batch.request_partition(),
             parse_as=_Verdicts,
             stage=_STAGE,
+            stage_controls=stage_controls,
         )
         if unusable_answers is not None:
             unusable_answers.record(scan(result, allowed, _STAGE))
