@@ -36,6 +36,107 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-12] #189's harness duplicates the client contract in two places, and both had silently drifted
+- **Kind:** filing (new issue, child of #186)
+- **Found during:** #191, taking the pre-change baseline
+- **Where:** `src/acceptance/benchmark/instability.py` — `run_once` (client
+  construction) and `ObservingClient.complete` (method signature)
+- **Severity:** blocker — #191's Acceptance requires the harness to run
+- **What's wrong:** the harness restates `ModelClient`'s contract in two places
+  instead of delegating, and #259 broke **both**. Neither failed at import, at
+  lint, or in #189's own 42 tests; both failed on the first genuine run, one
+  after the other:
+
+  1. `run_once` builds `ObservingClient(...)` field by field with five of the
+     parameters `RunConfig.build_client()` passes. #259 added `embedding_model`
+     to the factory, the hand-rolled copy never got it →
+     `LLMError: this client has no embedding model configured` at
+     `linking.py:285`.
+  2. `ObservingClient.complete` pins the parameter list positionally. #259 added
+     `stage_controls` → `TypeError: ObservingClient.complete() got an unexpected
+     keyword argument 'stage_controls'`.
+
+  The class docstring already claims *"Delegation happens through
+  `super().complete`, so recording, replay, request keying and determinism
+  controls are untouched."* That claim was false for any parameter added after
+  #189 closed.
+
+  **Nothing caught it because nothing ever ran it.** #189's tests all inject a
+  `client_factory`, so the default construction is never exercised, and **no
+  baseline was ever recorded from #189** — so the harness sat broken from #259
+  merging until #191 asked it for a number.
+- **Why I didn't act *fully*:** two unblocking commits are on
+  `191-partition-discrimination` (`24b3ea3`, and the `*args/**kwargs` forwarding
+  fix) because #191's Acceptance is unreachable without them (*Working
+  agreement* §4 exception). The **missing test** is the real fix and belongs to
+  #186.
+- **Drafted fix:** file as a child of #186, `bug` / `track:benchmark`:
+
+  > **Title:** The instability harness restates the client contract in two places, and both drifted silently
+  >
+  > `benchmark/instability.py` duplicates `ModelClient`'s contract twice rather
+  > than delegating. #259 broke both, and both stayed broken and invisible until
+  > #191 took the first real baseline:
+  >
+  > | site | what it duplicates | what #259 added | symptom |
+  > |---|---|---|---|
+  > | `run_once` | `RunConfig.build_client()`'s parameter set | `embedding_model` | `LLMError: this client has no embedding model configured` |
+  > | `ObservingClient.complete` | `ModelClient.complete`'s signature | `stage_controls` | `TypeError: unexpected keyword argument 'stage_controls'` |
+  >
+  > The class docstring asserts that delegation leaves recording, replay, request
+  > keying and determinism controls untouched. Positionally pinning the signature
+  > makes that false for every parameter added afterwards — the second failure is
+  > the docstring's own claim being violated by the code beneath it.
+  >
+  > **The fix that matters is the missing test.** #189's 42 tests all inject a
+  > `client_factory`, so the default construction path — the one every real
+  > caller takes — is never exercised. This is exactly the shape CLAUDE.md warns
+  > about: *a helper with a good unit test that the pipeline never actually
+  > calls.* A test must run the harness through its default construction, over a
+  > tiny recorded case, and fail if the pipeline's client gains a parameter the
+  > harness does not pass.
+  >
+  > Worth recording as evidence for #253 (determinism as one owned component):
+  > this is the fifth place holding part of the client contract, and the two that
+  > drifted were both copies.
+  >
+  > The unblocking commits are on `191-partition-discrimination`; this issue is
+  > the test that would have caught it.
+  >
+  > ## Third instance, and the one that matters most
+  >
+  > With the two crashes fixed, the run completes — and reports
+  > **`defect_verdict_distribution` = 0 across all three runs.** The defect-verdict
+  > axis, which is the axis #189 was built for and the only axis #191 can move,
+  > measured nothing.
+  >
+  > This is not an empty case. `run_once` collects:
+  >
+  > ```python
+  > discriminations = [
+  >     item
+  >     for observed in client.observed
+  >     if isinstance(observed, list)
+  >     for item in observed
+  >     if isinstance(item, ObligationDiscrimination)
+  > ]
+  > ```
+  >
+  > but `judge_discrimination` constructs its `ObligationDiscrimination` objects
+  > **after** `client.complete` returns — the client only ever observes the
+  > `_Discrimination` schema object. The filter cannot match, for any input. Both
+  > halves are in the repo today; this is a code-level certainty, corroborated by
+  > the measured zero rather than inferred from it.
+  >
+  > So the harness has **never** measured defect verdicts, and #189 closed
+  > without anyone noticing because no baseline was ever taken.
+  >
+  > **This blocks #191**, whose Acceptance requires the harness to report lower
+  > resample variance than a pre-change baseline. There is no such baseline on the
+  > discrimination axis until this is fixed, and #191 must not be judged against
+  > a number the instrument cannot produce.
+- **Status:** open — **now a blocker for #191, not a side note**
+
 ### [2026-08-12] A one-sided requirement is derived as a two-sided one — "does not reduce" became "preserves the number"
 - **Kind:** filing (new issue, child of #181)
 - **Found during:** #191, Gate 1
@@ -84,7 +185,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > The remaining 27 obligations in this run are faithful, and the run is
   > otherwise the cleanest in the logs — 1:1, no composites, no open questions —
   > so this is a narrow defect, not a symptom of a bad run.
-- **Status:** filed (#262, child of #181)
+- **Status:** open
 
 ### [2026-08-12] Structurally identical scope exclusions get two different obligation types in one run
 - **Kind:** filing (comment on existing issue #205)
@@ -120,7 +221,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > typing in a pass of its own: as long as the type is emitted alongside the
   > restatement, it is a function of the sentence that came out rather than of the
   > requirement that went in.
-- **Status:** filed (#205 comment)
+- **Status:** open
 
 ### [2026-08-12] #245: one test cited for two obligations and withheld from a third, in the same run
 - **Kind:** filing (comment on existing issue #245)

@@ -15,30 +15,134 @@ rather than letting it accrete.
 
 ## Task in flight: #191 — partition discrimination, split enumeration from verdict
 
-**Gate 1 passed at `4e6c9af`, agent-confirmed, awaiting human confirmation.**
-Log: `dogfood-logs/191-gate1-run1/`. 29 requirements → 28 obligations, 1:1, no
+Branch **`191-partition-discrimination`**, cut from `main` at `e668eba`.
+
+**Gate 1 passed and human-confirmed** at `4e6c9af`. Log:
+`dogfood-logs/191-gate1-run1/`. 29 requirements → 28 obligations, 1:1, no
 composites, no spurious links, **no open questions**, no unreconciled cluster —
-the cleanest Gate 1 in the logs. One drift (`constraint-11`: "does not reduce"
-derived as "preserves the number") and one type inconsistency, both queued.
+the cleanest Gate 1 in the logs.
 
-**Zero open questions is not confirmed, only observed.** #193 says membership
-oscillates; a second `--mode record` run would replay by construction and prove
-nothing. Distinguishing needs #189's harness with determinism off. Recorded as
-unresolved.
+Zero open questions is **observed, not confirmed**: #193 says membership
+oscillates, and a second `--mode record` run would replay by construction and
+prove nothing. Distinguishing needs #189's harness with determinism off.
 
-## Three sessions running in parallel
+**Nothing of the implementation is written yet.** The branch holds one commit,
+and it is not the delivery — see *Baselines* below.
 
-Checked for collisions, not assumed. `discrimination.py` and `strength.py` are
-format-clean and lint-clean, so #191 does not collide with the reformat.
+## Next action — a decision, not code
 
-| session | issue | collision risk |
+**#191 is blocked on its own instrument.** Do not start implementing until this
+is settled; the Acceptance cannot be evaluated as written.
+
+Taking the baseline uncovered three drifts in #189's harness, all from #259, all
+invisible until the first genuine run. Two are fixed on the branch. The third is
+not fixable in passing:
+
+**`defect_verdict_distribution` = 0 across all three runs.** `run_once` filters
+`client.observed` for `list[ObligationDiscrimination]`, but `judge_discrimination`
+builds those objects *after* `client.complete` returns — the client only ever sees
+the `_Discrimination` schema object, so the filter cannot match for any input.
+**The harness has never measured the defect-verdict axis**, which is the only axis
+#191 moves.
+
+The options, for the human:
+
+1. **Fix the harness first** (drafted for #186 in `DEFERRED.md`), take a real
+   baseline, then implement #191. Correct, and pushes #191 back a session.
+2. **Implement #191 and judge it on #190's regression suite alone**, recording
+   that the resample-variance Acceptance item was unevaluable. Honest but leaves
+   #191's headline claim unmeasured — the thing this whole program exists to fix.
+3. **Fold the harness fix into #191.** Bundles two issues in one PR, which the
+   working conventions forbid, and #191's diff is already the larger one.
+
+Recommendation: **(1)**. The harness is the instrument for steps 4, 5 and 6 of
+the program; a broken instrument makes every one of them unmeasurable, and it is
+a small fix plus the missing test.
+
+## Baselines — the reason the branch is not empty
+
+- **#190 regression suite: 34 passed** at `4e6c9af`, pre-change.
+  (`.venv/bin/pytest tests/benchmark/test_rating_regression.py -q`)
+- **#189 harness baseline: RUN COMPLETED, BUT PARTIAL — see *Next action*.**
+  Output at
+  `docs/experiments/191-discrimination-partition/baseline-instability.json`.
+  It covers obligation presence and evidence class (38 each) and perturbation
+  (**1 of 21 watched judgements moved, 0.048** — an obligation went
+  `unsupported → strongly_supported` under an unrelated added test, which is
+  #225's upward direction reproducing). It does **not** cover defect verdicts:
+  that axis reads zero and the instrument cannot produce it.
+  Case `167-gate2-run4` (the DR-180 case that localizes the discrimination
+  defect), model `openai/gpt-5.4-mini`, 3 runs + 1 perturbation run, `Mode.RECORD`
+  — live calls, by design. Driver script:
+  `scratchpad/baseline_191.py` (regenerate it; scratchpads do not survive).
+  **If the JSON is absent or truncated, the run did not finish — re-run it.**
+  Re-run the *same case and model* after the change or the comparison is void.
+
+  **No baseline was ever recorded from #189 itself**, so there is nothing older
+  to compare against. This is the first one.
+
+- **`24b3ea3` on the branch is a prerequisite, not the delivery.** #189's
+  `run_once` hand-rolls its `ObservingClient` and so never inherited the
+  `embedding_model` #259 added — **every** harness run has failed since #259
+  merged, and nothing noticed because #189's tests all inject a `client_factory`
+  and no baseline was ever taken. One-line unblock committed; the structural fix
+  plus its missing test are queued for #186. The fix does not touch
+  discrimination, so the baseline it enables is still a valid pre-change one.
+
+## The change
+
+`judge_discrimination` (`evidence/discrimination.py:133`) makes **one**
+`client.complete` carrying every obligation's every defect verdict, and passes
+neither a partition nor `stage=` — so it is invisible to
+`partition_sizes_in_force`. Both parts in **one** PR; #191's Costs section says
+not to pay the transcript re-record twice.
+
+- **(a) Partition by obligation** — `partition(obligations, size, key=…)`,
+  mirroring `mapping.py:126`. Pass `batch.request_partition()` and a `stage=`.
+- **(b) Split enumeration from verdict**, keyed differently:
+  - `enumerate_defects(...)` — new prompt + `_Enumerated` schema, descriptions
+    only. **Carries obligation text and changed production code, no test
+    evidence.**
+  - `judge_defect_verdicts(...)` — new prompt + `_Verdict` schema, returning
+    `would_be_caught`/`reason` over a supplied defect list.
+  - `judge_discrimination(...)` keeps its signature and orchestrates the two, so
+    the pipeline call site is unchanged.
+- `config.py` — add `discrimination_batch_size` (`ge=1`).
+- Also fix: the missing `stage=` on the discrimination call.
+
+**No interface others depend on changes.** `ObligationDiscrimination` and
+`PlausibleDefect` keep their shape, so `strength.py` and review-state are
+untouched — deliberately, so #252 does not have to rebase on this.
+
+**No review-state persistence, deliberately.** "Editing/adding a test leaves the
+defect set unchanged" holds *by construction*: the enumeration request contains
+no tests, so the bytes are identical, so it is a cache hit. **Assert it on
+`build_request` output — no model call needed.** Persisting the enumerated set
+across runs is #252's direction, not this one's.
+
+## Parallel sessions — worktrees are set up and verified
+
+Each has its **own** `.venv` with its own editable install. Verified by import
+path, because a shared venv would resolve `acceptance` to the main checkout and
+silently test the wrong code.
+
+| worktree | branch | issue |
 |---|---|---|
-| this one | **#191** | `partition.py` is format-dirty — if #191 edits it, use the checkout+script workaround |
-| — | **#258** | none; both its test files are already format-clean |
-| — | **#261 + #239** | repo-wide; adds `ruff format --check` to CI, so later merges must be clean |
+| `~/acceptance-worktrees/258-committed-task-file-corpus` | `258-committed-task-file-corpus` | #258 |
+| `~/acceptance-worktrees/261-format-and-lint-gates` | `261-format-and-lint-gates` | #261 + #239 |
 
-`session-state.md` is owned by this session. Agreed general fix if it recurs:
-shard to `session-state/<issue>.md`, one per task in flight.
+- **Full suite passes in a fresh worktree: 1105 passed in 194s.** So the
+  gitignored `.acceptance/cache` in the main checkout is *not* needed to run the
+  tests.
+- Neither worktree has `.env`; neither task needs live calls (replay is default).
+- Run as `(cd <worktree> && .venv/bin/pytest -q)` — a subshell, so `cd` cannot
+  leak, and never by absolute path (`addopts`/`pythonpath` are cwd-relative and
+  driving pytest by absolute path collects the archetype fixtures and errors).
+- **#191's files are format-clean and lint-clean** (`discrimination.py`,
+  `strength.py`), so it does not collide with #261's reformat. `partition.py`
+  **is** dirty — if #191 edits it, use the by-script workaround.
+- `session-state.md` is owned by **this** session. If the parallel sessions need
+  their own, shard to `session-state/<issue>.md`.
 
 ## Where #191 sits
 
@@ -46,58 +150,36 @@ Step **5 of 6** in the judgement-stability program: #189 harness (closed) → #1
 rating-regression suite (closed) → #195 decompose-regression (closed) → #193
 decompose instability (open, order 414) → **#191** → #192 (open, order 416).
 
-Taken **before** #193 despite the board order, deliberately: #191's scoreboard is
-the checked-in `tests/fixtures/rating-regression/` corpus, not live decompose
-output, so decompose instability cannot contaminate its measurement. Human call.
-
-## Baselines — one taken, one still owed
-
-- **#190 regression suite: 34 passed** at `4e6c9af`, pre-change. This is the
-  "real findings still found / unearned STRONGs not issued" direction.
-- **#189 harness baseline NOT yet taken.** #191's Costs section requires it
-  *before* starting, and implementing first invalidates the discrimination
-  transcripts that would produce it. Recoverable only by checking out old code
-  and re-recording. **Do this first when coding starts.**
-  Harness: `src/acceptance/benchmark/instability.py`.
-
-## The mechanism #191 fixes
-
-`judge_discrimination` (`evidence/discrimination.py:133`) makes **one**
-`client.complete` carrying every obligation's every defect verdict, and passes
-neither a partition nor a `stage=` — so it is invisible to
-`partition_sizes_in_force`. Two changes in one PR (do not split; the transcript
-re-record is paid once):
-
-- **(a)** partition by obligation via `partition(obligations, size, key=...)`,
-  mirroring `mapping.py:126`.
-- **(b)** separate enumeration from verdict, keyed differently. **The enumeration
-  request carries no test evidence at all** — that is what makes "adding a test
-  leaves the defect set unchanged" true *by construction*: same request bytes →
-  cache hit → replay. Testable with no model call.
+Taken **before** #193 despite board order, deliberately and with the human's
+call: #191's scoreboard is the checked-in `tests/fixtures/rating-regression/`
+corpus, not live decompose output, so decompose instability cannot contaminate
+its measurement.
 
 ## Do not rediscover
 
 - **A prompt change invalidates only THAT STAGE's transcripts** — `request_key`
   hashes each request individually.
 - **52 of 117 files fail `ruff format --check`** and the `PostToolUse` hook
-  reflows any file it touches — 457 changed lines for a 5-line edit. Filed as
-  **#261**. **Workaround:** `git checkout <base> -- <path>`, then re-apply the
-  real edit **by script**, never with the Edit tool.
+  reflows any file it touches. Filed as **#261**. **Workaround:** write a small
+  patch script to the scratchpad and run it by path — never the Edit tool. This
+  kept `24b3ea3` to 5 lines instead of 800.
 - **The formatter strips an import you add before you add its usage.** Add the
-  usage first; it silently reverted two edits, surfacing only as a later
-  `NameError`.
+  usage first.
 - **`decompose --mode record` writes a 0-byte log through `tee`.** Rebuild with
   `--mode replay` into the log — byte-identical, no live call. Check `wc -l`.
+- **Do not switch branches while a live harness/benchmark run is in flight** —
+  the editable install points at this working tree, so a checkout changes the
+  source under the running process.
 - **Transcript responses are JSON *strings*** — `json.loads` the `response`
   field before reading `verdicts`.
-- **Transcripts live in `.acceptance/cache/transcripts/`** (1,205 of them), not
-  `cache/`. **The cache is not an archive** — DR-259 lost two runs mid-analysis.
+- **Transcripts live in `.acceptance/cache/transcripts/`** (1,205), not `cache/`.
+  **The cache is not an archive** — DR-259 lost two runs mid-analysis.
 - **`load_dotenv()` walks up from the calling *file*, not cwd.** A scratchpad
   script sees no project `.env`; pass the path explicitly.
 - **`litellm.__version__` does not exist.**
 - **`Review` requires `mode`** — `Review(mode="local", reviewed_revision=...)`.
-- **A `check` or `decompose` over a new task file needs `--mode record`** and
-  makes live calls.
+- **A `check` or `decompose` over a new task file needs `--mode record`.**
+- **`gh api ... -f sub_issue_id=N` fails**; sub-issues need `-F` (integer).
 - **`git branch -d` refuses every squash-merged branch.** `gh pr view <n> --json
   state`, then `-D`.
 - **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
@@ -106,13 +188,15 @@ re-record is paid once):
 
 - **DR-259's "0.10 is a clean separator" claim is withdrawn.** The held-out task
   file carries a genuine merge at **0.2257**; the nearest spurious sits at
-  **0.116**, so the bands overlap and no threshold does both jobs. 0.10 ships as
-  the deliberate under-merging side of a real trade. **#211** settles it properly.
-- **Two consecutive issues merged on non-clean gates** (#248, #259). That is the
-  reason this session is on judgement stability rather than more capability work.
+  **0.116**, so the bands overlap and no threshold does both jobs. **#211**
+  settles it properly.
+- **Two consecutive issues merged on non-clean gates** (#248, #259). That is why
+  this work is judgement stability rather than more capability.
 
 ## Queued — see `docs/DEFERRED.md`
 
-**Three open.** Two new from this gate (the `constraint-11` quantifier drift as a
-child of #181; the exclusion-typing inconsistency as a comment on #205), plus
-untracking `current-task.md`, still **blocked on #258**.
+**Two open:** the #189 harness structural fix + missing test (drafted for #186),
+and untracking `current-task.md` (still blocked on #258).
+
+Filed this session: **#262** (child of #181, quantifier drift) and a comment on
+**#205** (scope-exclusion typing).
