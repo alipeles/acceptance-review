@@ -61,12 +61,19 @@ the 19 obligations can be supported by a pytest… the question to settle at tha
 gate is whether the tool has any evidence path for a configuration-only change."*
 The answer is that it has none, and the absence is fatal rather than graceful.
 
-Filed as a child of **#185** (`coverage/`, verdict, presentation).
+Belongs to **#185** (`coverage/`, verdict, presentation). **Not filed from this
+session**, and not because it was waved off: #258's Gate 2 hit the same defect
+independently, and the queue entry now carries both instances plus that session's
+transcript analysis. It is filed as one issue from there. The attribution rule is
+satisfied — the finding is recorded against a tracked item before moving on — but
+the tracked item is jointly owned rather than mine.
 
 ## Disposition
 
 Attributed to a tool defect, with the filing drafted in `docs/DEFERRED.md` before
-moving forward, per *Rules that apply at both gates*.
+moving forward, per *Rules that apply at both gates*. The human's call was to
+push the branch and let CI settle the one Acceptance item that cannot be checked
+locally, rather than hold the delivery behind a tool fix it does not depend on.
 
 **Not addressed by adding tests, deliberately.** The three obligations the
 recommender *did* answer include two that want a test invoking ruff — and the
