@@ -16,7 +16,7 @@ import pathlib
 import tempfile
 from types import SimpleNamespace
 
-from acceptance.config import DEFAULT_MODEL
+from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_state import Obligation, ObligationType
 
@@ -24,6 +24,43 @@ from acceptance.review_state import Obligation, ObligationType
 # stands in for a model the tool does not actually run. It had drifted to a
 # hardcoded Anthropic string while the real default was OpenAI.
 _DEFAULT_MODEL = DEFAULT_MODEL
+
+
+def constant_embedding_fn(**kwargs) -> dict:
+    """The neutral embedding double: every input gets the SAME vector.
+
+    Neutral on purpose. Every distance is then 0, so #259's prefilter admits
+    every pair and a test that is not about the prefilter exercises exactly the
+    sweep it did before the prefilter existed. A double returning arbitrary or
+    hash-derived vectors would put most pairs far apart and silently shrink the
+    sweep under every unrelated test — turning them into tests of the filter
+    rather than of what they are about.
+
+    A test that IS about the filter injects its own `embedding_fn`; see
+    `embedding_fn_for`.
+    """
+    return {"data": [{"embedding": [1.0, 0.0, 0.0]} for _ in kwargs["input"]]}
+
+
+def embedding_fn_for(vectors_by_text: dict[str, list[float]], default: list[float] | None = None):
+    """An embedding double answering from a text -> vector table.
+
+    Keyed by the exact string embedded, which for obligations is
+    `linking.embedding_text` — description and observable behavior joined by a
+    space — so a test states the geometry it wants rather than reverse-
+    engineering it from a hash.
+    """
+
+    def embedding_fn(**kwargs):
+        data = []
+        for text in kwargs["input"]:
+            vector = vectors_by_text.get(text, default)
+            if vector is None:
+                raise AssertionError(f"no vector supplied for embedded text: {text!r}")
+            data.append({"embedding": list(vector)})
+        return {"data": data}
+
+    return embedding_fn
 
 
 def _fake_response(content: str) -> SimpleNamespace:
@@ -196,7 +233,7 @@ def _completed(response: dict, **kwargs) -> dict:
     return _nest_obligations(response)
 
 
-def client_returning(response: dict, model: str = _DEFAULT_MODEL) -> ModelClient:
+def client_returning(response: dict, model: str = _DEFAULT_MODEL, embedding_fn=None) -> ModelClient:
     """A client whose every call returns the same fixed response.
 
     A `requirement_dispositions` of `[]` is completed from the requirements the
@@ -214,10 +251,12 @@ def client_returning(response: dict, model: str = _DEFAULT_MODEL) -> ModelClient
         mode=Mode.RECORD,
         store=TranscriptStore(tempfile.mkdtemp()),
         completion_fn=completion_fn,
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
+        embedding_fn=embedding_fn or constant_embedding_fn,
     )
 
 
-def model_client_with(completion_fn, model: str = _DEFAULT_MODEL) -> ModelClient:
+def model_client_with(completion_fn, model: str = _DEFAULT_MODEL, embedding_fn=None) -> ModelClient:
     """A client backed by a caller-supplied `completion_fn`.
 
     For tests that need to vary the answer per call — which partitioned stages
@@ -229,11 +268,13 @@ def model_client_with(completion_fn, model: str = _DEFAULT_MODEL) -> ModelClient
         mode=Mode.RECORD,
         store=TranscriptStore(tempfile.mkdtemp()),
         completion_fn=completion_fn,
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
+        embedding_fn=embedding_fn or constant_embedding_fn,
     )
 
 
 def client_answering_per_call(
-    responder, model: str = _DEFAULT_MODEL
+    responder, model: str = _DEFAULT_MODEL, embedding_fn=None
 ) -> tuple[ModelClient, list[dict]]:
     """A client that answers each call from the prompt it was given.
 
@@ -255,12 +296,14 @@ def client_answering_per_call(
         mode=Mode.RECORD,
         store=TranscriptStore(tempfile.mkdtemp()),
         completion_fn=completion_fn,
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
+        embedding_fn=embedding_fn or constant_embedding_fn,
     )
     return client, calls
 
 
 def client_capturing_schemas(
-    response: dict, model: str = _DEFAULT_MODEL
+    response: dict, model: str = _DEFAULT_MODEL, embedding_fn=None
 ) -> tuple[ModelClient, list[dict]]:
     """A client returning a fixed response, recording the schema each call sent.
 
@@ -279,6 +322,8 @@ def client_capturing_schemas(
         mode=Mode.RECORD,
         store=TranscriptStore(tempfile.mkdtemp()),
         completion_fn=completion_fn,
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
+        embedding_fn=embedding_fn or constant_embedding_fn,
     )
     return client, schemas
 
@@ -301,6 +346,7 @@ def client_dispatching(
     model: str = _DEFAULT_MODEL,
     temperature: float = 0.0,
     seed: int | None = None,
+    embedding_fn=None,
 ) -> ModelClient:
     """A client for multi-call hooks: each call returns the response keyed by
     its response schema's class name (e.g. `_Decomposition`, `_Coverage`).
@@ -329,6 +375,8 @@ def client_dispatching(
         temperature=temperature,
         seed=seed,
         completion_fn=completion_fn,
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
+        embedding_fn=embedding_fn or constant_embedding_fn,
     )
 
 

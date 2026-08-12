@@ -24,6 +24,8 @@ from pathlib import Path
 from acceptance.change.diff import extract_change_set, extract_working_tree_change_set
 from acceptance.config import (
     DEFAULT_DECOMPOSE_BATCH_SIZE,
+    DEFAULT_EMBEDDING_MODEL,
+    DEFAULT_LINK_DISTANCE_THRESHOLD,
     DEFAULT_MAPPING_BATCH_SIZE,
     DEFAULT_MODEL,
     DEFAULT_SEED,
@@ -31,7 +33,10 @@ from acceptance.config import (
 )
 from acceptance.coverage.classify import ImplementationCoverage, classify_coverage
 from acceptance.coverage.disposition import DispositionedChange, classify_dispositions
-from acceptance.coverage.open_questions import apply_open_question_resolutions, resolve_open_questions
+from acceptance.coverage.open_questions import (
+    apply_open_question_resolutions,
+    resolve_open_questions,
+)
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode, ModelClient
 from acceptance.pipeline import run_review
@@ -177,6 +182,7 @@ def run_check(
         mapping_batch_size=config.mapping_batch_size,
         decompose_batch_size=config.decompose_batch_size,
         link_pair_batch_size=config.link_pair_batch_size,
+        link_distance_threshold=config.link_distance_threshold,
         task_identifier=task,
         prior=prior,
     )
@@ -230,7 +236,11 @@ def run_decompose(task: str, config: RunConfig) -> tuple[Decomposition, Unusable
     # obligation set from the one `check` reviews, so the Gate 1 breakdown a
     # reader confirms would not be the set every later stage judges.
     linked = link_duplicate_obligations(
-        derived, client, unusable, pair_batch_size=config.link_pair_batch_size
+        derived,
+        client,
+        unusable,
+        pair_batch_size=config.link_pair_batch_size,
+        distance_threshold=config.link_distance_threshold,
     )
     return linked, unusable
 
@@ -384,8 +394,7 @@ def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
     this command was restructured to remove.
     """
     orphans = [
-        o for o in result.obligations
-        if not requirement_map.requirements_for_obligation(o.id)
+        o for o in result.obligations if not requirement_map.requirements_for_obligation(o.id)
     ]
     if not orphans:
         return []
@@ -399,11 +408,7 @@ def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
 
 def _unraised_questions(result: Decomposition, requirement_map) -> list[str]:
     """Open questions no requirement's disposition accounts for."""
-    claimed = {
-        qid
-        for entry in requirement_map.dispositions
-        for qid in entry.open_question_ids
-    }
+    claimed = {qid for entry in requirement_map.dispositions for qid in entry.open_question_ids}
     loose = [q for q in result.open_questions if q.id not in claimed]
     if not loose:
         return []
@@ -503,6 +508,7 @@ def run_classify(
         decompose(parsed, client, batch_size=config.decompose_batch_size),
         client,
         pair_batch_size=config.link_pair_batch_size,
+        distance_threshold=config.link_distance_threshold,
     )
     obligations = decomposition.obligations
 
@@ -523,8 +529,12 @@ def run_classify(
     coverages = classify_coverage(obligations, change_set, config.build_client())
     unrequested = detect_unrequested_changes(obligations, change_set, config.build_client())
     dispositioned = classify_dispositions(
-        unrequested, obligations, coverages, change_set,
-        config.scope_expansion_policy, config.build_client(),
+        unrequested,
+        obligations,
+        coverages,
+        change_set,
+        config.scope_expansion_policy,
+        config.build_client(),
     )
     resolutions = resolve_open_questions(
         decomposition.open_questions, change_set, config.build_client()
@@ -561,7 +571,9 @@ def render_classify(
         lines.append("  (none)")
     for cov in coverages:
         refs = ", ".join(f"{r.file}" for r in cov.diff_refs) or "no corresponding change"
-        lines.append(f"  [{cov.status.value}] {cov.obligation_id}: {descriptions.get(cov.obligation_id, '')}")
+        lines.append(
+            f"  [{cov.status.value}] {cov.obligation_id}: {descriptions.get(cov.obligation_id, '')}"
+        )
         lines.append(f"      -> {refs}")
     lines.append("")
     lines.append("Unrequested changes (no obligation calls for these — your call):")
@@ -626,6 +638,28 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
             "Requirements per obligation-derivation call (determinism; default: "
             f"{DEFAULT_DECOMPOSE_BATCH_SIZE}). Changing it invalidates recorded "
             "decompose transcripts."
+        ),
+    )
+    parser.add_argument(
+        "--embedding-model",
+        default=DEFAULT_EMBEDDING_MODEL,
+        help=(
+            "Model used to embed obligations for the linking prefilter "
+            f"(determinism; default: {DEFAULT_EMBEDDING_MODEL}). Changing it "
+            "invalidates recorded linking transcripts, and the distance "
+            "threshold is calibrated to it — a different model needs "
+            "recalibration, not the same number."
+        ),
+    )
+    parser.add_argument(
+        "--link-distance-threshold",
+        type=float,
+        default=DEFAULT_LINK_DISTANCE_THRESHOLD,
+        help=(
+            "Cosine distance above which an obligation pair is not asked about "
+            f"(determinism; default: {DEFAULT_LINK_DISTANCE_THRESHOLD}). "
+            "Changing it invalidates recorded linking transcripts. Use 2.0 to "
+            "ask about every pair."
         ),
     )
 
@@ -743,11 +777,18 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
             decompose_batch_size=args.decompose_batch_size,
+            embedding_model=args.embedding_model,
+            link_distance_threshold=args.link_distance_threshold,
         )
         try:
             review = run_check(
-                args.task, args.base, args.head, config, ReviewStore(),
-                declaration=args.declaration, since=args.since,
+                args.task,
+                args.base,
+                args.head,
+                config,
+                ReviewStore(),
+                declaration=args.declaration,
+                since=args.since,
             )
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)
@@ -795,6 +836,8 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
             decompose_batch_size=args.decompose_batch_size,
+            embedding_model=args.embedding_model,
+            link_distance_threshold=args.link_distance_threshold,
         )
         try:
             result, unusable = run_decompose(args.task, config)
@@ -833,6 +876,8 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
             decompose_batch_size=args.decompose_batch_size,
+            embedding_model=args.embedding_model,
+            link_distance_threshold=args.link_distance_threshold,
         )
         try:
             obligations, open_questions, coverages, dispositioned = run_classify(
