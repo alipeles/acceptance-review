@@ -20,6 +20,7 @@ import tempfile
 from acceptance.config import DEFAULT_DEFECT_VERDICT_BATCH_SIZE
 from acceptance.evidence.discrimination import enumerate_defects, judge_discrimination
 from acceptance.llm import Mode, ModelClient, TranscriptStore
+from acceptance.supplied_ids import UnusableAnswerLog
 from acceptance.review_state import (
     ChangeSet,
     DiffHunk,
@@ -307,6 +308,40 @@ def test_a_verdict_call_carries_no_more_than_the_configured_number_of_obligation
         assert sum(f"criterion id=ob-{n}" in sent for n in range(1, 6)) <= 2
 
 
+def test_the_verdict_bound_counts_criteria_and_not_defects():
+    """Gate 2 raised this one, and it was right: with one defect per criterion,
+    batching by criterion and batching by defect volume are indistinguishable,
+    so the test above passes under either.
+
+    Here one criterion carries five defects and the rest carry one. An
+    implementation that filled each call up to a defect budget would put the
+    four one-defect criteria into a single call; bounding by criteria cannot."""
+    obligations = [_obligation(f"ob-{n}", f"criterion {n}") for n in range(1, 6)]
+    evidence = [_evidence(f"t.py::test_{n}", [f"ob-{n}"], ["assert f()"]) for n in range(1, 6)]
+    enumerated = [("ob-1", [f"d{i}" for i in range(1, 6)])]
+    enumerated += [(f"ob-{n}", ["d"]) for n in range(2, 6)]
+    verdicts = [(f"ob-1::d{i}", True, ".") for i in range(1, 6)]
+    verdicts += [(f"ob-{n}::d1", True, ".") for n in range(2, 6)]
+    calls: list = []
+
+    judge_discrimination(
+        obligations,
+        evidence,
+        _change_set(),
+        _client(_enumeration(*enumerated), _verdicts(*verdicts), calls),
+        verdict_batch_size=2,
+    )
+
+    verdict_calls = [kwargs for name, kwargs in calls if name == "_DefectVerdicts"]
+    for kwargs in verdict_calls:
+        sent = json.dumps(kwargs["messages"])
+        carried = sum(f"criterion id=ob-{n}" in sent for n in range(1, 6))
+        assert carried <= 2, f"a verdict call carried {carried} criteria, over the bound of 2"
+    # And the lopsided defect counts did not change how many calls it takes:
+    # five criteria at two per call is three, whatever the defects weigh.
+    assert len(verdict_calls) == 3
+
+
 def test_the_number_of_obligations_per_verdict_call_reaches_the_recorded_request():
     """A batch size that is not in the request is not a determinism control: two
     runs at different sizes would share a transcript and replay each other's
@@ -315,6 +350,7 @@ def test_the_number_of_obligations_per_verdict_call_reaches_the_recorded_request
     evidence = [_evidence(f"t.py::test_{n}", [f"ob-{n}"], ["assert f()"]) for n in (1, 2)]
 
     recorded = {}
+    in_force = {}
     for size in (1, 2):
         client = _client(
             _enumeration(("ob-1", ["d"]), ("ob-2", ["d"])),
@@ -326,13 +362,19 @@ def test_the_number_of_obligations_per_verdict_call_reaches_the_recorded_request
             for record in (json.loads(path.read_text()) for path in client.store.root.iterdir())
             if "partition" in record.get("request", {})
         ]
+        in_force[size] = client.partition_sizes_in_force
 
-    # Size 2 puts both criteria in one call, so the two runs differ in how many
-    # verdict calls they make as well — but the point being pinned is narrower:
-    # the size itself is in the recorded request, so the two can never share a
-    # transcript even where the messages coincide.
+    # Read off the stage, not just off the pile of transcripts: `{"size": 1}`
+    # could otherwise be some other stage's partition and the assertion would
+    # hold on a verdict call that recorded nothing.
+    assert in_force[1]["defect verdict"] == 1
+    assert in_force[2]["defect verdict"] == 2
+    # And it is in the recorded request itself, which is what makes it a
+    # determinism control: two runs at different sizes can never share a
+    # transcript, even where the messages coincide.
     assert {"size": 1} in recorded[1]
     assert {"size": 2} in recorded[2]
+    assert {"size": 2} not in recorded[1]
     assert client.partition_sizes_in_force["defect verdict"] == 2
 
 
@@ -381,3 +423,62 @@ def test_two_runs_over_the_same_obligations_and_code_enumerate_the_same_defects(
     )
 
     assert [j.to_dict() for j in first] == [j.to_dict() for j in second]
+
+
+def test_the_split_loses_no_defect_that_was_enumerated_and_judged():
+    """The governing constraint of the whole change: stability must not be
+    bought by blunting the judge (DR-180). Splitting one call into two adds two
+    places a defect can be dropped — a batch boundary, and the id join — and
+    neither is visible downstream, because a lost defect looks exactly like a
+    defect that was never named.
+
+    Gate 2 asked for this and named the loss modes. Batches deliberately
+    straddle: three criteria at one per verdict call, with uneven defect counts,
+    so a defect surviving is not an artefact of everything fitting in one call.
+    """
+    obligations = [_obligation(f"ob-{n}", f"criterion {n}") for n in (1, 2, 3)]
+    evidence = [_evidence(f"t.py::test_{n}", [f"ob-{n}"], ["assert f()"]) for n in (1, 2, 3)]
+    enumerated = {"ob-1": ["d1", "d2", "d3"], "ob-2": ["d1"], "ob-3": ["d1", "d2"]}
+    verdicts = _verdicts(
+        *(
+            (f"{obligation_id}::d{index}", index % 2 == 1, ".")
+            for obligation_id, defects in enumerated.items()
+            for index in range(1, len(defects) + 1)
+        )
+    )
+
+    result = judge_discrimination(
+        obligations,
+        evidence,
+        _change_set(),
+        _client(_enumeration(*((oid, ds) for oid, ds in enumerated.items())), verdicts),
+        verdict_batch_size=1,
+    )
+
+    judged = {j.obligation_id: [d.description for d in j.defects] for j in result}
+    assert judged == enumerated, "a defect that was enumerated and judged did not survive"
+
+
+def test_a_defect_the_verdict_call_never_answered_is_reported_as_indeterminate():
+    """The other half of not blunting the judge. An enumerated defect with no
+    verdict is a judgement that was not obtained, and must not be absorbed as
+    'no defect survives' — that reads as evidence of discrimination the run
+    never established."""
+    obligations = [_obligation("ob-1", "A")]
+    evidence = [_evidence("t.py::test_a", ["ob-1"], ["assert f()"])]
+    unusable = UnusableAnswerLog()
+
+    judge_discrimination(
+        obligations,
+        evidence,
+        _change_set(),
+        # Two defects named, one judged — and the answer names an id the call
+        # never supplied, which is how the stage detects the shortfall.
+        _client(
+            _enumeration(("ob-1", ["d1", "d2"])),
+            _verdicts(("ob-1::d1", True, "."), ("ob-1::d9", True, "invented")),
+        ),
+        unusable=unusable,
+    )
+
+    assert "ob-1" in unusable.indeterminate_obligations
