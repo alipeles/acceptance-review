@@ -34,3 +34,4 @@ which is a scratch input rewritten for every task.
 - A test asserts that no path in the region-coverage case list lies outside
   `dogfood-logs/`.
 - A check asserts that no test reads the task file at the repository root.
+- The suite passes when no task file is present at the repository root.

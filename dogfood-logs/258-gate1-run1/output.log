@@ -1,0 +1,108 @@
+Requirements: 22   with obligations: 21   deliberately none: 1
+
+[task-01] No test's outcome or case list depends on the task file at the repository
+    root, which is a scratch input rewritten for every task.
+    -> root-task-file-does-not-affect-test-outcome-or-case-list  [invariant/explicit]
+       No test's outcome or case list depends on the task file at the repository root.
+
+[constraint-01] No test reads the task file at the repository root.
+    -> no-test-reads-root-task-file  [invariant/explicit]
+       No test reads the task file at the repository root.
+
+[constraint-02] The task-file parse test takes its inputs from the committed task files
+    under `dogfood-logs/`.
+    -> parse-test-inputs-from-committed-task-files  [functional/explicit]
+       The task-file parse test takes its inputs from the committed task files under
+       `dogfood-logs/`.
+
+[constraint-03] The parse test runs one case per committed task file.
+    -> parse-test-one-case-per-committed-task-file  [functional/explicit]
+       The parse test runs one case per committed task file.
+
+[constraint-04] The parse test asserts, for each case, that the parsed behavior,
+    constraints and completion expectations are each non-empty.
+    -> parse-test-non-empty-parsed-sections  [test_demand/explicit]
+       The parse test asserts that, for each case, the parsed behavior, constraints and
+       completion expectations are each non-empty.
+
+[constraint-05] The parse test asserts, for each case, that every parsed span reproduces
+    its own text from the source it was parsed from.
+    -> parse-test-span-roundtrip-text  [test_demand/explicit]
+       The parse test asserts that every parsed span reproduces its own text from the
+       source it was parsed from.
+
+[constraint-06] The region-coverage case list is built only from the committed task
+    files under `dogfood-logs/`.
+    -> region-coverage-case-list-from-committed-task-files-only  [functional/explicit]
+       The region-coverage case list is built only from the committed task files under
+       `dogfood-logs/`.
+
+[constraint-07] The region-coverage case list is non-empty.
+    -> region-coverage-case-list-non-empty-2  [boundary/explicit]
+       The region-coverage case list is non-empty.
+
+[constraint-08] The region-coverage case list omits a path that is not present in the
+    tree.
+    -> region-coverage-case-list-omits-missing-path  [boundary/explicit]
+       The region-coverage case list omits a path that is not present in the tree.
+
+[constraint-09] A test run reports no failures when no task file is present at the
+    repository root.
+    -> test-run-no-failures-without-root-task-file  [functional/explicit]
+       A test run reports no failures when no task file is present at the repository
+       root.
+
+[constraint-10] The parse test's documentation states which inputs it covers.
+    -> parse-test-docs-state-covered-inputs  [docs_config/explicit]
+       The parse test's documentation states which inputs it covers.
+
+[exclusion-01] Whether the task file at the repository root is tracked by version
+    control.
+    -> exclude-root-task-file-version-control-status  [human_review/explicit]
+       The change does not address whether the task file at the repository root is
+       tracked by version control.
+
+[exclusion-02] How a task file is parsed into sections.
+    -> exclude-task-file-section-parsing  [human_review/explicit]
+       The change does not address how a task file is parsed into sections.
+
+[exclusion-03] How region coverage is computed.
+    -> exclude-region-coverage-computation  [human_review/explicit]
+       The change does not address how region coverage is computed.
+
+[exclusion-04] Which sections a task file is required to contain.
+    -> exclude-required-task-file-sections  [human_review/explicit]
+       The change does not address which sections a task file is required to contain.
+
+[exclusion-05] The content of the committed task files.
+    -> exclude-committed-task-file-content  [human_review/explicit]
+       The change does not address the content of the committed task files.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker standing alone with no requirement under it.
+
+[completion-02] A test asserts that parsing succeeds for every committed task file under
+    `dogfood-logs/`.
+    -> parse-succeeds-for-every-committed-task-file  [test_demand/explicit]
+       A test asserts that parsing succeeds for every committed task file under
+       `dogfood-logs/`.
+
+[completion-03] A test asserts that the region-coverage case list is non-empty.
+    -> region-coverage-case-list-non-empty  [test_demand/explicit]
+       A test asserts that the region-coverage case list is non-empty.
+
+[completion-04] A test asserts that no path in the region-coverage case list lies
+    outside `dogfood-logs/`.
+    -> region-coverage-case-list-stays-within-dogfood-logs  [test_demand/explicit]
+       A test asserts that no path in the region-coverage case list lies outside
+       `dogfood-logs/`.
+
+[completion-05] A check asserts that no test reads the task file at the repository root.
+    -> check-no-test-reads-root-task-file  [test_demand/explicit]
+       A check asserts that no test reads the task file at the repository root.
+
+[completion-06] The suite passes when no task file is present at the repository root.
+    -> suite-passes-without-root-task-file  [functional/explicit]
+       The suite passes when no task file is present at the repository root.
+
