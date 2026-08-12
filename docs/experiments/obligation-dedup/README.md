@@ -43,12 +43,31 @@ trusting the numbers above.
 every pair silently looks unanswered — this produced a full wrong analysis pass
 that was only caught because *every* verdict came back missing.
 
-**3. Identify linking calls by response schema, never by prompt text.** The
-phrase "de-duplicating a set of obligations" also appears in recommendation and
-strength prompts whose content discusses de-duplication — #144's own task file
-triggers it. Measured here, the text filter returns 180 calls where
-`response_schema.name == "_Verdicts"` returns 172. A text key is also hostage to
-the next prompt reword.
+**3. Identify linking calls by response schema, never by prompt text.** DR-259
+selected transcripts by searching the prompt for "de-duplicating a set of
+obligations". That misfires in *both* directions. Cross-tabulated against
+`response_schema.name == "_Verdicts"` on the current cache:
+
+| | schema says linking | schema says not |
+|---|---|---|
+| **text matches** | 160 | **20 false positives** |
+| **text does not** | **12 false negatives** | 1011 |
+
+- The **20 false positives** are `_Coverage`, `_Detections`, `_Discrimination`
+  and `_Recommendations` calls whose *content* discusses de-duplication — #144's
+  own task file is about de-duplication, so its obligation text carries the
+  phrase into every later stage's prompt.
+- The **12 false negatives** are the dangerous direction, and the one that is
+  easy to miss: they are real linking calls under an **older system prompt**
+  ("You are de-duplicating *the obligations derived from one task file*"). The
+  wording changed and the filter silently stopped seeing them. Eleven are in the
+  #144 sweep and carry 276 pair blocks between them.
+
+**On this data the bug is inert**, which is why it survived: the false positives
+parse no `[pair-]` block at all, and **no pair — and no confirmed merge — exists
+only in the missed calls**, because the #144 sweep is several runs over one task
+file and the same pairs recur in calls the filter did see. DR-259's conclusions
+stand. It would not have been inert on a sweep that ran once.
 
 **4. A "sweep" is a task file, not a run.** Batches are grouped by shared
 obligation ids, and repeated runs over one task file share them, so the groups

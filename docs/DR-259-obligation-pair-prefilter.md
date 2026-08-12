@@ -34,10 +34,21 @@ silently. `linking.py` already declares that direction load-bearing.
 
 > **Before repeating any of this, read
 > `docs/experiments/obligation-dedup/README.md`.** It carries the extraction code
-> and the traps this analysis hit — including two corrections recorded below, and
-> a third found afterwards: identifying linking calls by prompt text (as this
-> analysis did) also matches recommendation and strength prompts that merely
-> discuss de-duplication. Filter on `response_schema.name == "_Verdicts"`.
+> and the traps this analysis hit — the two corrections recorded below, plus a
+> third found afterwards.
+>
+> **The third:** this analysis selected transcripts by searching the prompt for
+> "de-duplicating a set of obligations", and that misfires both ways. It admitted
+> 20 non-linking calls (coverage, detection, discrimination and recommendation
+> prompts whose *content* discusses de-duplication — #144's own task file puts the
+> phrase into later stages), and it silently **missed 12 real linking calls** made
+> under an older system prompt, 11 of them in the #144 sweep.
+>
+> **The figures below are unaffected.** The false positives parse no `[pair-]`
+> block, and no pair or confirmed merge exists *only* in the missed calls — the
+> #144 sweep is several runs over one task file, so the same pairs recur in calls
+> the filter did see. The bug was inert here and would not have been on a sweep
+> that ran once. Filter on `response_schema.name == "_Verdicts"` instead.
 
 The measurement is offline, over **recorded linking transcripts** in
 `.acceptance/cache/` — no live calls beyond the embeddings.
