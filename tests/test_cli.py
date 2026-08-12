@@ -13,16 +13,7 @@ def test_check_json_emits_a_structured_review(git_repo, fixture_task_path, capsy
     """--json emits the full structured Review. With a checker that finds
     nothing, the analysis fields are empty but the shape is complete."""
     exit_code = main(
-        [
-            "check",
-            "--json",
-            "--task",
-            fixture_task_path,
-            "--base",
-            git_repo["base"],
-            "--head",
-            git_repo["head"],
-        ]
+        ["check", "--json", "--task", fixture_task_path, "--base", git_repo["base"], "--head", git_repo["head"]]
     )
 
     assert exit_code == 0
@@ -51,16 +42,7 @@ def test_a_default_cli_run_is_seeded(git_repo, fixture_task_path, capsys, stub_m
     `seed is None`, which locked the defect in (#160).
     """
     exit_code = main(
-        [
-            "check",
-            "--json",
-            "--task",
-            fixture_task_path,
-            "--base",
-            git_repo["base"],
-            "--head",
-            git_repo["head"],
-        ]
+        ["check", "--json", "--task", fixture_task_path, "--base", git_repo["base"], "--head", git_repo["head"]]
     )
 
     assert exit_code == 0
@@ -71,22 +53,13 @@ def test_a_default_cli_run_is_seeded(git_repo, fixture_task_path, capsys, stub_m
     assert review["provenance"]["controls_in_force"] == {"temperature": 0.0, "seed": DEFAULT_SEED}
 
 
-def test_no_seed_is_the_deliberate_way_to_run_unpinned(
-    git_repo, fixture_task_path, capsys, stub_model
-):
+def test_no_seed_is_the_deliberate_way_to_run_unpinned(git_repo, fixture_task_path, capsys, stub_model):
     """Seeding by default must still leave a way out: M-B0.4 samples a provider
     repeatedly to disclose variance, which a fixed seed would suppress."""
     exit_code = main(
         [
-            "check",
-            "--json",
-            "--task",
-            fixture_task_path,
-            "--base",
-            git_repo["base"],
-            "--head",
-            git_repo["head"],
-            "--no-seed",
+            "check", "--json", "--task", fixture_task_path,
+            "--base", git_repo["base"], "--head", git_repo["head"], "--no-seed",
         ]
     )
 
@@ -98,27 +71,17 @@ def test_no_seed_is_the_deliberate_way_to_run_unpinned(
     assert provenance["controls_in_force"]["seed"] is None
 
 
-def test_check_records_determinism_flags_in_provenance(
-    git_repo, fixture_task_path, capsys, stub_model
-):
+def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_path, capsys, stub_model):
     exit_code = main(
         [
-            "check",
-            "--json",
-            "--task",
-            fixture_task_path,
-            "--base",
-            git_repo["base"],
-            "--head",
-            git_repo["head"],
-            "--model",
-            "openai/gpt-5",
-            "--mode",
-            "record",
-            "--seed",
-            "7",
-            "--temperature",
-            "0.4",
+            "check", "--json",
+            "--task", fixture_task_path,
+            "--base", git_repo["base"],
+            "--head", git_repo["head"],
+            "--model", "openai/gpt-5",
+            "--mode", "record",
+            "--seed", "7",
+            "--temperature", "0.4",
         ]
     )
 
@@ -135,10 +98,10 @@ def test_check_records_determinism_flags_in_provenance(
         # at different scale (#204); an EMPTY mapping is the "unpartitioned
         # run" claim, not a null.
         "request_partition_sizes": {"decompose": DEFAULT_DECOMPOSE_BATCH_SIZE},
-        # None, not a zero-valued record: this stub finds no obligations at all,
-        # so linking returns before it prefilters anything and the honest claim
-        # is that no filter ran (#259). A run that filtered and excluded nothing
-        # reports a record with `pairs_excluded: 0` instead — see LinkPrefilter.
+        # None, not a zero-valued record: this stub finds no obligations at
+        # all, so linking returns before it prefilters anything and the honest
+        # claim is that no filter ran (#259). A run that filtered and excluded
+        # nothing reports `pairs_excluded: 0` instead — see LinkPrefilter.
         "link_prefilter": None,
     }
 
@@ -148,29 +111,17 @@ def test_check_rejects_unknown_mode(git_repo, fixture_task_path):
         main(
             [
                 "check",
-                "--task",
-                fixture_task_path,
-                "--base",
-                git_repo["base"],
-                "--head",
-                git_repo["head"],
-                "--mode",
-                "live",
+                "--task", fixture_task_path,
+                "--base", git_repo["base"],
+                "--head", git_repo["head"],
+                "--mode", "live",
             ]
         )
 
 
-def test_two_runs_over_the_same_input_are_byte_identical(
-    git_repo, fixture_task_path, capsys, stub_model
-):
+def test_two_runs_over_the_same_input_are_byte_identical(git_repo, fixture_task_path, capsys, stub_model):
     args = [
-        "check",
-        "--task",
-        fixture_task_path,
-        "--base",
-        git_repo["base"],
-        "--head",
-        git_repo["head"],
+        "check", "--task", fixture_task_path, "--base", git_repo["base"], "--head", git_repo["head"]
     ]
 
     assert main(args) == 0
@@ -181,19 +132,9 @@ def test_two_runs_over_the_same_input_are_byte_identical(
     assert first == second
 
 
-def test_report_shell_renders_all_sections_present_and_empty(
-    git_repo, fixture_task_path, capsys, stub_model
-):
+def test_report_shell_renders_all_sections_present_and_empty(git_repo, fixture_task_path, capsys, stub_model):
     exit_code = main(
-        [
-            "check",
-            "--task",
-            fixture_task_path,
-            "--base",
-            git_repo["base"],
-            "--head",
-            git_repo["head"],
-        ]
+        ["check", "--task", fixture_task_path, "--base", git_repo["base"], "--head", git_repo["head"]]
     )
 
     assert exit_code == 0
@@ -210,20 +151,9 @@ def test_report_shell_renders_all_sections_present_and_empty(
 def test_check_persists_the_review_to_the_store(git_repo, fixture_task_path, stub_model):
     from acceptance.review_store import ReviewStore
 
-    assert (
-        main(
-            [
-                "check",
-                "--task",
-                fixture_task_path,
-                "--base",
-                git_repo["base"],
-                "--head",
-                git_repo["head"],
-            ]
-        )
-        == 0
-    )
+    assert main(
+        ["check", "--task", fixture_task_path, "--base", git_repo["base"], "--head", git_repo["head"]]
+    ) == 0
 
     # ReviewStore() defaults under the (chdir'd) repo; the review is keyed by head.
     stored = ReviewStore().read(git_repo["head"])
@@ -234,15 +164,7 @@ def test_check_persists_the_review_to_the_store(git_repo, fixture_task_path, stu
 
 def test_check_fails_cleanly_on_missing_task_file(git_repo, capsys):
     exit_code = main(
-        [
-            "check",
-            "--task",
-            "does-not-exist.md",
-            "--base",
-            git_repo["base"],
-            "--head",
-            git_repo["head"],
-        ]
+        ["check", "--task", "does-not-exist.md", "--base", git_repo["base"], "--head", git_repo["head"]]
     )
 
     assert exit_code == 1
@@ -251,15 +173,7 @@ def test_check_fails_cleanly_on_missing_task_file(git_repo, capsys):
 
 def test_check_fails_cleanly_on_unresolvable_revision(git_repo, fixture_task_path, capsys):
     exit_code = main(
-        [
-            "check",
-            "--task",
-            fixture_task_path,
-            "--base",
-            "not-a-real-revision",
-            "--head",
-            git_repo["head"],
-        ]
+        ["check", "--task", fixture_task_path, "--base", "not-a-real-revision", "--head", git_repo["head"]]
     )
 
     assert exit_code == 1
@@ -306,7 +220,6 @@ def test_run_check_rejects_a_revision_missing_from_the_given_repo(
 
 
 # --- decompose subcommand (M1.2/M1.3 dogfood path) ---
-
 
 def test_decompose_replay_without_transcript_fails_cleanly(tmp_path, monkeypatch, capsys):
     # REPLAY mode with no recorded transcript must not call live; it errors out.
@@ -358,24 +271,14 @@ def test_render_decomposition_lists_obligations_and_open_questions():
 
 # --- classify subcommand (M3.1 dogfood path) ---
 
-
 def test_classify_replay_without_transcript_fails_cleanly(
     fixture_task_path, git_repo, monkeypatch, capsys
 ):
     # REPLAY with no transcript: the first live call (decompose) can't replay.
     monkeypatch.chdir(git_repo["path"])
     exit_code = main(
-        [
-            "classify",
-            "--task",
-            fixture_task_path,
-            "--base",
-            git_repo["base"],
-            "--head",
-            git_repo["head"],
-            "--mode",
-            "replay",
-        ]
+        ["classify", "--task", fixture_task_path, "--base", git_repo["base"],
+         "--head", git_repo["head"], "--mode", "replay"]
     )
     assert exit_code == 1
     assert "model error" in capsys.readouterr().err
@@ -431,7 +334,6 @@ def test_run_classify_auto_ignores_the_task_file(git_repo, monkeypatch):
     def fake_extract_working_tree_change_set(repo, base, extra_ignore_patterns=None):
         captured["extra_ignore_patterns"] = extra_ignore_patterns
         from acceptance.review_state import ChangeSet
-
         return ChangeSet(base_revision=base, head_revision="<working-tree>")
 
     monkeypatch.setattr(
@@ -473,34 +375,18 @@ def test_render_classify_output():
     )
 
     obligations = [
-        Obligation(
-            id="ob-1",
-            description="Do the thing.",
-            type=ObligationType.FUNCTIONAL,
-            importance="critical",
-            explicit=True,
-            observable_behavior="...",
-        ),
-        Obligation(
-            id="ob-2",
-            description="Handle the edge.",
-            type=ObligationType.BOUNDARY,
-            importance="normal",
-            explicit=True,
-            observable_behavior="...",
-        ),
+        Obligation(id="ob-1", description="Do the thing.", type=ObligationType.FUNCTIONAL,
+                   importance="critical", explicit=True, observable_behavior="..."),
+        Obligation(id="ob-2", description="Handle the edge.", type=ObligationType.BOUNDARY,
+                   importance="normal", explicit=True, observable_behavior="..."),
     ]
     coverages = [
         ImplementationCoverage(
-            obligation_id="ob-1",
-            status=CoverageStatus.ADDRESSED,
-            rationale="done",
+            obligation_id="ob-1", status=CoverageStatus.ADDRESSED, rationale="done",
             diff_refs=[DiffRef(file="pkg.py", hunk_header="@@ -1 +1 @@")],
         ),
         ImplementationCoverage(
-            obligation_id="ob-2",
-            status=CoverageStatus.NOT_ADDRESSED,
-            rationale="missing",
+            obligation_id="ob-2", status=CoverageStatus.NOT_ADDRESSED, rationale="missing",
         ),
     ]
     dispositioned = [
@@ -519,10 +405,8 @@ def test_render_classify_output():
     open_questions = [
         OpenQuestion(id="q-1", question="Minus sign or parentheses?"),
         OpenQuestion(
-            id="q-2",
-            question="Should the total be tax-inclusive?",
-            resolved=True,
-            resolution_rationale="The diff always adds tax after the subtotal.",
+            id="q-2", question="Should the total be tax-inclusive?",
+            resolved=True, resolution_rationale="The diff always adds tax after the subtotal.",
             resolution_refs=[Link(kind="code", ref="pkg.py#@@ -1 +1 @@")],
         ),
     ]
@@ -587,6 +471,7 @@ def test_render_change_set_omits_ignored_section_when_empty():
     assert "Ignored" not in rendered
 
 
+
 # --- check: the M7.4 additions (optional declaration + working-tree review) ---
 
 
@@ -597,25 +482,15 @@ def test_check_threads_an_optional_declaration_into_the_review(
     declaration is parsed onto the Review and §7.4's "absent" minor finding is
     NOT raised. Guards a flag that parses but silently drops its value."""
     declaration = tmp_path / "declaration.md"
-    declaration.write_text("# Builder Declaration\n## Mandate as understood\nAdd the thing.\n")
-
-    assert (
-        main(
-            [
-                "check",
-                "--json",
-                "--task",
-                fixture_task_path,
-                "--base",
-                git_repo["base"],
-                "--head",
-                git_repo["head"],
-                "--declaration",
-                str(declaration),
-            ]
-        )
-        == 0
+    declaration.write_text(
+        "# Builder Declaration\n## Mandate as understood\nAdd the thing.\n"
     )
+
+    assert main([
+        "check", "--json", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+        "--declaration", str(declaration),
+    ]) == 0
 
     with_declaration = json.loads(capsys.readouterr().out)
     assert with_declaration["declaration"] is not None
@@ -625,21 +500,10 @@ def test_check_threads_an_optional_declaration_into_the_review(
     # ...and the same invocation WITHOUT it succeeds too, differing only in the
     # §7.4 absent finding. Pairing both runs in one test means a --declaration
     # that parses but is ignored cannot pass: the two outputs would be identical.
-    assert (
-        main(
-            [
-                "check",
-                "--json",
-                "--task",
-                fixture_task_path,
-                "--base",
-                git_repo["base"],
-                "--head",
-                git_repo["head"],
-            ]
-        )
-        == 0
-    )
+    assert main([
+        "check", "--json", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+    ]) == 0
     without = json.loads(capsys.readouterr().out)
     assert without["declaration"] is None
     assert "declaration_absent" in {f["type"] for f in without["findings"]}
@@ -653,19 +517,9 @@ def test_check_without_a_head_reviews_the_working_tree(
     — a fixture whose tree matched HEAD would pass either way."""
     (git_repo["path"] / "uncommitted.py").write_text("def added_after_head():\n    return 1\n")
 
-    assert (
-        main(
-            [
-                "check",
-                "--json",
-                "--task",
-                fixture_task_path,
-                "--base",
-                git_repo["base"],
-            ]
-        )
-        == 0
-    )
+    assert main([
+        "check", "--json", "--task", fixture_task_path, "--base", git_repo["base"],
+    ]) == 0
 
     review = json.loads(capsys.readouterr().out)
     assert review["reviewed_revision"] == "<working-tree>"
@@ -681,73 +535,43 @@ def _gap_client():
     it — i.e. a review with real gaps, and so a real recommendation to pull."""
     from tests.support import client_dispatching
 
-    return client_dispatching(
-        {
-            "_Decomposition": {
-                "obligations": [
-                    {
-                        "id": "gap-ob",
-                        "description": "Handle the empty case",
-                        "type": "functional",
-                        "importance": "critical",
-                        "explicit": True,
-                        "observable_behavior": "...",
-                        "source_quote": "Do the thing.",
-                    }
-                ],
-                "open_questions": [],
-                "requirement_dispositions": [],
-            },
-            "_Mappings": {"mappings": []},
-            "_Discrimination": {"discriminations": []},
-            "_Coverage": {
-                "classifications": [
-                    {
-                        "obligation_id": "gap-ob",
-                        "status": "not_addressed",
-                        "rationale": "no code handles the empty case",
-                        "diff_refs": [],
-                    }
-                ]
-            },
-            "_Detections": {"unrequested_changes": []},
-            "_Judgments": {"resolutions": []},
-            "_Recommendations": {
-                "recommendations": [
-                    {
-                        "obligation_id": "gap-ob",
-                        "required_inputs": "an empty collection",
-                        "boundary_conditions": "zero elements",
-                        "expected_output": "an empty result, not an error",
-                        "required_assertions": ["assert handle([]) == []"],
-                        "plausible_defect": "raises IndexError on an empty input",
-                        "repo_conventions": "follow the fixtures in tests/test_thing.py",
-                    }
-                ]
-            },
-            "_Mismatches": {"mismatches": []},
-        }
-    )
+    return client_dispatching({
+        "_Decomposition": {"obligations": [{
+            "id": "gap-ob", "description": "Handle the empty case",
+            "type": "functional", "importance": "critical", "explicit": True,
+            "observable_behavior": "...", "source_quote": "Do the thing.",
+        }], "open_questions": [], "requirement_dispositions": []},
+        "_Mappings": {"mappings": []},
+        "_Discrimination": {"discriminations": []},
+        "_Coverage": {"classifications": [{
+            "obligation_id": "gap-ob", "status": "not_addressed",
+            "rationale": "no code handles the empty case", "diff_refs": [],
+        }]},
+        "_Detections": {"unrequested_changes": []},
+        "_Judgments": {"resolutions": []},
+        "_Recommendations": {"recommendations": [{
+            "obligation_id": "gap-ob",
+            "required_inputs": "an empty collection",
+            "boundary_conditions": "zero elements",
+            "expected_output": "an empty result, not an error",
+            "required_assertions": ["assert handle([]) == []"],
+            "plausible_defect": "raises IndexError on an empty input",
+            "repo_conventions": "follow the fixtures in tests/test_thing.py",
+        }]},
+        "_Mismatches": {"mismatches": []},
+    })
 
 
 def _run_check_with_gaps(git_repo, fixture_task_path, monkeypatch):
     from acceptance.config import RunConfig
 
-    monkeypatch.setattr(RunConfig, "build_client", lambda self, completion_fn=None: _gap_client())
-    assert (
-        main(
-            [
-                "check",
-                "--task",
-                fixture_task_path,
-                "--base",
-                git_repo["base"],
-                "--head",
-                git_repo["head"],
-            ]
-        )
-        == 0
+    monkeypatch.setattr(
+        RunConfig, "build_client", lambda self, completion_fn=None: _gap_client()
     )
+    assert main([
+        "check", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+    ]) == 0
 
 
 def test_check_writes_no_instruction_file_even_when_the_review_has_gaps(
@@ -778,20 +602,10 @@ def test_a_stale_instruction_file_is_removed_and_the_removal_reported(
     stale.parent.mkdir(parents=True, exist_ok=True)
     stale.write_text("# Next instruction\n\nSomething that is no longer true.\n")
 
-    assert (
-        main(
-            [
-                "check",
-                "--task",
-                fixture_task_path,
-                "--base",
-                git_repo["base"],
-                "--head",
-                git_repo["head"],
-            ]
-        )
-        == 0
-    )
+    assert main([
+        "check", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+    ]) == 0
 
     assert not stale.exists()
     # Visible, not silent — it touched a file in the user's repo. On stderr so
@@ -808,20 +622,10 @@ def test_the_removal_leaves_the_report_as_the_only_statement_of_status(
     stale.parent.mkdir(parents=True, exist_ok=True)
     stale.write_text("# Next instruction\n\nStale gaps.\n")
 
-    assert (
-        main(
-            [
-                "check",
-                "--task",
-                fixture_task_path,
-                "--base",
-                git_repo["base"],
-                "--head",
-                git_repo["head"],
-            ]
-        )
-        == 0
-    )
+    assert main([
+        "check", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"],
+    ]) == 0
 
     assert not stale.exists()
     assert "Recommended next instruction: (none)" in capsys.readouterr().out
@@ -853,11 +657,8 @@ def test_recommendation_returns_the_stored_prescription_for_a_criterion(
     assert all(
         len(str(payload[field]).split()) > 1
         for field in (
-            "required_inputs",
-            "boundary_conditions",
-            "expected_output",
-            "plausible_defect",
-            "repo_conventions",
+            "required_inputs", "boundary_conditions", "expected_output",
+            "plausible_defect", "repo_conventions",
         )
     )
 
@@ -913,7 +714,9 @@ def _store_review_with(tmp_path, revision, criterion, defect):
     return ReviewStore(tmp_path / ".acceptance" / "cache" / "reviews").write(review)
 
 
-def test_retrieval_reads_the_named_revision_and_not_a_recomputation(monkeypatch, tmp_path, capsys):
+def test_retrieval_reads_the_named_revision_and_not_a_recomputation(
+    monkeypatch, tmp_path, capsys
+):
     """Two stored reviews disagree about the same criterion, so reading the
     wrong one — or recomputing instead of reading — is observable.
 
@@ -947,18 +750,18 @@ def test_retrieval_makes_no_model_call(monkeypatch, tmp_path, capsys):
 
     monkeypatch.setattr(RunConfig, "build_client", explode)
     monkeypatch.setattr(
-        cli,
-        "run_review",
-        lambda *a, **k: (_ for _ in ()).throw(
+        cli, "run_review", lambda *a, **k: (_ for _ in ()).throw(
             AssertionError("retrieval re-ran the review pipeline")
-        ),
+        )
     )
 
     assert main(["recommendation", "--criterion", "ob-1"]) == 0
     assert "a defect" in capsys.readouterr().out
 
 
-def test_retrieval_without_a_revision_uses_the_newest_stored_review(monkeypatch, tmp_path, capsys):
+def test_retrieval_without_a_revision_uses_the_newest_stored_review(
+    monkeypatch, tmp_path, capsys
+):
     """Oldest-vs-newest has to be observable, so the store holds two reviews
     that disagree, written in a known order."""
     import json
@@ -978,7 +781,9 @@ def test_retrieval_without_a_revision_uses_the_newest_stored_review(monkeypatch,
     assert json.loads(capsys.readouterr().out)["plausible_defect"] == "the NEWER defect"
 
 
-def test_the_newest_review_wins_regardless_of_filename_order(monkeypatch, tmp_path, capsys):
+def test_the_newest_review_wins_regardless_of_filename_order(
+    monkeypatch, tmp_path, capsys
+):
     """Reviews are keyed by revision, and revisions carry no order. A store that
     sorted by name would pass the test above by accident, so here the newest
     review is the alphabetically FIRST filename."""
@@ -996,7 +801,9 @@ def test_the_newest_review_wins_regardless_of_filename_order(monkeypatch, tmp_pa
     assert json.loads(capsys.readouterr().out)["plausible_defect"] == "the NEWER defect"
 
 
-def test_recommendation_without_a_stored_review_fails_cleanly(monkeypatch, tmp_path, capsys):
+def test_recommendation_without_a_stored_review_fails_cleanly(
+    monkeypatch, tmp_path, capsys
+):
     monkeypatch.chdir(tmp_path)
 
     assert main(["recommendation", "--criterion", "anything"]) == 1
@@ -1040,10 +847,8 @@ _DOCUMENTED_COMMAND = "acceptance recommendation --criterion <id>"
 def _spec_text():
     from pathlib import Path
 
-    spec = (
-        Path(__file__).resolve().parents[1]
-        / "docs"
-        / ("AI-Assisted-Software-Development-Review-Spec.md")
+    spec = Path(__file__).resolve().parents[1] / "docs" / (
+        "AI-Assisted-Software-Development-Review-Spec.md"
     )
     return spec.read_text()
 
@@ -1094,7 +899,9 @@ def build_parser_parse(argv):
     return build_parser().parse_args(argv)
 
 
-def test_the_removal_is_reported_in_json_mode_too(git_repo, fixture_task_path, capsys, stub_model):
+def test_the_removal_is_reported_in_json_mode_too(
+    git_repo, fixture_task_path, capsys, stub_model
+):
     """Deleting a file in the user's repo must never be silent, in any mode.
 
     The first version printed the notice only on the text branch, so `--json`
@@ -1107,21 +914,10 @@ def test_the_removal_is_reported_in_json_mode_too(git_repo, fixture_task_path, c
     stale.parent.mkdir(parents=True, exist_ok=True)
     stale.write_text("# Next instruction\n\nStale.\n")
 
-    assert (
-        main(
-            [
-                "check",
-                "--task",
-                fixture_task_path,
-                "--base",
-                git_repo["base"],
-                "--head",
-                git_repo["head"],
-                "--json",
-            ]
-        )
-        == 0
-    )
+    assert main([
+        "check", "--task", fixture_task_path,
+        "--base", git_repo["base"], "--head", git_repo["head"], "--json",
+    ]) == 0
 
     captured = capsys.readouterr()
     assert not stale.exists()
@@ -1184,10 +980,9 @@ def test_the_pipeline_persists_the_requirement_map(git_repo, tmp_path, stub_mode
         "## Scope exclusions\n- Changing the PDF renderer.\n"
     )
 
-    assert (
-        main(["check", "--task", str(task), "--base", git_repo["base"], "--head", git_repo["head"]])
-        == 0
-    )
+    assert main(
+        ["check", "--task", str(task), "--base", git_repo["base"], "--head", git_repo["head"]]
+    ) == 0
 
     stored = ReviewStore().read(git_repo["head"])
     assert stored.requirement_map is not None
@@ -1214,10 +1009,9 @@ def test_a_requirement_that_yielded_nothing_is_visible_in_the_report(
     task = tmp_path / "task.md"
     task.write_text("# Task\nRender each invoice line.\n\n## Constraints\n- Format money as USD.\n")
 
-    assert (
-        main(["check", "--task", str(task), "--base", git_repo["base"], "--head", git_repo["head"]])
-        == 0
-    )
+    assert main(
+        ["check", "--task", str(task), "--base", git_repo["base"], "--head", git_repo["head"]]
+    ) == 0
 
     report = capsys.readouterr().out
     assert "Mandate coverage: 0 of 2 requirements yielded obligations" in report

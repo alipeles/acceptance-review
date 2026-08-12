@@ -118,56 +118,42 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
             # the difference between them to be the verdict and nothing else.
             tests = _enums(schema, "test_id")
             allowed = _enums(schema, "obligation_ids") or [o["id"] for o in obligations]
-            return _fake_response(
-                json.dumps(
-                    {
-                        "mappings": [
-                            {"test_id": t, "obligation_ids": allowed, "rationale": "."}
-                            for t in tests
-                        ]
-                    }
-                )
-            )
+            return _fake_response(json.dumps({
+                "mappings": [
+                    {"test_id": t, "obligation_ids": allowed, "rationale": "."}
+                    for t in tests
+                ]
+            }))
 
         if name == "_Discrimination":
             ids = _enums(schema, "obligation_id") or [o["id"] for o in obligations]
-            return _fake_response(
-                json.dumps(
+            return _fake_response(json.dumps({
+                "obligations": [
                     {
-                        "obligations": [
-                            {
-                                "obligation_id": oid,
-                                "defects": [
-                                    {
-                                        "description": "the behaviour under review is wrong",
-                                        "would_be_caught": always_strong,
-                                        "reason": "fixed verdict from a degenerate judge",
-                                    }
-                                ],
-                            }
-                            for oid in ids
-                        ]
+                        "obligation_id": oid,
+                        "defects": [{
+                            "description": "the behaviour under review is wrong",
+                            "would_be_caught": always_strong,
+                            "reason": "fixed verdict from a degenerate judge",
+                        }],
                     }
-                )
-            )
+                    for oid in ids
+                ]
+            }))
 
         if name == "_Coverage":
             ids = _enums(schema, "obligation_id") or [o["id"] for o in obligations]
-            return _fake_response(
-                json.dumps(
+            return _fake_response(json.dumps({
+                "classifications": [
                     {
-                        "classifications": [
-                            {
-                                "obligation_id": oid,
-                                "status": "addressed" if always_strong else "not_addressed",
-                                "rationale": "fixed verdict from a degenerate judge",
-                                "diff_refs": [],
-                            }
-                            for oid in ids
-                        ]
+                        "obligation_id": oid,
+                        "status": "addressed" if always_strong else "not_addressed",
+                        "rationale": "fixed verdict from a degenerate judge",
+                        "diff_refs": [],
                     }
-                )
-            )
+                    for oid in ids
+                ]
+            }))
 
         return _fake_response(json.dumps(_completed(_EMPTY_BY_SCHEMA[name], **kwargs)))
 
@@ -180,10 +166,10 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
         store=TranscriptStore(tempfile.mkdtemp()),
         temperature=0.0,
         completion_fn=completion_fn,
-        # Linking prefilters before it asks (#259), so a client driving the full
-        # pipeline has to be able to embed. Neutral vectors, for the reason
-        # `constant_embedding_fn` gives: a degenerate JUDGE is the variable under
-        # test here, and the prefilter must not quietly become a second one.
+        # Linking prefilters before it asks (#259), so a client driving the
+        # full pipeline has to be able to embed. Neutral vectors, for the
+        # reason `constant_embedding_fn` gives: a degenerate JUDGE is the
+        # variable here, and the prefilter must not become a second one.
         embedding_model=DEFAULT_EMBEDDING_MODEL,
         embedding_fn=constant_embedding_fn,
     )

@@ -82,7 +82,9 @@ def _faithful(labels: GroundTruthLabels) -> dict[str, Any]:
     return {
         "obligations": obligations,
         "open_questions": [
-            _question(q.id, q.description) for q in labels.open_questions if q.should_be_raised
+            _question(q.id, q.description)
+            for q in labels.open_questions
+            if q.should_be_raised
         ],
         # Filled in by `decomposer`'s completion_fn, which can see the
         # requirement ids the call supplied; a label-seeded builder cannot.
@@ -208,8 +210,9 @@ def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
         store=TranscriptStore(tempfile.mkdtemp()),
         temperature=0.0,
         completion_fn=completion_fn,
-        # As in `degenerate_judges`: the pipeline embeds before linking (#259),
-        # and neutral vectors keep the degenerate DECOMPOSER the only variable.
+        # As in `degenerate_judges`: the pipeline embeds before linking
+        # (#259), and neutral vectors keep the degenerate DECOMPOSER the
+        # only variable.
         embedding_model=DEFAULT_EMBEDDING_MODEL,
         embedding_fn=constant_embedding_fn,
     )
