@@ -1,0 +1,97 @@
+Requirements: 20   with obligations: 19   deliberately none: 1
+
+[task-01] The repository's Python sources are formatter-clean and lint-clean, and the
+    automated build fails any change that leaves them otherwise.
+    -> python-sources-formatter-and-lint-clean  [functional/explicit]
+       The repository's Python sources are formatter-clean and lint-clean, and the
+       automated build fails any change that leaves them otherwise.
+
+[constraint-01] Every Python file in the repository is formatted the way `ruff format`
+    formats it.
+    -> python-files-ruff-format-clean  [functional/explicit]
+       Every Python file in the repository is formatted the way `ruff format` formats
+       it.
+
+[constraint-02] No Python file in the repository violates a selected `ruff check` rule.
+    -> python-files-ruff-check-clean  [functional/explicit]
+       No Python file in the repository violates a selected `ruff check` rule.
+
+[constraint-03] The reformatting alters no program logic.
+    -> reformatting-preserves-program-logic  [invariant/explicit]
+       The reformatting alters no program logic.
+
+[constraint-04] The test in `tests/test_partition.py` that expects `Exception` expects
+    instead the specific exception type the code under test raises.
+    -> partition-test-expects-specific-exception  [functional/explicit]
+       The test in `tests/test_partition.py` that expects `Exception` expects instead
+       the specific exception type the code under test raises.
+
+[constraint-05] That test is narrowed to the specific exception rather than annotated to
+    be ignored.
+    -> partition-test-is-not-ignored  [functional/explicit]
+       That test is narrowed to the specific exception rather than annotated to be
+       ignored.
+
+[constraint-06] The project's development dependencies pin an exact `ruff` version.
+    -> dev-dependencies-pin-ruff-exact-version  [compatibility/explicit]
+       The project's development dependencies pin an exact `ruff` version.
+
+[constraint-07] The automated build runs a formatting check over the repository.
+    -> build-runs-formatting-check  [functional/explicit]
+       The automated build runs a formatting check over the repository.
+
+[constraint-08] The automated build fails when the formatting check reports a file.
+    -> build-fails-on-formatting-check-report  [functional/explicit]
+       The automated build fails when the formatting check reports a file.
+
+[constraint-09] The automated build fails when the lint check reports an error.
+    -> build-fails-on-lint-check-error  [functional/explicit]
+       The automated build fails when the lint check reports an error.
+
+[constraint-10] The automated build's lint step does not discard the lint tool's exit
+    code.
+    -> lint-step-preserves-lint-exit-code  [invariant/explicit]
+       The automated build's lint step preserves the lint tool's exit code.
+
+[constraint-11] The automated build checks out the repository's full commit history.
+    -> checkout-full-history  [functional/explicit]
+       The automated build checks out the repository's full commit history.
+
+[constraint-12] The automated build's checkout action is at a major version that does
+    not target Node 20.
+    -> checkout-action-not-node20-major  [compatibility/explicit]
+       The automated build's checkout action uses a major version that does not target
+       Node 20.
+
+[constraint-13] The automated build's Python setup action is at a major version that
+    does not target Node 20.
+    -> python-setup-action-not-node20-major  [compatibility/explicit]
+       The automated build's Python setup action uses a major version that does not
+       target Node 20.
+
+[exclusion-01] Which lint rules are selected.
+    -> lint-rules-selection-excluded  [regression/explicit]
+       The change does not alter which lint rules are selected.
+
+[exclusion-02] Formatting files that are not Python.
+    -> non-python-formatting-excluded  [regression/explicit]
+       The change does not alter formatting of files that are not Python.
+
+[exclusion-03] The behaviour of the review pipeline.
+    -> scope-exclusion-review-pipeline  [functional/explicit]
+       The change does not alter the behaviour of the review pipeline.
+
+[exclusion-04] Which Python version the build targets.
+    -> scope-exclusion-python-version-target  [compatibility/explicit]
+       The change does not alter which Python version the build targets.
+
+[exclusion-05] Failures in the test suite that are unrelated to formatting or linting.
+    -> scope-exclusion-unrelated-test-failures  [functional/explicit]
+       The change does not alter how failures in the test suite unrelated to formatting
+       or linting are handled.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       The requirement is a section marker standing alone with no checkable mandate
+       under it.
+

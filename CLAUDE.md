@@ -57,7 +57,7 @@ whether the checker works. GitHub Acceptance Review is Stage 2 — out of scope.
   decisions changes the decomposition. The one sanctioned edit is rewriting a
   *weak obligation* — requirement text that is genuinely badly worded — which is
   encouraged. **Fix the wording, never the output.** Session state belongs in
-  `session-state.md`.
+  `session-state/<issue>.md`.
 
 ## Tech
 
@@ -94,9 +94,11 @@ whether the checker works. GitHub Acceptance Review is Stage 2 — out of scope.
   the benchmark scores against.
 - `current-task.md` — the task being worked right now, in the tool's own input
   format.
-- `session-state.md` — rolling state of the task in flight, carried across
-  context resets. Committed, but still a scratch record: **the issue remains
-  authoritative** (#168), and this file never becomes the plan.
+- `session-state/<issue>.md` — rolling state of one task in flight, carried
+  across context resets. **One file per task, owned by that task's session**;
+  delete it when the task lands, so the directory is the list of what is
+  actually in flight. Committed, but still a scratch record: **the issue remains
+  authoritative** (#168), and these files never become the plan.
 - `dogfood-logs/` — one directory per dogfood run, holding its inputs, output
   and judgement. Committed; see *Dogfooding* below for the layout and why.
 - `.acceptance/` — local run artifacts. Gitignored, never committed.
@@ -182,13 +184,15 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
 - **One issue per branch and PR.** Keep diffs small and reviewable — that's how
   the human builds understanding without reading every line.
 - **Process artifacts are committed to `main`, never to the branch under
-  review.** `session-state.md` and `docs/DEFERRED.md` are working records that
+  review.** `session-state/` and `docs/DEFERRED.md` are working records that
   no mandate ever asks for, so on a branch they are pure noise in two places at
   once: `check` reports them as `separable` on every run, and they crowd the PR
   diff — #257 changed 14 files of which 2 were the delivery. Commit
-  `docs/DEFERRED.md` to `main` as it changes; commit `session-state.md` to
-  `main` **at the gates**, leaving mid-task edits uncommitted in the working
-  tree. Uncommitted changes survive `git checkout main`, so the move is
+  `docs/DEFERRED.md` to `main` as it changes; commit your task's
+  `session-state/<issue>.md` to `main` **at the gates**, leaving mid-task edits
+  uncommitted in the working tree. **Touch only your own file** — sessions run
+  concurrently and the sharding exists so that two gates landing at once do not
+  collide. Uncommitted changes survive `git checkout main`, so the move is
   checkout / add / commit / push / checkout back — never `git stash`, which
   reverts the working tree wholesale. **Push immediately**: an unpushed `main`
   commit reaches origin only inside the next branch's squash, attributed to the
@@ -295,7 +299,7 @@ your wording; otherwise leave it. This is independent of whether to escalate —
 question can be both worth rewording and worth reporting. Report it either way;
 the rewrite is not the report.
 
-**4. Record in `session-state.md`** that Gate 1 passed, at which SHA, and who
+**4. Record in `session-state/<issue>.md`** that Gate 1 passed, at which SHA, and who
 confirmed the decomposition. That confirmation is a human judgement — unwritten,
 the next session either repeats it or assumes it.
 
@@ -315,7 +319,7 @@ the next session either repeats it or assumes it.
 - no other flag, caveat, or indication that something needs attention.
 
 Anything short of that is a stop. It is not a judgement call and not a threshold
-to negotiate down. Record the result in `session-state.md` — clean or not, and at
+to negotiate down. Record the result in `session-state/<issue>.md` — clean or not, and at
 which SHA.
 
 ### Rules that apply at both gates
@@ -353,7 +357,9 @@ continuously, reset at the cheap moments.**
 
 **Start of session — do this and nothing more:**
 
-1. `session-state.md` — rolling state of the task in flight.
+1. `session-state/` — list it, then read the entry for the task in flight. More
+   than one file means more than one session is running; read only yours, and
+   check the others for collisions rather than assuming there are none.
 2. `current-task.md` — the task itself.
 3. `git log --oneline -10` and `git status`.
 
@@ -371,7 +377,7 @@ costs almost nothing. Mid-implementation is where real work is lost. It follows
 that a task should fit one session, gate to gate — if it can't reach Gate 2
 without a reset, split the issue rather than run a longer session.
 
-**Keep `session-state.md` current.** Rolling, fixed headings, rewritten wholesale
+**Keep your `session-state/<issue>.md` current.** Rolling, fixed headings, rewritten wholesale
 rather than appended to. Update it before you stop and any time losing the last
 hour would hurt — not as an end-of-session ceremony, which is expensive enough to
 get skipped. Keep it short; cheap to rewrite means it actually gets rewritten.
@@ -384,7 +390,7 @@ context.
 ## Sequencing
 
 **Where the work currently stands is deliberately not recorded here** — a status
-line goes stale within days and then misdirects. Live state is `session-state.md`
+line goes stale within days and then misdirects. Live state is `session-state/`
 and `current-task.md`.
 
 What is durable is the load-bearing order: the review-state store, evidence-tier
@@ -590,4 +596,4 @@ worthless. Hold your own reports to it:
 
 Keep this file short. Add a line when an agent would otherwise rediscover
 something expensive or get something wrong; delete a line when it stops being
-true. Status belongs in `session-state.md` and git history, not here.
+true. Status belongs in `session-state/` and git history, not here.

@@ -1,0 +1,129 @@
+Requirements: 26   with obligations: 25   deliberately none: 1
+
+[task-01] The repository's Python sources are formatter-clean and lint-clean, and the
+    automated build fails any change that leaves them otherwise.
+    -> python-sources-formatter-and-lint-clean  [functional/explicit]
+       The repository's Python sources are formatter-clean and lint-clean.
+    -> build-fails-on-unclean-python-sources  [functional/explicit]
+       The automated build fails any change that leaves the repository's Python sources
+       otherwise than formatter-clean and lint-clean.
+
+[constraint-01] Every Python file in the repository is formatted the way `ruff format`
+    formats it.
+    -> python-files-ruff-format-clean  [functional/explicit]
+       Every Python file in the repository is formatted the way `ruff format` formats
+       it.
+
+[constraint-02] No Python file in the repository violates a selected `ruff check` rule.
+    -> no-python-file-violates-selected-ruff-rule  [functional/explicit]
+       No Python file in the repository violates a selected `ruff check` rule.
+
+[constraint-03] The reformatting alters no program logic.
+    -> reformatting-preserves-program-logic  [invariant/explicit]
+       The reformatting alters no program logic.
+
+[constraint-04] The test in `tests/test_partition.py` that expects `Exception` expects
+    instead the specific exception type the code under test raises.
+    -> partition-test-expects-specific-exception  [functional/explicit]
+       The test in `tests/test_partition.py` that expects `Exception` expects instead
+       the specific exception type the code under test raises.
+
+[constraint-05] That test is not made to pass by suppressing the lint rule that flagged
+    it.
+    -> partition-test-not-fixed-by-lint-suppression  [error_handling/explicit]
+       That test is not made to pass by suppressing the lint rule that flagged it.
+
+[constraint-06] The project's development dependencies pin an exact `ruff` version.
+    -> dev-deps-pin-exact-ruff-version  [docs_config/explicit]
+       The project's development dependencies pin an exact `ruff` version.
+
+[constraint-07] The automated build runs a formatting check over the repository.
+    -> build-runs-formatting-check  [functional/explicit]
+       The automated build runs a formatting check over the repository.
+
+[constraint-08] The automated build fails when the formatting check reports a file.
+    -> build-fails-on-formatting-check-report  [invariant/explicit]
+       The automated build fails when the formatting check reports a file.
+
+[constraint-09] The automated build fails when the lint check reports an error.
+    -> build-fails-on-lint-error  [invariant/explicit]
+       The automated build fails when the lint check reports an error.
+
+[constraint-10] The automated build's lint step does not discard the lint tool's exit
+    code.
+    -> lint-step-preserves-exit-code  [functional/explicit]
+       The automated build's lint step preserves the lint tool's exit code.
+
+[constraint-11] The automated build checks out the repository's full commit history.
+    -> checkout-full-history  [functional/explicit]
+       The automated build checks out the repository's full commit history.
+
+[constraint-12] The automated build's checkout action is at a major version that does
+    not target Node 20.
+    -> checkout-action-not-node20  [compatibility/explicit]
+       The automated build's checkout action uses a major version that does not target
+       Node 20.
+
+[constraint-13] The automated build's Python setup action is at a major version that
+    does not target Node 20.
+    -> python-setup-action-not-node20  [compatibility/explicit]
+       The automated build's Python setup action uses a major version that does not
+       target Node 20.
+
+[exclusion-01] Which lint rules are selected.
+    -> lint-rules-unspecified  [regression/explicit]
+       The change does not alter which lint rules are selected.
+
+[exclusion-02] Formatting files that are not Python.
+    -> python-file-formatting-scope-only  [regression/explicit]
+       The change does not alter formatting behavior for files that are not Python.
+
+[exclusion-03] The behaviour of the review pipeline.
+    -> review-pipeline-unchanged  [regression/explicit]
+       The change does not alter the behaviour of the review pipeline.
+
+[exclusion-04] Which Python version the build targets.
+    -> build-python-version-target-unchanged  [regression/explicit]
+       The change does not alter which Python version the build targets.
+
+[exclusion-05] Failures in the test suite that are unrelated to formatting or linting.
+    -> exclude-unrelated-test-suite-failures  [functional/explicit]
+       The change leaves failures in the test suite that are unrelated to formatting or
+       linting outside the scope of the automated build failure condition.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       A standalone section marker with no requirement content.
+
+[completion-02] A test asserts that every Python file in the repository is formatter-
+    clean.
+    -> test-formatter-clean-python-files  [test_demand/explicit]
+       A test asserts that every Python file in the repository is formatter-clean.
+
+[completion-03] A test asserts that no Python file in the repository violates a selected
+    lint rule.
+    -> test-lint-clean-python-files  [test_demand/explicit]
+       A test asserts that no Python file in the repository violates a selected lint
+       rule.
+
+[completion-04] A test asserts that the build's lint step does not discard the lint
+    tool's exit code.
+    -> test-lint-step-preserves-exit-code  [test_demand/explicit]
+       A test asserts that the build's lint step does not discard the lint tool's exit
+       code.
+
+[completion-05] A test asserts that the build runs a formatting check over the
+    repository.
+    -> test-build-runs-formatting-check  [test_demand/explicit]
+       A test asserts that the build runs a formatting check over the repository.
+
+[completion-06] A test asserts that the build checks out the repository's full commit
+    history.
+    -> test-build-checks-out-full-history  [test_demand/explicit]
+       A test asserts that the build checks out the repository's full commit history.
+
+[completion-07] A test asserts that the development dependencies pin an exact `ruff`
+    version.
+    -> test-dev-dependencies-pin-ruff-version  [test_demand/explicit]
+       A test asserts that the development dependencies pin an exact `ruff` version.
+

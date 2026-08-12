@@ -9,7 +9,7 @@
 # replayed at all.
 dogfood-logs/
 
-# session-state.md and docs/DEFERRED.md are working records, not deliverables:
+# session-state/ and docs/DEFERRED.md are working records, not deliverables:
 # the rolling state of the task in flight, and the queue of things found but
 # deliberately not acted on. No mandate ever asks for either, so `check`
 # correctly reported them as `separable` on every single run — a caveat that
@@ -26,5 +26,5 @@ dogfood-logs/
 # way of hiding a finding: they genuinely are not part of any change under
 # review. It does NOT make the tool aware it is being dogfooded; it tells the
 # tool which paths are not the delivery, which is what this file is for.
-/session-state.md
+/session-state/
 /docs/DEFERRED.md

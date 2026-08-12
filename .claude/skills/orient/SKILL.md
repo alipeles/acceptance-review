@@ -1,6 +1,6 @@
 ---
 name: orient
-description: Re-orient in this repo after a context reset — read CLAUDE.md, session-state.md and current-task.md, check git and the tracking issue, then report where the work stands before touching anything. Use ONLY when the user explicitly invokes /orient. A question about project status, what's left, or what a file does is not a request for this; answer it directly instead.
+description: Re-orient in this repo after a context reset — read CLAUDE.md, this task's session-state/ entry and current-task.md, check git and the tracking issue, then report where the work stands before touching anything. Use ONLY when the user explicitly invokes /orient. A question about project status, what's left, or what a file does is not a request for this; answer it directly instead.
 ---
 
 # Orient after a context reset
@@ -12,8 +12,11 @@ final step.
 
 1. `CLAUDE.md` — conventions, invariants, and the dogfooding gates. Follow it
    literally; it is the authority on how work happens in this repo.
-2. `session-state.md` — the task in flight. Assume it is accurate; it is the
-   work log, carried across context resets.
+2. `session-state/` — list it, then read the entry for the task in flight
+   (usually the one matching the current branch's issue number). Assume it is
+   accurate; it is the work log, carried across context resets. **More than one
+   file means more than one session is running.** Read only yours, and scan the
+   others for collisions rather than assuming there are none.
 3. `current-task.md` — the mandate most recently under review, in the tool's own input format.
 
 ## 2. Check the ground truth
@@ -21,7 +24,7 @@ final step.
 Run `git status` and `git log --oneline -5` so you know the branch and whether
 the tree is dirty.
 
-Then read the GitHub issue named in `session-state.md` for the **Deliverable**
+Then read the GitHub issue named in your `session-state/` entry for the **Deliverable**
 and **Acceptance** you are working against. GitHub is authoritative for task
 state — the issue is the plan, not any file in the repo (#168).
 
