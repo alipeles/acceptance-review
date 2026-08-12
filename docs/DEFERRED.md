@@ -36,6 +36,83 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-12] A weak obligation no test can evidence aborts the whole review
+- **Kind:** filing (new issue, child of #185)
+- **Found during:** #261/#239, Gate 2, run 1
+- **Where:** `src/acceptance/coverage/recommendations.py:182`
+- **Severity:** blocker — it is the only thing keeping #261/#239's Gate 2 from
+  completing, and it makes configuration-only changes unreviewable in general
+- **What's wrong:** `recommend_tests` requires a recommendation for **every**
+  weak obligation and raises `SchemaValidationError` otherwise. There is no way
+  for the stage to record that an obligation is one *no test can evidence*. On a
+  change to `ci.yml`, `pyproject.toml` and formatting, the model answered the
+  three obligations a pytest could evidence and declined nine that are properties
+  of build steps, action versions and a version pin — a principled split, not a
+  truncated answer — and the run aborted, discarding a completed coverage stage
+  that had classified all 19 obligations `addressed`.
+- **Why I didn't act:** the fix adds a disposition to the recommendation response
+  schema, which re-records that stage's transcripts, and it needs a design call
+  on how the verdict treats an obligation that is addressed but unevidenceable.
+  Both are out of scope for a formatter-and-lint change.
+- **Drafted fix:** file as a child of #185, `bug` / `track:checker`:
+
+  > **Title:** A weak obligation that no test can evidence aborts the entire review
+  >
+  > From #261/#239's Gate 2 (`dogfood-logs/261-gate2-run1/`):
+  >
+  > ```
+  > acceptance: model error: no recommendation for 9 of 12 weak obligation(s):
+  > partition-test-is-not-ignored, dev-dependencies-pin-ruff-exact-version,
+  > build-runs-formatting-check, build-fails-on-formatting-check-report,
+  > build-fails-on-lint-check-error, lint-step-preserves-lint-exit-code,
+  > checkout-action-not-node20-major, python-setup-action-not-node20-major,
+  > python-sources-formatter-and-lint-clean
+  > ```
+  >
+  > `recommendations.py:182` requires a recommendation for every weak obligation
+  > and raises otherwise. The guard is deliberate and its comment is right about
+  > why: a response answering 3 of 5 used to yield a report where two silently
+  > carried no recommendation, indistinguishable from a complete answer.
+  >
+  > What it has no room for is an obligation for which **no test is the right
+  > instrument**. The answer here was not partial. The model recommended for
+  > exactly the three obligations a pytest could evidence —
+  > `python-files-ruff-format-clean`, `python-files-ruff-check-clean`,
+  > `partition-test-expects-specific-exception` — and declined the nine that are
+  > properties of `ci.yml` steps, GitHub Action major versions, and a pin in
+  > `pyproject.toml`. No pytest sensibly evidences *"the build's checkout action
+  > is not on Node 20."*
+  >
+  > Two things make this worse than a bad rating:
+  >
+  > 1. **It is a hard abort, not a degraded report.** The coverage stage had
+  >    already classified all 19 obligations `addressed`, with rationales citing
+  >    real diff hunks. None of that reaches the user. A configuration-only
+  >    change cannot be reviewed at all.
+  > 2. **It scales with the batch.** `recommend_tests` makes one unpartitioned
+  >    call carrying every weak obligation, so a single unanswerable obligation
+  >    discards the other eleven. Same shape as the `judge_discrimination` call
+  >    #191 is partitioning.
+  >
+  > Suggested direction, for discussion rather than as a prescription: give the
+  > recommendation response an explicit *"no test can evidence this obligation"*
+  > disposition with a reason, so declining is representable and recorded rather
+  > than being a schema violation. That keeps the guard's real purpose — a silent
+  > omission stays rejected — while separating *"the model skipped it"* from
+  > *"the model correctly says testing is the wrong instrument here."* The
+  > verdict then needs a rule for an obligation that is `addressed` but
+  > unevidenceable by test; §9.3's `Indeterminate` is the obvious candidate,
+  > since positive results are bounded and this is exactly a case where no test
+  > tier is achievable.
+  >
+  > Worth noting this was predicted before the run rather than rationalised
+  > after: `dogfood-logs/261-gate1-run2/judgement.md` recorded that none of the
+  > mandate's obligations could be supported by a pytest, and that the question
+  > for Gate 2 was whether the tool had any evidence path for a
+  > configuration-only change. It has none, and the absence is fatal rather than
+  > graceful.
+- **Status:** open
+
 ### [2026-08-12] Scope-exclusion typing flips wholesale between two runs over the same requirements
 - **Kind:** filing (comment on existing issue #205)
 - **Found during:** #258, Gate 1, runs 1 and 2
