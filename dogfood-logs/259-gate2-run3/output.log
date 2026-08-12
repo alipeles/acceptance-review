@@ -1,0 +1,496 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) with non-discriminating test evidence (obligation-test-deterministic-pair-selection).
+
+Obligations:
+
+  1. A test asserts that a pair whose distance exceeds the threshold is not sent to the model.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+       test evidence: strongly supported  [tier: static]
+         1.2  tests/requirement/test_link_prefilter.py::test_a_pair_beyond_the_threshold_is_never_sent_to_the_model
+         1.3  tests/requirement/test_link_prefilter.py::test_a_pair_just_beyond_the_threshold_is_not_asked_about
+         1.4  tests/requirement/test_link_prefilter.py::test_the_default_run_filters_at_the_documented_default
+
+  2. A test asserts that a pair whose distance is within the threshold is sent to the model.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+       test evidence: strongly supported  [tier: static]
+         2.2  tests/requirement/test_link_prefilter.py::test_a_pair_exactly_at_the_threshold_is_asked_about
+         2.3  tests/requirement/test_link_prefilter.py::test_a_pair_within_the_threshold_is_sent_to_the_model
+         2.4  tests/requirement/test_link_prefilter.py::test_the_default_run_filters_at_the_documented_default
+
+  3. A test asserts that the number of pairs excluded by distance reaches review state.
+       requirements: completion-04
+       code evidence: addressed
+         3.1  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+         3.2  src/acceptance/review_state.py#@@ -704,6 +704,33 @@ class DeterminismControls(_Model):
+         3.3  src/acceptance/config.py#@@ -148,10 +181,12 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+       test evidence: strongly supported  [tier: static]
+         3.4  tests/requirement/test_link_prefilter.py::test_pairs_excluded_counts_only_the_distance_exclusions
+         3.5  tests/requirement/test_link_prefilter.py::test_the_number_of_pairs_excluded_by_distance_reaches_review_state
+
+  4. A test asserts that the threshold in force reaches review state.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+         4.2  src/acceptance/review_state.py#@@ -704,6 +704,33 @@ class DeterminismControls(_Model):
+         4.3  src/acceptance/config.py#@@ -148,10 +181,12 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+       test evidence: strongly supported  [tier: static]
+         4.4  tests/requirement/test_link_prefilter.py::test_the_configured_threshold_reaches_the_linking_stage
+         4.5  tests/requirement/test_link_prefilter.py::test_the_threshold_in_force_reaches_review_state
+
+  5. A test asserts that a pair excluded for stating a different kind of demand stays excluded whatever its distance.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+         5.2  src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+         5.3  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+       test evidence: strongly supported  [tier: static]
+         5.4  tests/requirement/test_link_prefilter.py::test_a_pair_excluded_for_stating_a_different_kind_of_demand_stays_excluded
+         5.5  tests/requirement/test_link_prefilter.py::test_two_runs_over_the_same_obligation_set_choose_the_same_pairs
+         5.6  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_not_merged_even_if_confirmed
+
+  6. A test asserts that changing the threshold invalidates the recorded linking requests.
+       requirements: completion-07
+       code evidence: addressed
+         6.1  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+         6.2  src/acceptance/llm.py#@@ -298,6 +350,14 @@ class ModelClient:
+         6.3  src/acceptance/llm.py#@@ -321,7 +382,7 @@ class ModelClient:
+       test evidence: strongly supported  [tier: static]
+         6.4  tests/requirement/test_link_prefilter.py::test_changing_the_threshold_invalidates_the_recorded_linking_requests
+
+  7. A test asserts that changing the embedding model invalidates the recorded linking requests.
+       requirements: completion-08
+       code evidence: addressed
+         7.1  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+         7.2  src/acceptance/llm.py#@@ -298,6 +350,14 @@ class ModelClient:
+         7.3  src/acceptance/llm.py#@@ -321,7 +382,7 @@ class ModelClient:
+       test evidence: strongly supported  [tier: static]
+         7.4  tests/requirement/test_link_prefilter.py::test_changing_the_embedding_model_invalidates_the_recorded_linking_requests
+
+  8. Each obligation is represented as a vector embedding.
+       requirements: constraint-01
+       code evidence: addressed
+         8.1  src/acceptance/requirement/linking.py#@@ -185,17 +245,47 @@ def _pairs(
+         8.2  src/acceptance/llm.py#@@ -355,6 +416,163 @@ class ModelClient:
+       test evidence: strongly supported  [tier: static]
+         8.3  tests/requirement/test_link_prefilter.py::test_embedding_text_is_description_and_observable_behavior
+         8.4  tests/requirement/test_link_prefilter.py::test_the_linking_path_embeds_every_obligation_exactly_once
+
+  9. The distance between two obligations is computed as cosine distance between their embeddings.
+       requirements: constraint-02
+       code evidence: addressed
+         9.1  src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+       test evidence: strongly supported  [tier: static]
+         9.2  tests/requirement/test_link_prefilter.py::test_cosine_distance_matches_the_definition
+
+  10. Pairs whose distance exceeds the threshold are not sent to the model.
+       requirements: constraint-03
+       code evidence: addressed
+         10.1  src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+         10.2  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/requirement/test_link_prefilter.py::test_a_pair_beyond_the_threshold_is_never_sent_to_the_model
+         10.4  tests/requirement/test_link_prefilter.py::test_a_pair_just_beyond_the_threshold_is_not_asked_about
+         10.5  tests/requirement/test_link_prefilter.py::test_the_default_run_filters_at_the_documented_default
+
+  11. Pairs whose distance is within the threshold are sent to the model.
+       requirements: constraint-04
+       code evidence: addressed
+         11.1  src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+         11.2  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+       test evidence: strongly supported  [tier: static]
+         11.3  tests/requirement/test_link_prefilter.py::test_a_pair_exactly_at_the_threshold_is_asked_about
+         11.4  tests/requirement/test_link_prefilter.py::test_a_pair_within_the_threshold_is_sent_to_the_model
+         11.5  tests/requirement/test_link_prefilter.py::test_the_default_run_filters_at_the_documented_default
+
+  12. The threshold is configurable.
+       requirements: constraint-05
+       code evidence: addressed
+         12.1  src/acceptance/config.py#@@ -118,6 +142,14 @@ class RunConfig(BaseModel):
+         12.2  src/acceptance/cli.py#@@ -628,6 +640,28 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+         12.3  src/acceptance/cli.py#@@ -743,11 +777,18 @@ def main(argv: list[str] | None = None) -> int:
+         12.4  src/acceptance/cli.py#@@ -795,6 +836,8 @@ def main(argv: list[str] | None = None) -> int:
+         12.5  src/acceptance/cli.py#@@ -833,6 +876,8 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: strongly supported  [tier: static]
+         12.6  tests/coverage/test_disposition.py::test_policy_is_surfaced_to_the_model_judgment
+         12.7  tests/requirement/test_link_prefilter.py::test_changing_the_threshold_changes_which_pairs_are_sent
+         12.8  tests/requirement/test_link_prefilter.py::test_the_configured_threshold_reaches_the_linking_stage
+
+  13. The threshold defaults to 0.10.
+       requirements: constraint-06
+       code evidence: addressed
+         13.1  src/acceptance/config.py#@@ -82,6 +82,30 @@ DEFAULT_DECOMPOSE_BATCH_SIZE = 8
+         13.2  src/acceptance/config.py#@@ -118,6 +142,14 @@ class RunConfig(BaseModel):
+       test evidence: strongly supported  [tier: static]
+         13.3  tests/requirement/test_link_prefilter.py::test_the_default_run_filters_at_the_documented_default
+
+  14. A test asserts that an embedding request is replayed from its recording rather than issued again.
+       requirements: completion-09
+       code evidence: addressed
+         14.1  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+       test evidence: strongly supported  [tier: static]
+         14.2  tests/requirement/test_link_prefilter.py::test_an_embedding_request_is_replayed_from_its_recording_rather_than_issued_again
+         14.3  tests/requirement/test_link_prefilter.py::test_replay_without_a_recording_raises_rather_than_calling_a_provider
+         14.4  tests/test_llm.py::test_record_mode_serves_an_existing_transcript_without_re_billing
+         14.5  tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls
+         14.6  tests/test_llm.py::test_replay_without_a_transcript_raises_rather_than_calling_live
+
+  15. A test asserts that two runs over the same obligation set choose the same pairs.
+       requirements: completion-10
+       code evidence: addressed
+         15.1  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: A test exists that verifies identical pair selection across repeated runs on the same obligation set.
+           inputs:  Use a fixed obligation set with at least three obligations whose embedding vectors produce a mix of admissible and filtered pairs, then run the linking stage twice with the same inputs, same threshold, same embedding model, and the same transcript store. The test should capture the exact pair ids asked in each run so it can compare the selected pairs across runs.
+           detects: Pair selection depends on unstable iteration/order or other nondeterministic behavior, so repeated runs over the same obligation set choose different pairs even though the inputs are unchanged.
+           full detail: acceptance recommendation --criterion obligation-test-deterministic-pair-selection
+
+  16. A pair excluded for stating a different kind of demand remains excluded regardless of its distance.
+       requirements: constraint-07
+       code evidence: addressed
+         16.1  src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+         16.2  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+       test evidence: strongly supported  [tier: static]
+         16.3  tests/requirement/test_link_prefilter.py::test_a_pair_excluded_for_stating_a_different_kind_of_demand_stays_excluded
+         16.4  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_not_merged_even_if_confirmed
+
+  17. The number of pairs excluded by distance is recorded.
+       requirements: constraint-08
+       code evidence: addressed
+         17.1  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+         17.2  src/acceptance/llm.py#@@ -355,6 +416,163 @@ class ModelClient:
+         17.3  src/acceptance/review_state.py#@@ -704,6 +704,33 @@ class DeterminismControls(_Model):
+       test evidence: strongly supported  [tier: static]
+         17.4  tests/requirement/test_link_prefilter.py::test_a_filter_that_excluded_nothing_still_reports_a_record
+         17.5  tests/requirement/test_link_prefilter.py::test_both_records_survive_a_round_trip_through_the_persisted_review
+         17.6  tests/requirement/test_link_prefilter.py::test_pairs_excluded_counts_only_the_distance_exclusions
+         17.7  tests/requirement/test_link_prefilter.py::test_the_number_of_pairs_excluded_by_distance_reaches_review_state
+
+  18. The threshold in force is recorded.
+       requirements: constraint-09
+       code evidence: addressed
+         18.1  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+         18.2  src/acceptance/llm.py#@@ -355,6 +416,163 @@ class ModelClient:
+         18.3  src/acceptance/review_state.py#@@ -704,6 +704,33 @@ class DeterminismControls(_Model):
+         18.4  src/acceptance/config.py#@@ -148,10 +181,12 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+       test evidence: strongly supported  [tier: static]
+         18.5  tests/requirement/test_link_prefilter.py::test_both_records_survive_a_round_trip_through_the_persisted_review
+         18.6  tests/requirement/test_link_prefilter.py::test_the_linking_call_actually_carries_the_prefilter_controls
+         18.7  tests/requirement/test_link_prefilter.py::test_the_threshold_in_force_reaches_review_state
+
+  19. Both the distance-exclusion count record and the threshold-in-force record are part of the persisted review state.
+       requirements: constraint-10
+       code evidence: addressed
+         19.1  src/acceptance/review_state.py#@@ -704,6 +704,33 @@ class DeterminismControls(_Model):
+         19.2  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+       test evidence: strongly supported  [tier: static]
+         19.3  tests/requirement/test_link_prefilter.py::test_both_records_survive_a_round_trip_through_the_persisted_review
+         19.4  tests/requirement/test_link_prefilter.py::test_the_linking_call_actually_carries_the_prefilter_controls
+         19.5  tests/test_cli.py::test_check_json_emits_a_structured_review
+         19.6  tests/test_cli.py::test_check_persists_the_review_to_the_store
+
+  20. An embedding request is recorded for replay.
+       requirements: constraint-11
+       code evidence: addressed
+         20.1  src/acceptance/llm.py#@@ -307,6 +367,7 @@ class ModelClient:
+         20.2  src/acceptance/llm.py#@@ -355,6 +416,163 @@ class ModelClient:
+       test evidence: strongly supported  [tier: static]
+         20.3  tests/prompts/test_corpus_mechanism.py::test_the_corpus_is_recorded_under_production_determinism_controls
+         20.4  tests/test_llm.py::test_record_mode_validates_and_persists_a_transcript
+         20.5  tests/test_llm.py::test_request_key_distinguishes_call_parameters
+         20.6  tests/test_llm.py::test_request_key_distinguishes_prompt_and_schema
+         20.7  tests/test_llm.py::test_the_hashed_request_carries_the_inlined_schema
+         20.8  tests/test_llm.py::test_the_schema_sent_to_the_provider_has_no_ref_indirection
+
+  21. An embedding request is replayed rather than issued again once it has a recording.
+       requirements: constraint-12
+       code evidence: addressed
+         21.1  src/acceptance/llm.py#@@ -355,6 +416,163 @@ class ModelClient:
+       test evidence: strongly supported  [tier: static]
+         21.2  tests/prompts/test_corpus_mechanism.py::test_the_prompt_quality_test_actually_consumes_a_committed_transcript
+         21.3  tests/requirement/test_link_prefilter.py::test_an_embedding_request_is_replayed_from_its_recording_rather_than_issued_again
+         21.4  tests/requirement/test_link_prefilter.py::test_replay_without_a_recording_raises_rather_than_calling_a_provider
+         21.5  tests/test_llm.py::test_request_key_is_stable_across_clients
+
+  22. Changing the threshold invalidates the recorded linking requests.
+       requirements: constraint-13
+       code evidence: addressed
+         22.1  src/acceptance/llm.py#@@ -271,12 +315,20 @@ class ModelClient:
+         22.2  src/acceptance/llm.py#@@ -298,6 +350,14 @@ class ModelClient:
+         22.3  src/acceptance/llm.py#@@ -321,7 +382,7 @@ class ModelClient:
+         22.4  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+         22.5  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+       test evidence: strongly supported  [tier: static]
+         22.6  tests/prompts/test_corpus_mechanism.py::test_a_known_defect_survives_an_unrelated_prompt_edit
+         22.7  tests/prompts/test_corpus_mechanism.py::test_editing_a_prompt_fails_with_guidance_naming_the_unverified_change
+         22.8  tests/requirement/test_decompose_partitioning.py::test_changing_the_batch_size_changes_the_request_key
+         22.9  tests/requirement/test_link_prefilter.py::test_changing_the_threshold_invalidates_the_recorded_linking_requests
+
+  23. Changing the embedding model invalidates the recorded linking requests.
+       requirements: constraint-14
+       code evidence: addressed
+         23.1  src/acceptance/llm.py#@@ -271,12 +315,20 @@ class ModelClient:
+         23.2  src/acceptance/llm.py#@@ -298,6 +350,14 @@ class ModelClient:
+         23.3  src/acceptance/llm.py#@@ -321,7 +382,7 @@ class ModelClient:
+         23.4  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+         23.5  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+       test evidence: strongly supported  [tier: static]
+         23.6  tests/requirement/test_link_prefilter.py::test_changing_the_embedding_model_invalidates_the_recorded_linking_requests
+
+  24. Two runs over the same obligation set choose the same pairs.
+       requirements: constraint-15
+       code evidence: addressed
+         24.1  src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+         24.2  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+         24.3  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+       test evidence: strongly supported  [tier: static]
+         24.4  tests/requirement/test_link_prefilter.py::test_two_runs_over_the_same_obligation_set_choose_the_same_pairs
+         24.5  tests/requirement/test_linking.py::test_the_same_derived_obligations_produce_the_same_links
+
+  25. Two runs over byte-identical task text produce byte-identical review state.
+       requirements: constraint-16
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         25.1  tests/test_cli.py::test_check_json_emits_a_structured_review
+         25.2  tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical
+         25.3  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         25.4  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+         25.5  tests/test_llm.py::test_recorded_transcripts_are_byte_identical_for_the_same_call
+         25.6  tests/test_llm.py::test_transcripts_record_no_wall_clock_state
+         25.7  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+
+  26. Tests issue no live model calls.
+       requirements: constraint-17
+       code evidence: addressed
+         26.1  tests/benchmark/degenerate_decomposers.py#@@ -209,4 +208,8 @@ def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
+         26.2  tests/benchmark/degenerate_judges.py#@@ -161,4 +180,10 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+         26.3  tests/support.py#@@ -26,6 +26,43 @@ from acceptance.review_state import Obligation, ObligationType
+         26.4  tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+       test evidence: strongly supported  [tier: static]
+         26.5  tests/prompts/test_corpus_mechanism.py::test_replay_needs_no_api_key
+         26.6  tests/prompts/test_corpus_mechanism.py::test_the_prompt_corpus_replays_with_no_live_call_at_all
+         26.7  tests/test_llm.py::test_harness_does_not_import_the_provider_stack
+         26.8  tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls
+
+  27. The change does not include judging whether a pair that is asked about states one requirement.
+       requirements: exclusion-01
+       [carried forward from 8daa2081 — not re-derived for this head]
+       code evidence: addressed
+         examined 89 changes across 11 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  28. The change does not include deriving an obligation from a requirement.
+       requirements: exclusion-02
+       [carried forward from 3a8c34a1 — not re-derived for this head]
+       code evidence: addressed
+         examined 89 changes across 11 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  29. The change does not include grouping multiple pairs into one request.
+       requirements: exclusion-03
+       [carried forward from 8daa2081 — not re-derived for this head]
+       code evidence: addressed
+         examined 89 changes across 11 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  30. The change does not include measuring how precisely obligations are linked.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 89 changes across 11 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  31. The change does not include recalibrating the threshold for a different embedding model.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 89 changes across 11 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  32. Obligation pairs that are too dissimilar to state one requirement are not asked about.
+       requirements: task-01
+       code evidence: addressed
+         32.1  src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+         32.2  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+       test evidence: strongly supported  [tier: static]
+         32.3  tests/requirement/test_link_prefilter.py::test_a_pair_beyond_the_threshold_is_never_sent_to_the_model
+
+  33. Pairs are filtered for asking based on cosine distance between their embeddings.
+       requirements: task-01
+       code evidence: addressed
+         33.1  src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+         33.2  src/acceptance/requirement/linking.py#@@ -185,17 +245,47 @@ def _pairs(
+       test evidence: strongly supported  [tier: static]
+         33.3  tests/requirement/test_link_prefilter.py::test_cosine_distance_matches_the_definition
+
+  34. Pairs whose distance exceeds the threshold are not sent to the model, while pairs within the threshold are sent to the model.
+       requirements: task-01
+       code evidence: addressed
+         34.1  src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+         34.2  src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+       test evidence: strongly supported  [tier: static]
+         34.3  tests/requirement/test_link_prefilter.py::test_a_pair_beyond_the_threshold_is_never_sent_to_the_model
+         34.4  tests/requirement/test_link_prefilter.py::test_a_pair_exactly_at_the_threshold_is_asked_about
+         34.5  tests/requirement/test_link_prefilter.py::test_a_pair_just_beyond_the_threshold_is_not_asked_about
+         34.6  tests/requirement/test_link_prefilter.py::test_a_pair_within_the_threshold_is_sent_to_the_model
+
+  35. The threshold used for filtering is configurable and defaults to 0.10.
+       requirements: task-01
+       code evidence: addressed
+         35.1  src/acceptance/config.py#@@ -82,6 +82,30 @@ DEFAULT_DECOMPOSE_BATCH_SIZE = 8
+         35.2  src/acceptance/config.py#@@ -118,6 +142,14 @@ class RunConfig(BaseModel):
+         35.3  src/acceptance/cli.py#@@ -628,6 +640,28 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+         35.4  src/acceptance/cli.py#@@ -743,11 +777,18 @@ def main(argv: list[str] | None = None) -> int:
+         35.5  src/acceptance/cli.py#@@ -795,6 +836,8 @@ def main(argv: list[str] | None = None) -> int:
+         35.6  src/acceptance/cli.py#@@ -833,6 +876,8 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: strongly supported  [tier: static]
+         35.7  tests/requirement/test_link_prefilter.py::test_changing_the_threshold_changes_which_pairs_are_sent
+         35.8  tests/requirement/test_link_prefilter.py::test_the_default_run_filters_at_the_documented_default
+
+Mandate coverage: 32 of 33 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: Section marker standing alone with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] The CLI help text adds a claim that using `--link-distance-threshold 2.0` asks about every pair. That user-facing guidance is not required by the obligations, which only require the threshold to be configurable/default to 0.10 and to affect filtering/review state.
+       src/acceptance/cli.py#@@ -628,6 +640,28 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+  2. [in_service] The new `DEFAULT_LINK_DISTANCE_THRESHOLD` documentation includes calibration anecdotes and performance claims about specific datasets and a reference to link-precision measurement. The obligations require the threshold to exist, default to 0.10, and be configurable, but not these explanatory assertions.
+       src/acceptance/config.py#@@ -82,6 +82,30 @@ DEFAULT_DECOMPOSE_BATCH_SIZE = 8
+  3. [in_service] `embedding_text()` hardcodes the exact text fed to embeddings as `description + observable_behavior`. The obligations require embeddings per obligation and cosine-distance filtering, but they do not specify this particular text construction.
+       src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+       tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+  4. [in_service] `cosine_distance()` treats a zero vector as maximally far (`2.0`) instead of raising or handling it differently. The obligations require cosine distance, but not this special-case behavior.
+       src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+       tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+  5. [in_service] The new `LinkPrefilter` provenance record stores `embedding_model`, `pairs_considered`, and `pairs_excluded`. The obligations require recording the distance-exclusion count and threshold in force, but not the extra embedding-model field or the considered-pairs count in persisted review state.
+       src/acceptance/review_state.py#@@ -704,6 +704,33 @@ class DeterminismControls(_Model):
+       src/acceptance/review_state.py#@@ -738,6 +765,10 @@ class ReviewProvenance(_Model):
+       src/acceptance/config.py#@@ -118,6 +142,14 @@ class RunConfig(BaseModel):
+       src/acceptance/config.py#@@ -148,10 +181,12 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+       tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+       tests/test_cli.py#@@ -98,6 +135,11 @@ def test_check_records_determinism_flags_in_provenance(git_repo, fixture_task_pa
+  6. [in_service] `ModelClient.embed()` and its helpers add a full embedding transcript/replay path, including request hashing, validation, and replay semantics. The obligations require embedding requests to be replayable and recorded, but not this specific API surface or the extra validation/error-handling details.
+       src/acceptance/llm.py#@@ -122,6 +122,43 @@ def _default_completion_fn(**kwargs: Any) -> Any:
+       src/acceptance/llm.py#@@ -247,6 +282,8 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -254,6 +291,13 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -271,12 +315,20 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -298,6 +350,14 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -307,6 +367,7 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -321,7 +382,7 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -355,6 +416,163 @@ class ModelClient:
+  7. [in_service] `build_request()` now hashes `stage_controls` into every request, and the tests assert that threshold/model changes invalidate recorded linking requests via this field. The obligations require invalidation when threshold or embedding model changes, but not this specific request-shaping mechanism.
+       src/acceptance/llm.py#@@ -271,12 +315,20 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -298,6 +350,14 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -307,6 +367,7 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -321,7 +382,7 @@ class ModelClient:
+       tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+  8. [in_service] `_pairs()` now applies a distance prefilter and also changes the meaning of its internal admissibility bookkeeping. The obligations require distance-based exclusion/inclusion, but not the exact internal split between `admissible` and `askable` or the specific counting strategy used to derive the review-state numbers.
+       src/acceptance/requirement/linking.py#@@ -154,17 +171,60 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
+       src/acceptance/requirement/linking.py#@@ -341,12 +431,18 @@ def link_duplicate_obligations(
+       src/acceptance/requirement/linking.py#@@ -356,7 +452,31 @@ def link_duplicate_obligations(
+       src/acceptance/requirement/linking.py#@@ -372,6 +492,7 @@ def link_duplicate_obligations(
+       tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+  9. [in_service] The new tests assert many extra behaviors beyond the listed demands, such as exact boundary handling, empty-input embedding behavior, one-call-per-set embedding batching, and persisted round-tripping of the new provenance record. Those are not explicitly required by the obligations provided.
+       tests/requirement/test_link_prefilter.py#@@ -0,0 +1,603 @@
+  10. [in_service] The benchmark/support test doubles were expanded to inject embedding functions and default embedding models into many unrelated helpers. The obligations require tests for the linking prefilter and replay behavior, but not these broader helper-signature changes or the new neutral embedding double.
+       tests/support.py#@@ -16,7 +16,7 @@ import pathlib
+       tests/support.py#@@ -26,6 +26,43 @@ from acceptance.review_state import Obligation, ObligationType
+       tests/support.py#@@ -196,7 +233,7 @@ def _completed(response: dict, **kwargs) -> dict:
+       tests/support.py#@@ -214,10 +251,12 @@ def client_returning(response: dict, model: str = _DEFAULT_MODEL) -> ModelClient
+       tests/support.py#@@ -229,11 +268,13 @@ def model_client_with(completion_fn, model: str = _DEFAULT_MODEL) -> ModelClient
+       tests/support.py#@@ -255,12 +296,14 @@ def client_answering_per_call(
+       tests/support.py#@@ -279,6 +322,8 @@ def client_capturing_schemas(
+       tests/support.py#@@ -301,6 +346,7 @@ def client_dispatching(
+       tests/support.py#@@ -329,6 +375,8 @@ def client_dispatching(
+       tests/benchmark/degenerate_decomposers.py#@@ -33,13 +33,14 @@ import tempfile
+       tests/benchmark/degenerate_decomposers.py#@@ -209,4 +208,8 @@ def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
+       tests/benchmark/degenerate_judges.py#@@ -35,9 +35,14 @@ from __future__ import annotations
+       tests/benchmark/degenerate_judges.py#@@ -161,4 +180,10 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+  11. [separable] The CLI tests were reformatted extensively without changing the asserted behavior. This is unrelated to the obligations and appears to be incidental style churn.
+       tests/test_cli.py#@@ -13,7 +13,16 @@ def test_check_json_emits_a_structured_review(git_repo, fixture_task_path, capsy
+       tests/test_cli.py#@@ -42,7 +51,16 @@ def test_a_default_cli_run_is_seeded(git_repo, fixture_task_path, capsys, stub_m
+       tests/test_cli.py#@@ -53,13 +71,22 @@ def test_a_default_cli_run_is_seeded(git_repo, fixture_task_path, capsys, stub_m
+       tests/test_cli.py#@@ -71,17 +98,27 @@ def test_no_seed_is_the_deliberate_way_to_run_unpinned(git_repo, fixture_task_pa
+       tests/test_cli.py#@@ -106,17 +148,29 @@ def test_check_rejects_unknown_mode(git_repo, fixture_task_path):
+       tests/test_cli.py#@@ -127,9 +181,19 @@ def test_two_runs_over_the_same_input_are_byte_identical(git_repo, fixture_task_
+       tests/test_cli.py#@@ -146,9 +210,20 @@ def test_report_shell_renders_all_sections_present_and_empty(git_repo, fixture_t
+       tests/test_cli.py#@@ -159,7 +234,15 @@ def test_check_persists_the_review_to_the_store(git_repo, fixture_task_path, stu
+       tests/test_cli.py#@@ -168,7 +251,15 @@ def test_check_fails_cleanly_on_missing_task_file(git_repo, capsys):
+       tests/test_cli.py#@@ -216,6 +307,7 @@ def test_run_check_rejects_a_revision_missing_from_the_given_repo(
+       tests/test_cli.py#@@ -266,14 +358,24 @@ def test_render_decomposition_lists_obligations_and_open_questions():
+       tests/test_cli.py#@@ -329,6 +431,7 @@ def test_run_classify_auto_ignores_the_task_file(git_repo, monkeypatch):
+       tests/test_cli.py#@@ -370,18 +473,34 @@ def test_render_classify_output():
+       tests/test_cli.py#@@ -400,8 +519,10 @@ def test_render_classify_output():
+       tests/test_cli.py#@@ -466,7 +587,6 @@ def test_render_change_set_omits_ignored_section_when_empty():
+       tests/test_cli.py#@@ -477,15 +597,25 @@ def test_check_threads_an_optional_declaration_into_the_review(
+       tests/test_cli.py#@@ -495,10 +625,21 @@ def test_check_threads_an_optional_declaration_into_the_review(
+       tests/test_cli.py#@@ -512,9 +653,19 @@ def test_check_without_a_head_reviews_the_working_tree(
+       tests/test_cli.py#@@ -530,43 +681,73 @@ def _gap_client():
+       tests/test_cli.py#@@ -597,10 +778,20 @@ def test_a_stale_instruction_file_is_removed_and_the_removal_reported(
+       tests/test_cli.py#@@ -617,10 +808,20 @@ def test_the_removal_leaves_the_report_as_the_only_statement_of_status(
+       tests/test_cli.py#@@ -652,8 +853,11 @@ def test_recommendation_returns_the_stored_prescription_for_a_criterion(
+       tests/test_cli.py#@@ -709,9 +913,7 @@ def _store_review_with(tmp_path, revision, criterion, defect):
+       tests/test_cli.py#@@ -745,18 +947,18 @@ def test_retrieval_makes_no_model_call(monkeypatch, tmp_path, capsys):
+       tests/test_cli.py#@@ -776,9 +978,7 @@ def test_retrieval_without_a_revision_uses_the_newest_stored_review(
+       tests/test_cli.py#@@ -796,9 +996,7 @@ def test_the_newest_review_wins_regardless_of_filename_order(
+       tests/test_cli.py#@@ -842,8 +1040,10 @@ _DOCUMENTED_COMMAND = "acceptance recommendation --criterion <id>"
+       tests/test_cli.py#@@ -894,9 +1094,7 @@ def build_parser_parse(argv):
+       tests/test_cli.py#@@ -909,10 +1107,21 @@ def test_the_removal_is_reported_in_json_mode_too(
+       tests/test_cli.py#@@ -975,9 +1184,10 @@ def test_the_pipeline_persists_the_requirement_map(git_repo, tmp_path, stub_mode
+       tests/test_cli.py#@@ -1004,9 +1214,10 @@ def test_a_requirement_that_yielded_nothing_is_visible_in_the_report(
+
+Changes since 3a8c34a1:
+  closed:
+    - A test asserts that a pair whose distance exceeds the threshold is not sent to the model.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - A test asserts that a pair whose distance is within the threshold is sent to the model.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - A test asserts that the number of pairs excluded by distance reaches review state.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - A test asserts that the threshold in force reaches review state.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - A test asserts that a pair excluded for stating a different kind of demand stays excluded whatever its distance.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Pairs whose distance is within the threshold are sent to the model.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - A pair excluded for stating a different kind of demand remains excluded regardless of its distance.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - An embedding request is recorded for replay.
+        code evidence: addressed -> addressed
+        test evidence: unsupported -> strongly supported
+    - Two runs over the same obligation set choose the same pairs.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Tests issue no live model calls.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Obligation pairs that are too dissimilar to state one requirement are not asked about.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Pairs whose distance exceeds the threshold are not sent to the model, while pairs within the threshold are sent to the model.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+  moved:
+    - A test asserts that two runs over the same obligation set choose the same pairs.
+        test evidence: partially supported -> unsupported
+    - The change does not include measuring how precisely obligations are linked.
+        test evidence: unsupported -> nominally supported
+  3 obligation(s) carried forward unchanged — their code and tests were untouched by this work.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

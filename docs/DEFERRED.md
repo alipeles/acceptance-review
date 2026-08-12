@@ -36,6 +36,108 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-12] #245: one test cited for two obligations and withheld from a third, in the same run
+- **Kind:** filing (comment on existing issue #245)
+- **Found during:** #259, Gate 2, run 3
+- **Where:** `dogfood-logs/259-gate2-run3/output.log`, obligations 5, 15 and 24
+- **Severity:** blocker — it is the only thing keeping #259's Gate 2 from clean
+- **What's wrong:** `test_two_runs_over_the_same_obligation_set_choose_the_same_pairs`
+  is cited by obligation 24 (`constraint-15`) and by obligation 5
+  (`completion-06`, an unrelated obligation about the demand-type gate), and
+  reported as "(no mapped test)" for obligation 15 (`completion-10`) — the
+  Completion twin of 24, whose text is nearly the test's own name. One run, one
+  test, three different answers. It mapped correctly in runs 1 and 2; the only
+  change was two boundary tests added elsewhere in the same file.
+- **Why I didn't act:** there is no code change that answers it. Writing a second
+  determinism test to satisfy a mapper that already found the first one, and
+  cited it twice, is chasing a rating rather than fixing a defect.
+- **Drafted fix:** comment on #245:
+
+  > A third instance, from #259's Gate 2 run 3 (`dogfood-logs/259-gate2-run3/`),
+  > and the cleanest yet because all three mappings are in **one run** and the
+  > test is a single function.
+  >
+  > `tests/requirement/test_link_prefilter.py::test_two_runs_over_the_same_obligation_set_choose_the_same_pairs`:
+  >
+  > | obligation | requirement | text | mapping |
+  > |---|---|---|---|
+  > | 24 | `constraint-15` | Two runs over the same obligation set choose the same pairs. | **cited** (24.4) |
+  > | 15 | `completion-10` | A test asserts that two runs over the same obligation set choose the same pairs. | **"(no mapped test)"** |
+  > | 5 | `completion-06` | ...a pair excluded for stating a different kind of demand stays excluded... | **cited** (5.5) — spurious |
+  >
+  > So the twin split is not the whole story: the same test was *also* given to
+  > an unrelated obligation about the type gate. The mapper is not simply
+  > preferring the Constraint over the Completion — it placed one test in two
+  > wrong states at once.
+  >
+  > It also regressed rather than being stably wrong:
+  >
+  > ```
+  > run 1  obligation 15 -> the test   strongly supported
+  > run 2  obligation 15 -> the test   strongly supported
+  > run 3  obligation 15 -> (none)     unsupported
+  > ```
+  >
+  > Nothing about that obligation or that test changed between runs 2 and 3; two
+  > boundary tests were added elsewhere in the same file. The resulting
+  > recommendation prescribes, in detail, a test that already exists and that the
+  > same report cites twice — which is the #225-family failure of recommendations
+  > making checkable false claims about the code.
+- **Status:** open
+
+### [2026-08-12] #225 reproduces on a second task file: ratings move under unchanged evidence, both directions
+- **Kind:** filing (comment on existing issue #225)
+- **Found during:** #259, Gate 2, runs 1–3
+- **Where:** `dogfood-logs/259-gate2-run{1,2,3}/`
+- **Severity:** blocker for the gate's meaning, not for this delivery
+- **What's wrong:** three runs over the same branch, each differing from the last
+  only by *added* tests:
+  - **run 1 → 2:** obligation 1's mapped evidence was byte-identical — the same
+    single test — and it fell `strongly supported` → `partially supported`.
+    Non-discriminating obligations went 3 → 13 while the work only added tests.
+  - **run 2 → 3:** adding **two** boundary tests moved **twelve** obligations up
+    to `strongly supported`, most untouched by those tests, and moved one down to
+    `unsupported` by dropping its mapping entirely.
+
+  #248 showed the fall-as-evidence-improves direction. This adds the mirror: a
+  rise, at the same magnitude, equally unearned by the two tests that triggered
+  it. A judge that moves twelve ratings on two unrelated tests is not measuring
+  those obligations' evidence.
+- **Why I didn't act:** *Working agreement* §3 — the same failure twice, and a
+  third attempt would be a different approach rather than a fix. It is #225's
+  own subject matter.
+- **Drafted fix:** comment on #225 carrying the run-to-run table above and the
+  three committed logs. Worth recording specifically that **the upward direction
+  is new evidence**: previous instances all showed ratings falling, which is easy
+  to read as a conservative judge. Twelve unearned promotions rules that reading
+  out — the movement is not a bias in one direction, it is instability.
+- **Status:** open
+
+### [2026-08-12] The repo is not formatter-clean, so every edit produces churn
+- **Kind:** defect
+- **Found during:** #259, Gate 2, run 3 (raised by the tool as `[separable]`)
+- **Where:** repo-wide — 49 files fail `ruff format --check`
+- **Severity:** should-fix
+- **What's wrong:** a `PostToolUse` hook formats files on write, and 49 files in
+  the tree are not `ruff format` clean. Touching any of them reflows the whole
+  file, so an unrelated edit lands as a large diff. On this branch
+  `tests/test_cli.py` showed **457 changed lines for a 5-line edit**, and the
+  tool correctly flagged it as `separable`. Five of the files #259 needed were
+  dirty at base: `cli.py`, `llm.py`, `test_cli.py`, and both benchmark doubles.
+  This is adjacent to #239 (85 pre-existing `ruff check` errors, unpinned ruff)
+  but distinct — that is the linter, this is the formatter.
+- **Why I didn't act:** repo-wide and unrelated to #259; a formatting commit
+  across 49 files is its own change with its own review, and burying it inside a
+  prefilter PR is exactly the bundling the tool exists to flag.
+- **Drafted fix:** one commit that runs `ruff format .` over the tree and nothing
+  else, landed on `main` separately, plus `ruff format --check` added to
+  `ci.yml` so it cannot drift again. Sequence it with #239 so the lint and format
+  gates arrive together and the transcripts-invalidating churn is paid once.
+  **Workaround until then**, used on this branch: restore the file with
+  `git checkout <base> -- <path>` and re-apply the real edit by script rather
+  than with the Edit tool, so the hook never sees it.
+- **Status:** open
+
 ### [2026-08-11] Composite obligations spanning two requirements are structurally unmergeable
 - **Kind:** filing (comment on existing issue #223)
 - **Found during:** #259, Gate 1
