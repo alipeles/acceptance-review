@@ -402,7 +402,12 @@ _EMPTY_BY_SCHEMA = {
     # answers the pairs it was actually given rather than none of them.
     "_Verdicts": {"verdicts": []},
     "_Mappings": {"mappings": []},
-    "_Discrimination": {"discriminations": []},
+    # `obligations`, not `discriminations`: the response model's field has always
+    # been the former. The wrong key never surfaced because a double returning it
+    # also returns no mappings, and `judge_discrimination` returns before calling
+    # the model when no obligation has mapped evidence — so the one entry here
+    # that cannot parse is the one entry nothing ever reached.
+    "_Discrimination": {"obligations": []},
     "_Coverage": {"classifications": []},
     "_Detections": {"unrequested_changes": []},
     "_Judgments": {"resolutions": []},

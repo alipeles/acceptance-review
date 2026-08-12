@@ -60,7 +60,11 @@ from acceptance.benchmark.case import BenchmarkCase
 from acceptance.benchmark.coverage import classify_case
 from acceptance.benchmark.scoring import MetricStats, metric_stats
 from acceptance.config import DEFAULT_MODEL, Mode, RunConfig
-from acceptance.evidence.discrimination import ObligationDiscrimination
+from acceptance.evidence.discrimination import (
+    ObligationDiscrimination,
+    PlausibleDefect,
+    _Discrimination,
+)
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import Review
@@ -701,6 +705,44 @@ DEFAULT_PERTURBATION = Perturbation(name="add-unrelated-test", apply=add_unrelat
 # --------------------------------------------------------------------------
 
 
+def _observed_discriminations(observed: Sequence[Any]) -> list[ObligationDiscrimination]:
+    """Recover the per-defect verdicts from what the discrimination stage returned.
+
+    `complete` hands back the stage's *response* model, `_Discrimination`.
+    `ObligationDiscrimination` is built inside `judge_discrimination` after that
+    call returns, so it never passes through the client at all — filtering the
+    observations for it matched nothing, and every measurement recorded an empty
+    defect-verdict axis while reporting success. That is the axis DR-180
+    localises the instability to, so the harness was silent on precisely the
+    thing it exists to measure.
+
+    Third drift from the same cause as #259's two: the harness assuming it
+    observes the pipeline's own types rather than the wire's.
+
+    `_Discrimination` is private and imported anyway. Its class name is the
+    response schema's name and therefore sits inside the hashed request, so it
+    cannot be renamed to something public without invalidating every recorded
+    discrimination transcript.
+    """
+    return [
+        ObligationDiscrimination(
+            obligation_id=item.obligation_id,
+            defects=[
+                PlausibleDefect(
+                    description=defect.description,
+                    would_be_caught=defect.would_be_caught,
+                    reason=defect.reason,
+                )
+                for defect in item.defects
+            ],
+            discriminating=any(defect.would_be_caught for defect in item.defects),
+        )
+        for response in observed
+        if isinstance(response, _Discrimination)
+        for item in response.obligations
+    ]
+
+
 def run_once(
     case: BenchmarkCase,
     run: RunKey,
@@ -733,14 +775,7 @@ def run_once(
     if review is None:  # pragma: no cover - classify_case always attaches one
         raise RuntimeError("the pipeline returned no review")
 
-    discriminations = [
-        item
-        for observed in client.observed
-        if isinstance(observed, list)
-        for item in observed
-        if isinstance(item, ObligationDiscrimination)
-    ]
-    return snapshot_review(review, run, discriminations)
+    return snapshot_review(review, run, _observed_discriminations(client.observed))
 
 
 def _perturbation_result(

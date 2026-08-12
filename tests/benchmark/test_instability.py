@@ -38,12 +38,18 @@ from acceptance.benchmark.instability import (  # noqa: E402
     summarize_model,
 )
 from acceptance.config import Mode, RunConfig  # noqa: E402
-from support import _completed, client_dispatching, client_finding_nothing  # noqa: E402
+from support import (  # noqa: E402
+    _completed,
+    _supplied_enum,
+    client_dispatching,
+    client_finding_nothing,
+    constant_embedding_fn,
+)
 
 _EMPTY_BY_SCHEMA = {
     "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
     "_Mappings": {"mappings": []},
-    "_Discrimination": {"discriminations": []},
+    "_Discrimination": {"obligations": []},
     "_Coverage": {"classifications": []},
     "_Detections": {"unrequested_changes": []},
     "_Judgments": {"resolutions": []},
@@ -444,7 +450,7 @@ def _observing_factory(calls):
                     "requirement_dispositions": [],
                 },
                 "_Mappings": {"mappings": []},
-                "_Discrimination": {"discriminations": []},
+                "_Discrimination": {"obligations": []},
                 "_Coverage": {"classifications": []},
                 "_Detections": {"unrequested_changes": []},
                 "_Judgments": {"resolutions": []},
@@ -473,6 +479,124 @@ def _observing_factory(calls):
         )
 
     return factory
+
+
+def _judging_factory():
+    """A double that drives the pipeline all the way to a defect verdict.
+
+    The other factories here answer every stage with an empty list, which is not
+    a neutral setting for this test: with nothing mapped, `judge_discrimination`
+    returns before it calls the model, so a harness that collected no verdict at
+    all would look exactly like one that worked. Answering off the supplied id
+    enums keeps the double honest when the fixture's ids change.
+    """
+
+    def factory(config):
+        def completion_fn(**kwargs):
+            name = kwargs["response_format"]["json_schema"]["name"]
+            if name == "_Decomposition":
+                body = {
+                    "obligations": [
+                        {
+                            "id": "rounds-to-cents",
+                            "description": "Line totals are shown to two decimal places",
+                            "type": "functional",
+                            "importance": "critical",
+                            "explicit": True,
+                            "observable_behavior": "format_line renders two decimals",
+                            "source_quote": "Line totals are shown to two decimal places",
+                        }
+                    ],
+                    "open_questions": [],
+                    "requirement_dispositions": [],
+                }
+            elif name == "_Mappings":
+                body = {
+                    "mappings": [
+                        {
+                            "test_id": test_id,
+                            "obligation_ids": _supplied_enum("obligation_ids", **kwargs),
+                            "rationale": "exercises the formatting path",
+                        }
+                        for test_id in _supplied_enum("test_id", **kwargs)
+                    ]
+                }
+            elif name == "_Discrimination":
+                # One of each verdict, so a snapshot that silently kept only the
+                # true ones — or collapsed them to a single flag — still fails.
+                body = {
+                    "obligations": [
+                        {
+                            "obligation_id": obligation_id,
+                            "defects": [
+                                {
+                                    "description": "rounds to whole dollars",
+                                    "would_be_caught": True,
+                                    "reason": "the assertion pins the cents",
+                                },
+                                {
+                                    "description": "drops the currency symbol",
+                                    "would_be_caught": False,
+                                    "reason": "nothing asserts on the symbol",
+                                },
+                            ],
+                        }
+                        for obligation_id in _supplied_enum("obligation_id", **kwargs)
+                    ]
+                }
+            else:
+                body = _EMPTY_BY_SCHEMA[name]
+
+            from types import SimpleNamespace
+
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(content=json.dumps(_completed(body, **kwargs)))
+                    )
+                ],
+                usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+            )
+
+        import tempfile
+
+        from acceptance.config import DEFAULT_EMBEDDING_MODEL
+        from acceptance.llm import TranscriptStore
+
+        return ObservingClient(
+            model=config.model,
+            mode=config.mode,
+            store=TranscriptStore(tempfile.mkdtemp()),
+            temperature=config.temperature,
+            seed=config.seed,
+            completion_fn=completion_fn,
+            embedding_model=DEFAULT_EMBEDDING_MODEL,
+            embedding_fn=constant_embedding_fn,
+        )
+
+    return factory
+
+
+def test_run_once_carries_the_defect_verdicts_into_the_snapshot(tmp_path):
+    """The per-defect verdict is the axis DR-180 localises the instability to,
+    and the one thing the `Review` does not persist (#149) — so if the harness
+    does not read it back off the client, no measurement of it exists.
+
+    It read the client for `ObligationDiscrimination`, which is built inside the
+    stage after `complete` returns and never crosses the client, so the filter
+    matched nothing and every report carried an empty defect-verdict axis while
+    claiming to have measured it.
+    """
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+
+    snapshot = run_once(case, RunKey(model="m", seed=7, index=0), client_factory=_judging_factory())
+
+    assert snapshot.defect_verdicts, "the stage's per-defect verdicts must reach the snapshot"
+    assert {verdict.would_be_caught for verdict in snapshot.defect_verdicts} == {True, False}
+    assert {verdict.defect for verdict in snapshot.defect_verdicts} == {
+        "rounds to whole dollars",
+        "drops the currency symbol",
+    }
 
 
 def test_run_once_drives_the_real_pipeline_and_snapshots_its_output(tmp_path):
