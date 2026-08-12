@@ -78,52 +78,28 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > information, not that it currently misroutes anything.
 - **Status:** open
 
-### [2026-08-12] Two sessions at gates need to write `session-state.md` at once — the sharding condition has been met
+### [2026-08-12] The shard convention has no cleanup mechanism, only a rule
 - **Kind:** decision
-- **Found during:** #258, Gate 1
-- **Where:** `session-state.md`, and `CLAUDE.md` *Working in small sessions* / *Repo layout*
-- **Severity:** should-fix
-- **What's wrong:** `session-state.md` records a single task in flight and is
-  rewritten wholesale, but three sessions are running in parallel and two have
-  now reached a gate. The file currently holds #191's state and says so
-  explicitly — *"`session-state.md` is owned by this session"* — so #258 has
-  nowhere to record that its Gate 1 passed without either clobbering #191's
-  state or appending to a file the other session will rewrite over.
-- **Why I didn't act:** it changes a documented repo convention that two other
-  live sessions depend on, so resolving it quietly is exactly what the working
-  agreement forbids. **But the gate requires a Gate 1 record**, so I took the
-  narrowest step that collides with nothing: wrote `session-state/258.md` and
-  left `session-state.md` untouched. That is the pre-agreed shape, not a new one
-  — `session-state.md` itself records the fix as *"agreed general fix if it
-  recurs: shard to `session-state/<issue>.md`, one per task in flight."* It has
-  recurred. What still needs your call is whether to make it the convention.
-- **Drafted fix — recommended:** adopt the shard. Three parts:
-  1. `session-state/<issue>.md`, one per task in flight, deleted when the task
-     lands. `session-state.md` is retired once #191 and #261 have landed theirs;
-     no migration, since each session writes its own on next update.
-  2. `CLAUDE.md` — update *Repo layout* and the session-startup sequence to name
-     `session-state/<issue>.md`, and the *Working conventions* gate-commit rule
-     to match.
-  3. `.acceptance/ignore` — the existing `session-state.md` entry becomes
-     `session-state/`, or the directory is added alongside it.
-- **Rejected alternative:** keep one file and have each session append its own
-  section. It fails on the property that makes the file cheap — *rewritten
-  wholesale rather than appended to* — and a wholesale rewrite by either session
-  silently destroys the other's state, which is the failure being fixed.
-- **Status:** **approved and already in flight elsewhere — do not implement from
-  #258.** Approved as the convention, with the human's condition that there be a
-  way to clean up rather than accrete shards for completed tasks. On landing the
-  approval, found the #261 session mid-change on exactly this in the worktree
-  holding `main`: `session-state.md` migrated to `session-state/191.md`, `261.md`
-  added, and every `CLAUDE.md` reference rewritten — including the cleanup rule,
-  *"delete it when the task lands, so the directory is the list of what is
-  actually in flight."* #258 therefore committed **only `session-state/258.md`**
-  and left `CLAUDE.md`, `.acceptance/ignore` and the migration to that session.
-  **Still owed against the human's condition:** the drafted rule is a convention,
-  not a mechanism. Worth deciding on #261 whether a stray-shard check earns its
-  keep — e.g. a `gh`-backed script listing shards whose issue is closed — or
-  whether the rule alone is enough.
-
+- **Found during:** #258, Gate 1 (raised) · #261, Gate 1 (migration landed)
+- **Where:** `session-state/`, and `CLAUDE.md` *Repo layout*
+- **Severity:** nice-to-have
+- **What's wrong:** the shard itself is **done** — `session-state.md` migrated to
+  `session-state/191.md`, `258.md` and `261.md` alongside it, and `CLAUDE.md`,
+  `.acceptance/ignore` and the `/orient` skill all rewritten to the new path.
+  What is still owed is the human's condition on approving it: that there be a
+  way to clean up rather than accrete shards for tasks that have landed. The
+  drafted rule — *"delete it when the task lands, so the directory is the list of
+  what is actually in flight"* — is a convention, and conventions of exactly this
+  kind are what `session-state.md` itself accreted under.
+- **Why I didn't act:** out of scope for #261, which is formatter and lint gates.
+  A mechanism here is a new script with its own tests, not a line of config.
+- **Drafted fix — recommendation: the rule alone, for now.** Revisit only if a
+  stale shard actually survives a landed task. The cheap check, if one is wanted
+  later: a step that lists `session-state/*.md` whose issue number `gh` reports
+  as closed. **Rejected alternative:** wiring it into CI — it would need `gh`
+  auth in the workflow to answer "is this issue closed", which buys a
+  nice-to-have at the cost of a credential in the build.
+- **Status:** open — the migration is landed; only the cleanup question remains.
 ### [2026-08-12] #189's harness duplicates the client contract in two places, and both had silently drifted
 - **Kind:** filing (new issue, child of #186)
 - **Found during:** #191, taking the pre-change baseline
