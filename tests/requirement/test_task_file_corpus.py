@@ -38,11 +38,14 @@ def test_the_repository_root_task_file_is_not_a_case(tmp_path: Path):
 
 
 def test_an_entry_whose_target_is_missing_is_omitted(tmp_path: Path):
-    """`glob` yields a symlink whose target is gone; `read_text()` on it raises.
+    """An entry that is not really there does not become a parametrized case.
 
-    This is what the `is_file()` filter is for, and it is the only way that
-    filter can be exercised — a glob cannot otherwise produce a path that is
-    not there.
+    Read this as a property test, not as evidence for the `is_file()` filter in
+    `committed_task_files`. Deleting that filter leaves this test green —
+    checked by injection — because `glob` resolves a literal final component
+    through `exists()` and never yields the dangling entry at all. The property
+    is real and worth pinning; the mechanism holding it up is `glob`, and this
+    test cannot tell the two apart.
     """
     logs = tmp_path / "dogfood-logs"
     real = logs / "998-gate1-run1" / "current-task.md"

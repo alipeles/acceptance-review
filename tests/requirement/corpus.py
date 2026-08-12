@@ -23,8 +23,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def committed_task_files(root: Path = REPO_ROOT) -> list[Path]:
     """Every committed dogfood run's task file, in stable order.
 
-    `is_file()` is load-bearing rather than defensive: `glob` yields a symlink
-    whose target is missing, and such an entry would reach `read_text()` as a
-    parametrized case and fail for a reason unrelated to any code change.
+    `is_file()` is belt-and-braces, and measured to be so: `glob` resolves a
+    literal final component through `exists()`, so a pruned entry or a symlink
+    whose target is gone never reaches this filter in the first place. Removing
+    the filter changes no result — verified by injection, not assumed. It is
+    kept because it costs nothing and states the intent, but it is **not** what
+    makes the "an absent path is not a case" property hold, and no test here
+    discriminates it.
     """
     return [p for p in sorted(root.glob("dogfood-logs/*/current-task.md")) if p.is_file()]

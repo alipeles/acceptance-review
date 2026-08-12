@@ -24,30 +24,31 @@ from pathlib import Path
 TESTS_ROOT = Path(__file__).resolve().parent
 REPO_ROOT = TESTS_ROOT.parent
 
-# A path expression rooted at this repository, joined directly to the task file:
-# `REPO_ROOT / "current-task.md"`, `repo_root / 'current-task.md'`, or the
-# `Path(__file__).resolve().parents[2] / "current-task.md"` shape that reaches
-# the root without naming it. An intervening component — `REPO / meta.run_dir /
-# "current-task.md"` — is a committed corpus path and is not matched.
+# A name for this repository's root, joined *directly* to the task file name —
+# a `REPO_ROOT`, `repo_root`, `REPO`, `root` or `parents[N]` on the left, and
+# the quoted task file name immediately on the right. An intervening component
+# (a run directory, a fixture directory, a temp path) means the target is a
+# committed input or a fixture, not the scratch file, and is not matched.
 _ROOT_TASK_FILE = re.compile(
     r"""(?:REPO_ROOT|REPO|repo_root|root|parents\[\d+\])\s*/\s*["']current-task\.md["']"""
 )
 
+# The banned shape is assembled here rather than written out, so that this file
+# — the one place that must talk about the shape in order to ban it — does not
+# itself contain it. The assembled values are byte-for-byte the real lines.
+_TASK_FILE_NAME = '"current-task' + '.md"'
+
 
 def _test_sources() -> list[Path]:
-    """Every test source the guard scans.
+    """Every test source the guard scans — including this one.
 
-    This module is excluded from its own scan: it quotes the banned shape on
-    purpose, both in the comment documenting the pattern and in the two tests
-    that pin the pattern against the real pre-#258 lines. Those quotations are
-    the guard's evidence, so they have to stay verbatim.
+    Scanning itself is why `_TASK_FILE_NAME` exists: the first version of this
+    module wrote the banned shape out in its comments and fixtures and promptly
+    failed its own assertion, so the shape is assembled instead. Excluding this
+    file would have been the easier fix and a worse one — it is the file most
+    likely to reintroduce the pattern by accident.
     """
-    this_file = Path(__file__).resolve()
-    return sorted(
-        p
-        for p in TESTS_ROOT.rglob("*.py")
-        if "fixtures" not in p.parts and p.resolve() != this_file
-    )
+    return sorted(p for p in TESTS_ROOT.rglob("*.py") if "fixtures" not in p.parts)
 
 
 def test_no_test_source_reads_the_repository_root_task_file():
@@ -72,11 +73,11 @@ def test_the_scan_actually_reads_this_repositorys_tests():
 
 
 def test_the_pattern_matches_the_call_sites_258_removed():
-    """The two real pre-#258 lines, verbatim. A pattern that stopped matching
-    these would leave the guard green while the defect returned."""
-    assert _ROOT_TASK_FILE.search('    files = [REPO_ROOT / "current-task.md"]')
+    """The two real pre-#258 lines. A pattern that stopped matching these would
+    leave the guard green while the defect returned."""
+    assert _ROOT_TASK_FILE.search(f"    files = [REPO_ROOT / {_TASK_FILE_NAME}]")
     assert _ROOT_TASK_FILE.search(
-        '    parsed = parse_task_file((repo_root / "current-task.md").read_text())'
+        f"    parsed = parse_task_file((repo_root / {_TASK_FILE_NAME}).read_text())"
     )
 
 
