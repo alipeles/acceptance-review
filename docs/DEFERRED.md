@@ -36,6 +36,117 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-11] DR-259's 0.10 default loses a genuine merge on a held-out task file
+- **Kind:** decision
+- **Found during:** #259, Gate 1
+- **Where:** `docs/DR-259-obligation-pair-prefilter.md`, and #259's Acceptance
+  ("defaults to 0.10")
+- **Severity:** should-fix — it does not block implementing #259, but it makes
+  the mandated default demonstrably lossy on the first file it was tested against
+- **What's wrong:** #259's own Gate 1 run is a fourth task file, held out from
+  DR-259's calibration. Applying the DR's method to it (same embedding, same
+  `description + observable_behavior` concatenation, labels taken from the
+  model's own verdicts rather than from reading distances) gives 12 confirmed
+  merges over 1,035 pairs. **0.10 keeps 11 of 12.** The lost merge sits at
+  **0.2257** and is genuine beyond argument — `task-01`'s headline obligation
+  merging with its own constraint restatement, the model's reason being
+  "effectively the same requirement … Same truth conditions and same test."
+  DR-259 put the farthest genuine merge at 0.0938; this is 2.4× further out, so
+  the separating band does not generalise. The cause is legible: these two
+  paraphrase each other *across levels of abstraction* (requirement vs
+  mechanism), which is a much wider gap in embedding space than the near-verbatim
+  restatements that dominated the calibration sample. This is exactly the
+  limitation the DR states about itself — three task files, all this repo's own.
+- **Why I didn't act:** the issue's Acceptance mandates 0.10, and picking a
+  different default quietly is resolving a design decision without surfacing it.
+  Implementing 0.10 as specified is the honest move; changing it is yours.
+- **Drafted fix:** implement #259 with the threshold configurable and defaulting
+  to 0.10 exactly as the Acceptance says, then take one of:
+  1. **Recommended — raise the default to 0.25 and record why.** 12/12 on this
+     run at 8.1% of pairs; on DR-259's own sweeps 0.25 still admits only part of
+     the spurious set, and under-merging remains the safe direction while a
+     wrong merge is silent. Costs ~2.6× the model spend of 0.10 and still asks
+     under a tenth of all pairs.
+  2. Keep 0.10, and record in the DR that it is known to drop genuine
+     cross-abstraction merges — accepting one redundant obligation on the
+     headline requirement as the price.
+  3. Defer the number behind #211's link-precision measure, which is the
+     project's own answer to this class of question and is already named in
+     DR-259's Limits.
+
+  Whichever is chosen, DR-259 needs a "held-out check" section with this table;
+  the DR currently reads as though 20/20 generalises.
+- **Status:** open
+
+### [2026-08-11] DR-259's "stdlib TF-IDF cosine — viable, not chosen" block is wrong
+- **Kind:** defect (documentation)
+- **Found during:** #259, Gate 1
+- **Where:** `docs/DR-259-obligation-pair-prefilter.md`, *Rejected alternatives*
+- **Severity:** nice-to-have
+- **What's wrong:** the human states that TF-IDF entered the analysis only as an
+  analogy for correcting hub effects, and that testing concluded it made things
+  worse. The DR records that correctly in its first rejected-alternative block
+  (z-score / CSLS / mutual rank, all degrading). But it also carries a *second*
+  block presenting a stdlib TF-IDF cosine as "viable, not chosen … this is the
+  fallback and it is known to work on this evidence." That characterisation is
+  not one to keep: it invites a future reader to adopt the fallback on the
+  strength of a measurement the human does not stand behind.
+- **Why I didn't act:** a decision record is a committed artifact and editing one
+  to strike a finding is not something to do unilaterally mid-gate.
+- **Drafted fix:** delete the "A stdlib TF-IDF cosine — viable, not chosen" block
+  from *Rejected alternatives*, and add one sentence to the hubness block noting
+  that the TF-IDF/IDF framing was the analogy behind the hubness corrections and
+  was rejected with them. No other section references it.
+- **Status:** open
+
+### [2026-08-11] Composite obligations spanning two requirements are structurally unmergeable
+- **Kind:** filing (comment on existing issue #223)
+- **Found during:** #259, Gate 1
+- **Where:** `dogfood-logs/259-gate1-run1/`
+- **Severity:** should-fix
+- **What's wrong:** the breakdown carries 35 obligations for 33 requirements.
+  Derivation restates much of the mandate under the headline `task-01`; linking
+  correctly merged 11 of those restatements away and three survive, each a
+  *composite* spanning two requirements. All ten pairs involving them were asked
+  and denied with individually defensible reasons — **linking is working as
+  designed.** A composite cannot have identical truth conditions with either of
+  its parts, so the strict sameness test correctly refuses, and the composite
+  then survives permanently as a redundant obligation. The defect is upstream in
+  derivation, not in the linking judgement.
+- **Why I didn't act:** #223 is a separate issue; #259 is a prefilter on which
+  pairs are asked, and would not have changed any of these verdicts.
+- **Drafted fix:** comment on #223:
+
+  > A further instance from #259's Gate 1 (`dogfood-logs/259-gate1-run1/`), and
+  > one that isolates the mechanism cleanly, because here **linking is not at
+  > fault**.
+  >
+  > Derivation restated much of the mandate under the headline requirement.
+  > Linking merged 11 of those restatements away correctly. Three survived, and
+  > each is a *composite* spanning two requirements:
+  >
+  > | obligation | owner | spans |
+  > |---|---|---|
+  > | `task-01-obligation-2` | `task-01` | task-01 + constraint-02 |
+  > | `task-01-obligation-4` | `task-01` | constraint-05 + constraint-06 |
+  > | `task-01-obligation-15` | `constraint-17` | constraint-17 + an added "exercises the change" clause |
+  >
+  > All ten pairs involving them were asked, and all ten were denied with sound
+  > reasons — e.g. for `obligation-threshold-default-010 + task-01-obligation-4`:
+  > *"The defaulting part is the same requirement, but the second is broader, so
+  > they are not exactly the same."* That is correct under the prompt's sameness
+  > test.
+  >
+  > **That is the point.** A composite spanning two requirements can never have
+  > identical truth conditions with either part, so linking is structurally
+  > incapable of removing it, and no improvement to the linking judgement will.
+  > It survives as a redundant obligation that then demands its own evidence
+  > downstream. The fix has to be in derivation not emitting the composite.
+  >
+  > Separately, `task-01-obligation-15` carries a `task-01-` id prefix while
+  > owned by `constraint-17` — the id asserts a provenance that is wrong.
+- **Status:** open
+
 ### [2026-08-10] #225 reproduced on #248's Gate 2 — 11 untouched ratings fell when two tests were added
 - **Kind:** filing (comment on existing issue #225)
 - **Found during:** #248, Gate 2, runs 1 and 2

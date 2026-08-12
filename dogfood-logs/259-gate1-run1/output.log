@@ -1,0 +1,165 @@
+Requirements: 33   with obligations: 32   deliberately none: 1
+
+[task-01] Obligation pairs too dissimilar to state one requirement are not asked about.
+    -> obligation-distance-threshold-exclusion  [functional/explicit]   (also serves constraint-03)
+       Pairs whose distance exceeds the threshold are not sent to the model.
+    -> task-01-obligation-2  [functional/inferred]
+       Pairs are filtered for asking based on cosine distance between their embeddings.
+    -> task-01-obligation-4  [functional/inferred]
+       The threshold used for filtering is configurable and defaults to 0.10.
+
+[constraint-01] Each obligation is embedded as a vector.
+    -> obligation-embeddings-per-obligation  [functional/explicit]
+       Each obligation is represented as a vector embedding.
+
+[constraint-02] The distance between two obligations is the cosine distance between
+    their embeddings.
+    -> obligation-cosine-distance  [functional/explicit]
+       The distance between two obligations is computed as cosine distance between their
+       embeddings.
+
+[constraint-03] A pair whose distance exceeds a threshold is never sent to the model.
+    -> obligation-distance-threshold-exclusion  [functional/explicit]   (also serves task-01)
+       Pairs whose distance exceeds the threshold are not sent to the model.
+
+[constraint-04] A pair whose distance is within the threshold is sent to the model.
+    -> obligation-distance-threshold-inclusion  [functional/explicit]
+       Pairs whose distance is within the threshold are sent to the model.
+
+[constraint-05] The threshold is configurable.
+    -> obligation-threshold-configurable  [docs_config/explicit]
+       The threshold is configurable.
+
+[constraint-06] The threshold defaults to 0.10.
+    -> obligation-threshold-default-010  [functional/explicit]
+       The threshold defaults to 0.10.
+
+[constraint-07] A pair excluded for stating a different kind of demand stays excluded
+    whatever its distance.
+    -> pair-excluded-for-demand-stays-excluded  [invariant/explicit]
+       A pair excluded for stating a different kind of demand remains excluded
+       regardless of its distance.
+
+[constraint-08] The number of pairs excluded by distance is recorded.
+    -> distance-exclusion-count-recorded  [functional/explicit]
+       The number of pairs excluded by distance is recorded.
+
+[constraint-09] The threshold in force is recorded.
+    -> threshold-in-force-recorded  [functional/explicit]
+       The threshold in force is recorded.
+
+[constraint-10] Both records are part of the persisted review state.
+    -> records-persisted-review-state  [invariant/explicit]
+       Both the distance-exclusion count record and the threshold-in-force record are
+       part of the persisted review state.
+
+[constraint-11] An embedding request is recorded for replay.
+    -> embedding-request-recorded-for-replay  [functional/explicit]
+       An embedding request is recorded for replay.
+
+[constraint-12] An embedding request is replayed rather than issued again once it has a
+    recording.
+    -> embedding-request-replayed-from-recording  [regression/explicit]
+       An embedding request is replayed rather than issued again once it has a
+       recording.
+
+[constraint-13] Changing the threshold invalidates the recorded linking requests.
+    -> threshold-change-invalidates-recorded-linking-requests  [invariant/explicit]
+       Changing the threshold invalidates the recorded linking requests.
+
+[constraint-14] Changing the embedding model invalidates the recorded linking requests.
+    -> embedding-model-change-invalidates-recorded-linking-requests  [invariant/explicit]
+       Changing the embedding model invalidates the recorded linking requests.
+
+[constraint-15] Two runs over the same obligation set choose the same pairs.
+    -> same-pairs-same-obligation-set  [invariant/explicit]
+       Two runs over the same obligation set choose the same pairs.
+
+[constraint-16] Two runs over byte-identical task text produce byte-identical review
+    state.
+    -> byte-identical-review-state  [invariant/explicit]
+       Two runs over byte-identical task text produce byte-identical review state.
+
+[constraint-17] Tests issue no live model calls.
+    -> tests-no-live-model-calls  [test_demand/explicit]
+       Tests issue no live model calls.
+    -> task-01-obligation-15  [test_demand/explicit]
+       Tests issue no live model calls.
+
+[exclusion-01] Whether a pair that is asked about is judged to state one requirement.
+    -> not-judge-statement-of-one-requirement  [functional/explicit]
+       The change does not include judging whether a pair that is asked about states one
+       requirement.
+
+[exclusion-02] How an obligation is derived from a requirement.
+    -> not-derive-obligation-from-requirement  [functional/explicit]
+       The change does not include deriving an obligation from a requirement.
+
+[exclusion-03] How many pairs are grouped into one request.
+    -> not-group-many-pairs-per-request  [functional/explicit]
+       The change does not include grouping multiple pairs into one request.
+
+[exclusion-04] Measuring how precisely obligations are linked, which is #211.
+    -> not-measure-linking-precision  [functional/explicit]
+       The change does not include measuring how precisely obligations are linked.
+
+[exclusion-05] Recalibrating the threshold for a different embedding model.
+    -> not-recalibrate-threshold-for-different-model  [functional/explicit]
+       The change does not include recalibrating the threshold for a different embedding
+       model.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker standing alone with no requirement under it.
+
+[completion-02] A test asserts that a pair whose distance exceeds the threshold is not
+    sent to the model.
+    -> test-pair-exceeds-threshold-not-sent  [test_demand/explicit]
+       A test asserts that a pair whose distance exceeds the threshold is not sent to
+       the model.
+
+[completion-03] A test asserts that a pair whose distance is within the threshold is
+    sent to the model.
+    -> test-pair-within-threshold-sent  [test_demand/explicit]
+       A test asserts that a pair whose distance is within the threshold is sent to the
+       model.
+
+[completion-04] A test asserts that the number of pairs excluded by distance reaches
+    review state.
+    -> test-distance-excluded-count-reaches-review-state  [test_demand/explicit]
+       A test asserts that the number of pairs excluded by distance reaches review
+       state.
+
+[completion-05] A test asserts that the threshold in force reaches review state.
+    -> test-threshold-in-force-reaches-review-state  [test_demand/explicit]
+       A test asserts that the threshold in force reaches review state.
+
+[completion-06] A test asserts that a pair excluded for stating a different kind of
+    demand stays excluded whatever its distance.
+    -> test-different-demand-stays-excluded  [test_demand/explicit]
+       A test asserts that a pair excluded for stating a different kind of demand stays
+       excluded whatever its distance.
+
+[completion-07] A test asserts that changing the threshold invalidates the recorded
+    linking requests.
+    -> test-threshold-change-invalidates-recorded-linking-requests  [test_demand/explicit]
+       A test asserts that changing the threshold invalidates the recorded linking
+       requests.
+
+[completion-08] A test asserts that changing the embedding model invalidates the
+    recorded linking requests.
+    -> test-embedding-model-change-invalidates-recorded-linking-requests  [test_demand/explicit]
+       A test asserts that changing the embedding model invalidates the recorded linking
+       requests.
+
+[completion-09] A test asserts that an embedding request is replayed from its recording
+    rather than issued again.
+    -> obligation-test-embedding-request-replay  [test_demand/explicit]
+       A test asserts that an embedding request is replayed from its recording rather
+       than issued again.
+
+[completion-10] A test asserts that two runs over the same obligation set choose the
+    same pairs.
+    -> obligation-test-deterministic-pair-selection  [test_demand/explicit]
+       A test asserts that two runs over the same obligation set choose the same pairs.
+

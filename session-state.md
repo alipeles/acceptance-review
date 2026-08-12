@@ -13,93 +13,71 @@ rather than letting it accrete.
 
 ---
 
-## No task in flight
+## In flight: #259 — prefilter obligation pairs by cosine distance
 
-**#248 landed** — `aef2191` (PR #257), CI green. A one-obligation response that
-echoes the required `obligation` field into `more_obligations` is now read as one
-obligation, not two.
+Child of #181. `docs/DR-259-obligation-pair-prefilter.md` is the decided design.
+Human authorised: **add an embedding path, Voyage dependency is fine, raw cosine
+distance.** `VOYAGE_API_KEY` is in `.env` and verified working through LiteLLM
+(`voyage/voyage-3.5-lite`, 1024-dim).
 
-**`current-task.md` is stale** — it still holds #248's mandate, which has
-shipped. Ignore it; the next task writes its own at Gate 1.
+**TF-IDF is out of scope entirely.** Per the human it entered only as an analogy
+for hub-effect correction and testing showed it made things worse; DR-259's
+second "stdlib TF-IDF cosine — viable, not chosen" block should not have been
+written. Queued as a doc correction. Do not resurrect it.
 
-## What #248 changed about how we read defect reports
+## Gate 1: PASSED at `0e1eae2`, confirmed by Claude with the human
 
-Worth carrying forward, because the issue as filed was wrong and building to it
-would have made things worse:
+`dogfood-logs/259-gate1-run1/`. 33 requirements, 32 with obligations, 1
+deliberately none. **Zero open questions**, no unreconciled clusters. Every
+requirement represented; nothing missing. No rewrite of `current-task.md` — the
+wording is not the cause of the one defect seen.
 
-- The duplicate was **schema-induced**, not the model repeating itself. `_Yielded`
-  splits the list into a required `obligation` plus `more_obligations` because
-  strict mode rejects `minItems` (#217), the two fields' relationship is stated
-  nowhere, and in the one-obligation case the model fills the slot and repeats
-  it as the whole list. **The fix for #217 caused it.**
-- Evidence: all 1,055 transcripts scanned — 4 duplicate-bearing dispositions,
-  every one byte-identical head vs `more_obligations[0]` with a
-  single-entry remainder, zero anywhere else.
-- #248 originally prescribed dropping obligations with duplicate *descriptions*.
-  Defect injection proved that wrong: 4 of 5 parametrised cases collapse
-  distinct obligations under it.
-- **#256** carries the follow-up — rename the fields, add a prompt sentence —
-  deferred until something else already forces a decompose re-record. The
-  decoder guard stays load-bearing when it lands; do not remove it.
+## The finding that matters — 0.10 is lossy on held-out data
 
-## Gate 2 could not be made clean, and that is filed
+#259's own Gate 1 run is a fourth task file, held out from DR-259's calibration.
+Same method, labels from the model's own verdicts: 12 confirmed merges over
+1,035 pairs.
 
-#248's Gate 2 stayed INCOMPLETE. Two tests were added and nothing removed; one
-obligation improved and **eleven untouched ones fell** from strongly to partially
-supported. Three recommendations made checkably false claims about the code, one
-prescribing a test for the negation of a requirement the same report rated
-satisfied. Filed on **#225** with both runs committed under
-`dogfood-logs/248-gate2-run{1,2}/`. The human chose to merge on the strength of
-four defect injections rather than chase the rating.
+```
+0.10  ask 2.1%   keep 11/12      <- the mandated default
+0.23  ask 6.7%   keep 12/12
+0.25  ask 8.1%   keep 12/12
+```
 
-**This is the strongest argument yet for taking #225/#180 seriously before more
-capability work**: a gate that moves under unchanged evidence cannot validate
-anything downstream.
+The lost merge is at **0.2257** and is genuine — `task-01`'s headline obligation
+merging with its own constraint restatement. DR-259 put the farthest genuine
+merge at 0.0938, so **the separating band does not generalise**. Cause: those two
+paraphrase each other across levels of abstraction (requirement vs mechanism),
+a much wider gap than the near-verbatim restatements the calibration sample was
+dominated by.
 
-## Next up
-
-`CLAUDE.md`'s sequencing rule still points at **#181**. The remaining
-decomposition defects, in the order the evidence supports:
-
-- **#223** — a spurious link that *completed*, destroying the headline
-  requirement's obligation. Fresh evidence added this session from
-  `dogfood-logs/248-gate1-run2/`.
-- **#242** — the same similarity judgement failing the other way: a spurious
-  link that *blocks*, so an inconsistent cluster merges nothing.
-- **#210** — over-merging.
-
-**These three may want one fix rather than three** — that is noted on #223 and
-#242 and is worth settling before starting any of them. Blocking is the loud,
-safe failure; completing is silent and leaves a plausible-looking breakdown.
-
-**#180's split** (#251–#254) stays parked behind #181: each judges an obligation
-set that is not trustworthy yet. #251's design is settled and was the human's.
-
-## Queued — see `docs/DEFERRED.md`
-
-One open item: untracking `current-task.md`, **blocked on #258** (two tests read
-the live file; #258 repoints them at the committed dogfood corpus). Do #258
-first, then untrack.
+**Decision queued, not taken** — the issue's Acceptance mandates 0.10, so
+implement 0.10 and let the human choose. Recommendation is 0.25.
 
 ## Do not rediscover
 
 - **A prompt change invalidates only THAT STAGE's transcripts**, not the whole
   cache — `request_key` hashes each request individually.
+- **`decompose --mode record` still wrote a 0-byte log through `tee`.** The trap
+  is not fixed by `tee` alone. Rebuild by re-running `--mode replay` into the
+  log; output is byte-identical and needs no live call. Check `wc -l`.
+- **Transcript responses are JSON *strings*, not dicts** — `json.loads` the
+  `response` field before reading `verdicts`. Cost one wrong analysis pass.
+- **Transcripts live in `.acceptance/cache/transcripts/`**, not `cache/` directly.
+- **`load_dotenv()` walks up from the calling *file*, not cwd.** A script in the
+  scratchpad sees no project `.env`; pass the path explicitly.
+- **`litellm.__version__` does not exist** — raises AttributeError.
 - **`git branch -d` refuses every squash-merged branch.** Confirm via
   `gh pr view <n> --json state` then `-D`.
 - **`git stash` mid-task reverts the working tree wholesale.** Use a second
   worktree or `git show` to inspect a baseline instead.
-- **A `check` over a new task file needs `--mode record`** and makes live calls.
-- **`decompose|check --mode record` writes nothing to stdout when redirected** —
-  pipe through `tee`, and **never `tee | head`**: the SIGPIPE truncates the log
-  to zero bytes. Two Gate 1 logs were committed empty this way before the PR
-  diff caught it. Check `wc -l` on the log before trusting it.
-- **A dogfood log lost to that can be rebuilt by replay** against its committed
-  task file — same transcripts, no live calls, byte-identical output. That is
-  determinism paying off; say in the judgement that it was regenerated.
-- **Compound constraints get over-split.** One constraint joining two statements
-  with "so" yielded three near-identical obligations; splitting it fixed it.
-  Write one statement per bullet in `current-task.md`.
+- **Compound constraints get over-split.** Write one statement per bullet in
+  `current-task.md`.
 - **A `PostToolUse` formatter hook reformats files after every edit.**
 - **Obligation ids are minted per response, not stable across runs** (#231).
 - **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
+
+## Queued — see `docs/DEFERRED.md`
+
+Four open: the 0.10 decision, the DR TF-IDF correction, the #223 composite-
+obligation filing, and untracking `current-task.md` (still blocked on #258).
