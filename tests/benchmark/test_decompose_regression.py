@@ -347,7 +347,7 @@ def test_precision_is_not_asserted_where_a_re_split_is_ground_truth(case_dir):
 def test_scoring_goes_through_the_shared_benchmark_path(monkeypatch):
     """The cases are scored by `benchmark/scoring.py::score_case`, not by a
     second scorer written for this task."""
-    import acceptance.benchmark.hooks as hooks
+    from acceptance.benchmark import hooks
 
     calls = []
     original = hooks.score_case
@@ -411,7 +411,7 @@ def test_the_cases_issue_no_live_model_calls(monkeypatch):
     `_default_completion_fn` is the single door to litellm (`llm.py`), so
     breaking it is sufficient.
     """
-    import acceptance.llm as llm
+    from acceptance import llm
 
     def forbidden(**kwargs):
         raise AssertionError("the suite reached the live provider path")

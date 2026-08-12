@@ -22,21 +22,21 @@ def _round_trip(instance):
 
 
 def _obligation(**overrides) -> GroundTruthObligation:
-    defaults = dict(
-        id="csv-generation",
-        description="CSV generation",
-        explicit=True,
-        evidence_class="strongly_supported",
-        evidence_rationale="The test asserts the generated CSV exactly.",
-        candidate_tests=["test_csv.py::test_basic"],
-    )
+    defaults = {
+        "id": "csv-generation",
+        "description": "CSV generation",
+        "explicit": True,
+        "evidence_class": "strongly_supported",
+        "evidence_rationale": "The test asserts the generated CSV exactly.",
+        "candidate_tests": ["test_csv.py::test_basic"],
+    }
     defaults.update(overrides)
     return GroundTruthObligation(**defaults)
 
 
 def _labels(**overrides) -> GroundTruthLabels:
-    defaults = dict(
-        obligations=[
+    defaults = {
+        "obligations": [
             _obligation(),
             _obligation(
                 id="filters",
@@ -46,7 +46,7 @@ def _labels(**overrides) -> GroundTruthLabels:
                 candidate_tests=[],
             ),
         ],
-        gaps=[
+        "gaps": [
             GroundTruthGap(
                 id="gap-filters",
                 description="Active filters not applied",
@@ -54,23 +54,23 @@ def _labels(**overrides) -> GroundTruthLabels:
                 severity="high",
             )
         ],
-    )
+    }
     defaults.update(overrides)
     return GroundTruthLabels(**defaults)
 
 
 def _case(**overrides) -> BenchmarkCase:
-    defaults = dict(
-        case_id="archetype-01",
-        source=BenchmarkCaseSource(kind="archetype", identifier="missed-obligation"),
-        inputs=BenchmarkCaseInputs(
+    defaults = {
+        "case_id": "archetype-01",
+        "source": BenchmarkCaseSource(kind="archetype", identifier="missed-obligation"),
+        "inputs": BenchmarkCaseInputs(
             repo="fixtures/archetype-01",
             task_text="## Deliverable\nAdd CSV export.\n",
             base_revision="abc123",
             head_revision="def456",
         ),
-        ground_truth=_labels(),
-    )
+        "ground_truth": _labels(),
+    }
     defaults.update(overrides)
     return BenchmarkCase(**defaults)
 

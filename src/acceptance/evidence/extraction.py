@@ -90,10 +90,13 @@ def _production_import_names(file_path: Path, changed_modules: set[str]) -> set[
         return set()
     names: set[str] = set()
     for node in ast.walk(module):
-        if isinstance(node, ast.ImportFrom) and node.module:
-            if node.module.split(".")[0] in changed_modules:
-                for alias in node.names:
-                    names.add(alias.asname or alias.name)
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and node.module.split(".")[0] in changed_modules
+        ):
+            for alias in node.names:
+                names.add(alias.asname or alias.name)
     return names
 
 

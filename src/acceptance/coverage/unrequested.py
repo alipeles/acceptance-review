@@ -28,9 +28,9 @@ from pydantic import Field
 
 from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_prompt, resolve_refs
 from acceptance.llm import ModelClient, StrictResponseModel
-from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation
+from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 
 
 class UnrequestedChangeKind(str, Enum):

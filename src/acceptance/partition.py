@@ -20,7 +20,8 @@ tokens on stages with no observed failure (DR-164, decision 2).
 
 from __future__ import annotations
 
-from typing import Any, Callable, Generic, Iterable, Sequence, TypeVar
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 

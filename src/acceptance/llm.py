@@ -27,9 +27,10 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+from collections.abc import Callable, Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Sequence, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -263,8 +264,13 @@ def _extract_usage(response: Any) -> dict:
     if litellm is not None:
         try:
             cost = litellm.completion_cost(completion_response=response)
-        except Exception:
-            # Unpriced/unknown model; never fail a call over a cost lookup.
+        except Exception:  # noqa: BLE001 — see below
+            # Deliberately blind. This is a cost *annotation* on a call that has
+            # already succeeded, and litellm raises whatever the provider's
+            # pricing table happens to raise for an unknown model. Narrowing the
+            # catch would let a new provider's exception type fail a review that
+            # otherwise completed, which is a strictly worse trade than losing a
+            # cost figure.
             cost = None
         if cost is not None:
             usage["cost_usd"] = cost

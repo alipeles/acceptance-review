@@ -25,13 +25,13 @@ from __future__ import annotations
 from acceptance.coverage.prompt import render_diff_section
 from acceptance.evidence.discrimination import ObligationDiscrimination
 from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
-from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.review_state import (
     AdmissibleEvidence,
     ChangeSet,
     Obligation,
     TestRecommendation,
 )
+from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 
 # §9.3 classes that represent a real evidence gap — anything short of
 # strongly_supported earns a recommendation (the M7.1 trigger). An obligation

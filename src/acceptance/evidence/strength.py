@@ -29,6 +29,8 @@ field the §11.1 evidence-classification-agreement metric (scoring.py) reads.
 
 from __future__ import annotations
 
+from pydantic import Field
+
 from acceptance.evidence.discrimination import ObligationDiscrimination
 from acceptance.evidence_tier import EvidenceTier
 from acceptance.model_base import PersistableModel
@@ -42,7 +44,8 @@ class EvidenceStrength(PersistableModel):
     obligation_id: str
     evidence_class: EvidenceClassification
     explanation: str
-    test_links: list[str] = []  # pytest nodeids of the mapped tests
+    # pytest nodeids of the mapped tests
+    test_links: list[str] = Field(default_factory=list)
 
 
 def _evidence_by_obligation(

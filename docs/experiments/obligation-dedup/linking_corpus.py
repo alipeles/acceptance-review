@@ -109,7 +109,7 @@ def _parse_batch(prompt: str) -> tuple[dict[str, Obligation], list[Pair]]:
         if line.startswith("[pair-"):
             current_pair = line.strip("[]")
             pairs.append(Pair(pair_id=current_pair, left="", right=""))
-        elif line.startswith("A: [") or line.startswith("B: ["):
+        elif line.startswith(("A: [", "B: [")):
             current_ob = line.split("[", 1)[1].split("]", 1)[0]
             obligations.setdefault(current_ob, Obligation(id=current_ob))
             if pairs:

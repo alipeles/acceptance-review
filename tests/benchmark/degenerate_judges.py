@@ -33,6 +33,7 @@ is reworded.
 from __future__ import annotations
 
 import json
+import tempfile
 from typing import Any
 
 from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
@@ -43,8 +44,6 @@ from tests.support import (
     _fake_response,
     constant_embedding_fn,
 )
-
-import tempfile
 
 
 def _enums(schema: Any, field: str) -> list[str]:

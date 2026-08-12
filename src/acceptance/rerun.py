@@ -69,6 +69,7 @@ def _is_ancestor(candidate: str, head: str, repo: Path) -> bool:
         capture_output=True,
         text=True,
         cwd=repo,
+        check=False,
     )
     return result.returncode == 0
 
@@ -80,6 +81,7 @@ def _commit_distance(ancestor: str, head: str, repo: Path) -> int | None:
         capture_output=True,
         text=True,
         cwd=repo,
+        check=False,
     )
     if result.returncode != 0:
         return None

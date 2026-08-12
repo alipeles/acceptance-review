@@ -28,7 +28,6 @@ from acceptance.review_state import (
 )
 from tests.support import client_returning
 
-
 # --- align_obligations ---
 
 
@@ -69,6 +68,7 @@ def test_unknown_labels_are_ignored():
 def test_empty_sides_make_no_call():
     # No obligations on a side -> no possible match, no model call needed.
     import tempfile
+
     from acceptance.llm import Mode, ModelClient, TranscriptStore
 
     def boom(**kwargs):

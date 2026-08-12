@@ -5,6 +5,16 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+from acceptance.rerun import (
+    carried_findings,
+    carried_recommendations,
+    compute_delta,
+    find_prior_review,
+    merge_carried_forward,
+    obligations_to_rederive,
+    stale_obligation_ids,
+    task_source_for,
+)
 from acceptance.review_state import (
     ChangeSet,
     Component,
@@ -18,16 +28,6 @@ from acceptance.review_state import (
     TestRecommendation,
 )
 from acceptance.review_store import ReviewStore
-from acceptance.rerun import (
-    carried_findings,
-    carried_recommendations,
-    compute_delta,
-    find_prior_review,
-    merge_carried_forward,
-    obligations_to_rederive,
-    stale_obligation_ids,
-    task_source_for,
-)
 
 TASK = "# Task\nRound half to even.\n"
 
@@ -482,9 +482,9 @@ def test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict(tmp
     M3/M5's accuracy, scored by the benchmark. Both obligations cite files the
     head touches, so both are re-derived here; carry-forward is covered above.
     """
+    from acceptance.benchmark.fixtures import build_benchmark_case
     from acceptance.cli import run_check
     from acceptance.config import RunConfig
-    from acceptance.benchmark.fixtures import build_benchmark_case
     from tests.support import client_dispatching
 
     case = build_benchmark_case(ARCHETYPES_DIR / "09-revision-cycle", tmp_path / "repo")
@@ -615,8 +615,8 @@ def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path
     carry-forward of prior findings survived the unit tests, which only covered
     the helper; nothing checked the pipeline actually used it.
     """
-    from acceptance.pipeline import run_review
     from acceptance.change.diff import extract_change_set
+    from acceptance.pipeline import run_review
     from tests.support import client_dispatching
 
     repo = tmp_path / "repo"
@@ -717,9 +717,9 @@ def test_a_review_written_under_an_older_schema_is_skipped_not_fatal(tmp_path):
     root = tmp_path / "reviews"
     root.mkdir()
     (root / f"{first}.json").write_text(
-        '{"mode": "local", "reviewed_revision": "%s",'
+        f'{{"mode": "local", "reviewed_revision": "{first}",'
         ' "provenance": {"determinism_mode": "record", "model": "m",'
-        ' "temperature": 0.0, "seed": null}}' % first
+        ' "temperature": 0.0, "seed": null}}'
     )
     store = ReviewStore(root)
 
@@ -735,8 +735,8 @@ def test_only_the_affected_obligation_is_re_derived(tmp_path):
     that the affected one was actually re-derived. A build that carried
     everything forward would have passed it.
     """
-    from acceptance.pipeline import run_review
     from acceptance.change.diff import extract_change_set
+    from acceptance.pipeline import run_review
     from tests.support import client_dispatching
 
     repo = tmp_path / "repo"
@@ -910,7 +910,7 @@ def test_a_working_tree_review_builds_on_the_review_of_head(tmp_path):
     incremental feature is unreachable from the primary local path. Found by
     dogfooding: this project's own runs silently never used it.
     """
-    repo, first, second = _repo_with_two_commits(tmp_path)
+    repo, _first, second = _repo_with_two_commits(tmp_path)
     store = ReviewStore(tmp_path / "reviews")
     store.write(_review(second, [_obligation("a")]))
 

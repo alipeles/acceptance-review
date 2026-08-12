@@ -43,13 +43,13 @@ from acceptance.pipeline import run_review
 from acceptance.recommendation import lookup as lookup_recommendation
 from acceptance.recommendation import render as render_recommendation
 from acceptance.report import render_report
-from acceptance.rerun import find_prior_review
 from acceptance.requirement.linking import link_duplicate_obligations
-from acceptance.supplied_ids import UnusableAnswerLog
 from acceptance.requirement.obligations import Decomposition, Obligation, decompose
 from acceptance.requirement.task_file import parse_task_file
+from acceptance.rerun import find_prior_review
 from acceptance.review_state import ChangeSet, OpenQuestion, Review
 from acceptance.review_store import ReviewStore
+from acceptance.supplied_ids import UnusableAnswerLog
 
 
 class CliError(Exception):
@@ -449,7 +449,7 @@ def _flatten(text: str) -> str:
     flattening happens here, at the point of display.
     """
     collapsed = " ".join(text.split())
-    return collapsed[2:] if collapsed.startswith("- ") else collapsed
+    return collapsed.removeprefix("- ")
 
 
 def _wrap(text: str, indent: str, hang: str) -> list[str]:

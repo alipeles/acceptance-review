@@ -39,7 +39,7 @@ from markdown_it.tree import SyntaxTreeNode
 
 from acceptance.requirement.task_file import ParsedTaskFile, parse_task_file
 
-__all__ = ["uncovered_regions", "assert_total_region_coverage"]
+__all__ = ["assert_total_region_coverage", "uncovered_regions"]
 
 # A list marker at the head of a line, with its indentation and trailing space.
 _MARKER = re.compile(r"^(\s*)([-*+]|\d+[.)])(\s+)")

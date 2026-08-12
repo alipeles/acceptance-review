@@ -81,7 +81,10 @@ def _constrained_nested(annotation: Any, allowed: Mapping[str, Sequence[str]]) -
         rebuilt = [_constrained_nested(member, allowed) or member for member in members]
         if all(new is old for new, old in zip(rebuilt, members)):
             return None
-        return Union[tuple(rebuilt)]
+        # Not rewritable as `X | Y`: the members are a runtime tuple of unknown
+        # length, and PEP 604 has no subscript form. `functools.reduce(or_, ...)`
+        # would build the same object less legibly.
+        return Union[tuple(rebuilt)]  # noqa: UP007
     if get_origin(annotation) is list:
         args = get_args(annotation)
         item = args[0] if args else None
@@ -193,17 +196,18 @@ def scan(
 
     def visit(node: Any) -> None:
         if isinstance(node, BaseModel):
-            for name, _ in type(node).model_fields.items():
+            for name in type(node).model_fields:
                 value = getattr(node, name)
                 if name in supplied:
                     values = value if isinstance(value, list) else [value]
                     for item in values:
-                        if isinstance(item, str) and item not in supplied[name]:
-                            if (name, item) not in seen:
-                                seen.add((name, item))
-                                found.append(
-                                    UnusableAnswer(stage=stage, field=name, returned_id=item)
-                                )
+                        if (
+                            isinstance(item, str)
+                            and item not in supplied[name]
+                            and (name, item) not in seen
+                        ):
+                            seen.add((name, item))
+                            found.append(UnusableAnswer(stage=stage, field=name, returned_id=item))
                 else:
                     visit(value)
         elif isinstance(node, list):

@@ -12,7 +12,11 @@ license = { text = "MIT" }
 dependencies = ["pydantic>=2", "litellm>=1.50", "markdown-it-py>=3", "pathspec>=0.12"]
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+# ruff is pinned exactly, not floated. Its default rule set widens between
+# releases, so an unpinned `pip install -e ".[dev]"` silently changes what CI
+# enforces — that is how 86 findings accumulated on an untouched tree (#239).
+# Bumping it is a deliberate commit that clears whatever the new release adds.
+dev = ["pytest", "ruff==0.16.2"]
 
 [project.scripts]
 acceptance = "acceptance.cli:main"

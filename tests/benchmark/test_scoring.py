@@ -13,16 +13,16 @@ from acceptance.review_state import Review
 
 
 def _archetype_case(**overrides) -> BenchmarkCase:
-    defaults = dict(
-        case_id="archetype-01-missed-obligation",
-        source=BenchmarkCaseSource(kind="archetype", identifier="missed-obligation"),
-        inputs=BenchmarkCaseInputs(
+    defaults = {
+        "case_id": "archetype-01-missed-obligation",
+        "source": BenchmarkCaseSource(kind="archetype", identifier="missed-obligation"),
+        "inputs": BenchmarkCaseInputs(
             repo="fixtures/archetype-01",
             task_text="## Deliverable\nAdd CSV export with active filters.\n",
             base_revision="abc123",
             head_revision="def456",
         ),
-        ground_truth=GroundTruthLabels(
+        "ground_truth": GroundTruthLabels(
             obligations=[
                 GroundTruthObligation(
                     id="csv-generation",
@@ -50,7 +50,7 @@ def _archetype_case(**overrides) -> BenchmarkCase:
                 )
             ],
         ),
-    )
+    }
     defaults.update(overrides)
     return BenchmarkCase(**defaults)
 

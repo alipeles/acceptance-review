@@ -56,7 +56,7 @@ model's judgement rather than of how it happened to order a response.
 from __future__ import annotations
 
 import math
-from typing import Sequence
+from collections.abc import Sequence
 
 from acceptance.config import DEFAULT_LINK_PAIR_BATCH_SIZE
 from acceptance.llm import ModelClient, StrictResponseModel

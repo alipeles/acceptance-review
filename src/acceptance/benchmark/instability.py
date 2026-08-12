@@ -47,11 +47,12 @@ import shutil
 import subprocess
 import tempfile
 from collections import Counter
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from itertools import combinations
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any
 
 from pydantic import Field
 

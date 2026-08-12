@@ -15,11 +15,12 @@ from __future__ import annotations
 
 from markdown_it import MarkdownIt
 from markdown_it.tree import SyntaxTreeNode
+from pydantic import Field
 
 from acceptance.model_base import PersistableModel
 from acceptance.source_ref import TextSpan
 
-__all__ = ["TextSpan", "ParsedTaskFile", "parse_task_file"]
+__all__ = ["ParsedTaskFile", "TextSpan", "parse_task_file"]
 
 # §7.1 section headings, normalized (lowercased). A file may add other
 # sections; unknown ones are ignored rather than rejected.
@@ -61,11 +62,11 @@ class ParsedTaskFile(PersistableModel):
     """
 
     source: str
-    behavior: list[TextSpan] = []
-    constraints: list[TextSpan] = []
-    scope_exclusions: list[TextSpan] = []
-    completion_expectations: list[TextSpan] = []
-    unclaimed: list[TextSpan] = []
+    behavior: list[TextSpan] = Field(default_factory=list)
+    constraints: list[TextSpan] = Field(default_factory=list)
+    scope_exclusions: list[TextSpan] = Field(default_factory=list)
+    completion_expectations: list[TextSpan] = Field(default_factory=list)
+    unclaimed: list[TextSpan] = Field(default_factory=list)
 
 
 def parse_task_file(text: str) -> ParsedTaskFile:
