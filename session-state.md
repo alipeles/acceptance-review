@@ -13,6 +13,21 @@ rather than letting it accrete.
 
 ---
 
+## Next up: another de-duplication experiment
+
+**Start here: `docs/experiments/obligation-dedup/README.md`.** It carries the
+extraction code (`linking_corpus.py`), a survey of what the transcript cache
+currently holds, and the seven traps DR-259 hit — several of which cost a full
+wrong analysis pass. Do not rebuild the method from the DR alone; the DR is the
+conclusion, that file is how to get there.
+
+Two things to know before starting:
+
+- **The cache is not an archive.** Run `linking_corpus.py` first and copy what
+  you need somewhere durable. DR-259 lost two runs' transcripts mid-analysis.
+- **Only one embedding transcript exists** (46 texts, #259's own run). Vectors
+  for the other five sweeps mean live calls — budget for it.
+
 ## No task in flight
 
 **#259 landed** — `c3ebc42` (PR #260), CI green. Obligation pairs are prefiltered

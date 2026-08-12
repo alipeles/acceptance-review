@@ -32,6 +32,13 @@ silently. `linking.py` already declares that direction load-bearing.
 
 ## How the data was obtained
 
+> **Before repeating any of this, read
+> `docs/experiments/obligation-dedup/README.md`.** It carries the extraction code
+> and the traps this analysis hit — including two corrections recorded below, and
+> a third found afterwards: identifying linking calls by prompt text (as this
+> analysis did) also matches recommendation and strength prompts that merely
+> discuss de-duplication. Filter on `response_schema.name == "_Verdicts"`.
+
 The measurement is offline, over **recorded linking transcripts** in
 `.acceptance/cache/` — no live calls beyond the embeddings.
 
