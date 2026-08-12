@@ -13,68 +13,76 @@ rather than letting it accrete.
 
 ---
 
-## In flight: #259 — prefilter obligation pairs by cosine distance
+## No task in flight
 
-Branch `259-prefilter-obligation-pairs`, base `c4828de`, head `3c3cfc0`.
-**Implemented, tested, Gate 2 run three times. Not merged, no PR opened.**
+**#259 landed** — `c3ebc42` (PR #260), CI green. Obligation pairs are prefiltered
+by cosine distance before the linking call, with an embedding path recorded and
+replayed through the same transcript store as every other model call.
 
-Suite 1104 passed, `ruff check` clean. Six defect injections all caught, plus a
-seventh (`<=` → `<`) that initially survived and is now caught.
+`current-task.md` still holds #259's mandate, which has shipped. Ignore it; the
+next task writes its own at Gate 1.
 
-## Gate 2: NOT CLEAN — blocked on one obligation, and it is a tool defect
+## What #259 settled about the threshold
 
-29 of 30 obligations strongly supported. The blocker is **obligation 15**
-(`completion-10`, "A test asserts that two runs over the same obligation set
-choose the same pairs") reported `unsupported` / "(no mapped test)" — while the
-**same report cites that exact test twice elsewhere**, on obligation 24 (its
-Constraint twin) and on obligation 5 (unrelated). #245 verbatim.
+Carry this forward — the number is right but the *reasoning* in the original DR
+was not, and re-deriving it from the DR alone would resurrect the wrong claim.
 
-It mapped correctly in runs 1 and 2 and regressed in run 3, with nothing about it
-changed. **No code change answers this** — writing a second determinism test to
-satisfy a mapper that already found the first is chasing a rating.
+DR-259 justified 0.10 as a clean separator. **It is not.** #259's own Gate 1 run
+was a fifth task file, held out from the calibration, and carries a **genuine**
+merge at **0.2257** — far outside the 0.094–0.115 band. The nearest calibration
+*spurious* merge sits at **0.116**, below it, so the two overlap:
 
-**Awaiting the human's call on merging without a clean gate**, which is where
-#248 also ended.
+```
+              calibration          held-out
+threshold   genuine  spurious      genuine    asked
+  0.10       20/20    0/10          11/12      2.1%   <- chosen
+  0.15       20/20    2/10          11/12      3.4%
+  0.25       20/20    9/10          12/12      8.1%
+```
 
-## What the three runs bought
+At 0.25 the filter admits 9 of 10 spurious merges and stops being a quality
+filter at all. **No threshold does both.** 0.10 ships as the deliberate
+under-merging side of a real trade, matching `linking.py`'s declared bias.
+Recorded in DR-259's *Held-out check*; the clean-separation claim is withdrawn.
+**#211 is now load-bearing** for settling the number properly.
 
-Real, and worth keeping separate from the instability:
+## Gate 2 was NOT clean, and #259 merged anyway — deliberately
 
-- Run 1 named **three genuine gaps** — nothing tested that the *linking path*
-  embeds per obligation; nothing varied the threshold; every provenance
-  assertion read the **in-memory** object, not persisted state. All three fixed,
-  each injection-verified.
-- Run 2 named the **exact-threshold boundary**. Verified on its merits first:
-  mutating `<=` to `<` passed all 1101 tests. Now pinned on both sides.
-- Run 3 flagged **formatter churn** as `separable`. Correct — see below.
+29 of 30 obligations strongly supported. The single blocker was `completion-10`
+reported as having no mapped test while **the same report cited that exact test
+twice elsewhere** — on its Constraint twin and on an unrelated obligation. That
+is #245; no code change answers it. Merged on the strength of **seven defect
+injections**, with the human's explicit call.
 
-## #225 reproduces, and in a NEW direction
+**This is the second consecutive issue merged on a non-clean gate** (#248 was the
+first). `CLAUDE.md`'s sequencing rule says a gate that moves under unchanged
+evidence cannot validate anything downstream — so #225/#180 deserve weighing
+against more capability work before the next task.
 
-- run 1 → 2: obligation 1's evidence byte-identical, fell strongly → partially;
-  non-discriminating went 3 → 13 while only *adding* tests.
-- run 2 → 3: **two** boundary tests moved **twelve** obligations up to strongly
-  supported, and dropped one to unsupported.
+## The #225 evidence is now two-directional
 
-Previous instances all showed ratings *falling*, readable as a conservative
-judge. Twelve unearned promotions rules that out — it is instability, not bias.
-Queued as a comment on #225.
+Newly filed on #225, and it changes what the defect *is*:
 
-## Formatter churn — fixed here, cause queued
+- run 1 → 2: an obligation fell strongly → partially on **byte-identical**
+  evidence; non-discriminating went 3 → 13 while only *adding* tests.
+- run 2 → 3: **two** boundary tests moved **twelve** obligations *up* to
+  strongly supported, most untouched by them.
 
-**49 files fail `ruff format --check`**, and the `PostToolUse` hook reflows any
-dirty file it touches: `tests/test_cli.py` showed **457 changed lines for a
-5-line edit**. Five files this work needed were dirty at base.
-
-**Workaround that works:** `git checkout <base> -- <path>`, then re-apply the
-real edit **by script**, never with the Edit tool, so the hook never sees the
-file. Took the branch from 1541/199 to 1172/47 lines.
+Every prior instance showed ratings falling, readable as a conservative judge.
+Twelve unearned promotions rules that out — it is instability, not bias, so
+"write more tests until the gate is clean" is not a convergent strategy.
 
 ## Do not rediscover
 
 - **A prompt change invalidates only THAT STAGE's transcripts** — `request_key`
   hashes each request individually.
-- **The formatter hook strips an import you add before you add its usage.** Add
-  the usage first, or re-add the import after; it silently reverted two edits.
+- **52 of 116 files fail `ruff format --check`** and the `PostToolUse` hook
+  reflows any file it touches — 457 changed lines for a 5-line edit on
+  `tests/test_cli.py`. Filed as **#261**. **Workaround:** `git checkout <base> --
+  <path>`, then re-apply the real edit **by script**, never with the Edit tool.
+- **The formatter strips an import you add before you add its usage.** Add the
+  usage first; it silently reverted two edits, surfacing only as a later
+  `NameError`.
 - **`decompose --mode record` writes a 0-byte log through `tee`.** Rebuild with
   `--mode replay` into the log — byte-identical, no live call. Check `wc -l`.
 - **Transcript responses are JSON *strings*** — `json.loads` the `response`
@@ -85,12 +93,14 @@ file. Took the branch from 1541/199 to 1172/47 lines.
 - **`litellm.__version__` does not exist.**
 - **`Review` requires `mode`** — `Review(mode="local", reviewed_revision=...)`.
 - **A `check` over a new task file needs `--mode record`** and makes live calls.
-- **`git branch -d` refuses every squash-merged branch.** `gh pr view <n>
-  --json state`, then `-D`.
+- **`git branch -d` refuses every squash-merged branch.** `gh pr view <n> --json
+  state`, then `-D`.
 - **Python here is 3.10; CI runs 3.12**; repo is `alipeles/acceptance-review`.
 
 ## Queued — see `docs/DEFERRED.md`
 
-Five open, none filed: the #245 mapping filing, the #225 instability filing, the
-formatter-churn defect, the #223 composite-obligation filing, and untracking
-`current-task.md` (still blocked on #258).
+**One open**, unchanged: untracking `current-task.md`, still **blocked on #258**
+(two tests read the live file). Do #258 first, then untrack.
+
+Four filed this session: #245 comment, #225 comment, **#261** (formatter churn,
+new), #223 comment.

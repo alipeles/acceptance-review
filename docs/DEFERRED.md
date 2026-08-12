@@ -83,7 +83,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > recommendation prescribes, in detail, a test that already exists and that the
   > same report cites twice — which is the #225-family failure of recommendations
   > making checkable false claims about the code.
-- **Status:** open
+- **Status:** filed (#245 comment)
 
 ### [2026-08-12] #225 reproduces on a second task file: ratings move under unchanged evidence, both directions
 - **Kind:** filing (comment on existing issue #225)
@@ -111,7 +111,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   is new evidence**: previous instances all showed ratings falling, which is easy
   to read as a conservative judge. Twelve unearned promotions rules that reading
   out — the movement is not a bias in one direction, it is instability.
-- **Status:** open
+- **Status:** filed (#225 comment)
 
 ### [2026-08-12] The repo is not formatter-clean, so every edit produces churn
 - **Kind:** defect
@@ -136,7 +136,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   **Workaround until then**, used on this branch: restore the file with
   `git checkout <base> -- <path>` and re-apply the real edit by script rather
   than with the Edit tool, so the hook never sees it.
-- **Status:** open
+- **Status:** filed (#261)
 
 ### [2026-08-11] Composite obligations spanning two requirements are structurally unmergeable
 - **Kind:** filing (comment on existing issue #223)
@@ -184,7 +184,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   >
   > Separately, `task-01-obligation-15` carries a `task-01-` id prefix while
   > owned by `constraint-17` — the id asserts a provenance that is wrong.
-- **Status:** open
+- **Status:** filed (#223 comment)
 
 ### [2026-08-10] #225 reproduced on #248's Gate 2 — 11 untouched ratings fell when two tests were added
 - **Kind:** filing (comment on existing issue #225)
