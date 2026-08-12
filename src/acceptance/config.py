@@ -82,6 +82,29 @@ DEFAULT_DECOMPOSE_BATCH_SIZE = 8
 # obligation, and a derivation item enumerates, types and quotes.
 DEFAULT_LINK_PAIR_BATCH_SIZE = 25
 
+# Obligations per defect-ENUMERATION call, and per defect-VERDICT call (#191).
+# Same determinism-control status as the three above: both are folded into their
+# own stage's hashed request, so changing either invalidates that stage's
+# transcripts and nothing else.
+#
+# Two numbers rather than one because the two calls' economics differ by an
+# order of magnitude. Enumeration repeats the changed code in every batch — the
+# 3.8x that DR-164 decision 2 declined to pay on the diff-dominated stages — so
+# it is batched coarsely. A verdict batch carries only already-named defects and
+# the mapped test evidence, no diff at all, so splitting it is nearly free.
+#
+# The verdict default is 1: one criterion per call, which is what DR-180's
+# finding asks for. The pre-change baseline in
+# `docs/experiments/191-discrimination-partition/` shows why. One call covering
+# 19 criteria returned exactly two defects for each and judged all 38 caught,
+# three runs running — a uniformity the input does not explain, and the DR-164
+# signature of a call staying schema-valid while shedding the work.
+#
+# 6 for enumeration: coarse enough that the diff is not repeated 19 times over,
+# fine enough to stay far below the point at which a response starts shedding.
+DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE = 6
+DEFAULT_DEFECT_VERDICT_BATCH_SIZE = 1
+
 # The model that embeds obligations for #259's linking prefilter. Separate from
 # DEFAULT_MODEL: nothing is judged on an embedding, so the two are chosen on
 # different grounds and swapped independently.
@@ -142,6 +165,11 @@ class RunConfig(BaseModel):
     # And for obligation linking (#144), whose unit is a PAIR of obligations
     # rather than an obligation — see the constant's note.
     link_pair_batch_size: int = Field(default=DEFAULT_LINK_PAIR_BATCH_SIZE, ge=1)
+    # And for the two halves of discrimination (#191), which are separate
+    # controls because enumeration repeats the diff per batch and the verdict
+    # call carries none — see the constants' note.
+    defect_enumeration_batch_size: int = Field(default=DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE, ge=1)
+    defect_verdict_batch_size: int = Field(default=DEFAULT_DEFECT_VERDICT_BATCH_SIZE, ge=1)
     # #259's prefilter. Both are determinism controls that reach the linking
     # stage through the pipeline, like the batch sizes above, and both are
     # hashed into the linking request so a change invalidates its transcripts.

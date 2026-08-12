@@ -342,7 +342,6 @@ _JUDGMENTS = {
             }
         ]
     },
-    "_Discrimination": {"obligations": []},
     "_Coverage": {
         "classifications": [
             {

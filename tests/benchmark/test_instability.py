@@ -49,7 +49,8 @@ from support import (  # noqa: E402
 _EMPTY_BY_SCHEMA = {
     "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
     "_Mappings": {"mappings": []},
-    "_Discrimination": {"obligations": []},
+    "_Enumeration": {"obligations": []},
+    "_DefectVerdicts": {"verdicts": []},
     "_Coverage": {"classifications": []},
     "_Detections": {"unrequested_changes": []},
     "_Judgments": {"resolutions": []},
@@ -450,7 +451,8 @@ def _observing_factory(calls):
                     "requirement_dispositions": [],
                 },
                 "_Mappings": {"mappings": []},
-                "_Discrimination": {"obligations": []},
+                "_Enumeration": {"obligations": []},
+                "_DefectVerdicts": {"verdicts": []},
                 "_Coverage": {"classifications": []},
                 "_Detections": {"unrequested_changes": []},
                 "_Judgments": {"resolutions": []},
@@ -521,27 +523,32 @@ def _judging_factory():
                         for test_id in _supplied_enum("test_id", **kwargs)
                     ]
                 }
-            elif name == "_Discrimination":
-                # One of each verdict, so a snapshot that silently kept only the
-                # true ones — or collapsed them to a single flag — still fails.
+            elif name == "_Enumeration":
                 body = {
                     "obligations": [
                         {
                             "obligation_id": obligation_id,
                             "defects": [
-                                {
-                                    "description": "rounds to whole dollars",
-                                    "would_be_caught": True,
-                                    "reason": "the assertion pins the cents",
-                                },
-                                {
-                                    "description": "drops the currency symbol",
-                                    "would_be_caught": False,
-                                    "reason": "nothing asserts on the symbol",
-                                },
+                                {"description": "rounds to whole dollars"},
+                                {"description": "drops the currency symbol"},
                             ],
                         }
                         for obligation_id in _supplied_enum("obligation_id", **kwargs)
+                    ]
+                }
+            elif name == "_DefectVerdicts":
+                # One of each verdict, so a snapshot that silently kept only the
+                # true ones — or collapsed them to a single flag — still fails.
+                # The harness has to join these back onto the enumeration to
+                # recover a description at all, which is the join under test.
+                body = {
+                    "verdicts": [
+                        {
+                            "defect_id": defect_id,
+                            "would_be_caught": defect_id.endswith("::d1"),
+                            "reason": "as judged by the double",
+                        }
+                        for defect_id in _supplied_enum("defect_id", **kwargs)
                     ]
                 }
             else:

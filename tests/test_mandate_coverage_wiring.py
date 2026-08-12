@@ -63,7 +63,6 @@ _JUDGMENTS = {
         ],
     },
     "_Mappings": {"mappings": []},
-    "_Discrimination": {"obligations": []},
     "_Coverage": {
         "classifications": [
             {

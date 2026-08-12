@@ -699,7 +699,6 @@ def _gap_client():
                 "requirement_dispositions": [],
             },
             "_Mappings": {"mappings": []},
-            "_Discrimination": {"discriminations": []},
             "_Coverage": {
                 "classifications": [
                     {

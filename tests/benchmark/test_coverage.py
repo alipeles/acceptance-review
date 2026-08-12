@@ -38,6 +38,7 @@ from tests.support import (
     _completed,
     _fake_response,
     client_finding_nothing,
+    discrimination_responses,
 )
 
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
@@ -186,41 +187,18 @@ def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
                     },
                 ]
             },
-            "_Discrimination": {
-                "obligations": [
-                    {
-                        "obligation_id": "show-fields",
-                        "defects": [
-                            {
-                                "description": "wrong/omitted field",
-                                "would_be_caught": True,
-                                "reason": "exact line string asserted",
-                            },
-                        ],
-                    },
-                    {
-                        "obligation_id": "line-total",
-                        "defects": [
-                            {
-                                "description": "wrong total formula",
-                                "would_be_caught": True,
-                                "reason": "exact total asserted",
-                            },
-                        ],
-                    },
-                    {
-                        "obligation_id": "money-format",
-                        "defects": [
-                            {
-                                "description": "wrong currency formatting",
-                                "would_be_caught": True,
-                                "reason": "exact $ format asserted",
-                            },
-                        ],
-                    },
-                    # returns-in-parens has no mapped test, so it's never sent here.
-                ]
-            },
+            # returns-in-parens is enumerated like every other criterion — that
+            # is what keeps the enumeration request independent of the mapping —
+            # but with no mapped test it is never given a verdict.
+            **discrimination_responses(
+                {
+                    "show-fields": [("wrong/omitted field", True, "exact line string asserted")],
+                    "line-total": [("wrong total formula", True, "exact total asserted")],
+                    "money-format": [
+                        ("wrong currency formatting", True, "exact $ format asserted")
+                    ],
+                }
+            ),
             "_Coverage": _classification_response(
                 [
                     {"obligation_id": "show-fields", "status": "addressed"},
@@ -643,20 +621,7 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
                     {"test_id": test_id, "obligation_ids": ["show-fields"], "rationale": "."},
                 ]
             },
-            "_Discrimination": {
-                "obligations": [
-                    {
-                        "obligation_id": "show-fields",
-                        "defects": [
-                            {
-                                "description": "omits a field",
-                                "would_be_caught": False,
-                                "reason": ".",
-                            },
-                        ],
-                    },
-                ]
-            },
+            **discrimination_responses({"show-fields": [("omits a field", False, ".")]}),
             "_Coverage": _classification_response(
                 [
                     {
@@ -785,7 +750,6 @@ def test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo(tmp_path
                     ]
                 ),
                 "_Mappings": {"mappings": []},
-                "_Discrimination": {"discriminations": []},
                 "_Coverage": _classification_response(
                     [
                         {"obligation_id": "gap-ob", "status": "not_addressed"},

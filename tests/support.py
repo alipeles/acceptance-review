@@ -17,6 +17,7 @@ import tempfile
 from types import SimpleNamespace
 
 from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
+from acceptance.evidence.discrimination import defect_id
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_state import Obligation, ObligationType
 
@@ -121,7 +122,7 @@ def _nest_obligations(response: dict) -> dict:
     can no longer be built — a test that could still express linking would be
     asserting against a shape the model is never offered.
     """
-    # Only a DECOMPOSITION response. `_Discrimination` also has a top-level
+    # Only a DECOMPOSITION response. `_Enumeration` also has a top-level
     # `obligations` key, with an entirely different shape, and must be left
     # alone — the marker is `requirement_dispositions`, which only decomposition
     # carries.
@@ -402,18 +403,54 @@ _EMPTY_BY_SCHEMA = {
     # answers the pairs it was actually given rather than none of them.
     "_Verdicts": {"verdicts": []},
     "_Mappings": {"mappings": []},
-    # `obligations`, not `discriminations`: the response model's field has always
-    # been the former. The wrong key never surfaced because a double returning it
-    # also returns no mappings, and `judge_discrimination` returns before calling
-    # the model when no obligation has mapped evidence — so the one entry here
-    # that cannot parse is the one entry nothing ever reached.
-    "_Discrimination": {"obligations": []},
+    # Discrimination is two calls since #191: what could go wrong, then whether
+    # the tests would catch it. A double that answers neither finds no defect and
+    # so no discrimination, which is the same neutral result the single empty
+    # `_Discrimination` used to give.
+    "_Enumeration": {"obligations": []},
+    "_DefectVerdicts": {"verdicts": []},
     "_Coverage": {"classifications": []},
     "_Detections": {"unrequested_changes": []},
     "_Judgments": {"resolutions": []},
     "_Recommendations": {"recommendations": []},
     "_Mismatches": {"mismatches": []},
 }
+
+
+def discrimination_responses(by_obligation: dict[str, list[tuple[str, bool, str]]]) -> dict:
+    """Both halves of a discrimination judgment, from one table of
+    `{obligation_id: [(defect description, would_be_caught, reason), ...]}`.
+
+    #191 split the stage into an enumeration call and a verdict call, joined by
+    a defect id the stage mints from the defect's position. A fixture that means
+    "this criterion's tests would catch this defect" should not have to mint
+    those ids by hand and then keep them in step with the stage — where a typo
+    reads as a defect nobody judged rather than as a broken fixture.
+
+    Spread into a dispatch table: `**discrimination_responses({...})`.
+    """
+    return {
+        "_Enumeration": {
+            "obligations": [
+                {
+                    "obligation_id": obligation_id,
+                    "defects": [{"description": description} for description, _, _ in defects],
+                }
+                for obligation_id, defects in by_obligation.items()
+            ]
+        },
+        "_DefectVerdicts": {
+            "verdicts": [
+                {
+                    "defect_id": defect_id(obligation_id, index),
+                    "would_be_caught": caught,
+                    "reason": reason,
+                }
+                for obligation_id, defects in by_obligation.items()
+                for index, (_, caught, reason) in enumerate(defects, start=1)
+            ]
+        },
+    }
 
 
 def client_finding_nothing(

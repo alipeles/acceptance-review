@@ -63,7 +63,9 @@ from acceptance.config import DEFAULT_MODEL, Mode, RunConfig
 from acceptance.evidence.discrimination import (
     ObligationDiscrimination,
     PlausibleDefect,
-    _Discrimination,
+    _DefectVerdicts,
+    _Enumeration,
+    defects_of,
 )
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
@@ -708,38 +710,59 @@ DEFAULT_PERTURBATION = Perturbation(name="add-unrelated-test", apply=add_unrelat
 def _observed_discriminations(observed: Sequence[Any]) -> list[ObligationDiscrimination]:
     """Recover the per-defect verdicts from what the discrimination stage returned.
 
-    `complete` hands back the stage's *response* model, `_Discrimination`.
-    `ObligationDiscrimination` is built inside `judge_discrimination` after that
-    call returns, so it never passes through the client at all — filtering the
-    observations for it matched nothing, and every measurement recorded an empty
-    defect-verdict axis while reporting success. That is the axis DR-180
-    localises the instability to, so the harness was silent on precisely the
-    thing it exists to measure.
+    `complete` hands back the stage's *response* models, and since #191 there are
+    two of them: `_Enumeration` names the defects, `_DefectVerdicts` judges them,
+    and only their join is a discrimination. Neither carries
+    `ObligationDiscrimination`, which is built inside the stage after both calls
+    return and never crosses the client — the filter that looked for it matched
+    nothing, and every measurement recorded an empty defect-verdict axis while
+    reporting success. That is the axis DR-180 localises the instability to, so
+    the harness was silent on precisely the thing it exists to measure.
 
     Third drift from the same cause as #259's two: the harness assuming it
     observes the pipeline's own types rather than the wire's.
 
-    `_Discrimination` is private and imported anyway. Its class name is the
-    response schema's name and therefore sits inside the hashed request, so it
-    cannot be renamed to something public without invalidating every recorded
-    discrimination transcript.
+    The ids are minted by the stage's own `defects_of`, so the join cannot drift
+    from the rule that produced it. The response models are private and imported
+    anyway: their class names are the response schema names and therefore sit
+    inside the hashed request, so they cannot be renamed to something public
+    without invalidating every recorded discrimination transcript.
     """
-    return [
-        ObligationDiscrimination(
-            obligation_id=item.obligation_id,
-            defects=[
+    enumerated = {
+        defect.id: defect
+        for response in observed
+        if isinstance(response, _Enumeration)
+        for item in response.obligations
+        for defect in defects_of(item)
+    }
+
+    by_obligation: dict[str, list[PlausibleDefect]] = {}
+    for response in observed:
+        if not isinstance(response, _DefectVerdicts):
+            continue
+        for verdict in response.verdicts:
+            defect = enumerated.get(verdict.defect_id)
+            if defect is None:
+                # A verdict on a defect no observed enumeration named. Dropped
+                # rather than invented: its wording is the subject every axis is
+                # keyed on, and a placeholder would enter the distribution as a
+                # judgement that was never made.
+                continue
+            by_obligation.setdefault(defect.obligation_id, []).append(
                 PlausibleDefect(
                     description=defect.description,
-                    would_be_caught=defect.would_be_caught,
-                    reason=defect.reason,
+                    would_be_caught=verdict.would_be_caught,
+                    reason=verdict.reason,
                 )
-                for defect in item.defects
-            ],
-            discriminating=any(defect.would_be_caught for defect in item.defects),
+            )
+
+    return [
+        ObligationDiscrimination(
+            obligation_id=obligation_id,
+            defects=defects,
+            discriminating=any(defect.would_be_caught for defect in defects),
         )
-        for response in observed
-        if isinstance(response, _Discrimination)
-        for item in response.obligations
+        for obligation_id, defects in by_obligation.items()
     ]
 
 

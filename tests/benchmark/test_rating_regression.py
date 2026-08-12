@@ -250,7 +250,11 @@ def test_no_case_issues_a_live_model_call(corpus_worktrees, monkeypatch):
     classify_case(case, client)
 
     assert "_Decomposition" in seen and "_Mappings" in seen
-    assert "_Discrimination" in seen or "_Coverage" in seen
+    # Both halves of #191's split, named rather than accepted as an alternative
+    # to `_Coverage`: this suite scores the discrimination judgement, so a run
+    # that reached coverage without ever enumerating or judging a defect is not
+    # the run it means to be measuring.
+    assert "_Enumeration" in seen and "_DefectVerdicts" in seen
 
 
 def test_no_model_transcript_is_committed_into_the_fixtures():

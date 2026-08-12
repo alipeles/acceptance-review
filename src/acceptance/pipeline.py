@@ -22,6 +22,8 @@ from pathlib import Path
 
 from acceptance.config import (
     DEFAULT_DECOMPOSE_BATCH_SIZE,
+    DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE,
+    DEFAULT_DEFECT_VERDICT_BATCH_SIZE,
     DEFAULT_LINK_DISTANCE_THRESHOLD,
     DEFAULT_LINK_PAIR_BATCH_SIZE,
     DEFAULT_MAPPING_BATCH_SIZE,
@@ -220,6 +222,8 @@ def run_review(
     mapping_batch_size: int = DEFAULT_MAPPING_BATCH_SIZE,
     decompose_batch_size: int = DEFAULT_DECOMPOSE_BATCH_SIZE,
     link_pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
+    defect_enumeration_batch_size: int = DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE,
+    defect_verdict_batch_size: int = DEFAULT_DEFECT_VERDICT_BATCH_SIZE,
     link_distance_threshold: float | None = DEFAULT_LINK_DISTANCE_THRESHOLD,
     task_identifier: str = "<inline>",
     prior: Review | None = None,
@@ -280,7 +284,15 @@ def run_review(
     obligations = apply_test_mapping(obligations, mapping)
 
     test_evidence = extract_test_evidence(repo, discovered.tests, change_set, mapping)
-    discriminations = judge_discrimination(obligations, test_evidence, change_set, client, unusable)
+    discriminations = judge_discrimination(
+        obligations,
+        test_evidence,
+        change_set,
+        client,
+        defect_enumeration_batch_size,
+        defect_verdict_batch_size,
+        unusable,
+    )
     strengths = classify_strength(obligations, test_evidence, discriminations)
     obligations = apply_evidence_strength(obligations, strengths)
     # After strength, deliberately: an obligation whose judgment was never

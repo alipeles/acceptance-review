@@ -19,41 +19,98 @@ would kill, §8.2), so it is a schema-constrained model call through the M0.4
 harness — recorded for replay, never a live call in tests. M5.3 maps these
 raw caught/survived verdicts onto the §9.3 strength classes; M8 later confirms
 the predictions by execution.
+
+## Two calls, not one (#191)
+
+It used to be one call carrying every obligation's every defect verdict. DR-180
+localised this reviewer's instability to exactly that call: across two #167 runs
+one commit apart, the mapped test set was byte-identical, the same defect was
+named, and `would_be_caught` came back true and then false.
+
+The pre-change baseline in `docs/experiments/191-discrimination-partition/`
+measured the shape of it. One call covering 19 obligations returned exactly two
+defects for each and judged all 38 caught, three runs running — the DR-164
+signature of a schema-constrained call staying valid while shedding the work.
+And the defect set itself did not repeat: 114 distinct (obligation, wording)
+keys across three runs, each appearing exactly once. Pinning verdicts is not
+enough when the set they range over is re-rolled every time.
+
+So the stage is now two steps, keyed differently:
+
+**Enumeration** asks what could plausibly go wrong, from the obligation text and
+the changed code alone. It never sees a test. That is what makes "adding a test
+leaves this obligation's defects unchanged" true *by construction* rather than
+by hope: the request bytes are identical, so the transcript replays.
+
+**Verdict** asks, per defect, whether the mapped tests would catch it. It never
+sees the diff — the enumerated defect already carries what the diff had to say —
+so partitioning it is nearly free.
+
+Both are partitioned by obligation, with their own size control folded into the
+hashed request. Two controls rather than one because their economics differ by
+an order of magnitude: enumeration repeats the diff in every batch, which is the
+cost DR-164 decision 2 declined to pay on the diff-dominated stages, while a
+verdict batch carries only defects and test evidence.
+
+Enumeration covers **every** obligation, not only those with mapped tests. That
+is deliberate and load-bearing: gating it on the mapping would put the mapping
+back inside the enumeration request by the back door, since adding the first
+test to one obligation would change which obligations are in the batch and so
+change every other batch's bytes. Judging is still confined to obligations with
+mapped evidence, exactly as before — criteria with no mapped test are
+unsupported, and M5.3 classifies them.
 """
 
 from __future__ import annotations
 
+from acceptance.config import (
+    DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE,
+    DEFAULT_DEFECT_VERDICT_BATCH_SIZE,
+)
 from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.partition import partition
 from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation, TestEvidence
 
-_STAGE = "discrimination judgment"
+_ENUMERATION_STAGE = "defect enumeration"
+_VERDICT_STAGE = "defect verdict"
 
-_SYSTEM_PROMPT = """\
-You judge whether a criterion's mapped tests would actually FAIL if the
-implementation violated that criterion in a PLAUSIBLE way. A test evidences a
-criterion only if a realistic defect would make it fail — not merely because it
-invokes the code or is named for it.
+_ENUMERATION_SYSTEM_PROMPT = """\
+You name the PLAUSIBLE defects that would violate a criterion.
 
-For each criterion (obligation):
-1. Name one or more PLAUSIBLE defects: realistic mistakes a competent but
-   fallible developer might actually ship that violate THIS criterion
-   specifically — not arbitrary or absurd mutations.
-2. For each defect decide whether the mapped test(s) would FAIL under it
-   (catch it). Reason about: do the test INPUTS distinguish the correct
-   behavior from the defect, or do they coincidentally produce the same result?
-   Are boundary / negative cases exercised? Do the ASSERTIONS target the
-   required result (e.g. does asserting a whole-number result exercise
-   rounding)?
-3. Give a short `reason`.
+A plausible defect is a realistic mistake a competent but fallible developer
+might actually ship — not an arbitrary or absurd mutation, and not a violation
+of some other criterion. State each one as what the code would do wrong, in one
+sentence, specifically enough that someone could later decide whether a given
+test would fail under it.
+
+You are given the criteria and the changed production code. You are NOT given
+the tests, and you must not speculate about them: this step is about what could
+go wrong, not about whether anything would catch it. Do not mention tests,
+coverage, or whether a defect would be detected.
+
+Return, for each criterion id given, its list of defects. Use only the criterion
+ids provided."""
+
+_VERDICT_SYSTEM_PROMPT = """\
+You judge whether a criterion's mapped tests would actually FAIL under a defect
+that has already been named. A test evidences a criterion only if a realistic
+defect would make it fail — not merely because it invokes the code or is named
+for it.
+
+For each defect id given, decide whether some mapped test would FAIL under that
+defect (catch it). Reason about: do the test INPUTS distinguish the correct
+behavior from the defect, or do they coincidentally produce the same result? Are
+boundary / negative cases exercised? Do the ASSERTIONS target the required
+result (e.g. does asserting a whole-number result exercise rounding)?
 
 Set `would_be_caught` true only if some mapped test would genuinely fail under
 the defect. A defect that produces the same output as the correct code for the
 tested inputs is NOT caught (the input fails to discriminate).
 
-Return, for each obligation id given, its list of defects with verdicts. Use
-only the obligation ids provided."""
+Give a short `reason`. Answer for every defect id given, and for no other. Do
+not add defects: the set is fixed and you are judging it, not extending it."""
 
 
 class PlausibleDefect(PersistableModel):
@@ -71,19 +128,41 @@ class ObligationDiscrimination(PersistableModel):
     discriminating: bool
 
 
-class _Defect(StrictResponseModel):
+class EnumeratedDefect(PersistableModel):
+    """A named defect before anything has been asked about the tests.
+
+    Carries an id rather than being matched back by its wording. The verdict
+    call echoes the id, which is constrained to the ids that call supplied, so a
+    reworded defect is a detectable unusable answer instead of a silently
+    dropped judgment.
+    """
+
+    id: str
+    obligation_id: str
     description: str
+
+
+class _EnumeratedDefect(StrictResponseModel):
+    description: str
+
+
+class _ObligationDefects(StrictResponseModel):
+    obligation_id: str
+    defects: list[_EnumeratedDefect]
+
+
+class _Enumeration(StrictResponseModel):
+    obligations: list[_ObligationDefects]
+
+
+class _DefectVerdict(StrictResponseModel):
+    defect_id: str
     would_be_caught: bool
     reason: str
 
 
-class _ObligationDiscrimination(StrictResponseModel):
-    obligation_id: str
-    defects: list[_Defect]
-
-
-class _Discrimination(StrictResponseModel):
-    obligations: list[_ObligationDiscrimination]
+class _DefectVerdicts(StrictResponseModel):
+    verdicts: list[_DefectVerdict]
 
 
 def _evidence_by_obligation(
@@ -97,20 +176,49 @@ def _evidence_by_obligation(
     return by_obligation
 
 
-def _render_prompt(
-    obligations: list[Obligation],
-    evidence_by_obligation: dict[str, list[TestEvidence]],
-    change_set: ChangeSet,
-) -> str:
-    by_id = {o.id: o for o in obligations}
-    lines = ["## Criteria and their mapped tests", ""]
-    for obligation_id, evidences in evidence_by_obligation.items():
-        obligation = by_id[obligation_id]
+def _render_criteria(obligations: list[Obligation]) -> list[str]:
+    lines: list[str] = []
+    for obligation in obligations:
         lines.append(f"### criterion id={obligation.id}: {obligation.description}")
         if obligation.observable_behavior:
             lines.append(f"observable behavior: {obligation.observable_behavior}")
+        lines.append("")
+    return lines
+
+
+def _render_changed_code(change_set: ChangeSet) -> list[str]:
+    lines = ["## Changed production code"]
+    for file_change in change_set.files:
+        if file_change.category != "source":
+            continue
+        lines.append(f"### {file_change.path}")
+        for hunk in file_change.hunks:
+            lines.append(hunk.content)
+    return lines
+
+
+def _render_enumeration_prompt(obligations: list[Obligation], change_set: ChangeSet) -> str:
+    lines = ["## Criteria", ""]
+    lines += _render_criteria(obligations)
+    lines += _render_changed_code(change_set)
+    return "\n".join(lines)
+
+
+def _render_verdict_prompt(
+    obligations: list[Obligation],
+    defects_by_obligation: dict[str, list[EnumeratedDefect]],
+    evidence_by_obligation: dict[str, list[TestEvidence]],
+) -> str:
+    lines = ["## Criteria, their plausible defects, and their mapped tests", ""]
+    for obligation in obligations:
+        lines.append(f"### criterion id={obligation.id}: {obligation.description}")
+        if obligation.observable_behavior:
+            lines.append(f"observable behavior: {obligation.observable_behavior}")
+        lines.append("plausible defects:")
+        for defect in defects_by_obligation.get(obligation.id, []):
+            lines.append(f"- defect id={defect.id}: {defect.description}")
         lines.append("mapped tests:")
-        for evidence in evidences:
+        for evidence in evidence_by_obligation.get(obligation.id, []):
             lines.append(f"- {evidence.identifier}")
             if evidence.inputs:
                 lines.append(f"    inputs: {'; '.join(evidence.inputs)}")
@@ -119,27 +227,99 @@ def _render_prompt(
             if evidence.expected_value_provenance:
                 lines.append(f"    expected-value provenance: {evidence.expected_value_provenance}")
         lines.append("")
-
-    lines.append("## Changed production code")
-    for file_change in change_set.files:
-        if file_change.category != "source":
-            continue
-        lines.append(f"### {file_change.path}")
-        for hunk in file_change.hunks:
-            lines.append(hunk.content)
     return "\n".join(lines)
 
 
-def judge_discrimination(
+def enumerate_defects(
     obligations: list[Obligation],
-    test_evidence: list[TestEvidence],
     change_set: ChangeSet,
     client: ModelClient,
+    batch_size: int = DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE,
+    unusable: UnusableAnswerLog | None = None,
+) -> list[EnumeratedDefect]:
+    """Name the plausible defects for each criterion, from its text and the diff.
+
+    The request carries no test evidence at all — see the module docstring. Two
+    runs over the same obligations and the same changed code therefore build the
+    same request bytes, which is what makes the enumeration replay rather than
+    be re-rolled.
+    """
+    enumerated: list[EnumeratedDefect] = []
+    for batch in partition(obligations, batch_size, key=lambda obligation: obligation.id):
+        batch_obligations = list(batch.items)
+        messages = [
+            {"role": "system", "content": _ENUMERATION_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": _render_enumeration_prompt(batch_obligations, change_set),
+            },
+        ]
+        allowed = {"obligation_id": [obligation.id for obligation in batch_obligations]}
+        result = client.complete(
+            messages,
+            constrain(_Enumeration, allowed),
+            batch.request_partition(),
+            parse_as=_Enumeration,
+            stage=_ENUMERATION_STAGE,
+        )
+        if unusable is not None:
+            unusable.record(scan(result, allowed, _ENUMERATION_STAGE))
+
+        batch_ids = set(allowed["obligation_id"])
+        for item in result.obligations:
+            if item.obligation_id not in batch_ids:
+                # A batch may only speak for its own criteria, exactly as a
+                # mapping batch may only speak for its own tests: without this a
+                # model echoing a neighbouring batch's criterion would have its
+                # defects merged in alongside the real ones, and the merged set
+                # would depend on which batch answered last.
+                continue
+            enumerated.extend(defects_of(item))
+    return enumerated
+
+
+def defect_id(obligation_id: str, index: int) -> str:
+    """The id a defect is judged under, from its criterion and its 1-based
+    position in that criterion's enumerated list.
+
+    Positional rather than content-derived on purpose: the verdict call echoes
+    this id back, and an id derived from the wording would change whenever the
+    wording did, which is the coupling the split exists to remove.
+    """
+    return f"{obligation_id}::d{index}"
+
+
+def defects_of(item: _ObligationDefects) -> list[EnumeratedDefect]:
+    """One criterion's enumerated defects, with their ids.
+
+    Separate from `enumerate_defects` so anything reading the stage's responses
+    back off the wire — the #189 instability harness does — mints the same ids
+    from the same rule rather than reimplementing it.
+    """
+    return [
+        EnumeratedDefect(
+            id=defect_id(item.obligation_id, index),
+            obligation_id=item.obligation_id,
+            description=defect.description,
+        )
+        for index, defect in enumerate(item.defects, start=1)
+    ]
+
+
+def judge_defect_verdicts(
+    obligations: list[Obligation],
+    defects: list[EnumeratedDefect],
+    test_evidence: list[TestEvidence],
+    client: ModelClient,
+    batch_size: int = DEFAULT_DEFECT_VERDICT_BATCH_SIZE,
     unusable: UnusableAnswerLog | None = None,
 ) -> list[ObligationDiscrimination]:
-    """Judge, per criterion with mapped tests, whether those tests would fail
-    under a plausible defect (§9.3). Criteria with no mapped test are not
-    judged here — they are unsupported, classified by M5.3."""
+    """Decide, per already-named defect, whether the mapped tests would catch it.
+
+    Criteria with no mapped test are not judged here — they are unsupported,
+    classified by M5.3 — and neither are criteria for which nothing was
+    enumerated.
+    """
     evidence_by_obligation = {
         oid: evidences
         for oid, evidences in _evidence_by_obligation(obligations, test_evidence).items()
@@ -148,47 +328,106 @@ def judge_discrimination(
     if not evidence_by_obligation:
         return []
 
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": _render_prompt(obligations, evidence_by_obligation, change_set),
-        },
-    ]
-    allowed = {"obligation_id": list(evidence_by_obligation)}
-    result = client.complete(
-        messages, constrain(_Discrimination, allowed), parse_as=_Discrimination
-    )
-    if unusable is not None and unusable.record(scan(result, allowed, _STAGE)):
-        # An obligation we asked about but got no usable judgment for is not
-        # "no defect survives" — it is a judgment we never obtained. Saying
-        # otherwise would let a re-run claim discrimination it never assessed.
-        unusable.mark_indeterminate(
-            obligation_id
-            for obligation_id in evidence_by_obligation
-            if obligation_id not in {item.obligation_id for item in result.obligations}
-        )
+    defects_by_obligation: dict[str, list[EnumeratedDefect]] = {}
+    for defect in defects:
+        if defect.obligation_id in evidence_by_obligation:
+            defects_by_obligation.setdefault(defect.obligation_id, []).append(defect)
 
-    returned = {
-        item.obligation_id: item.defects
-        for item in result.obligations
-        if item.obligation_id in evidence_by_obligation
-    }
+    by_id = {o.id: o for o in obligations}
+    judgeable = [
+        by_id[oid]
+        for oid in evidence_by_obligation
+        if defects_by_obligation.get(oid) and oid in by_id
+    ]
+
+    verdicts: dict[str, _DefectVerdict] = {}
+    for batch in partition(judgeable, batch_size, key=lambda obligation: obligation.id):
+        batch_obligations = list(batch.items)
+        batch_defects = [
+            defect
+            for obligation in batch_obligations
+            for defect in defects_by_obligation[obligation.id]
+        ]
+        messages = [
+            {"role": "system", "content": _VERDICT_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": _render_verdict_prompt(
+                    batch_obligations, defects_by_obligation, evidence_by_obligation
+                ),
+            },
+        ]
+        allowed = {"defect_id": [defect.id for defect in batch_defects]}
+        result = client.complete(
+            messages,
+            constrain(_DefectVerdicts, allowed),
+            batch.request_partition(),
+            parse_as=_DefectVerdicts,
+            stage=_VERDICT_STAGE,
+        )
+        if unusable is not None and unusable.record(scan(result, allowed, _VERDICT_STAGE)):
+            # A defect we asked about but got no usable judgment for is not "no
+            # defect survives" — it is a judgment we never obtained. Saying
+            # otherwise would let a re-run claim discrimination it never
+            # assessed.
+            answered = {verdict.defect_id for verdict in result.verdicts}
+            unusable.mark_indeterminate(
+                obligation.id
+                for obligation in batch_obligations
+                if any(defect.id not in answered for defect in defects_by_obligation[obligation.id])
+            )
+
+        allowed_ids = set(allowed["defect_id"])
+        for verdict in result.verdicts:
+            if verdict.defect_id in allowed_ids and verdict.defect_id not in verdicts:
+                verdicts[verdict.defect_id] = verdict
 
     discriminations: list[ObligationDiscrimination] = []
     for obligation_id in evidence_by_obligation:
-        raw_defects = returned.get(obligation_id, [])
-        defects = [
+        judged = [
             PlausibleDefect(
-                description=d.description, would_be_caught=d.would_be_caught, reason=d.reason
+                description=defect.description,
+                would_be_caught=verdicts[defect.id].would_be_caught,
+                reason=verdicts[defect.id].reason,
             )
-            for d in raw_defects
+            for defect in defects_by_obligation.get(obligation_id, [])
+            if defect.id in verdicts
         ]
         discriminations.append(
             ObligationDiscrimination(
                 obligation_id=obligation_id,
-                defects=defects,
-                discriminating=any(d.would_be_caught for d in defects),
+                defects=judged,
+                discriminating=any(defect.would_be_caught for defect in judged),
             )
         )
     return discriminations
+
+
+def judge_discrimination(
+    obligations: list[Obligation],
+    test_evidence: list[TestEvidence],
+    change_set: ChangeSet,
+    client: ModelClient,
+    enumeration_batch_size: int = DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE,
+    verdict_batch_size: int = DEFAULT_DEFECT_VERDICT_BATCH_SIZE,
+    unusable: UnusableAnswerLog | None = None,
+) -> list[ObligationDiscrimination]:
+    """Judge, per criterion with mapped tests, whether those tests would fail
+    under a plausible defect (§9.3), in two keyed steps.
+
+    The stage boundary is here rather than in the pipeline so that the two calls
+    cannot be wired up separately, or one of them skipped, by a caller that only
+    wanted a discrimination result.
+
+    Enumeration then covers every criterion, including those with no mapped test
+    — see the module docstring on why gating it on the mapping would put the
+    mapping back into the enumeration request. What is gated is the *stage*: with
+    nothing mapped at all there is no verdict to reach, so no call is made, and
+    enumerating defects no one would judge is work bought for nothing.
+    """
+    if not any(_evidence_by_obligation(obligations, test_evidence).values()):
+        return []
+    defects = enumerate_defects(obligations, change_set, client, enumeration_batch_size, unusable)
+    return judge_defect_verdicts(
+        obligations, defects, test_evidence, client, verdict_batch_size, unusable
+    )

@@ -129,7 +129,11 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
                 )
             )
 
-        if name == "_Discrimination":
+        if name == "_Enumeration":
+            # One defect per criterion, worded identically for both judges. The
+            # enumeration must NOT vary with `always_strong`: the difference
+            # between the two judges has to be the verdict and nothing else, or
+            # the suite stops isolating the stage it is steering.
             ids = _enums(schema, "obligation_id") or [o["id"] for o in obligations]
             return _fake_response(
                 json.dumps(
@@ -137,15 +141,25 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
                         "obligations": [
                             {
                                 "obligation_id": oid,
-                                "defects": [
-                                    {
-                                        "description": "the behaviour under review is wrong",
-                                        "would_be_caught": always_strong,
-                                        "reason": "fixed verdict from a degenerate judge",
-                                    }
-                                ],
+                                "defects": [{"description": "the behaviour under review is wrong"}],
                             }
                             for oid in ids
+                        ]
+                    }
+                )
+            )
+
+        if name == "_DefectVerdicts":
+            return _fake_response(
+                json.dumps(
+                    {
+                        "verdicts": [
+                            {
+                                "defect_id": did,
+                                "would_be_caught": always_strong,
+                                "reason": "fixed verdict from a degenerate judge",
+                            }
+                            for did in _enums(schema, "defect_id")
                         ]
                     }
                 )

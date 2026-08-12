@@ -123,8 +123,26 @@ Check the finding on its merits first; attribute to instability only after.
 
 ## Open
 
-- Whether stabilising defect **enumeration** is a precondition for stabilising the
-  verdicts, or whether both can be addressed together.
+- ~~Whether stabilising defect **enumeration** is a precondition for stabilising the
+  verdicts, or whether both can be addressed together.~~ **Answered by #191: it is
+  a precondition, and the measurement is not merely suggestive.** The pre-change
+  baseline (`docs/experiments/191-discrimination-partition/`) ran the same case
+  three times and found **114 distinct `(obligation, defect wording)` keys, each
+  appearing exactly once** — no defect was worded the same way twice over
+  identical input.
+
+  That has a consequence sharper than "enumeration is also unstable". The verdict
+  axis is keyed on the exact defect string, so with no key shared between two runs
+  there is nothing to compare: verdict stability was **unmeasurable, not good**,
+  and every figure this document quotes for it was quoting a comparison that could
+  not be made. Stabilising the verdicts first was not merely harder — it had no
+  observable meaning until the set they range over stopped moving.
+
+  #191 therefore splits the two and keys enumeration on the obligation text and the
+  changed code alone, with the mapped tests excluded from the request by
+  construction. Note this does not settle the *second* half of the original
+  question — whether the verdicts are stable once the set is fixed. It makes that
+  question askable for the first time.
 - Whether the fix belongs in the determinism component (#184) as a general
   "same evidence → same result" guarantee, or in the discrimination prompt/schema
   specifically (#183). The component work touches the request key and so forces a

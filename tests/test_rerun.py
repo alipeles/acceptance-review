@@ -17,6 +17,7 @@ from acceptance.review_state import (
     Review,
     TestRecommendation,
 )
+from tests.support import discrimination_responses
 from acceptance.review_store import ReviewStore
 from acceptance.rerun import (
     carried_findings,
@@ -421,30 +422,18 @@ _HEAD_JUDGMENTS = {
             },
         ]
     },
-    "_Discrimination": {
-        "obligations": [
-            {
-                "obligation_id": "round-nearest",
-                "defects": [
-                    {
-                        "description": "truncates instead of rounding",
-                        "would_be_caught": True,
-                        "reason": "2.3 would return 2 either way, but 2.5 pins it.",
-                    }
-                ],
-            },
-            {
-                "obligation_id": "ties-to-even",
-                "defects": [
-                    {
-                        "description": "rounds half up",
-                        "would_be_caught": True,
-                        "reason": "2.5 -> 2 fails under round-half-up.",
-                    }
-                ],
-            },
-        ]
-    },
+    **discrimination_responses(
+        {
+            "round-nearest": [
+                (
+                    "truncates instead of rounding",
+                    True,
+                    "2.3 would return 2 either way, but 2.5 pins it.",
+                )
+            ],
+            "ties-to-even": [("rounds half up", True, "2.5 -> 2 fails under round-half-up.")],
+        }
+    ),
     "_Coverage": {
         "classifications": [
             {
@@ -580,7 +569,6 @@ _TWO_FILE_JUDGMENTS = {
         "requirement_dispositions": [],
     },
     "_Mappings": {"mappings": []},
-    "_Discrimination": {"obligations": []},
     "_Coverage": {
         "classifications": [
             {

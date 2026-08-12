@@ -26,6 +26,8 @@ from acceptance.config import (
     DEFAULT_DECOMPOSE_BATCH_SIZE,
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_LINK_DISTANCE_THRESHOLD,
+    DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE,
+    DEFAULT_DEFECT_VERDICT_BATCH_SIZE,
     DEFAULT_MAPPING_BATCH_SIZE,
     DEFAULT_MODEL,
     DEFAULT_SEED,
@@ -182,6 +184,8 @@ def run_check(
         mapping_batch_size=config.mapping_batch_size,
         decompose_batch_size=config.decompose_batch_size,
         link_pair_batch_size=config.link_pair_batch_size,
+        defect_enumeration_batch_size=config.defect_enumeration_batch_size,
+        defect_verdict_batch_size=config.defect_verdict_batch_size,
         link_distance_threshold=config.link_distance_threshold,
         task_identifier=task,
         prior=prior,
@@ -641,6 +645,26 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
         ),
     )
     parser.add_argument(
+        "--defect-enumeration-batch-size",
+        type=int,
+        default=DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE,
+        help=(
+            "Criteria per defect-enumeration call (determinism; default: "
+            f"{DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE}). Changing it invalidates "
+            "recorded enumeration transcripts, and no others."
+        ),
+    )
+    parser.add_argument(
+        "--defect-verdict-batch-size",
+        type=int,
+        default=DEFAULT_DEFECT_VERDICT_BATCH_SIZE,
+        help=(
+            "Criteria whose defects one verdict call carries (determinism; "
+            f"default: {DEFAULT_DEFECT_VERDICT_BATCH_SIZE}). Changing it "
+            "invalidates recorded verdict transcripts, and no others."
+        ),
+    )
+    parser.add_argument(
         "--embedding-model",
         default=DEFAULT_EMBEDDING_MODEL,
         help=(
@@ -776,6 +800,8 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
             decompose_batch_size=args.decompose_batch_size,
+            defect_enumeration_batch_size=args.defect_enumeration_batch_size,
+            defect_verdict_batch_size=args.defect_verdict_batch_size,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
@@ -835,6 +861,8 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
             decompose_batch_size=args.decompose_batch_size,
+            defect_enumeration_batch_size=args.defect_enumeration_batch_size,
+            defect_verdict_batch_size=args.defect_verdict_batch_size,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
@@ -875,6 +903,8 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
             decompose_batch_size=args.decompose_batch_size,
+            defect_enumeration_batch_size=args.defect_enumeration_batch_size,
+            defect_verdict_batch_size=args.defect_verdict_batch_size,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
