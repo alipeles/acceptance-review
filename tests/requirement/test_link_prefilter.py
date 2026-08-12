@@ -97,7 +97,7 @@ def _decomposition(*obligations: Obligation) -> Decomposition:
     )
 
 
-def _client_recording_pairs(vectors_by_text, asked: list[str]):
+def _client_recording_pairs(vectors_by_text, asked: list[str], embedding_fn=None):
     """A client that answers `false` to everything and records the pair ids asked."""
 
     def completion_fn(**kwargs):
@@ -136,14 +136,13 @@ def _client_recording_pairs(vectors_by_text, asked: list[str]):
             usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
         )
 
-
     return ModelClient(
         model="openai/gpt-5.4-mini",
         mode=Mode.RECORD,
         store=TranscriptStore(tempfile.mkdtemp()),
         completion_fn=completion_fn,
         embedding_model=DEFAULT_EMBEDDING_MODEL,
-        embedding_fn=embedding_fn_for(vectors_by_text),
+        embedding_fn=embedding_fn or embedding_fn_for(vectors_by_text),
     )
 
 
@@ -370,7 +369,6 @@ def test_an_embedding_request_is_replayed_from_its_recording_rather_than_issued_
         calls.append(list(kwargs["input"]))
         return constant_embedding_fn(**kwargs)
 
-
     store = TranscriptStore(tempfile.mkdtemp())
     texts = ["alpha text", "beta text"]
 
@@ -429,7 +427,6 @@ def test_embedding_nothing_makes_no_call():
     def exploding(**kwargs):
         raise AssertionError("embedded an empty input list")
 
-
     client = ModelClient(
         model="openai/gpt-5.4-mini",
         mode=Mode.RECORD,
@@ -477,3 +474,84 @@ def test_a_pair_missing_a_vector_is_asked_rather_than_dropped():
     vectors = {"alpha": _at(0.0)}  # beta has none
 
     assert len(_pairs(ordered, None, vectors, 0.10)) == 1
+
+
+def test_the_linking_path_embeds_every_obligation_exactly_once():
+    """Not `embed()` in isolation — the path linking actually takes.
+
+    Catches embedding a subset, embedding one obligation twice, or collapsing
+    two obligations into a single vector: all of which leave the filter running
+    on vectors that do not correspond to the obligations being compared.
+    """
+    decomposition, vectors = _near_and_far()
+    embedded: list[list[str]] = []
+    answer = embedding_fn_for(vectors)
+
+    def recording_embedding_fn(**kwargs):
+        embedded.append(list(kwargs["input"]))
+        return answer(**kwargs)
+
+    client = _client_recording_pairs(vectors, [], embedding_fn=recording_embedding_fn)
+
+    link_duplicate_obligations(decomposition, client, distance_threshold=0.10)
+
+    assert len(embedded) == 1, "one call for the whole set, not one per obligation"
+    assert embedded[0] == [embedding_text(o) for o in decomposition.obligations]
+
+
+def test_changing_the_threshold_changes_which_pairs_are_sent():
+    """The configurable-threshold obligation, asserted on behaviour rather than
+    on the field existing: same obligations, same everything, one threshold that
+    admits a pair and one that does not."""
+    decomposition, vectors = _near_and_far()
+
+    def asked_at(threshold):
+        asked: list[str] = []
+        link_duplicate_obligations(
+            decomposition, _client_recording_pairs(vectors, asked), distance_threshold=threshold
+        )
+        return set(asked)
+
+    # `near` sits at 0.05 and `far` at 0.5, so 0.10 admits one pair and 0.60 all three.
+    narrow, wide = asked_at(0.10), asked_at(0.60)
+    assert narrow < wide
+    assert len(narrow) == 1
+    assert len(wide) == 3
+
+
+def test_the_default_run_filters_at_the_documented_default():
+    """The default path, with no threshold named anywhere — what a real run does."""
+    decomposition, vectors = _near_and_far()
+    asked: list[str] = []
+    client = _client_recording_pairs(vectors, asked)
+
+    link_duplicate_obligations(
+        decomposition, client, distance_threshold=RunConfig().link_distance_threshold
+    )
+
+    assert DEFAULT_LINK_DISTANCE_THRESHOLD == 0.10
+    assert provenance_for(client).link_prefilter.distance_threshold == 0.10
+    # 0.10 admits only origin+near; the two pairs involving `far` are dropped.
+    assert len(asked) == 1
+
+
+def test_both_records_survive_a_round_trip_through_the_persisted_review():
+    """The obligation says *persisted* review state, and every other test here
+    asserts the in-memory object. A field that serialises but does not read back
+    would pass all of those and fail the requirement."""
+    from acceptance.review_state import LinkPrefilter, Review
+    from acceptance.review_store import ReviewStore
+
+    decomposition, vectors = _near_and_far()
+    client = _client_recording_pairs(vectors, [])
+    link_duplicate_obligations(decomposition, client, distance_threshold=0.10)
+
+    review = Review(mode="local", reviewed_revision="deadbeef", provenance=provenance_for(client))
+    store = ReviewStore(tempfile.mkdtemp())
+    store.write(review)
+
+    reloaded = store.read("deadbeef").provenance.link_prefilter
+    assert isinstance(reloaded, LinkPrefilter)
+    assert reloaded.pairs_excluded == 2
+    assert reloaded.distance_threshold == 0.10
+    assert reloaded.embedding_model == DEFAULT_EMBEDDING_MODEL
