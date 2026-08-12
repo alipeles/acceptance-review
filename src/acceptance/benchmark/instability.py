@@ -257,8 +257,14 @@ class ObservingClient(ModelClient):
         # run look identical — stability faked by the measuring instrument.
         self.observed: list[Any] = []
 
-    def complete(self, messages, response_model, partition=None, parse_as=None, stage=None):
-        result = super().complete(messages, response_model, partition, parse_as, stage)
+    def complete(self, *args: Any, **kwargs: Any) -> Any:
+        # Forwarded blind, deliberately. Pinning the signature here re-declares
+        # `ModelClient.complete`'s parameter list in a second place, and the two
+        # drift silently: #259 added `stage_controls` and every harness run died
+        # on an unexpected keyword argument, months after the harness closed.
+        # The docstring's claim that delegation leaves the client untouched is
+        # only true if this forwards everything.
+        result = super().complete(*args, **kwargs)
         self.observed.append(result)
         return result
 
