@@ -84,7 +84,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > The remaining 27 obligations in this run are faithful, and the run is
   > otherwise the cleanest in the logs — 1:1, no composites, no open questions —
   > so this is a narrow defect, not a symptom of a bad run.
-- **Status:** open
+- **Status:** filed (#262, child of #181)
 
 ### [2026-08-12] Structurally identical scope exclusions get two different obligation types in one run
 - **Kind:** filing (comment on existing issue #205)
@@ -120,7 +120,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > typing in a pass of its own: as long as the type is emitted alongside the
   > restatement, it is a function of the sentence that came out rather than of the
   > requirement that went in.
-- **Status:** open
+- **Status:** filed (#205 comment)
 
 ### [2026-08-12] #245: one test cited for two obligations and withheld from a third, in the same run
 - **Kind:** filing (comment on existing issue #245)
