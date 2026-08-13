@@ -261,6 +261,12 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   2. `ObservingClient.complete` pins the parameter list positionally. #259 added
      `stage_controls` → `TypeError: ObservingClient.complete() got an unexpected
      keyword argument 'stage_controls'`.
+  3. `run_once` filters `client.observed` for `ObligationDiscrimination`, which
+     the stage builds *after* `complete` returns — so it never crosses the client
+     and the filter matched nothing, for every input. **This one did not raise.**
+     It reported success with an empty `defect_verdict_distribution`, which is
+     the only axis #191 moves. Fixed on the branch (`9ee0de9`) with the test that
+     would have caught it; the other two are still uncovered.
 
   The class docstring already claims *"Delegation happens through
   `super().complete`, so recording, replay, request keying and determinism
@@ -845,3 +851,122 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > enough to reason about whole, and the task file was not written to provoke
   > it. Committed input and output are in the dogfood log above.
 - **Status:** filed (#242 comment)
+
+### [2026-08-12] Perturbation sensitivity divides a numerator that can count judgements its denominator excludes
+- **Kind:** defect
+- **Found during:** #191, taking the pre-change baseline
+- **Where:** `src/acceptance/benchmark/instability.py::_perturbation_result`
+- **Severity:** should-fix
+- **What's wrong:** `watched_judgements` is `len(obligations) + len(open_questions)`,
+  but `changed_judgements` counts the distinct subjects of *any* content
+  difference — including a `defect_verdict` flip, whose subject is
+  `"<obligation> :: <defect wording>"` and is not in the denominator. The two
+  were consistent only for as long as `defect_verdicts` was always empty, which
+  is to say only because of the bug fixed in `ea42e4f`. Now that the axis
+  populates, the ratio can exceed 1.
+- **Why I didn't act:** #191's Acceptance compares a post-change sensitivity
+  figure against the pre-change one, and changing how that figure is computed
+  in the same PR would make the two incomparable — the one thing the issue's
+  Costs section asks to avoid. It has to move after the comparison, not during.
+- **Drafted fix:** count the watched population per axis rather than as one
+  total: obligations + open questions for the presence and evidence-class axes,
+  and the number of `(obligation, defect)` keys present in *both* snapshots for
+  the verdict axis, since a key present in only one is not a judgement that
+  moved. Report a sensitivity per axis and never a blended one, for the same
+  reason `content` and `shape` are never summed.
+- **Status:** open
+
+### [2026-08-12] Record #191's pre-change baseline figures on the issue
+- **Kind:** filing (comment on existing issue #191)
+- **Found during:** #191, taking the pre-change baseline
+- **Where:** `docs/experiments/191-discrimination-partition/`
+- **Severity:** blocker — #191's Acceptance says the numbers are recorded on the issue
+- **What's wrong:** nothing is wrong; the Acceptance requires the baseline be
+  posted, and it now exists and is reproducible.
+- **Why I didn't act:** filings wait for the gate.
+- **Drafted fix:** comment on #191:
+
+  > Pre-change baseline, taken before touching `evidence/discrimination.py`.
+  > Reproducible with `docs/experiments/191-discrimination-partition/retake_baseline.py`,
+  > which replays the recordings rather than re-buying them, and asserts the task
+  > digest so a wrong reconstruction fails instead of quietly measuring a
+  > different case.
+  >
+  > Case `167-gate2-run4`, base `839ea47` → head `52c52b8`, `openai/gpt-5.4-mini`,
+  > 3 runs at seeds 1000/1001/1002, perturbation `add-unrelated-test`.
+  >
+  > | figure | pre-change |
+  > |---|---|
+  > | calls: decompose / map / **discriminate** | 3 / 7 / **1** |
+  > | defects enumerated per run | 38 — exactly 2 for each of 19 obligations, all three runs |
+  > | `would_be_caught: true` | **38 of 38**, every run |
+  > | defect keys shared by ≥2 runs | **0 of 114** |
+  > | evidence-class content differences across runs | mean 0.67, spread 2.0 |
+  > | perturbation sensitivity | 1 of 21 watched judgements moved |
+  >
+  > Two things in that table bear on how this issue is judged.
+  >
+  > **The uniformity.** One call covering 19 obligations returns exactly two
+  > defects each and catches all of them, three times over. That is the DR-164
+  > signature — schema-valid while shedding the work — and it is the direct
+  > argument for (a).
+  >
+  > **The defect set does not repeat at all.** 114 distinct
+  > `(obligation, defect wording)` keys over three runs, each appearing exactly
+  > once. `compare_runs` keys a verdict on the exact defect string, so with no
+  > shared key the verdict axis reports zero differences *by construction*:
+  > verdict stability today is **unmeasurable, not good**. This is DR-180's
+  > second-order finding measured rather than inferred, and it is the direct
+  > argument for (b).
+  >
+  > Consequence for the Acceptance as written: a post-change run reporting *more*
+  > comparable subjects, or more detected verdict differences, is the axis
+  > starting to work rather than a regression. The count of comparable subjects
+  > has to be read before the count of differences.
+  >
+  > Also worth recording: this axis was empty in the first attempt at the
+  > baseline. The harness filtered the client's observations for
+  > `ObligationDiscrimination`, which is built inside the stage after `complete`
+  > returns and never crosses the client (`ea42e4f`). The re-taken report is
+  > byte-identical to the first everywhere except that axis, which went from 0
+  > subjects to 114 — same recordings, corrected extraction.
+- **Status:** open
+
+### [2026-08-12] Ratings moved on a tests-only diff in #191's own Gate 2 — post-change
+- **Kind:** filing (comment on existing issue #225)
+- **Found during:** #191, Gate 2, rounds 1 and 2
+- **Where:** `dogfood-logs/191-gate2-run1/` and `191-gate2-run2/`
+- **Severity:** should-fix — it does not block this delivery, but it is the
+  subject matter of the change being delivered
+- **What's wrong:** round 2 differs from round 1 by **added tests only** — the
+  three tests that close round 1's findings, and nothing else. Three obligations
+  rated `strongly supported` in round 1 came back **non-discriminating** in
+  round 2, with nothing about their own evidence changed:
+
+  | obligation | round 1 | round 2 |
+  |---|---|---|
+  | `test-editing-mapped-test-leaves-other-obligation-defects-unchanged` | strongly supported | non-discriminating |
+  | `test-adding-mapped-test-leaves-obligation-defects-unchanged` | strongly supported | non-discriminating |
+  | `test-review-pipeline-uses-separated-defect-verdict-steps` | strongly supported | non-discriminating |
+
+  Checked on merits before being recorded here, per DR-180. **One of the three
+  was a real finding** — the editing test genuinely edited nothing, and is fixed
+  in `dbff85e`. The other two describe, in detail, tests that already exist and
+  that the same report cites: the recommendation for
+  `test-adding-mapped-test-leaves-obligation-defects-unchanged` asks for a test
+  that adds a mapped test and observes the enumerated defects are unchanged,
+  which is `test_adding_a_test_leaves_the_obligations_enumeration_request_unchanged`,
+  cited in that very obligation's evidence. That is the #225-family failure of
+  recommendations making checkable false claims about the code.
+- **Why I didn't act:** the real finding is fixed; the other two have no code
+  change that answers them. Writing a third test to satisfy a judge that already
+  found the second one is chasing a rating rather than fixing a defect.
+- **Drafted fix:** comment on #225 carrying the table above, and noting what
+  makes this instance worth recording: **it is post-change, on the branch that
+  fixes the enumeration half.** #191 stabilises which defects are *named*; these
+  three obligations moved anyway. That is evidence the verdict half is a
+  separate defect not closed by #191 — which is what #192 is for — and it is the
+  first time that separation could be observed at all, because before #191 no
+  defect wording ever repeated between runs, so the verdict axis had nothing to
+  compare.
+- **Status:** open
