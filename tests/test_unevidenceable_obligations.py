@@ -248,6 +248,33 @@ def test_the_report_says_no_such_thing_for_an_obligation_that_merely_lacks_one(t
     assert "(no mapped test)" in report
 
 
+def test_a_self_contradicting_response_still_produces_a_report(tmp_path):
+    """Found by #266's own Gate 2, on a real model response.
+
+    The stage raised when one obligation came back in both lists, and the whole
+    review was destroyed — the same abort this issue exists to remove, rebuilt
+    one level down by the fix for it. A contradiction is an answer we cannot
+    honour, which is not a better reason to discard every other obligation than
+    an answer we never got.
+
+    Asserted through `run_review` rather than the stage, because what failed was
+    the review, not the helper."""
+    judgments = _judgments(decline=["checkout-action"], recommend=["checkout-action", "alpha"])
+
+    review = _review(tmp_path, judgments)
+    report = render_report(review)
+
+    assert "Obligations:" in report
+    # The contradicted obligation took no side, and is flagged rather than
+    # silently dropped.
+    assert review.unevidenceable == []
+    unusable = [f for f in review.findings if f.type == "unusable_answer"]
+    assert [f for f in unusable if "checkout-action" in f.description]
+    # And it is left unmeasured on the evidence axis, so this cannot read clean.
+    by_id = {o.id: o for o in review.obligation_map}
+    assert by_id["checkout-action"].evidence_class == "indeterminate"
+
+
 def test_two_runs_over_the_same_change_produce_byte_identical_state(tmp_path):
     """The determinism invariant, over the new field. Two runs, two repos built
     the same way — the refusal must not carry ordering or identity from the

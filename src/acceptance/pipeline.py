@@ -339,6 +339,12 @@ def run_review(
     # forbids the other two (#266). Applied after the call, because the refusal
     # is what the call decided.
     obligations = _apply_unevidenceable(obligations, unevidenceable)
+    # Again, because the recommendation stage produces unusable answers of its
+    # own (a refusal contradicting a recommendation, or one with no reason) and
+    # the earlier call at the mapping/coverage boundary ran before it. Idempotent
+    # — it sets one field from a set of ids — so the second pass only picks up
+    # what the first could not have seen.
+    obligations = _apply_indeterminate(obligations, unusable)
 
     obligations_by_id = {obligation.id: obligation for obligation in obligations}
     findings = [

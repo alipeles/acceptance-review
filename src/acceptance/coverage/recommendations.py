@@ -34,7 +34,7 @@ from acceptance.review_state import (
     TestRecommendation,
     UnevidenceableObligation,
 )
-from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
+from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
 
 # §9.3 classes that represent a real evidence gap — anything short of
 # strongly_supported earns a recommendation (the M7.1 trigger). An obligation
@@ -235,27 +235,56 @@ def recommend_tests(
                 f"refusal named obligation '{refusal.obligation_id}', which the call "
                 "did not supply as weak"
             )
-        if refusal.obligation_id in returned:
-            raise SchemaValidationError(
-                f"obligation '{refusal.obligation_id}' was both recommended for and "
-                "declined as unevidenceable"
-            )
-        # A refusal is only better than silence because it is auditable, and the
-        # reason is the whole of what makes it so — a reader who disagrees needs
-        # something to disagree with. An empty one is the schema satisfied and
-        # the judgement withheld, which is the shape this stage now exists to
-        # reject. Required-ness alone does not catch it: "" is a valid str.
-        if not refusal.reason.strip():
-            raise SchemaValidationError(
-                f"obligation '{refusal.obligation_id}' was declined as unevidenceable "
-                "with no reason given"
-            )
         declined[refusal.obligation_id] = refusal
 
+    # Two ways a refusal can be present but unusable. Neither raises, and the
+    # reason they do not is the whole of #266: this stage used to destroy a
+    # review over one obligation it could not place, and an answer we cannot
+    # honour is not a better excuse for that than an answer we never got. They
+    # become `UnusableAnswer`s — the established shape for "we asked, and what
+    # came back cannot be used" — which leaves the obligation `indeterminate`,
+    # raises a major finding naming it, and lets the other 33 be reported.
+    #
+    # The asymmetry with an OMITTED obligation, which still raises, is
+    # deliberate and is the issue's settled decision: silence is
+    # indistinguishable from truncation or a shed batch, so it stays fatal.
+    unusable_ids: dict[str, str] = {}
+    for obligation_id in list(declined):
+        if obligation_id in returned:
+            # The response contradicted itself. Not resolved by precedence:
+            # picking a side would report a judgement the model did not make.
+            unusable_ids[obligation_id] = "was both recommended for and declined as unevidenceable"
+        elif not declined[obligation_id].reason.strip():
+            # A refusal is only better than silence because it is auditable, and
+            # the reason is the whole of what makes it so. Required-ness in the
+            # schema does not get here: "" is a valid str, so the structure can
+            # be satisfied while the judgement is withheld.
+            unusable_ids[obligation_id] = "was declined as unevidenceable with no reason given"
+
+    for obligation_id in unusable_ids:
+        declined.pop(obligation_id, None)
+        returned.pop(obligation_id, None)
+    if unusable_ids and unusable is not None:
+        unusable.record(
+            UnusableAnswer(
+                stage=_STAGE, field="obligation_id", returned_id=obligation_id, reason=why
+            )
+            for obligation_id, why in sorted(unusable_ids.items())
+        )
+        unusable.mark_indeterminate(unusable_ids)
+
+    # An obligation whose answer was unusable is NOT missing. It was answered —
+    # badly, and it is already recorded as such, with the obligation left
+    # indeterminate and a major finding naming it. Counting it here as well
+    # would abort the review over an answer we have already reported on, which
+    # is the double jeopardy that makes the omission guard look like the defect
+    # it is not.
     missing = [
         obligation.id
         for obligation in weak
-        if obligation.id not in returned and obligation.id not in declined
+        if obligation.id not in returned
+        and obligation.id not in declined
+        and obligation.id not in unusable_ids
     ]
     if missing:
         raise SchemaValidationError(

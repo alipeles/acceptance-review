@@ -19,6 +19,7 @@ from acceptance.review_state import (
     Obligation,
     ObligationType,
 )
+from acceptance.supplied_ids import UnusableAnswerLog
 from tests.support import client_returning as _client_returning
 
 
@@ -403,18 +404,38 @@ def test_an_omitted_obligation_still_aborts_even_when_others_are_declined():
     assert "checkout-action" not in message
 
 
-def test_an_obligation_both_recommended_for_and_declined_is_rejected():
+def test_an_obligation_both_recommended_for_and_declined_is_unusable_not_fatal():
     """The two lists are different answers, so an obligation in both is a
-    response contradicting itself. Rejected rather than resolved by precedence:
-    picking one would report a judgement the model did not make."""
-    obligations = [_obligation("daily-rate", "Daily rate uses days_in_month", "unsupported")]
+    response contradicting itself. Not resolved by precedence — picking a side
+    would report a judgement the model did not make — and *not* fatal either.
+
+    This raised until #266's own Gate 2 hit it on a real response and destroyed
+    the whole review, which is the exact failure this issue exists to remove,
+    reintroduced one level down. An answer we cannot honour is no better excuse
+    for discarding thirty other obligations than an answer we never received.
+
+    The second obligation is the control: it must survive, since surviving is
+    the entire point."""
+    obligations = [
+        _obligation("daily-rate", "Daily rate uses days_in_month", "unsupported"),
+        _obligation("proration", "Proration handles partial months", "unsupported"),
+    ]
     response = {
-        "recommendations": [_recommendation("daily-rate")],
+        "recommendations": [_recommendation("daily-rate"), _recommendation("proration")],
         "unevidenceable": [_refusal("daily-rate")],
     }
+    log = UnusableAnswerLog()
 
-    with pytest.raises(SchemaValidationError, match="both recommended for and declined"):
-        recommend_tests(obligations, [], _change_set(), _client_returning(response))
+    result = recommend_tests(obligations, [], _change_set(), _client_returning(response), log)
+
+    # The contradicted obligation appears in neither output — no side was picked.
+    assert [r.obligation_id for r in result.recommendations] == ["proration"]
+    assert result.unevidenceable == []
+    # It is recorded as unusable and left indeterminate, so the review cannot
+    # come back clean while carrying it.
+    assert [a.returned_id for a in log.answers] == ["daily-rate"]
+    assert "both recommended for and declined" in log.answers[0].reason
+    assert log.indeterminate_obligations == {"daily-rate"}
 
 
 def test_a_refusal_naming_an_obligation_the_call_did_not_supply_is_rejected():
@@ -432,22 +453,29 @@ def test_a_refusal_naming_an_obligation_the_call_did_not_supply_is_rejected():
 
 
 @pytest.mark.parametrize("reason", ["", "   ", "\n"])
-def test_a_refusal_carrying_no_reason_is_rejected(reason):
+def test_a_refusal_carrying_no_reason_is_unusable_not_fatal(reason):
     """The reason is the whole of what makes a refusal better than silence — it
     is the only thing a reader who disagrees can disagree with.
 
     Required-ness in the schema does not get this: `""` is a valid `str`, so a
     response could satisfy every structural check and still withhold the
     judgement. Whitespace-only is included because it passes a bare truthiness
-    check, which is the obvious wrong way to write this."""
+    check, which is the obvious wrong way to write this.
+
+    Recorded rather than raised, for the reason given in the contradiction test
+    above: this stage does not get to destroy a review over one bad answer."""
     obligations = [_obligation("daily-rate", "Daily rate uses days_in_month", "unsupported")]
     response = {
         "recommendations": [],
         "unevidenceable": [_refusal("daily-rate", reason)],
     }
+    log = UnusableAnswerLog()
 
-    with pytest.raises(SchemaValidationError, match="no reason given"):
-        recommend_tests(obligations, [], _change_set(), _client_returning(response))
+    result = recommend_tests(obligations, [], _change_set(), _client_returning(response), log)
+
+    assert result.unevidenceable == []
+    assert "no reason given" in log.answers[0].reason
+    assert log.indeterminate_obligations == {"daily-rate"}
 
 
 def test_a_refusal_carrying_a_reason_is_accepted():
