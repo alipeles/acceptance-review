@@ -192,12 +192,35 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
   `session-state/<issue>.md` to `main` **at the gates**, leaving mid-task edits
   uncommitted in the working tree. **Touch only your own file** — sessions run
   concurrently and the sharding exists so that two gates landing at once do not
-  collide. Uncommitted changes survive `git checkout main`, so the move is
-  checkout / add / commit / push / checkout back — never `git stash`, which
-  reverts the working tree wholesale. **Push immediately**: an unpushed `main`
-  commit reaches origin only inside the next branch's squash, attributed to the
-  wrong PR. Both paths are also in `.acceptance/ignore`, as a backstop for when
+  collide. Both paths are also in `.acceptance/ignore`, as a backstop for when
   one reaches a branch anyway.
+- **Never check out `main` to commit to it. Push a throwaway branch instead.**
+  Uncommitted changes survive a branch switch, so the old advice was checkout /
+  add / commit / push / checkout back. Do not do that. Git allows `main` to be
+  checked out in only **one** worktree, so with several sessions running, every
+  gate contends for it, and a session that finds `main` already taken — or that
+  reaches into a worktree it does not own — commits onto someone else's branch.
+  That happened: a `docs/DEFERRED.md` commit landed on `261-format-and-lint-gates`
+  and reverted three of that session's queue edits, and undoing it took a reset
+  of a branch belonging to another session.
+
+  ```bash
+  git fetch origin
+  git branch tmp origin/main          # temp branch at main's tip
+  git switch tmp                      # your own worktree; edits survive the switch
+  git add docs/DEFERRED.md session-state/<issue>.md   # explicit paths, never -A
+  git commit -F <message-file>
+  git push origin tmp:main            # updates origin/main directly
+  git switch -                        # back to your branch
+  git branch -D tmp
+  ```
+
+  Two rules carry the safety, and both are load-bearing: **branch from
+  `origin/main`, not from `HEAD`** — branching from your own branch would push
+  your feature commits to `main` — and **run git only in the worktree you own**.
+  Never `git stash`, which reverts the working tree wholesale.
+- **Push a `main` commit immediately.** An unpushed `main` commit reaches origin
+  only inside the next branch's squash, attributed to the wrong PR.
 - **Before coding**, read the issue body and its Acceptance check, and state the
   plan before editing.
 - **Dogfooding is a hard gate on shipping.** See *Dogfooding — the review gates*
