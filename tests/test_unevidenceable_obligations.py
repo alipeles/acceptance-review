@@ -196,15 +196,36 @@ def test_a_declined_obligation_is_indeterminate_on_the_evidence_axis(mixed_revie
     assert by_id["alpha"].evidence_class != "indeterminate"
 
 
-def test_a_review_carrying_a_refusal_does_not_come_back_clean(mixed_review):
+def test_a_declined_obligation_is_an_escalation_candidate(mixed_review):
     """`indeterminate` must not read as success. A refusal says part of the
     mandate could not be measured, and §3.7 bounds what a positive verdict may
-    claim — so the obligation is an escalation candidate, not a pass."""
+    claim — so the obligation is listed as needing a higher tier, not passed."""
     completion = mixed_review.completion
 
     assert completion is not None
     assert completion.verdict.value != "no_material_gaps"
     assert "checkout-action" in completion.escalation_candidates
+    # The control: the obligation with a real recommendation is a GAP, not an
+    # escalation candidate. The two axes must not blur into each other.
+    assert "alpha" not in completion.escalation_candidates
+
+
+def test_a_review_of_only_declined_obligations_is_unable_to_determine(tmp_path):
+    """The verdict rule this issue settles, isolated. Every obligation addressed
+    and every one unevidenceable: not `no_material_gaps`, because no test tier
+    was achievable, and not `incomplete`, because nothing is missing.
+
+    Isolated deliberately. In `mixed_review` the verdict is `incomplete` — the
+    recommended obligation is a real evidence gap, and a definite gap outranks
+    uncertainty. That precedence is correct and unchanged here; asserting the
+    rule against that fixture would have been asserting the wrong stage."""
+    review = _review(tmp_path, _judgments(decline=["checkout-action", "alpha"], recommend=[]))
+
+    completion = review.completion
+
+    assert completion is not None
+    assert completion.verdict.value == "unable_to_determine"
+    assert sorted(completion.escalation_candidates) == ["alpha", "checkout-action"]
 
 
 def test_the_report_says_no_test_can_evidence_the_criterion(mixed_review):
