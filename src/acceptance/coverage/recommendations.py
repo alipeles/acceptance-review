@@ -240,6 +240,16 @@ def recommend_tests(
                 f"obligation '{refusal.obligation_id}' was both recommended for and "
                 "declined as unevidenceable"
             )
+        # A refusal is only better than silence because it is auditable, and the
+        # reason is the whole of what makes it so — a reader who disagrees needs
+        # something to disagree with. An empty one is the schema satisfied and
+        # the judgement withheld, which is the shape this stage now exists to
+        # reject. Required-ness alone does not catch it: "" is a valid str.
+        if not refusal.reason.strip():
+            raise SchemaValidationError(
+                f"obligation '{refusal.obligation_id}' was declined as unevidenceable "
+                "with no reason given"
+            )
         declined[refusal.obligation_id] = refusal
 
     missing = [

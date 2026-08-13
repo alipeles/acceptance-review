@@ -431,6 +431,69 @@ def test_a_refusal_naming_an_obligation_the_call_did_not_supply_is_rejected():
         recommend_tests(obligations, [], _change_set(), _client_returning(response))
 
 
+@pytest.mark.parametrize("reason", ["", "   ", "\n"])
+def test_a_refusal_carrying_no_reason_is_rejected(reason):
+    """The reason is the whole of what makes a refusal better than silence — it
+    is the only thing a reader who disagrees can disagree with.
+
+    Required-ness in the schema does not get this: `""` is a valid `str`, so a
+    response could satisfy every structural check and still withhold the
+    judgement. Whitespace-only is included because it passes a bare truthiness
+    check, which is the obvious wrong way to write this."""
+    obligations = [_obligation("daily-rate", "Daily rate uses days_in_month", "unsupported")]
+    response = {
+        "recommendations": [],
+        "unevidenceable": [_refusal("daily-rate", reason)],
+    }
+
+    with pytest.raises(SchemaValidationError, match="no reason given"):
+        recommend_tests(obligations, [], _change_set(), _client_returning(response))
+
+
+def test_a_refusal_carrying_a_reason_is_accepted():
+    """The control for the test above. Without it, rejecting every refusal would
+    pass — and that would reinstate the abort this whole change removes."""
+    obligations = [_obligation("daily-rate", "Daily rate uses days_in_month", "unsupported")]
+    response = {
+        "recommendations": [],
+        "unevidenceable": [_refusal("daily-rate", "a property of a version pin")],
+    }
+
+    result = recommend_tests(obligations, [], _change_set(), _client_returning(response))
+
+    assert result.unevidenceable[0].reason == "a property of a version pin"
+
+
+def test_every_weak_obligation_declined_still_returns_a_result():
+    """The all-refusals case at the stage boundary, which is where the abort
+    used to happen — `_render_prompt` had already run and the response had
+    already parsed when the completeness guard threw everything away.
+
+    The contrast is what makes it evidence rather than a smoke test: the same
+    obligations with one refusal REMOVED must still raise. Without that half, a
+    stage that had simply stopped checking completeness would pass."""
+    obligations = [
+        _obligation("checkout-action", "The checkout action is not on Node 20", "unsupported"),
+        _obligation("ruff-pin", "Dev dependencies pin an exact ruff version", "unsupported"),
+    ]
+    all_declined = {
+        "recommendations": [],
+        "unevidenceable": [_refusal("checkout-action"), _refusal("ruff-pin")],
+    }
+
+    result = recommend_tests(obligations, [], _change_set(), _client_returning(all_declined))
+
+    assert result.recommendations == []
+    assert [r.obligation_id for r in result.unevidenceable] == ["checkout-action", "ruff-pin"]
+
+    one_missing = {
+        "recommendations": [_recommendation("checkout-action")],
+        "unevidenceable": [],
+    }
+    with pytest.raises(SchemaValidationError, match="ruff-pin"):
+        recommend_tests(obligations, [], _change_set(), _client_returning(one_missing))
+
+
 def test_a_duplicate_refusal_is_rejected():
     obligations = [_obligation("daily-rate", "Daily rate uses days_in_month", "unsupported")]
     response = {
