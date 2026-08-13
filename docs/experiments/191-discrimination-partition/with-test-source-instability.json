@@ -1,0 +1,3449 @@
+{
+  "provenance": {
+    "case_id": "167-gate2-run4",
+    "task_digest": "d9095f91e5f987c8",
+    "models": [
+      "openai/gpt-5.4-mini"
+    ],
+    "runs_per_model": 3,
+    "seeds": [
+      1000,
+      1001,
+      1002
+    ],
+    "perturbation": "add-unrelated-test",
+    "determinism_mode": "record"
+  },
+  "per_model": [
+    {
+      "model": "openai/gpt-5.4-mini",
+      "runs": [
+        {
+          "model": "openai/gpt-5.4-mini",
+          "seed": 1000,
+          "index": 0,
+          "perturbed": false
+        },
+        {
+          "model": "openai/gpt-5.4-mini",
+          "seed": 1001,
+          "index": 1,
+          "perturbed": false
+        },
+        {
+          "model": "openai/gpt-5.4-mini",
+          "seed": 1002,
+          "index": 2,
+          "perturbed": false
+        }
+      ],
+      "obligation_presence": [
+        {
+          "subject": "A criterion that has no recommendation returns an empty result rather than an error.",
+          "runs_present": 2,
+          "runs_total": 3
+        },
+        {
+          "subject": "A criterion with no recommendation returns an empty result rather than an error.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail, and the output makes the detail's existence known so the pull can happen.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull can happen.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull happens.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "A recommendation returned on demand is the one the stored review holds for that criterion, and retrieval reads state rather than re-running the review.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "A recommendation returned on demand is the one the stored review holds for that criterion; retrieval reads state rather than re-running the review.",
+          "runs_present": 2,
+          "runs_total": 3
+        },
+        {
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review.",
+          "runs_present": 3,
+          "runs_total": 3
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so.",
+          "runs_present": 3,
+          "runs_total": 3
+        },
+        {
+          "subject": "No code path writes `.acceptance/next-instruction.md`.",
+          "runs_present": 3,
+          "runs_total": 3
+        },
+        {
+          "subject": "Nothing is written speculatively, so nothing can go stale.",
+          "runs_present": 3,
+          "runs_total": 3
+        },
+        {
+          "subject": "Recording that this task supersedes the earlier one belongs outside the repository, in the issue tracker rather than any repo file.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "Recording that this task supersedes the earlier one stays in the issue tracker and is not added to any file in the repository.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "Recording that this task supersedes the earlier one stays in the issue tracker rather than in any repository file.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "Replace the written `.acceptance/next-instruction.md` file with an on-demand `acceptance recommendation --criterion <id> [--format json|text]` command that returns a criterion's recommendation from stored review state, defaulting to JSON.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "Retrieval defaults to the most recently stored review when the caller does not name one.",
+          "runs_present": 3,
+          "runs_total": 3
+        },
+        {
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status.",
+          "runs_present": 3,
+          "runs_total": 3
+        },
+        {
+          "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained.",
+          "runs_present": 2,
+          "runs_total": 3
+        },
+        {
+          "subject": "The on-demand recommendation command defaults to JSON output.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "The recommendations themselves remain unchanged; the task changes how they are obtained rather than how they are produced.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose value intact.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact.",
+          "runs_present": 2,
+          "runs_total": 3
+        },
+        {
+          "subject": "The review's rendered output names the command to run for every verdict that has gaps, rather than naming a file to open.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "The review's rendered output names the command to run for every verdict that has gaps.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "The review's rendered output names the command to run, not a file to open, for every verdict that has gaps.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "The review-state store format and the review pipeline remain unchanged.",
+          "runs_present": 2,
+          "runs_total": 3
+        },
+        {
+          "subject": "The review-state store's format and the review pipeline remain unchanged.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "The specification names a specific command surface rather than leaving the command shape to implementation.",
+          "runs_present": 2,
+          "runs_total": 3
+        },
+        {
+          "subject": "The specification names a specific command surface, and that command surface remains fixed rather than left to implementation.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "The specification no longer describes the recommendation as a written file.",
+          "runs_present": 3,
+          "runs_total": 3
+        },
+        {
+          "subject": "The structured fields keep their prose values intact.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "The structured fields keep their prose values.",
+          "runs_present": 1,
+          "runs_total": 3
+        },
+        {
+          "subject": "Two retrievals over unchanged review state return byte-identical output.",
+          "runs_present": 3,
+          "runs_total": 3
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review.",
+          "runs_present": 2,
+          "runs_total": 3
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state, without re-running the review.",
+          "runs_present": 1,
+          "runs_total": 3
+        }
+      ],
+      "open_question_presence": [],
+      "evidence_class_distribution": [
+        {
+          "subject": "A criterion that has no recommendation returns an empty result rather than an error.",
+          "counts": {
+            "strongly_supported": 2
+          }
+        },
+        {
+          "subject": "A criterion with no recommendation returns an empty result rather than an error.",
+          "counts": {
+            "partially_supported": 1
+          }
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail, and the output makes the detail's existence known so the pull can happen.",
+          "counts": {
+            "nominally_supported": 1
+          }
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull can happen.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull happens.",
+          "counts": {
+            "nominally_supported": 1
+          }
+        },
+        {
+          "subject": "A recommendation returned on demand is the one the stored review holds for that criterion, and retrieval reads state rather than re-running the review.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "A recommendation returned on demand is the one the stored review holds for that criterion; retrieval reads state rather than re-running the review.",
+          "counts": {
+            "partially_supported": 1,
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review.",
+          "counts": {
+            "strongly_supported": 2,
+            "partially_supported": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so.",
+          "counts": {
+            "nominally_supported": 1,
+            "partially_supported": 2
+          }
+        },
+        {
+          "subject": "No code path writes `.acceptance/next-instruction.md`.",
+          "counts": {
+            "strongly_supported": 3
+          }
+        },
+        {
+          "subject": "Nothing is written speculatively, so nothing can go stale.",
+          "counts": {
+            "strongly_supported": 2,
+            "nominally_supported": 1
+          }
+        },
+        {
+          "subject": "Recording that this task supersedes the earlier one belongs outside the repository, in the issue tracker rather than any repo file.",
+          "counts": {
+            "unsupported": 1
+          }
+        },
+        {
+          "subject": "Recording that this task supersedes the earlier one stays in the issue tracker and is not added to any file in the repository.",
+          "counts": {
+            "unsupported": 1
+          }
+        },
+        {
+          "subject": "Recording that this task supersedes the earlier one stays in the issue tracker rather than in any repository file.",
+          "counts": {
+            "nominally_supported": 1
+          }
+        },
+        {
+          "subject": "Replace the written `.acceptance/next-instruction.md` file with an on-demand `acceptance recommendation --criterion <id> [--format json|text]` command that returns a criterion's recommendation from stored review state, defaulting to JSON.",
+          "counts": {
+            "partially_supported": 1
+          }
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state.",
+          "counts": {
+            "partially_supported": 1
+          }
+        },
+        {
+          "subject": "Retrieval defaults to the most recently stored review when the caller does not name one.",
+          "counts": {
+            "strongly_supported": 3
+          }
+        },
+        {
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status.",
+          "counts": {
+            "partially_supported": 2,
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained.",
+          "counts": {
+            "unsupported": 1,
+            "nominally_supported": 1
+          }
+        },
+        {
+          "subject": "The on-demand recommendation command defaults to JSON output.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "The recommendations themselves remain unchanged; the task changes how they are obtained rather than how they are produced.",
+          "counts": {
+            "unsupported": 1
+          }
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose value intact.",
+          "counts": {
+            "nominally_supported": 1
+          }
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact.",
+          "counts": {
+            "strongly_supported": 1,
+            "partially_supported": 1
+          }
+        },
+        {
+          "subject": "The review's rendered output names the command to run for every verdict that has gaps, rather than naming a file to open.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "The review's rendered output names the command to run for every verdict that has gaps.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "The review's rendered output names the command to run, not a file to open, for every verdict that has gaps.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "The review-state store format and the review pipeline remain unchanged.",
+          "counts": {
+            "unsupported": 1,
+            "nominally_supported": 1
+          }
+        },
+        {
+          "subject": "The review-state store's format and the review pipeline remain unchanged.",
+          "counts": {
+            "partially_supported": 1
+          }
+        },
+        {
+          "subject": "The specification names a specific command surface rather than leaving the command shape to implementation.",
+          "counts": {
+            "strongly_supported": 2
+          }
+        },
+        {
+          "subject": "The specification names a specific command surface, and that command surface remains fixed rather than left to implementation.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "The specification no longer describes the recommendation as a written file.",
+          "counts": {
+            "strongly_supported": 3
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values intact.",
+          "counts": {
+            "partially_supported": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "Two retrievals over unchanged review state return byte-identical output.",
+          "counts": {
+            "nominally_supported": 2,
+            "partially_supported": 1
+          }
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review.",
+          "counts": {
+            "partially_supported": 1,
+            "strongly_supported": 1
+          }
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state, without re-running the review.",
+          "counts": {
+            "strongly_supported": 1
+          }
+        }
+      ],
+      "defect_verdict_distribution": [
+        {
+          "subject": "A criterion that has no recommendation returns an empty result rather than an error. :: Looking up a criterion with no stored recommendation could return an error or non-empty placeholder instead of an empty result such as an empty JSON object or equivalent blank output.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A criterion that has no recommendation returns an empty result rather than an error. :: Looking up a criterion with no stored recommendation returns an error or non-empty placeholder instead of an empty result.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A criterion that has no recommendation returns an empty result rather than an error. :: The command could exit nonzero when the requested criterion is absent, treating the absence of a recommendation as a failure rather than a normal empty response.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A criterion that has no recommendation returns an empty result rather than an error. :: The recommendation command treats a missing criterion as a failure and exits nonzero rather than returning an empty result.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A criterion with no recommendation returns an empty result rather than an error. :: Looking up a criterion with no stored recommendation is treated as an error path that prints a failure message and exits nonzero instead of returning an empty result.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A criterion with no recommendation returns an empty result rather than an error. :: Looking up a criterion with no stored recommendation returns `None` but the command still prints a non-empty placeholder string such as `(no recommendation for this criterion)` instead of an empty result.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail, and the output makes the detail's existence known so the pull can happen. :: The review output could fail to make the existence of a recommendation visible, leaving only a generic next-step message with no indication that detail is available.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail, and the output makes the detail's existence known so the pull can happen. :: The review output could give the wrong retrieval command or omit the criterion placeholder, so a reader cannot tell how to pull the specific detail.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail, and the output makes the detail's existence known so the pull can happen. :: The review output could mention that a recommendation exists but omit the command needed to retrieve it on demand.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull can happen. :: The output points to the wrong retrieval mechanism, such as a file path or stale instruction text instead of the new recommendation command.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull can happen. :: The review output does not mention that more recommendation detail is available or omits the command needed to retrieve it.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull happens. :: The review output does not explicitly tell the reader that a criterion-specific recommendation is available and how to retrieve it, leaving only a generic report with no retrieval cue.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull happens. :: The review output mentions that more detail exists but fails to name the retrieval command or criterion lookup form needed to obtain it.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A recommendation returned on demand is the one the stored review holds for that criterion, and retrieval reads state rather than re-running the review. :: The retrieval command ignores the requested criterion and returns some other recommendation from the stored review, such as the first recommendation in the list.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A recommendation returned on demand is the one the stored review holds for that criterion, and retrieval reads state rather than re-running the review. :: The retrieval command looks up the wrong stored review revision and returns a recommendation from a different review than the one requested or most recently stored.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A recommendation returned on demand is the one the stored review holds for that criterion, and retrieval reads state rather than re-running the review. :: The retrieval command recomputes the recommendation by invoking review execution or model-backed review generation instead of reading the recommendation already stored in review state.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A recommendation returned on demand is the one the stored review holds for that criterion; retrieval reads state rather than re-running the review. :: The retrieval command can derive the recommendation by re-running review logic instead of reading the stored review object, causing it to return a freshly computed result rather than the one already held in state.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A recommendation returned on demand is the one the stored review holds for that criterion; retrieval reads state rather than re-running the review. :: The retrieval command can fail to look up the requested criterion in the stored review and instead return a generic empty recommendation object, which means it is not actually fetching the stored recommendation for that criterion.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A recommendation returned on demand is the one the stored review holds for that criterion; retrieval reads state rather than re-running the review. :: The retrieval command looks up the requested criterion in the stored review object and returns that stored recommendation without invoking review execution.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: A clean run could leave an existing `.acceptance/next-instruction.md` untouched, so the stale file would still assert gaps even when the review output says there are none.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: A run can leave a stale `.acceptance/next-instruction.md` in place when the file is absent from the repository root path being checked, so the on-disk state can still contradict the review.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: If `.acceptance/next-instruction.md` already exists, the code could leave it on disk unchanged so it still contradicts the review.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: The cleanup path can remove only the legacy file at `.acceptance/next-instruction.md` in the current working directory rather than the repository being reviewed, leaving the contradictory file on disk in the target repo.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: The code could remove the file only from the current working directory path it assumes, but miss the repository's actual legacy file location, leaving the stale file present.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: The code could replace the stale file with a new file that still asserts gaps or next steps, so the on-disk state remains contradictory to the review.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: The report could continue to mention the legacy next-instruction file as the next action instead of the new retrieval command, so the review output would still align with the stale file rather than supersede it.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: The run could delete the stale file but then print a message that points to the old file or otherwise implies it still governs next steps, leaving the on-disk state and review output inconsistent.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The CLI deletes `.acceptance/next-instruction.md` but only prints the removal message when the report is rendered in text mode, so a JSON run removes the file without reporting that it did so.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The CLI reports the stale-file removal to stderr instead of the normal output stream, so the run does not emit the removal notice as part of its user-visible result.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The command deletes `.acceptance/next-instruction.md` but prints the removal notice only to stderr, so the reported removal is not emitted on the command\u2019s normal output channel.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The command looks for the legacy file in the wrong location, such as only checking the current working directory instead of the repository root, so an existing `.acceptance/next-instruction.md` is not removed.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The command removes the stale file only when it runs the review path, but not when it runs the recommendation path or other entry points that may encounter the legacy file.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The command reports a stale-file removal even when the file was not actually deleted, for example by printing the message whenever the path exists but leaving the file in place.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The removal helper only deletes the file when it is exactly named `.acceptance/next-instruction.md` under the current working directory, so a stale file located under the selected repository path is left behind if the run is invoked from elsewhere.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The run deletes the stale file but does not emit any message indicating that the removal happened.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The run leaves an existing `.acceptance/next-instruction.md` in place instead of deleting it when the file is present.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The run reports a removal message even when no stale `.acceptance/next-instruction.md` existed and nothing was deleted.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The run reports the removal only in one output mode or stream, so in some invocations the deletion happens silently from the user's perspective.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "No code path writes `.acceptance/next-instruction.md`. :: Some execution path could still create or write `.acceptance/next-instruction.md`, for example by leaving behind a helper that recreates the file when a review has gaps.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "No code path writes `.acceptance/next-instruction.md`. :: Some execution path still creates or updates `.acceptance/next-instruction.md`, for example by retaining the old write helper or by writing the legacy file when a recommendation exists.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "No code path writes `.acceptance/next-instruction.md`. :: Some execution path still creates or updates `.acceptance/next-instruction.md`, such as by writing the legacy instruction file instead of only removing it.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "No code path writes `.acceptance/next-instruction.md`. :: The CLI could still write the legacy next-instruction file as part of review generation or cleanup logic instead of only deleting an existing stale file.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "No code path writes `.acceptance/next-instruction.md`. :: The CLI or report code recreates the next-instruction file when gaps are present, so the file can still be emitted during a run.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Nothing is written speculatively, so nothing can go stale. :: A run emits a next-instruction artifact even when no current recommendation exists, causing speculative content to be written.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Nothing is written speculatively, so nothing can go stale. :: The implementation could persist recommendation content before a user asks for it, such as by storing a generated recommendation during review execution rather than only when the recommendation command is invoked.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Nothing is written speculatively, so nothing can go stale. :: The implementation removes or rewrites the legacy instruction file even when no current review state supports any recommendation, which is still a speculative write/delete side effect rather than a grounded retrieval-only action.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Nothing is written speculatively, so nothing can go stale. :: The implementation writes a recommendation or instruction file before it has current stored review state, so the output can be based on stale or placeholder data.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Nothing is written speculatively, so nothing can go stale. :: The implementation writes recommendation content to `.acceptance/next-instruction.md` or another artifact before it is grounded in the current stored review state, so the written content can become stale.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Nothing is written speculatively, so nothing can go stale. :: The review report could still emit or cache recommendation text derived from a prior run in a way that creates stale recommendation content ahead of demand.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Recording that this task supersedes the earlier one stays in the issue tracker rather than in any repository file. :: The change could add or update a repository file to record that this task supersedes the earlier one, instead of keeping that supersession record only in the issue tracker.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Recording that this task supersedes the earlier one stays in the issue tracker rather than in any repository file. :: The code could write supersession metadata into `.acceptance/next-instruction.md` or another repo artifact, making the repository itself carry the tracker note.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Replace the written `.acceptance/next-instruction.md` file with an on-demand `acceptance recommendation --criterion <id> [--format json|text]` command that returns a criterion's recommendation from stored review state, defaulting to JSON. :: The implementation still relies on `.acceptance/next-instruction.md` as the source of recommendation content instead of serving the recommendation on demand from stored review state.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Replace the written `.acceptance/next-instruction.md` file with an on-demand `acceptance recommendation --criterion <id> [--format json|text]` command that returns a criterion's recommendation from stored review state, defaulting to JSON. :: The new command cannot return a criterion's recommendation from stored review state, for example because it ignores `--criterion` or always reads only the latest review without honoring the requested revision.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Replace the written `.acceptance/next-instruction.md` file with an on-demand `acceptance recommendation --criterion <id> [--format json|text]` command that returns a criterion's recommendation from stored review state, defaulting to JSON. :: The new command does not default to JSON output when `--format` is omitted.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output. :: The command could default to text output or another format instead of JSON when `--format` is omitted.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output. :: The command could support only one output format, or reject `text`, instead of supporting both JSON and text.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output. :: The recommendation command could ignore stored review state and recompute or synthesize the recommendation instead of retrieving it on demand from the saved review.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output. :: The repo could expose the recommendation feature under a different command shape than `acceptance recommendation --criterion <id> [--format json|text]`, such as requiring a different subcommand name or different flag names.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state. :: The command does not read from stored review state and instead recomputes or depends on the old next-instruction file.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state. :: The command fails to support the documented `--format json|text` output selection.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state. :: The new `recommendation` command is missing or does not accept `--criterion`, so recommendations cannot be retrieved on demand.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Retrieval defaults to the most recently stored review when the caller does not name one. :: The default review selection uses the newest JSON file by filesystem modification time, so it can pick a different review than the most recently stored one when mtimes do not match write order.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Retrieval defaults to the most recently stored review when the caller does not name one. :: When no revision is named, the retrieval command chooses the newest file by revision name or lexical sort rather than by the most recently stored review.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Retrieval defaults to the most recently stored review when the caller does not name one. :: When no revision is named, the retrieval command fails to find any review unless the caller explicitly supplies a revision.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Retrieval defaults to the most recently stored review when the caller does not name one. :: When no revision is named, the retrieval command may read the newest JSON file by filesystem modification time instead of the most recently stored review record, so it can select the wrong review if file mtimes do not match write order.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Retrieval defaults to the most recently stored review when the caller does not name one. :: When no revision is named, the retrieval command reads an arbitrary stored review instead of the most recently written one, such as the first matching JSON file in the store.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: A clean run can delete `.acceptance/next-instruction.md` even when the repository is otherwise clean, changing the run's observable status by reporting the removal instead of leaving the review output alone.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: A clean run can print an extra stderr message about removing a stale `.acceptance/next-instruction.md`, so the review output is not the only status information emitted.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: A clean run could leave `.acceptance/next-instruction.md` behind instead of deleting it, so file-based status remains after the review output.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: A clean run could still print a separate stderr message about removing the legacy `next-instruction.md`, leaving status information outside the review output.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: The report could omit the new command-based next-step line when gaps exist, leaving the review output incomplete as the only status statement.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: The run could delete the legacy file but still write a new instruction file or other status artifact back into `.acceptance/`, leaving non-review status on disk.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: The run could recreate or preserve `.acceptance/next-instruction.md` during the clean run, so the repository would still contain an extra status artifact beyond the review output.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: The run could suppress the review output while only reporting the cleanup action, so the review's own output is not the sole status statement.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained. :: The CLI could wrap or reformat the recommendation in a way that changes its substantive content, such as adding extra explanatory prose or stripping the original criterion-specific details.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained. :: The lookup path could substitute a synthesized placeholder like `(no recommendation for this criterion)` for a real stored recommendation, altering the delivered recommendation content.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained. :: The new recommendation renderer could change the stored recommendation text by flattening structured fields into a different wording or omitting fields such as boundary conditions or required assertions.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The on-demand recommendation command defaults to JSON output. :: Running `acceptance recommendation --criterion <id>` without `--format` could default to text output instead of JSON.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The on-demand recommendation command defaults to JSON output. :: The command could require an explicit `--format` argument or otherwise fail when it is omitted, rather than choosing JSON by default.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose value intact. :: The JSON renderer drops the recommendation's structured fields into a plain dictionary only when a recommendation exists, but collapses the no-recommendation case to an empty object instead of preserving the recommendation schema.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose value intact. :: The text renderer omits the obligation_id and criterion fields entirely and flattens list-valued fields into bullet lines, so the retrieved output does not preserve every structured field as a discrete key/value pair.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact. :: The retrieval output collapses the recommendation into a single free-text blob instead of keeping required inputs, boundary conditions, expected output, required assertions, plausible defect, and repo conventions as separate keys.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact. :: The retrieval output omits one or more of the structured fields, such as boundary conditions or repo conventions, even though they are present in the stored recommendation.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact. :: The retrieval output rewrites the stored prose into abbreviated labels or summaries, so the field values no longer preserve the original wording.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact. :: The retrieval renderer can convert list-valued fields into a single concatenated string, losing the discrete prose values that were supposed to remain separate structured fields.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact. :: The retrieval renderer can flatten the recommendation into text or a reduced JSON shape that drops one or more structured keys such as boundary conditions, required assertions, or repo conventions.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The review's rendered output names the command to run for every verdict that has gaps, rather than naming a file to open. :: The rendered review output can omit the command invocation for some gap-filled findings, leaving those verdicts without the required retrieval command reference.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The review's rendered output names the command to run for every verdict that has gaps, rather than naming a file to open. :: The rendered review output can still present a file-open instruction or file path as the next step for gap-filled verdicts instead of naming the command to retrieve the recommendation.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The review's rendered output names the command to run for every verdict that has gaps. :: For gapful reviews, the rendered report now appends a command invocation for retrieving the full recommendation instead of pointing the reader to a file.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The review's rendered output names the command to run, not a file to open, for every verdict that has gaps. :: For gap verdicts, the rendered review output names the wrong command or uses the retrieval command without the criterion argument needed to obtain the recommendation.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The review's rendered output names the command to run, not a file to open, for every verdict that has gaps. :: For gap verdicts, the rendered review output omits the retrieval command entirely and leaves only a generic next-step message.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The review's rendered output names the command to run, not a file to open, for every verdict that has gaps. :: For gap verdicts, the rendered review output tells the user to open or inspect a file such as `.acceptance/next-instruction.md` instead of naming the command to retrieve the recommendation.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The review-state store format and the review pipeline remain unchanged. :: The added `latest()` method could change the review-state store semantics by selecting the newest JSON file by modification time instead of reading a review by its stored revision key.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The review-state store format and the review pipeline remain unchanged. :: The new recommendation command could require or depend on a different stored review shape, such as expecting a `recommendations` list where the existing store format used another field layout.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The review-state store format and the review pipeline remain unchanged. :: The review pipeline could be altered so that running the main review path now deletes legacy files or otherwise performs recommendation retrieval work as part of review execution.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The review-state store's format and the review pipeline remain unchanged. :: The new recommendation command reads from the review store and exposes stored review state through a new retrieval path, altering the review-state interface rather than leaving the store and pipeline behavior unchanged.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The review-state store's format and the review pipeline remain unchanged. :: The report output now adds a per-criterion command hint and changes the final next-step line from the stored recommendation text to a retrieval command, so the review pipeline's rendered output is no longer the same as before.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The review-state store's format and the review pipeline remain unchanged. :: The review store now chooses the latest review by filesystem modification time instead of by the store's existing revision-based lookup behavior, changing which review is returned when no revision is specified.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The specification names a specific command surface rather than leaving the command shape to implementation. :: The CLI could expose a different command name or argument set than the specified `acceptance recommendation --criterion <id>` surface, such as requiring a different subcommand or extra mandatory flags.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The specification names a specific command surface rather than leaving the command shape to implementation. :: The command could accept the right subcommand but interpret `--criterion` as optional or renamed, making the specified invocation shape unavailable.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The specification names a specific command surface rather than leaving the command shape to implementation. :: The specification could still describe the recommendation interface as an implementation-defined or loosely named action instead of explicitly fixing it to the `acceptance recommendation --criterion <id> [--format json|text]` command surface.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The specification names a specific command surface, and that command surface remains fixed rather than left to implementation. :: The CLI accepts the new recommendation command only as `acceptance recommendation --criterion <id>` and does not preserve the previously documented command shape if that shape was meant to be fixed in the specification.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The specification no longer describes the recommendation as a written file. :: The specification mixes the command-based retrieval model with file-based language, leaving the recommendation described as both a command result and a written artifact.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The specification no longer describes the recommendation as a written file. :: The specification says the recommendation is created or updated by writing a file during review execution instead of being obtained through the command surface.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The specification no longer describes the recommendation as a written file. :: The specification still describes the recommendation as a file written to `.acceptance/next-instruction.md` rather than as something retrieved on demand.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The specification no longer describes the recommendation as a written file. :: The specification text can continue to describe the recommendation as a written `.acceptance/next-instruction.md` file rather than as something obtained on demand through the command surface.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The specification no longer describes the recommendation as a written file. :: The specification text can still instruct the tool to write or update the recommendation file, which preserves the old file-based model instead of removing it.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The specification no longer describes the recommendation as a written file. :: The updated report and CLI text still describe a legacy next-instruction file as something that used to be written and removed, rather than describing the recommendation purely as an on-demand retrieval.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values intact. :: The recommendation renderer can reduce the recommendation to a terse command-oriented summary such as `(no recommendation for this criterion)` or a short field listing, rather than returning the full prose stored in each structured field.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values intact. :: The recommendation renderer replaces an absent recommendation with `{}` in JSON output instead of preserving the original structured value shape, collapsing the field content into an empty placeholder.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values intact. :: The text renderer omits the `obligation_id` and `criterion` fields entirely and only prints the remaining fields, so the structured recommendation is not returned with all of its original prose content intact.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable. :: The recommendation renderer converts list-valued prose fields into a collapsed single string or code-like placeholder, losing the original wording and detail.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable. :: The recommendation renderer omits some of the structured fields entirely, so the output no longer includes the full original prose for every field.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable. :: The recommendation renderer replaces one or more structured field values with a shortened token or summary instead of emitting the original prose text unchanged.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable. :: The recommendation renderer substitutes the criterion id or field name for the field\u2019s actual prose content, so the emitted value is no longer the recommendation text that was stored.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values. :: The recommendation renderer replaces one or more structured field values with a shortened label, code, or summary instead of emitting the original prose text.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values. :: The renderer omits one of the structured recommendation fields entirely rather than preserving its full text value in the output.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values. :: The renderer substitutes the criterion lookup key or another identifier for the field's stored prose value, so the emitted field no longer matches the recommendation text.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "The structured fields keep their prose values. :: The renderer transforms a prose field into a different representation, such as joining list items into a terse token or otherwise flattening the content so the original wording is lost.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command can emit a stale-file removal notice on stderr during one run but not the next, so two reads of the same unchanged review state can produce different output bytes.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command can emit different bytes on repeated runs because it prints a stale-file removal notice to stderr whenever the legacy file exists, so the overall output is not identical across invocations against the same stored review state.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command can vary its JSON bytes for the same stored recommendation because it serializes the recommendation through a field list that may omit or reorder structured data differently from the stored review representation.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command emits the recommendation fields in a nondeterministic order, so the serialized bytes can vary even when the stored review state has not changed.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command formats the same stored recommendation differently across runs, for example by including a timestamp, filesystem metadata, or other run-specific text in the output.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command prints an extra side-effect message on some invocations, such as a stale-file removal notice, causing the output bytes to differ between repeated runs.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "Two retrievals over unchanged review state return byte-identical output. :: When no recommendation exists, JSON retrieval returns an empty object instead of a stable recommendation-shaped value, changing the serialized bytes for that state.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review. :: The `recommendation` command can fail to preserve the stored recommendation content because `render_json` omits any fields not listed in `_FIELDS`, so a recommendation with additional stored data would be returned incomplete.",
+          "counts": {
+            "false": 1
+          }
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review. :: The `recommendation` command can return the wrong stored review because it picks the latest JSON file by filesystem modification time instead of reading the review identified by the requested revision.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review. :: The command could fail to select by criterion id and instead return the first recommendation, a default recommendation, or no recommendation at all when the requested criterion exists in the stored review.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review. :: The command could look up the wrong review record, such as always using the latest stored review or ignoring the requested revision, so it would return a recommendation from a different review than the one requested.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review. :: The new `acceptance recommendation` command could recompute or rerun the review pipeline instead of reading the stored review state, so the returned recommendation would come from fresh analysis rather than the saved review.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state, without re-running the review. :: The `acceptance recommendation` command could return the wrong criterion's recommendation because it matches on the wrong field or ignores the requested `--criterion` value.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state, without re-running the review. :: The command could fail to emit the stored recommendation content and instead print an empty placeholder or a generic message when a matching recommendation exists.",
+          "counts": {
+            "true": 1
+          }
+        },
+        {
+          "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state, without re-running the review. :: The command could recompute or rerun review analysis instead of reading the stored review state, so the output is not the previously stored recommendation.",
+          "counts": {
+            "true": 1
+          }
+        }
+      ],
+      "content_differences": [
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "Two retrievals over unchanged review state return byte-identical output.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#1(seed=1001)",
+          "detail": "nominally_supported -> partially_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#1(seed=1001)",
+          "detail": "strongly_supported -> partially_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#1(seed=1001)",
+          "detail": "nominally_supported -> partially_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "The structured fields keep their prose values intact.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#1(seed=1001)",
+          "detail": "partially_supported -> strongly_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "strongly_supported -> partially_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "A criterion that has no recommendation returns an empty result rather than an error.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "strongly_supported -> partially_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "strongly_supported -> nominally_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "nominally_supported -> partially_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "The structured fields keep their prose values intact.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "partially_supported -> strongly_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status.",
+          "present_in": "openai/gpt-5.4-mini#1(seed=1001)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "strongly_supported -> partially_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained.",
+          "present_in": "openai/gpt-5.4-mini#1(seed=1001)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "unsupported -> nominally_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "The review-state store format and the review pipeline remain unchanged.",
+          "present_in": "openai/gpt-5.4-mini#1(seed=1001)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "unsupported -> nominally_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review.",
+          "present_in": "openai/gpt-5.4-mini#1(seed=1001)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "strongly_supported -> partially_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "A criterion that has no recommendation returns an empty result rather than an error.",
+          "present_in": "openai/gpt-5.4-mini#1(seed=1001)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "strongly_supported -> partially_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output.",
+          "present_in": "openai/gpt-5.4-mini#1(seed=1001)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "strongly_supported -> partially_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "Two retrievals over unchanged review state return byte-identical output.",
+          "present_in": "openai/gpt-5.4-mini#1(seed=1001)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "partially_supported -> nominally_supported"
+        },
+        {
+          "kind": "evidence_class",
+          "classification": "content",
+          "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact.",
+          "present_in": "openai/gpt-5.4-mini#1(seed=1001)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "partially_supported -> nominally_supported"
+        }
+      ],
+      "shape_differences": [
+        {
+          "kind": "obligation",
+          "classification": "shape",
+          "subject": "The on-demand recommendation command defaults to JSON output.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#1(seed=1001)",
+          "detail": "covered by the other run's set as a whole; only the partitioning differs"
+        },
+        {
+          "kind": "obligation",
+          "classification": "shape",
+          "subject": "The on-demand recommendation command defaults to JSON output.",
+          "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+          "absent_from": "openai/gpt-5.4-mini#2(seed=1002)",
+          "detail": "covered by the other run's set as a whole; only the partitioning differs"
+        }
+      ],
+      "content_difference_count": {
+        "mean": 5.666666666666667,
+        "spread": 4.0
+      },
+      "shape_difference_count": {
+        "mean": 0.6666666666666666,
+        "spread": 1.0
+      }
+    }
+  ],
+  "perturbation": {
+    "name": "add-unrelated-test",
+    "watched_judgements": 21,
+    "changed_judgements": 13,
+    "content_differences": [
+      {
+        "kind": "evidence_class",
+        "classification": "content",
+        "subject": "The on-demand recommendation command defaults to JSON output.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "strongly_supported -> nominally_supported"
+      },
+      {
+        "kind": "evidence_class",
+        "classification": "content",
+        "subject": "Nothing is written speculatively, so nothing can go stale.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "strongly_supported -> partially_supported"
+      },
+      {
+        "kind": "evidence_class",
+        "classification": "content",
+        "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "partially_supported -> nominally_supported"
+      },
+      {
+        "kind": "evidence_class",
+        "classification": "content",
+        "subject": "The recommendations themselves remain unchanged; the task changes how they are obtained rather than how they are produced.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "unsupported -> nominally_supported"
+      },
+      {
+        "kind": "evidence_class",
+        "classification": "content",
+        "subject": "The structured fields keep their prose values intact.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "partially_supported -> strongly_supported"
+      },
+      {
+        "kind": "defect_verdict",
+        "classification": "content",
+        "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: The run could delete the legacy file but still write a new instruction file or other status artifact back into `.acceptance/`, leaving non-review status on disk.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "would_be_caught False -> True"
+      },
+      {
+        "kind": "defect_verdict",
+        "classification": "content",
+        "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: The run could suppress the review output while only reporting the cleanup action, so the review's own output is not the sole status statement.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "would_be_caught True -> False"
+      },
+      {
+        "kind": "defect_verdict",
+        "classification": "content",
+        "subject": "The on-demand recommendation command defaults to JSON output. :: Running `acceptance recommendation --criterion <id>` without `--format` could default to text output instead of JSON.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "would_be_caught True -> False"
+      },
+      {
+        "kind": "defect_verdict",
+        "classification": "content",
+        "subject": "The on-demand recommendation command defaults to JSON output. :: The command could require an explicit `--format` argument or otherwise fail when it is omitted, rather than choosing JSON by default.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "would_be_caught True -> False"
+      },
+      {
+        "kind": "defect_verdict",
+        "classification": "content",
+        "subject": "Nothing is written speculatively, so nothing can go stale. :: The implementation writes a recommendation or instruction file before it has current stored review state, so the output can be based on stale or placeholder data.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "would_be_caught True -> False"
+      },
+      {
+        "kind": "defect_verdict",
+        "classification": "content",
+        "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state. :: The new `recommendation` command is missing or does not accept `--criterion`, so recommendations cannot be retrieved on demand.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "would_be_caught True -> False"
+      },
+      {
+        "kind": "defect_verdict",
+        "classification": "content",
+        "subject": "The review-state store's format and the review pipeline remain unchanged. :: The review store now chooses the latest review by filesystem modification time instead of by the store's existing revision-based lookup behavior, changing which review is returned when no revision is specified.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "would_be_caught False -> True"
+      },
+      {
+        "kind": "defect_verdict",
+        "classification": "content",
+        "subject": "The structured fields keep their prose values intact. :: The text renderer omits the `obligation_id` and `criterion` fields entirely and only prints the remaining fields, so the structured recommendation is not returned with all of its original prose content intact.",
+        "present_in": "openai/gpt-5.4-mini#0(seed=1000)",
+        "absent_from": "openai/gpt-5.4-mini#0(seed=1000)+perturbed",
+        "detail": "would_be_caught False -> True"
+      }
+    ],
+    "shape_differences": []
+  },
+  "cross_model_agreement": [
+    {
+      "subject": "A criterion that has no recommendation returns an empty result rather than an error.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A criterion with no recommendation returns an empty result rather than an error.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "partially_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail, and the output makes the detail's existence known so the pull can happen.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "nominally_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull can happen.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull happens.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "nominally_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A recommendation returned on demand is the one the stored review holds for that criterion, and retrieval reads state rather than re-running the review.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A recommendation returned on demand is the one the stored review holds for that criterion; retrieval reads state rather than re-running the review.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "partially_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "partially_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "No code path writes `.acceptance/next-instruction.md`.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Nothing is written speculatively, so nothing can go stale.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Recording that this task supersedes the earlier one belongs outside the repository, in the issue tracker rather than any repo file.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unsupported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Recording that this task supersedes the earlier one stays in the issue tracker and is not added to any file in the repository.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unsupported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Recording that this task supersedes the earlier one stays in the issue tracker rather than in any repository file.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "nominally_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written `.acceptance/next-instruction.md` file with an on-demand `acceptance recommendation --criterion <id> [--format json|text]` command that returns a criterion's recommendation from stored review state, defaulting to JSON.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "partially_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "partially_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Retrieval defaults to the most recently stored review when the caller does not name one.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "partially_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "nominally_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The on-demand recommendation command defaults to JSON output.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The recommendations themselves remain unchanged; the task changes how they are obtained rather than how they are produced.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unsupported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose value intact.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "nominally_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "partially_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run for every verdict that has gaps, rather than naming a file to open.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run for every verdict that has gaps.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run, not a file to open, for every verdict that has gaps.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review-state store format and the review pipeline remain unchanged.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "nominally_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review-state store's format and the review pipeline remain unchanged.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "partially_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification names a specific command surface rather than leaving the command shape to implementation.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification names a specific command surface, and that command surface remains fixed rather than left to implementation.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification no longer describes the recommendation as a written file.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values intact.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "partially_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Two retrievals over unchanged review state return byte-identical output.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "nominally_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "partially_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state, without re-running the review.",
+      "axis": "evidence_class",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "strongly_supported"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A criterion that has no recommendation returns an empty result rather than an error. :: Looking up a criterion with no stored recommendation could return an error or non-empty placeholder instead of an empty result such as an empty JSON object or equivalent blank output.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A criterion that has no recommendation returns an empty result rather than an error. :: Looking up a criterion with no stored recommendation returns an error or non-empty placeholder instead of an empty result.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A criterion that has no recommendation returns an empty result rather than an error. :: The command could exit nonzero when the requested criterion is absent, treating the absence of a recommendation as a failure rather than a normal empty response.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A criterion that has no recommendation returns an empty result rather than an error. :: The recommendation command treats a missing criterion as a failure and exits nonzero rather than returning an empty result.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A criterion with no recommendation returns an empty result rather than an error. :: Looking up a criterion with no stored recommendation is treated as an error path that prints a failure message and exits nonzero instead of returning an empty result.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A criterion with no recommendation returns an empty result rather than an error. :: Looking up a criterion with no stored recommendation returns `None` but the command still prints a non-empty placeholder string such as `(no recommendation for this criterion)` instead of an empty result.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail, and the output makes the detail's existence known so the pull can happen. :: The review output could fail to make the existence of a recommendation visible, leaving only a generic next-step message with no indication that detail is available.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail, and the output makes the detail's existence known so the pull can happen. :: The review output could give the wrong retrieval command or omit the criterion placeholder, so a reader cannot tell how to pull the specific detail.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail, and the output makes the detail's existence known so the pull can happen. :: The review output could mention that a recommendation exists but omit the command needed to retrieve it on demand.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull can happen. :: The output points to the wrong retrieval mechanism, such as a file path or stale instruction text instead of the new recommendation command.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull can happen. :: The review output does not mention that more recommendation detail is available or omits the command needed to retrieve it.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull happens. :: The review output does not explicitly tell the reader that a criterion-specific recommendation is available and how to retrieve it, leaving only a generic report with no retrieval cue.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull happens. :: The review output mentions that more detail exists but fails to name the retrieval command or criterion lookup form needed to obtain it.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A recommendation returned on demand is the one the stored review holds for that criterion, and retrieval reads state rather than re-running the review. :: The retrieval command ignores the requested criterion and returns some other recommendation from the stored review, such as the first recommendation in the list.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A recommendation returned on demand is the one the stored review holds for that criterion, and retrieval reads state rather than re-running the review. :: The retrieval command looks up the wrong stored review revision and returns a recommendation from a different review than the one requested or most recently stored.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A recommendation returned on demand is the one the stored review holds for that criterion, and retrieval reads state rather than re-running the review. :: The retrieval command recomputes the recommendation by invoking review execution or model-backed review generation instead of reading the recommendation already stored in review state.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A recommendation returned on demand is the one the stored review holds for that criterion; retrieval reads state rather than re-running the review. :: The retrieval command can derive the recommendation by re-running review logic instead of reading the stored review object, causing it to return a freshly computed result rather than the one already held in state.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A recommendation returned on demand is the one the stored review holds for that criterion; retrieval reads state rather than re-running the review. :: The retrieval command can fail to look up the requested criterion in the stored review and instead return a generic empty recommendation object, which means it is not actually fetching the stored recommendation for that criterion.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A recommendation returned on demand is the one the stored review holds for that criterion; retrieval reads state rather than re-running the review. :: The retrieval command looks up the requested criterion in the stored review object and returns that stored recommendation without invoking review execution.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: A clean run could leave an existing `.acceptance/next-instruction.md` untouched, so the stale file would still assert gaps even when the review output says there are none.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: A run can leave a stale `.acceptance/next-instruction.md` in place when the file is absent from the repository root path being checked, so the on-disk state can still contradict the review.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: If `.acceptance/next-instruction.md` already exists, the code could leave it on disk unchanged so it still contradicts the review.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: The cleanup path can remove only the legacy file at `.acceptance/next-instruction.md` in the current working directory rather than the repository being reviewed, leaving the contradictory file on disk in the target repo.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: The code could remove the file only from the current working directory path it assumes, but miss the repository's actual legacy file location, leaving the stale file present.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: The code could replace the stale file with a new file that still asserts gaps or next steps, so the on-disk state remains contradictory to the review.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: The report could continue to mention the legacy next-instruction file as the next action instead of the new retrieval command, so the review output would still align with the stale file rather than supersede it.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review. :: The run could delete the stale file but then print a message that points to the old file or otherwise implies it still governs next steps, leaving the on-disk state and review output inconsistent.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The CLI deletes `.acceptance/next-instruction.md` but only prints the removal message when the report is rendered in text mode, so a JSON run removes the file without reporting that it did so.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The CLI reports the stale-file removal to stderr instead of the normal output stream, so the run does not emit the removal notice as part of its user-visible result.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The command deletes `.acceptance/next-instruction.md` but prints the removal notice only to stderr, so the reported removal is not emitted on the command\u2019s normal output channel.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The command looks for the legacy file in the wrong location, such as only checking the current working directory instead of the repository root, so an existing `.acceptance/next-instruction.md` is not removed.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The command removes the stale file only when it runs the review path, but not when it runs the recommendation path or other entry points that may encounter the legacy file.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The command reports a stale-file removal even when the file was not actually deleted, for example by printing the message whenever the path exists but leaving the file in place.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The removal helper only deletes the file when it is exactly named `.acceptance/next-instruction.md` under the current working directory, so a stale file located under the selected repository path is left behind if the run is invoked from elsewhere.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The run deletes the stale file but does not emit any message indicating that the removal happened.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The run leaves an existing `.acceptance/next-instruction.md` in place instead of deleting it when the file is present.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The run reports a removal message even when no stale `.acceptance/next-instruction.md` existed and nothing was deleted.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so. :: The run reports the removal only in one output mode or stream, so in some invocations the deletion happens silently from the user's perspective.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "No code path writes `.acceptance/next-instruction.md`. :: Some execution path could still create or write `.acceptance/next-instruction.md`, for example by leaving behind a helper that recreates the file when a review has gaps.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "No code path writes `.acceptance/next-instruction.md`. :: Some execution path still creates or updates `.acceptance/next-instruction.md`, for example by retaining the old write helper or by writing the legacy file when a recommendation exists.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "No code path writes `.acceptance/next-instruction.md`. :: Some execution path still creates or updates `.acceptance/next-instruction.md`, such as by writing the legacy instruction file instead of only removing it.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "No code path writes `.acceptance/next-instruction.md`. :: The CLI could still write the legacy next-instruction file as part of review generation or cleanup logic instead of only deleting an existing stale file.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "No code path writes `.acceptance/next-instruction.md`. :: The CLI or report code recreates the next-instruction file when gaps are present, so the file can still be emitted during a run.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Nothing is written speculatively, so nothing can go stale. :: A run emits a next-instruction artifact even when no current recommendation exists, causing speculative content to be written.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Nothing is written speculatively, so nothing can go stale. :: The implementation could persist recommendation content before a user asks for it, such as by storing a generated recommendation during review execution rather than only when the recommendation command is invoked.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Nothing is written speculatively, so nothing can go stale. :: The implementation removes or rewrites the legacy instruction file even when no current review state supports any recommendation, which is still a speculative write/delete side effect rather than a grounded retrieval-only action.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Nothing is written speculatively, so nothing can go stale. :: The implementation writes a recommendation or instruction file before it has current stored review state, so the output can be based on stale or placeholder data.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Nothing is written speculatively, so nothing can go stale. :: The implementation writes recommendation content to `.acceptance/next-instruction.md` or another artifact before it is grounded in the current stored review state, so the written content can become stale.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Nothing is written speculatively, so nothing can go stale. :: The review report could still emit or cache recommendation text derived from a prior run in a way that creates stale recommendation content ahead of demand.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Recording that this task supersedes the earlier one stays in the issue tracker rather than in any repository file. :: The change could add or update a repository file to record that this task supersedes the earlier one, instead of keeping that supersession record only in the issue tracker.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Recording that this task supersedes the earlier one stays in the issue tracker rather than in any repository file. :: The code could write supersession metadata into `.acceptance/next-instruction.md` or another repo artifact, making the repository itself carry the tracker note.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written `.acceptance/next-instruction.md` file with an on-demand `acceptance recommendation --criterion <id> [--format json|text]` command that returns a criterion's recommendation from stored review state, defaulting to JSON. :: The implementation still relies on `.acceptance/next-instruction.md` as the source of recommendation content instead of serving the recommendation on demand from stored review state.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written `.acceptance/next-instruction.md` file with an on-demand `acceptance recommendation --criterion <id> [--format json|text]` command that returns a criterion's recommendation from stored review state, defaulting to JSON. :: The new command cannot return a criterion's recommendation from stored review state, for example because it ignores `--criterion` or always reads only the latest review without honoring the requested revision.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written `.acceptance/next-instruction.md` file with an on-demand `acceptance recommendation --criterion <id> [--format json|text]` command that returns a criterion's recommendation from stored review state, defaulting to JSON. :: The new command does not default to JSON output when `--format` is omitted.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output. :: The command could default to text output or another format instead of JSON when `--format` is omitted.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output. :: The command could support only one output format, or reject `text`, instead of supporting both JSON and text.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output. :: The recommendation command could ignore stored review state and recompute or synthesize the recommendation instead of retrieving it on demand from the saved review.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output. :: The repo could expose the recommendation feature under a different command shape than `acceptance recommendation --criterion <id> [--format json|text]`, such as requiring a different subcommand name or different flag names.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state. :: The command does not read from stored review state and instead recomputes or depends on the old next-instruction file.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state. :: The command fails to support the documented `--format json|text` output selection.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state. :: The new `recommendation` command is missing or does not accept `--criterion`, so recommendations cannot be retrieved on demand.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Retrieval defaults to the most recently stored review when the caller does not name one. :: The default review selection uses the newest JSON file by filesystem modification time, so it can pick a different review than the most recently stored one when mtimes do not match write order.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Retrieval defaults to the most recently stored review when the caller does not name one. :: When no revision is named, the retrieval command chooses the newest file by revision name or lexical sort rather than by the most recently stored review.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Retrieval defaults to the most recently stored review when the caller does not name one. :: When no revision is named, the retrieval command fails to find any review unless the caller explicitly supplies a revision.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Retrieval defaults to the most recently stored review when the caller does not name one. :: When no revision is named, the retrieval command may read the newest JSON file by filesystem modification time instead of the most recently stored review record, so it can select the wrong review if file mtimes do not match write order.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Retrieval defaults to the most recently stored review when the caller does not name one. :: When no revision is named, the retrieval command reads an arbitrary stored review instead of the most recently written one, such as the first matching JSON file in the store.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: A clean run can delete `.acceptance/next-instruction.md` even when the repository is otherwise clean, changing the run's observable status by reporting the removal instead of leaving the review output alone.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: A clean run can print an extra stderr message about removing a stale `.acceptance/next-instruction.md`, so the review output is not the only status information emitted.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: A clean run could leave `.acceptance/next-instruction.md` behind instead of deleting it, so file-based status remains after the review output.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: A clean run could still print a separate stderr message about removing the legacy `next-instruction.md`, leaving status information outside the review output.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: The report could omit the new command-based next-step line when gaps exist, leaving the review output incomplete as the only status statement.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: The run could delete the legacy file but still write a new instruction file or other status artifact back into `.acceptance/`, leaving non-review status on disk.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: The run could recreate or preserve `.acceptance/next-instruction.md` during the clean run, so the repository would still contain an extra status artifact beyond the review output.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status. :: The run could suppress the review output while only reporting the cleanup action, so the review's own output is not the sole status statement.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained. :: The CLI could wrap or reformat the recommendation in a way that changes its substantive content, such as adding extra explanatory prose or stripping the original criterion-specific details.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained. :: The lookup path could substitute a synthesized placeholder like `(no recommendation for this criterion)` for a real stored recommendation, altering the delivered recommendation content.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained. :: The new recommendation renderer could change the stored recommendation text by flattening structured fields into a different wording or omitting fields such as boundary conditions or required assertions.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The on-demand recommendation command defaults to JSON output. :: Running `acceptance recommendation --criterion <id>` without `--format` could default to text output instead of JSON.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The on-demand recommendation command defaults to JSON output. :: The command could require an explicit `--format` argument or otherwise fail when it is omitted, rather than choosing JSON by default.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose value intact. :: The JSON renderer drops the recommendation's structured fields into a plain dictionary only when a recommendation exists, but collapses the no-recommendation case to an empty object instead of preserving the recommendation schema.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose value intact. :: The text renderer omits the obligation_id and criterion fields entirely and flattens list-valued fields into bullet lines, so the retrieved output does not preserve every structured field as a discrete key/value pair.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact. :: The retrieval output collapses the recommendation into a single free-text blob instead of keeping required inputs, boundary conditions, expected output, required assertions, plausible defect, and repo conventions as separate keys.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact. :: The retrieval output omits one or more of the structured fields, such as boundary conditions or repo conventions, even though they are present in the stored recommendation.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact. :: The retrieval output rewrites the stored prose into abbreviated labels or summaries, so the field values no longer preserve the original wording.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact. :: The retrieval renderer can convert list-valued fields into a single concatenated string, losing the discrete prose values that were supposed to remain separate structured fields.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact. :: The retrieval renderer can flatten the recommendation into text or a reduced JSON shape that drops one or more structured keys such as boundary conditions, required assertions, or repo conventions.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run for every verdict that has gaps, rather than naming a file to open. :: The rendered review output can omit the command invocation for some gap-filled findings, leaving those verdicts without the required retrieval command reference.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run for every verdict that has gaps, rather than naming a file to open. :: The rendered review output can still present a file-open instruction or file path as the next step for gap-filled verdicts instead of naming the command to retrieve the recommendation.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run for every verdict that has gaps. :: For gapful reviews, the rendered report now appends a command invocation for retrieving the full recommendation instead of pointing the reader to a file.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run, not a file to open, for every verdict that has gaps. :: For gap verdicts, the rendered review output names the wrong command or uses the retrieval command without the criterion argument needed to obtain the recommendation.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run, not a file to open, for every verdict that has gaps. :: For gap verdicts, the rendered review output omits the retrieval command entirely and leaves only a generic next-step message.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run, not a file to open, for every verdict that has gaps. :: For gap verdicts, the rendered review output tells the user to open or inspect a file such as `.acceptance/next-instruction.md` instead of naming the command to retrieve the recommendation.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review-state store format and the review pipeline remain unchanged. :: The added `latest()` method could change the review-state store semantics by selecting the newest JSON file by modification time instead of reading a review by its stored revision key.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review-state store format and the review pipeline remain unchanged. :: The new recommendation command could require or depend on a different stored review shape, such as expecting a `recommendations` list where the existing store format used another field layout.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review-state store format and the review pipeline remain unchanged. :: The review pipeline could be altered so that running the main review path now deletes legacy files or otherwise performs recommendation retrieval work as part of review execution.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review-state store's format and the review pipeline remain unchanged. :: The new recommendation command reads from the review store and exposes stored review state through a new retrieval path, altering the review-state interface rather than leaving the store and pipeline behavior unchanged.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review-state store's format and the review pipeline remain unchanged. :: The report output now adds a per-criterion command hint and changes the final next-step line from the stored recommendation text to a retrieval command, so the review pipeline's rendered output is no longer the same as before.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review-state store's format and the review pipeline remain unchanged. :: The review store now chooses the latest review by filesystem modification time instead of by the store's existing revision-based lookup behavior, changing which review is returned when no revision is specified.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification names a specific command surface rather than leaving the command shape to implementation. :: The CLI could expose a different command name or argument set than the specified `acceptance recommendation --criterion <id>` surface, such as requiring a different subcommand or extra mandatory flags.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification names a specific command surface rather than leaving the command shape to implementation. :: The command could accept the right subcommand but interpret `--criterion` as optional or renamed, making the specified invocation shape unavailable.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification names a specific command surface rather than leaving the command shape to implementation. :: The specification could still describe the recommendation interface as an implementation-defined or loosely named action instead of explicitly fixing it to the `acceptance recommendation --criterion <id> [--format json|text]` command surface.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification names a specific command surface, and that command surface remains fixed rather than left to implementation. :: The CLI accepts the new recommendation command only as `acceptance recommendation --criterion <id>` and does not preserve the previously documented command shape if that shape was meant to be fixed in the specification.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification no longer describes the recommendation as a written file. :: The specification mixes the command-based retrieval model with file-based language, leaving the recommendation described as both a command result and a written artifact.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification no longer describes the recommendation as a written file. :: The specification says the recommendation is created or updated by writing a file during review execution instead of being obtained through the command surface.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification no longer describes the recommendation as a written file. :: The specification still describes the recommendation as a file written to `.acceptance/next-instruction.md` rather than as something retrieved on demand.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification no longer describes the recommendation as a written file. :: The specification text can continue to describe the recommendation as a written `.acceptance/next-instruction.md` file rather than as something obtained on demand through the command surface.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification no longer describes the recommendation as a written file. :: The specification text can still instruct the tool to write or update the recommendation file, which preserves the old file-based model instead of removing it.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification no longer describes the recommendation as a written file. :: The updated report and CLI text still describe a legacy next-instruction file as something that used to be written and removed, rather than describing the recommendation purely as an on-demand retrieval.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values intact. :: The recommendation renderer can reduce the recommendation to a terse command-oriented summary such as `(no recommendation for this criterion)` or a short field listing, rather than returning the full prose stored in each structured field.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values intact. :: The recommendation renderer replaces an absent recommendation with `{}` in JSON output instead of preserving the original structured value shape, collapsing the field content into an empty placeholder.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values intact. :: The text renderer omits the `obligation_id` and `criterion` fields entirely and only prints the remaining fields, so the structured recommendation is not returned with all of its original prose content intact.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable. :: The recommendation renderer converts list-valued prose fields into a collapsed single string or code-like placeholder, losing the original wording and detail.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable. :: The recommendation renderer omits some of the structured fields entirely, so the output no longer includes the full original prose for every field.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable. :: The recommendation renderer replaces one or more structured field values with a shortened token or summary instead of emitting the original prose text unchanged.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable. :: The recommendation renderer substitutes the criterion id or field name for the field\u2019s actual prose content, so the emitted value is no longer the recommendation text that was stored.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values. :: The recommendation renderer replaces one or more structured field values with a shortened label, code, or summary instead of emitting the original prose text.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values. :: The renderer omits one of the structured recommendation fields entirely rather than preserving its full text value in the output.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values. :: The renderer substitutes the criterion lookup key or another identifier for the field's stored prose value, so the emitted field no longer matches the recommendation text.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values. :: The renderer transforms a prose field into a different representation, such as joining list items into a terse token or otherwise flattening the content so the original wording is lost.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command can emit a stale-file removal notice on stderr during one run but not the next, so two reads of the same unchanged review state can produce different output bytes.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command can emit different bytes on repeated runs because it prints a stale-file removal notice to stderr whenever the legacy file exists, so the overall output is not identical across invocations against the same stored review state.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command can vary its JSON bytes for the same stored recommendation because it serializes the recommendation through a field list that may omit or reorder structured data differently from the stored review representation.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command emits the recommendation fields in a nondeterministic order, so the serialized bytes can vary even when the stored review state has not changed.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command formats the same stored recommendation differently across runs, for example by including a timestamp, filesystem metadata, or other run-specific text in the output.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Two retrievals over unchanged review state return byte-identical output. :: The retrieval command prints an extra side-effect message on some invocations, such as a stale-file removal notice, causing the output bytes to differ between repeated runs.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Two retrievals over unchanged review state return byte-identical output. :: When no recommendation exists, JSON retrieval returns an empty object instead of a stable recommendation-shaped value, changing the serialized bytes for that state.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review. :: The `recommendation` command can fail to preserve the stored recommendation content because `render_json` omits any fields not listed in `_FIELDS`, so a recommendation with additional stored data would be returned incomplete.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "false"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review. :: The `recommendation` command can return the wrong stored review because it picks the latest JSON file by filesystem modification time instead of reading the review identified by the requested revision.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review. :: The command could fail to select by criterion id and instead return the first recommendation, a default recommendation, or no recommendation at all when the requested criterion exists in the stored review.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review. :: The command could look up the wrong review record, such as always using the latest stored review or ignoring the requested revision, so it would return a recommendation from a different review than the one requested.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review. :: The new `acceptance recommendation` command could recompute or rerun the review pipeline instead of reading the stored review state, so the returned recommendation would come from fresh analysis rather than the saved review.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state, without re-running the review. :: The `acceptance recommendation` command could return the wrong criterion's recommendation because it matches on the wrong field or ignores the requested `--criterion` value.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state, without re-running the review. :: The command could fail to emit the stored recommendation content and instead print an empty placeholder or a generic message when a matching recommendation exists.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state, without re-running the review. :: The command could recompute or rerun review analysis instead of reading the stored review state, so the output is not the previously stored recommendation.",
+      "axis": "defect_verdict",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "true"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A criterion that has no recommendation returns an empty result rather than an error.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (2/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A criterion with no recommendation returns an empty result rather than an error.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail, and the output makes the detail's existence known so the pull can happen.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull can happen.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A reader of the review's own output can tell how to obtain the detail; the output makes the detail's existence known so the pull happens.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A recommendation returned on demand is the one the stored review holds for that criterion, and retrieval reads state rather than re-running the review.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A recommendation returned on demand is the one the stored review holds for that criterion; retrieval reads state rather than re-running the review.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (2/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A repo that already contains `.acceptance/next-instruction.md` from an earlier version is left in a state where nothing on disk contradicts the review.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "present"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "A run that finds an `.acceptance/next-instruction.md` left by an earlier version removes it and reports that it did so.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "present"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "No code path writes `.acceptance/next-instruction.md`.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "present"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Nothing is written speculatively, so nothing can go stale.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "present"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Recording that this task supersedes the earlier one belongs outside the repository, in the issue tracker rather than any repo file.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Recording that this task supersedes the earlier one stays in the issue tracker and is not added to any file in the repository.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Recording that this task supersedes the earlier one stays in the issue tracker rather than in any repository file.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written `.acceptance/next-instruction.md` file with an on-demand `acceptance recommendation --criterion <id> [--format json|text]` command that returns a criterion's recommendation from stored review state, defaulting to JSON.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state, defaulting to JSON and supporting text output.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Replace the written next-instruction file with an on-demand command that returns a criterion's recommendation from stored review state.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Retrieval defaults to the most recently stored review when the caller does not name one.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "present"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Starting from a repo that already contains `.acceptance/next-instruction.md`, a clean run leaves the review's own output as the only statement of status.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "present"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The change leaves the recommendations themselves unchanged and only changes how they are obtained.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (2/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The on-demand recommendation command defaults to JSON output.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The recommendations themselves remain unchanged; the task changes how they are obtained rather than how they are produced.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose value intact.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The retrieved recommendation carries each structured field as a discrete key with its prose values intact.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (2/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run for every verdict that has gaps, rather than naming a file to open.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run for every verdict that has gaps.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review's rendered output names the command to run, not a file to open, for every verdict that has gaps.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review-state store format and the review pipeline remain unchanged.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (2/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The review-state store's format and the review pipeline remain unchanged.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification names a specific command surface rather than leaving the command shape to implementation.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (2/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification names a specific command surface, and that command surface remains fixed rather than left to implementation.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The specification no longer describes the recommendation as a written file.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "present"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values intact.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values, preserving the reasoning that makes the recommendation actionable.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "The structured fields keep their prose values.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "Two retrievals over unchanged review state return byte-identical output.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "present"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state without re-running the review.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (2/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    },
+    {
+      "subject": "`acceptance recommendation --criterion <id>` returns that criterion's recommendation from stored review state, without re-running the review.",
+      "axis": "obligation_presence",
+      "modal_class_by_model": {
+        "openai/gpt-5.4-mini": "unstable (1/3)"
+      },
+      "agreeing_pairs": 0,
+      "total_pairs": 0
+    }
+  ]
+}
