@@ -60,6 +60,7 @@ __all__ = [
     "TestEvidence",
     "TestRecommendation",
     "TextSpan",
+    "UnevidenceableObligation",
     "UnrequestedChangeDisposition",
 ]
 
@@ -613,6 +614,31 @@ class TestRecommendation(_Model):
     repo_conventions: str
 
 
+class UnevidenceableObligation(_Model):
+    """A weak obligation for which no test is the right instrument (#266).
+
+    The counterpart to `TestRecommendation`, and deliberately a separate record
+    rather than a recommendation with its fields hollowed out: every field on
+    `TestRecommendation` is one of §9.5's discrete prescriptions, so making them
+    optional would let a half-filled recommendation render as a whole one. A
+    refusal is a different answer, not a degraded one.
+
+    The judgement itself is not new — `_weak_obligations` already declines to
+    recommend for `CODE_ONLY` obligations on exactly this reasoning ("no test can
+    assert that work was not done"), scoped to scope exclusions. This carries the
+    same judgement for the obligations that reasoning never reached: properties
+    of build steps, version pins, and whole-suite behavior.
+
+    Recorded rather than dropped, so the report can distinguish "no test can
+    evidence this" from "no test was recommended" — and so the obligation's
+    §9.3 `indeterminate` evidence class has a stated reason behind it.
+    """
+
+    obligation_id: str
+    criterion: str  # the obligation's observable behavior, restated
+    reason: str  # why no test is the right instrument for this criterion
+
+
 class CompletionVerdict(str, Enum):
     """§10.1 step 11 overall completion result. A positive verdict
     (`no_material_gaps`) is bounded — "no material gaps at the achievable
@@ -866,6 +892,11 @@ class Review(_Model):
     open_questions: list[OpenQuestion] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[TestRecommendation] = Field(default_factory=list)
+    # Weak obligations no test can evidence (#266). Beside the recommendations
+    # rather than folded into them: a reader counting recommendations against
+    # weak obligations must be able to see that the shortfall was answered, not
+    # skipped.
+    unevidenceable: list[UnevidenceableObligation] = Field(default_factory=list)
     completion: CompletionResult | None = None
     limitations: list[str] = Field(default_factory=list)
     recommendation: str | None = None

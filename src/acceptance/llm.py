@@ -277,6 +277,25 @@ def _extract_usage(response: Any) -> dict:
     return usage
 
 
+def _extract_stop_reason(response: Any) -> str | None:
+    """Why the model stopped generating, recorded beside the usage figures.
+
+    Its absence is what made #266 expensive to diagnose: separating a truncated
+    response from a short-but-complete one had to be reconstructed from token
+    counts and whether the JSON happened to parse. The recording exists so that
+    reconstruction is unnecessary, and a stage that returns fewer answers than
+    it was asked for is exactly when a reader needs it.
+
+    `None` is a real answer — a provider that reports no reason records none,
+    rather than one being invented for it.
+    """
+    choices = getattr(response, "choices", None)
+    if not choices:
+        return None
+    reason = getattr(choices[0], "finish_reason", None)
+    return reason if isinstance(reason, str) else None
+
+
 class ModelClient:
     """Issues schema-constrained model calls and records them for replay."""
 
@@ -675,6 +694,10 @@ class ModelClient:
             "request": request,
             "response": _extract_content(response),
             "usage": _extract_usage(response),
+            # Why generation ended — `length` means the answer was cut off and
+            # every judgment it was carrying is missing, which no other recorded
+            # field distinguishes from a complete short answer (#266).
+            "stop_reason": _extract_stop_reason(response),
             # What the provider honoured, which is not always what we asked for.
             # Recorded so a transcript never implies a determinism control that
             # was silently dropped; absent for injected completion functions,

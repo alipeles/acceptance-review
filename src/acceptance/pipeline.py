@@ -68,6 +68,7 @@ from acceptance.review_state import (
     Link,
     Obligation,
     Review,
+    UnevidenceableObligation,
     UnrequestedChangeDisposition,
 )
 from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog
@@ -124,6 +125,33 @@ def _apply_indeterminate(
     return [
         obligation.model_copy(update={"evidence_class": "indeterminate"})
         if obligation.id in unusable.indeterminate_obligations
+        else obligation
+        for obligation in obligations
+    ]
+
+
+def _apply_unevidenceable(
+    obligations: list[Obligation], unevidenceable: list[UnevidenceableObligation]
+) -> list[Obligation]:
+    """Mark obligations no test can evidence as `indeterminate` (#266).
+
+    Only the evidence axis, and deliberately not the coverage axis: the change
+    may well have addressed the obligation, and the coverage stage said so on
+    evidence of its own. What is unavailable is *test* evidence, so the rating
+    that instrument produced — `unsupported`, or whatever weak class earned the
+    obligation its recommendation — is withdrawn rather than reported as a gap.
+
+    `verdict.py` routes `indeterminate` to `unable_to_determine` and lists the
+    obligation as an escalation candidate, which is the §9.3 treatment this
+    wants: a review that cannot measure part of its mandate does not come back
+    clean, and does not come back failing either.
+    """
+    if not unevidenceable:
+        return obligations
+    refused = {entry.obligation_id for entry in unevidenceable}
+    return [
+        obligation.model_copy(update={"evidence_class": "indeterminate"})
+        if obligation.id in refused
         else obligation
         for obligation in obligations
     ]
@@ -302,7 +330,15 @@ def run_review(
     dispositioned = classify_dispositions(
         unrequested, obligations, coverages, change_set, policy, client
     )
-    recommendations = recommend_tests(obligations, discriminations, change_set, client, unusable)
+    recommendations, unevidenceable = recommend_tests(
+        obligations, discriminations, change_set, client, unusable
+    )
+    # An obligation no test can evidence is neither satisfied nor a gap: the
+    # instrument the evidence axis measures with does not apply to it, so §9.3
+    # `indeterminate` is the honest answer and the §3.7 bound on positive results
+    # forbids the other two (#266). Applied after the call, because the refusal
+    # is what the call decided.
+    obligations = _apply_unevidenceable(obligations, unevidenceable)
 
     obligations_by_id = {obligation.id: obligation for obligation in obligations}
     findings = [
@@ -367,5 +403,6 @@ def run_review(
         declaration=declaration,
         findings=findings,
         recommendations=recommendations,
+        unevidenceable=unevidenceable,
         completion=completion,
     )

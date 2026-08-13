@@ -215,13 +215,64 @@ def test_transcripts_record_no_wall_clock_state(store):
     key = request_key(client.build_request(MESSAGES, Verdict))
     record = json.loads(store.path_for(key).read_text())
 
-    assert set(record) == {"request", "response", "usage", "controls_applied"}
+    # `stop_reason` (#266) is a property of the response, not of when it was
+    # made, so it belongs in a transcript this guard is happy with — the guard is
+    # about wall-clock state, and an exhaustive key set is how it stays able to
+    # catch a field that is.
+    assert set(record) == {"request", "response", "usage", "stop_reason", "controls_applied"}
     assert set(record["usage"]) <= {
         "prompt_tokens",
         "completion_tokens",
         "total_tokens",
         "cost_usd",
     }
+
+
+@pytest.mark.parametrize("finish_reason", ["stop", "length"])
+def test_a_transcript_records_why_the_model_stopped_generating(store, finish_reason):
+    """#266: the transcript must say whether the answer was finished or cut off.
+
+    `length` is the case that motivated it. Diagnosing #266 meant separating a
+    truncated response from a short-but-complete one, and with no stop reason
+    recorded that had to be reconstructed from token counts and whether the JSON
+    happened to parse — for a stage whose whole symptom was returning fewer
+    judgments than it was asked for.
+
+    Both values are exercised because recording only the interesting one would
+    be indistinguishable from recording a constant."""
+    response = _fake_response('{"supported": true, "rationale": "ok"}')
+    response.choices[0].finish_reason = finish_reason
+
+    client = ModelClient(
+        model="anthropic/claude-sonnet-5",
+        mode=Mode.RECORD,
+        store=store,
+        completion_fn=lambda **kwargs: response,
+    )
+    client.complete(MESSAGES, Verdict)
+
+    key = request_key(client.build_request(MESSAGES, Verdict))
+    record = json.loads(store.path_for(key).read_text())
+
+    assert record["stop_reason"] == finish_reason
+
+
+def test_a_provider_reporting_no_stop_reason_records_none(store):
+    """`None` is a real answer, not a gap to fill. Inventing `stop` for a
+    provider that said nothing would assert the response was complete on no
+    evidence — the precise claim #266 needed to be able to distrust."""
+    client = ModelClient(
+        model="anthropic/claude-sonnet-5",
+        mode=Mode.RECORD,
+        store=store,
+        completion_fn=_recorder('{"supported": true, "rationale": "ok"}'),
+    )
+    client.complete(MESSAGES, Verdict)
+
+    key = request_key(client.build_request(MESSAGES, Verdict))
+    record = json.loads(store.path_for(key).read_text())
+
+    assert record["stop_reason"] is None
 
 
 def test_harness_does_not_import_the_provider_stack(store):

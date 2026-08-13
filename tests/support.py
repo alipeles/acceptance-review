@@ -214,10 +214,15 @@ def _completed(response: dict, **kwargs) -> dict:
             for rid in supplied
         )
         return _nest_obligations({**response, "requirement_dispositions": dispositions})
-    if response.get("recommendations") == []:
-        return {
-            **response,
-            "recommendations": [
+    if "recommendations" in response:
+        # `unevidenceable` (#266) is a required field, so a fixture that names
+        # its recommendations explicitly would otherwise stop parsing. Filled
+        # with the empty list — declining nothing — because a fixture silent
+        # about refusals is not making one; a test that IS about refusals names
+        # them, and a non-empty list is left alone, exactly as above.
+        completed = {"unevidenceable": [], **response}
+        if response["recommendations"] == []:
+            completed["recommendations"] = [
                 {
                     "obligation_id": obligation_id,
                     "required_inputs": "inputs where the defect changes the outcome",
@@ -228,8 +233,13 @@ def _completed(response: dict, **kwargs) -> dict:
                     "repo_conventions": "follow the existing test module",
                 }
                 for obligation_id in _supplied_enum("obligation_id", **kwargs)
-            ],
-        }
+                # A refusal the fixture DID name is not also recommended for —
+                # the stage rejects an obligation answered twice, and completing
+                # over it would make that rejection unreachable from a double.
+                if obligation_id
+                not in {entry["obligation_id"] for entry in completed["unevidenceable"]}
+            ]
+        return completed
     return _nest_obligations(response)
 
 
