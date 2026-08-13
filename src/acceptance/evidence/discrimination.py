@@ -224,11 +224,15 @@ def _render_enumeration_prompt(obligations: list[Obligation], change_set: Change
     return "\n".join(lines)
 
 
+_MAX_TEST_SOURCE_CHARS = 4000
+
+
 def _render_verdict_prompt(
     obligations: list[Obligation],
     defects_by_obligation: dict[str, list[EnumeratedDefect]],
     evidence_by_obligation: dict[str, list[TestEvidence]],
     change_set: ChangeSet,
+    test_sources: dict[str, str] | None = None,
 ) -> str:
     """The changed code FIRST, then this batch's criteria.
 
@@ -237,6 +241,17 @@ def _render_verdict_prompt(
     part first makes each call a longer prefix of the same string — which is what
     a provider's prompt cache keys on. Reversed, every call is a cache miss and
     the diff is paid for once per criterion.
+
+    Each mapped test is given as its **source**, not only as the assertion
+    strings the extractor pulled out of it. Those strings routinely cannot settle
+    the question being asked. A defect of the form *"the cleanup runs against the
+    current working directory rather than the repository under review"* is not
+    decidable from `assert not stale.exists()` — whether that assertion
+    discriminates depends on where `stale` points, which lives in the fixture
+    setup. Asked to judge from evidence that cannot settle it, a model produces
+    something plausible, and that is indistinguishable from instability.
+    `DiscoveredTest.source` has carried this all along, for exactly this purpose
+    — its docstring says so — and the stage simply never received it.
     """
     lines = _render_changed_code(change_set)
     lines.append("")
@@ -258,6 +273,15 @@ def _render_verdict_prompt(
                 lines.append(f"    assertions: {'; '.join(evidence.assertions)}")
             if evidence.expected_value_provenance:
                 lines.append(f"    expected-value provenance: {evidence.expected_value_provenance}")
+            source = (test_sources or {}).get(evidence.identifier)
+            if source:
+                # Truncated at a fixed length rather than summarised: a summary
+                # is another judgment to get wrong, and the bound has to be
+                # deterministic or two runs build different requests.
+                if len(source) > _MAX_TEST_SOURCE_CHARS:
+                    source = source[:_MAX_TEST_SOURCE_CHARS] + "\n# ... truncated"
+                lines.append("    source:")
+                lines += [f"      {line}" for line in source.splitlines()]
         lines.append("")
     return "\n".join(lines)
 
@@ -346,6 +370,7 @@ def judge_defect_verdicts(
     client: ModelClient,
     batch_size: int = DEFAULT_DEFECT_VERDICT_BATCH_SIZE,
     unusable: UnusableAnswerLog | None = None,
+    test_sources: dict[str, str] | None = None,
 ) -> list[ObligationDiscrimination]:
     """Decide, per already-named defect, whether the mapped tests would catch it.
 
@@ -401,6 +426,7 @@ def judge_defect_verdicts(
                     defects_by_obligation,
                     evidence_by_obligation,
                     change_set,
+                    test_sources,
                 ),
             },
         ]
@@ -458,6 +484,7 @@ def judge_discrimination(
     enumeration_batch_size: int = DEFAULT_DEFECT_ENUMERATION_BATCH_SIZE,
     verdict_batch_size: int = DEFAULT_DEFECT_VERDICT_BATCH_SIZE,
     unusable: UnusableAnswerLog | None = None,
+    test_sources: dict[str, str] | None = None,
 ) -> list[ObligationDiscrimination]:
     """Judge, per criterion with mapped tests, whether those tests would fail
     under a plausible defect (§9.3), in two keyed steps.
@@ -476,5 +503,12 @@ def judge_discrimination(
         return []
     defects = enumerate_defects(obligations, change_set, client, enumeration_batch_size, unusable)
     return judge_defect_verdicts(
-        obligations, defects, test_evidence, change_set, client, verdict_batch_size, unusable
+        obligations,
+        defects,
+        test_evidence,
+        change_set,
+        client,
+        verdict_batch_size,
+        unusable,
+        test_sources,
     )

@@ -292,6 +292,11 @@ def run_review(
         defect_enumeration_batch_size,
         defect_verdict_batch_size,
         unusable,
+        # The verdict stage judges whether a test would FAIL under a defect, and
+        # the extracted assertion strings frequently cannot settle that — the
+        # answer lives in the setup. Discovery already holds the source for
+        # exactly this purpose.
+        {test.test_id: test.source for test in discovered.tests},
     )
     strengths = classify_strength(obligations, test_evidence, discriminations)
     obligations = apply_evidence_strength(obligations, strengths)

@@ -198,3 +198,20 @@ def test_adding_a_test_leaves_the_obligations_enumeration_request_unchanged(tmp_
     # satisfied by a pipeline that ignored the second commit entirely.
     mapped = [kwargs for name, kwargs in after if name == "_Mappings"]
     assert any("test_money_extra.py" in json.dumps(kwargs["messages"]) for kwargs in mapped)
+
+
+def test_the_pipeline_hands_the_verdict_stage_the_real_test_source(tmp_path):
+    """`judge_discrimination` takes the sources as an argument, so the helper can
+    be perfectly correct while the pipeline passes nothing — the exact hole
+    CLAUDE.md says defect injection keeps finding here. `def test_whole(` appears
+    only in the file on disk, never in an extracted assertion or an identifier,
+    so it can only be present if discovery's source actually made the trip.
+    """
+    repo, base, head = _repo(tmp_path)
+    calls: list = []
+
+    _run(repo, base, head, calls)
+
+    verdicts = [kwargs for name, kwargs in calls if name == "_DefectVerdicts"]
+    assert verdicts, "the pipeline never reached a verdict call"
+    assert any("def test_whole(" in json.dumps(kwargs["messages"]) for kwargs in verdicts)

@@ -565,3 +565,61 @@ def test_the_verdict_calls_share_the_changed_code_as_a_common_prefix():
     # And the part that varies really does vary, so the assertion above is not
     # passing because the two prompts are simply identical.
     assert prompts[0] != prompts[1]
+
+
+def test_the_verdict_call_carries_the_mapped_tests_source():
+    """The extracted assertion strings routinely cannot settle the question.
+
+    Here the defect is that cleanup runs against the wrong directory, and the
+    assertion is `assert not stale.exists()`. Whether that discriminates depends
+    entirely on what `stale` was bound to — which lives in the setup, not in the
+    assertion. Given only the assertion the model cannot answer, and a model that
+    cannot answer produces something plausible instead.
+    """
+    obligations = [_obligation("cleanup", "A stale file is removed from the reviewed repo")]
+    evidence = [_evidence("t.py::test_removes_it", ["cleanup"], ["assert not stale.exists()"])]
+    source = (
+        "def test_removes_it(tmp_path):\n"
+        "    stale = tmp_path / '.acceptance' / 'next-instruction.md'\n"
+        "    assert not stale.exists()\n"
+    )
+    calls: list = []
+
+    judge_discrimination(
+        obligations,
+        evidence,
+        _change_set(),
+        _client(
+            _enumeration(("cleanup", ["removes it from the cwd, not the reviewed repo"])),
+            _verdicts(("cleanup::d1", False, ".")),
+            calls,
+        ),
+        test_sources={"t.py::test_removes_it": source},
+    )
+
+    sent = json.dumps(
+        next(kwargs for name, kwargs in calls if name == "_DefectVerdicts")["messages"]
+    )
+    assert "tmp_path / '.acceptance'" in sent.replace("\\'", "'"), (
+        "the setup that decides whether the assertion discriminates must reach the judge"
+    )
+
+
+def test_the_enumeration_call_never_sees_the_test_source():
+    """The source is evidence for the verdict and contamination for enumeration.
+    Everything that makes 'adding a test leaves the defects unchanged' true rests
+    on the enumeration request not containing tests in any form."""
+    obligations = [_obligation("cleanup", "A stale file is removed")]
+    evidence = [_evidence("t.py::test_removes_it", ["cleanup"], ["assert not stale.exists()"])]
+    calls: list = []
+
+    judge_discrimination(
+        obligations,
+        evidence,
+        _change_set(),
+        _client(_enumeration(("cleanup", ["d"])), _verdicts(("cleanup::d1", True, ".")), calls),
+        test_sources={"t.py::test_removes_it": "def test_removes_it():\n    UNIQUE_MARKER = 1\n"},
+    )
+
+    enumeration = next(kwargs for name, kwargs in calls if name == "_Enumeration")
+    assert "UNIQUE_MARKER" not in json.dumps(enumeration["messages"])
