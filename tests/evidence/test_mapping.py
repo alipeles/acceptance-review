@@ -86,6 +86,43 @@ def test_a_test_can_map_to_multiple_obligations():
     assert result.unmapped_obligation_ids == []
 
 
+def test_the_instruction_requires_every_overlapping_obligation_not_the_closest():
+    """#266's Gate 2: the mechanism above was never the problem — the stage
+    already records whatever ids come back. The instruction was.
+
+    Mapping saw a test's full source, described its behavior accurately in the
+    rationale, and then returned ONE id from a pair of obligations that restate
+    each other, leaving the other rated `unsupported` with its evidence sitting
+    in the same response. Nothing told it overlapping obligations are not
+    alternatives.
+
+    What this test demonstrates is narrow and worth stating plainly: it fails if
+    the instruction is dropped, so it guards against silent regression. It does
+    NOT demonstrate that the model obeys it — that is a judgement, and the
+    evidence for it is a recorded run, not an assertion here.
+
+    The wording is also deliberately not tied to any one mandate shape. A
+    requirement-and-its-test-demand pair is how overlap shows up in this repo's
+    own task files, but it must stay an illustration: nothing constrains how a
+    user writes a mandate, and an instruction naming two fixed kinds of
+    obligation would be wrong for the first mandate that overlaps differently.
+    """
+    from acceptance.evidence.mapping import _SYSTEM_PROMPT
+
+    # Normalised: the prompt is hard-wrapped, so every phrase below spans a line
+    # break in the source and would not match literally.
+    instruction = " ".join(_SYSTEM_PROMPT.split())
+
+    assert "return EVERY id its assertions are aimed at, not the single best one" in instruction
+    assert "Do not choose between overlapping obligations; return them all." in instruction
+    # Framed as an example, not as a taxonomy of obligation kinds.
+    assert "illustration only" in instruction
+    assert "never assume the mandate is shaped this way" in instruction
+    # The empty answer stays available — "return them all" must not read as
+    # pressure to map a test that is aimed at nothing.
+    assert "a test aimed at nothing still maps to nothing" in instruction
+
+
 def test_a_test_evidencing_nothing_leaves_obligations_unmapped():
     # Discovery is recall-forward; mapping is the precision filter. A test that
     # touches changed code but asserts nothing about an obligation maps to none.

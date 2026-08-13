@@ -45,10 +45,23 @@ missing or wrong. Map on what the test is AIMED at, not how strong it is:
 whether the test genuinely discriminates the behavior is judged separately
 (later), not here.
 
-- A test may evidence MULTIPLE obligations — return several ids.
+- A test may evidence MULTIPLE obligations — return EVERY id its assertions are
+  aimed at, not the single best one.
+- Obligations are not guaranteed to be independent of one another. Two of them
+  may state the same demand in different words, at different levels of detail,
+  or from different angles — one may even be a demand for evidence about
+  another. When a test's assertions are aimed at what several obligations are
+  about, it evidences all of them, and returning only the closest one leaves the
+  rest looking untested while their evidence sits in the response.
+  Do not choose between overlapping obligations; return them all.
+  (One way overlap arises, as an illustration only — never assume the mandate is
+  shaped this way: a mandate states a behavior, and separately asks that a test
+  assert that behavior. Both become obligations and one test evidences both.)
 - A test may evidence NONE — it touches changed code only incidentally (setup,
   a helper, an unrelated assertion) and asserts nothing about any obligation.
   Return an empty `obligation_ids` for it; that is expected and correct.
+  "Overlapping obligations get every id" does not weaken this: a test aimed at
+  nothing still maps to nothing.
 
 For each test return its `test_id`, the `obligation_ids` it purports to
 evidence (possibly empty), and a short `rationale`. Use only obligation ids
