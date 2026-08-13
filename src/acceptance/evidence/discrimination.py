@@ -42,15 +42,28 @@ the changed code alone. It never sees a test. That is what makes "adding a test
 leaves this obligation's defects unchanged" true *by construction* rather than
 by hope: the request bytes are identical, so the transcript replays.
 
-**Verdict** asks, per defect, whether the mapped tests would catch it. It never
-sees the diff — the enumerated defect already carries what the diff had to say —
-so partitioning it is nearly free.
+**Verdict** asks, per defect, whether the mapped tests would catch it. It sees
+the criterion, the named defects, the mapped tests **and the changed code**.
 
-Both are partitioned by obligation, with their own size control folded into the
-hashed request. Two controls rather than one because their economics differ by
-an order of magnitude: enumeration repeats the diff in every batch, which is the
-cost DR-164 decision 2 declined to pay on the diff-dominated stages, while a
-verdict batch carries only defects and test evidence.
+The first cut of this change dropped the code from the verdict call, on the
+reasoning that the enumerated defect already carried what the diff had to say,
+and that partitioning would then be nearly free. That was wrong twice over. It
+was never asked for — the mandate constrains what enumeration is determined by
+and how the verdict is batched, and says nothing about taking an input away from
+the judge — and it made the judgement worse: measured against the pre-change
+baseline, evidence-class movement across resample runs went from 2 to 16.
+Deciding whether a test fails under a defect is a question about the code the
+test exercises, and it cannot be answered well from the defect sentence and the
+assertion text alone.
+
+So both calls carry the diff, and both are partitioned by obligation with their
+own size control folded into the hashed request. Repeating the diff per batch is
+the cost DR-164 decision 2 declined to pay on the diff-dominated stages; it is
+paid here deliberately and pushed into the provider's prompt cache by putting
+the invariant block first in every request (see `_render_verdict_prompt`). Two
+size controls rather than one because the two calls still differ in what else
+they carry, and because the right batch size for each is an open measurement
+rather than a shared guess.
 
 Enumeration covers **every** obligation, not only those with mapped tests. That
 is deliberate and load-bearing: gating it on the mapping would put the mapping
@@ -198,9 +211,16 @@ def _render_changed_code(change_set: ChangeSet) -> list[str]:
 
 
 def _render_enumeration_prompt(obligations: list[Obligation], change_set: ChangeSet) -> str:
-    lines = ["## Criteria", ""]
+    """Changed code first, criteria second — same reason as the verdict prompt.
+
+    Enumeration repeats the diff once per batch too, so the invariant block
+    belongs in the shared prefix here as well.
+    """
+    lines = _render_changed_code(change_set)
+    lines.append("")
+    lines.append("## Criteria")
+    lines.append("")
     lines += _render_criteria(obligations)
-    lines += _render_changed_code(change_set)
     return "\n".join(lines)
 
 
@@ -208,8 +228,20 @@ def _render_verdict_prompt(
     obligations: list[Obligation],
     defects_by_obligation: dict[str, list[EnumeratedDefect]],
     evidence_by_obligation: dict[str, list[TestEvidence]],
+    change_set: ChangeSet,
 ) -> str:
-    lines = ["## Criteria, their plausible defects, and their mapped tests", ""]
+    """The changed code FIRST, then this batch's criteria.
+
+    Order is load-bearing, not cosmetic. The code block is identical across every
+    verdict call in a run and the criteria block is not, so putting the invariant
+    part first makes each call a longer prefix of the same string — which is what
+    a provider's prompt cache keys on. Reversed, every call is a cache miss and
+    the diff is paid for once per criterion.
+    """
+    lines = _render_changed_code(change_set)
+    lines.append("")
+    lines.append("## Criteria, their plausible defects, and their mapped tests")
+    lines.append("")
     for obligation in obligations:
         lines.append(f"### criterion id={obligation.id}: {obligation.description}")
         if obligation.observable_behavior:
@@ -310,6 +342,7 @@ def judge_defect_verdicts(
     obligations: list[Obligation],
     defects: list[EnumeratedDefect],
     test_evidence: list[TestEvidence],
+    change_set: ChangeSet,
     client: ModelClient,
     batch_size: int = DEFAULT_DEFECT_VERDICT_BATCH_SIZE,
     unusable: UnusableAnswerLog | None = None,
@@ -319,6 +352,17 @@ def judge_defect_verdicts(
     Criteria with no mapped test are not judged here — they are unsupported,
     classified by M5.3 — and neither are criteria for which nothing was
     enumerated.
+
+    The changed code is part of this request and must stay that way. Deciding
+    whether a test would fail under a defect is a question about the code the
+    test exercises: what the assertion pins, whether the input reaches the
+    changed branch, whether the defect would even alter the value asserted on.
+    Asking it from the defect sentence and the assertion text alone is a
+    strictly harder question, and #191's first cut did exactly that — it dropped
+    the diff here so that partitioning would be cheap. Measured against the
+    pre-change baseline, evidence-class movement across resample runs went from
+    2 to 16. The saving is not worth it and the cost belongs in the prompt cache
+    instead; see `_render_verdict_prompt` on why the code block comes first.
     """
     evidence_by_obligation = {
         oid: evidences
@@ -353,7 +397,10 @@ def judge_defect_verdicts(
             {
                 "role": "user",
                 "content": _render_verdict_prompt(
-                    batch_obligations, defects_by_obligation, evidence_by_obligation
+                    batch_obligations,
+                    defects_by_obligation,
+                    evidence_by_obligation,
+                    change_set,
                 ),
             },
         ]
@@ -429,5 +476,5 @@ def judge_discrimination(
         return []
     defects = enumerate_defects(obligations, change_set, client, enumeration_batch_size, unusable)
     return judge_defect_verdicts(
-        obligations, defects, test_evidence, client, verdict_batch_size, unusable
+        obligations, defects, test_evidence, change_set, client, verdict_batch_size, unusable
     )

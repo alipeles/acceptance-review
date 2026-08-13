@@ -15,6 +15,7 @@ is verified by a live RECORD run, shown in the PR, not here.
 """
 
 import json
+import os
 import tempfile
 
 from acceptance.config import DEFAULT_DEFECT_VERDICT_BATCH_SIZE
@@ -500,3 +501,67 @@ def test_a_defect_the_verdict_call_never_answered_is_reported_as_indeterminate()
     )
 
     assert "ob-1" in unusable.indeterminate_obligations
+
+
+def test_the_verdict_call_carries_the_changed_code():
+    """Whether a test fails under a defect is a question about the code that
+    test exercises — what the assertion pins, whether the input even reaches the
+    changed branch. It cannot be answered well from the defect sentence and the
+    assertion text alone.
+
+    #191's first cut removed the diff from this call so that partitioning would
+    be cheap. Nothing caught it: not this suite, and not the tool's own
+    unrequested-change detection running over that very diff, across three
+    rounds. Measured, it took evidence-class movement across resample runs from
+    2 to 16. This is the guard that was missing.
+    """
+    obligations = [_obligation("ob-1", "A")]
+    evidence = [_evidence("t.py::test_a", ["ob-1"], ["assert f() == 1"])]
+    calls: list = []
+
+    judge_discrimination(
+        obligations,
+        evidence,
+        _change_set(),
+        _client(_enumeration(("ob-1", ["d"])), _verdicts(("ob-1::d1", True, ".")), calls),
+    )
+
+    verdict = next(kwargs for name, kwargs in calls if name == "_DefectVerdicts")
+    assert "def prorate" in json.dumps(verdict["messages"]), (
+        "the verdict call must see the changed code, not only the defect wording"
+    )
+
+
+def test_the_verdict_calls_share_the_changed_code_as_a_common_prefix():
+    """The diff is now repeated in every verdict call, so it has to land in the
+    provider's prompt cache rather than on the bill N times. A prompt cache keys
+    on a *prefix*, so the invariant block has to come before the part that
+    varies per batch — reversed, every call is a miss."""
+    obligations = [_obligation("ob-1", "A"), _obligation("ob-2", "B")]
+    evidence = [_evidence(f"t.py::test_{n}", [f"ob-{n}"], ["assert f()"]) for n in (1, 2)]
+    calls: list = []
+
+    judge_discrimination(
+        obligations,
+        evidence,
+        _change_set(),
+        _client(
+            _enumeration(("ob-1", ["d"]), ("ob-2", ["d"])),
+            _verdicts(("ob-1::d1", True, "."), ("ob-2::d1", True, ".")),
+            calls,
+        ),
+        verdict_batch_size=1,
+    )
+
+    prompts = [
+        kwargs["messages"][-1]["content"] for name, kwargs in calls if name == "_DefectVerdicts"
+    ]
+    assert len(prompts) == 2, "one call per criterion at a batch size of 1"
+
+    shared = os.path.commonprefix(prompts)
+    assert "def prorate" in shared, (
+        "the changed code must fall inside the shared prefix, or it is a cache miss every call"
+    )
+    # And the part that varies really does vary, so the assertion above is not
+    # passing because the two prompts are simply identical.
+    assert prompts[0] != prompts[1]
