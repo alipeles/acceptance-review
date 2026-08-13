@@ -82,6 +82,82 @@ before reading the count of differences.
 the denominator. The two were consistent only while the verdict axis was empty.
 Queued in `docs/DEFERRED.md`.
 
+## The post-change measurement
+
+`post-change-instability.json`, same case, same model, same three seeds, same
+perturbation. Every request changed, so nothing replayed and this one was bought.
+
+**#191's Acceptance asks for lower resample variance and lower perturbation
+sensitivity. It got neither.**
+
+| axis | pre | post |
+|---|---|---|
+| `evidence_class` differences across the three run pairs | **2** | **16** |
+| perturbation, `evidence_class` only | 1 of 21 | **5 of 21** |
+| perturbation, all kinds | 1 of 21 | 13 of 21 |
+| defect wordings shared by ≥2 resample runs | 0 of 114 | **0 of 141** |
+
+The `evidence_class` row is the honest comparison: that axis was measurable
+before and after, and it is eight times worse. Read the other rows with the
+caveats below before drawing anything from them.
+
+### What did NOT happen: enumeration did not become deterministic
+
+141 subjects over 141 observations — every defect wording still appears exactly
+once across the three runs, exactly as before.
+
+This is not a bug, and it is worth being precise about what the change actually
+promises. The three resample runs use **different seeds**, and the seed is in
+the request key, so each is a genuinely independent draw. #191 makes an
+obligation's enumeration invariant to *test edits* — same request bytes, so the
+transcript replays. It does nothing to make the model's enumeration reproducible
+across independent samples, and nothing in the mandate asks it to. Constraint-12
+("two runs over the same obligations and the same changed code enumerate the
+same defects") holds in the replay sense and fails in the resample sense, and
+the tests assert the replay sense.
+
+### What DID happen: the verdict axis became measurable, and it is bad
+
+The perturbation run shares seed 1000 with baseline run 0 and differs only by an
+added test file. Test files are filtered out of the enumeration request, so that
+request is byte-identical and replays — which is the mechanism (b) exists for.
+The consequence shows up in the numbers:
+
+**8 verdict flips on defects whose wording is identical**, e.g.
+
+```
+`acceptance recommendation --criterion <id>` returns that criterion's
+recommendation from stored review state
+    would_be_caught  True -> False
+```
+
+Pre-change this was structurally impossible to observe: the single combined call
+carried the tests, so an added test changed the request, changed the wordings,
+and left no shared key to compare. The baseline's `1 of 21` was not a low number,
+it was an unmeasured one.
+
+So the perturbation row is not comparable pre-to-post. 8 of the 13 changed
+judgements are verdict flips that pre-change could not be counted, and they are
+not in the denominator either — see the ratio defect queued in `DEFERRED.md`.
+The comparable part is 1 → 5 on `evidence_class`.
+
+### The regression that is real
+
+Eight times more `evidence_class` movement across resamples is not an artefact
+of better instrumentation. `evidence_class` was fully measurable before.
+
+The likely mechanism is the change itself. `defect_verdict_batch_size` defaults
+to 1, so a review that made **one** verdict judgement call now makes one per
+criterion — nineteen independent draws where there was a single sample. Removing
+work-shedding and adding sampling variance are both real effects of partitioning,
+and on this case the second dominated. That is a hypothesis this measurement
+does not settle: it was taken at one batch size, and a run at a larger verdict
+batch would separate the two.
+
+**Recorded as a negative result rather than tuned away.** DR-180's governing
+constraint cuts both directions — stability must not be bought by blunting the
+judge, and a batch size must not be picked to make this table look better.
+
 ## Provenance of the file itself
 
 `baseline-instability.json` was produced by the run above and is byte-identical
