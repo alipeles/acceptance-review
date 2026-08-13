@@ -221,6 +221,23 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
   Never `git stash`, which reverts the working tree wholesale.
 - **Push a `main` commit immediately.** An unpushed `main` commit reaches origin
   only inside the next branch's squash, attributed to the wrong PR.
+- **A commit subject starting with `#` is silently destroyed on the editor
+  path.** Git strips lines beginning with `core.commentChar`, which defaults to
+  `#`, so `#261 Gate 2 — not clean` loses its subject and the second paragraph
+  of the body silently becomes the subject. No warning, exit 0; you find out by
+  reading `git log` afterwards. This repo's convention produces such subjects
+  constantly.
+
+  ```bash
+  git -c core.commentChar=';' -c core.editor=true rebase --continue
+  ```
+
+  **It fires only when an editor is involved** — a *conflicted* rebase's
+  `--continue`, a `reword`, or `--amend`. A clean rebase reuses the commit
+  object and never opens one, which is why branches carrying these subjects
+  survive rebase after rebase and then lose a message the first time a conflict
+  appears. Verify with `printf '#x subject\n\nbody\n' | git stripspace
+  --strip-comments`, which prints only `body`.
 - **Before coding**, read the issue body and its Acceptance check, and state the
   plan before editing.
 - **Dogfooding is a hard gate on shipping.** See *Dogfooding — the review gates*
