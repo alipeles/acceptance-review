@@ -1,0 +1,315 @@
+Task completion: INCOMPLETE
+
+9 obligation(s) with non-discriminating test evidence (test-review-does-not-abort-on-no-test-can-evidence-statement, test-omitted-criterion-still-aborts-review, test-statement-attributed-to-criterion-in-persisted-state, test-all-weak-criteria-answered-that-way-produce-report, test-report-omits-no-test-can-evidence-statement-for-no-recommendation, no-test-evidence-statement-carries-reason, no-test-evidence-statement-does-not-abort-review, weak-criteria-all-statement-produces-report, addressed-criterion-indeterminate-on-test-evidence-axis).
+
+Obligations:
+
+  1. A test asserts that a criterion answered with a statement that no test can evidence it does not abort the review.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  tests/coverage/test_recommendations.py#@@ -335,4 +344,140 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The change includes a test covering that a criterion with the statement still allows the review to continue.
+           inputs:  A review input with at least one weak obligation whose model response includes a matching entry in `unevidenceable` for that obligation, and at least one other weak obligation that still receives a normal recommendation. Use a case where the declined obligation is otherwise fully valid so the only difference is the refusal statement.
+           detects: The implementation still treats a valid no-test-evidence refusal as an abort condition, so any response containing that statement fails review instead of allowing it to continue.
+           full detail: acceptance recommendation --criterion test-review-does-not-abort-on-no-test-can-evidence-statement
+
+  2. A test asserts that a criterion the model omits entirely still aborts the review.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  tests/coverage/test_recommendations.py#@@ -335,4 +344,140 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The change includes a test covering that omission of a criterion still causes review abortion.
+           inputs:  A weak-obligation response that answers some obligations via recommendation and/or refusal, but leaves exactly one weak obligation unmentioned. The omitted obligation must be distinct from the answered ones so the missing-answer path is isolated.
+           detects: The implementation stops enforcing completeness once it sees any recommendation or refusal, so an omitted weak criterion no longer aborts the review.
+           full detail: acceptance recommendation --criterion test-omitted-criterion-still-aborts-review
+
+  3. A test asserts that such a statement reaches the persisted review state attributed to its criterion.
+       requirements: completion-04
+       code evidence: addressed
+         3.1  src/acceptance/review_state.py#@@ -613,6 +614,31 @@ class TestRecommendation(_Model):
+         3.2  src/acceptance/pipeline.py#@@ -302,7 +330,15 @@ def run_review(
+         3.3  src/acceptance/pipeline.py#@@ -367,5 +403,6 @@ def run_review(
+         3.4  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The change includes a test covering that the persisted review state stores the statement against the correct criterion.
+           inputs:  A review run that produces at least one unevidenceable obligation and one ordinary recommendation, then round-trip the resulting review state through `to_dict`/`from_dict` or the repository's persistence path.
+           detects: The persisted review state stores the refusal against the wrong criterion, or reconstructs it from the wrong obligation when serializing/deserializing.
+           full detail: acceptance recommendation --criterion test-statement-attributed-to-criterion-in-persisted-state
+
+  4. A test asserts that a review whose weak criteria are all answered that way produces a report.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The change includes a test covering that when all weak criteria receive the statement, a report is produced.
+           inputs:  A review where every weak obligation is answered with the no-test-evidence statement and none are omitted. Use a case with no ordinary recommendations so the report path depends entirely on refusals.
+           detects: The pipeline still aborts when all weak criteria are answered with the refusal statement, so a fully declined review cannot complete and emit a report.
+           full detail: acceptance recommendation --criterion test-all-weak-criteria-answered-that-way-produce-report
+
+  5. A test asserts that an addressed criterion carrying such a statement is classified indeterminate on the test-evidence axis.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  src/acceptance/pipeline.py#@@ -129,6 +130,33 @@ def _apply_indeterminate(
+         5.2  src/acceptance/pipeline.py#@@ -302,7 +330,15 @@ def run_review(
+         5.3  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: strongly supported  [tier: static]
+         5.4  tests/test_unevidenceable_obligations.py::test_a_declined_obligation_is_indeterminate_on_the_evidence_axis
+
+  6. A test asserts that the report states, for a criterion no test can evidence, that no test can evidence it.
+       requirements: completion-07
+       code evidence: addressed
+         6.1  src/acceptance/report.py#@@ -33,6 +34,11 @@ _NO_TESTS = "(no mapped test)"
+         6.2  src/acceptance/report.py#@@ -66,6 +72,7 @@ def render_report(review: Review) -> str:
+         6.3  src/acceptance/report.py#@@ -74,6 +81,7 @@ def render_report(review: Review) -> str:
+         6.4  src/acceptance/report.py#@@ -324,6 +332,7 @@ def _obligation_block(
+         6.5  src/acceptance/report.py#@@ -383,6 +392,12 @@ def _obligation_block(
+         6.6  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: strongly supported  [tier: static]
+         6.7  tests/test_unevidenceable_obligations.py::test_the_report_says_no_test_can_evidence_the_criterion
+
+  7. A test asserts that the report makes no such statement for a criterion that merely carries no recommendation.
+       requirements: completion-08
+       code evidence: addressed
+         7.1  src/acceptance/report.py#@@ -66,6 +72,7 @@ def render_report(review: Review) -> str:
+         7.2  src/acceptance/report.py#@@ -74,6 +81,7 @@ def render_report(review: Review) -> str:
+         7.3  src/acceptance/report.py#@@ -324,6 +332,7 @@ def _obligation_block(
+         7.4  src/acceptance/report.py#@@ -383,6 +392,12 @@ def _obligation_block(
+         7.5  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The change includes a test covering that a criterion with no recommendation does not receive the no-test-can-evidence statement in the report.
+           inputs:  A review containing at least one weak obligation with no recommendation and no refusal, alongside at least one declined obligation so the report contains both cases for comparison.
+           detects: The report renderer prints the no-test-evidence wording for any weak obligation lacking a recommendation, even when no refusal was recorded.
+           full detail: acceptance recommendation --criterion test-report-omits-no-test-can-evidence-statement-for-no-recommendation
+
+  8. A test asserts that a review of a change modifying only configuration files produces a report.
+       requirements: completion-09
+       code evidence: addressed
+         8.1  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: strongly supported  [tier: static]
+         8.2  tests/test_unevidenceable_obligations.py::test_a_config_only_change_produces_a_report
+
+  9. A test asserts that two runs over the same criteria and change produce the same statements.
+       requirements: completion-10
+       code evidence: addressed
+         9.1  tests/coverage/test_recommendations.py#@@ -335,4 +344,140 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+         9.2  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+
+  10. A test asserts that a recorded model exchange carries the reason the model stopped generating.
+       requirements: completion-11
+       code evidence: addressed
+         10.1  src/acceptance/llm.py#@@ -277,6 +277,25 @@ def _extract_usage(response: Any) -> dict:
+         10.2  src/acceptance/llm.py#@@ -675,6 +694,10 @@ class ModelClient:
+         10.3  tests/test_llm.py#@@ -215,7 +215,11 @@ def test_transcripts_record_no_wall_clock_state(store):
+         10.4  tests/test_llm.py#@@ -224,6 +228,53 @@ def test_transcripts_record_no_wall_clock_state(store):
+       test evidence: strongly supported  [tier: static]
+         10.5  tests/test_llm.py::test_a_provider_reporting_no_stop_reason_records_none
+         10.6  tests/test_llm.py::test_a_transcript_records_why_the_model_stopped_generating
+
+  11. A test recommendation may state that no test can evidence its criterion.
+       requirements: constraint-01
+       code evidence: addressed
+         11.1  src/acceptance/coverage/recommendations.py#@@ -60,8 +63,17 @@ recommendation with these discrete fields:
+         11.2  src/acceptance/coverage/recommendations.py#@@ -74,8 +86,18 @@ class _Recommendation(StrictResponseModel):
+         11.3  src/acceptance/coverage/recommendations.py#@@ -122,18 +144,32 @@ def _render_prompt(
+         11.4  src/acceptance/coverage/recommendations.py#@@ -179,23 +224,57 @@ def recommend_tests(
+       test evidence: strongly supported  [tier: static]
+         11.5  tests/coverage/test_recommendations.py::test_a_declined_obligation_does_not_abort_the_review
+
+  12. A statement that no test can evidence a criterion carries a reason.
+       requirements: constraint-02
+       code evidence: addressed
+         12.1  src/acceptance/coverage/recommendations.py#@@ -74,8 +86,18 @@ class _Recommendation(StrictResponseModel):
+         12.2  src/acceptance/review_state.py#@@ -613,6 +614,31 @@ class TestRecommendation(_Model):
+         12.3  src/acceptance/report.py#@@ -383,6 +392,12 @@ def _obligation_block(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: A persisted or emitted statement of this kind includes an accompanying reason field or text.
+           inputs:  A persisted or emitted refusal record with a non-empty reason string, ideally one that is distinct from the criterion text so the test can detect omission or substitution.
+           detects: The implementation records the refusal without its accompanying reason, or drops/overwrites the reason during serialization or rendering.
+           full detail: acceptance recommendation --criterion no-test-evidence-statement-carries-reason
+
+  13. A criterion answered with such a statement does not abort the review.
+       requirements: constraint-03
+       code evidence: addressed
+         13.1  src/acceptance/coverage/recommendations.py#@@ -122,18 +144,32 @@ def _render_prompt(
+         13.2  src/acceptance/coverage/recommendations.py#@@ -179,23 +224,57 @@ def recommend_tests(
+         13.3  tests/coverage/test_recommendations.py#@@ -335,4 +344,140 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: When a criterion is answered with the no-test-evidence statement, the review continues instead of aborting.
+           inputs:  A review input where at least one weak obligation is answered with the refusal statement and all other weak obligations are either also refused or recommended so there is no unrelated omission failure.
+           detects: The stage still aborts as soon as it sees the no-test-evidence statement, even when the response is otherwise complete and valid.
+           full detail: acceptance recommendation --criterion no-test-evidence-statement-does-not-abort-review
+
+  14. A criterion for which the model returns neither a recommendation nor such a statement still aborts the review.
+       requirements: constraint-04
+       code evidence: addressed
+         14.1  src/acceptance/coverage/recommendations.py#@@ -179,23 +224,57 @@ def recommend_tests(
+         14.2  tests/coverage/test_recommendations.py#@@ -335,4 +344,140 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+       test evidence: strongly supported  [tier: static]
+         14.3  tests/coverage/test_recommendations.py::test_an_omitted_obligation_still_aborts_even_when_others_are_declined
+
+  15. A statement that no test can evidence a criterion is recorded in the persisted review state.
+       requirements: constraint-05
+       code evidence: addressed
+         15.1  src/acceptance/pipeline.py#@@ -302,7 +330,15 @@ def run_review(
+         15.2  src/acceptance/pipeline.py#@@ -367,5 +403,6 @@ def run_review(
+         15.3  src/acceptance/review_state.py#@@ -613,6 +614,31 @@ class TestRecommendation(_Model):
+         15.4  src/acceptance/review_state.py#@@ -866,6 +892,11 @@ class Review(_Model):
+       test evidence: strongly supported  [tier: static]
+         15.5  tests/test_unevidenceable_obligations.py::test_the_refusal_reaches_review_state_attributed_to_its_obligation
+         15.6  tests/test_unevidenceable_obligations.py::test_the_refusal_survives_persistence
+
+  16. A recorded statement that no test can evidence a criterion names the criterion it applies to.
+       requirements: constraint-06
+       code evidence: addressed
+         16.1  src/acceptance/review_state.py#@@ -613,6 +614,31 @@ class TestRecommendation(_Model):
+         16.2  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: strongly supported  [tier: static]
+         16.3  tests/coverage/test_recommendations.py::test_the_refusal_schema_constrains_ids_to_the_obligations_supplied
+         16.4  tests/test_unevidenceable_obligations.py::test_the_refusal_reaches_review_state_attributed_to_its_obligation
+
+  17. A review in which every weak criterion is answered with a statement that no test can evidence it produces a report.
+       requirements: constraint-07
+       code evidence: addressed
+         17.1  src/acceptance/pipeline.py#@@ -302,7 +330,15 @@ def run_review(
+         17.2  src/acceptance/pipeline.py#@@ -367,5 +403,6 @@ def run_review(
+         17.3  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: When all weak criteria receive that statement, the review completes with a report instead of aborting.
+           inputs:  A full pipeline review where every weak criterion is answered with the refusal statement and the change set is otherwise reviewable, so the only question is whether the review can finish.
+           detects: The pipeline still treats an all-refusal weak set as fatal, so a review with only no-test-evidence answers cannot produce a report.
+           full detail: acceptance recommendation --criterion weak-criteria-all-statement-produces-report
+
+  18. A criterion that the change addresses and that carries a statement that no test can evidence it is classified as indeterminate on the test-evidence axis.
+       requirements: constraint-08
+       code evidence: addressed
+         18.1  src/acceptance/pipeline.py#@@ -129,6 +130,33 @@ def _apply_indeterminate(
+         18.2  src/acceptance/pipeline.py#@@ -302,7 +330,15 @@ def run_review(
+         18.3  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The criterion's test-evidence classification is indeterminate when it is addressed and has that statement.
+           inputs:  A review where the obligation is addressed by the change and also declined as no-test-evidence, so the evidence-axis classification must be updated while the coverage-axis status remains addressed.
+           detects: The pipeline fails to reclassify declined obligations onto the indeterminate evidence axis, or reclassifies the wrong axis/too many obligations.
+           full detail: acceptance recommendation --criterion addressed-criterion-indeterminate-on-test-evidence-axis
+
+  19. The report states, for a criterion no test can evidence, that no test can evidence it.
+       requirements: constraint-09
+       code evidence: addressed
+         19.1  src/acceptance/report.py#@@ -33,6 +34,11 @@ _NO_TESTS = "(no mapped test)"
+         19.2  src/acceptance/report.py#@@ -383,6 +392,12 @@ def _obligation_block(
+         19.3  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: strongly supported  [tier: static]
+         19.4  tests/test_unevidenceable_obligations.py::test_the_report_says_no_test_can_evidence_the_criterion
+
+  20. The report makes no such statement for a criterion that merely carries no recommendation.
+       requirements: constraint-10
+       code evidence: addressed
+         20.1  src/acceptance/report.py#@@ -383,6 +392,12 @@ def _obligation_block(
+         20.2  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: strongly supported  [tier: static]
+         20.3  tests/test_unevidenceable_obligations.py::test_the_report_says_no_such_thing_for_an_obligation_that_merely_lacks_one
+
+  21. A review of a change that modifies only configuration files produces a report.
+       requirements: constraint-11
+       code evidence: addressed
+         21.1  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: strongly supported  [tier: static]
+         21.2  tests/test_unevidenceable_obligations.py::test_a_config_only_change_produces_a_report
+
+  22. Two runs over the same criteria and the same change produce the same statements that no test can evidence them.
+       requirements: constraint-12
+       code evidence: addressed
+         22.1  tests/coverage/test_recommendations.py#@@ -335,4 +344,140 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+         22.2  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: strongly supported  [tier: static]
+         22.3  tests/coverage/test_recommendations.py::test_two_runs_over_the_same_obligations_produce_the_same_refusals
+         22.4  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         22.5  tests/test_unevidenceable_obligations.py::test_two_runs_over_the_same_change_produce_byte_identical_state
+
+  23. A recorded model exchange carries the reason the model stopped generating.
+       requirements: constraint-13
+       code evidence: addressed
+         23.1  src/acceptance/llm.py#@@ -277,6 +277,25 @@ def _extract_usage(response: Any) -> dict:
+         23.2  src/acceptance/llm.py#@@ -675,6 +694,10 @@ class ModelClient:
+         23.3  tests/test_llm.py#@@ -215,7 +215,11 @@ def test_transcripts_record_no_wall_clock_state(store):
+         23.4  tests/test_llm.py#@@ -224,6 +228,53 @@ def test_transcripts_record_no_wall_clock_state(store):
+       test evidence: strongly supported  [tier: static]
+         23.5  tests/test_llm.py::test_transcripts_record_no_wall_clock_state
+
+  24. The change leaves the existing exclusion of criteria whose evidence is code alone outside the new mechanism.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 33 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  25. The change leaves the number of criteria carried in one recommendation request unchanged.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 33 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  26. The change does not take on verifying whether the model's judgement that no test can evidence a criterion is correct.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 33 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  27. The change leaves unchanged how a criterion's test evidence is classified as weak in the first place.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 33 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  28. The change leaves unchanged how the overall completion verdict is derived for criteria that carry no such statement.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 33 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  29. The change does not recommend non-test evidence in place of the test that cannot exist.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 33 changes across 9 files; none breaches this boundary
+       test evidence: not applicable — confirmed by code evidence alone
+
+  30. A review completes and reports even when some of its criteria are ones no test could ever evidence.
+       requirements: task-01
+       code evidence: addressed
+         30.1  src/acceptance/pipeline.py#@@ -302,7 +330,15 @@ def run_review(
+         30.2  src/acceptance/pipeline.py#@@ -367,5 +403,6 @@ def run_review(
+         30.3  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,263 @@
+       test evidence: strongly supported  [tier: static]
+         30.4  tests/test_unevidenceable_obligations.py::test_a_config_only_change_produces_a_report
+         30.5  tests/test_unevidenceable_obligations.py::test_a_review_of_only_declined_obligations_is_unable_to_determine
+
+Mandate coverage: 30 of 31 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: Section marker standing alone with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] Added a new `RecommendationOutcome` return wrapper and changed `recommend_tests` to return it, plus updated callers/tests to unpack `.recommendations`. The obligations require supporting unevidenceable criteria and preserving review/report behavior, but they do not require changing this public API shape; this is an extra interface/refactor beyond the stated needs.
+       src/acceptance/coverage/recommendations.py#@@ -122,18 +144,32 @@ def _render_prompt(
+       tests/coverage/test_recommendations.py#@@ -110,7 +110,7 @@ def test_weak_criterion_gets_a_fully_populated_recommendation():
+       tests/coverage/test_recommendations.py#@@ -130,15 +130,17 @@ def test_strongly_supported_obligations_get_no_recommendation_and_no_model_call(
+       tests/coverage/test_recommendations.py#@@ -158,7 +160,9 @@ def test_recommendation_round_trips_through_persistence():
+       tests/coverage/test_recommendations.py#@@ -263,7 +267,7 @@ def test_every_weak_obligation_gets_exactly_one_recommendation():
+       tests/coverage/test_recommendations.py#@@ -296,7 +300,12 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
+       tests/coverage/test_recommendations.py#@@ -335,4 +344,140 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

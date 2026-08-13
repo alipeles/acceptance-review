@@ -14,10 +14,8 @@ could ever evidence.
 - A review in which every weak criterion is answered that way produces a report.
 - A criterion that the change addresses and that carries such a statement is
   classified as indeterminate on the test-evidence axis.
-- The report states, for a criterion no test can evidence, that no test can
-  evidence it.
-- The report makes no such statement for a criterion that merely carries no
-  recommendation.
+- The report distinguishes a criterion for which no test was recommended because
+  none can evidence it from a criterion for which no test was recommended.
 - A review of a change that modifies only configuration files produces a report.
 - Two runs over the same criteria and the same change produce the same
   statements that no test can evidence them.
@@ -46,10 +44,8 @@ could ever evidence.
   produces a report.
 - A test asserts that an addressed criterion carrying such a statement is
   classified indeterminate on the test-evidence axis.
-- A test asserts that the report states, for a criterion no test can evidence,
-  that no test can evidence it.
-- A test asserts that the report makes no such statement for a criterion that
-  merely carries no recommendation.
+- A test asserts that the report renders a criterion no test can evidence
+  differently from a criterion with no recommendation.
 - A test asserts that a review of a change modifying only configuration files
   produces a report.
 - A test asserts that two runs over the same criteria and change produce the
