@@ -158,6 +158,62 @@ batch would separate the two.
 constraint cuts both directions — stability must not be bought by blunting the
 judge, and a batch size must not be picked to make this table look better.
 
+## Third measurement: the code restored to the verdict call
+
+`post-fix-instability.json`. Same case, model, seeds and perturbation.
+
+| | pre-change | split, no code in verdict | code restored |
+|---|---|---|---|
+| `evidence_class` diffs across the three run pairs | 2 | 16 | **13** |
+| perturbation, all kinds | 1 of 21 | 13 of 21 | 12 of 21 |
+| perturbation, `evidence_class` only | 1 | 5 | 6 |
+| defect verdicts, `caught` / `not caught` | **114 / 0** | 111 / 30 | **82 / 52** |
+| defects per criterion, range over 3 runs | 2–6 | 2–10 | 1–11 |
+| #190 rating-regression suite | 34 pass | 34 pass | 34 pass |
+
+### Restoring the code did not recover the variance
+
+16 → 13 against a baseline of 2. The information-starvation hypothesis explains
+about a fifth of the regression and is not the main cause. It was still the
+right fix — removing that input was never asked for and made the judge worse on
+its own terms — but it does not explain the number.
+
+### The baseline was stable because it was degenerate
+
+This is the result that matters, and it inverts how the whole comparison should
+be read.
+
+**The pre-change judge answered `would_be_caught: true` to 114 of 114 defects,
+across all three runs. It never once said a test would fail to catch anything.**
+Combined with what the first baseline already showed — exactly two defects per
+criterion, every criterion, every run — that is not a judge with low variance.
+It is a constant function, and a constant function is perfectly stable.
+
+Restoring the code roughly doubled the rate at which the stage says *not
+caught*, from 21% to 39%, and widened defects-per-criterion from a near-fixed
+2–6 to 1–11. A discrimination stage that never returns "not caught" cannot find
+a weak test, which is the only thing it exists to do.
+
+So `lower variance than the pre-change baseline` is not a criterion this change
+should be trying to satisfy. Satisfying it means returning to the rubber stamp.
+DR-180's constraint — *stability must not be bought by blunting the judge* —
+turns out to describe the **baseline**, not the change.
+
+### What this does not establish
+
+That the new verdicts are *right*. Variance and correctness are different axes,
+and a higher "not caught" rate is equally consistent with a judge that has
+started over-flagging. #190's suite still passes 34 of 34 in all three
+conditions, which is the only correctness evidence here, and it is a small suite
+built before any of this. A discrimination-rate floor measured against labelled
+cases is what would settle it.
+
+The remaining variance is real and unexplained. Three candidates survive:
+nineteen independent samples where there was one, the loss of cross-criterion
+anchoring within a single response, and unstable mapping upstream feeding the
+verdict different evidence each run — which the perturbation analysis already
+showed is happening.
+
 ## Provenance of the file itself
 
 `baseline-instability.json` was produced by the run above and is byte-identical
