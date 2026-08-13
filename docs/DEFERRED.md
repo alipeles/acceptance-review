@@ -970,3 +970,162 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   defect wording ever repeated between runs, so the verdict axis had nothing to
   compare.
 - **Status:** open
+
+### [2026-08-12] A recommendation flagged the same obligation three runs running while citing the test that satisfies it
+- **Kind:** filing (new issue, child of #185)
+- **Found during:** #191, Gate 2, rounds 1–3
+- **Where:** `dogfood-logs/191-gate2-run{1,2,3}/`, `test-verdict-call-carries-configured-bounded-obligations`
+- **Severity:** should-fix
+- **What's wrong:** the obligation was rated `partially supported` in all three
+  rounds. By round 3 the run cites **both** relevant tests, including
+  `test_the_verdict_bound_counts_criteria_and_not_defects`, which was written in
+  round 2 to satisfy this very recommendation and does everything its `inputs`
+  asks: more criteria than the batch size, one criterion carrying five defects
+  so defect count and criterion count diverge, and an assertion over the
+  verdict-call request payload rather than the final review.
+
+  The `detects` clause is also incoherent in rounds 2 and 3:
+
+  > The verdict request is built from the wrong batch dimension, so the number of
+  > defects carried per call is bounded by the number of obligations instead of
+  > the configured defect-verdict batch size.
+
+  That inverts the two dimensions. The mandate bounds *obligations per verdict
+  call* (`constraint-03`), which is exactly what `defect_verdict_batch_size`
+  does. Round 1's statement of the same finding was coherent, so the wording
+  degraded while the flag persisted.
+- **Why I didn't act:** there is no code change that answers it. The test the
+  recommendation describes exists and the same report cites it; writing a third
+  is chasing a rating.
+- **Drafted fix:** file as a child of #185, `bug` / `track:checker`:
+
+  > **Title:** A recommendation persists across three runs while citing the test that satisfies it
+  >
+  > Worth separating from the #225 family even though it looks similar. #225 is
+  > about ratings **moving** — the same evidence judged differently between runs.
+  > This one does not move: it is wrong in the same way three times, which means
+  > it is not the instability and will not be fixed by anything that stabilises
+  > the judge.
+  >
+  > From `dogfood-logs/191-gate2-run{1,2,3}/`, obligation
+  > `test-verdict-call-carries-configured-bounded-obligations`:
+  >
+  > | round | rating | tests cited | recommendation asks for |
+  > |---|---|---|---|
+  > | 1 | partially supported | 1 | uneven defect counts across criteria |
+  > | 2 | partially supported | 2 (incl. the test written for round 1's ask) | the same thing |
+  > | 3 | partially supported | 2 | the same thing again |
+  >
+  > Round 2 added `test_the_verdict_bound_counts_criteria_and_not_defects`
+  > precisely to close round 1's recommendation. Round 3 cites it and repeats the
+  > recommendation.
+  >
+  > Two candidate mechanisms, both worth checking before picking a fix:
+  >
+  > 1. The recommendation is generated from the obligation and the diff without
+  >    reading the cited tests, so it cannot notice the ask is already met.
+  > 2. The rating and the recommendation are produced together, so a
+  >    `partially supported` rating obliges a recommendation and one gets written
+  >    whether or not a gap exists.
+  >
+  > The garbled `detects` clause is evidence for (1): it describes a defect in
+  > terms that do not correspond to the code's actual batching dimension.
+- **Status:** open
+
+### [2026-08-12] #245: a test mapped in round 1 reports "(no mapped test)" in round 3, while its file is cited in the same obligation
+- **Kind:** filing (comment on existing issue #245)
+- **Found during:** #191, Gate 2, rounds 1 and 3
+- **Where:** `dogfood-logs/191-gate2-run{1,3}/`, `test-adding-mapped-test-leaves-obligation-defects-unchanged`
+- **Severity:** should-fix
+- **What's wrong:** round 1 rated the obligation `strongly supported`, citing
+  `tests/test_discrimination_wiring.py::test_adding_a_test_leaves_the_obligations_enumeration_request_unchanged`
+  — a test whose name is very nearly the obligation's own text. Round 3 rates it
+  **`unsupported`** with **"(no mapped test)"**, while the *code* evidence for
+  the same obligation cites `tests/test_discrimination_wiring.py`, the file that
+  contains it. Nothing about the test changed between the runs.
+- **Why I didn't act:** the test exists, is named almost identically to the
+  obligation, and was found once already. There is nothing to write.
+- **Drafted fix:** comment on #245, adding this instance to the record. What it
+  contributes beyond the existing ones: the report **points at the file in one
+  axis and denies the test exists in the other, in the same obligation, in the
+  same run.** Previous instances split a test between two obligations or moved a
+  mapping between runs; this one is internally contradictory within a single
+  rendered obligation, which makes it visible to a reader without a second run
+  to compare against.
+- **Status:** open
+
+### [2026-08-13] Unrequested-change detection is blind to REMOVALS
+- **Kind:** filing (new issue, child of #185)
+- **Found during:** #191, Gate 2 rounds 1–3
+- **Where:** `src/acceptance/coverage/unrequested.py`
+- **Severity:** should-fix — it is a whole class of miss, not one miss
+- **What's wrong:** the #191 branch removed the changed-code block from the
+  defect-verdict prompt. Nothing in the mandate asked for it, it took an input
+  away from a judging stage, and measured against the pre-change baseline it
+  took evidence-class movement from 2 to 16. **Three Gate 2 rounds reported nine
+  unrequested changes between them and none named it.** The two that came
+  closest were both dispositioned `in_service` — i.e. accepted:
+
+  > round 1: "…introduce a specific two-stage prompt structure… and **alter
+  > adjacent behavior such as prompt contents** and batching strategy."
+  > round 3: "…the specific helper reshaping and private model renaming are
+  > **internal implementation details**."
+
+  Meanwhile it rated a `*args/**kwargs` signature change on a benchmark helper
+  as `risky`, and thought new CLI flags were worth reporting.
+
+  Every one of the nine is phrased as *"X **beyond** what's required."* The
+  detector is looking for additions. A deletion — a removed input, a weakened
+  assertion, a dropped guard, a narrowed prompt — appears to be structurally
+  invisible to it, which predicts a whole class of misses rather than one.
+- **Why I didn't act:** out of scope for #191, and the fix is a change to what
+  the detection call is asked for, which re-records that stage.
+- **Drafted fix:** file as a child of #185, `bug` / `track:checker`:
+
+  > **Title:** Unrequested-change detection finds additions and is blind to removals
+  >
+  > Worked example, from the tool reviewing its own branch across three rounds:
+  > `#191` deleted the changed-code block from the defect-verdict prompt. Not
+  > requested by any obligation, and measurably harmful — the judge got worse on
+  > the project's own instability measure. Nine unrequested changes were reported
+  > across the three rounds and not one named the deletion.
+  >
+  > The phrasing of all nine is the tell: every one is *"X beyond what's
+  > required."* The stage is being asked what the diff **adds** that the mandate
+  > did not ask for. Nothing asks what it **takes away**.
+  >
+  > This matters more than a single miss because removals are the higher-risk
+  > half. Adding an unrequested CLI flag is noise; removing an input from a
+  > judging stage, deleting a guard, or weakening an assertion changes behaviour
+  > silently and is exactly what a reviewer is for.
+  >
+  > Suggested acceptance: a diff that deletes a prompt input, a guard, or an
+  > assertion, with no obligation calling for the deletion, is reported as an
+  > unrequested change — and is not dispositioned `in_service` by default.
+- **Status:** open
+
+### [2026-08-13] Token usage is recorded without the cached-token count
+- **Kind:** defect
+- **Found during:** #191, measuring prompt-cache effectiveness
+- **Where:** `src/acceptance/llm.py::_extract_usage`
+- **Severity:** nice-to-have
+- **What's wrong:** it records `prompt_tokens`, `completion_tokens`,
+  `total_tokens` and `cost_usd`, and drops `prompt_tokens_details.cached_tokens`.
+  Since #191 both discrimination calls repeat the whole diff per batch and rely
+  on the provider's prompt cache to make that affordable — measured live at
+  84–93% of each verdict request served from cache — so the one number that says
+  whether the design is working is the one not kept. Answering it needed an ad
+  hoc script issuing live calls.
+- **Why I didn't act:** it is in `llm.py`, outside #191's area, and the question
+  it answers was answered another way.
+- **Drafted fix:** add `cached_tokens` to `_extract_usage` when the provider
+  reports it. Response-side metadata only — it is not part of the request key,
+  so it invalidates no transcript and can land any time. Roughly:
+
+  ```python
+  details = getattr(raw, "prompt_tokens_details", None)
+  cached = getattr(details, "cached_tokens", None) if details else None
+  if cached is not None:
+      usage["cached_tokens"] = cached
+  ```
+- **Status:** open
