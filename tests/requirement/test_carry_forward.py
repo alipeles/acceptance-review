@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import json
 
+from acceptance.llm import inline_schema_refs
+from acceptance.requirement import obligations as obligations_module
 from acceptance.requirement.carry import plan_carry, stale_spans
 from acceptance.requirement.ledger import (
     DECOMPOSE_STAGE_LOGIC_VERSION,
@@ -27,6 +29,7 @@ from acceptance.requirement.ledger import (
     LedgerStore,
     MergeDecision,
     RequirementDerivation,
+    carry_key,
     new_run_id,
 )
 from acceptance.requirement.linking import link_duplicate_obligations
@@ -351,6 +354,74 @@ def test_a_changed_stage_logic_version_invalidates_every_carried_entry():
     _, counting = _run(_TASK, prior=prior)
 
     assert counting.decompose_calls > 0
+
+
+def test_a_changed_response_schema_invalidates_the_entries_derived_under_it():
+    """The response schema is one of the four determinism controls `llm.py` puts
+    in a request key, so an entry recorded under a different one is not an entry
+    this run could reproduce.
+
+    Modelled as a prior whose keys were computed under a different schema — which
+    is exactly what "obligations derived under the previous schema" is — rather
+    than by mutating the live model, so the assertion is about `plan_carry`
+    comparing keys rather than about a patched class.
+    """
+    first, counting = _run(_TASK)
+    prior = _ledger_from(first)
+    under_old_schema = prior.model_copy(
+        update={
+            "derivations": [
+                derivation.model_copy(
+                    update={
+                        "carry_key": carry_key(
+                            system_prompt=obligations_module._SYSTEM_PROMPT,
+                            response_schema={"name": "_Decomposition", "schema": {"older": True}},
+                            model=counting.client.model,
+                            temperature=counting.client.temperature,
+                            seed=counting.client.seed,
+                            stage_logic_version=DECOMPOSE_STAGE_LOGIC_VERSION,
+                            requirement_text=derivation.text,
+                        )
+                    }
+                )
+                for derivation in prior.derivations
+            ]
+        }
+    )
+
+    _, second = _run(_TASK, prior=under_old_schema)
+
+    assert second.decompose_calls > 0
+
+
+def test_the_carry_key_reads_the_live_response_schema():
+    """The wiring behind the test above.
+
+    That test would still pass if `decompose_carry_keys` hashed some constant
+    instead of the real schema — every key would move together and nothing would
+    carry, which looks like correct invalidation. This recomputes the key from
+    `_Decomposition`'s actual schema and requires a match, so silently dropping
+    the schema from the key fails here.
+    """
+    parsed = parse_task_file(_TASK)
+    registry = build_registry(parsed)
+    _, counting = _run(_TASK)
+
+    keys = decompose_carry_keys(counting.client, registry)
+
+    expected = carry_key(
+        system_prompt=obligations_module._SYSTEM_PROMPT,
+        response_schema={
+            "name": "_Decomposition",
+            "schema": inline_schema_refs(obligations_module._Decomposition.model_json_schema()),
+        },
+        model=counting.client.model,
+        temperature=counting.client.temperature,
+        seed=counting.client.seed,
+        stage_logic_version=DECOMPOSE_STAGE_LOGIC_VERSION,
+        requirement_text=registry[0].text,
+    )
+    assert keys[registry[0].id] == expected
 
 
 def test_a_changed_prompt_invalidates_the_entries_derived_under_it(monkeypatch):
