@@ -1649,3 +1649,34 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   not-obtained disposition is needed whether or not a retry exists.
 - **Status:** open
 
+### [2026-08-19] Twenty ratings moved on a test-only change — a controlled #252 pair
+- **Kind:** filing (comment)
+- **Found during:** #275, Gate 2 runs 1 and 2
+- **Where:** `src/acceptance/evidence/strength.py:132-139`,
+  `src/acceptance/evidence/discrimination.py`
+- **Severity:** should-fix
+- **What's wrong:** run 1 rated **20 of 31** obligations `partially supported`
+  and run 2 rated **25 strongly supported**, over a **byte-identical source
+  diff** — the only change between them is 57 added lines in two test files.
+  Three of the twenty had a concrete gap the new tests genuinely close. The other
+  seventeen were held down by defects no test can kill: *"correctly marks the
+  tested omission case indeterminate, but mishandles a different omitted
+  criterion elsewhere"*, *"rejects unasked criteria in general, but the specific
+  test input is accidentally treated as asked"* — restatements of "your test only
+  covers what it covers". Under `caught == total` a single unkillable entry caps
+  the rating permanently, so those seventeen should not have cleared, and they
+  did. The unrequested-change list moved the same way over the same diff: 7
+  entries with one `risky` in run 1, 2 entries both `in_service` in run 2.
+- **Why I didn't act:** `evidence/`, outside #275's area, and #252 owns the
+  mechanism.
+- **Drafted fix:** post as a **comment on #252**. #252 owns the permissive
+  direction — a lazily enumerated defect list buying `strongly_supported`; this
+  is the strict direction of the same arithmetic, and the pair shows the rating
+  tracking the *volume* of test material rather than the gaps named. Say plainly
+  that this is an unusually controlled instance: same tool version, same task
+  file, same source diff, one variable. Evidence:
+  `dogfood-logs/275-gate2-run1/` and `-run2/`, with both judgements. Cross-ref
+  #180 (instability) and #250 (run 1 prescribes the test it already cites as
+  that obligation's evidence, in obligation 1).
+- **Status:** filed (comment on #252)
+
