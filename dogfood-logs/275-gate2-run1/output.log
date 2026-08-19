@@ -1,0 +1,428 @@
+Task completion: INCOMPLETE
+
+20 obligation(s) with non-discriminating test evidence (prescribing-stage-returns-rather-than-raises-on-omission, prescriptions-for-answered-criteria-are-kept, not-obtained-distinct-from-prescribed-test, review-produces-report-after-omission, report-states-no-prescription-produced-for-omitted-criterion, test-criterion-not-strongly-supported, test-review-does-not-conclude-no-gaps, test-rejects-unasked-criterion, test-deterministic-report-for-same-inputs, response-omission-does-not-end-review, omitted-criterion-review-still-produces-report-and-verdict, other-prescriptions-are-kept, persist-omitted-criterion-state, distinguish-not-obtained-from-no-test, report-no-prescription-produced, not-obtained-not-strongly-supported, not-obtained-does-not-close-gaps, reject-unasked-criterion, deterministic-report-for-same-inputs, report-says-no-prescription-produced).
+
+Obligations:
+
+  1. A test drives the prescribing stage with a response that omits a criterion it was given, and asserts the stage returns rather than raising.
+       requirements: completion-02
+       code evidence: not required — The requirement itself is for a test, so the test is the demanded evidence.
+       test evidence: partially supported  [tier: static]
+         1.1  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         1.2  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: a test that exercises an omitted criterion response and observes a return instead of an exception
+           inputs:  Use a partial model response for a weak-obligation set with at least two asked-about criteria, where exactly one criterion is omitted and at least one other criterion is answered correctly. The omitted criterion must be one that would otherwise be weak and prescribed, so the defect changes whether the stage returns a result object or raises.
+           detects: The stage returns a result object but silently drops the omitted criterion without recording it as unobtained.
+           full detail: acceptance recommendation --criterion prescribing-stage-returns-rather-than-raises-on-omission
+
+  2. The prescriptions for the criteria that response did answer are kept.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  src/acceptance/coverage/recommendations.py#@@ -193,22 +218,39 @@ def recommend_tests(
+         2.2  src/acceptance/pipeline.py#@@ -338,7 +338,16 @@ def run_review(
+         2.3  tests/coverage/test_recommendations.py#@@ -194,23 +201,48 @@ def _recommendation(obligation_id: str) -> dict:
+         2.4  tests/coverage/test_recommendations.py#@@ -259,11 +291,32 @@ def test_every_weak_obligation_gets_exactly_one_recommendation():
+       test evidence: partially supported  [tier: static]
+         2.5  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         2.6  tests/coverage/test_recommendations.py::test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends
+         2.7  tests/coverage/test_recommendations.py::test_an_omission_does_not_mark_the_answered_obligations_indeterminate
+         2.8  tests/coverage/test_recommendations.py::test_every_weak_obligation_gets_exactly_one_recommendation
+         2.9  tests/test_recommendation_omission.py::test_the_answered_criterion_keeps_its_prescription
+         2.10  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: the persisted or returned prescriptions still include the criteria that were answered in the partial response
+           inputs:  Use a partial response over three or more weak criteria, where exactly one criterion is omitted and at least two distinct criteria are answered. Choose answered criteria with different ids and different prescription payloads so the test can verify both survive.
+           detects: The implementation keeps answered prescriptions, but the current test inputs only include one answered criterion so the defect is not exposed.
+           full detail: acceptance recommendation --criterion prescriptions-for-answered-criteria-are-kept
+
+  3. The omitted criterion is present in the persisted review state as a prescription that was not obtained.
+       requirements: task-01, completion-04
+       code evidence: addressed
+         3.1  src/acceptance/recommendation.py#@@ -38,20 +38,30 @@ _FIELDS = (
+         3.2  src/acceptance/review_state.py#@@ -669,6 +670,35 @@ class TestRecommendation(_Model):
+         3.3  src/acceptance/review_state.py#@@ -922,6 +952,12 @@ class Review(_Model):
+         3.4  src/acceptance/pipeline.py#@@ -403,5 +412,6 @@ def run_review(
+         3.5  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: strongly supported  [tier: static]
+         3.6  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         3.7  tests/test_recommendation_omission.py::test_the_omitted_criterion_is_recorded_as_not_obtained
+         3.8  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+
+  4. A prescription that was not obtained is distinguishable in the persisted review state from a prescribed test.
+       requirements: constraint-05, completion-05
+       code evidence: addressed
+         4.1  src/acceptance/review_state.py#@@ -669,6 +670,35 @@ class TestRecommendation(_Model):
+         4.2  src/acceptance/review_state.py#@@ -922,6 +952,12 @@ class Review(_Model):
+         4.3  src/acceptance/recommendation.py#@@ -38,20 +38,30 @@ _FIELDS = (
+         4.4  src/acceptance/recommendation.py#@@ -61,14 +71,38 @@ def render_json(recommendation: TestRecommendation | None) -> str:
+       test evidence: partially supported  [tier: static]
+         4.5  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         4.6  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: the persisted review state represents not-obtained prescriptions with a distinct state from prescribed tests
+           inputs:  Construct a review state containing both a real `TestRecommendation` and an `UnobtainedRecommendation` for different criteria, then serialize/deserialize or inspect the persisted state. The two entries must be distinguishable by shape or type, not just by id.
+           detects: The implementation distinguishes them internally, but the mapped tests only inspect one omitted case that still lands in the unobtained path.
+           full detail: acceptance recommendation --criterion not-obtained-distinct-from-prescribed-test
+
+  5. A review whose prescribing stage omitted a criterion produces a report.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  src/acceptance/coverage/recommendations.py#@@ -193,22 +218,39 @@ def recommend_tests(
+         5.2  src/acceptance/pipeline.py#@@ -338,7 +338,16 @@ def run_review(
+         5.3  src/acceptance/pipeline.py#@@ -403,5 +412,6 @@ def run_review(
+         5.4  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: partially supported  [tier: static]
+         5.5  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         5.6  tests/test_recommendation_omission.py::test_an_omitted_criterion_still_produces_a_review
+         5.7  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: the review completes and emits a report even when a criterion was omitted by the prescribing stage
+           inputs:  Run the full review pipeline on a repository/task where one asked-about weak criterion is omitted and at least one other weak criterion is answered. The review must reach report generation even though the recommendation stage was incomplete.
+           detects: The review still produces a report for omitted criteria, but the report omits the omission and otherwise completes normally.
+           full detail: acceptance recommendation --criterion review-produces-report-after-omission
+
+  6. The report states no prescription was produced for the omitted criterion.
+       requirements: completion-07
+       code evidence: addressed
+         6.1  src/acceptance/report.py#@@ -333,6 +336,7 @@ def _obligation_block(
+         6.2  src/acceptance/report.py#@@ -417,6 +421,17 @@ def _obligation_block(
+         6.3  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: partially supported  [tier: static]
+         6.4  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         6.5  tests/test_recommendation_omission.py::test_the_omitted_criterion_is_recorded_as_not_obtained
+         6.6  tests/test_recommendation_omission.py::test_the_report_says_the_prescription_was_not_obtained
+         6.7  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: the report text includes a statement that no prescription was produced for the omitted criterion
+           inputs:  Use a review with at least one omitted criterion and at least one answered criterion, then render the report text. The omitted criterion should be a different id from the answered one so the wording is checked against the correct block.
+           detects: The report includes the required wording for the tested omission case, but not for some other omitted-criterion scenario.
+           full detail: acceptance recommendation --criterion report-states-no-prescription-produced-for-omitted-criterion
+
+  7. The report renders that differently from a criterion that is owed no test.
+       requirements: constraint-08, completion-08
+       code evidence: addressed
+         7.1  src/acceptance/report.py#@@ -417,6 +421,17 @@ def _obligation_block(
+         7.2  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         7.4  tests/test_recommendation_omission.py::test_retrieval_renders_not_obtained_distinctly_in_both_formats
+         7.5  tests/test_recommendation_omission.py::test_the_report_renders_that_differently_from_a_criterion_owed_no_test
+         7.6  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+
+  8. A test asserts that a criterion whose prescription was not obtained is not rated strongly supported on the test-evidence axis.
+       requirements: completion-09
+       code evidence: not required — This requirement explicitly demands a test and does not itself require a source change beyond that test.
+       test evidence: partially supported  [tier: static]
+         8.1  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         8.2  tests/test_recommendation_omission.py::test_the_omitted_criterion_is_left_indeterminate_on_the_evidence_axis
+         8.3  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         8.4  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+         8.5  tests/test_verdict.py::test_a_tests_only_obligation_is_still_judged_on_its_test_evidence
+         recommended test: A test case checks the rating assigned to a criterion whose prescription was not obtained and observes that it is not strongly supported on the test-evidence axis.
+           inputs:  Create a review where a criterion was asked about but not obtained, and inspect the evidence rating on that specific obligation after the pipeline applies indeterminate handling. Use a criterion distinct from any other omitted criterion in the same review.
+           detects: The implementation correctly marks the tested omission case indeterminate, but mishandles a different omitted criterion elsewhere.
+           full detail: acceptance recommendation --criterion test-criterion-not-strongly-supported
+
+  9. A test asserts that a review containing such a criterion does not conclude that no material gaps remain.
+       requirements: completion-10
+       code evidence: not required — This requirement is solely a demand for a test assertion, so the test is the whole obligation.
+       test evidence: partially supported  [tier: static]
+         9.1  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         9.2  tests/test_recommendation_omission.py::test_a_review_missing_a_prescription_does_not_come_back_clean
+         9.3  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         9.4  tests/test_verdict.py::test_a_breached_boundary_is_still_a_material_gap
+         9.5  tests/test_verdict.py::test_a_code_evidence_only_obligation_does_not_make_the_verdict_incomplete
+         9.6  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+         9.7  tests/test_verdict.py::test_coverage_gap_is_incomplete
+         9.8  tests/test_verdict.py::test_definite_gap_outranks_indeterminate
+         recommended test: A test case runs a review containing a criterion whose prescription was not obtained and observes that the review does not conclude that no material gaps remain.
+           inputs:  Run a review with an omitted criterion and at least one answered criterion, then inspect the completion verdict. The omitted criterion must be one that should prevent a clean verdict.
+           detects: The review does not conclude no gaps for the tested omission case, but a different omitted-criterion path still does.
+           full detail: acceptance recommendation --criterion test-review-does-not-conclude-no-gaps
+
+  10. A test asserts that a response naming a criterion the stage did not ask about is rejected.
+       requirements: completion-11
+       code evidence: not required — The requirement asks for a test assertion, not for a separate source behavior beyond the test.
+       test evidence: partially supported  [tier: static]
+         10.1  tests/coverage/test_recommendations.py::test_a_response_naming_a_non_weak_obligation_is_rejected
+         recommended test: A test case submits a response naming an unasked-for criterion and observes that the response is rejected.
+           inputs:  Submit a response containing a criterion id that is definitely not among the asked-about weak obligations, while keeping the asked-about set otherwise valid. The unasked criterion should be a novel id not present in the mandate or decomposition.
+           detects: The system rejects unasked criteria in general, but the specific test input is accidentally treated as asked.
+           full detail: acceptance recommendation --criterion test-rejects-unasked-criterion
+
+  11. A test asserts that a response naming the same criterion more than once is rejected.
+       requirements: completion-12
+       code evidence: not required — This is a pure test demand; the required evidence is the test itself.
+       test evidence: strongly supported  [tier: static]
+         11.1  tests/coverage/test_recommendations.py::test_a_duplicate_recommendation_is_rejected
+
+  12. A test asserts that two runs over the same mandate and the same model responses produce the same report.
+       requirements: completion-13
+       code evidence: not required — The requirement is explicitly about having a test that demonstrates determinism.
+       test evidence: partially supported  [tier: static]
+         12.1  tests/coverage/test_recommendations.py::test_every_weak_obligation_gets_exactly_one_recommendation
+         12.2  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         12.3  tests/test_recommendation_omission.py::test_two_runs_over_the_same_inputs_render_the_same_report
+         recommended test: A test case runs the same mandate and the same model responses twice and observes identical reports.
+           inputs:  Run the same full review twice with identical mandate, repository state, and model responses, but with more than one recommendation in the response set so ordering/serialization nondeterminism would be visible.
+           detects: The report is deterministic for the tested inputs but not for other inputs with more than one recommendation.
+           full detail: acceptance recommendation --criterion test-deterministic-report-for-same-inputs
+
+  13. A response that omits one or more of the criteria the prescribing stage was asked about does not end the review.
+       requirements: constraint-01
+       code evidence: addressed
+         13.1  src/acceptance/coverage/recommendations.py#@@ -193,22 +218,39 @@ def recommend_tests(
+         13.2  src/acceptance/pipeline.py#@@ -338,7 +338,16 @@ def run_review(
+         13.3  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: partially supported  [tier: static]
+         13.4  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         13.5  tests/coverage/test_recommendations.py::test_an_omission_does_not_mark_the_answered_obligations_indeterminate
+         13.6  tests/test_recommendation_omission.py::test_an_omitted_criterion_still_produces_a_review
+         13.7  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: When the prescribing stage response omits one or more asked-about criteria, the review continues instead of terminating.
+           inputs:  Use a partial recommendation response that omits one of several asked-about criteria, then run the full review pipeline. The omitted criterion must be one that would otherwise be weak and prescribed.
+           detects: The review continues, but the omission is not reflected anywhere in the result.
+           full detail: acceptance recommendation --criterion response-omission-does-not-end-review
+
+  14. A review whose prescribing stage omitted a criterion still produces a report and a verdict.
+       requirements: constraint-02
+       code evidence: addressed
+         14.1  src/acceptance/pipeline.py#@@ -338,7 +338,16 @@ def run_review(
+         14.2  src/acceptance/pipeline.py#@@ -403,5 +412,6 @@ def run_review(
+         14.3  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: partially supported  [tier: static]
+         14.4  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         14.5  tests/test_recommendation_omission.py::test_an_omitted_criterion_still_produces_a_review
+         14.6  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: A review with an omitted criterion completes far enough to emit both a report and a verdict.
+           inputs:  Run a review with one omitted criterion and at least one answered criterion, then inspect both the report and the completion verdict. The omitted criterion should be the one that would otherwise have been prescribed.
+           detects: The review still produces both report and verdict for the tested omission case, but the verdict is wrong for some other scenario.
+           full detail: acceptance recommendation --criterion omitted-criterion-review-still-produces-report-and-verdict
+
+  15. The prescriptions returned for the other criteria in that same response are kept.
+       requirements: constraint-03
+       code evidence: addressed
+         15.1  src/acceptance/coverage/recommendations.py#@@ -193,22 +218,39 @@ def recommend_tests(
+         15.2  src/acceptance/pipeline.py#@@ -338,7 +338,16 @@ def run_review(
+         15.3  tests/coverage/test_recommendations.py#@@ -194,23 +201,48 @@ def _recommendation(obligation_id: str) -> dict:
+       test evidence: partially supported  [tier: static]
+         15.4  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         15.5  tests/coverage/test_recommendations.py::test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends
+         15.6  tests/test_recommendation_omission.py::test_the_answered_criterion_keeps_its_prescription
+         15.7  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: When a response omits one criterion, the prescriptions for the other criteria from that same response remain present in the persisted review state.
+           inputs:  Use a multi-criterion partial response where one criterion is omitted and at least two others are answered. The answered criteria should be distinct and not adjacent in any fixture-specific ordering, so the test checks preservation across a nontrivial shape.
+           detects: The implementation keeps other prescriptions for the tested partial-response case, but mishandles a different multi-criterion response shape.
+           full detail: acceptance recommendation --criterion other-prescriptions-are-kept
+
+  16. Persist every criterion the prescribing stage was asked about, representing each one either with a prescribed test or as a prescription that was not obtained.
+       requirements: constraint-04
+       code evidence: addressed
+         16.1  src/acceptance/review_state.py#@@ -669,6 +670,35 @@ class TestRecommendation(_Model):
+         16.2  src/acceptance/review_state.py#@@ -922,6 +952,12 @@ class Review(_Model):
+         16.3  src/acceptance/coverage/recommendations.py#@@ -64,6 +68,18 @@ this call and is not yours to revisit. Return one recommendation per criterion,
+         16.4  src/acceptance/coverage/recommendations.py#@@ -193,22 +218,39 @@ def recommend_tests(
+         16.5  src/acceptance/pipeline.py#@@ -403,5 +412,6 @@ def run_review(
+       test evidence: partially supported  [tier: static]
+         16.6  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         16.7  tests/test_recommendation_omission.py::test_the_not_obtained_record_survives_persistence
+         16.8  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: The persisted review state contains an entry for each asked-about criterion, and each entry is either a prescribed test or a not-obtained prescription.
+           inputs:  Create a review with several asked-about criteria, some answered and some omitted, then persist and reload the review state. Ensure the omitted criterion ids are not the same as the answered ones.
+           detects: The state is persisted correctly for the tested omission case, but not for a different omitted criterion id.
+           full detail: acceptance recommendation --criterion persist-omitted-criterion-state
+
+  17. Represent a criterion whose prescription was not obtained distinctly from a criterion that is owed no test.
+       requirements: constraint-06
+       code evidence: addressed
+         17.1  src/acceptance/review_state.py#@@ -922,6 +952,12 @@ class Review(_Model):
+         17.2  src/acceptance/report.py#@@ -417,6 +421,17 @@ def _obligation_block(
+         17.3  src/acceptance/recommendation.py#@@ -38,20 +38,30 @@ _FIELDS = (
+         17.4  src/acceptance/recommendation.py#@@ -61,14 +71,38 @@ def render_json(recommendation: TestRecommendation | None) -> str:
+         17.5  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: partially supported  [tier: static]
+         17.6  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         17.7  tests/test_recommendation_omission.py::test_a_criterion_owed_no_test_is_not_recorded_as_not_obtained
+         17.8  tests/test_recommendation_omission.py::test_retrieval_renders_not_obtained_distinctly_in_both_formats
+         17.9  tests/test_recommendation_omission.py::test_retrieval_returns_the_not_obtained_record_rather_than_nothing
+         17.10  tests/test_recommendation_omission.py::test_the_report_renders_that_differently_from_a_criterion_owed_no_test
+         17.11  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: The persisted review state encodes not-obtained prescriptions in a way that is distinguishable from criteria owed no test.
+           inputs:  Construct a review containing one criterion that was not obtained and one criterion that owed no test, then inspect persisted state and retrieval/rendering. The two criteria must be different ids and different evidence categories.
+           detects: The report renders not-obtained and no-test differently for the tested case, but the underlying storage still conflates them in some other path.
+           full detail: acceptance recommendation --criterion distinguish-not-obtained-from-no-test
+
+  18. State in the report, for a criterion whose prescription was not obtained, that no prescription was produced for it.
+       requirements: constraint-07
+       code evidence: addressed
+         18.1  src/acceptance/report.py#@@ -417,6 +421,17 @@ def _obligation_block(
+         18.2  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: partially supported  [tier: static]
+         18.3  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         18.4  tests/test_recommendation_omission.py::test_the_omitted_criterion_is_recorded_as_not_obtained
+         18.5  tests/test_recommendation_omission.py::test_the_report_says_the_prescription_was_not_obtained
+         18.6  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: The report includes wording for a not-obtained criterion indicating that no prescription was produced for it.
+           inputs:  Render a report for a review with an omitted criterion and at least one answered criterion, then inspect the omitted criterion's block specifically.
+           detects: The report includes the wording for the tested omission case, but not for some other omitted criterion.
+           full detail: acceptance recommendation --criterion report-no-prescription-produced
+
+  19. Rate a criterion whose prescription was not obtained as not strongly supported on the test-evidence axis.
+       requirements: constraint-09
+       code evidence: addressed
+         19.1  src/acceptance/coverage/recommendations.py#@@ -193,22 +218,39 @@ def recommend_tests(
+         19.2  src/acceptance/pipeline.py#@@ -338,7 +338,16 @@ def run_review(
+         19.3  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: partially supported  [tier: static]
+         19.4  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         19.5  tests/test_recommendation_omission.py::test_the_omitted_criterion_is_left_indeterminate_on_the_evidence_axis
+         19.6  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         19.7  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+         recommended test: The test-evidence rating for a not-obtained criterion is below strongly supported.
+           inputs:  Run a review where a criterion is omitted and then inspect the evidence rating for that exact criterion. Use a criterion that is definitely weak so the omission path is exercised.
+           detects: The implementation leaves the omitted criterion in a non-indeterminate evidence class that still happens not to be strongly supported for the tested input.
+           full detail: acceptance recommendation --criterion not-obtained-not-strongly-supported
+
+  20. Keep a review containing a criterion whose prescription was not obtained from concluding that no material gaps remain.
+       requirements: constraint-10
+       code evidence: addressed
+         20.1  src/acceptance/coverage/recommendations.py#@@ -193,22 +218,39 @@ def recommend_tests(
+         20.2  src/acceptance/pipeline.py#@@ -338,7 +338,16 @@ def run_review(
+         20.3  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: partially supported  [tier: static]
+         20.4  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         20.5  tests/test_recommendation_omission.py::test_a_review_missing_a_prescription_does_not_come_back_clean
+         20.6  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         20.7  tests/test_verdict.py::test_a_code_evidence_only_obligation_does_not_make_the_verdict_incomplete
+         20.8  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+         recommended test: A review with a not-obtained criterion still leaves open the conclusion that material gaps remain.
+           inputs:  Run a review with a not-obtained criterion and at least one answered criterion, then inspect the completion verdict and escalation state. The omitted criterion should be one that keeps material gaps open.
+           detects: The review does not close gaps for the tested omission case, but a different omitted-criterion path still does.
+           full detail: acceptance recommendation --criterion not-obtained-does-not-close-gaps
+
+  21. Reject a response that names a criterion the prescribing stage did not ask about.
+       requirements: constraint-11
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: partially supported  [tier: static]
+         21.1  tests/coverage/test_recommendations.py::test_a_response_naming_a_non_weak_obligation_is_rejected
+         recommended test: A response containing an unasked-about criterion is rejected.
+           inputs:  Provide a response with a criterion id that is not in the asked set, using a fixture where the asked set is unambiguous and small. The foreign criterion must not be derivable from any existing obligation id.
+           detects: The system rejects unasked criteria generally, but the test input is not actually unasked due to a setup bug.
+           full detail: acceptance recommendation --criterion reject-unasked-criterion
+
+  22. Reject a response that names the same criterion more than once.
+       requirements: constraint-12
+       code evidence: addressed
+         22.1  src/acceptance/coverage/recommendations.py#@@ -179,6 +195,15 @@ def recommend_tests(
+       test evidence: strongly supported  [tier: static]
+         22.2  tests/coverage/test_recommendations.py::test_a_duplicate_recommendation_is_rejected
+
+  23. Produce the same report for two runs over the same mandate and the same model responses.
+       requirements: constraint-13
+       code evidence: addressed
+         23.1  src/acceptance/coverage/recommendations.py#@@ -193,22 +218,39 @@ def recommend_tests(
+         23.2  tests/coverage/test_recommendations.py#@@ -259,11 +291,32 @@ def test_every_weak_obligation_gets_exactly_one_recommendation():
+         23.3  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: partially supported  [tier: static]
+         23.4  tests/coverage/test_recommendations.py::test_every_weak_obligation_gets_exactly_one_recommendation
+         23.5  tests/coverage/test_recommendations.py::test_two_runs_over_one_omitting_response_produce_identical_state
+         23.6  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         23.7  tests/test_recommendation_omission.py::test_two_runs_over_the_same_inputs_render_the_same_report
+         recommended test: Repeated runs with identical mandate and model responses yield identical reports.
+           inputs:  Execute the same mandate and identical model responses twice, with a response set containing multiple recommendations and at least one omission if possible. Keep repository state and revision fixed.
+           detects: The report is deterministic for the tested inputs but not for other inputs with more recommendations.
+           full detail: acceptance recommendation --criterion deterministic-report-for-same-inputs
+
+  24. The change does not alter whether the stage asks the model again for the criteria it omitted.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 28 changes across 7 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not done, so the source change itself is the evidence.
+
+  25. The change does not alter how many criteria are carried in one request to the model.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 28 changes across 7 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is settled by the implementation shape, not by runtime behavior.
+
+  26. The change does not add reasoning about why the model omits a criterion.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 28 changes across 7 files; none breaches this boundary
+       test evidence: not required — This exclusion is about not introducing causal analysis, which is visible directly in the source.
+
+  27. The change does not alter which criteria are owed a test at all.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 28 changes across 7 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about selection logic being left untouched, which is checked from the source.
+
+  28. The change does not alter how a criterion's existing test evidence is rated.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 28 changes across 7 files; none breaches this boundary
+       test evidence: not required — This exclusion is satisfied by leaving the rating logic unchanged, which is evident in code.
+
+  29. The change does not alter what the other stages do when their own responses omit a criterion.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 28 changes across 7 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is about preserving other stages' behavior, which is verified by the source diff.
+
+  30. The report states, for a criterion whose prescription was not obtained, that no prescription was produced for it.
+       requirements: constraint-07
+       code evidence: addressed
+         30.1  src/acceptance/report.py#@@ -417,6 +421,17 @@ def _obligation_block(
+         30.2  tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+       test evidence: partially supported  [tier: static]
+         30.3  tests/coverage/test_recommendations.py::test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained
+         30.4  tests/test_recommendation_omission.py::test_the_omitted_criterion_is_recorded_as_not_obtained
+         30.5  tests/test_recommendation_omission.py::test_the_report_says_the_prescription_was_not_obtained
+         recommended test: The generated report includes wording that identifies the omitted criterion as having produced no prescription.
+           inputs:  Render a report for a review with a specific omitted criterion and at least one answered criterion, then check the exact wording in the omitted criterion's block.
+           detects: The report includes the phrase for the tested omission case, but not for a different omitted criterion.
+           full detail: acceptance recommendation --criterion report-says-no-prescription-produced
+
+  31. A response naming the same criterion more than once is rejected.
+       requirements: constraint-12
+       code evidence: addressed
+         31.1  src/acceptance/coverage/recommendations.py#@@ -179,6 +195,15 @@ def recommend_tests(
+       test evidence: strongly supported  [tier: static]
+         31.2  tests/coverage/test_recommendations.py::test_a_duplicate_recommendation_is_rejected
+
+Mandate coverage: 32 of 33 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: This section marker names the work area only and contains no checkable requirement.
+
+Unrequested changes:
+  1. [in_service] `recommend_tests` now returns a `RecommendationResult` object and callers must unwrap `.recommendations`, changing the public behavior of the stage beyond the omission handling itself. The task asked to handle omitted criteria, not to alter the stage’s return type/API.
+       src/acceptance/coverage/recommendations.py#@@ -135,13 +151,13 @@ def recommend_tests(
+       tests/coverage/test_recommendations.py#@@ -110,7 +111,7 @@ def test_weak_criterion_gets_a_fully_populated_recommendation():
+       tests/coverage/test_recommendations.py#@@ -130,13 +131,17 @@ def test_strongly_supported_obligations_get_no_recommendation_and_no_model_call(
+       tests/coverage/test_recommendations.py#@@ -156,7 +161,9 @@ def test_recommendation_round_trips_through_persistence():
+       tests/coverage/test_recommendations.py#@@ -259,11 +291,32 @@ def test_every_weak_obligation_gets_exactly_one_recommendation():
+       tests/coverage/test_recommendations.py#@@ -296,7 +349,11 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
+       tests/coverage/test_recommendations.py#@@ -337,4 +394,5 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+  2. [risky] `recommend_tests`' signature and return type changed from `list[TestRecommendation]` to `RecommendationResult`, which is an exported API change not required by the obligations as stated.
+       src/acceptance/coverage/recommendations.py#@@ -135,13 +151,13 @@ def recommend_tests(
+  3. [in_service] `lookup`, `render_json`, `render_text`, and `render` were widened to accept `UnobtainedRecommendation`, changing the retrieval/rendering API surface beyond the minimum needed to persist and report the omission state.
+       src/acceptance/recommendation.py#@@ -38,20 +38,30 @@ _FIELDS = (
+       src/acceptance/recommendation.py#@@ -61,14 +71,38 @@ def render_json(recommendation: TestRecommendation | None) -> str:
+       src/acceptance/recommendation.py#@@ -83,5 +117,5 @@ def render_text(recommendation: TestRecommendation | None) -> str:
+  4. [in_service] `Review` gained a new persisted field `unobtained_recommendations`, and `UnobtainedRecommendation` was added as a new exported model. While persistence of omitted criteria is requested, this is still a schema/API expansion that should be called out as a public interface change.
+       src/acceptance/review_state.py#@@ -60,6 +60,7 @@ __all__ = [
+       src/acceptance/review_state.py#@@ -669,6 +670,35 @@ class TestRecommendation(_Model):
+       src/acceptance/review_state.py#@@ -922,6 +952,12 @@ class Review(_Model):
+  5. [in_service] `run_review` now re-applies `_apply_indeterminate` after the recommendation stage. The obligations require the omitted criterion to be marked not obtained and not strongly supported, but they do not ask for this extra second-pass pipeline behavior or its explanatory comments.
+       src/acceptance/pipeline.py#@@ -338,7 +338,16 @@ def run_review(
+  6. [in_service] The report now renders a new `NOT OBTAINED` block and threads a separate `unobtained` argument through `_obligation_block`. The obligations require the report to state that no prescription was produced and distinguish it from no-test-owed, but the exact new rendering structure and helper signature are additional behavior/API changes not explicitly demanded.
+       src/acceptance/report.py#@@ -75,6 +76,7 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -83,6 +85,7 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -333,6 +336,7 @@ def _obligation_block(
+       src/acceptance/report.py#@@ -417,6 +421,17 @@ def _obligation_block(
+  7. [in_service] A new end-to-end omission test file was added with many assertions about pipeline wiring, report wording, retrieval formatting, persistence, and determinism. The obligations require tests for omission handling, but this file also adds broader coverage and specific implementation-shaping assertions that go beyond the minimum requested set.
+       tests/test_recommendation_omission.py#@@ -0,0 +1,291 @@
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
