@@ -36,6 +36,215 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-19] #225 in a controlled pair — a rating fell on a diff that only added tests, and the prescription it gained is satisfied by one of them
+- **Kind:** filing (comment on existing issue #225)
+- **Found during:** #258, Gate 2, runs 3 and 4
+- **Where:** `dogfood-logs/258-gate2-run3/` and `-run4/`
+- **Severity:** should-fix — it is why #258's gate moved away from clean while
+  its evidence grew
+- **What's wrong:** the only difference between the two runs is one commit that
+  adds six tests. Three obligations improved and a fourth — the sole
+  `strongly supported` one — fell to `partially supported`, leaving **zero**
+  strongly supported. The prescription it gained names a defect that a test in
+  the same diff detects; the mapping cited that test against three *other*
+  obligations.
+- **Why I didn't act:** #225 owns it, and nothing #258 can write fixes a rating
+  that falls when evidence is added.
+- **Drafted fix:** comment on #225:
+
+  > A controlled instance of both halves of this title, from #258's Gate 2 runs
+  > 3 and 4 (`dogfood-logs/258-gate2-run3/`, `-run4/`).
+  >
+  > The pair is controlled in the way that matters: same base, same mandate, and
+  > the head differs by **one commit that only adds tests**. The source under
+  > review is byte-identical.
+  >
+  > ```
+  > Changes since a752f82c:
+  >   moved:
+  >     - A test asserts that parsing succeeds for every committed task file …
+  >         test evidence: strongly supported -> partially supported
+  >     - No test reads the task file at the repository root.
+  >         test evidence: indeterminate -> partially supported
+  >     - A test run reports no failures when no task file is present …
+  >         test evidence: unsupported -> partially supported
+  >     - No test's outcome or case list depends on the task file …
+  >         test evidence: unsupported -> partially supported
+  > ```
+  >
+  > Three obligations rose. The one that had been `strongly supported` fell, so
+  > the review went from one strongly-supported obligation to **none** while
+  > strictly gaining evidence.
+  >
+  > The second half of the title lands too, and slightly harder than the original
+  > instance. Obligation 1's new prescription:
+  >
+  > > **detects:** Parser silently skips one committed file by not including it in
+  > > the parametrized corpus.
+  >
+  > `tests/requirement/test_task_file_corpus.py::test_the_parse_test_enumerates_the_corpus_and_nothing_else`
+  > is in the diff and asserts exactly that — the parametrize's argvalues equal
+  > `committed_task_files()`, so a file omitted from the parametrized corpus
+  > fails it. It was not cited against obligation 1. It **was** cited against
+  > obligations 6, 7 and 10 in the same report, so this is not a discovery
+  > failure: the test was found, judged relevant three times, and the obligation
+  > whose prescription it answers was not one of them.
+  >
+  > Worth recording what improved in the same run, so the report is not read as
+  > uniformly worse: obligations with `(no mapped test)` went from three to zero.
+  > The mapping got better and the ratings got worse.
+  >
+  > ## Two more runs, and the cleanest instance is in run 5
+  >
+  > Runs 5 and 6 added six more tests, closing eight obligations and then two
+  > more. In run 5, obligation 12's block reads — prescription and citation two
+  > lines apart:
+  >
+  > ```
+  >        test evidence: partially supported  [tier: static]
+  >          12.2  tests/requirement/test_task_file_corpus.py::test_an_entry_whose_target_is_missing_is_omitted
+  >          recommended test: The region-coverage case list excludes at least one path that is absent from the tree.
+  >            detects: The corpus builder omits a present file as well as the missing one.
+  > ```
+  >
+  > That test asserts `committed_task_files(tmp_path) == [real]`: the dangling
+  > entry omitted, the real one kept — exactly the named defect. The stage cited
+  > it as the obligation's evidence and prescribed it in the same breath, with no
+  > second test in between.
+  >
+  > In run 6, on a diff that only added tests and fixed a docstring, that same
+  > obligation went **`partially supported -> unsupported`** — no mapped test —
+  > while the test above sat unchanged in the tree, and a second obligation went
+  > `strongly supported -> partially supported`. Across four runs the same
+  > obligations were rated 1, 0, 8 and 9 strongly supported over monotonically
+  > increasing evidence.
+  >
+  > One more datum for the same file: **every defect statement changed between
+  > run 3 and run 4** — fourteen of fourteen, for obligations whose text never
+  > moved and against source that never changed. Whatever the prescription
+  > describes, it is not a stable property of the gap.
+- **Status:** open
+
+### [2026-08-19] Recommendations prescribe tests for behavior the mandate declares out of scope
+- **Kind:** filing (new issue, child of #185)
+- **Found during:** #258, Gate 2, run 3
+- **Where:** `src/acceptance/coverage/recommendations.py` — the stage's prompt
+  never sees the scope exclusions
+- **Severity:** should-fix — it makes a gate unreachable by asking for work the
+  mandate forbade
+- **What's wrong:** two of the thirteen prescriptions ask for parser edge cases —
+  an empty-section format, and an off-by-one span boundary — when *"how a task
+  file is parsed into sections"* is `exclusion-02` of the same task file, which
+  the same report shows as `addressed`. The tool holds the exclusion and
+  prescribes against it in one run.
+- **Why I didn't act:** #258 touches `tests/` only, and the fix is a prompt
+  change that re-records the recommendation stage.
+- **Drafted fix:** file as a child of #185, `bug` / `track:checker`:
+
+  > **Title:** Test recommendations cross the mandate's own scope exclusions
+  >
+  > From #258's Gate 2 run 3 (`dogfood-logs/258-gate2-run3/`). The task file
+  > declares five scope exclusions, among them:
+  >
+  > ```
+  > ## Scope exclusions
+  > - How a task file is parsed into sections.
+  > ```
+  >
+  > which the report renders as obligation 16, `addressed`, *"examined 7 changes
+  > across 5 files; none breaches this boundary."* Two prescriptions in the same
+  > report ask for exactly that behavior:
+  >
+  > | obligation | prescribed input | defect it claims to catch |
+  > |---|---|---|
+  > | 8, `parse-test-nonempty-sections` | *"a fixture that contains one or more empty sections or edge-case formatting"* | *"Parser preserves non-empty sections for the specific tested files but would fail on an untested edge-case format"* |
+  > | 9, `parse-test-span-roundtrip` | *"a fixture whose spans are adjacent to punctuation, blank lines, or section boundaries so an off-by-one span bug changes the extracted text"* | *"Parsed spans use off-by-one boundaries"* |
+  >
+  > Both are defects **in the parser**, which this mandate excluded. Writing
+  > either test would be work the mandate forbade, and not writing it holds the
+  > obligation at `partially supported`, so the gate cannot be reached by any
+  > action the mandate permits.
+  >
+  > `_render_prompt` supplies the criterion, its evidence class, the surviving
+  > defects and the diff. It supplies no exclusions, so the stage cannot know.
+  > The obligations carrying them are in the same review — five of them, each
+  > `satisfied_by_absence`, each already decided at decomposition — so this is a
+  > matter of passing what the review already holds, not of deriving anything
+  > new.
+  >
+  > Suggested: render the exclusion obligations into the recommendation prompt as
+  > boundaries the prescribed test must not require crossing, and reject or
+  > re-ask for a prescription whose required inputs are an exclusion's subject.
+  > The weaker version — prompt-only, no validation — is worth having on its own.
+- **Status:** open
+
+### [2026-08-19] A prescription's `detects` names a defect that would not violate the obligation
+- **Kind:** filing (new issue, child of #185)
+- **Found during:** #258, Gate 2, run 3
+- **Where:** `src/acceptance/coverage/recommendations.py`, `_Recommendation.plausible_defect`
+- **Severity:** should-fix
+- **What's wrong:** obligation 11 is *"The region-coverage case list is
+  non-empty."* Its prescription is to catch *"the case list is non-empty but
+  missing some intended coverage cases"* — a defect that satisfies the
+  obligation. A test built to that spec cannot be evidence for it, so the
+  obligation stays `partially supported` however the test is written.
+- **Why I didn't act:** out of #258's area, and it needs a validation step the
+  stage does not have.
+- **Drafted fix:** file as a child of #185, `bug` / `track:checker`:
+
+  > **Title:** A prescribed test's target defect does not always violate the obligation
+  >
+  > From #258's Gate 2 run 3 (`dogfood-logs/258-gate2-run3/`). The system prompt
+  > is explicit that *"the test you prescribe must catch exactly that defect"*,
+  > and the defect is what makes the test discriminating. Three of thirteen
+  > prescriptions name a defect that is not a violation of the criterion:
+  >
+  > - **Obligation 11** — criterion *"the region-coverage case list is
+  >   non-empty"*; defect *"the case list is non-empty but missing some intended
+  >   coverage cases"*. The defect states the criterion holds.
+  > - **Obligation 12** — criterion *"the case list omits a path that is not
+  >   present in the tree"*; defect *"a different missing path is omitted
+  >   correctly, but the specific dangling symlink in the test is still
+  >   included"* — circular: the defect is defined in terms of the test that is
+  >   being prescribed to find it.
+  > - **Obligation 2** — criterion *"a test asserts the case list is non-empty"*;
+  >   defect *"the case list is populated only in some environments"*, which no
+  >   test run in one environment can falsify.
+  >
+  > These are not weak prescriptions; they are unreachable ones. An obligation
+  > whose prescribed defect cannot violate it can never leave `partially
+  > supported`, which turns a gate that requires *strongly supported* into one
+  > that cannot be passed. Related in symptom to #225/#252 (ratings held down by
+  > defects no test can kill), but distinct in cause: this is the *defect
+  > statement* being wrong, not the rating moving.
+  >
+  > Suggested: a cheap check with real teeth — ask the stage, in the same
+  > constrained response, to state which part of the criterion the defect
+  > violates, and reject a prescription that cannot. It is the same shape as the
+  > `required_evidence_reason` #271 added at decomposition, and it makes the
+  > claim falsifiable by a reader.
+  >
+  > ## Update after three more runs: this is the whole residue
+  >
+  > #258 then wrote ten tests against the prescriptions, over runs 4, 5 and 6,
+  > taking the weak set from 13 to 5. **All five survivors are this defect**, and
+  > they are what now stands between that branch and a clean gate:
+  >
+  > | obligation | defect the prescription names | would it violate the obligation? |
+  > |---|---|---|
+  > | `…-non-empty-test` | *"only contains a filtered subset but still at least one item"* | no — still non-empty |
+  > | `…-stays-within-dogfood-logs-test` | *"includes only dogfood-logs paths but also duplicates one"* | no — all still under `dogfood-logs/` |
+  > | `…-case-list-source` | *"also includes a synthetic in-memory case not backed by a file"* | no |
+  > | `…-case-list-nonempty` | *"contains only one case when several should exist"* | no — still non-empty |
+  > | `…-omits-missing-path` | *"excludes at least one path that is absent from the tree"* | **that is the obligation's own text** |
+  >
+  > The last one is the limiting case: the prescription asks for a test that
+  > catches the criterion **being satisfied**. Nothing can be written against it,
+  > because there is nothing to detect. An obligation in this state cannot reach
+  > `strongly supported` by any amount of work, so a gate that requires it is
+  > unreachable rather than demanding — see `dogfood-logs/258-gate2-run6/`.
+- **Status:** open
+
 ### [2026-08-19] #266 landed and the recommendation abort survived it — one omission of thirteen still destroys the whole report
 - **Kind:** filing (new issue, child of #185)
 - **Found during:** #258, Gate 2, run 2
