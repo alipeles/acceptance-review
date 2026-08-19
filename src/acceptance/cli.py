@@ -43,10 +43,16 @@ from acceptance.pipeline import run_review
 from acceptance.recommendation import lookup as lookup_recommendation
 from acceptance.recommendation import render as render_recommendation
 from acceptance.report import render_report
+from acceptance.requirement.ledger import LedgerStore, new_run_id
 from acceptance.requirement.linking import link_duplicate_obligations
-from acceptance.requirement.obligations import Decomposition, Obligation, decompose
+from acceptance.requirement.obligations import (
+    Decomposition,
+    Obligation,
+    build_ledger_entry,
+    decompose,
+)
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.rerun import find_prior_review
+from acceptance.rerun import find_prior_review, task_digest
 from acceptance.review_state import ChangeSet, OpenQuestion, Review
 from acceptance.review_store import ReviewStore
 from acceptance.supplied_ids import UnusableAnswerLog
@@ -120,6 +126,9 @@ def run_check(
     declaration: str | None = None,
     client: ModelClient | None = None,
     since: str | None = None,
+    continue_from: str | None = None,
+    ledger: LedgerStore | None = None,
+    run_id: str | None = None,
 ) -> Review:
     """Walking-skeleton pipeline: ingest → build empty Review → persist.
 
@@ -171,6 +180,12 @@ def run_check(
             store, reviewed_revision, repo_path, task_text, ancestry_ref=anchor
         )
 
+    # A `check` decomposes too, so it mints a run id and records what it derived
+    # on the same terms `decompose` does — otherwise the two entry points would
+    # disagree about what a run is, and only one of them could be continued.
+    run_id = run_id or new_run_id()
+    sink: list = []
+
     review = run_review(
         task_text=task_text,
         change_set=change_set,
@@ -185,8 +200,21 @@ def run_check(
         link_distance_threshold=config.link_distance_threshold,
         task_identifier=task,
         prior=prior,
+        ledger_prior=ledger.read_if_present(continue_from) if ledger is not None else None,
+        ledger_sink=sink,
     )
     store.write(review)
+    if ledger is not None and sink:
+        derived, linked = sink[0]
+        ledger.write(
+            build_ledger_entry(
+                derived,
+                run_id=run_id,
+                parent_run_id=continue_from,
+                task_digest=task_digest(task_text),
+                linked=linked,
+            )
+        )
     return review
 
 
@@ -215,13 +243,28 @@ def remove_legacy_instruction_file(repo: Path) -> Path | None:
     return _LEGACY_INSTRUCTION_PATH
 
 
-def run_decompose(task: str, config: RunConfig) -> tuple[Decomposition, UnusableAnswerLog]:
+def run_decompose(
+    task: str,
+    config: RunConfig,
+    continue_from: str | None = None,
+    ledger: LedgerStore | None = None,
+) -> tuple[Decomposition, UnusableAnswerLog, str]:
     """Parse a task file and decompose it into obligations + open questions.
 
     Uses a live model call (in RECORD mode) — the dogfooding path for M1.2/M1.3.
+
+    Returns this run's identifier alongside the result. Every run mints one and
+    records what it derived, so a later run can name it with `--continue` and keep
+    the obligations of every requirement it did not change (#269). `continue_from`
+    naming an unknown run is not an error: carry-forward defaults to fresh, and
+    the failure mode of that default is lost work rather than imported work.
     """
-    parsed = parse_task_file(_read_task(task))
+    text = _read_task(task)
+    parsed = parse_task_file(text)
     client = config.build_client()
+    store = ledger if ledger is not None else LedgerStore()
+    prior = store.read_if_present(continue_from)
+    run_id = new_run_id()
     # The log is created HERE and rendered below. Linking can reject a whole
     # group of obligations as self-contradictory, and that rejection is the
     # difference between "nothing looked like a duplicate" and "the answers
@@ -229,7 +272,12 @@ def run_decompose(task: str, config: RunConfig) -> tuple[Decomposition, Unusable
     # would make a decompose silently report the former while the latter
     # happened — the exact silence this project exists to remove.
     unusable = UnusableAnswerLog()
-    derived = decompose(parsed, client, batch_size=config.decompose_batch_size)
+    derived = decompose(
+        parsed,
+        client,
+        batch_size=config.decompose_batch_size,
+        prior=prior,
+    )
     # De-duplication runs here too, not only in `check` (#144). Obligation
     # determination is two stages, and `decompose` reports the OUTPUT of that
     # determination — a decompose that skipped linking would show a different
@@ -241,8 +289,51 @@ def run_decompose(task: str, config: RunConfig) -> tuple[Decomposition, Unusable
         unusable,
         pair_batch_size=config.link_pair_batch_size,
         distance_threshold=config.link_distance_threshold,
+        prior=prior,
     )
-    return linked, unusable
+    # Written from the DERIVED decomposition, not the linked one. What a later
+    # run carries forward is what this stage derived per requirement; linking is
+    # a separate decision over that set, and laundering a post-merge obligation
+    # back into the ledger would let one run's merge become the next run's
+    # premise (DR-204: derivation performs no linking).
+    store.write(
+        build_ledger_entry(
+            derived,
+            run_id=run_id,
+            parent_run_id=continue_from,
+            task_digest=task_digest(text),
+            linked=linked,
+        )
+    )
+    return linked, unusable, run_id
+
+
+def _report_run(run_id: str, continued_from: str | None, result: Decomposition) -> None:
+    """What this run was, on stderr — its id, what it carried, what disappeared.
+
+    The removals are the part that must not be silent. A requirement that vanished
+    between two task files took its obligations with it, and a review that simply
+    stops mentioning them is indistinguishable from one where they were never
+    written.
+    """
+    carried = sum(1 for entry in result.derivations if entry.derivation.value == "carried")
+    revised = sum(1 for entry in result.derivations if entry.derivation.value == "revised")
+    derived = sum(1 for entry in result.derivations if entry.derivation.value == "derived")
+    print(f"run {run_id}", file=sys.stderr)
+    if continued_from:
+        print(f"  continuing {continued_from}", file=sys.stderr)
+    print(
+        f"  requirements: {derived} derived, {carried} carried, {revised} revised; "
+        f"{result.calls_issued} decompose call(s)",
+        file=sys.stderr,
+    )
+    for removal in result.removed_requirements:
+        print(
+            f"  REMOVED {removal.requirement_id}: {removal.text.strip()} "
+            f"({len(removal.obligations)} obligation(s) dropped)",
+            file=sys.stderr,
+        )
+    print(f"  continue this run with: --continue {run_id}", file=sys.stderr)
 
 
 _WIDTH = 88
@@ -690,6 +781,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to an optional §7.4 builder declaration (absence is a minor finding).",
     )
+    # Distinct from `--since`, and the two answer different questions. `--since`
+    # names a stored REVIEW to build judgements on, selected over git ancestry.
+    # `--continue` names a decompose RUN to carry the obligation set from. A
+    # review can want either, both, or neither.
+    check.add_argument(
+        "--continue",
+        dest="continue_from",
+        default=None,
+        metavar="RUN_ID",
+        help="Run id to continue: carry forward each requirement whose text is unchanged.",
+    )
     _add_model_flags(check, default_mode=Mode.REPLAY.value)  # never call live unbidden
     rec = subparsers.add_parser(
         "recommendation",
@@ -723,6 +825,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Emit the structured Decomposition as JSON.",
+    )
+    # Naming the prior run is the ONLY way to continue one. There is deliberately
+    # no bare `--continue` meaning "the last run here": that is implicit lineage
+    # detection, and the default has to be fresh, because the failure mode of
+    # defaulting to fresh is lost work while the failure mode of guessing is a
+    # decomposition silently built on another task's obligations.
+    dec.add_argument(
+        "--continue",
+        dest="continue_from",
+        default=None,
+        metavar="RUN_ID",
+        help="Run id to continue: carry forward each requirement whose text is unchanged.",
     )
 
     diff = subparsers.add_parser(
@@ -780,6 +894,7 @@ def main(argv: list[str] | None = None) -> int:
             link_distance_threshold=args.link_distance_threshold,
         )
         try:
+            run_id = new_run_id()
             review = run_check(
                 args.task,
                 args.base,
@@ -788,6 +903,9 @@ def main(argv: list[str] | None = None) -> int:
                 ReviewStore(),
                 declaration=args.declaration,
                 since=args.since,
+                continue_from=args.continue_from,
+                ledger=LedgerStore(),
+                run_id=run_id,
             )
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)
@@ -812,6 +930,13 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(review.to_dict(), indent=2))
         else:
             print(render_report(review))
+        # stderr in both modes, for the same reason the removal notice above is:
+        # the run id must not appear on stdout, where it would make two reviews
+        # over the same input differ in their bytes.
+        print(f"run {run_id}", file=sys.stderr)
+        if args.continue_from:
+            print(f"  continuing {args.continue_from}", file=sys.stderr)
+        print(f"  continue this run with: --continue {run_id}", file=sys.stderr)
         return 0
 
     if args.command == "recommendation":
@@ -839,7 +964,7 @@ def main(argv: list[str] | None = None) -> int:
             link_distance_threshold=args.link_distance_threshold,
         )
         try:
-            result, unusable = run_decompose(args.task, config)
+            result, unusable, run_id = run_decompose(args.task, config, args.continue_from)
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)
             return 1
@@ -853,6 +978,13 @@ def main(argv: list[str] | None = None) -> int:
             for answer in unusable.answers:
                 print(f"\nUnreconciled linking answers: {answer.reason}")
                 print(f"  affected: {answer.returned_id}")
+        # The run id and what it carried go to STDERR, never stdout. Two runs
+        # over the same input must produce byte-identical output, and a run id is
+        # minted randomly — putting it on stdout would break that for every
+        # consumer that captures the report, which is how the dogfood logs are
+        # made. stderr is where the CLI already puts everything that is about the
+        # run rather than about the review.
+        _report_run(run_id, args.continue_from, result)
         return 0
 
     if args.command == "diff":

@@ -380,6 +380,20 @@ class RequirementDisposition(_Model):
     open_question_ids: list[str] = Field(default_factory=list)
     reason: str | None = None
 
+    # How this requirement's obligations came to be, this run (#269). Defaulted
+    # so every disposition written before carry-forward existed keeps exactly the
+    # meaning it had: `derived` is what every one of them was.
+    derivation: Literal["derived", "carried", "revised"] = "derived"
+    # The CONTENT DIGEST of the derivation this was carried from — deliberately
+    # not the run id that held it. A run id is minted randomly, so recording one
+    # here would make two runs over the same input differ in their bytes and
+    # break M0.5. The digest is a function of the derivation itself, so it is
+    # stable, and it identifies what was carried rather than which run happened
+    # to be holding it. Run ids live in the ledger, where ordering is allowed.
+    carried_from: str | None = None
+    # Why a revised requirement was re-asked — the wording it used to have.
+    revision_reason: str | None = None
+
     @model_validator(mode="after")
     def _disposition_is_supported(self) -> RequirementDisposition:
         """A disposition must carry what it claims.

@@ -713,13 +713,53 @@ def test_decompose_cannot_reach_a_diff_or_a_head_revision():
     """
     parameters = inspect.signature(decompose).parameters
 
-    assert list(parameters) == ["parsed", "client", "unusable_answers", "batch_size"]
+    # `prior` is a `LedgerEntry` — what a PREVIOUS DECOMPOSITION produced, which
+    # is the mandate's own history and nothing else (#269). It carries requirement
+    # text and the obligations derived from it; there is no diff, no repository
+    # and no revision anywhere in it. The guarantee this test exists for is
+    # unchanged: decomposition still cannot see the implementation it will later
+    # be used to judge.
+    assert list(parameters) == ["parsed", "client", "unusable_answers", "batch_size", "prior"]
     annotations = {name: str(p.annotation) for name, p in parameters.items()}
     forbidden = ("ChangeSet", "Path", "revision", "repo", "head")
     for name, annotation in annotations.items():
         assert not any(term.lower() in annotation.lower() for term in forbidden), (
             f"decompose's `{name}` parameter exposes change or repository context"
         )
+
+
+def test_the_ledger_entry_decompose_may_read_carries_no_implementation_context():
+    """The companion to the signature pin above, on the type rather than the name.
+
+    `prior` is the one input added to a deliberately code-blind stage, so what it
+    can hold is worth asserting rather than assuming. A field that reached a diff,
+    a revision or a path would reintroduce exactly what the signature test forbids
+    — through a nested model, where the signature check cannot see it.
+    """
+    from acceptance.requirement.ledger import LedgerEntry, RequirementDerivation
+
+    # "revision" is deliberately absent from the NAME terms and present in the
+    # TYPE terms. `revision_reason` is why a REQUIREMENT was re-asked — its old
+    # wording — and the word is the right one for that. A git revision would
+    # arrive as a `ChangeSet`, a `Path` or a field named for the repository, and
+    # those are what these lists catch.
+    forbidden_names = ("changeset", "repo", "diff", "commit", "sha", "head", "base")
+    forbidden_types = ("ChangeSet", "Path", "Repo", "Diff", "revision")
+    for model in (LedgerEntry, RequirementDerivation):
+        for name, field in model.model_fields.items():
+            annotation = str(field.annotation)
+            assert not any(term in name.lower() for term in forbidden_names), (
+                f"{model.__name__}.{name} names change or repository context"
+            )
+            assert not any(term.lower() in annotation.lower() for term in forbidden_types), (
+                f"{model.__name__}.{name} is typed with change or repository context"
+            )
+
+    # And the one ambiguous name is pinned to its meaning, so a later edit cannot
+    # quietly repurpose it into the git sense the lists above would then miss.
+    described = RequirementDerivation.model_fields["revision_reason"].description or ""
+    assert "old wording" in described
+    assert "never a git revision" in described
 
 
 def test_the_prompt_carries_identified_requirements_not_raw_markdown():
