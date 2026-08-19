@@ -1,0 +1,673 @@
+Task completion: INCOMPLETE
+
+21 obligation(s) with non-discriminating test evidence (not-requiring-test-evidence-absent-from-matching-input-test, not-requiring-test-evidence-left-unrated-test, not-requiring-test-evidence-prescribed-no-test-test, not-requiring-code-evidence-absent-from-classification-input-test, criterion-neither-needs-unavailable-evidence-test, criterion-code-only-addressed-reported-satisfied-test, same-mandate-same-required-kinds-test, report-explains-test-not-required-test, required-evidence-kinds-are-one-of-four-values, required-evidence-kinds-are-single-valued, required-evidence-not-revised-later, no-test-evidence-not-offered-to-test-matcher, no-test-evidence-not-rated-on-axis, no-test-evidence-not-prescribed-test, no-code-evidence-not-offered-to-change-classifier, neither-kind-reported-as-unmeasurable, code-only-addressed-criterion-reported-satisfied, scope-exclusion-may-still-require-test-evidence, same-mandate-same-required-kinds, report-states-not-required-and-why, criteria-consideration-by-evidence-gathering-stages).
+
+Obligations:
+
+  1. A test asserts that the kinds of evidence a criterion requires reach the persisted review state.
+       requirements: completion-02
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: strongly supported  [tier: static]
+         1.1  tests/test_llm.py::test_record_mode_validates_and_persists_a_transcript
+         1.2  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         1.3  tests/test_unevidenceable_obligations.py::test_it_survives_persistence
+
+  2. A test asserts that a criterion requiring fewer than both kinds carries a reason.
+       requirements: completion-03
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: strongly supported  [tier: static]
+         2.1  tests/prompts/test_decomposition_prompt.py::test_a_narrowed_requirement_says_why
+         2.2  tests/requirement/test_obligation_attribution.py::test_a_narrowing_with_a_reason_is_kept
+         2.3  tests/requirement/test_obligation_attribution.py::test_a_reason_given_without_a_narrowing_is_dropped
+         2.4  tests/requirement/test_obligation_attribution.py::test_a_whitespace_only_reason_is_no_reason
+         2.5  tests/test_report.py::test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test
+         2.6  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         2.7  tests/test_unevidenceable_obligations.py::test_the_required_evidence_reaches_review_state_with_its_reason
+         2.8  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+
+  3. A test asserts that a criterion with no stated reason requires both kinds.
+       requirements: completion-04
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: strongly supported  [tier: static]
+         3.1  tests/requirement/test_obligation_attribution.py::test_a_narrowing_with_no_reason_is_discarded
+         3.2  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         3.3  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+
+  4. A test asserts that a criterion not requiring test evidence is absent from the input to the stage that matches tests to criteria.
+       requirements: completion-05
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: partially supported  [tier: static]
+         4.1  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         4.2  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_no_test_evidence_never_reaches_the_mapper
+         recommended test: a test asserting criteria without test-evidence requirements are excluded from the test-to-criterion matching input
+           inputs:  A review state containing at least one obligation whose required_evidence is code_only or neither, alongside one ordinary code_and_tests obligation, and a test that captures the actual prompt/input passed into the test-to-criterion mapping stage.
+           detects: The report still shows a mapped test axis for code-only obligations because they were not excluded upstream.
+           full detail: acceptance recommendation --criterion not-requiring-test-evidence-absent-from-matching-input-test
+
+  5. A test asserts that a criterion not requiring test evidence is left unrated on the test-evidence axis.
+       requirements: completion-06
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: partially supported  [tier: static]
+         5.1  tests/prompts/test_decomposition_prompt.py::test_the_ordinary_requirements_still_require_test_evidence
+         5.2  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         5.3  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_no_test_evidence_is_left_unrated
+         5.4  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+         recommended test: a test asserting criteria without test-evidence requirements are not rated on the test-evidence axis
+           inputs:  A review run with one code-only obligation that is otherwise addressed by code, plus one ordinary obligation that still requires test evidence, so the pipeline produces both kinds in the same run.
+           detects: The pipeline later synthesizes a test rating for code-only obligations despite leaving the mapper input unchanged.
+           full detail: acceptance recommendation --criterion not-requiring-test-evidence-left-unrated-test
+
+  6. A test asserts that a criterion not requiring test evidence is prescribed no test.
+       requirements: completion-07
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: partially supported  [tier: static]
+         6.1  tests/coverage/test_recommendations.py::test_no_test_is_recommended_for_a_code_evidence_only_obligation
+         6.2  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         6.3  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+         recommended test: a test asserting criteria without test-evidence requirements are prescribed no test
+           inputs:  A code-only obligation that is weak/unsupported enough to reach the recommendation stage, plus a normal weak obligation that should still receive a recommendation, and a transcript/capture of the recommendation output.
+           detects: Code-only obligations are omitted from recommendations but still incorrectly marked as needing a test in some unrelated report text.
+           full detail: acceptance recommendation --criterion not-requiring-test-evidence-prescribed-no-test-test
+
+  7. A test asserts that a criterion not requiring code evidence is absent from the input to the stage that classifies whether the change addresses it.
+       requirements: completion-08
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: partially supported  [tier: static]
+         7.1  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         7.2  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_no_code_evidence_never_reaches_the_coverage_stage
+         7.3  tests/test_verdict.py::test_a_tests_only_obligation_is_still_judged_on_its_test_evidence
+         recommended test: a test asserting criteria without code-evidence requirements are excluded from the change-addresses classification input
+           inputs:  A run containing at least one obligation with required_evidence tests_only or neither, plus one code-requiring obligation, and capture of the change-address classification stage prompt/input.
+           detects: The classifier input includes extra obligations but the final verdict for the fixture remains unchanged.
+           full detail: acceptance recommendation --criterion not-requiring-code-evidence-absent-from-classification-input-test
+
+  8. A test asserts that a criterion requiring neither kind is reported as needing evidence the review cannot gather.
+       requirements: completion-09
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: partially supported  [tier: static]
+         8.1  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         8.2  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_neither_kind_needs_review_this_cannot_give
+         8.3  tests/test_verdict.py::test_an_obligation_requiring_neither_kind_needs_non_code_review
+         8.4  tests/test_verdict.py::test_requires_non_code_evidence_is_needs_non_code_review
+         recommended test: A test case that expects the report to classify a neither-kind criterion as needing evidence the review cannot gather.
+           inputs:  A single neither-kind obligation in a review run where no code or test evidence can settle it, plus at least one ordinary obligation so the verdict path is meaningful.
+           detects: The report labels a neither-kind obligation as not required rather than needing non-code review.
+           full detail: acceptance recommendation --criterion criterion-neither-needs-unavailable-evidence-test
+
+  9. A test asserts that an addressed criterion requiring code evidence alone is reported as satisfied.
+       requirements: completion-10
+       code evidence: not required — The requirement is specifically for a test that demonstrates the reporting behavior.
+       test evidence: partially supported  [tier: static]
+         9.1  tests/test_report.py::test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test
+         9.2  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         9.3  tests/test_unevidenceable_obligations.py::test_an_addressed_code_only_obligation_is_satisfied_not_unmeasured
+         recommended test: A test case that expects an addressed code-only criterion to be reported as satisfied rather than unmeasured.
+           inputs:  A code-only obligation whose code evidence is present and addressed, alongside a control obligation that is not code-only, in a review run that reaches the report/verdict layer.
+           detects: The report shows code-only addressed obligations as not applicable instead of satisfied.
+           full detail: acceptance recommendation --criterion criterion-code-only-addressed-reported-satisfied-test
+
+  10. A test asserts that a criterion under a scope-exclusion heading can require test evidence.
+       requirements: completion-11
+       code evidence: not required — The bullet demands the existence of a test asserting this behavior, not a source-only change.
+       test evidence: strongly supported  [tier: static]
+         10.1  tests/coverage/test_classify.py::test_a_respected_boundary_drops_hunks_the_model_cited_anyway
+         10.2  tests/coverage/test_classify.py::test_a_respected_boundary_records_the_scope_examined_not_the_changes
+         10.3  tests/coverage/test_classify.py::test_the_scope_examined_comes_from_the_diff_not_from_the_model
+         10.4  tests/requirement/test_obligation_attribution.py::test_refiling_takes_the_satisfied_by_absence_of_the_requirement_it_lands_in
+         10.5  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  11. A test asserts that a review of a change modifying only configuration files produces a report.
+       requirements: completion-12
+       code evidence: not required — The requirement is a demand for a test, so only test evidence is required.
+       test evidence: strongly supported  [tier: static]
+         11.1  tests/benchmark/test_coverage.py::test_cli_and_benchmark_share_one_pipeline
+         11.2  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  12. A test asserts that two runs over the same mandate record the same required kinds.
+       requirements: completion-13
+       code evidence: not required — The requirement is solely for a test assertion about determinism.
+       test evidence: partially supported  [tier: static]
+         12.1  tests/prompts/test_decomposition_prompt.py::test_every_criterion_of_the_same_shape_is_treated_the_same_way
+         12.2  tests/requirement/test_obligation_attribution.py::test_two_runs_over_identical_task_text_produce_identical_review_state
+         12.3  tests/test_unevidenceable_obligations.py::test_two_runs_over_the_same_mandate_record_the_same_required_kinds
+         recommended test: A test case that performs two runs over the same mandate and checks that the recorded required kinds match.
+           inputs:  Two independent decompositions or review runs over the exact same mandate text and fixture, with the same obligations and evidence decisions produced both times.
+           detects: The same mandate yields the same required kinds but different object identities only.
+           full detail: acceptance recommendation --criterion same-mandate-same-required-kinds-test
+
+  13. A test asserts that the report states why test evidence is not required for a criterion that does not require it.
+       requirements: completion-14
+       code evidence: not required — The requirement asks for a test that checks the report explanation.
+       test evidence: partially supported  [tier: static]
+         13.1  tests/test_report.py::test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test
+         13.2  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         13.3  tests/test_unevidenceable_obligations.py::test_the_report_says_test_evidence_is_not_required_and_why
+         recommended test: A test case that inspects the report text for an explanation of why test evidence is not required.
+           inputs:  A rendered report containing at least one code-only obligation and one ordinary obligation, with the code-only obligation carrying a non-empty required_evidence_reason.
+           detects: The report explains the reason in a different section but not on the obligation line.
+           full detail: acceptance recommendation --criterion report-explains-test-not-required-test
+
+  14. A test asserts that the report renders that differently from a criterion that requires test evidence and has none.
+       requirements: completion-15
+       code evidence: not required — The requirement is explicitly about a test distinguishing two report cases.
+       test evidence: strongly supported  [tier: static]
+         14.1  tests/test_report.py::test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test
+         14.2  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         14.3  tests/test_unevidenceable_obligations.py::test_the_report_renders_that_differently_from_a_missing_test
+
+  15. A test asserts that a recorded model exchange carries the reason the model stopped generating.
+       requirements: completion-16
+       code evidence: not required — The bullet demands a test assertion, so the test itself is the obligation.
+       test evidence: strongly supported  [tier: static]
+         15.1  tests/test_llm.py::test_a_provider_reporting_no_stop_reason_records_none
+         15.2  tests/test_llm.py::test_a_transcript_records_why_the_model_stopped_generating
+         15.3  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  16. A test asserts that a test bearing on several criteria is recorded against every one of them.
+       requirements: completion-17
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: strongly supported  [tier: static]
+         16.1  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         16.2  tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations
+         16.3  tests/evidence/test_mapping.py::test_a_test_maps_to_the_obligation_it_evidences
+         16.4  tests/evidence/test_mapping.py::test_apply_test_mapping_populates_test_evidence
+         16.5  tests/evidence/test_mapping.py::test_the_per_call_results_are_merged
+         16.6  tests/requirement/test_decompose_partitioning.py::test_two_batches_minting_the_same_obligation_id_stay_separate
+         16.7  tests/requirement/test_obligation_attribution.py::test_a_quotation_is_found_across_a_line_break
+         16.8  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  17. A test asserts that the mapping instruction requires every overlapping criterion to be returned rather than the closest one.
+       requirements: completion-18
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: strongly supported  [tier: static]
+         17.1  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         17.2  tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations
+         17.3  tests/evidence/test_mapping.py::test_the_instruction_requires_every_overlapping_obligation_not_the_closest
+         17.4  tests/evidence/test_mapping.py::test_the_per_call_results_are_merged
+         17.5  tests/requirement/test_decompose_partitioning.py::test_two_batches_minting_the_same_obligation_id_stay_separate
+         17.6  tests/requirement/test_obligation_attribution.py::test_a_quotation_is_found_across_a_line_break
+         17.7  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  18. Each criterion records which kinds of evidence it requires.
+       requirements: constraint-01
+       code evidence: addressed
+         18.1  src/acceptance/review_state.py#@@ -92,26 +92,64 @@ class ObligationType(str, Enum):
+         18.2  src/acceptance/review_state.py#@@ -441,11 +479,29 @@ class Obligation(_Model):
+         18.3  src/acceptance/requirement/obligations.py#@@ -266,6 +320,11 @@ class _DecomposedObligation(StrictResponseModel):
+         18.4  src/acceptance/requirement/obligations.py#@@ -742,7 +815,9 @@ def decompose(
+         18.5  src/acceptance/pipeline.py#@@ -273,16 +287,28 @@ def run_review(
+         18.6  src/acceptance/report.py#@@ -30,9 +29,19 @@ from acceptance.review_state import (
+         18.7  src/acceptance/verdict.py#@@ -141,13 +141,26 @@ def derive_verdict(
+       test evidence: strongly supported  [tier: static]
+         18.8  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         18.9  tests/test_unevidenceable_obligations.py::test_the_required_evidence_reaches_review_state_with_its_reason
+
+  19. The kinds recorded are exactly one of: both code and test evidence, code evidence alone, test evidence alone, or neither.
+       requirements: constraint-02
+       code evidence: addressed
+         19.1  src/acceptance/review_state.py#@@ -92,26 +92,64 @@ class ObligationType(str, Enum):
+       test evidence: partially supported  [tier: static]
+         19.2  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         19.3  tests/test_unevidenceable_obligations.py::test_the_required_evidence_reaches_review_state_with_its_reason
+         recommended test: the recorded evidence-kind value is limited to the four listed states
+           inputs:  A decomposition fixture that attempts to emit an invalid required_evidence value, or a direct model parse of an obligation with a value outside code_and_tests/code_only/tests_only/neither.
+           detects: The enum has extra values but the fixture still uses the expected ones.
+           full detail: acceptance recommendation --criterion required-evidence-kinds-are-one-of-four-values
+
+  20. A criterion records a single, non-contradictory evidence requirement state.
+       requirements: constraint-03
+       code evidence: addressed
+         20.1  src/acceptance/review_state.py#@@ -92,26 +92,64 @@ class ObligationType(str, Enum):
+         20.2  src/acceptance/review_state.py#@@ -441,11 +479,29 @@ class Obligation(_Model):
+       test evidence: partially supported  [tier: static]
+         20.3  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         20.4  tests/test_unevidenceable_obligations.py::test_the_required_evidence_reaches_review_state_with_its_reason
+         recommended test: the stored evidence requirement cannot simultaneously indicate that test evidence is both required and not required
+           inputs:  A fixture or model response that tries to express both 'required' and 'not required' simultaneously, for example by supplying conflicting internal flags or duplicate fields that would imply both states.
+           detects: The implementation stores a single value but derives it from two redundant internal flags that happen to agree on the fixture.
+           full detail: acceptance recommendation --criterion required-evidence-kinds-are-single-valued
+
+  21. The kinds a criterion requires are decided when criteria are derived from the mandate.
+       requirements: constraint-04
+       code evidence: addressed
+         21.1  src/acceptance/requirement/obligations.py#@@ -231,15 +231,69 @@ PROPERTY, and its positive form — "the checkout behavior is preserved" — say
+         21.2  src/acceptance/requirement/obligations.py#@@ -266,6 +320,11 @@ class _DecomposedObligation(StrictResponseModel):
+         21.3  src/acceptance/requirement/obligations.py#@@ -742,7 +815,9 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         21.4  tests/requirement/test_obligations.py::test_decomposition_round_trips_through_persistence
+         21.5  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         21.6  tests/test_unevidenceable_obligations.py::test_the_required_evidence_reaches_review_state_with_its_reason
+
+  22. No later stage revises the kinds a criterion requires.
+       requirements: constraint-05
+       code evidence: addressed
+         22.1  src/acceptance/coverage/recommendations.py#@@ -82,16 +82,23 @@ def _weak_obligations(obligations: list[Obligation]) -> list[Obligation]:
+         22.2  src/acceptance/pipeline.py#@@ -273,16 +287,28 @@ def run_review(
+         22.3  src/acceptance/pipeline.py#@@ -294,10 +320,20 @@ def run_review(
+         22.4  src/acceptance/report.py#@@ -350,30 +359,35 @@ def _obligation_block(
+         22.5  src/acceptance/verdict.py#@@ -141,13 +141,26 @@ def derive_verdict(
+       test evidence: partially supported  [tier: static]
+         22.6  tests/requirement/test_obligations.py::test_decomposition_round_trips_through_persistence
+         22.7  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         22.8  tests/test_unevidenceable_obligations.py::test_the_required_evidence_reaches_review_state_with_its_reason
+         recommended test: later processing stages leave the recorded evidence kinds unchanged
+           inputs:  A review run where one obligation is narrowed at decomposition and another remains default, then a later pipeline stage that could potentially rewrite required_evidence is exercised.
+           detects: A later stage revises only obligations not covered by the fixture.
+           full detail: acceptance recommendation --criterion required-evidence-not-revised-later
+
+  23. A criterion requires both kinds of evidence unless a reason is given for requiring fewer.
+       requirements: constraint-06
+       code evidence: addressed
+         23.1  src/acceptance/requirement/obligations.py#@@ -231,15 +231,69 @@ PROPERTY, and its positive form — "the checkout behavior is preserved" — say
+         23.2  src/acceptance/requirement/obligations.py#@@ -712,19 +778,26 @@ def decompose(
+         23.3  src/acceptance/requirement/obligations.py#@@ -742,7 +815,9 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         23.4  tests/prompts/test_decomposition_prompt.py::test_a_narrowed_requirement_says_why
+         23.5  tests/requirement/test_obligation_attribution.py::test_a_narrowing_with_a_reason_is_kept
+         23.6  tests/requirement/test_obligation_attribution.py::test_a_narrowing_with_no_reason_is_discarded
+         23.7  tests/requirement/test_obligation_attribution.py::test_a_reason_given_without_a_narrowing_is_dropped
+         23.8  tests/requirement/test_obligation_attribution.py::test_a_whitespace_only_reason_is_no_reason
+         23.9  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         23.10  tests/test_unevidenceable_obligations.py::test_the_required_evidence_reaches_review_state_with_its_reason
+         23.11  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+
+  24. A criterion requiring fewer than both kinds carries the reason it does.
+       requirements: constraint-07
+       code evidence: addressed
+         24.1  src/acceptance/review_state.py#@@ -441,11 +479,29 @@ class Obligation(_Model):
+         24.2  src/acceptance/requirement/obligations.py#@@ -266,6 +320,11 @@ class _DecomposedObligation(StrictResponseModel):
+         24.3  src/acceptance/requirement/obligations.py#@@ -712,19 +778,26 @@ def decompose(
+         24.4  src/acceptance/requirement/obligations.py#@@ -742,7 +815,9 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         24.5  tests/prompts/test_decomposition_prompt.py::test_a_narrowed_requirement_says_why
+         24.6  tests/requirement/test_obligation_attribution.py::test_a_narrowing_with_a_reason_is_kept
+         24.7  tests/requirement/test_obligation_attribution.py::test_a_reason_given_without_a_narrowing_is_dropped
+         24.8  tests/requirement/test_obligation_attribution.py::test_a_whitespace_only_reason_is_no_reason
+         24.9  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         24.10  tests/test_unevidenceable_obligations.py::test_the_required_evidence_reaches_review_state_with_its_reason
+         24.11  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+
+  25. The recorded kinds are part of the persisted review state.
+       requirements: constraint-08
+       code evidence: addressed
+         25.1  src/acceptance/review_state.py#@@ -441,11 +479,29 @@ class Obligation(_Model):
+         25.2  tests/requirement/test_decompose_partitioning.py#@@ -264,6 +264,8 @@ def test_two_batches_minting_the_same_obligation_id_stay_separate():
+         25.3  tests/requirement/test_obligation_attribution.py#@@ -45,6 +45,10 @@ def _obligation(oid: str, description: str, quote: str) -> dict:
+         25.4  tests/requirement/test_obligation_echo.py#@@ -54,6 +54,10 @@ def _obligation(oid: str, description: str, quote: str, **overrides) -> dict:
+         25.5  tests/requirement/test_requirement_map.py#@@ -70,6 +70,10 @@ def _obligation(oid: str, description: str, quote: str) -> dict:
+       test evidence: strongly supported  [tier: static]
+         25.6  tests/requirement/test_obligations.py::test_decomposition_round_trips_through_persistence
+         25.7  tests/test_llm.py::test_record_mode_validates_and_persists_a_transcript
+         25.8  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         25.9  tests/test_unevidenceable_obligations.py::test_it_survives_persistence
+         25.10  tests/test_unevidenceable_obligations.py::test_the_required_evidence_reaches_review_state_with_its_reason
+
+  26. A criterion that does not require test evidence is not offered to the stage that matches tests to criteria.
+       requirements: constraint-09
+       code evidence: addressed
+         26.1  src/acceptance/coverage/recommendations.py#@@ -82,16 +82,23 @@ def _weak_obligations(obligations: list[Obligation]) -> list[Obligation]:
+         26.2  src/acceptance/coverage/recommendations.py#@@ -130,7 +137,8 @@ def recommend_tests(
+         26.3  src/acceptance/coverage/recommendations.py#@@ -166,6 +174,11 @@ def recommend_tests(
+         26.4  src/acceptance/pipeline.py#@@ -273,16 +287,28 @@ def run_review(
+       test evidence: partially supported  [tier: static]
+         26.5  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         26.6  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_no_test_evidence_never_reaches_the_mapper
+         recommended test: The input passed to the test-to-criterion matching stage excludes criteria that do not require test evidence.
+           inputs:  A run with one code-only obligation and one ordinary test-requiring obligation, plus capture of the exact prompt/request sent to the test-to-criterion matcher.
+           detects: The stage receives the right prompt but internally ignores the exclusion and still maps code-only obligations.
+           full detail: acceptance recommendation --criterion no-test-evidence-not-offered-to-test-matcher
+
+  27. A criterion that does not require test evidence is not rated on the test-evidence axis.
+       requirements: constraint-10
+       code evidence: addressed
+         27.1  src/acceptance/pipeline.py#@@ -273,16 +287,28 @@ def run_review(
+         27.2  src/acceptance/pipeline.py#@@ -294,10 +320,20 @@ def run_review(
+       test evidence: partially supported  [tier: static]
+         27.3  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         27.4  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_no_test_evidence_is_left_unrated
+         27.5  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+         recommended test: The test-evidence rating step leaves such criteria unrated.
+           inputs:  A code-only obligation that is otherwise addressed, plus a normal obligation with a test rating, in a full review run.
+           detects: Code-only obligations are left unrated in the stored state but later rendered as if they had a test rating.
+           full detail: acceptance recommendation --criterion no-test-evidence-not-rated-on-axis
+
+  28. A criterion that does not require test evidence is prescribed no test.
+       requirements: constraint-11
+       code evidence: addressed
+         28.1  src/acceptance/coverage/recommendations.py#@@ -60,8 +59,9 @@ recommendation with these discrete fields:
+         28.2  src/acceptance/coverage/recommendations.py#@@ -82,16 +82,23 @@ def _weak_obligations(obligations: list[Obligation]) -> list[Obligation]:
+         28.3  src/acceptance/coverage/recommendations.py#@@ -130,7 +137,8 @@ def recommend_tests(
+         28.4  src/acceptance/coverage/recommendations.py#@@ -166,6 +174,11 @@ def recommend_tests(
+       test evidence: partially supported  [tier: static]
+         28.5  tests/coverage/test_recommendations.py::test_no_test_is_recommended_for_a_code_evidence_only_obligation
+         28.6  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         28.7  tests/test_verdict.py::test_a_code_only_obligation_with_no_test_rating_is_not_a_gap
+         recommended test: No test is assigned or prescribed for criteria that do not require test evidence.
+           inputs:  A weak code-only obligation that would otherwise tempt the recommendation engine to prescribe a test, plus a weak ordinary obligation that should still get a recommendation.
+           detects: The engine returns no recommendation but still logs a hidden recommendation object.
+           full detail: acceptance recommendation --criterion no-test-evidence-not-prescribed-test
+
+  29. A criterion that does not require code evidence is not offered to the stage that classifies whether the change addresses it.
+       requirements: constraint-12
+       code evidence: addressed
+         29.1  src/acceptance/pipeline.py#@@ -294,10 +320,20 @@ def run_review(
+       test evidence: partially supported  [tier: static]
+         29.2  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         29.3  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_no_code_evidence_never_reaches_the_coverage_stage
+         recommended test: The change-address classification stage receives no criteria that do not require code evidence.
+           inputs:  A run with at least one obligation that does not require code evidence, plus one code-requiring obligation, and capture of the change-address classification stage input.
+           detects: The classifier prompt excludes the obligation but the downstream verdict still classifies it incorrectly.
+           full detail: acceptance recommendation --criterion no-code-evidence-not-offered-to-change-classifier
+
+  30. A criterion requiring neither kind is reported as needing evidence the review cannot gather.
+       requirements: constraint-13
+       code evidence: addressed
+         30.1  src/acceptance/review_state.py#@@ -92,26 +92,64 @@ class ObligationType(str, Enum):
+         30.2  src/acceptance/verdict.py#@@ -141,13 +141,26 @@ def derive_verdict(
+       test evidence: partially supported  [tier: static]
+         30.3  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         30.4  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_neither_kind_needs_review_this_cannot_give
+         30.5  tests/test_verdict.py::test_an_obligation_requiring_neither_kind_needs_non_code_review
+         30.6  tests/test_verdict.py::test_requires_non_code_evidence_is_needs_non_code_review
+         recommended test: The report labels criteria requiring neither code nor test evidence as needing evidence the review cannot gather.
+           inputs:  A neither-kind obligation in a review run where the repository cannot settle it, plus at least one ordinary obligation for contrast.
+           detects: A neither-kind obligation is reported as not required in the report but still yields NEEDS_NON_CODE_REVIEW.
+           full detail: acceptance recommendation --criterion neither-kind-reported-as-unmeasurable
+
+  31. A criterion the change addresses and that requires code evidence alone is reported as satisfied rather than as unmeasured.
+       requirements: constraint-14
+       code evidence: addressed
+         31.1  src/acceptance/verdict.py#@@ -141,13 +141,26 @@ def derive_verdict(
+         31.2  src/acceptance/report.py#@@ -30,9 +29,19 @@ from acceptance.review_state import (
+         31.3  src/acceptance/report.py#@@ -350,30 +359,35 @@ def _obligation_block(
+       test evidence: partially supported  [tier: static]
+         31.4  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         31.5  tests/test_verdict.py::test_a_code_evidence_only_obligation_does_not_make_the_verdict_incomplete
+         31.6  tests/test_verdict.py::test_an_unclassified_code_evidence_only_obligation_is_not_indeterminate
+         recommended test: When the change addresses a code-only criterion, the report marks it satisfied instead of unmeasured.
+           inputs:  A code-only obligation whose code evidence is present and addressed, plus a control obligation, in a run that reaches verdict/report rendering.
+           detects: The report wording says 'not applicable' instead of 'satisfied' while the verdict is still correct.
+           full detail: acceptance recommendation --criterion code-only-addressed-criterion-reported-satisfied
+
+  32. A criterion under a mandate's scope-exclusion heading may still require test evidence.
+       requirements: constraint-15
+       code evidence: addressed
+         32.1  src/acceptance/requirement/obligations.py#@@ -231,15 +231,69 @@ PROPERTY, and its positive form — "the checkout behavior is preserved" — say
+         32.2  src/acceptance/requirement/obligations.py#@@ -266,6 +320,11 @@ class _DecomposedObligation(StrictResponseModel):
+         32.3  src/acceptance/requirement/obligations.py#@@ -693,13 +752,20 @@ def decompose(
+         32.4  src/acceptance/requirement/obligations.py#@@ -742,7 +815,9 @@ def decompose(
+         32.5  tests/prompts/test_decomposition_prompt.py#@@ -164,14 +164,20 @@ def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, req
+         32.6  tests/prompts/test_decomposition_prompt.py#@@ -179,16 +185,16 @@ def test_every_scope_exclusion_yields_a_code_evidence_only_obligation(derived, r
+         32.7  tests/test_report.py#@@ -477,7 +477,9 @@ def test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test()
+         32.8  tests/test_report.py#@@ -487,9 +489,12 @@ def test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test()
+         32.9  tests/test_report.py#@@ -516,7 +521,9 @@ def test_a_respected_boundary_is_one_claim_over_the_examined_set_not_a_listing()
+         32.10  tests/test_report.py#@@ -544,7 +551,9 @@ def test_a_boundary_with_nothing_examined_does_not_claim_non_violation():
+       test evidence: partially supported  [tier: static]
+         32.11  tests/requirement/test_obligation_attribution.py::test_refiling_takes_the_satisfied_by_absence_of_the_requirement_it_lands_in
+         32.12  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         recommended test: A criterion under a scope-exclusion heading is eligible to require test evidence.
+           inputs:  A scope-exclusion obligation whose wording is behavioral enough that a regression test is genuinely owed, not just a pure absence-of-work exclusion, plus a control scope-exclusion obligation that remains code-only.
+           detects: Scope-exclusion obligations can require tests, but the specific fixture used in the mapped test does not exercise that case.
+           full detail: acceptance recommendation --criterion scope-exclusion-may-still-require-test-evidence
+
+  33. A review of a change that modifies only configuration files produces a report.
+       requirements: constraint-16
+       code evidence: addressed
+         33.1  src/acceptance/pipeline.py#@@ -273,16 +287,28 @@ def run_review(
+         33.2  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,302 @@
+       test evidence: strongly supported  [tier: static]
+         33.3  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         33.4  tests/test_unevidenceable_obligations.py::test_a_config_only_change_produces_a_report
+
+  34. Two runs over the same mandate record the same required kinds.
+       requirements: constraint-17
+       code evidence: addressed
+         34.1  src/acceptance/requirement/obligations.py#@@ -231,15 +231,69 @@ PROPERTY, and its positive form — "the checkout behavior is preserved" — say
+         34.2  src/acceptance/requirement/obligations.py#@@ -693,13 +752,20 @@ def decompose(
+         34.3  tests/requirement/test_obligation_attribution.py#@@ -392,3 +404,78 @@ def test_two_runs_over_identical_task_text_produce_identical_review_state():
+         34.4  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,302 @@
+       test evidence: partially supported  [tier: static]
+         34.5  tests/prompts/test_decomposition_prompt.py::test_every_criterion_of_the_same_shape_is_treated_the_same_way
+         34.6  tests/requirement/test_obligation_echo.py::test_two_runs_over_identical_task_text_produce_identical_review_state
+         34.7  tests/requirement/test_requirement_map.py::test_requirement_ids_are_identical_across_two_runs_over_identical_text
+         34.8  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         34.9  tests/test_unevidenceable_obligations.py::test_two_runs_over_the_same_mandate_record_the_same_required_kinds
+         recommended test: Repeated derivations from the same mandate produce identical required-kind records.
+           inputs:  Two repeated derivations from the same mandate text, using the same fixture and the same decomposition logic, with at least one narrowed obligation and one default obligation.
+           detects: The runs differ only in non-semantic formatting of the JSON output.
+           full detail: acceptance recommendation --criterion same-mandate-same-required-kinds
+
+  35. The report states, for a criterion that does not require test evidence, that test evidence is not required, and why.
+       requirements: constraint-18
+       code evidence: addressed
+         35.1  src/acceptance/report.py#@@ -30,9 +29,19 @@ from acceptance.review_state import (
+         35.2  src/acceptance/report.py#@@ -350,30 +359,35 @@ def _obligation_block(
+         35.3  tests/test_report.py#@@ -487,9 +489,12 @@ def test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test()
+         35.4  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,302 @@
+       test evidence: partially supported  [tier: static]
+         35.5  tests/test_report.py::test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test
+         35.6  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         35.7  tests/test_unevidenceable_obligations.py::test_the_report_says_test_evidence_is_not_required_and_why
+         recommended test: The report includes an explanation for why test evidence is not required for such a criterion.
+           inputs:  A rendered report with at least one code-only obligation and a non-empty required_evidence_reason, plus a control obligation that still requires both kinds.
+           detects: The report includes the reason but not on the exact obligation block the test inspects.
+           full detail: acceptance recommendation --criterion report-states-not-required-and-why
+
+  36. The report distinguishes that from a criterion that requires test evidence and has none.
+       requirements: constraint-19
+       code evidence: addressed
+         36.1  src/acceptance/report.py#@@ -350,30 +359,35 @@ def _obligation_block(
+         36.2  tests/test_report.py#@@ -487,9 +489,12 @@ def test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test()
+         36.3  tests/test_unevidenceable_obligations.py#@@ -0,0 +1,302 @@
+       test evidence: strongly supported  [tier: static]
+         36.4  tests/test_report.py::test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test
+         36.5  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         36.6  tests/test_unevidenceable_obligations.py::test_the_report_renders_that_differently_from_a_missing_test
+
+  37. A recorded model exchange carries the reason the model stopped generating.
+       requirements: constraint-20
+       code evidence: addressed
+         37.1  src/acceptance/llm.py#@@ -277,6 +277,25 @@ def _extract_usage(response: Any) -> dict:
+         37.2  src/acceptance/llm.py#@@ -675,6 +694,10 @@ class ModelClient:
+         37.3  tests/test_llm.py#@@ -215,7 +215,11 @@ def test_transcripts_record_no_wall_clock_state(store):
+         37.4  tests/test_llm.py#@@ -224,6 +228,53 @@ def test_transcripts_record_no_wall_clock_state(store):
+       test evidence: strongly supported  [tier: static]
+         37.5  tests/evidence/test_mapping.py::test_each_batch_is_recorded_as_its_own_request
+         37.6  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         37.7  tests/test_llm.py::test_a_provider_reporting_no_stop_reason_records_none
+         37.8  tests/test_llm.py::test_a_transcript_records_why_the_model_stopped_generating
+         37.9  tests/test_llm.py::test_transcripts_record_no_wall_clock_state
+         37.10  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  38. A test whose assertions bear on several criteria is recorded against every one of those criteria.
+       requirements: constraint-21
+       code evidence: addressed
+         38.1  src/acceptance/evidence/mapping.py#@@ -45,10 +45,23 @@ missing or wrong. Map on what the test is AIMED at, not how strong it is:
+         38.2  tests/evidence/test_mapping.py#@@ -86,6 +86,43 @@ def test_a_test_can_map_to_multiple_obligations():
+       test evidence: strongly supported  [tier: static]
+         38.3  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         38.4  tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations
+         38.5  tests/evidence/test_mapping.py::test_a_test_maps_to_the_obligation_it_evidences
+         38.6  tests/evidence/test_mapping.py::test_apply_test_mapping_populates_test_evidence
+         38.7  tests/requirement/test_decompose_partitioning.py::test_two_batches_minting_the_same_obligation_id_stay_separate
+         38.8  tests/requirement/test_obligation_attribution.py::test_a_quotation_is_found_across_a_line_break
+         38.9  tests/requirement/test_obligation_attribution.py::test_a_quotation_matching_no_requirement_is_recorded
+         38.10  tests/requirement/test_obligation_attribution.py::test_a_quotation_matching_two_requirements_stays_with_the_one_it_was_attributed_to
+         38.11  tests/requirement/test_obligation_attribution.py::test_a_refiling_is_recorded_even_though_it_was_acted_on
+         38.12  tests/requirement/test_obligation_attribution.py::test_a_requirement_never_loses_its_last_obligation_to_refiling
+         38.13  tests/requirement/test_obligation_attribution.py::test_an_obligation_is_not_refiled_onto_a_requirement_that_declined
+         38.14  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_another_requirement_is_refiled_under_it
+         38.15  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_its_own_requirement_keeps_it
+         38.16  tests/requirement/test_obligation_attribution.py::test_refiling_leaves_the_obligations_own_content_alone
+         38.17  tests/requirement/test_obligation_attribution.py::test_refiling_takes_the_satisfied_by_absence_of_the_requirement_it_lands_in
+         38.18  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         38.19  tests/requirement/test_requirement_map.py::test_the_cli_says_when_an_obligation_serves_other_requirements
+         38.20  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  39. Criteria that overlap one another are not treated as alternatives when a test bears on more than one of them.
+       requirements: constraint-22
+       code evidence: addressed
+         39.1  src/acceptance/evidence/mapping.py#@@ -45,10 +45,23 @@ missing or wrong. Map on what the test is AIMED at, not how strong it is:
+         39.2  tests/evidence/test_mapping.py#@@ -86,6 +86,43 @@ def test_a_test_can_map_to_multiple_obligations():
+       test evidence: strongly supported  [tier: static]
+         39.3  tests/coverage/test_classify.py::test_a_respected_boundary_drops_hunks_the_model_cited_anyway
+         39.4  tests/coverage/test_classify.py::test_a_respected_boundary_records_the_scope_examined_not_the_changes
+         39.5  tests/coverage/test_classify.py::test_the_scope_examined_comes_from_the_diff_not_from_the_model
+         39.6  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         39.7  tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations
+         39.8  tests/evidence/test_mapping.py::test_the_instruction_requires_every_overlapping_obligation_not_the_closest
+         39.9  tests/requirement/test_decompose_partitioning.py::test_two_batches_minting_the_same_obligation_id_stay_separate
+         39.10  tests/requirement/test_obligation_attribution.py::test_a_quotation_is_found_across_a_line_break
+         39.11  tests/requirement/test_obligation_attribution.py::test_a_quotation_matching_no_requirement_is_recorded
+         39.12  tests/requirement/test_obligation_attribution.py::test_a_quotation_matching_two_requirements_stays_with_the_one_it_was_attributed_to
+         39.13  tests/requirement/test_obligation_attribution.py::test_a_refiling_is_recorded_even_though_it_was_acted_on
+         39.14  tests/requirement/test_obligation_attribution.py::test_a_requirement_never_loses_its_last_obligation_to_refiling
+         39.15  tests/requirement/test_obligation_attribution.py::test_an_obligation_is_not_refiled_onto_a_requirement_that_declined
+         39.16  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_another_requirement_is_refiled_under_it
+         39.17  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_its_own_requirement_keeps_it
+         39.18  tests/requirement/test_obligation_attribution.py::test_refiling_leaves_the_obligations_own_content_alone
+         39.19  tests/requirement/test_obligation_attribution.py::test_refiling_takes_the_satisfied_by_absence_of_the_requirement_it_lands_in
+         39.20  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         39.21  tests/requirement/test_requirement_map.py::test_the_cli_says_when_an_obligation_serves_other_requirements
+         39.22  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+
+  40. The change does not alter how many criteria are carried in one request to the model.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 73 changes across 31 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the absence of work in the change, which is directly checkable from the source.
+
+  41. The change does not address whether the model's judgement about which kinds a criterion requires is correct.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 73 changes across 31 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by work not being done, and no test can demonstrate the absence of model-judgement validation.
+
+  42. The change does not alter how a criterion's test evidence is rated once the test-evidence axis applies.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 73 changes across 31 files; none breaches this boundary
+       test evidence: not required — This exclusion is about work omitted from the change, so the source diff itself is the relevant evidence.
+
+  43. The change does not alter which evidence tier a finding is recorded at.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 73 changes across 31 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is settled by inspecting the implementation change, not by running a test.
+
+  44. The change does not alter how the mandate is parsed into its sections.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 73 changes across 31 files; none breaches this boundary
+       test evidence: not required — This exclusion concerns parsing work that is either present or absent in the source change, which code review can settle directly.
+
+  45. Only the stages that gather those kinds of evidence consider a criterion.
+       requirements: task-01
+       code evidence: addressed
+         45.1  src/acceptance/pipeline.py#@@ -273,16 +287,28 @@ def run_review(
+         45.2  src/acceptance/pipeline.py#@@ -294,10 +320,20 @@ def run_review(
+       test evidence: partially supported  [tier: static]
+         45.3  tests/prompts/test_decomposition_prompt.py::test_the_ordinary_requirements_still_require_test_evidence
+         45.4  tests/test_report.py::test_report_renders_each_obligation_with_both_axes_numbered
+         45.5  tests/test_verdict.py::test_a_tests_only_obligation_is_still_judged_on_its_test_evidence
+         recommended test: criteria are routed only to the stages that gather the evidence kinds they require
+           inputs:  A full review run with obligations spanning all four required_evidence kinds: code_and_tests, code_only, tests_only, and neither.
+           detects: Criteria that require test evidence are routed correctly, but code-only criteria are also routed and later ignored.
+           full detail: acceptance recommendation --criterion criteria-consideration-by-evidence-gathering-stages
+
+Mandate coverage: 45 of 46 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: This section marker names no checkable requirement beyond introducing the implementation section.
+
+Unrequested changes:
+  1. [in_service] The pipeline now excludes obligations that do not require code evidence from coverage classification, changing which obligations reach the code-evidence stage. The obligations only asked for evidence-kind recording and related tests, not a new filtering rule in the review flow.
+       src/acceptance/pipeline.py#@@ -273,16 +287,28 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -294,10 +320,20 @@ def run_review(
+  2. [in_service] The report now renders separate 'not required' lines for both code and test evidence, including a reason string, instead of only the prior code-evidence boundary wording. That is a broader presentation change than the obligations about persisting evidence kinds and distinguishing no-test from missing-test required.
+       src/acceptance/report.py#@@ -30,9 +29,19 @@ from acceptance.review_state import (
+       src/acceptance/report.py#@@ -350,30 +359,35 @@ def _obligation_block(
+  3. [in_service] The verdict logic now treats `RequiredEvidence.NEITHER` as a special non-code-review path and treats code-only obligations as satisfied rather than unmeasured. The obligations asked for recording required evidence kinds and tests around them, not a new verdict category or changed satisfaction semantics.
+       src/acceptance/verdict.py#@@ -141,13 +141,26 @@ def derive_verdict(
+  4. [in_service] The decomposition stage now derives and persists `required_evidence`, `required_evidence_reason`, and `satisfied_by_absence` on every obligation, including new normalization behavior that rewrites unreasoned narrowings back to `CODE_AND_TESTS`. The obligations required recording evidence kinds, but not this extra normalization rule or the separate absence flag.
+       src/acceptance/requirement/obligations.py#@@ -266,6 +320,11 @@ class _DecomposedObligation(StrictResponseModel):
+       src/acceptance/requirement/obligations.py#@@ -712,19 +778,26 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -742,7 +815,9 @@ def decompose(
+       src/acceptance/review_state.py#@@ -92,26 +92,64 @@ class ObligationType(str, Enum):
+       src/acceptance/review_state.py#@@ -441,11 +479,29 @@ class Obligation(_Model):
+  5. [in_service] The LLM transcript format now records a `stop_reason` extracted from the provider response. The obligations mention a recorded model exchange carrying stop reason, but they do not call for changing the transcript schema and extraction helper in the core client implementation.
+       src/acceptance/llm.py#@@ -277,6 +277,25 @@ def _extract_usage(response: Any) -> dict:
+       src/acceptance/llm.py#@@ -675,6 +694,10 @@ class ModelClient:
+  6. [in_service] The evidence-mapping prompt was expanded to require returning every overlapping obligation id rather than the closest one. The listed obligations include a test for overlapping criteria, but this prompt rewrite also changes the instruction text itself and the mapping behavior beyond the specific test artifact.
+       src/acceptance/evidence/mapping.py#@@ -45,10 +45,23 @@ missing or wrong. Map on what the test is AIMED at, not how strong it is:
+       tests/evidence/test_mapping.py#@@ -86,6 +86,43 @@ def test_a_test_can_map_to_multiple_obligations():
+  7. [in_service] The test-support helper now injects default `required_evidence` fields into every fixture response and adds a capture hook for prompts. Those are broad test harness changes beyond the requested coverage of persisted evidence kinds and related stage behavior.
+       tests/support.py#@@ -131,7 +131,16 @@ def _nest_obligations(response: dict) -> dict:
+       tests/support.py#@@ -347,6 +356,7 @@ def client_dispatching(
+       tests/support.py#@@ -354,6 +364,11 @@ def client_dispatching(
+       tests/support.py#@@ -364,6 +379,13 @@ def client_dispatching(
+  8. [in_service] The corpus-mechanism approval list was updated to point at new transcript fixture hashes. That is fixture bookkeeping unrelated to the stated evidence-kind obligations.
+       tests/prompts/test_corpus_mechanism.py#@@ -392,12 +392,12 @@ _APPROVED_TRANSCRIPTS = {
+       tests/prompts/test_corpus_mechanism.py#@@ -412,11 +412,11 @@ _APPROVED_TRANSCRIPTS = {
+  9. [in_service] Several transcript fixtures were deleted and replaced with new ones containing different prompts and responses. The obligations asked for evidence-kind behavior and tests, not wholesale transcript replacement.
+       tests/fixtures/transcripts/1592dda569022768575a581e725051052a34353bf51c6f283b2e31b461381f5a.json#@@ -1 +0,0 @@
+       tests/fixtures/transcripts/4294015ff795c4ca1570817fb4f68cbd02a844d5a18f7201a770972038666590.json#@@ -1 +0,0 @@
+       tests/fixtures/transcripts/4f885a7a6159669b7a6d63db59b006886ae3225718c569c7d7bf20b0e1fe1fd3.json#@@ -1 +0,0 @@
+       tests/fixtures/transcripts/a0b2b1ae94a56b20cc78a174c09dfdfbe3911d4d862ebfcf6cd074faa1ae8f2a.json#@@ -1 +0,0 @@
+  10. [in_service] New transcript fixtures were added for the revised prompts and responses. While tests are requested, these specific fixture contents and hashes are additional artifacts not directly demanded by the obligations as stated.
+       tests/fixtures/transcripts/2f3e06bae1104c0ce1970b23b224cface8c941e9fa9582b540b605fc3eb87077.json#@@ -0,0 +1 @@
+       tests/fixtures/transcripts/a810ba93e2f5e8839d6b095a8b08f9e0d2ea9da0585aaaf2416154e4836d8853.json#@@ -0,0 +1 @@
+       tests/fixtures/transcripts/b42e6b2fefb800a71c9c09d7a5f7cffb56a0d4c164247e0b1bbab044abbb17c7.json#@@ -0,0 +1 @@
+       tests/fixtures/transcripts/f31875e84b1c433e1d6b54c2e4f2db16718f2d280a048a3788675fb2fca6dbc1.json#@@ -0,0 +1 @@
+  11. [in_service] The new `tests/test_unevidenceable_obligations.py` file adds extensive pipeline, verdict, and report tests around the new required-evidence axis, including config-only review and stage-input capture. The obligations asked for tests about evidence kinds, but not this entire new suite and its extra scenarios.
+       tests/test_unevidenceable_obligations.py#@@ -0,0 +1,302 @@
+  12. [in_service] The decomposition prompt tests were rewritten to assert `satisfied_by_absence`, `required_evidence`, and reason-handling behavior, including new helper tests for narrowing normalization. The obligations required tests about evidence kinds, but not this broader prompt-contract rewrite.
+       tests/prompts/test_decomposition_prompt.py#@@ -22,7 +22,7 @@ import pytest
+       tests/prompts/test_decomposition_prompt.py#@@ -164,14 +164,20 @@ def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, req
+       tests/prompts/test_decomposition_prompt.py#@@ -179,16 +185,16 @@ def test_every_scope_exclusion_yields_a_code_evidence_only_obligation(derived, r
+       tests/prompts/test_decomposition_prompt.py#@@ -199,11 +205,52 @@ def test_only_exclusions_are_on_the_code_evidence_only_axis(derived):
+  13. [in_service] The attribution, requirement-map, and echo tests now inject default required-evidence fields into fixtures and assert the new absence flag. Those fixture-shape changes go beyond the requested evidence-kind persistence tests.
+       tests/requirement/test_obligation_attribution.py#@@ -45,6 +45,10 @@ def _obligation(oid: str, description: str, quote: str) -> dict:
+       tests/requirement/test_obligation_attribution.py#@@ -256,12 +260,17 @@ def test_an_obligation_is_not_refiled_onto_a_requirement_that_declined():
+       tests/requirement/test_obligation_attribution.py#@@ -288,7 +297,10 @@ Render each invoice line.
+       tests/requirement/test_obligation_attribution.py#@@ -392,3 +404,78 @@ def test_two_runs_over_identical_task_text_produce_identical_review_state():
+       tests/requirement/test_obligation_echo.py#@@ -54,6 +54,10 @@ def _obligation(oid: str, description: str, quote: str, **overrides) -> dict:
+       tests/requirement/test_requirement_map.py#@@ -70,6 +70,10 @@ def _obligation(oid: str, description: str, quote: str) -> dict:
+  14. [in_service] The LLM tests now assert the transcript includes `stop_reason` and add provider-stop-reason cases. The obligations mention recorded stop reason, but these specific transcript assertions and helper changes are additional behavior beyond the evidence-kind requirements.
+       tests/test_llm.py#@@ -215,7 +215,11 @@ def test_transcripts_record_no_wall_clock_state(store):
+       tests/test_llm.py#@@ -224,6 +228,53 @@ def test_transcripts_record_no_wall_clock_state(store):
+  15. [in_service] The report tests were updated to expect the new 'not required' wording and reason text for boundary obligations. That is a presentation change beyond the obligations about evidence kinds and distinguishing no-test from missing-test.
+       tests/test_report.py#@@ -5,7 +5,6 @@ computed verdict."""
+       tests/test_report.py#@@ -15,6 +14,7 @@ from acceptance.review_state import (
+       tests/test_report.py#@@ -477,7 +477,9 @@ def test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test()
+       tests/test_report.py#@@ -487,9 +489,12 @@ def test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test()
+       tests/test_report.py#@@ -516,7 +521,9 @@ def test_a_respected_boundary_is_one_claim_over_the_examined_set_not_a_listing()
+       tests/test_report.py#@@ -544,7 +551,9 @@ def test_a_boundary_with_nothing_examined_does_not_claim_non_violation():
+  16. [in_service] The coverage and recommendations tests were rewritten around the new `RequiredEvidence` model and new boundary semantics. The obligations asked for tests about evidence kinds, but not these specific recommendation and classification assertions or their refactoring.
+       tests/coverage/test_classify.py#@@ -19,10 +19,10 @@ from acceptance.coverage.classify import (
+       tests/coverage/test_classify.py#@@ -243,7 +243,14 @@ def _boundary_obligation():
+       tests/coverage/test_recommendations.py#@@ -12,12 +12,12 @@ from acceptance.coverage.recommendations import recommend_tests
+       tests/coverage/test_recommendations.py#@@ -130,15 +130,13 @@ def test_strongly_supported_obligations_get_no_recommendation_and_no_model_call(
+       tests/coverage/test_recommendations.py#@@ -291,7 +289,9 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
+       tests/coverage/test_recommendations.py#@@ -315,7 +315,9 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+  17. [in_service] The review-state model now adds a new exported `RequiredEvidence` symbol and removes `AdmissibleEvidence`. That public API rename is part of the broader refactor, but the obligations only require recording evidence kinds, not changing the exported type name itself.
+       src/acceptance/review_state.py#@@ -27,7 +27,6 @@ __all__ = [
+       src/acceptance/review_state.py#@@ -49,6 +48,7 @@ __all__ = [
+       src/acceptance/review_state.py#@@ -92,26 +92,64 @@ class ObligationType(str, Enum):
+       src/acceptance/review_state.py#@@ -441,11 +479,29 @@ class Obligation(_Model):
+  18. [in_service] The persisted obligation schema now includes new fields (`required_evidence`, `required_evidence_reason`, `satisfied_by_absence`) and removes the old `admissible_evidence` field. That is a public data-model/interface change beyond the requested tests and behavior, even though it is related to the evidence-kind work.
+       src/acceptance/review_state.py#@@ -441,11 +479,29 @@ class Obligation(_Model):
+       src/acceptance/requirement/obligations.py#@@ -266,6 +320,11 @@ class _DecomposedObligation(StrictResponseModel):
+       src/acceptance/requirement/obligations.py#@@ -712,19 +778,26 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -742,7 +815,9 @@ def decompose(
+  19. [separable] No dependency manifest changed, but the code now depends on a new `RequiredEvidence` enum and new transcript fixture hashes. Since the task did not ask for dependency/config changes, this is an unrequested interface/configuration shift only if treated as such; otherwise it is covered by the adjacent-behavior items above.
+       src/acceptance/coverage/classify.py#@@ -23,7 +23,7 @@ from pydantic import Field
+       src/acceptance/coverage/recommendations.py#@@ -26,7 +26,6 @@ from acceptance.coverage.prompt import render_diff_section
+       src/acceptance/report.py#@@ -18,7 +18,6 @@ from __future__ import annotations
+       src/acceptance/verdict.py#@@ -31,7 +31,6 @@ from __future__ import annotations
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
