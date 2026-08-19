@@ -18,6 +18,9 @@ same obligation and are entirely different behaviours.
 from __future__ import annotations
 
 import json
+import re
+
+import pytest
 
 from acceptance.llm import inline_schema_refs
 from acceptance.requirement import obligations as obligations_module
@@ -695,17 +698,215 @@ def test_a_run_records_the_run_it_continues_as_its_parent():
 
 def test_a_ledger_file_is_never_rewritten(tmp_path):
     """Append-only is enforced, not merely intended: a silent clobber would lose
-    the history a later feature counts settling runs from."""
-    store = LedgerStore(tmp_path / "ledger")
-    entry = LedgerEntry(run_id="only-once")
-    store.write(entry)
+    the history a later feature counts settling runs from.
 
-    try:
-        store.write(entry)
-    except FileExistsError:
-        pass
-    else:  # pragma: no cover - the assertion below reports it
-        raise AssertionError("a second write to the same run id must be refused")
+    Asserts the file is untouched as well as the refusal — a store that raised
+    *after* truncating would pass a refusal-only test and still have destroyed
+    the record.
+    """
+    store = LedgerStore(tmp_path / "ledger")
+    original = LedgerEntry(run_id="only-once", calls_issued=3)
+    path = store.write(original)
+    before = path.read_bytes()
+
+    with pytest.raises(FileExistsError):
+        store.write(LedgerEntry(run_id="only-once", calls_issued=99))
+
+    assert path.read_bytes() == before
+    assert store.read("only-once").calls_issued == 3
+
+
+def test_the_ledger_records_how_many_model_calls_the_run_issued(tmp_path):
+    """`constraint-30`. The count is the whole point of the feature made visible:
+    a run that carried everything issued none, and one that carried nothing
+    issued the same number it always did."""
+    fresh, counting = _run(_TASK)
+    fresh_entry = _ledger_from(fresh, run_id="fresh")
+
+    assert fresh_entry.calls_issued == counting.decompose_calls
+    assert fresh_entry.calls_issued > 0
+
+    carried, _ = _run(_TASK, prior=fresh_entry)
+    carried_entry = _ledger_from(carried, run_id="carried")
+
+    assert carried_entry.calls_issued == 0
+
+
+def test_a_run_identifier_appears_in_no_rendered_report(tmp_path, monkeypatch, capsys):
+    """`constraint-23`. The report goes to stdout and must be byte-identical
+    across two runs over the same input; a randomly minted run id in it would
+    break that for every consumer that captures the report — which is how the
+    dogfood logs are made.
+
+    Driven through the CLI, because the property is about what the command
+    PRINTS, and asserting on a renderer in isolation would not catch a run id
+    added to the stdout stream around it.
+    """
+    from acceptance import cli
+
+    task = tmp_path / "task.md"
+    task.write_text(_TASK)
+    counting = _CountingClient(_TASK)
+    monkeypatch.setattr(cli.RunConfig, "build_client", lambda self: counting.client)
+
+    exit_code = cli.main(["decompose", "--task", str(task), "--mode", "record"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    run_id = re.search(r"^run ([0-9a-f]+)$", captured.err, re.MULTILINE).group(1)
+    assert run_id not in captured.out
+    # And it IS reported, on the stream that does not have to stay stable —
+    # otherwise this test would pass on a build that minted no run id at all.
+    assert f"--continue {run_id}" in captured.err
+
+
+def test_every_run_reports_an_identifier_for_itself(tmp_path, monkeypatch, capsys):
+    """`constraint-20` and `task-02`. Without it there is nothing to pass to
+    `--continue`, so the whole feature is unreachable from the command line."""
+    from acceptance import cli
+
+    task = tmp_path / "task.md"
+    task.write_text(_TASK)
+    counting = _CountingClient(_TASK)
+    monkeypatch.setattr(cli.RunConfig, "build_client", lambda self: counting.client)
+
+    cli.main(["decompose", "--task", str(task), "--mode", "record"])
+    first = capsys.readouterr().err
+
+    cli.main(["decompose", "--task", str(task), "--mode", "record"])
+    second = capsys.readouterr().err
+
+    ids = [re.search(r"^run ([0-9a-f]+)$", err, re.MULTILINE).group(1) for err in (first, second)]
+    assert all(ids)
+    # Distinct, because two runs over the same input are two runs. This is
+    # exactly why a run id cannot live in review state.
+    assert ids[0] != ids[1]
+
+
+def test_carry_forward_reads_only_the_run_it_was_told_to_continue(tmp_path, monkeypatch):
+    """`constraint-13`. A decoy entry holding the SAME requirements sits in the
+    store alongside the named one, so a store that scanned for a match — or took
+    the latest — would find it and carry from the wrong run.
+
+    Without the decoy this would pass on an implementation that ignored the run
+    id entirely and read whatever it found.
+    """
+    from acceptance import cli
+
+    task = tmp_path / "task.md"
+    task.write_text(_TASK)
+    ledger = LedgerStore(tmp_path / "ledger")
+    counting = _CountingClient(_TASK)
+    monkeypatch.setattr(cli.RunConfig, "build_client", lambda self: counting.client)
+
+    _, _, decoy = cli.run_decompose(str(task), cli.RunConfig(), ledger=ledger)
+    assert ledger.read(decoy).derived_count() > 0
+
+    # Naming nothing carries nothing, even though the decoy is right there and
+    # matches this task file exactly.
+    _, _, fresh = cli.run_decompose(str(task), cli.RunConfig(), ledger=ledger)
+
+    # Asserted on the LEDGER, not on a call count: this client is shared across
+    # both runs, so an identical request replays from its transcript store and
+    # issues no completion either way. What distinguishes the two is what each
+    # run recorded it did.
+    assert ledger.read(fresh).carried_count() == 0
+    assert ledger.read(fresh).derived_count() == len(ledger.read(decoy).derivations)
+    assert ledger.read(fresh).parent_run_id is None
+
+    # Named explicitly, the same store now carries — so the decoy was reachable
+    # all along and was ignored because it was not named.
+    _, _, continued = cli.run_decompose(
+        str(task), cli.RunConfig(), continue_from=decoy, ledger=ledger
+    )
+    assert ledger.read(continued).carried_count() == len(ledger.read(decoy).derivations)
+    assert ledger.read(continued).parent_run_id == decoy
+
+
+def test_a_new_requirement_is_derived_without_consulting_any_prior_obligation():
+    """`constraint-08` and `task-01`. A requirement with no counterpart has
+    nothing to anchor on, and showing it another requirement's obligations would
+    be an invitation to reuse an identifier that never meant this.
+
+    Asserted on the PROMPT: the revision block is what carries prior obligations
+    into a call, so a new requirement's call must not contain one.
+    """
+    first, _ = _run(_TASK)
+    prior = _ledger_from(first)
+    prior_obligation_ids = [
+        obligation.id for derivation in prior.derivations for obligation in derivation.obligations
+    ]
+    extended = _TASK.replace(
+        "- The run reports its own identifier.",
+        "- The run reports its own identifier.\n- The ledger is written once per run.",
+    )
+
+    second, counting = _run(extended, prior=prior)
+
+    added = [d for d in second.derivations if "written once per run" in d.text]
+    assert len(added) == 1
+    assert added[0].derivation is Derivation.DERIVED
+    assert added[0].carried_from is None
+    prompt = counting.prompts_for("_Decomposition")[0]
+    assert "PREVIOUSLY DERIVED" not in prompt
+    for obligation_id in prior_obligation_ids:
+        assert obligation_id not in prompt
+
+
+def test_the_residue_is_matched_through_the_alignment_helper():
+    """`constraint-10`. Only the residue needs a judgement, and this is the one
+    place a call is issued for it.
+
+    Observed off the client, because the outcome alone cannot distinguish "the
+    aligner matched them" from "the planner guessed by position" — and position
+    is exactly what identity must not be.
+    """
+    first, _ = _run(_TASK)
+
+    _, counting = _run(
+        _EDITED, prior=_ledger_from(first), alignment=[{"ground_truth": "g0", "reviewer": "r0"}]
+    )
+
+    assert [call["schema"] for call in counting.calls].count("_Alignment") == 1
+    prompt = counting.prompts_for("_Alignment")[0]
+    assert "The ledger is append-only." in prompt
+    assert "The ledger is only ever appended to." in prompt
+
+
+def test_the_alignment_helper_is_not_called_when_nothing_is_left_over():
+    """The other half: an unchanged task file matches entirely by exact text, so
+    the judgement is not needed and is not paid for."""
+    first, _ = _run(_TASK)
+
+    _, counting = _run(_TASK, prior=_ledger_from(first))
+
+    assert [call["schema"] for call in counting.calls].count("_Alignment") == 0
+
+
+def test_two_requirements_are_the_same_requirement_when_their_text_matches_exactly():
+    """`constraint-09`, on its own rather than through a carry.
+
+    The discriminating case is the id: this task file's edit shifts nothing, so a
+    positional identity would agree with a textual one and the test would prove
+    nothing. Inserting a bullet renames every later requirement in its section,
+    and textual identity has to survive that.
+    """
+    first, _ = _run(_TASK)
+    prior = _ledger_from(first)
+    with_insert = _TASK.replace(
+        "## Constraints\n", "## Constraints\n- The store refuses an overwrite.\n"
+    )
+
+    second, counting = _run(with_insert, prior=prior)
+
+    # Every original requirement carried, despite every constraint id shifting by
+    # one — matched on text, not on `constraint-NN`.
+    carried = [d for d in second.derivations if d.derivation is Derivation.CARRIED]
+    assert len(carried) == len(prior.derivations)
+    inserted = [d for d in second.derivations if "refuses an overwrite" in d.text]
+    assert len(inserted) == 1
+    assert inserted[0].derivation is Derivation.DERIVED
+    assert counting.decompose_calls == 1
 
 
 def test_the_ledger_is_not_written_under_the_cache(tmp_path):
