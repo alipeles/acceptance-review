@@ -1129,3 +1129,231 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
       usage["cached_tokens"] = cached
   ```
 - **Status:** open
+### [2026-08-13] A restatement inserts a negation the source does not carry — #262's second and harsher instance
+- **Kind:** filing (comment on existing issue #262)
+- **Found during:** #266, Gate 1
+- **Where:** `dogfood-logs/266-gate1-run1/output.log`, `constraint-09`
+- **Severity:** should-fix
+- **What's wrong:** the requirement reads *"…from a criterion for which no test
+  **was** recommended."* The obligation derived from it, flagged `explicit`,
+  reads *"…for which no test **was not** recommended."* An inserted negation
+  inverts the second half of the comparison, so the obligation demands the
+  opposite distinction from the one the mandate states. `explicit` is the flag
+  that claims the text is a restatement rather than an inference, which is
+  precisely the claim being broken.
+- **Why I didn't act:** the wording was also poor and I rewrote it (run 2), but
+  the rewrite is not the report — the source sentence was parseable and
+  unambiguous, so the inserted `not` is a derivation failure on its own terms.
+  Fixing the tool is outside #266's scope.
+- **Drafted fix:** comment on **#262**, which is the same failure family
+  (a paraphrase that does not preserve entailment) rather than a new issue:
+
+  > **A second instance, and a harsher one: an inserted negation.**
+  >
+  > From #266's Gate 1 (`dogfood-logs/266-gate1-run1/`):
+  >
+  > | | text |
+  > |---|---|
+  > | requirement `constraint-09` | The report distinguishes a criterion for which no test was recommended because none can evidence it from a criterion for which no test **was** recommended. |
+  > | derived obligation | …from a criterion for which no test **was not** recommended. |
+  >
+  > #262's original instance widened a bound — `does not reduce` became
+  > `preserves the number`, which still entails part of the source. This one
+  > reverses a polarity: the derived obligation is satisfied by exactly the
+  > behaviour the requirement forbids. Same stage, same `explicit` flag, same
+  > loss inside the restatement, one step further along.
+  >
+  > It suggests the acceptance criterion on #262 wants widening beyond
+  > one-sided quantifiers: an `explicit` obligation must preserve the
+  > **polarity** of every clause it restates, not only the direction of a bound.
+  >
+  > Two notes on scope. The source sentence was genuinely badly worded — a
+  > self-comparison whose halves differ only by a trailing clause — and #266
+  > rewrote it under the sanctioned-rewrite rule; the re-run derived both
+  > halves faithfully. That says the wording was a contributing factor, not
+  > that the derivation was correct. And the remaining 27 obligations in the
+  > same run are faithful, so this is narrow, as #262's original was.
+- **Status:** filed (comment on #262)
+
+### [2026-08-13] An inferred obligation duplicates an explicit one and the linker does not reconcile them
+- **Kind:** filing (new issue, child of #181)
+- **Found during:** #266, Gate 1
+- **Where:** `dogfood-logs/266-gate1-run1/output.log`, `task-01` vs `constraint-01`
+- **Severity:** should-fix
+- **What's wrong:** `task-01` yielded an `inferred` obligation,
+  `no-test-can-evidence-criterion-statement-supported` — *"A criterion may be
+  answered with a statement that no test can evidence it."* `constraint-01`
+  yielded `recommendation-may-state-no-test-can-evidence` — *"A test
+  recommendation may state that no test can evidence its criterion."* Those are
+  the same demand under two ids. The linking stage exists to reconcile exactly
+  this and did not, so the obligation set carries a redundancy that will demand
+  its own evidence, its own mapping and its own rating downstream.
+- **Why I didn't act:** out of scope for #266, and rewording the Task line to
+  dodge it would hide the defect. Run 2 happens not to reproduce it, but the
+  inputs differed, so run 2 is not evidence of a fix.
+- **Drafted fix:** file as a child of **#181**, `bug` / `track:checker`:
+
+  > **Title:** An inferred obligation restating an explicit one is not reconciled with it
+  >
+  > From #266's Gate 1 (`dogfood-logs/266-gate1-run1/`), decomposing a task
+  > file whose Task line summarises what its constraints then specify:
+  >
+  > | source | id | text | flag |
+  > |---|---|---|---|
+  > | `task-01` | `no-test-can-evidence-criterion-statement-supported` | A criterion may be answered with a statement that no test can evidence it. | inferred |
+  > | `constraint-01` | `recommendation-may-state-no-test-can-evidence` | A test recommendation may state that no test can evidence its criterion. | explicit |
+  >
+  > One demand, two obligations. In the same run the decomposer *did* link two
+  > other `task-01` obligations onward — both render `(also serves
+  > constraint-03)` / `(also serves constraint-07)` — so the many-to-many
+  > machinery worked on the same requirement in the same response and missed
+  > this pair. That narrows it: not a stage that failed to run, a similarity
+  > judgement that came back negative on a pair a reader calls identical.
+  >
+  > Worth separating from #223, which is a **spurious** link — an obligation
+  > attached to a requirement it does not belong to. This is the dual: a link
+  > that should exist and does not, leaving a redundant obligation rather than
+  > a misplaced one.
+  >
+  > #259's embedding-distance gate is the obvious place to look, since the two
+  > descriptions should sit well inside a 0.10 cosine distance. Whether the
+  > pair was excluded by distance before the model ever saw it, or was sent and
+  > judged distinct, is the first thing to establish — the two have different
+  > fixes and the recorded linking transcript distinguishes them.
+  >
+  > Suggested acceptance: two obligations stating the same demand, one derived
+  > from a headline requirement and one from the constraint that specifies it,
+  > are reconciled into one obligation serving both requirements.
+- **Status:** filed (#268, sub-issue of #181)
+
+### [2026-08-13] #245 takes down a whole Gate 2 — nine twin-splits in one run, and one in the mirror direction
+- **Kind:** filing (comment on existing issue #245)
+- **Found during:** #266, Gate 2
+- **Where:** `dogfood-logs/266-gate2-run1/`
+- **Severity:** blocker (for #266's gate; the defect itself is #245's)
+- **What's wrong:** every one of the nine obligations rated `unsupported` in
+  #266's Gate 2 has an on-point test that the mapping stage **saw and assigned to
+  its twin**. Nine instances in a single run, where #245 was filed on one. One of
+  them splits in the direction #245's title does not describe: the test was
+  mapped to the *completion* twin and the *constraint* got nothing.
+- **Why I didn't act:** the tests exist and discriminate — three of them were
+  confirmed by defect injection. There is nothing to add and no wording to fix;
+  the fix is in `evidence/mapping.py`, which is #245's scope, not #266's.
+- **Drafted fix:** comment on **#245**:
+
+  > **Nine instances in one run, and the split runs both directions.**
+  >
+  > #266's Gate 2 (`dogfood-logs/266-gate2-run1/`, base `265bfac`, head
+  > `28f2e2d`) came back `INCOMPLETE` with 9 of 30 obligations `unsupported` and
+  > `(no mapped test)`. All nine are this defect. Read off the recorded
+  > `_Mappings` transcripts — 118 candidate tests offered, 17 of them the
+  > change's own:
+  >
+  > | starved obligation | on-point test | mapped instead to |
+  > |---|---|---|
+  > | `test-review-does-not-abort-on-no-test-can-evidence-statement` (completion-02) | `test_a_declined_obligation_does_not_abort_the_review` | constraint-01 |
+  > | `test-omitted-criterion-still-aborts-review` (completion-03) | `test_an_omitted_obligation_still_aborts_even_when_others_are_declined` | constraint-04 |
+  > | `test-statement-attributed-to-criterion-in-persisted-state` (completion-04) | `test_the_refusal_reaches_review_state_attributed_to_its_obligation` | constraint-05, constraint-06 |
+  > | `test-all-weak-criteria-answered-that-way-produce-report` (completion-05) | `test_a_config_only_change_produces_a_report` | constraint-11, task-01 |
+  > | `test-report-omits-no-test-can-evidence-statement-for-no-recommendation` (completion-08) | `test_the_report_says_no_such_thing_for_an_obligation_that_merely_lacks_one` | constraint-10 |
+  > | `no-test-evidence-statement-carries-reason` (constraint-02) | `test_a_declined_obligation_does_not_abort_the_review` | constraint-01 only |
+  > | `no-test-evidence-statement-does-not-abort-review` (constraint-03) | same test | constraint-01 only |
+  > | `weak-criteria-all-statement-produces-report` (constraint-07) | `test_a_review_of_only_declined_obligations_is_unable_to_determine` | task-01 only |
+  > | `addressed-criterion-indeterminate-on-test-evidence-axis` (constraint-08) | `test_a_declined_obligation_is_indeterminate_on_the_evidence_axis` | **completion-06** |
+  >
+  > Two things this run adds.
+  >
+  > **The split runs the other way too.** The last row maps the test to the
+  > *completion* twin and starves the *constraint*. This issue's title says a
+  > Completion expectation is split from its Constraint twin, which reads as one
+  > direction; the stage picks exactly one of the pair, and which one is not
+  > predictable. Worth widening the title or the acceptance to say so.
+  >
+  > **Superseded before filing.** The comment actually posted covers all five
+  > Gate 2 runs, because the cause was found and largely fixed inside #266:
+  > the instruction, not the mechanism, and 9 instances down to 1.
+  >
+  > **The blast radius is a whole gate, not a rating.** Nine of thirty
+  > obligations, every one of them `addressed` in code with a test that exists
+  > and discriminates — three were confirmed by defect injection. The review is
+  > not wrong about the work; it is wrong about which obligation each test
+  > belongs to, and that alone is enough to fail a gate outright.
+  >
+  > **Ruled out, so nobody re-derives it.** 93 of 118 mapping entries have empty
+  > `obligation_ids`, which looks like DR-164's shed-work signature and is not:
+  > an entry is per candidate test, and almost none of this repo's ~1,100 tests
+  > bear on the mandate, so empty is the correct answer for them. Every
+  > `_Mappings` call in the run also recorded `stop_reason: stop` — no truncation.
+- **Status:** filed (comment on #245). Rewritten before posting to cover all five
+  Gate 2 runs rather than run 1 alone: the cause is the instruction rather than
+  the mechanism, the first fix overcorrected into over-mapping, and the second
+  took it from 9 instances to 1.
+
+### [2026-08-13] #225: seven ratings moved between two runs one commit apart, three of them on untouched scope exclusions
+- **Kind:** filing (comment on existing issue #225)
+- **Found during:** #266, Gate 2 run 3
+- **Where:** `dogfood-logs/266-gate2-run3/output.log`, the `Changes since b55eef5a` section
+- **Severity:** blocker (it is what stops #266 reaching a clean gate)
+- **What's wrong:** the tool's own delta section reports seven obligations
+  falling between two heads one commit apart. Three are **scope exclusions**
+  nothing in that commit touched. One fell from `strongly supported` to
+  `unsupported` in the very commit that added a dedicated test for it.
+- **Why I didn't act:** not fixable inside #266 and not fixable by iterating —
+  three runs produced 9, then 2, then 5 findings, with the movement uncorrelated
+  with the work.
+- **Drafted fix:** comment on **#225**:
+
+  > **Seven movements between two heads one commit apart, computed by the tool itself.**
+  >
+  > From #266's Gate 2 (`dogfood-logs/266-gate2-run3/`), base `265bfac`, heads
+  > `b55eef5` → `95efe1e`. This is the tool's own `Changes since` section, not a
+  > reconstruction:
+  >
+  > ```
+  > closed:
+  >   A statement that no test can evidence a criterion carries a reason.
+  >       test evidence: nominally supported -> strongly supported
+  > moved:
+  >   ...two runs produce the same statements    strongly -> partially
+  >   ...a test bearing on several criteria      strongly -> partially
+  >   ...every weak criterion answered           strongly -> UNSUPPORTED
+  >   ...two runs, same statements (constraint)  strongly -> partially
+  >   ...code-alone exclusion unchanged          strongly -> UNSUPPORTED
+  >   ...request size unchanged                  strongly -> partially
+  >   ...non-test evidence not recommended       strongly -> partially
+  > ```
+  >
+  > Two things make this a stronger instance than the earlier ones.
+  >
+  > **Three of the seven are scope exclusions** — obligations of the form "the
+  > change does not alter X". The commit between the two heads touched none of
+  > them, and by construction a scope exclusion's evidence is the *absence* of
+  > work, so there is nothing for added tests to have perturbed.
+  >
+  > **One moved against the direction of the work.** *"A review in which every
+  > weak criterion is answered with a statement that no test can evidence it
+  > produces a report"* fell from `strongly supported` to `unsupported` in the
+  > commit that added `test_every_weak_obligation_declined_still_returns_a_result`,
+  > a test whose entire subject is that obligation and which carries the
+  > omission contrast that makes it discriminating.
+  >
+  > The `closed` line shows the same run correctly recognising a fix landing, so
+  > the delta machinery is working; it is the ratings underneath that are moving.
+- **Status:** filed (comment on #225, rewritten with the #266 filtering caveat)
+
+### [2026-08-19] An obligation true by construction earns a test for a defect that cannot exist
+- **Kind:** filing (new issue, child of #183)
+- **Found during:** #266, Gate 2 runs 4 and 5
+- **Where:** `dogfood-logs/266-gate2-run4/output.log`, obligation 20
+- **Severity:** should-fix
+- **What's wrong:** `constraint-03` of #266's mandate is unfalsifiable once
+  `constraint-02` enumerates four values — the field is one enum, so "both
+  required and not required" is unrepresentable. Run 4 rated it `partially
+  supported` and prescribed a test whose `detects` names *"two redundant internal
+  flags"*, an implementation that does not exist. Run 5 rated the same obligation
+  `strongly supported`. Neither run recognised the kind of statement it was.
+- **Why I didn't act:** the tautology was kept deliberately, on the human's
+  instruction, as an experiment to see how the tool handles one. Fixing the tool
+  is outside #266.
+- **Drafted fix:** filed as a child of #183 — see the issue for the full text.
+- **Status:** filed (#270, sub-issue of #183)
