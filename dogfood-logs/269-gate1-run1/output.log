@@ -1,0 +1,332 @@
+Requirements: 57   with obligations: 56   deliberately none: 1
+
+[task-01] Decomposition is re-derived from scratch on every run. `rerun.py` states the
+    rule it works under: a changed task invalidates everything, because obligations are
+    a function of the task text. One edited character therefore discards the whole prior
+    decomposition and asks the model for all of it again.
+    -> rerun-rederive-from-scratch  [functional/explicit]
+       Decomposition is re-derived from scratch on every run, and a changed task
+       invalidates everything because obligations are a function of the task text.
+
+[task-02] Measurement over three runs of one unchanged task file, differing only by
+    seed, found no obligation content lost — and 38 distinct criterion wordings across
+    three runs of roughly 20 criteria each, 8 of them appearing in all three runs and 23
+    in exactly one, with identifiers re-minted alongside the wordings. The criterion
+    text is itself the prompt for later stages, so that churn sets a floor under every
+    downstream stability figure. It is not model nondeterminism: an identical prompt at
+    temperature 0 with a fixed seed returned byte-identical output three times. What
+    moves is which request the model is given.
+    -> task-text-is-prompt-for-later-stages  [functional/explicit]
+       The criterion text is itself the prompt for later stages, so churn in criterion
+       wording sets a floor under downstream stability figures.
+    -> not-model-nondeterminism  [explanation_observability/explicit]
+       The observed movement is attributable to which request the model is given rather
+       than model nondeterminism.
+    -> criterion-churn-preserves-content  [regression/explicit]
+       Across three runs of one unchanged task file differing only by seed, no
+       obligation content is lost.
+    -> criterion-wording-churn-across-runs  [functional/explicit]
+       Across three runs of one unchanged task file differing only by seed, criterion
+       wording churn occurs, with identifiers re-minted alongside the wordings.
+
+[task-03] Make decomposition incremental over recorded state. A requirement whose text
+    did not change keeps the obligations already derived from it, without asking again.
+    -> incremental-decomposition-over-recorded-state  [functional/explicit]
+       Make decomposition incremental over recorded state so that a requirement whose
+       text did not change keeps the obligations already derived from it without asking
+       again.
+    -> unchanged-requirement-keeps-obligations  [invariant/explicit]
+       A requirement whose text did not change keeps the obligations already derived
+       from it.
+    -> unchanged-requirement-skips-model-call  [functional/explicit]   (also serves constraint-01)
+       A requirement whose text is unchanged from the continued run causes no model call
+       during decomposition.
+
+[constraint-01] A requirement whose text is unchanged from the continued run causes no
+    model call during decomposition.
+    -> unchanged-requirement-skips-model-call  [functional/explicit]   (also serves task-03)
+       A requirement whose text is unchanged from the continued run causes no model call
+       during decomposition.
+
+[constraint-02] The obligations of an unchanged requirement are carried forward with
+    their identifiers unchanged.
+    -> carry-forward-unchanged-obligation-identifiers  [invariant/explicit]
+       The obligations of an unchanged requirement are carried forward with their
+       identifiers unchanged.
+
+[constraint-03] The obligations of an unchanged requirement are carried forward with
+    their descriptions unchanged.
+    -> carry-forward-unchanged-obligation-descriptions  [invariant/explicit]
+       The obligations of an unchanged requirement are carried forward with their
+       descriptions unchanged.
+
+[constraint-04] An edited requirement is re-derived in one model call carrying the
+    previous text, the new text, and the obligations previously derived from that
+    requirement.
+    -> rederive-edited-requirement-with-prior-and-new-text-and-previous-obligations  [functional/explicit]
+       An edited requirement is re-derived in one model call carrying the previous text,
+       the new text, and the obligations previously derived from that requirement.
+
+[constraint-05] An obligation that persists across an edit to its requirement keeps the
+    identifier it already had.
+    -> persist-obligation-identifier-across-edit  [invariant/explicit]
+       An obligation that persists across an edit to its requirement keeps the
+       identifier it already had.
+
+[constraint-06] A requirement present in the continued run and absent from the task file
+    under review has its obligations dropped.
+    -> drop-obligations-for-removed-requirement  [functional/explicit]
+       A requirement present in the continued run and absent from the task file under
+       review has its obligations dropped.
+
+[constraint-07] The removal of such a requirement is reported.
+    -> report-removal-of-removed-requirement  [explanation_observability/explicit]
+       The removal of such a requirement is reported.
+
+[constraint-08] A requirement with no counterpart in the continued run is derived
+    without reference to any previously derived obligation.
+    -> derive-new-requirement-without-prior-obligations  [functional/explicit]
+       A requirement with no counterpart in the continued run is derived without
+       reference to any previously derived obligation.
+
+[constraint-09] Two requirements are the same requirement when their text matches
+    exactly.
+    -> exact-text-match-defines-same-requirement  [invariant/explicit]
+       Two requirements are the same requirement when their text matches exactly.
+
+[constraint-10] Requirements left unmatched by exact text are matched to each other
+    through `benchmark/alignment.py::align_obligations`, which distinguishes an edited
+    requirement from a new one.
+    -> align-unmatched-requirements-by-obligation-alignment  [functional/explicit]
+       Requirements left unmatched by exact text are matched to each other through
+       `benchmark/alignment.py::align_obligations`, which distinguishes an edited
+       requirement from a new one.
+
+[constraint-11] A merge decision over two obligations that are both unchanged is carried
+    forward without a model call.
+    -> carry-forward-unchanged-merge-decision  [functional/explicit]
+       A merge decision over two obligations that are both unchanged is carried forward
+       without a model call.
+
+[constraint-12] A merge decision over two obligations of which either changed is asked
+    again.
+    -> reask-merge-decision-when-either-obligation-changed  [functional/explicit]
+       A merge decision over two obligations of which either changed is asked again.
+
+[constraint-13] Carry-forward reads only the run named as the continued run.
+    -> carry-forward-reads-only-continued-run  [invariant/explicit]
+       Carry-forward reads only the run named as the continued run.
+
+[constraint-14] No obligation is carried forward when no continued run is named.
+    -> no-carry-forward-without-continued-run  [invariant/explicit]
+       No obligations are carried forward when no continued run is named.
+
+[constraint-15] The carried state of a task file decomposed without a named continued
+    run is empty.
+    -> empty-carried-state-without-continued-run  [invariant/explicit]
+       The carried state of a task file decomposed without a named continued run is
+       empty.
+
+[constraint-16] A carried obligation's `source_quote` is an exact substring of its
+    requirement's text in the task file under review.
+    -> source-quote-is-substring-of-current-requirement-text  [invariant/explicit]
+       A carried obligation's `source_quote` is an exact substring of its requirement's
+       text in the task file under review.
+
+[constraint-17] An obligation whose `source_quote` is not such a substring is re-derived
+    rather than carried.
+    -> invalid-source-quote-triggers-rederivation  [functional/explicit]
+       An obligation whose `source_quote` is not such a substring is re-derived rather
+       than carried.
+
+[constraint-18] An entry is carried only when re-deriving it would issue the same
+    request key it was recorded under.
+    -> carry-only-on-same-request-key  [invariant/explicit]
+       An entry is carried only when re-deriving it would issue the same request key it
+       was recorded under.
+
+[constraint-19] Decomposition carries a stage-logic version identifying behaviour that
+    changes its output without changing its request.
+    -> stage-logic-version-tracks-output-changing-behavior  [functional/explicit]
+       Decomposition carries a stage-logic version identifying behaviour that changes
+       its output without changing its request.
+
+[constraint-20] An entry recorded under a different stage-logic version is not carried.
+    -> different-stage-logic-version-blocks-carry-forward  [invariant/explicit]
+       An entry recorded under a different stage-logic version is not carried.
+
+[constraint-21] Every run reports an identifier for itself.
+    -> every-run-reports-own-identifier  [functional/explicit]
+       Every run reports an identifier for itself.
+
+[constraint-22] A run that continues a previous run records that run's identifier as its
+    parent.
+    -> run-records-parent-identifier  [functional/explicit]
+       A run that continues a previous run records the continued run's identifier as its
+       parent.
+
+[constraint-23] A run identifier appears in no review state.
+    -> run-identifier-not-in-review-state  [invariant/explicit]
+       A run identifier is absent from review state.
+
+[constraint-24] A run identifier appears in no rendered report.
+    -> run-identifier-not-in-rendered-report  [invariant/explicit]
+       A run identifier is absent from rendered reports.
+
+[constraint-25] Each run records its derivations in a ledger file of its own.
+    -> run-has-own-ledger-file  [functional/explicit]
+       Each run records its derivations in its own ledger file.
+
+[constraint-26] A ledger file is appended to and never rewritten.
+    -> ledger-file-append-only  [invariant/explicit]
+       A ledger file is append-only and is never rewritten.
+
+[constraint-27] No ledger file is written under `.acceptance/cache/`.
+    -> no-ledger-under-acceptance-cache  [compatibility/explicit]
+       Ledger files are not written under `.acceptance/cache/`.
+
+[constraint-28] A run's ledger records which requirements were carried, which were
+    derived and which were revised.
+    -> ledger-records-derivation-statuses  [functional/explicit]
+       A run's ledger records which requirements were carried, which were derived, and
+       which were revised.
+
+[constraint-29] A run's ledger records the request key of each derivation it performed.
+    -> ledger-records-request-key-per-derivation  [functional/explicit]
+       A run's ledger records the request key of each derivation it performed.
+
+[constraint-30] A run's ledger records the stage-logic version it ran under.
+    -> ledger-records-stage-logic-version  [functional/explicit]
+       A run's ledger records the stage-logic version it ran under.
+
+[constraint-31] A run's ledger records how many model calls it issued.
+    -> ledger-records-model-call-count  [functional/explicit]
+       A run's ledger records how many model calls it issued.
+
+[constraint-32] `review_state.py::RequirementDisposition` records whether its
+    requirement was derived, carried or revised.
+    -> requirement-disposition-records-derivation-status  [functional/explicit]
+       `review_state.py::RequirementDisposition` records whether its requirement was
+       derived, carried or revised.
+
+[constraint-33] A carried requirement's disposition records the content digest of the
+    derivation it was carried from.
+    -> carried-requirement-records-source-content-digest  [functional/explicit]
+       A carried requirement's disposition records the content digest of the derivation
+       it was carried from.
+
+[constraint-34] A revised requirement's disposition records why it was revised.
+    -> revised-requirement-records-revision-reason  [functional/explicit]
+       A revised requirement's disposition records why it was revised.
+
+[constraint-35] Each field added to `RequirementDisposition` has a default that
+    preserves the meaning of dispositions written before this change.
+    -> new-requirementdisposition-fields-preserve-legacy-meaning  [invariant/explicit]
+       Each field added to `RequirementDisposition` has a default that preserves the
+       meaning of dispositions written before this change.
+
+[constraint-36] Review state records no wall-clock time.
+    -> review-state-stores-no-wall-clock-time  [invariant/explicit]
+       Review state records no wall-clock time.
+
+[exclusion-01] Inferring that a task file continues a previous run without being told
+    which run it continues.
+    -> no-inferred-continued-run  [functional/explicit]
+       The change does not infer that a task file continues a previous run without being
+       told which run it continues.
+
+[exclusion-02] Any form of naming the continued run other than by its identifier.
+    -> exclude-other-run-naming  [functional/explicit]
+       The change uses the continued run's identifier as the only naming form for the
+       continued run.
+
+[exclusion-03] Prior-review selection for stages other than decomposition, which
+    `rerun.py::find_prior_review` performs over git ancestry.
+    -> exclude-non-decomposition-prior-review-selection  [compatibility/explicit]
+       The change leaves prior-review selection for stages other than decomposition to
+       `rerun.py::find_prior_review` over git ancestry.
+
+[exclusion-04] Counting how many runs a decomposition took to settle.
+    -> exclude-settle-run-counting  [functional/explicit]
+       The change does not count how many runs a decomposition took to settle.
+
+[exclusion-05] Deriving a requirement more than once within a single run.
+    -> exclude-multiple-derivations-per-run  [invariant/explicit]
+       The change derives each requirement at most once within a single run.
+
+[exclusion-06] What the decomposer derives from a requirement it does derive fresh.
+    -> exclude-fresh-derivation-content  [human_review/explicit]
+       The change leaves unspecified what the decomposer derives from a requirement when
+       it derives it fresh.
+
+[exclusion-07] The wording the decomposer chooses for an obligation it derives fresh.
+    -> exclude-fresh-derivation-wording  [human_review/explicit]
+       The change leaves unspecified the wording the decomposer chooses for an
+       obligation it derives fresh.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker standing alone with no requirement under it.
+
+[completion-02] A run over an unchanged task file naming a continued run issues no
+    decompose model call.
+    -> unchanged-task-no-decompose-call  [functional/explicit]
+       A run over an unchanged task file naming a continued run issues no decompose
+       model call.
+
+[completion-03] A run over an unchanged task file naming a continued run produces byte-
+    identical obligations, identifiers and descriptions.
+    -> unchanged-task-byte-identical-obligations  [regression/explicit]
+       A run over an unchanged task file naming a continued run produces byte-identical
+       obligations, identifiers and descriptions.
+
+[completion-04] A decomposition run against ledger state recording a different task file
+    produces the same obligations as one run against no ledger state at all.
+    -> different-ledger-same-obligations-as-no-ledger  [compatibility/explicit]
+       A decomposition run against ledger state recording a different task file produces
+       the same obligations as one run against no ledger state at all.
+
+[completion-05] Editing one requirement re-derives that requirement and leaves the
+    obligations of every other requirement unchanged.
+    -> edited-one-requirement-leaves-others-unchanged  [functional/explicit]
+       Editing one requirement re-derives that requirement and leaves the obligations of
+       every other requirement unchanged.
+
+[completion-06] A tool change that leaves the decompose request unaltered carries every
+    previously derived obligation.
+    -> tool-change-preserves-obligations-when-request-unchanged  [compatibility/explicit]
+       A tool change that leaves the decompose request unaltered carries every
+       previously derived obligation.
+
+[completion-07] A change to the decompose prompt prevents carrying the obligations
+    derived under the previous prompt.
+    -> prompt-change-blocks-carry-forward  [compatibility/explicit]
+       A change to the decompose prompt prevents carrying the obligations derived under
+       the previous prompt.
+
+[completion-08] A change to the decompose response schema prevents carrying the
+    obligations derived under the previous schema.
+    -> schema-change-blocks-carry-forward  [compatibility/explicit]
+       A change to the decompose response schema prevents carrying the obligations
+       derived under the previous schema.
+
+[completion-09] A change to the model or the seed prevents carrying the obligations
+    derived under the previous one.
+    -> prevent-carry-over-on-model-or-seed-change  [compatibility/explicit]
+       A change to the model or the seed prevents carrying the obligations derived under
+       the previous one.
+
+[completion-10] The decomposition movements recorded as correct in
+    `tests/fixtures/decompose-stability/` are still produced when the task file
+    genuinely changes.
+    -> preserve-fixture-stability-movements-on-real-task-change  [regression/explicit]
+       The decomposition movements recorded as correct in `tests/fixtures/decompose-
+       stability/` are still produced when the task file genuinely changes.
+
+[completion-11]
+    `tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical` passes,
+    over a task file and continued-run state that are both unchanged.
+    -> cli-byte-identical-unchanged-inputs-test  [test_demand/explicit]
+       `tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical` passes,
+       over a task file and continued-run state that are both unchanged.
+

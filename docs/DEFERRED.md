@@ -1357,3 +1357,150 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   is outside #266.
 - **Drafted fix:** filed as a child of #183 — see the issue for the full text.
 - **Status:** filed (#270, sub-issue of #183)
+
+### [2026-08-19] Context stated as current behaviour becomes an obligation to preserve it
+- **Kind:** filing
+- **Found during:** #269, Gate 1 run 1
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** the `## Task` section described current behaviour in the
+  present tense — what the tool does today and why it is wrong. Two of the five
+  obligations derived from it require that behaviour to *continue*:
+  `rerun-rederive-from-scratch` (*"Decomposition is re-derived from scratch on
+  every run, and a changed task invalidates everything…"*) and
+  `criterion-wording-churn-across-runs` (*"…criterion wording churn occurs, with
+  identifiers re-minted alongside the wordings"*). Both are satisfied by **not
+  doing the task**, so a correct implementation is scored as failing them. Three
+  more turned completed measurements into obligations
+  (`criterion-churn-preserves-content`, `not-model-nondeterminism`,
+  `task-text-is-prompt-for-later-stages`). Evidence:
+  `dogfood-logs/269-gate1-run1/`, with `269-gate1-run2/` showing all five gone
+  after the narrative was trimmed.
+- **Why I didn't act:** it is in `requirement/`, and #269 delivers carry-forward,
+  not the derivation prompt.
+- **Drafted fix:** **not a new issue — this is #212**, *"Task files cannot
+  distinguish context from requirements, so background becomes an obligation"*,
+  and the resolution is the `## Context` section that issue already proposes.
+  #212 already names the inverted form — *"an obligation to preserve the thing
+  being removed"* — from #202's Gate 1, so this is a **reproduction on a second
+  mandate**, not a new dimension. Post as a **comment on #212** on that basis:
+  it moves the evidence from three runs of one task file to two task files 
+  written eight months apart, which is what distinguishes a house-style artifact 
+  from a property of the format. Two details worth adding: the three
+  measurement-derived obligations show the same failure for *completed
+  measurements*, not just problem statements, and trimming the narrative removed
+  all five — so a Context section parsed but not decomposed would have sufficed
+  here, which is direct support for Deliverable 4.
+- **Status:** filed (comment on #212)
+
+### [2026-08-19] A scope exclusion is derived as a prohibition on behaviour that must keep working
+- **Kind:** filing
+- **Found during:** #269, Gate 1 run 2
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** `exclusion-03` says prior-review selection for stages other
+  than decomposition — which `rerun.py::find_prior_review` performs over git
+  ancestry — is out of scope, i.e. this change leaves it alone. The derived
+  obligation reads *"The change does not perform prior-review selection for
+  stages other than decomposition via `rerun.py::find_prior_review` over git
+  ancestry"*, which as an obligation on the delivered system forbids behaviour
+  that exists today and must keep working. The contrast is in the same run:
+  `exclusion-02` was reframed positively and correctly, as *"The continued run is
+  named only by its identifier."* Evidence: `dogfood-logs/269-gate1-run2/`.
+- **Why I didn't act:** `requirement/`, outside #269's area, and the exclusion is
+  correctly worded — this is not a task-file fix.
+- **Drafted fix:** file as a child of **#181**, and cross-reference **#262**,
+  which is the same inversion reached through a constraint rather than a scope
+  exclusion — worth checking whether one fix covers both before either is
+  scheduled. Acceptance: a scope exclusion naming existing behaviour yields an
+  obligation that permits that behaviour to continue, or no obligation at all,
+  never one prohibiting it. Labels `bug`, `track:checker`.
+- **Status:** filed (#272, sub-issue of #181)
+
+### [2026-08-19] An explicit obligation restating another explicit obligation is not reconciled with it
+- **Kind:** filing
+- **Found during:** #269, Gate 1 run 3 (post-#271)
+- **Where:** `src/acceptance/requirement/linking.py`
+- **Severity:** should-fix
+- **What's wrong:** in run 3, `task-01` yielded six obligations and `task-02`
+  four. Two are correctly linked — `constraint-01-unchanged-requirement-no-model-call`
+  *(also serves constraint-01)* and `every-run-reports-identifier` *(also serves
+  constraint-20)*. Six are unlinked restatements:
+
+  | obligation | restates | type |
+  |---|---|---|
+  | `unchanged-requirement-carries-obligations` | `constraint-02`/`-03` | inferred |
+  | `edited-requirement-rederived-from-old-and-new-text` | `constraint-04` | explicit |
+  | `new-requirement-derived-fresh` | `constraint-08` | explicit |
+  | `disappeared-requirement-drops-obligations` | `constraint-06` | explicit |
+  | `run-records-derived-work` | `task-02` prose | inferred |
+  | `later-run-can-name-continued-run` | `task-02` prose | inferred |
+
+  The clearest is `disappeared-requirement-drops-obligations` against
+  `constraint-06`'s `drop-obligations-for-removed-requirement` — near-identical
+  ids, same assertion, no link. The first row is **exactly #268** (an *inferred*
+  obligation restating an explicit one). The three explicit-on-explicit rows are
+  the same defect on an axis #268 does not cover, which is what makes this a
+  separate filing rather than a comment on #268.
+- **Why I didn't act:** `linking.py` is outside #269's area. It is a Gate 2
+  hazard, not a Gate 1 one — each restatement independently demands evidence.
+- **Drafted fix:** file as a child of **#181**, cross-referencing **#268** as the
+  inferred-vs-explicit half of the same problem, and say plainly that the
+  mechanism works and is under-applied — two links were made in the same run.
+  Evidence: `dogfood-logs/269-gate1-run3/`. Acceptance: an obligation restating
+  an explicit constraint is linked to it regardless of whether either is inferred
+  or explicit. Labels `bug`, `track:checker`.
+- **Status:** filed (#273, sub-issue of #181)
+
+### [2026-08-19] A derived obligation dropped the symbol its requirement named
+- **Kind:** filing
+- **Found during:** #269, Gate 1 runs 2 and 3
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** `exclusion-03` names `rerun.py::find_prior_review`. Run 2's
+  obligation retained the symbol; run 3's dropped it, leaving *"The change does
+  not perform prior-review selection for stages other than decomposition."* The
+  task file was byte-identical between the two runs; only the tool changed
+  (#271). This is the #193 §3 axis: symbol loss is invisible to both recall and
+  precision, because the aligner correctly matches an obligation that dropped its
+  symbol to one that kept it — so no set metric will ever report it, and it is
+  caught only by reading.
+- **Why I didn't act:** `requirement/`, outside #269's area.
+- **Drafted fix:** file as a child of **#181**, with the run 2 / run 3 pair as
+  the evidence and the note that the two runs differ only in tool version.
+  Acceptance: an obligation derived from requirement text naming a symbol retains
+  that symbol. Cross-reference #193 §3 as the reason no existing metric catches
+  it, and #195's decompose-regression suite as where the assertion belongs.
+  Labels `bug`, `track:checker`.
+- **Status:** filed (#274, sub-issue of #181)
+
+### [2026-08-19] Scope-exclusion typing flipped in both directions on unchanged requirement text
+- **Kind:** filing
+- **Found during:** #269, Gate 1 runs 1 and 2
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** across three runs, three scope exclusions whose text was
+  byte-identical throughout took three different types:
+
+  | requirement | run 1 | run 2 | run 3 (post-#271) |
+  |---|---|---|---|
+  | `exclusion-01` | `functional` | `human_review` | `regression` |
+  | `exclusion-06` | `human_review` | `functional` | `human_review` |
+  | `exclusion-07` | `human_review` | `functional` | `human_review` |
+
+  `exclusion-06` and `-07` returned to `human_review` after passing through
+  `functional`, so #271 did not settle this. **The caveat that bounds this
+  evidence:** no two runs share both a tool version and a surrounding registry —
+  runs 1→2 changed the task file's `## Task` section, runs 2→3 changed the tool —
+  and the decomposer reads the whole registry as context (#178). This is
+  corroborating evidence, **not a controlled measurement**.
+- **Why I didn't act:** outside #269's area, and a controlled test (perturb one
+  unrelated bullet, hold the tool fixed) is #193/#205's work.
+- **Drafted fix:** this is the scope-exclusion typing instability already queued
+  against **#205** — post as a **comment on #205** carrying this instance and its
+  three-run evidence, rather than filing a duplicate. State the caveat above in
+  the comment rather than presenting it as a measurement. Note that #205's
+  original instance and this one differ in direction, so the fix must pin the
+  type rather than merely exclude `human_review`, and that #271 — which moved the
+  evidence decision into decomposition — did not resolve it.
+- **Status:** filed (comment on #205)
