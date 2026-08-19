@@ -72,6 +72,22 @@ def test_the_scan_actually_reads_this_repositorys_tests():
     assert TESTS_ROOT / "requirement" / "test_task_file.py" in sources
 
 
+def test_the_scan_covers_helper_modules_and_conftest_too():
+    """Not only files named `test_*.py`.
+
+    Both call sites #258 removed lived in helpers — `_committed_task_files` and
+    a module-level read — not in a test function, and a read reached from a
+    fixture in `conftest.py` would be just as load-bearing. The `fixtures`
+    exclusion in `_test_sources` is the one place this could quietly narrow, so
+    the two kinds of file are named here rather than assumed.
+    """
+    sources = set(_test_sources())
+
+    assert TESTS_ROOT / "conftest.py" in sources
+    assert TESTS_ROOT / "requirement" / "corpus.py" in sources
+    assert any(p.name != "conftest.py" and not p.name.startswith("test_") for p in sources)
+
+
 def test_the_pattern_matches_the_call_sites_258_removed():
     """The two real pre-#258 lines. A pattern that stopped matching these would
     leave the guard green while the defect returned."""

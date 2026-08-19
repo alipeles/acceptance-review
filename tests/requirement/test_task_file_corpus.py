@@ -27,6 +27,80 @@ def test_no_corpus_path_lies_outside_dogfood_logs():
         assert relative.name == "current-task.md"
 
 
+def test_a_path_outside_dogfood_logs_is_not_a_case(tmp_path: Path):
+    """Asserted against a corpus built to contain the near misses.
+
+    `test_no_corpus_path_lies_outside_dogfood_logs` walks the *real* corpus,
+    where every path is already correct — it would pass unchanged against a
+    discovery that admits outside paths, because none is there to admit. The
+    three planted here are the shapes a widened glob would pick up: a sibling
+    directory, the corpus directory itself, and the repository root.
+    """
+    logs = tmp_path / "dogfood-logs"
+    committed = logs / "997-gate1-run1" / "current-task.md"
+    committed.parent.mkdir(parents=True)
+    committed.write_text("# Task\na committed run\n")
+
+    (tmp_path / "current-task.md").write_text("# Task\nthe task in flight\n")
+    (logs / "current-task.md").write_text("# Task\nloose in the corpus directory\n")
+    sibling = tmp_path / "notes" / "current-task.md"
+    sibling.parent.mkdir(parents=True)
+    sibling.write_text("# Task\na sibling directory\n")
+
+    found = committed_task_files(tmp_path)
+
+    # Not vacuous: the valid entry is still found.
+    assert found == [committed]
+    for outside in (tmp_path / "current-task.md", logs / "current-task.md", sibling):
+        assert outside.is_file()
+        assert outside not in found
+
+
+def test_each_committed_file_yields_exactly_one_case(tmp_path: Path):
+    """One case per file, and no file twice.
+
+    Cardinality alone does not say this: a list that drops one file and repeats
+    another has the right length and covers neither property.
+    """
+    logs = tmp_path / "dogfood-logs"
+    first = logs / "996-gate1-run1" / "current-task.md"
+    second = logs / "997-gate1-run1" / "current-task.md"
+    for path in (first, second):
+        path.parent.mkdir(parents=True)
+        path.write_text("# Task\na committed run\n")
+
+    found = committed_task_files(tmp_path)
+
+    assert found == [first, second]
+    assert len(found) == len(set(found))
+
+    real = committed_task_files()
+    assert len(real) == len(set(real))
+    assert len(real) == len(list(REPO_ROOT.glob("dogfood-logs/*/current-task.md")))
+
+
+def test_the_parse_test_enumerates_the_corpus_and_nothing_else():
+    """The wiring, not just the helper.
+
+    `committed_task_files` can be correct while the parametrize that consumes it
+    is not — the pre-#258 call site built its own list and put the scratch file
+    at the head of it. This pins the case list of the parse test to the corpus
+    itself.
+    """
+    from tests.requirement.test_task_file import test_parses_every_committed_task_file
+
+    (parametrize,) = [
+        mark
+        for mark in test_parses_every_committed_task_file.pytestmark
+        if mark.name == "parametrize"
+    ]
+    argnames, argvalues = parametrize.args
+
+    assert argnames == "path"
+    assert list(argvalues) == committed_task_files()
+    assert len(set(argvalues)) == len(list(argvalues))
+
+
 def test_the_repository_root_task_file_is_not_a_case(tmp_path: Path):
     """The whole point of #258: the scratch file in flight is not an input."""
     (tmp_path / "current-task.md").write_text("# Task\nthe task in flight\n")
