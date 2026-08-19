@@ -24,6 +24,7 @@ from acceptance.review_state import (
     RequirementMap,
     Review,
     TestRecommendation,
+    UnobtainedRecommendation,
 )
 
 _EMPTY = "  (none)"
@@ -75,6 +76,7 @@ def render_report(review: Review) -> str:
     lines.append("Obligations:")
     if review.obligation_map:
         by_obligation = {rec.obligation_id: rec for rec in review.recommendations}
+        unobtained = {rec.obligation_id: rec for rec in review.unobtained_recommendations}
         for index, obligation in enumerate(review.obligation_map, start=1):
             lines.append("")
             lines.extend(
@@ -83,6 +85,7 @@ def render_report(review: Review) -> str:
                     obligation,
                     review.requirement_map,
                     by_obligation.get(obligation.id),
+                    unobtained.get(obligation.id),
                 )
             )
     else:
@@ -333,6 +336,7 @@ def _obligation_block(
     obligation: Obligation,
     requirement_map: RequirementMap | None = None,
     recommendation: TestRecommendation | None = None,
+    unobtained: UnobtainedRecommendation | None = None,
 ) -> list[str]:
     """One numbered obligation with both evidence axes nested beneath it, and
     the test recommendation that explains a weak one.
@@ -416,6 +420,17 @@ def _obligation_block(
             "           full detail: acceptance recommendation "
             f"--criterion {recommendation.obligation_id}"
         )
+
+    # A criterion the stage was asked about and returned nothing for (#275).
+    # It renders where its prescription would have been, because that is where
+    # a reader looks for one, and it says the prescription is MISSING rather
+    # than absent — distinct from the `test evidence: not required (reason)`
+    # line above, which is the tool's own settled decision that no test is owed.
+    # One is "we decided you need nothing here"; this is "we asked and did not
+    # find out".
+    if unobtained is not None:
+        lines.append("         recommended test: NOT OBTAINED — no prescription was produced")
+        lines.append(f"           why: {unobtained.reason}")
 
     return lines
 

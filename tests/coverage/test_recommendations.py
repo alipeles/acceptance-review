@@ -19,6 +19,7 @@ from acceptance.review_state import (
     ObligationType,
     RequiredEvidence,
 )
+from acceptance.supplied_ids import UnusableAnswerLog
 from tests.support import client_returning as _client_returning
 
 
@@ -110,7 +111,7 @@ def test_weak_criterion_gets_a_fully_populated_recommendation():
 
     recommendations = recommend_tests(
         obligations, discriminations, _change_set(), _client_returning(response)
-    )
+    ).recommendations
 
     assert len(recommendations) == 1
     rec = recommendations[0]
@@ -130,13 +131,17 @@ def test_strongly_supported_obligations_get_no_recommendation_and_no_model_call(
         _obligation("solid", "Well-tested behavior", "strongly_supported"),
     ]
     # The exploding client proves no model call is issued when nothing is weak.
-    assert recommend_tests(obligations, [], _change_set(), _exploding_client()) == []
+    result = recommend_tests(obligations, [], _change_set(), _exploding_client())
+    assert result.recommendations == []
+    assert result.unobtained == []
 
 
 def test_unclassified_obligations_are_not_recommended():
     # evidence_class=None means "not yet classified", not "weak" — skip it.
     obligations = [_obligation("pending", "Not yet classified", None)]
-    assert recommend_tests(obligations, [], _change_set(), _exploding_client()) == []
+    result = recommend_tests(obligations, [], _change_set(), _exploding_client())
+    assert result.recommendations == []
+    assert result.unobtained == []
 
 
 def test_recommendation_round_trips_through_persistence():
@@ -156,7 +161,9 @@ def test_recommendation_round_trips_through_persistence():
     }
     from acceptance.review_state import TestRecommendation
 
-    rec = recommend_tests(obligations, [], _change_set(), _client_returning(response))[0]
+    rec = recommend_tests(
+        obligations, [], _change_set(), _client_returning(response)
+    ).recommendations[0]
     assert TestRecommendation.from_dict(rec.to_dict()) == rec
 
 
@@ -194,23 +201,79 @@ def _recommendation(obligation_id: str) -> dict:
     }
 
 
-def test_a_response_skipping_a_weak_obligation_is_rejected():
-    """The "always" half of the invariant, and the defect #218 removes.
+def test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained():
+    """The "always" half of the invariant, kept — but paid for with one
+    obligation instead of the whole review (#275).
 
-    This stage used to iterate the response and keep what it could place, so a
-    response answering one of two weak obligations produced a report where the
-    other silently carried no recommendation — indistinguishable from a complete
-    answer. That is M1.2.r1's missing disposition, one stage downstream.
+    #218 made a skipped obligation visible by raising, which was right about the
+    visibility and wrong about the price: on a real run one omission out of
+    thirteen discarded twelve honoured prescriptions, the verdict, and every
+    finding the earlier stages had produced. The omission is still refused a
+    silent pass — it becomes an explicit not-obtained record — and the answers
+    that did come back survive.
     """
     obligations, discriminations = _two_weak()
     response = {"recommendations": [_recommendation("daily-rate")]}
+    log = UnusableAnswerLog()
 
-    with pytest.raises(SchemaValidationError) as raised:
-        recommend_tests(obligations, discriminations, _change_set(), _client_returning(response))
+    result = recommend_tests(
+        obligations, discriminations, _change_set(), _client_returning(response), log
+    )
 
-    message = str(raised.value)
-    assert "proration" in message
-    assert "1 of 2" in message
+    assert [r.obligation_id for r in result.recommendations] == ["daily-rate"]
+    assert [u.obligation_id for u in result.unobtained] == ["proration"]
+    # Not merely present: it says which criterion went unanswered and that the
+    # answer was never obtained, so a reader cannot mistake it for a complete one.
+    unobtained = result.unobtained[0]
+    assert unobtained.criterion == "Proration handles partial months"
+    assert "no prescription was produced" in unobtained.reason
+    assert "1 of 2" in unobtained.reason or "2 criteria and returned 1" in unobtained.reason
+    # And the evidence axis is told, which is what keeps the verdict honest.
+    assert log.indeterminate_obligations == {"proration"}
+
+
+def test_several_answers_survive_an_omission_and_several_omissions_are_each_recorded():
+    """The two-criterion case above cannot separate "keeps the answers" from
+    "keeps the one answer", and it cannot show that a second omission is
+    recorded rather than the first one standing for both.
+
+    Four criteria: two answered, two skipped, and the two skipped ones are not
+    adjacent in the supplied order — so an implementation that stopped at the
+    first gap, or that recorded one entry per response rather than per criterion,
+    fails here and passes the smaller case.
+    """
+    obligations = [
+        _obligation("daily-rate", "Daily rate uses days_in_month", "nominally_supported"),
+        _obligation("proration", "Proration handles partial months", "unsupported"),
+        _obligation("rounding", "Totals round half up", "nominally_supported"),
+        _obligation("credits", "Credits offset the next invoice", "unsupported"),
+    ]
+    response = {"recommendations": [_recommendation("daily-rate"), _recommendation("rounding")]}
+    log = UnusableAnswerLog()
+
+    result = recommend_tests(obligations, [], _change_set(), _client_returning(response), log)
+
+    assert [r.obligation_id for r in result.recommendations] == ["daily-rate", "rounding"]
+    # In supplied order, not response order and not "the first one we noticed".
+    assert [u.obligation_id for u in result.unobtained] == ["proration", "credits"]
+    assert [u.criterion for u in result.unobtained] == [
+        "Proration handles partial months",
+        "Credits offset the next invoice",
+    ]
+    assert log.indeterminate_obligations == {"proration", "credits"}
+
+
+def test_an_omission_does_not_mark_the_answered_obligations_indeterminate():
+    """The other half of the same guarantee: a positive answer we could honour
+    keeps its judgment. Marking the whole call indeterminate would discard
+    twelve good prescriptions in a different way."""
+    obligations, discriminations = _two_weak()
+    response = {"recommendations": [_recommendation("daily-rate")]}
+    log = UnusableAnswerLog()
+
+    recommend_tests(obligations, discriminations, _change_set(), _client_returning(response), log)
+
+    assert "daily-rate" not in log.indeterminate_obligations
 
 
 def test_a_response_naming_a_non_weak_obligation_is_rejected():
@@ -259,11 +322,32 @@ def test_every_weak_obligation_gets_exactly_one_recommendation():
         ]
     }
 
-    recommendations = recommend_tests(
+    result = recommend_tests(
         obligations, discriminations, _change_set(), _client_returning(response)
     )
 
-    assert [r.obligation_id for r in recommendations] == ["daily-rate", "proration"]
+    assert [r.obligation_id for r in result.recommendations] == ["daily-rate", "proration"]
+    assert result.unobtained == []
+
+
+def test_two_runs_over_one_omitting_response_produce_identical_state():
+    """Determinism over the new path: the not-obtained record is derived from
+    the supplied set and the response, both of which are fixed, so nothing about
+    it may vary between runs (M0.5)."""
+    obligations, discriminations = _two_weak()
+    response = {"recommendations": [_recommendation("daily-rate")]}
+
+    first = recommend_tests(
+        obligations, discriminations, _change_set(), _client_returning(response)
+    )
+    second = recommend_tests(
+        obligations, discriminations, _change_set(), _client_returning(response)
+    )
+
+    assert [u.to_dict() for u in first.unobtained] == [u.to_dict() for u in second.unobtained]
+    assert [r.to_dict() for r in first.recommendations] == [
+        r.to_dict() for r in second.recommendations
+    ]
 
 
 # --- #153: no test is prescribed for a boundary obligation --------------------
@@ -296,7 +380,11 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
 
     result = recommend_tests([boundary], [], _change_set(), _exploding_client())
 
-    assert result == []
+    assert result.recommendations == []
+    # And it is not recorded as not-obtained either: nothing was asked about it,
+    # so there is no missing answer. #266's decision that no test is owed here
+    # is a settled answer, not an absent one.
+    assert result.unobtained == []
 
 
 def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
@@ -337,4 +425,5 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
 
     result = recommend_tests([ordinary, boundary], [], _change_set(), client)
 
-    assert [r.obligation_id for r in result] == ["daily-rate"]
+    assert [r.obligation_id for r in result.recommendations] == ["daily-rate"]
+    assert result.unobtained == []

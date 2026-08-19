@@ -60,6 +60,7 @@ __all__ = [
     "TestEvidence",
     "TestRecommendation",
     "TextSpan",
+    "UnobtainedRecommendation",
     "UnrequestedChangeDisposition",
 ]
 
@@ -669,6 +670,35 @@ class TestRecommendation(_Model):
     repo_conventions: str
 
 
+class UnobtainedRecommendation(_Model):
+    """A criterion the recommendation stage was asked about and returned nothing
+    for (#275).
+
+    Kept as a positive record rather than an absence. The stage supplies every
+    weak obligation in the call and expects one recommendation back for each; a
+    response answering twelve of thirteen used to raise, discarding the whole
+    review — twelve good prescriptions, the verdict, and every finding from the
+    stages that had already run. That traded one lost prescription for all of
+    them.
+
+    An omission is an INDETERMINATE result about one obligation (§9.3), so it is
+    recorded as one. Three states have to stay apart and this is the third:
+
+    - a prescribed test -> `TestRecommendation`;
+    - no test owed at all -> `required_evidence.requires_tests is False`,
+      decided at decomposition and carrying its reason (#266);
+    - asked for and not obtained -> this.
+
+    #271's guard was right that silence must never be INVISIBLE — a response
+    answering three of five must not read as a complete answer. That is what
+    this preserves; what it drops is abandoning the run to say so.
+    """
+
+    obligation_id: str
+    criterion: str  # the obligation's observable behavior, restated
+    reason: str
+
+
 class CompletionVerdict(str, Enum):
     """§10.1 step 11 overall completion result. A positive verdict
     (`no_material_gaps`) is bounded — "no material gaps at the achievable
@@ -922,6 +952,12 @@ class Review(_Model):
     open_questions: list[OpenQuestion] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[TestRecommendation] = Field(default_factory=list)
+    # Criteria the recommendation stage was asked about and returned nothing for
+    # (#275). A separate list rather than a status on `TestRecommendation`: a
+    # prescription's fields are all required, and an entry with every one of
+    # them blank is exactly the "indistinguishable from a complete answer"
+    # failure the omission guard exists to prevent.
+    unobtained_recommendations: list[UnobtainedRecommendation] = Field(default_factory=list)
     completion: CompletionResult | None = None
     limitations: list[str] = Field(default_factory=list)
     recommendation: str | None = None

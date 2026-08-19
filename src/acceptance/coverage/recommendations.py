@@ -22,13 +22,17 @@ never modifies code (§9.5).
 
 from __future__ import annotations
 
+from pydantic import Field
+
 from acceptance.coverage.prompt import render_diff_section
 from acceptance.evidence.discrimination import ObligationDiscrimination
 from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
+from acceptance.model_base import PersistableModel
 from acceptance.review_state import (
     ChangeSet,
     Obligation,
     TestRecommendation,
+    UnobtainedRecommendation,
 )
 from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 
@@ -62,6 +66,18 @@ recommendation with these discrete fields:
 Every criterion you are given requires test evidence — that was settled before
 this call and is not yours to revisit. Return one recommendation per criterion,
 keyed by its `obligation_id`. If given no criteria, return an empty list."""
+
+
+class RecommendationResult(PersistableModel):
+    """What the stage prescribed, and what it was asked for and did not get.
+
+    Two lists rather than one, for the reason `MappingResult` keeps `unmapped`
+    and `indeterminate` apart: a prescription is a substantive answer, and an
+    omission is the absence of one. Collapsing them is what makes a partial
+    response read as a complete one."""
+
+    recommendations: list[TestRecommendation] = Field(default_factory=list)
+    unobtained: list[UnobtainedRecommendation] = Field(default_factory=list)
 
 
 class _Recommendation(StrictResponseModel):
@@ -135,13 +151,13 @@ def recommend_tests(
     change_set: ChangeSet,
     client: ModelClient,
     unusable: UnusableAnswerLog | None = None,
-) -> list[TestRecommendation]:
+) -> RecommendationResult:
     """Prescribe a §9.5 test recommendation for each not-strongly-supported
     obligation that requires test evidence. No weak obligations -> no model
     call."""
     weak = _weak_obligations(obligations)
     if not weak:
-        return []
+        return RecommendationResult()
 
     discriminations_by_obligation = {d.obligation_id: d for d in discriminations}
     messages = [
@@ -179,6 +195,15 @@ def recommend_tests(
     # decomposition. So silence is once again the only thing this has to
     # reject — there is no correct reason for the model to skip one, and no
     # second list in which it might have answered instead (#266).
+    #
+    # #275: silence is still rejected, but as a result about the ONE obligation
+    # it concerns rather than as grounds for abandoning the review. Rejecting it
+    # by raising discarded twelve honoured prescriptions, the verdict, and every
+    # finding the earlier stages had already produced, to report that one was
+    # missing — and a model that skips one of thirteen is not a contract
+    # violation, it is an indeterminate result (§9.3). The duplicate and foreign
+    # id cases below still raise: those are answers we cannot place at all, not
+    # answers we did not receive.
     returned: dict[str, _Recommendation] = {}
     for rec in result.recommendations:
         if rec.obligation_id in returned:
@@ -193,22 +218,39 @@ def recommend_tests(
         returned[rec.obligation_id] = rec
 
     missing = [obligation.id for obligation in weak if obligation.id not in returned]
-    if missing:
-        raise SchemaValidationError(
-            f"no recommendation for {len(missing)} of {len(weak)} weak "
-            f"obligation(s): {', '.join(missing)}"
-        )
+    if missing and unusable is not None:
+        # The evidence axis is where this has to land. `indeterminate` says "we
+        # did not obtain this judgment", `pipeline._apply_indeterminate` writes
+        # it onto the obligation, and `verdict.py` routes it to
+        # `unable_to_determine` and lists it as an escalation candidate — so a
+        # review missing a prescription cannot come back clean. Mapping and
+        # discrimination already report their own omissions this way.
+        unusable.mark_indeterminate(missing)
 
-    return [
-        TestRecommendation(
-            obligation_id=obligation.id,
-            criterion=criterion_by_id[obligation.id],
-            required_inputs=returned[obligation.id].required_inputs,
-            boundary_conditions=returned[obligation.id].boundary_conditions,
-            expected_output=returned[obligation.id].expected_output,
-            required_assertions=returned[obligation.id].required_assertions,
-            plausible_defect=returned[obligation.id].plausible_defect,
-            repo_conventions=returned[obligation.id].repo_conventions,
-        )
-        for obligation in weak
-    ]
+    return RecommendationResult(
+        recommendations=[
+            TestRecommendation(
+                obligation_id=obligation.id,
+                criterion=criterion_by_id[obligation.id],
+                required_inputs=returned[obligation.id].required_inputs,
+                boundary_conditions=returned[obligation.id].boundary_conditions,
+                expected_output=returned[obligation.id].expected_output,
+                required_assertions=returned[obligation.id].required_assertions,
+                plausible_defect=returned[obligation.id].plausible_defect,
+                repo_conventions=returned[obligation.id].repo_conventions,
+            )
+            for obligation in weak
+            if obligation.id in returned
+        ],
+        unobtained=[
+            UnobtainedRecommendation(
+                obligation_id=obligation_id,
+                criterion=criterion_by_id[obligation_id],
+                reason=(
+                    f"the recommendation stage was given {len(weak)} criteria and "
+                    f"returned {len(returned)}; no prescription was produced for this one"
+                ),
+            )
+            for obligation_id in missing
+        ],
+    )

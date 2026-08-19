@@ -1,0 +1,191 @@
+Requirements: 33   with obligations: 32   deliberately none: 1
+
+[task-01] When the stage that prescribes tests returns no prescription for a criterion
+    it was asked about, the review still completes and reports that criterion's
+    prescription as one that was not obtained.
+    -> omitted-criterion-recorded-as-not-obtained  [functional/explicit]   (also serves completion-04)
+       The omitted criterion is present in the persisted review state as a prescription
+       that was not obtained.
+
+[constraint-01] A response that omits one or more of the criteria the prescribing stage
+    was asked about does not end the review.
+    -> response-omission-does-not-end-review  [functional/explicit]
+       A response that omits one or more of the criteria the prescribing stage was asked
+       about does not end the review.
+
+[constraint-02] A review whose prescribing stage omitted a criterion still produces a
+    report and a verdict.
+    -> omitted-criterion-review-still-produces-report-and-verdict  [functional/explicit]
+       A review whose prescribing stage omitted a criterion still produces a report and
+       a verdict.
+
+[constraint-03] The prescriptions returned for the other criteria in that same response
+    are kept.
+    -> other-prescriptions-are-kept  [invariant/explicit]
+       The prescriptions returned for the other criteria in that same response are kept.
+
+[constraint-04] Every criterion the prescribing stage was asked about is present in the
+    persisted review state, either with a prescribed test or as a prescription that was
+    not obtained.
+    -> persist-omitted-criterion-state  [functional/explicit]
+       Persist every criterion the prescribing stage was asked about, representing each
+       one either with a prescribed test or as a prescription that was not obtained.
+
+[constraint-05] A criterion whose prescription was not obtained is distinguishable in
+    the persisted review state from a criterion carrying a prescribed test.
+    -> not-obtained-distinct-from-prescribed-test  [invariant/explicit]   (also serves completion-05)
+       A prescription that was not obtained is distinguishable in the persisted review
+       state from a prescribed test.
+
+[constraint-06] A criterion whose prescription was not obtained is distinguishable from
+    a criterion that is owed no test.
+    -> distinguish-not-obtained-from-no-test  [invariant/explicit]
+       Represent a criterion whose prescription was not obtained distinctly from a
+       criterion that is owed no test.
+
+[constraint-07] The report states, for a criterion whose prescription was not obtained,
+    that no prescription was produced for it.
+    -> report-no-prescription-produced  [functional/explicit]
+       State in the report, for a criterion whose prescription was not obtained, that no
+       prescription was produced for it.
+    -> report-says-no-prescription-produced  [explanation_observability/explicit]
+       The report states, for a criterion whose prescription was not obtained, that no
+       prescription was produced for it.
+
+[constraint-08] The report renders that differently from a criterion that is owed no
+    test.
+    -> report-renders-not-obtained-differently-from-no-test  [explanation_observability/explicit]   (also serves completion-08)
+       The report renders that differently from a criterion that is owed no test.
+
+[constraint-09] A criterion whose prescription was not obtained is not rated as strongly
+    supported on the test-evidence axis.
+    -> not-obtained-not-strongly-supported  [invariant/explicit]
+       Rate a criterion whose prescription was not obtained as not strongly supported on
+       the test-evidence axis.
+
+[constraint-10] A review containing a criterion whose prescription was not obtained does
+    not conclude that no material gaps remain.
+    -> not-obtained-does-not-close-gaps  [regression/explicit]
+       Keep a review containing a criterion whose prescription was not obtained from
+       concluding that no material gaps remain.
+
+[constraint-11] A response naming a criterion the prescribing stage did not ask about is
+    rejected.
+    -> reject-unasked-criterion  [error_handling/explicit]
+       Reject a response that names a criterion the prescribing stage did not ask about.
+
+[constraint-12] A response naming the same criterion more than once is rejected.
+    -> reject-duplicate-criterion-names  [error_handling/explicit]
+       Reject a response that names the same criterion more than once.
+    -> duplicate-criterion-rejected  [error_handling/explicit]
+       A response naming the same criterion more than once is rejected.
+
+[constraint-13] Two runs over the same mandate and the same model responses produce the
+    same report.
+    -> deterministic-report-for-same-inputs  [regression/explicit]
+       Produce the same report for two runs over the same mandate and the same model
+       responses.
+
+[exclusion-01] Whether the stage asks the model again for the criteria it omitted.
+    -> no-reasking-for-omitted-criteria  [regression/explicit]
+       The change does not alter whether the stage asks the model again for the criteria
+       it omitted.
+
+[exclusion-02] How many criteria are carried in one request to the model.
+    -> no-change-to-criteria-per-request  [regression/explicit]
+       The change does not alter how many criteria are carried in one request to the
+       model.
+
+[exclusion-03] Why the model omits a criterion.
+    -> no-omission-cause-analysis  [human_review/explicit]
+       The change does not add reasoning about why the model omits a criterion.
+
+[exclusion-04] Which criteria are owed a test at all.
+    -> no-change-to-test-owed-criteria-selection  [regression/explicit]
+       The change does not alter which criteria are owed a test at all.
+
+[exclusion-05] How a criterion's existing test evidence is rated.
+    -> no-change-to-existing-test-evidence-rating  [regression/explicit]
+       The change does not alter how a criterion's existing test evidence is rated.
+
+[exclusion-06] What the other stages do when their own responses omit a criterion.
+    -> no-change-to-other-stage-omission-handling  [regression/explicit]
+       The change does not alter what the other stages do when their own responses omit
+       a criterion.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       This section marker names the work area only and contains no checkable
+       requirement.
+
+[completion-02] A test drives the prescribing stage with a response that omits a
+    criterion it was given, and asserts the stage returns rather than raising.
+    -> prescribing-stage-returns-rather-than-raises-on-omission  [test_demand/explicit]
+       A test drives the prescribing stage with a response that omits a criterion it was
+       given, and asserts the stage returns rather than raising.
+
+[completion-03] A test asserts that the prescriptions for the criteria that response did
+    answer are kept.
+    -> prescriptions-for-answered-criteria-are-kept  [functional/explicit]
+       The prescriptions for the criteria that response did answer are kept.
+
+[completion-04] A test asserts that the omitted criterion is present in the persisted
+    review state as a prescription that was not obtained.
+    -> omitted-criterion-recorded-as-not-obtained  [functional/explicit]   (also serves task-01)
+       The omitted criterion is present in the persisted review state as a prescription
+       that was not obtained.
+
+[completion-05] A test asserts that a prescription that was not obtained is
+    distinguishable in the persisted review state from a prescribed test.
+    -> not-obtained-distinct-from-prescribed-test  [invariant/explicit]   (also serves constraint-05)
+       A prescription that was not obtained is distinguishable in the persisted review
+       state from a prescribed test.
+
+[completion-06] A test asserts that a review whose prescribing stage omitted a criterion
+    produces a report.
+    -> review-produces-report-after-omission  [functional/explicit]
+       A review whose prescribing stage omitted a criterion produces a report.
+
+[completion-07] A test asserts that the report states no prescription was produced for
+    the omitted criterion.
+    -> report-states-no-prescription-produced-for-omitted-criterion  [explanation_observability/explicit]
+       The report states no prescription was produced for the omitted criterion.
+
+[completion-08] A test asserts that the report renders that differently from a criterion
+    that is owed no test.
+    -> report-renders-not-obtained-differently-from-no-test  [explanation_observability/explicit]   (also serves constraint-08)
+       The report renders that differently from a criterion that is owed no test.
+
+[completion-09] A test asserts that a criterion whose prescription was not obtained is
+    not rated strongly supported on the test-evidence axis.
+    -> test-criterion-not-strongly-supported  [test_demand/explicit]
+       A test asserts that a criterion whose prescription was not obtained is not rated
+       strongly supported on the test-evidence axis.
+
+[completion-10] A test asserts that a review containing such a criterion does not
+    conclude that no material gaps remain.
+    -> test-review-does-not-conclude-no-gaps  [test_demand/explicit]
+       A test asserts that a review containing such a criterion does not conclude that
+       no material gaps remain.
+
+[completion-11] A test asserts that a response naming a criterion the stage did not ask
+    about is rejected.
+    -> test-rejects-unasked-criterion  [test_demand/explicit]
+       A test asserts that a response naming a criterion the stage did not ask about is
+       rejected.
+
+[completion-12] A test asserts that a response naming the same criterion more than once
+    is rejected.
+    -> test-rejects-duplicate-criterion  [test_demand/explicit]
+       A test asserts that a response naming the same criterion more than once is
+       rejected.
+
+[completion-13] A test asserts that two runs over the same mandate and the same model
+    responses produce the same report.
+    -> test-deterministic-report-for-same-inputs  [test_demand/explicit]
+       A test asserts that two runs over the same mandate and the same model responses
+       produce the same report.
+
+
+Unreconciled linking answers: answers contradict each other: these obligations are linked transitively but at least one pair among them was denied, so none of them were merged
+  affected: report-states-no-prescription-produced-for-omitted-criterion, report-no-prescription-produced, report-says-no-prescription-produced

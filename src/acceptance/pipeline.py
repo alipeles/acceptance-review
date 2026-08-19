@@ -338,7 +338,16 @@ def run_review(
     dispositioned = classify_dispositions(
         unrequested, obligations, coverages, change_set, policy, client
     )
-    recommendations = recommend_tests(obligations, discriminations, change_set, client, unusable)
+    prescribed = recommend_tests(obligations, discriminations, change_set, client, unusable)
+    recommendations = prescribed.recommendations
+    # Re-applied after the recommendation stage, not only before it (#275). The
+    # first call above runs at strength time, and an obligation this stage was
+    # asked about and got no answer for is marked `indeterminate` here — after
+    # that first pass. Without the second application the mark would be recorded
+    # in the log and never reach the obligation, so the verdict would read the
+    # strength the classifier assigned and come back clean over a prescription
+    # nobody obtained.
+    obligations = _apply_indeterminate(obligations, unusable)
 
     obligations_by_id = {obligation.id: obligation for obligation in obligations}
     findings = [
@@ -403,5 +412,6 @@ def run_review(
         declaration=declaration,
         findings=findings,
         recommendations=recommendations,
+        unobtained_recommendations=prescribed.unobtained,
         completion=completion,
     )
