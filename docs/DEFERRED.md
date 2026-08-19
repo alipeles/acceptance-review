@@ -36,147 +36,166 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
-### [2026-08-12] A weak obligation no test can evidence aborts the whole review
+### [2026-08-19] #266 landed and the recommendation abort survived it — one omission of thirteen still destroys the whole report
 - **Kind:** filing (new issue, child of #185)
-- **Found during:** #261/#239, Gate 2, run 1
-- **Where:** `src/acceptance/coverage/recommendations.py:182`
-- **Severity:** blocker — it is the only thing keeping #261/#239's Gate 2 from
-  completing, and it makes configuration-only changes unreviewable in general
-- **What's wrong:** `recommend_tests` requires a recommendation for **every**
-  weak obligation and raises `SchemaValidationError` otherwise. There is no way
-  for the stage to record that an obligation is one *no test can evidence*. On a
-  change to `ci.yml`, `pyproject.toml` and formatting, the model answered the
-  three obligations a pytest could evidence and declined nine that are properties
-  of build steps, action versions and a version pin — a principled split, not a
-  truncated answer — and the run aborted, discarding a completed coverage stage
-  that had classified all 19 obligations `addressed`.
-- **Why I didn't act:** the fix adds a disposition to the recommendation response
-  schema, which re-records that stage's transcripts, and it needs a design call
-  on how the verdict treats an obligation that is addressed but unevidenceable.
-  Both are out of scope for a formatter-and-lint change.
+- **Found during:** #258, Gate 2, run 2
+- **Where:** `src/acceptance/coverage/recommendations.py:195`
+- **Severity:** blocker — #258's Gate 2 has now been unassessable twice, and the
+  second time was against the tool that was fixed for the first
+- **What's wrong:** #266 moved the *"is a test owed here at all"* judgement up to
+  decomposition and made silence the only thing `recommend_tests` rejects. It
+  worked for its own cases: the two obligations that aborted #258's run 1 were
+  both answered this time. But the model omitted a **different** criterion, and
+  the stage still converts one omission out of thirteen into a hard abort — no
+  report, no verdict, no findings for the other twelve, and no retry anywhere on
+  the path.
+- **Why I didn't act:** #258 touches `tests/` only; the abort is in
+  `coverage/`, and the fix needs a design call on what the report says about an
+  obligation whose recommendation was never obtained. Same reason as last time.
 - **Drafted fix:** file as a child of #185, `bug` / `track:checker`:
 
-  > **Title:** A weak obligation that no test can evidence aborts the entire review
+  > **Title:** A single omitted recommendation still aborts the entire review, after #266
   >
-  > From #261/#239's Gate 2 (`dogfood-logs/261-gate2-run1/`):
-  >
-  > ```
-  > acceptance: model error: no recommendation for 9 of 12 weak obligation(s):
-  > partition-test-is-not-ignored, dev-dependencies-pin-ruff-exact-version,
-  > build-runs-formatting-check, build-fails-on-formatting-check-report,
-  > build-fails-on-lint-check-error, lint-step-preserves-lint-exit-code,
-  > checkout-action-not-node20-major, python-setup-action-not-node20-major,
-  > python-sources-formatter-and-lint-clean
-  > ```
-  >
-  > `recommendations.py:182` requires a recommendation for every weak obligation
-  > and raises otherwise. The guard is deliberate and its comment is right about
-  > why: a response answering 3 of 5 used to yield a report where two silently
-  > carried no recommendation, indistinguishable from a complete answer.
-  >
-  > What it has no room for is an obligation for which **no test is the right
-  > instrument**. The answer here was not partial. The model recommended for
-  > exactly the three obligations a pytest could evidence —
-  > `python-files-ruff-format-clean`, `python-files-ruff-check-clean`,
-  > `partition-test-expects-specific-exception` — and declined the nine that are
-  > properties of `ci.yml` steps, GitHub Action major versions, and a pin in
-  > `pyproject.toml`. No pytest sensibly evidences *"the build's checkout action
-  > is not on Node 20."*
-  >
-  > Two things make this worse than a bad rating:
-  >
-  > 1. **It is a hard abort, not a degraded report.** The coverage stage had
-  >    already classified all 19 obligations `addressed`, with rationales citing
-  >    real diff hunks. None of that reaches the user. A configuration-only
-  >    change cannot be reviewed at all.
-  > 2. **It scales with the batch.** `recommend_tests` makes one unpartitioned
-  >    call carrying every weak obligation, so a single unanswerable obligation
-  >    discards the other eleven. Same shape as the `judge_discrimination` call
-  >    #191 is partitioning.
-  >
-  > Suggested direction, for discussion rather than as a prescription: give the
-  > recommendation response an explicit *"no test can evidence this obligation"*
-  > disposition with a reason, so declining is representable and recorded rather
-  > than being a schema violation. That keeps the guard's real purpose — a silent
-  > omission stays rejected — while separating *"the model skipped it"* from
-  > *"the model correctly says testing is the wrong instrument here."* The
-  > verdict then needs a rule for an obligation that is `addressed` but
-  > unevidenceable by test; §9.3's `Indeterminate` is the obvious candidate,
-  > since positive results are bounded and this is exactly a case where no test
-  > tier is achievable.
-  >
-  > Worth noting this was predicted before the run rather than rationalised
-  > after: `dogfood-logs/261-gate1-run2/judgement.md` recorded that none of the
-  > mandate's obligations could be supported by a pytest, and that the question
-  > for Gate 2 was whether the tool had any evidence path for a
-  > configuration-only change. It has none, and the absence is fatal rather than
-  > graceful.
-  >
-  > ## Second instance, on a tests-only change (#258 Gate 2)
-  >
-  > Independently hit by #258 the same day, which matters because the two
-  > mandates have nothing in common — that one is a CI-and-formatting change, this
-  > one touches `tests/` only:
+  > #266 fixed the *cause* it was filed for and left the *disposition* in place.
+  > From #258's Gate 2 run 2 (`dogfood-logs/258-gate2-run2/`), against `main`
+  > with #266 landed:
   >
   > ```
-  > acceptance: model error: no recommendation for 2 of 13 weak obligation(s):
-  > region-coverage-omits-missing-path, no-failures-without-root-task-file
+  > acceptance: model error: no recommendation for 1 of 13 weak obligation(s): no-root-task-file-read
   > ```
   >
-  > Deterministic over three runs (two `record`, one `replay`).
-  > `dogfood-logs/258-gate2-run1/`.
+  > The good news first: #266 works. The two obligations that aborted run 1 —
+  > `region-coverage-case-list-omits-missing-path` and
+  > `no-failures-without-root-task-file` — were both answered this time. Neither
+  > was excused from needing a test at decomposition either; both came back
+  > `code_and_tests`. The new axis fired only where it should have.
   >
-  > The recorded transcript (`21e168cc…`) settles what the error message cannot,
-  > and rules out the two readings that would otherwise fit:
+  > What survived is the response to silence. Transcript
+  > `adf65d6a…f993ed.json`, a single unpartitioned call:
   >
-  > - **Not truncation.** The response parses as complete JSON, terminates on
-  >   `"}]}`, and used 2,236 completion tokens with no `max_tokens` in the request.
-  > - **Not a positional or volume effect.** The skipped obligations sit at
-  >   positions **10 and 11 of 13**, and 12 and 13 were answered — it stepped over
-  >   two in the middle and carried on. All 13 ids were in the request and both
-  >   missing ids appear in the enum-constrained schema, so the model could have
-  >   named them and chose not to.
+  > - 13 criteria supplied, 12 returned; the skipped one is at **position 4**,
+  >   not the tail.
+  > - `stop_reason: "stop"`, 2,901 completion tokens. Not truncation, and not the
+  >   DR-164 call-size shed — positions 5–13 all came back.
   >
-  > What the two have in common is that **no test can close their gap**:
-  > `region-coverage-omits-missing-path` is provided by `glob` resolving a literal
-  > final component through `exists()` — verified by injection, since deleting the
-  > `is_file()` filter leaves the test green — and
-  > `no-failures-without-root-task-file` is a property of a whole suite run, not
-  > assertable from inside one without invoking pytest recursively.
+  > `_weak_obligations`' docstring argues that silence now has "no correct
+  > reason", since `required_evidence` is decided upstream. That is a sound claim
+  > about what the model *ought* to do and an unsound basis for what the stage
+  > should do when it doesn't. A model that skips one of thirteen is not a
+  > contract violation the review can be abandoned over; it is an indeterminate
+  > result about **one** obligation.
   >
-  > **This corrects one point above.** The batch-scaling reading — *"a single
-  > unanswerable obligation discards the other eleven… same shape as the
-  > `judge_discrimination` call #191 is partitioning"* — is right about the blast
-  > radius and wrong about the cause, and partitioning will **not** fix it. At a
-  > partition of five these two obligations are still unanswerable and the same
-  > error fires on a smaller call. Partitioning shrinks how much collateral each
-  > abort destroys; it does not remove the abort. The two issues are siblings in
-  > stage, not in cause.
+  > That is the invariant this collides with: *uncertainty is first-class —
+  > `Indeterminate` and open-question outputs are valid, expected results.*
+  > Recording the omission as an unusable answer, or as an `Indeterminate`
+  > finding reading *"no recommendation was produced for this obligation"*,
+  > would keep the review, keep the gate red for an honest and legible reason,
+  > and lose exactly the one prescription. Aborting loses twelve good ones with
+  > it. The guard's real purpose — that a silent omission must never be
+  > indistinguishable from a complete answer — is served either way.
   >
-  > ## The design already contains this judgement, scoped too narrowly
+  > A retry is worth considering alongside it, since there is currently none: one
+  > re-ask for the missing ids only would likely close most instances, and what
+  > survives a retry is a much stronger signal than what survives a first call.
   >
-  > `_weak_obligations` (`recommendations.py:81`) already excludes `CODE_ONLY`
-  > obligations, and its docstring gives precisely the reasoning both instances
-  > need:
+  > **On the cause, offered as a hypothesis rather than a finding:** the skipped
+  > criterion at position 4, `no-root-task-file-read` (*"Test execution does not
+  > access the repository-root task file"*), is a near-duplicate of position 3,
+  > `no-root-task-file-read-check` (*"A check asserts that no test reads the task
+  > file at the repository root"*) — a Constraint and its Completion twin,
+  > arriving adjacently, describing one property from two sides. The model
+  > answered the first and dropped the second. The competing explanation — that
+  > criteria with no surviving-defect list get dropped — does **not** hold: three
+  > criteria had none and two of them were answered. If the duplicate-pair
+  > reading is right, this is #245 (twin obligations) manifesting as an abort two
+  > stages downstream, which is an argument for fixing the disposition regardless
+  > of how far #245 gets.
   >
-  > > Theirs is not a gap a test could close: they are satisfied by the absence of
-  > > excluded work, and no test can assert that work was not done. Recommending
-  > > one would prescribe evidence that cannot exist, which is worse than
-  > > recommending nothing — #146's review demanded a test for "we didn't also do
-  > > something else".
+  > Also still true and still worth fixing, carried over from #266: **the
+  > transcript records no stop reason on the request side**, so separating
+  > truncation from a short-but-complete answer means reconstructing it from
+  > token counts.
+- **Status:** filed (#275, sub-issue of #185). A *Where* and an *Acceptance*
+  section were added at filing time, beyond the approved draft, so the issue is
+  workable.
+
+### [2026-08-19] #245 gains an instance where the twin split is visible without a report
+- **Kind:** filing (comment on existing issue #245)
+- **Found during:** #258, Gate 2, run 2
+- **Where:** `dogfood-logs/258-gate2-run2/`, obligations `no-root-task-file-read`
+  and `no-root-task-file-read-check`
+- **Severity:** should-fix
+- **What's wrong:** the Constraint `no-root-task-file-read` came back
+  **`unsupported`** — no mapped test — while its Completion twin
+  `no-root-task-file-read-check` came back `partially_supported`.
+  `tests/test_root_task_file_is_not_read.py` exists, is 94 lines, and is exactly
+  the test for both. One of the pair got it; the other got nothing.
+- **Why I didn't act:** #245 already owns the twin split, and #258 cannot act on
+  the finding anyway — the run aborted before rendering, so this is visible only
+  in the recommendation call's input.
+- **Drafted fix:** comment on #245:
+
+  > Another instance, from #258's Gate 2 run 2 (`dogfood-logs/258-gate2-run2/`),
+  > with two features the earlier ones did not have.
   >
-  > That is the same judgement the suggested disposition would make, already
-  > written down and already accepted — it is simply scoped to scope exclusions.
-  > #258's two are ordinary `boundary` and `functional` obligations, and #261's
-  > nine are properties of build steps and version pins. Neither set is reached.
+  > The pair is `no-root-task-file-read` (Constraint: *"No test reads the task
+  > file at the repository root"*) and `no-root-task-file-read-check`
+  > (Completion: *"A check asserts that no test reads the task file at the
+  > repository root"*). One test serves both —
+  > `tests/test_root_task_file_is_not_read.py`, which is the whole point of the
+  > delivery. The Completion twin was rated `partially_supported`; the Constraint
+  > twin was rated **`unsupported`**, i.e. no mapped test at all.
   >
-  > Also worth fixing while here: **the transcript records no stop reason**, on
-  > either the request or the response. Separating truncation from a
-  > short-but-complete answer required reconstructing it from token counts and
-  > JSON well-formedness, which is exactly what the recording exists to make
-  > unnecessary.
-- **Status:** filed (#266, child of #185) — one issue carrying both instances,
-  #261/#239's and #258's. Still blocking both Gate 2s until it lands.
+  > 1. **It is visible without a report.** The run aborted at the recommendation
+  >    stage, so no §16 report was ever rendered. The split shows up in the
+  >    *input* to that stage — the criteria list carries each obligation's
+  >    evidence class — which means this failure mode can be observed even on
+  >    runs that produce nothing.
+  > 2. **It may not stop at a wrong rating.** The two obligations arrived
+  >    adjacently in the recommendation call, and the second of the pair is
+  >    exactly the criterion the model then silently skipped, aborting the review.
+  >    That is one run and a hypothesis, not a demonstrated cause — but if it
+  >    holds, the twin split is not only mis-rating obligations, it is feeding
+  >    duplicate-looking criteria into a downstream call that answers them once.
+  >    Filed separately as the disposition defect (child of #185).
+- **Status:** filed (#245 comment) — the last line names #275, the number the
+  disposition defect actually got.
+
+### [2026-08-19] `decompose`'s text output hides the very field Gate 1 is required to check
+- **Kind:** filing (new issue, child of #185)
+- **Found during:** #258, Gate 1, run 3
+- **Where:** `src/acceptance/cli.py:340-381`
+- **Severity:** nice-to-have
+- **What's wrong:** #266 added `required_evidence` and
+  `required_evidence_reason` to every obligation, and the reason is the only
+  thing a human can argue with when the tool decides an obligation needs no test.
+  `decompose`'s text output renders neither. Reading them at Gate 1 means
+  re-running with `--json` and writing a script to walk it.
+- **Why I didn't act:** presentation, outside #258's area, and the workaround is
+  one command.
+- **Drafted fix:** file as a child of #185, `enhancement` / `track:checker`:
+
+  > **Title:** `decompose` does not show `required_evidence` or its reason
+  >
+  > #266 made *"which kinds of evidence does this obligation require"* a
+  > decomposition-time judgement, and the dogfooding procedure now requires
+  > reading the stated reason at Gate 1 — a wrong *"no test is owed here"* is the
+  > false green the design is most exposed to, and the reason is the only thing a
+  > reader can argue with.
+  >
+  > `acceptance decompose` prints the requirement, the obligation id, its
+  > `type/derivation` and its restated text. It does not print `required_evidence`,
+  > `required_evidence_reason` or `satisfied_by_absence`. Checking them means
+  > re-running with `--json` and parsing it by hand, which is what #258's Gate 1
+  > run 3 had to do.
+  >
+  > Suggested: append the value to the existing bracket — `[test_demand/explicit,
+  > tests_only]` — and print the reason under the restated text when one is
+  > given, the way `report.py` already does for the rendered report. Only
+  > obligations that departed from the `code_and_tests` default carry a reason,
+  > so on a typical task file this adds a handful of lines.
+- **Status:** filed (#276, sub-issue of #185). A *Where*, a *Deliverable* and an
+  *Acceptance* section were added at filing time, beyond the approved draft.
 
 ### [2026-08-12] Scope-exclusion typing flips wholesale between two runs over the same requirements
 - **Kind:** filing (comment on existing issue #205)
@@ -218,7 +237,11 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > as a *type* does not raise a human-review pause — that is the separate
   > `AdmissibleEvidence` axis. The defect is that the field carries no reliable
   > information, not that it currently misroutes anything.
-- **Status:** open
+- **Status:** filed (#205 comment). Two changes made at filing time: the stale
+  `AdmissibleEvidence` name corrected to `required_evidence` (#266 renamed it),
+  and a third run added — `dogfood-logs/258-gate1-run3/` re-decomposes run 2's
+  task file under #266's changed prompt and reproduces run 2's typing exactly,
+  which cuts against the finding and is on the record for that reason.
 
 ### [2026-08-12] The shard convention has no cleanup mechanism, only a rule
 - **Kind:** decision
@@ -241,7 +264,9 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   as closed. **Rejected alternative:** wiring it into CI — it would need `gh`
   auth in the workflow to answer "is this issue closed", which buys a
   nice-to-have at the cost of a credential in the build.
-- **Status:** open — the migration is landed; only the cleanup question remains.
+- **Status:** wont-fix (the rule alone, for now — human decision, 2026-08-19).
+  Revisit only if a stale shard actually survives a landed task; the `gh`-driven
+  check stays drafted above if it is ever wanted.
 ### [2026-08-12] #189's harness duplicates the client contract in two places, and both had silently drifted
 - **Kind:** filing (new issue, child of #186)
 - **Found during:** #191, taking the pre-change baseline
