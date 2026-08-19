@@ -1,0 +1,11 @@
+base 9def9e71b50443243996eddf5bb193e75131930f
+head 907779a68dda3109a3731ec08d5c03cf79cad739
+
+The revisions of #258 Gate 2 run 2, reused unchanged. The task file here is
+byte-identical to dogfood-logs/258-gate2-run2/current-task.md on branch
+258-committed-task-file-corpus.
+
+Run in --mode replay against #258 run 2 own recorded transcripts, copied into a
+detached worktree at 907779a. Every request hit cache, so the model responses
+are the same bytes that aborted the original run and the only variable is the
+tool.
