@@ -1,0 +1,9 @@
+base a4abbf4215747d10fcb09b8a2277f9dc3d74a99d
+head 5399afdd76cf66d8f104e7918389501d2ac1a8fd
+
+Same base as run 3; head is run 3's head plus one commit that adds six tests and
+changes nothing else. `--mode record`, and unlike run 3 this one made live calls:
+the diff grew, so no request key matched.
+
+The pair (run 3, run 4) is therefore a controlled comparison of the same mandate
+over strictly more test evidence, with the source under review untouched.
