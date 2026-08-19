@@ -1,0 +1,876 @@
+Task completion: INCOMPLETE
+
+48 obligation(s) with non-discriminating test evidence (unchanged-task-file-byte-identical-obligations, different-ledger-state-same-obligations-as-no-ledger, edited-one-requirement-rederives-only-that-requirement, unchanged-request-carries-previous-obligations, prompt-change-blocks-carry-forward, schema-change-blocks-carry-forward, completion-10-fixtures-still-produce-recorded-movements, completion-11-byte-identical-test-passes, constraint-01-unchanged-requirement-no-model-call, constraint-02-unchanged-obligations-keep-identifiers, constraint-03-unchanged-obligations-keep-descriptions, constraint-05-persistent-obligation-keeps-identifier, drop-obligations-for-removed-requirement, report-removal-of-dropped-requirement, fresh-derivation-without-prior-obligations, exact-text-match-defines-same-requirement, align-unmatched-requirements-via-alignment-helper, carry-forward-unchanged-merge-decisions, reask-merge-decision-when-either-obligation-changed, carry-forward-reads-only-continued-run, no-carry-forward-without-continued-run, carried-source-quote-substring, rederive-non-substring-source-quote, carry-only-same-request-key, stage-logic-version-tracks-output-changing-behavior, different-stage-logic-version-not-carried, continued-run-records-parent-identifier, run-identifier-not-in-review-state, run-identifier-not-in-rendered-report, run-records-derivations-in-own-ledger-file, ledger-file-appended-not-rewritten, ledger-records-carried-derived-revised-requirements, ledger-records-request-key-per-derivation, ledger-records-stage-logic-version, ledger-records-model-call-count, requirement-disposition-records-derivation-status, carried-requirement-records-content-digest, revised-requirement-records-revision-reason, no-inferred-continuation-from-task-file-alone, no-multiple-derivations-per-requirement-per-run, incremental-decomposition-over-recorded-state, unchanged-requirement-carries-obligations, edited-requirement-rederived-from-old-and-new-text, new-requirement-derived-fresh, disappeared-requirement-drops-obligations, run-identifies-itself-and-records-derived-work, run-records-derived-work, later-run-can-name-continued-run).
+
+Obligations:
+
+  1. A run over an unchanged task file naming a continued run issues no decompose model call.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  src/acceptance/cli.py#@@ -215,13 +243,28 @@ def remove_legacy_instruction_file(repo: Path) -> Path | None:
+         1.2  src/acceptance/cli.py#@@ -839,7 +964,7 @@ def main(argv: list[str] | None = None) -> int:
+         1.3  src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+         1.4  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+       test evidence: strongly supported  [tier: static]
+         1.5  tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_issues_no_decompose_call
+
+  2. A run over an unchanged task file naming a continued run produces byte-identical obligations, identifiers and descriptions.
+       requirements: completion-03
+       code evidence: addressed
+         2.1  src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+         2.2  src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+         2.3  src/acceptance/cli.py#@@ -812,6 +930,13 @@ def main(argv: list[str] | None = None) -> int:
+         2.4  src/acceptance/cli.py#@@ -853,6 +978,13 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: partially supported  [tier: static]
+         2.5  tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_returns_byte_identical_obligations
+         2.6  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         recommended test: The produced obligations, identifiers, and descriptions are byte-identical across the unchanged continued run.
+           inputs:  Use at least two distinct unchanged task files, not just the existing fixture: one with the same number of requirements but different wording, and one with a different section/ordinal layout. In both cases, continue from a prior run whose ledger matches the exact same task text.
+           detects: The implementation returns the same obligations for the specific fixture but not for all unchanged task files.
+           full detail: acceptance recommendation --criterion unchanged-task-file-byte-identical-obligations
+
+  3. A decomposition run against ledger state recording a different task file produces the same obligations as one run against no ledger state at all.
+       requirements: completion-04
+       code evidence: addressed
+         3.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         3.2  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: partially supported  [tier: static]
+         3.3  tests/requirement/test_carry_forward.py::test_a_ledger_recording_a_different_task_produces_what_an_empty_ledger_does
+         recommended test: The obligations produced with mismatched ledger state match the obligations produced with no ledger state.
+           inputs:  Run the same task file against two different mismatched ledgers: one from an unrelated task with no overlapping requirement text, and one from a task with overlapping but non-identical requirement text. Compare both against a no-ledger run.
+           detects: The code ignores mismatched ledger state only for the exact fixture used, but would differ on other mismatches.
+           full detail: acceptance recommendation --criterion different-ledger-state-same-obligations-as-no-ledger
+
+  4. Editing one requirement re-derives that requirement and leaves the obligations of every other requirement unchanged.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         4.2  src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+         4.3  src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+         4.4  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         4.5  tests/requirement/test_carry_forward.py::test_a_revised_requirement_records_that_it_was_revised_and_why
+         4.6  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         4.7  tests/requirement/test_carry_forward.py::test_carrying_forward_does_not_freeze_a_superseded_obligation_in_place
+         4.8  tests/requirement/test_carry_forward.py::test_editing_one_requirement_leaves_every_other_requirement_carried
+         4.9  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         4.10  tests/requirement/test_requirement_map.py::test_the_cli_says_when_an_obligation_serves_other_requirements
+         4.11  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         4.12  tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived
+         recommended test: Only the edited requirement is re-derived; all other requirements keep their obligations unchanged.
+           inputs:  Construct a task where exactly one requirement is edited and at least two other requirements remain byte-identical, with the edited requirement placed so ids of later requirements would shift if identity were positional.
+           detects: The edited requirement is re-derived, but an unrelated requirement is also silently re-derived while still appearing carried in the specific assertions.
+           full detail: acceptance recommendation --criterion edited-one-requirement-rederives-only-that-requirement
+
+  5. A tool change that leaves the decompose request unaltered carries every previously derived obligation.
+       requirements: completion-06
+       code evidence: addressed
+         5.1  src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+         5.2  src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+         5.3  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+       test evidence: partially supported  [tier: static]
+         5.4  tests/requirement/test_carry_forward.py::test_a_tool_change_that_leaves_the_request_unaltered_carries_everything
+         5.5  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+         5.6  tests/requirement/test_carry_forward.py::test_the_plan_issues_calls_only_for_what_changed
+         5.7  tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+         5.8  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: Previously derived obligations are carried forward when the decompose request is unchanged.
+           inputs:  Use an unchanged task file with a prior ledger from the same exact task, but vary the task across at least two different unchanged files or registry shapes so the carry-forward path is exercised beyond the single fixture.
+           detects: The code carries previous obligations for the tested fixture but would fail for other unchanged requests.
+           full detail: acceptance recommendation --criterion unchanged-request-carries-previous-obligations
+
+  6. A change to the decompose prompt prevents carrying the obligations derived under the previous prompt.
+       requirements: completion-07
+       code evidence: addressed
+         6.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: partially supported  [tier: static]
+         6.2  tests/requirement/test_carry_forward.py::test_a_changed_prompt_invalidates_the_entries_derived_under_it
+         recommended test: Obligations derived under the previous prompt are not carried forward after the prompt changes.
+           inputs:  Run the same unchanged task against a prior ledger, but monkeypatch the system prompt to a different string that still leaves the task text unchanged.
+           detects: The prompt-change invalidation works only when the prompt change affects the exact fixture used.
+           full detail: acceptance recommendation --criterion prompt-change-blocks-carry-forward
+
+  7. A change to the decompose response schema prevents carrying the obligations derived under the previous schema.
+       requirements: completion-08
+       code evidence: addressed
+         7.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+         7.2  src/acceptance/requirement/obligations.py#@@ -667,11 +760,39 @@ def _resolve_attributions(
+       test evidence: partially supported  [tier: static]
+         7.3  tests/requirement/test_carry_forward.py::test_a_changed_response_schema_invalidates_the_entries_derived_under_it
+         7.4  tests/requirement/test_carry_forward.py::test_the_carry_key_reads_the_live_response_schema
+         recommended test: Obligations derived under the previous schema are not carried forward after the response schema changes.
+           inputs:  Use a prior ledger whose carry keys were computed under one response schema, then run with a live client/schema that differs in a way that changes the schema hash but not the task text.
+           detects: Schema changes are detected only for the tested schema shape, not generally.
+           full detail: acceptance recommendation --criterion schema-change-blocks-carry-forward
+
+  8. A change to the model or the seed prevents carrying the obligations derived under the previous one.
+       requirements: completion-09
+       code evidence: addressed
+         8.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: strongly supported  [tier: static]
+         8.2  tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry
+         8.3  tests/requirement/test_carry_forward.py::test_a_changed_seed_invalidates_every_carried_entry
+
+  9. The decomposition movements recorded as correct in `tests/fixtures/decompose-stability/` are still produced when the task file genuinely changes.
+       requirements: completion-10
+       code evidence: addressed
+         9.1  tests/requirement/test_carry_forward.py#@@ -0,0 +1,1305 @@
+       test evidence: partially supported  [tier: static]
+         9.2  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         recommended test: When the task file genuinely changes, the decomposition still produces the movements recorded as correct in `tests/fixtures/decompose-stability/`.
+           inputs:  Use the real `tests/fixtures/decompose-stability/` corpus with at least one pair of consecutive runs where the task file genuinely changes and at least one requirement remains unchanged.
+           detects: The implementation preserves the recorded movements for the tested corpus but would not for other edits.
+           full detail: acceptance recommendation --criterion completion-10-fixtures-still-produce-recorded-movements
+
+  10. `tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical` passes, over a task file and continued-run state that are both unchanged.
+       requirements: completion-11
+       code evidence: not required — The requirement is specifically that the named test passes, so the test itself is the demanded evidence.
+       test evidence: partially supported  [tier: static]
+         10.1  tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_issues_no_decompose_call
+         10.2  tests/requirement/test_carry_forward.py::test_two_runs_over_the_same_task_and_ledger_state_are_byte_identical
+         10.3  tests/requirement/test_linking.py::test_two_runs_over_identical_task_text_produce_identical_state_at_both_stages
+         10.4  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         10.5  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         recommended test: The named test passes when both the task file and the continued-run state are unchanged.
+           inputs:  Invoke the named CLI command in at least two equivalent ways that should produce the same bytes when task and continued-run state are unchanged, and also a variant command/flag combination that should not be conflated with the named path.
+           detects: The CLI is byte-identical for the tested path but not for other commands or flags.
+           full detail: acceptance recommendation --criterion completion-11-byte-identical-test-passes
+
+  11. A requirement whose text is unchanged from the continued run causes no model call during decomposition.
+       requirements: task-01, constraint-01
+       code evidence: addressed
+         11.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         11.2  src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         11.3  tests/requirement/test_carry_forward.py::test_the_plan_issues_calls_only_for_what_changed
+         recommended test: During decomposition, unchanged requirements are handled without issuing a model call.
+           inputs:  A task with at least one unchanged requirement and at least one changed requirement in the same continued run, so the test can distinguish skipped from asked requirements.
+           detects: Only some unchanged requirements are skipped, but the fixture happens to contain only those.
+           full detail: acceptance recommendation --criterion constraint-01-unchanged-requirement-no-model-call
+
+  12. The obligations of an unchanged requirement are carried forward with their identifiers unchanged.
+       requirements: constraint-02
+       code evidence: addressed
+         12.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         12.2  src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+         12.3  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         12.4  tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_returns_byte_identical_obligations
+         12.5  tests/requirement/test_carry_forward.py::test_every_requirement_is_recorded_as_carried
+         12.6  tests/requirement/test_carry_forward.py::test_the_plan_issues_calls_only_for_what_changed
+         12.7  tests/requirement/test_linking.py::test_both_requirements_name_the_surviving_obligation_in_the_stored_map
+         recommended test: For an unchanged requirement, carried-forward obligations retain the same identifiers they had before.
+           inputs:  An unchanged requirement with multiple obligations, continued from a prior ledger, so identifier preservation can be checked per obligation rather than per requirement.
+           detects: The implementation preserves ids but changes some other hidden metadata not asserted here.
+           full detail: acceptance recommendation --criterion constraint-02-unchanged-obligations-keep-identifiers
+
+  13. The obligations of an unchanged requirement are carried forward with their descriptions unchanged.
+       requirements: constraint-03
+       code evidence: addressed
+         13.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         13.2  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         13.3  tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_returns_byte_identical_obligations
+         13.4  tests/requirement/test_carry_forward.py::test_every_requirement_is_recorded_as_carried
+         13.5  tests/requirement/test_carry_forward.py::test_the_plan_issues_calls_only_for_what_changed
+         13.6  tests/requirement/test_linking.py::test_both_requirements_name_the_surviving_obligation_in_the_stored_map
+         recommended test: For an unchanged requirement, carried-forward obligations retain the same descriptions they had before.
+           inputs:  An unchanged requirement whose carried obligations have distinctive descriptions, and a second unchanged requirement with different descriptions to ensure the test is not vacuously passing on repeated text.
+           detects: Descriptions are preserved for the tested fixture but not for all unchanged requirements.
+           full detail: acceptance recommendation --criterion constraint-03-unchanged-obligations-keep-descriptions
+
+  14. An edited requirement is re-derived in one model call carrying the previous text, the new text, and the obligations previously derived from that requirement.
+       requirements: constraint-04
+       code evidence: addressed
+         14.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         14.2  src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+         14.3  src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+         14.4  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         14.5  tests/requirement/test_carry_forward.py::test_an_edited_requirements_persisting_obligations_keep_their_identifiers
+         14.6  tests/requirement/test_carry_forward.py::test_editing_one_requirement_leaves_every_other_requirement_carried
+         14.7  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         14.8  tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived
+
+  15. An obligation that persists across an edit to its requirement keeps the identifier it already had.
+       requirements: constraint-05
+       code evidence: addressed
+         15.1  src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+         15.2  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+         15.3  src/acceptance/review_state.py#@@ -380,6 +380,20 @@ class RequirementDisposition(_Model):
+       test evidence: partially supported  [tier: static]
+         15.4  tests/requirement/test_carry_forward.py::test_a_revised_requirement_records_that_it_was_revised_and_why
+         15.5  tests/requirement/test_carry_forward.py::test_an_edited_requirements_persisting_obligations_keep_their_identifiers
+         15.6  tests/requirement/test_carry_forward.py::test_carrying_forward_does_not_freeze_a_superseded_obligation_in_place
+         15.7  tests/requirement/test_decompose_partitioning.py::test_two_batches_minting_the_same_obligation_id_stay_separate
+         15.8  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         15.9  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         15.10  tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived
+         recommended test: When an obligation survives an edit to its requirement, its identifier remains the same.
+           inputs:  A single edited requirement where one obligation survives the edit and another obligation changes or disappears, so persistence can be checked on the surviving obligation only.
+           detects: The implementation keeps ids for the tested edited fixture but not for other edits.
+           full detail: acceptance recommendation --criterion constraint-05-persistent-obligation-keeps-identifier
+
+  16. A requirement present in the continued run and absent from the task file under review has its obligations dropped.
+       requirements: constraint-06
+       code evidence: addressed
+         16.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         16.2  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+         16.3  src/acceptance/cli.py#@@ -241,8 +289,51 @@ def run_decompose(task: str, config: RunConfig) -> tuple[Decomposition, Unusable
+       test evidence: partially supported  [tier: static]
+         16.4  tests/requirement/test_carry_forward.py::test_a_removed_requirement_is_reported_and_its_obligations_dropped
+         recommended test: When a requirement exists in the continued run but not in the reviewed task file, its previously derived obligations are absent from the new decomposition output.
+           inputs:  A continued run where one requirement from the prior ledger is absent from the reviewed task file, and at least one other requirement remains unchanged so the run still has carried content.
+           detects: The code drops obligations but fails only for removals that are not the tested fixture.
+           full detail: acceptance recommendation --criterion drop-obligations-for-removed-requirement
+
+  17. The removal of such a requirement is reported.
+       requirements: constraint-07
+       code evidence: addressed
+         17.1  src/acceptance/cli.py#@@ -241,8 +289,51 @@ def run_decompose(task: str, config: RunConfig) -> tuple[Decomposition, Unusable
+         17.2  src/acceptance/cli.py#@@ -853,6 +978,13 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: partially supported  [tier: static]
+         17.3  tests/requirement/test_carry_forward.py::test_a_removed_requirement_is_reported_and_its_obligations_dropped
+         17.4  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+         17.5  tests/test_cli.py::test_report_shell_renders_all_sections_present_and_empty
+         17.6  tests/test_cli.py::test_the_removal_is_reported_in_json_mode_too
+         17.7  tests/test_cli.py::test_the_removal_leaves_the_report_as_the_only_statement_of_status
+         recommended test: The run output or recorded state includes an explicit report that the requirement was removed.
+           inputs:  A run where a requirement disappears between prior ledger and current task, and the test must inspect the CLI/report or recorded state output mode that is supposed to mention removals.
+           detects: Removal is reported in the tested JSON/CLI path but not in other output modes.
+           full detail: acceptance recommendation --criterion report-removal-of-dropped-requirement
+
+  18. A requirement with no counterpart in the continued run is derived without reference to any previously derived obligation.
+       requirements: constraint-08
+       code evidence: addressed
+         18.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         18.2  src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+         18.3  src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         18.4  tests/requirement/test_carry_forward.py::test_a_ledger_recording_a_different_task_produces_what_an_empty_ledger_does
+         18.5  tests/requirement/test_carry_forward.py::test_a_new_requirement_is_derived_without_consulting_any_prior_obligation
+         18.6  tests/requirement/test_carry_forward.py::test_no_continued_run_carries_nothing
+         recommended test: When a requirement is new relative to the continued run, its derivation does not reuse or consult previously derived obligations for that requirement.
+           inputs:  A genuinely new requirement added to a task that otherwise matches a prior ledger, so the new requirement has no counterpart while other requirements can still carry.
+           detects: The implementation is fresh for the tested new-requirement fixture but would consult prior state in other cases.
+           full detail: acceptance recommendation --criterion fresh-derivation-without-prior-obligations
+
+  19. Two requirements are the same requirement when their text matches exactly.
+       requirements: constraint-09
+       code evidence: addressed
+         19.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         19.2  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: partially supported  [tier: static]
+         19.3  tests/requirement/test_carry_forward.py::test_two_requirements_are_the_same_requirement_when_their_text_matches_exactly
+         19.4  tests/requirement/test_requirement_map.py::test_every_requirement_in_the_file_is_identified
+         19.5  tests/requirement/test_requirement_map.py::test_requirement_ids_are_identical_across_two_runs_over_identical_text
+         recommended test: Requirement identity is determined by exact text equality between the continued run and the reviewed task file.
+           inputs:  Two task files where requirement ids differ because of insertion/reordering, but one requirement’s text is exactly identical in both files.
+           detects: The implementation matches exact text for the tested fixture but not for all text-equality cases.
+           full detail: acceptance recommendation --criterion exact-text-match-defines-same-requirement
+
+  20. Requirements left unmatched by exact text are matched to each other through `benchmark/alignment.py::align_obligations`, which distinguishes an edited requirement from a new one.
+       requirements: constraint-10
+       code evidence: addressed
+         20.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+       test evidence: partially supported  [tier: static]
+         20.2  tests/requirement/test_carry_forward.py::test_the_alignment_helper_is_not_called_when_nothing_is_left_over
+         20.3  tests/requirement/test_carry_forward.py::test_the_residue_is_matched_through_the_alignment_helper
+         recommended test: Unmatched requirements are paired using `benchmark/alignment.py::align_obligations`, and the pairing outcome separates edited requirements from new requirements.
+           inputs:  A continued run with both edited and new unmatched requirements remaining after exact-text matching, so the alignment helper must be invoked to separate them.
+           detects: The helper is used correctly for the tested residue case but not for all possible residues.
+           full detail: acceptance recommendation --criterion align-unmatched-requirements-via-alignment-helper
+
+  21. A merge decision over two obligations that are both unchanged is carried forward without a model call.
+       requirements: constraint-11
+       code evidence: addressed
+         21.1  src/acceptance/requirement/linking.py#@@ -432,6 +433,7 @@ def link_duplicate_obligations(
+         21.2  src/acceptance/requirement/linking.py#@@ -477,9 +479,33 @@ def link_duplicate_obligations(
+         21.3  src/acceptance/requirement/linking.py#@@ -516,9 +548,19 @@ def link_duplicate_obligations(
+       test evidence: partially supported  [tier: static]
+         21.4  tests/requirement/test_carry_forward.py::test_a_carried_merge_decision_still_merges
+         21.5  tests/requirement/test_carry_forward.py::test_a_merge_decision_over_two_unchanged_obligations_is_not_asked_again
+         21.6  tests/requirement/test_carry_forward.py::test_carrying_forward_does_not_freeze_a_superseded_obligation_in_place
+         21.7  tests/requirement/test_carry_forward.py::test_the_decisions_a_run_stands_on_are_recorded_carried_and_fresh_alike
+         21.8  tests/requirement/test_carry_forward.py::test_the_plan_issues_calls_only_for_what_changed
+         21.9  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_never_asked_about
+         21.10  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_not_merged_even_if_confirmed
+         21.11  tests/requirement/test_linking.py::test_a_confirmed_triangle_merges_into_one_cluster
+         21.12  tests/requirement/test_linking.py::test_a_link_is_read_from_the_typed_ids_and_never_from_free_text
+         21.13  tests/requirement/test_linking.py::test_a_review_whose_pair_comes_back_false_keeps_both_obligations
+         21.14  tests/requirement/test_linking.py::test_an_inconsistency_does_not_block_an_unrelated_confirmed_pair
+         21.15  tests/requirement/test_linking.py::test_an_inconsistent_triangle_merges_nothing_and_is_recorded
+         21.16  tests/requirement/test_linking.py::test_no_model_call_is_made_when_every_pair_is_structurally_settled
+         21.17  tests/requirement/test_linking.py::test_no_requirement_is_left_without_an_obligation_by_a_merge
+         21.18  tests/requirement/test_linking.py::test_obligations_the_model_does_not_link_are_left_separate
+         21.19  tests/requirement/test_linking.py::test_one_requirement_stated_in_two_sections_yields_one_obligation_linked_to_both
+         21.20  tests/requirement/test_linking.py::test_the_pipeline_links_duplicates_before_the_rest_of_the_review_runs
+         21.21  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: For two unchanged obligations, the prior merge decision is reused and no model call is made for that merge.
+           inputs:  A pair of obligations whose descriptions and observable behavior are unchanged between prior ledger and current run, with a prior merge decision recorded for that pair.
+           detects: The implementation carries unchanged merge decisions only for the specific fixture pair.
+           full detail: acceptance recommendation --criterion carry-forward-unchanged-merge-decisions
+
+  22. A merge decision over two obligations of which either changed is asked again.
+       requirements: constraint-12
+       code evidence: addressed
+         22.1  src/acceptance/requirement/linking.py#@@ -477,9 +479,33 @@ def link_duplicate_obligations(
+         22.2  src/acceptance/requirement/linking.py#@@ -497,8 +523,14 @@ def link_duplicate_obligations(
+       test evidence: partially supported  [tier: static]
+         22.3  tests/requirement/test_carry_forward.py::test_a_merge_decision_is_asked_again_when_either_obligation_changed
+         22.4  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_never_asked_about
+         22.5  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_not_merged_even_if_confirmed
+         22.6  tests/requirement/test_linking.py::test_a_confirmed_triangle_merges_into_one_cluster
+         22.7  tests/requirement/test_linking.py::test_a_link_is_read_from_the_typed_ids_and_never_from_free_text
+         22.8  tests/requirement/test_linking.py::test_a_review_whose_pair_comes_back_false_keeps_both_obligations
+         22.9  tests/requirement/test_linking.py::test_an_inconsistency_does_not_block_an_unrelated_confirmed_pair
+         22.10  tests/requirement/test_linking.py::test_an_inconsistent_triangle_merges_nothing_and_is_recorded
+         22.11  tests/requirement/test_linking.py::test_no_model_call_is_made_when_every_pair_is_structurally_settled
+         22.12  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         recommended test: If either obligation in a merge pair changed, the system performs a new merge decision request instead of reusing the prior one.
+           inputs:  A merge pair where exactly one obligation changes description or observable behavior while the other remains unchanged, with a prior merge decision on file.
+           detects: The code re-asks the tested changed pair but would still reuse some other changed pairs.
+           full detail: acceptance recommendation --criterion reask-merge-decision-when-either-obligation-changed
+
+  23. Carry-forward reads only the run named as the continued run.
+       requirements: constraint-13
+       code evidence: addressed
+         23.1  src/acceptance/cli.py#@@ -215,13 +243,28 @@ def remove_legacy_instruction_file(repo: Path) -> Path | None:
+         23.2  src/acceptance/cli.py#@@ -690,6 +781,17 @@ def build_parser() -> argparse.ArgumentParser:
+         23.3  src/acceptance/cli.py#@@ -724,6 +826,18 @@ def build_parser() -> argparse.ArgumentParser:
+         23.4  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: partially supported  [tier: static]
+         23.5  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+         23.6  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+         23.7  tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+         23.8  tests/requirement/test_requirement_map.py::test_text_the_parse_never_read_is_carried_into_the_mapping
+         23.9  tests/requirement/test_requirement_map.py::test_the_cli_shouts_about_text_that_was_never_read
+         23.10  tests/requirement/test_requirement_map.py::test_the_prompt_carries_identified_requirements_not_raw_markdown
+         23.11  tests/test_rerun.py::test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun
+         recommended test: Carry-forward consults only the run identified as the continued run and does not consult other runs.
+           inputs:  A ledger store containing at least two runs: the named continued run and a decoy run with the same or overlapping task content. Continue from the named run and verify the decoy is ignored.
+           detects: The implementation reads only the continued run for the tested path but could still consult unrelated runs in other code paths.
+           full detail: acceptance recommendation --criterion carry-forward-reads-only-continued-run
+
+  24. No obligations are carried forward when no continued run is named.
+       requirements: constraint-14
+       code evidence: addressed
+         24.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+         24.2  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+       test evidence: partially supported  [tier: static]
+         24.3  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+         24.4  tests/requirement/test_carry_forward.py::test_no_continued_run_carries_nothing
+         recommended test: A decomposition run with no continued run named does not reuse any previously derived obligations from prior state.
+           inputs:  Run decomposition with no `continue_from`/continued-run argument at all, using a task that has a prior ledger available on disk to ensure the default path is truly fresh.
+           detects: The implementation is fresh for the tested no-continued-run path but not for all entry points.
+           full detail: acceptance recommendation --criterion no-carry-forward-without-continued-run
+
+  25. A carried obligation's source_quote is an exact substring of its requirement's text in the task file under review.
+       requirements: constraint-15
+       code evidence: addressed
+         25.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+       test evidence: partially supported  [tier: static]
+         25.2  tests/requirement/test_carry_forward.py::test_a_carried_entry_quoting_text_the_requirement_lost_is_rederived
+         25.3  tests/requirement/test_carry_forward.py::test_whitespace_only_reflow_does_not_strand_a_carried_span
+         25.4  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         25.5  tests/requirement/test_obligations.py::test_each_obligation_links_to_its_source_span
+         recommended test: A carried obligation references a source_quote that appears verbatim within the corresponding requirement text under review.
+           inputs:  A carried obligation whose `source_quote` is a verbatim substring of the corresponding requirement text, and another carried obligation whose quote is near the boundary of whitespace or punctuation.
+           detects: The implementation preserves substring quotes for the tested fixtures but not for all carried obligations.
+           full detail: acceptance recommendation --criterion carried-source-quote-substring
+
+  26. An obligation whose source_quote is not such a substring is re-derived rather than carried.
+       requirements: constraint-16
+       code evidence: addressed
+         26.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+       test evidence: partially supported  [tier: static]
+         26.2  tests/requirement/test_carry_forward.py::test_a_carried_entry_quoting_text_the_requirement_lost_is_rederived
+         recommended test: When a carried obligation's source_quote does not appear as an exact substring of the requirement text, the system re-derives that obligation instead of carrying it forward.
+           inputs:  A carried obligation whose recorded source quote no longer appears as an exact substring of the current requirement text, while the requirement text itself is otherwise similar enough that a naive carry would be tempting.
+           detects: The implementation re-derives stale quotes only when the exact tested wording changes.
+           full detail: acceptance recommendation --criterion rederive-non-substring-source-quote
+
+  27. An entry is carried only when re-deriving it would issue the same request key it was recorded under.
+       requirements: constraint-17
+       code evidence: addressed
+         27.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+         27.2  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         27.3  src/acceptance/requirement/obligations.py#@@ -667,11 +760,39 @@ def _resolve_attributions(
+       test evidence: partially supported  [tier: static]
+         27.4  tests/requirement/test_decompose_partitioning.py::test_changing_the_batch_size_changes_the_request_key
+         27.5  tests/test_llm.py::test_request_key_distinguishes_call_parameters
+         27.6  tests/test_llm.py::test_request_key_distinguishes_prompt_and_schema
+         27.7  tests/test_llm.py::test_request_key_is_stable_across_clients
+         27.8  tests/test_supplied_ids.py::test_the_schema_name_is_preserved_so_the_request_key_stays_meaningful
+         recommended test: Carry-forward occurs only for entries whose re-derivation would produce the same request key as the recorded one.
+           inputs:  Two prior derivations for the same requirement text that differ only in a carry-relevant factor included in the request key, plus a third case where the request key is identical.
+           detects: The implementation uses the same request-key logic for the tested parameters but ignores some other carry-relevant factor.
+           full detail: acceptance recommendation --criterion carry-only-same-request-key
+
+  28. Decomposition carries a stage-logic version identifying behaviour that changes its output without changing its request.
+       requirements: constraint-18
+       code evidence: addressed
+         28.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+         28.2  docs/DR-269-carry-key-excludes-registry-context.md#@@ -0,0 +1,120 @@
+       test evidence: partially supported  [tier: static]
+         28.3  tests/requirement/test_carry_forward.py::test_a_changed_stage_logic_version_invalidates_every_carried_entry
+         28.4  tests/requirement/test_decompose_partitioning.py::test_provenance_reports_the_derivation_size_observed_from_the_calls
+         recommended test: The decomposition state records a stage-logic version that distinguishes output-changing behavior even when the request stays the same.
+           inputs:  A prior ledger whose stage-logic version differs from the current code, while the task text and request key inputs remain otherwise unchanged.
+           detects: The version is tracked for the tested provenance case but not used consistently elsewhere.
+           full detail: acceptance recommendation --criterion stage-logic-version-tracks-output-changing-behavior
+
+  29. An entry recorded under a different stage-logic version is not carried.
+       requirements: constraint-19
+       code evidence: addressed
+         29.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+       test evidence: partially supported  [tier: static]
+         29.2  tests/requirement/test_carry_forward.py::test_a_changed_stage_logic_version_invalidates_every_carried_entry
+         recommended test: Entries recorded under a stage-logic version different from the current one are not carried forward.
+           inputs:  A prior ledger entry manually rewritten to a different stage-logic version, then continued from with the same task text and same request-key inputs.
+           detects: The implementation invalidates the tested version mismatch but not all possible mismatches.
+           full detail: acceptance recommendation --criterion different-stage-logic-version-not-carried
+
+  30. Every run reports an identifier for itself.
+       requirements: task-02, constraint-20
+       code evidence: addressed
+         30.1  src/acceptance/cli.py#@@ -171,6 +180,12 @@ def run_check(
+         30.2  src/acceptance/cli.py#@@ -780,6 +894,7 @@ def main(argv: list[str] | None = None) -> int:
+         30.3  src/acceptance/cli.py#@@ -812,6 +930,13 @@ def main(argv: list[str] | None = None) -> int:
+         30.4  src/acceptance/cli.py#@@ -853,6 +978,13 @@ def main(argv: list[str] | None = None) -> int:
+         30.5  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: strongly supported  [tier: static]
+         30.6  tests/requirement/test_carry_forward.py::test_every_run_reports_an_identifier_for_itself
+
+  31. A run that continues a previous run records that run's identifier as its parent.
+       requirements: constraint-21
+       code evidence: addressed
+         31.1  src/acceptance/cli.py#@@ -185,8 +200,21 @@ def run_check(
+         31.2  src/acceptance/cli.py#@@ -241,8 +289,51 @@ def run_decompose(task: str, config: RunConfig) -> tuple[Decomposition, Unusable
+         31.3  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: partially supported  [tier: static]
+         31.4  tests/requirement/test_carry_forward.py::test_a_run_records_the_run_it_continues_as_its_parent
+         31.5  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+         31.6  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+         31.7  tests/test_rerun.py::test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun
+         recommended test: A continued run stores the identifier of the run it continues as its parent identifier.
+           inputs:  A child run continued from a known parent run id, with the parent run written to the ledger store first.
+           detects: The parent id is recorded for the tested path but not for all continued runs.
+           full detail: acceptance recommendation --criterion continued-run-records-parent-identifier
+
+  32. A run identifier appears in no review state.
+       requirements: constraint-22
+       code evidence: addressed
+         32.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+         32.2  src/acceptance/review_state.py#@@ -380,6 +380,20 @@ class RequirementDisposition(_Model):
+         32.3  src/acceptance/cli.py#@@ -812,6 +930,13 @@ def main(argv: list[str] | None = None) -> int:
+         32.4  src/acceptance/cli.py#@@ -853,6 +978,13 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: partially supported  [tier: static]
+         32.5  tests/requirement/test_carry_forward.py::test_a_run_identifier_appears_in_no_review_state
+         32.6  tests/requirement/test_carry_forward.py::test_every_run_reports_an_identifier_for_itself
+         recommended test: review state entries containing a run identifier
+           inputs:  A run with a known run id and a serialized review state/output path that would expose accidental leakage if the id were included.
+           detects: The run id is absent from the tested serialization but appears in some other untested structure.
+           full detail: acceptance recommendation --criterion run-identifier-not-in-review-state
+
+  33. A run identifier appears in no rendered report.
+       requirements: constraint-23
+       code evidence: addressed
+         33.1  src/acceptance/cli.py#@@ -812,6 +930,13 @@ def main(argv: list[str] | None = None) -> int:
+         33.2  src/acceptance/cli.py#@@ -853,6 +978,13 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: partially supported  [tier: static]
+         33.3  tests/requirement/test_carry_forward.py::test_a_run_identifier_appears_in_no_rendered_report
+         33.4  tests/test_cli.py::test_the_removal_leaves_the_report_as_the_only_statement_of_status
+         recommended test: rendered report output containing a run identifier
+           inputs:  Invoke the CLI/report renderer for a run that has a known run id, capturing stdout and stderr separately.
+           detects: The run id is hidden in the tested report mode but leaks in another report format.
+           full detail: acceptance recommendation --criterion run-identifier-not-in-rendered-report
+
+  34. Each run records its derivations in a ledger file of its own.
+       requirements: constraint-24
+       code evidence: addressed
+         34.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+         34.2  .gitignore#@@ -28,6 +28,14 @@ htmlcov/
+       test evidence: partially supported  [tier: static]
+         34.3  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+         recommended test: a run writing derivations into a dedicated ledger file
+           inputs:  A run that writes derivations and a temporary filesystem root, so the test can inspect the exact file path created.
+           detects: The run writes derivations, but not to its own file or not in the tested path.
+           full detail: acceptance recommendation --criterion run-records-derivations-in-own-ledger-file
+
+  35. A ledger file is appended to and never rewritten.
+       requirements: constraint-25
+       code evidence: addressed
+         35.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: partially supported  [tier: static]
+         35.2  tests/requirement/test_carry_forward.py::test_a_ledger_file_is_never_rewritten
+         recommended test: ledger file updates that append new entries rather than replacing existing contents
+           inputs:  Write one ledger entry, capture the file contents, then attempt to write a second entry with the same run id to the same path.
+           detects: The ledger append behavior is correct for the tested file but not for concurrent writes.
+           full detail: acceptance recommendation --criterion ledger-file-appended-not-rewritten
+
+  36. No ledger file is written under `.acceptance/cache/.
+       requirements: constraint-26
+       code evidence: addressed
+         36.1  .gitignore#@@ -28,6 +28,14 @@ htmlcov/
+         36.2  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: not required — This is a scope-exclusion-style location constraint that is settled by the source layout, not by runtime behavior.
+
+  37. A run's ledger records which requirements were carried, which were derived and which were revised.
+       requirements: constraint-27
+       code evidence: addressed
+         37.1  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+         37.2  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: partially supported  [tier: static]
+         37.3  tests/requirement/test_carry_forward.py::test_the_ledger_records_what_was_carried_derived_and_revised
+         recommended test: ledger entries that classify requirements as carried, derived, or revised
+           inputs:  A ledger entry from a run containing at least one carried, one derived, and one revised requirement, ideally produced by an edited task with one unchanged and one new requirement.
+           detects: The ledger records the counts correctly for the tested run but not for all runs.
+           full detail: acceptance recommendation --criterion ledger-records-carried-derived-revised-requirements
+
+  38. A run's ledger records the request key of each derivation it performed.
+       requirements: constraint-28
+       code evidence: addressed
+         38.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+         38.2  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         38.3  tests/requirement/test_carry_forward.py::test_the_ledger_records_the_request_key_of_each_derivation
+         38.4  tests/test_llm.py::test_a_transcript_records_which_determinism_controls_actually_applied
+         38.5  tests/test_llm.py::test_request_key_is_stable_across_clients
+         38.6  tests/test_supplied_ids.py::test_the_schema_name_is_preserved_so_the_request_key_stays_meaningful
+         recommended test: ledger entries containing a request key for each derivation
+           inputs:  A ledger entry with multiple derivations whose carry keys are distinct, so the test can verify per-derivation recording rather than a single run-level key.
+           detects: The request-key recording is correct for the tested entry but not for all derivations.
+           full detail: acceptance recommendation --criterion ledger-records-request-key-per-derivation
+
+  39. A run's ledger records the stage-logic version it ran under.
+       requirements: constraint-29
+       code evidence: addressed
+         39.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: partially supported  [tier: static]
+         39.2  tests/requirement/test_carry_forward.py::test_the_ledger_records_what_was_carried_derived_and_revised
+         39.3  tests/requirement/test_requirement_map.py::test_the_ledger_entry_decompose_may_read_carries_no_implementation_context
+         recommended test: ledger entries containing the stage-logic version used for the run
+           inputs:  A ledger entry written by the current code and then read back from disk, plus a manually altered entry with a different version if needed to prove the field matters.
+           detects: The version is recorded for the tested entry but not propagated elsewhere.
+           full detail: acceptance recommendation --criterion ledger-records-stage-logic-version
+
+  40. A run's ledger records how many model calls it issued.
+       requirements: constraint-30
+       code evidence: addressed
+         40.1  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+         40.2  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         40.3  tests/requirement/test_carry_forward.py::test_the_ledger_records_how_many_model_calls_the_run_issued
+         40.4  tests/requirement/test_carry_forward.py::test_the_ledger_records_what_was_carried_derived_and_revised
+         recommended test: The ledger file includes the number of model calls issued by the run.
+           inputs:  One fresh run that issues model calls and one carried run that issues none, both written to the ledger store.
+           detects: The count is correct for the tested run but not for all run types.
+           full detail: acceptance recommendation --criterion ledger-records-model-call-count
+
+  41. `review_state.py::RequirementDisposition` records whether its requirement was derived, carried or revised.
+       requirements: constraint-31
+       code evidence: addressed
+         41.1  src/acceptance/review_state.py#@@ -380,6 +380,20 @@ class RequirementDisposition(_Model):
+       test evidence: partially supported  [tier: static]
+         41.2  tests/requirement/test_carry_forward.py::test_a_revised_requirement_records_that_it_was_revised_and_why
+         41.3  tests/requirement/test_decompose_partitioning.py::test_a_disposition_for_a_requirement_the_call_was_not_given_is_recorded
+         41.4  tests/requirement/test_requirement_map.py::test_a_no_obligation_disposition_with_an_empty_reason_is_rejected
+         41.5  tests/requirement/test_requirement_map.py::test_a_requirement_deliberately_yielding_nothing_carries_its_reason
+         41.6  tests/requirement/test_requirement_map.py::test_a_requirement_disposed_twice_is_rejected
+         41.7  tests/requirement/test_requirement_map.py::test_a_response_naming_a_requirement_outside_the_registry_is_rejected
+         41.8  tests/requirement/test_requirement_map.py::test_a_response_that_never_mentions_a_requirement_is_rejected
+         41.9  tests/requirement/test_requirement_map.py::test_a_supplied_reason_is_preserved_rather_than_replaced
+         41.10  tests/requirement/test_requirement_map.py::test_an_open_question_disposition_naming_no_real_question_is_rejected
+         41.11  tests/requirement/test_requirement_map.py::test_the_cli_lists_every_requirement_including_the_ones_yielding_nothing
+         41.12  tests/requirement/test_requirement_map.py::test_the_disposition_set_is_exactly_the_three_of_decision_3
+         41.13  tests/requirement/test_requirement_map.py::test_the_header_counts_declines_without_claiming_a_check_it_no_longer_makes
+         41.14  tests/requirement/test_requirement_map.py::test_the_literal_tag_alone_decides_which_shape_a_disposition_is
+         41.15  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+         recommended test: RequirementDisposition includes a field or equivalent representation of whether the requirement was derived, carried, or revised.
+           inputs:  A `RequirementDisposition` instance for each of the three statuses: derived, carried, revised, plus at least one malformed or rejected case if the model validator should reject it.
+           detects: The status field works for the tested dispositions but not for some rejected or malformed cases.
+           full detail: acceptance recommendation --criterion requirement-disposition-records-derivation-status
+
+  42. A carried requirement's disposition records the content digest of the derivation it was carried from.
+       requirements: constraint-32
+       code evidence: addressed
+         42.1  src/acceptance/review_state.py#@@ -380,6 +380,20 @@ class RequirementDisposition(_Model):
+         42.2  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         42.3  tests/requirement/test_carry_forward.py::test_a_carried_disposition_records_the_digest_it_came_from_not_a_run_id
+         recommended test: A carried requirement disposition stores the content digest of the derivation it was carried from.
+           inputs:  A carried requirement disposition from a continued run, with a prior ledger entry whose digest can be recomputed from the carried derivation content.
+           detects: The digest is correct for the tested fixture but not for all carried requirements.
+           full detail: acceptance recommendation --criterion carried-requirement-records-content-digest
+
+  43. A revised requirement's disposition records why it was revised.
+       requirements: constraint-33
+       code evidence: addressed
+         43.1  src/acceptance/review_state.py#@@ -380,6 +380,20 @@ class RequirementDisposition(_Model):
+         43.2  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         43.3  tests/requirement/test_carry_forward.py::test_a_revised_requirement_records_that_it_was_revised_and_why
+         43.4  tests/requirement/test_requirement_map.py::test_the_ledger_entry_decompose_may_read_carries_no_implementation_context
+         recommended test: A revised requirement disposition stores a reason explaining why it was revised.
+           inputs:  A revised requirement produced by editing one requirement while keeping others unchanged, with the prior wording available in the ledger.
+           detects: The revision reason is stored for the tested edit but not for all revisions.
+           full detail: acceptance recommendation --criterion revised-requirement-records-revision-reason
+
+  44. Each field added to `RequirementDisposition` has a default that preserves the meaning of dispositions written before this change.
+       requirements: constraint-34
+       code evidence: addressed
+         44.1  src/acceptance/review_state.py#@@ -380,6 +380,20 @@ class RequirementDisposition(_Model):
+       test evidence: not required — This is a schema/defaults property that is settled by the source definition of RequirementDisposition, not by runtime behavior.
+
+  45. Review state records no wall-clock time.
+       requirements: constraint-35
+       code evidence: addressed
+         45.1  src/acceptance/review_state.py#@@ -380,6 +380,20 @@ class RequirementDisposition(_Model):
+       test evidence: not required — This is a structural property of the recorded state, which can be verified directly from the schema and persistence code.
+
+  46. The change does not infer that a task file continues a previous run without being told which run it continues.
+       requirements: exclusion-01
+       [carried forward from 87b87546 — not re-derived for this head]
+       code evidence: addressed
+         examined 43 changes across 12 files; none breaches this boundary
+       test evidence: partially supported  [tier: static]
+         46.1  tests/requirement/test_decompose_partitioning.py::test_the_batch_scopes_what_a_call_answers_for_not_what_it_reads
+         recommended test: The decomposition logic requires an explicit continued-run identifier rather than inferring continuation from the task file alone.
+           inputs:  Run decomposition on a task file that has a matching prior ledger on disk but do not pass `--continue` or any continued-run id. The test should ensure the presence of the ledger alone does not trigger carry-forward.
+           detects: The implementation correctly requires an explicit continued-run id for the tested case but not for a different entry point.
+           full detail: acceptance recommendation --criterion no-inferred-continuation-from-task-file-alone
+
+  47. Any continued run is named by its identifier.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 43 changes across 12 files; none breaches this boundary
+       test evidence: not required — This is a representation/interface constraint that is satisfied by the stored and referenced form itself.
+
+  48. The change does not perform prior-review selection for stages other than decomposition.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 43 changes across 12 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, which is settled by inspecting the implementation.
+
+  49. The change does not count how many runs a decomposition took to settle.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 43 changes across 12 files; none breaches this boundary
+       test evidence: not required — This excludes a kind of bookkeeping work, which is settled by the source rather than by tests.
+
+  50. The change does not derive a requirement more than once within a single run.
+       requirements: exclusion-05
+       [carried forward from 87b87546 — not re-derived for this head]
+       code evidence: addressed
+         examined 43 changes across 12 files; none breaches this boundary
+       test evidence: partially supported  [tier: static]
+         50.1  tests/requirement/test_decompose_partitioning.py::test_a_disposition_for_a_requirement_the_call_was_not_given_is_recorded
+         50.2  tests/requirement/test_decompose_partitioning.py::test_two_batches_minting_the_same_obligation_id_stay_separate
+         50.3  tests/requirement/test_obligation_echo.py::test_a_remainder_differing_in_any_single_field_is_kept
+         50.4  tests/requirement/test_obligations.py::test_duplicate_ids_are_made_unique
+         50.5  tests/requirement/test_obligations.py::test_ids_are_unique_across_obligations_and_open_questions
+         recommended test: duplicate derivation attempts for the same requirement within one run
+           inputs:  Create a task and response setup that could tempt duplicate derivation attempts for the same requirement within one run, such as repeated identical bullets or a residue/alignment case. The test should ensure only one derivation record is produced per requirement id.
+           detects: The implementation avoids duplicate derivations for the tested fixtures but not for a different duplicate pattern.
+           full detail: acceptance recommendation --criterion no-multiple-derivations-per-requirement-per-run
+
+  51. The change does not specify what the decomposer derives from a requirement it does derive fresh.
+       requirements: exclusion-06
+       code evidence: not required — This exclusion leaves the actual fresh-derivation content intentionally unspecified here, so the repository cannot settle it.
+       test evidence: not required — This exclusion leaves the actual fresh-derivation content intentionally unspecified here, so the repository cannot settle it.
+
+  52. The change does not specify the wording the decomposer chooses for an obligation it derives fresh.
+       requirements: exclusion-07
+       code evidence: not required — This excludes a wording choice rather than a checkable code path, so the repository cannot settle it.
+       test evidence: not required — This excludes a wording choice rather than a checkable code path, so the repository cannot settle it.
+
+  53. Decomposition is incremental over recorded state: unchanged requirements keep their previously derived obligations without a model call, edited requirements are re-derived from prior text, new requirements are derived fresh, and disappeared requirements have their obligations dropped.
+       requirements: task-01
+       code evidence: addressed
+         53.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         53.2  src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+         53.3  src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+         53.4  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         53.5  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         53.6  tests/requirement/test_decompose_partitioning.py::test_every_requirement_carries_a_disposition_after_the_merge
+         53.7  tests/requirement/test_linking.py::test_the_decompose_command_runs_the_linking_pass
+         53.8  tests/requirement/test_linking.py::test_the_pre_link_obligations_are_persisted_in_the_review_state
+         53.9  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         recommended test: decomposition behavior across unchanged, edited, new, and disappeared requirements when recorded state is present
+           inputs:  A sequence of runs covering unchanged, edited, new, and disappeared requirements, with recorded state present and a prior ledger available.
+           detects: The implementation is incremental for the tested corpus but not for all recorded-state transitions.
+           full detail: acceptance recommendation --criterion incremental-decomposition-over-recorded-state
+
+  54. The obligations of an unchanged requirement are carried forward.
+       requirements: task-01
+       code evidence: addressed
+         54.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         54.2  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         54.3  tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_returns_byte_identical_obligations
+         54.4  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         54.5  tests/requirement/test_carry_forward.py::test_every_requirement_is_recorded_as_carried
+         54.6  tests/requirement/test_linking.py::test_both_requirements_name_the_surviving_obligation_in_the_stored_map
+         54.7  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         54.8  tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived
+         recommended test: previous obligations reappearing for an unchanged requirement in the continued run
+           inputs:  A requirement that is byte-identical between prior ledger and current task, with at least one other requirement in the task so the carry path is exercised in context.
+           detects: The requirement is carried in the tested unchanged fixture but not in some other unchanged case.
+           full detail: acceptance recommendation --criterion unchanged-requirement-carries-obligations
+
+  55. An edited requirement is re-derived from its previous text and its new text.
+       requirements: task-01
+       code evidence: addressed
+         55.1  src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+         55.2  src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+         55.3  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         55.4  tests/requirement/test_carry_forward.py::test_a_revised_requirement_records_that_it_was_revised_and_why
+         55.5  tests/requirement/test_carry_forward.py::test_an_edited_requirements_persisting_obligations_keep_their_identifiers
+         55.6  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         recommended test: a single re-derivation step using both the old and new requirement text for an edited requirement
+           inputs:  A single edited requirement where the prompt must include both the old wording and the new wording, and the response fixture can distinguish a true re-derivation from a carry.
+           detects: The implementation re-derives edited requirements correctly for the tested fixture but not for all edits.
+           full detail: acceptance recommendation --criterion edited-requirement-rederived-from-old-and-new-text
+
+  56. A new requirement is derived fresh.
+       requirements: task-01
+       code evidence: addressed
+         56.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         56.2  src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+         56.3  src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         56.4  tests/requirement/test_carry_forward.py::test_a_ledger_recording_a_different_task_produces_what_an_empty_ledger_does
+         56.5  tests/requirement/test_carry_forward.py::test_a_new_requirement_is_derived_without_consulting_any_prior_obligation
+         56.6  tests/requirement/test_carry_forward.py::test_no_continued_run_carries_nothing
+         recommended test: fresh derivation for a requirement with no prior counterpart
+           inputs:  A task extended with a genuinely new requirement that has no prior counterpart, alongside unchanged requirements that can still carry.
+           detects: The implementation is fresh for the tested new requirement but not for all new requirements.
+           full detail: acceptance recommendation --criterion new-requirement-derived-fresh
+
+  57. A requirement that disappeared has its obligations dropped.
+       requirements: task-01
+       code evidence: addressed
+         57.1  src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+         57.2  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       test evidence: partially supported  [tier: static]
+         57.3  tests/requirement/test_carry_forward.py::test_a_removed_requirement_is_reported_and_its_obligations_dropped
+         57.4  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         recommended test: previous obligations being removed when the requirement is absent from the continued run
+           inputs:  A prior ledger with a requirement that is absent from the continued task file, plus at least one surviving requirement.
+           detects: The implementation drops obligations for the tested removed requirement but not for all removals.
+           full detail: acceptance recommendation --criterion disappeared-requirement-drops-obligations
+
+  58. Each run identifies itself and records what it derived so that a later run can name it as the run it continues.
+       requirements: task-02
+       code evidence: addressed
+         58.1  src/acceptance/cli.py#@@ -215,13 +243,28 @@ def remove_legacy_instruction_file(repo: Path) -> Path | None:
+         58.2  src/acceptance/cli.py#@@ -241,8 +289,51 @@ def run_decompose(task: str, config: RunConfig) -> tuple[Decomposition, Unusable
+         58.3  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: run metadata containing the run's own identifier and a record of its derivations, usable by a later continued run
+           inputs:  A CLI run that both prints its own run id and writes a ledger entry, then a later run that names that run id as continued run.
+           detects: The run id is absent from the tested serialization but appears in some other untested structure.
+           full detail: acceptance recommendation --criterion run-identifies-itself-and-records-derived-work
+
+  59. Each run records what it derived.
+       requirements: task-02
+       code evidence: addressed
+         59.1  src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+         59.2  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: partially supported  [tier: static]
+         59.3  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+         59.4  tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+         59.5  tests/requirement/test_linking.py::test_the_decompose_command_runs_the_linking_pass
+         59.6  tests/requirement/test_linking.py::test_the_pre_link_obligations_are_persisted_in_the_review_state
+         59.7  tests/test_cli.py::test_the_pipeline_persists_the_requirement_map
+         recommended test: a ledger or equivalent record of derivations produced by the run
+           inputs:  A run that produces derivations and writes them to the ledger, with the ledger file read back afterward.
+           detects: Derived work is recorded for the tested path but not for all pipeline stages.
+           full detail: acceptance recommendation --criterion run-records-derived-work
+
+  60. The recorded run information supports a later run naming it as the run it continues.
+       requirements: task-02
+       code evidence: addressed
+         60.1  src/acceptance/cli.py#@@ -690,6 +781,17 @@ def build_parser() -> argparse.ArgumentParser:
+         60.2  src/acceptance/cli.py#@@ -724,6 +826,18 @@ def build_parser() -> argparse.ArgumentParser:
+         60.3  src/acceptance/cli.py#@@ -788,6 +903,9 @@ def main(argv: list[str] | None = None) -> int:
+         60.4  src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       test evidence: partially supported  [tier: static]
+         60.5  tests/test_rerun.py::test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun
+         recommended test: a later run selecting a prior run by its identifier as the continued run
+           inputs:  A later run that is explicitly passed a prior run id via `--continue` or the equivalent API parameter, with the prior run already persisted.
+           detects: The naming works for the tested rerun path but not for all later-run selections.
+           full detail: acceptance recommendation --criterion later-run-can-name-continued-run
+
+Mandate coverage: 54 of 55 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: This section marker names the implementation area but does not itself state a checkable requirement.
+
+Unrequested changes:
+  1. [in_service] Added a new docs decision record about carry-key semantics and cross-requirement stability. None of the obligations ask for a new documentation artifact or for this specific policy explanation; the task is about preserving/carrying obligations, not adding a design note.
+       docs/DR-269-carry-key-excludes-registry-context.md#@@ -0,0 +1,120 @@
+  2. [in_service] Introduced a new persistent ledger under `.acceptance/ledger/` and changed `.gitignore` to exclude it. The obligations require recording runs and carry-forward state, but they do not ask for a new ignored path or repository ignore policy change.
+       .gitignore#@@ -28,6 +28,14 @@ htmlcov/
+       src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+  3. [in_service] Changed `run_check`, `run_decompose`, `run_review`, and `link_duplicate_obligations` signatures to accept ledger/continue parameters and return an extra run id. The obligations require continued-run support and run identifiers, but they do not specify these public API signature changes as such; this is an implementation choice beyond the requested behavior.
+       src/acceptance/cli.py#@@ -120,6 +126,9 @@ def run_check(
+       src/acceptance/cli.py#@@ -215,13 +243,28 @@ def remove_legacy_instruction_file(repo: Path) -> Path | None:
+       src/acceptance/cli.py#@@ -839,7 +964,7 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/pipeline.py#@@ -237,6 +238,8 @@ def run_review(
+       src/acceptance/requirement/linking.py#@@ -432,6 +433,7 @@ def link_duplicate_obligations(
+       tests/requirement/test_requirement_map.py#@@ -713,7 +713,13 @@ def test_decompose_cannot_reach_a_diff_or_a_head_revision():
+  4. [in_service] Added `--continue` CLI options and stderr reporting of run ids/removals. The obligations require runs to identify themselves and support continued runs, but they do not mention changing CLI UX or emitting these extra report lines, so this is adjacent behavior not directly requested.
+       src/acceptance/cli.py#@@ -690,6 +781,17 @@ def build_parser() -> argparse.ArgumentParser:
+       src/acceptance/cli.py#@@ -724,6 +826,18 @@ def build_parser() -> argparse.ArgumentParser:
+       src/acceptance/cli.py#@@ -812,6 +930,13 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/cli.py#@@ -853,6 +978,13 @@ def main(argv: list[str] | None = None) -> int:
+  5. [in_service] Added new carry/ledger planning machinery (`CarryPlan`, `plan_carry`, `stale_spans`, ledger entry builders, merge-decision persistence). The obligations call for incremental carry-forward and ledger recording, so the general capability is requested, but the specific internal decomposition into these helper modules and data structures is an implementation refactor not explicitly demanded.
+       src/acceptance/requirement/carry.py#@@ -0,0 +1,222 @@
+       src/acceptance/requirement/ledger.py#@@ -0,0 +1,301 @@
+       src/acceptance/requirement/obligations.py#@@ -440,9 +454,28 @@ class Decomposition(PersistableModel):
+       src/acceptance/requirement/obligations.py#@@ -486,9 +519,69 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+       src/acceptance/requirement/obligations.py#@@ -667,11 +760,39 @@ def _resolve_attributions(
+       src/acceptance/requirement/obligations.py#@@ -719,12 +840,29 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -842,16 +980,199 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -924,6 +1245,7 @@ def _requirement_map(
+       src/acceptance/requirement/obligations.py#@@ -953,7 +1275,30 @@ def _requirement_map(
+       src/acceptance/requirement/obligations.py#@@ -962,6 +1307,9 @@ def _requirement_map(
+       src/acceptance/review_state.py#@@ -380,6 +380,20 @@ class RequirementDisposition(_Model):
+       src/acceptance/pipeline.py#@@ -49,6 +49,7 @@ from acceptance.evidence.strength import apply_evidence_strength, classify_stren
+       src/acceptance/pipeline.py#@@ -254,7 +257,17 @@ def run_review(
+       src/acceptance/requirement/linking.py#@@ -61,6 +61,7 @@ from collections.abc import Sequence
+       src/acceptance/requirement/linking.py#@@ -477,9 +479,33 @@ def link_duplicate_obligations(
+       src/acceptance/requirement/linking.py#@@ -497,8 +523,14 @@ def link_duplicate_obligations(
+       src/acceptance/requirement/linking.py#@@ -516,9 +548,19 @@ def link_duplicate_obligations(
+  6. [in_service] Added a very large new test module with many scenario-specific assertions and helper doubles. The obligations request regression coverage for carry-forward behavior, but not this entire breadth of new tests or their specific fixtures/assertions; much of it goes beyond the listed acceptance items.
+       tests/requirement/test_carry_forward.py#@@ -0,0 +1,1305 @@
+
+Changes since 87b87546:
+  closed:
+    - A run over an unchanged task file naming a continued run issues no decompose model call.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Every run reports an identifier for itself.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+  moved:
+    - Editing one requirement re-derives that requirement and leaves the obligations of every other requirement unchanged.
+        test evidence: strongly supported -> partially supported
+    - Decomposition is incremental over recorded state: unchanged requirements keep their previously derived obligations without a model call, edited requirements are re-derived from prior text, new requirements are derived fresh, and disappeared requirements have their obligations dropped.
+        test evidence: strongly supported -> partially supported
+    - Each run identifies itself and records what it derived so that a later run can name it as the run it continues.
+        test evidence: partially supported -> unsupported
+  2 obligation(s) carried forward unchanged — their code and tests were untouched by this work.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 06c9a5031023d973
+  continue this run with: --continue 06c9a5031023d973
+
