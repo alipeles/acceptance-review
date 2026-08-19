@@ -1,0 +1,8 @@
+base a4abbf4215747d10fcb09b8a2277f9dc3d74a99d
+head 43c36467e19420d75617ffeff464916188076a46
+
+Run 4's head plus one commit adding three assertions run 4's prescriptions asked
+for: outcomes compared between the two root-file states rather than only
+collection, no silent skips in the absent run, and the guard's `fixtures`
+exclusion pinned to drop those files and nothing else. `--mode record`, live
+calls.

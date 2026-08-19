@@ -1,0 +1,225 @@
+Task completion: INCOMPLETE
+
+5 obligation(s) with non-discriminating test evidence (region-coverage-case-list-non-empty-test, region-coverage-case-list-stays-within-dogfood-logs-test, region-coverage-case-list-source, region-coverage-case-list-nonempty, region-coverage-case-list-omits-missing-path).
+
+Obligations:
+
+  1. A test asserts that parsing succeeds for every committed task file under `dogfood-logs/`.
+       requirements: completion-02
+       code evidence: not required — The requirement explicitly asks for a test assertion, so the test itself is the demanded evidence.
+       test evidence: strongly supported  [tier: static]
+         1.1  tests/requirement/test_task_file.py::test_parses_every_committed_task_file
+         1.2  tests/requirement/test_task_file_corpus.py::test_each_committed_file_yields_exactly_one_case
+
+  2. A test asserts that the region-coverage case list is non-empty.
+       requirements: completion-03
+       code evidence: not required — The requirement is specifically for a test assertion, so only the test is required.
+       test evidence: partially supported  [tier: static]
+         2.1  tests/requirement/test_region_coverage.py::test_the_corpora_under_test_are_not_empty
+         2.2  tests/requirement/test_region_coverage.py::test_the_reproduction_leaves_nothing_unaccounted_for
+         2.3  tests/requirement/test_task_file_corpus.py::test_the_corpus_is_not_empty
+         recommended test: A test checks that the region-coverage case list contains at least one case.
+           inputs:  Use a corpus fixture with at least two committed `dogfood-logs/*/current-task.md` files, and compare the enumerated case list against the full expected set rather than only checking truthiness. The input must make a filtered-subset defect observable: one valid case alone is insufficient, because both correct and defective implementations would still be non-empty.
+           detects: The case list only contains a filtered subset but still at least one item.
+           full detail: acceptance recommendation --criterion region-coverage-case-list-non-empty-test
+
+  3. A test asserts that no path in the region-coverage case list lies outside `dogfood-logs/`.
+       requirements: completion-04
+       code evidence: not required — The requirement demands a test assertion, so the test is the evidence.
+       test evidence: partially supported  [tier: static]
+         3.1  tests/requirement/test_region_coverage.py::test_the_repositorys_own_task_files_are_fully_covered
+         3.2  tests/requirement/test_task_file_corpus.py::test_a_path_outside_dogfood_logs_is_not_a_case
+         3.3  tests/requirement/test_task_file_corpus.py::test_no_corpus_path_lies_outside_dogfood_logs
+         recommended test: A test verifies that every path in the region-coverage case list is under `dogfood-logs/`.
+           inputs:  Construct a fixture containing valid committed files under `dogfood-logs/` plus at least one duplicate path scenario that would be visible only if the implementation accidentally admits duplicates or mishandles ordering. The key input characteristic is multiple distinct committed paths so a duplicate can be detected by comparing exact list contents, not just membership.
+           detects: The case list includes only dogfood-logs paths but also duplicates one of them.
+           full detail: acceptance recommendation --criterion region-coverage-case-list-stays-within-dogfood-logs-test
+
+  4. A check asserts that no test reads the task file at the repository root.
+       requirements: completion-05
+       code evidence: not required — The requirement is itself a check/test demand, so the check is the required evidence.
+       test evidence: strongly supported  [tier: static]
+         4.1  tests/test_root_task_file_is_not_read.py::test_no_test_source_reads_the_repository_root_task_file
+         4.2  tests/test_root_task_file_is_not_read.py::test_the_pattern_allows_committed_and_fixture_paths
+         4.3  tests/test_root_task_file_is_not_read.py::test_the_pattern_matches_the_call_sites_258_removed
+         4.4  tests/test_root_task_file_is_not_read.py::test_the_scan_actually_reads_this_repositorys_tests
+         4.5  tests/test_root_task_file_is_not_read.py::test_the_scan_covers_helper_modules_and_conftest_too
+
+  5. No test reads the task file at the repository root.
+       requirements: constraint-01
+       code evidence: addressed
+         5.1  tests/test_root_task_file_is_not_read.py#@@ -0,0 +1,119 @@
+         5.2  tests/test_suite_shape_without_root_task_file.py#@@ -0,0 +1,196 @@
+         5.3  tests/requirement/test_task_file.py#@@ -89,14 +94,21 @@ def test_roundtrips_through_persistence():
+         5.4  tests/requirement/test_region_coverage.py#@@ -21,6 +21,7 @@ from markdown_it.tree import SyntaxTreeNode
+       test evidence: strongly supported  [tier: static]
+         5.5  tests/test_root_task_file_is_not_read.py::test_no_test_source_reads_the_repository_root_task_file
+         5.6  tests/test_suite_shape_without_root_task_file.py::test_a_read_of_the_root_path_would_fail_the_affected_tests
+
+  6. The task-file parse test takes its inputs from the committed task files under `dogfood-logs/`.
+       requirements: constraint-02
+       code evidence: addressed
+         6.1  tests/requirement/test_task_file.py#@@ -89,14 +94,21 @@ def test_roundtrips_through_persistence():
+         6.2  tests/requirement/corpus.py#@@ -0,0 +1,34 @@
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/requirement/test_task_file.py::test_every_paragraph_of_the_task_section_is_kept
+         6.4  tests/requirement/test_task_file.py::test_parses_every_committed_task_file
+         6.5  tests/requirement/test_task_file.py::test_scope_exclusions_are_parsed_when_present
+         6.6  tests/requirement/test_task_file_corpus.py::test_the_parse_test_enumerates_the_corpus_and_nothing_else
+
+  7. The parse test runs one case per committed task file.
+       requirements: constraint-03
+       code evidence: addressed
+         7.1  tests/requirement/test_task_file.py#@@ -89,14 +94,21 @@ def test_roundtrips_through_persistence():
+         7.2  tests/requirement/corpus.py#@@ -0,0 +1,34 @@
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/requirement/test_task_file.py::test_parses_every_committed_task_file
+         7.4  tests/requirement/test_task_file_corpus.py::test_each_committed_file_yields_exactly_one_case
+         7.5  tests/requirement/test_task_file_corpus.py::test_the_parse_test_enumerates_the_corpus_and_nothing_else
+
+  8. The parse test asserts, for each case, that the parsed behavior, constraints, and completion expectations are each non-empty.
+       requirements: constraint-04
+       code evidence: not required — The requirement is specifically that the parse test asserts these conditions, so the test itself is the demanded evidence.
+       test evidence: strongly supported  [tier: static]
+         8.1  tests/requirement/test_task_file.py::test_parses_every_committed_task_file
+         8.2  tests/requirement/test_task_file.py::test_spec_example_fields_match_expected
+
+  9. The parse test asserts, for each case, that every parsed span reproduces its own text from the source it was parsed from.
+       requirements: constraint-05
+       code evidence: not required — The requirement asks for a test assertion, so only the test is required evidence.
+       test evidence: strongly supported  [tier: static]
+         9.1  tests/requirement/test_task_file.py::test_a_bullet_wrapped_across_lines_still_has_an_exact_span
+         9.2  tests/requirement/test_task_file.py::test_a_table_no_section_claims_is_reported_whole
+         9.3  tests/requirement/test_task_file.py::test_every_extracted_item_retains_a_source_reference
+         9.4  tests/requirement/test_task_file.py::test_parses_every_committed_task_file
+         9.5  tests/requirement/test_task_file.py::test_spec_example_fields_match_expected
+
+  10. The region-coverage case list is built only from the committed task files under `dogfood-logs/`.
+       requirements: constraint-06
+       code evidence: addressed
+         10.1  tests/requirement/test_region_coverage.py#@@ -21,6 +21,7 @@ from markdown_it.tree import SyntaxTreeNode
+         10.2  tests/requirement/test_region_coverage.py#@@ -43,11 +44,13 @@ def _fixture_files() -> list[Path]:
+         10.3  tests/requirement/corpus.py#@@ -0,0 +1,34 @@
+       test evidence: partially supported  [tier: static]
+         10.4  tests/requirement/test_region_coverage.py::test_the_repositorys_own_task_files_are_fully_covered
+         recommended test: The region-coverage case list is derived exclusively from committed task files under `dogfood-logs/`.
+           inputs:  Use a fixture where the committed `dogfood-logs/*/current-task.md` files are present, but also introduce a synthetic in-memory case source or monkeypatched helper return value that would be included only if the implementation is not strictly file-derived. The input must distinguish file-backed paths from a fabricated path object or string that is not backed by a real file.
+           detects: The case list is derived from committed task files but also includes a synthetic in-memory case not backed by a file.
+           full detail: acceptance recommendation --criterion region-coverage-case-list-source
+
+  11. The region-coverage case list is non-empty.
+       requirements: constraint-07
+       code evidence: addressed
+         11.1  tests/requirement/test_task_file_corpus.py#@@ -0,0 +1,153 @@
+       test evidence: partially supported  [tier: static]
+         11.2  tests/requirement/test_region_coverage.py::test_a_dropped_region_is_detected_when_the_requirement_count_is_unchanged
+         11.3  tests/requirement/test_region_coverage.py::test_the_corpora_under_test_are_not_empty
+         11.4  tests/requirement/test_region_coverage.py::test_the_reproduction_leaves_nothing_unaccounted_for
+         11.5  tests/requirement/test_task_file_corpus.py::test_the_corpus_is_not_empty
+         recommended test: The region-coverage case list contains at least one case.
+           inputs:  Use a fixture with several committed `dogfood-logs/*/current-task.md` files and assert the exact cardinality, not just that the list is non-empty. The input must make a one-case-only defect observable by expecting more than one committed file.
+           detects: The region-coverage case list contains only one case when several should exist.
+           full detail: acceptance recommendation --criterion region-coverage-case-list-nonempty
+
+  12. The region-coverage case list omits a path that is not present in the tree.
+       requirements: constraint-08
+       code evidence: addressed
+         12.1  tests/requirement/test_task_file_corpus.py#@@ -0,0 +1,153 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The region-coverage case list excludes at least one path that is absent from the tree.
+           inputs:  Create a fixture with one real committed `dogfood-logs/*/current-task.md` file and one absent/dangling path that would be included only if the implementation failed to exclude missing paths. The absent path should be a literal missing file or dangling symlink under `dogfood-logs/` so the defect changes the returned list.
+           detects: The case list excludes at least one path that is absent from the tree.
+           full detail: acceptance recommendation --criterion region-coverage-case-list-omits-missing-path
+
+  13. A test run reports no failures when no task file is present at the repository root.
+       requirements: constraint-09
+       code evidence: addressed
+         13.1  tests/test_suite_shape_without_root_task_file.py#@@ -0,0 +1,196 @@
+       test evidence: strongly supported  [tier: static]
+         13.2  tests/requirement/test_task_file_corpus.py::test_the_repository_root_task_file_is_not_a_case
+         13.3  tests/test_suite_shape_without_root_task_file.py::test_a_read_of_the_root_path_would_fail_the_affected_tests
+         13.4  tests/test_suite_shape_without_root_task_file.py::test_the_affected_tests_have_the_same_outcome_with_and_without_it
+
+  14. The parse test's documentation states which inputs it covers.
+       requirements: constraint-10
+       code evidence: addressed
+         14.1  tests/requirement/test_task_file.py#@@ -89,14 +94,21 @@ def test_roundtrips_through_persistence():
+       test evidence: not required — This is a documentation requirement satisfied by the source text of the docs, not by runtime behavior.
+
+  15. The change does not address whether the task file at the repository root is tracked by version control.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 8 changes across 6 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not to do, which is settled by the source change itself.
+
+  16. The change does not alter how a task file is parsed into sections.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 8 changes across 6 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the source change itself showing that section parsing was not part of the delivered work.
+
+  17. The change does not alter how region coverage is computed.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 8 changes across 6 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the source change itself showing that region-coverage computation was not part of the delivered work.
+
+  18. The change does not alter which sections a task file is required to contain.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 8 changes across 6 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the source change itself showing that required-section rules were not part of the delivered work.
+
+  19. The change does not alter the content of the committed task files.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 8 changes across 6 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the source change itself showing that committed task-file content was not part of the delivered work.
+
+  20. No test's outcome or case list depends on the task file at the repository root, which is a scratch input rewritten for every task.
+       requirements: task-01
+       code evidence: addressed
+         20.1  tests/requirement/test_task_file.py#@@ -89,14 +94,21 @@ def test_roundtrips_through_persistence():
+         20.2  tests/requirement/test_region_coverage.py#@@ -43,11 +44,13 @@ def _fixture_files() -> list[Path]:
+         20.3  tests/test_suite_shape_without_root_task_file.py#@@ -0,0 +1,196 @@
+       test evidence: strongly supported  [tier: static]
+         20.4  tests/requirement/test_task_file_corpus.py::test_the_repository_root_task_file_is_not_a_case
+         20.5  tests/test_suite_shape_without_root_task_file.py::test_a_read_of_the_root_path_would_fail_the_affected_tests
+         20.6  tests/test_suite_shape_without_root_task_file.py::test_collection_is_identical_with_and_without_the_root_task_file
+         20.7  tests/test_suite_shape_without_root_task_file.py::test_the_affected_tests_have_the_same_outcome_with_and_without_it
+
+Mandate coverage: 20 of 21 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: Section marker only; it names the implementation section without adding a checkable requirement.
+
+Unrequested changes:
+  1. [in_service] The new corpus helper filters `dogfood-logs/*/current-task.md` with `is_file()`, which changes the case list to omit dangling symlinks or other non-regular files. None of the obligations ask for this extra filtering; they only require the corpus to come from committed task files and to exclude the repository-root scratch file.
+       tests/requirement/corpus.py#@@ -0,0 +1,34 @@
+  2. [in_service] The new corpus tests assert that a path whose symlink target is missing is omitted. That is a new behavioral requirement about dangling symlinks, beyond the stated obligations about committed task files, non-empty coverage, and excluding the root scratch file.
+       tests/requirement/test_task_file_corpus.py#@@ -0,0 +1,153 @@
+  3. [in_service] The new root-task-file guard scans every test source and also asserts properties about helper modules and `conftest.py` coverage. The obligations require only that no test reads the repository-root task file; they do not ask for this broader source-scan shape or helper-module coverage checks.
+       tests/test_root_task_file_is_not_read.py#@@ -0,0 +1,119 @@
+  4. [in_service] The new suite-shape tests add subprocess-based checks comparing collection and outcomes with and without a root task file, plus a directory-based unreadability scenario. The obligations require that no test depends on the root task file and that no failures occur when it is absent, but they do not call for these additional runtime comparisons or the directory trick.
+       tests/test_suite_shape_without_root_task_file.py#@@ -0,0 +1,196 @@
+
+Changes since 43c36467:
+  closed:
+    - A check asserts that no test reads the task file at the repository root.
+        code evidence: unclassified -> unclassified
+        test evidence: partially supported -> strongly supported
+    - No test reads the task file at the repository root.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+  moved:
+    - The region-coverage case list is built only from the committed task files under `dogfood-logs/`.
+        test evidence: strongly supported -> partially supported
+    - The region-coverage case list omits a path that is not present in the tree.
+        test evidence: partially supported -> unsupported
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
