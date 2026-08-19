@@ -1529,3 +1529,123 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   type rather than merely exclude `human_review`, and that #271 — which moved the
   evidence decision into decomposition — did not resolve it.
 - **Status:** filed (comment on #205)
+
+### [2026-08-19] One requirement yields two obligations stating the same property
+- **Kind:** filing
+- **Found during:** #275, Gate 1 run 1
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** two single-property constraints each produced two
+  obligations that differ only in voice. `constraint-07` ("The report states,
+  for a criterion whose prescription was not obtained, that no prescription was
+  produced for it.") produced `report-no-prescription-produced`
+  (`functional`, imperative) and `report-says-no-prescription-produced`
+  (`explanation_observability`, the requirement text verbatim). `constraint-12`
+  ("A response naming the same criterion more than once is rejected.") produced
+  `reject-duplicate-criterion-names` and `duplicate-criterion-rejected`, both
+  `error_handling`, and that pair was flagged nowhere. `constraint-08`, the same
+  shape of sentence, produced one. Not the twin-across-sections shape of
+  #245/#273 and not attributable to task-file wording: one requirement, one
+  property, two obligations.
+- **Why I didn't act:** `requirement/`, outside #275's area.
+- **Drafted fix:** file as a child of **#181**, titled *"One requirement yields
+  two obligations stating the same property, differing only in voice"*.
+  Body: the two instances above with their ids and types, the `constraint-08`
+  counter-example from the same run, and the note that #242's linking policy
+  then fails to merge them so the redundancy survives to Gate 2 — where each
+  copy independently demands evidence. Distinguish from #273 (restatement
+  *across* requirements) and #224 (under-splitting) explicitly. Acceptance: a
+  requirement stating one property yields one obligation; #195's
+  decompose-regression suite carries a case over this run's breakdown.
+  Evidence: `dogfood-logs/275-gate1-run1/`. Labels `bug`, `track:checker`.
+- **Status:** filed (#277, sub-issue of #181)
+
+### [2026-08-19] An all-duplicate cluster merged nothing — #242 without a spurious member
+- **Kind:** filing (comment)
+- **Found during:** #275, Gate 1 run 1
+- **Where:** `src/acceptance/requirement/linking.py:382-396`
+- **Severity:** should-fix
+- **What's wrong:** the unreconciled-cluster message fired over
+  `report-states-no-prescription-produced-for-omitted-criterion`,
+  `report-no-prescription-produced` and `report-says-no-prescription-produced`.
+  In #242's instance an unrelated third member dragged two genuine duplicates
+  into an inconsistent cluster. Here **all three are genuine duplicates**, so no
+  false-positive link is available to blame — a pair among three synonymous
+  obligations was *denied*. Same policy, opposite input: a false negative on a
+  true pair, not a false positive on an unrelated one.
+- **Why I didn't act:** `requirement/`, outside #275's area, and #242 is open.
+- **Drafted fix:** post as a **comment on #242** carrying the message verbatim,
+  the three obligations with their source requirements, and the point that the
+  all-or-nothing policy is now shown to lose merges in both directions — so a
+  fix aimed only at suppressing spurious links would not cover this instance.
+  Evidence: `dogfood-logs/275-gate1-run1/`.
+- **Status:** filed (comment on #242)
+
+### [2026-08-19] Every `test_demand` twin went unmerged; the three merges are all non-`test_demand`
+- **Kind:** filing (comment)
+- **Found during:** #275, Gate 1 run 1
+- **Where:** `src/acceptance/requirement/linking.py`
+- **Severity:** nice-to-have
+- **What's wrong:** of nine constraint/completion twin pairs in one run, three
+  merged and nine remained. All six completion obligations typed `test_demand`
+  are unmerged (6 of 6); completion obligations typed anything else merged 3 of
+  6, and all three merges are with a non-`test_demand` twin. One run, so a
+  correlation rather than a finding — but it is a mechanical explanation for
+  #273's "inconsistent rather than absent", and cheap to test.
+- **Why I didn't act:** `requirement/`, outside #275's area; #273 is open and
+  is the right home.
+- **Drafted fix:** post as a **comment on #273** with the merged/unmerged table
+  from this run and the type correlation, stated as a hypothesis to check
+  against #269's run-3 breakdown rather than as an established cause.
+  Evidence: `dogfood-logs/275-gate1-run1/`.
+- **Status:** filed (comment on #273)
+
+### [2026-08-19] `litellm>=1.50` admits 1.97.0, which breaks every live call
+- **Kind:** filing
+- **Found during:** #275, Gate 1 run 1
+- **Where:** `pyproject.toml:12`
+- **Severity:** should-fix
+- **What's wrong:** a fresh `.venv` in this worktree resolved litellm **1.97.0**
+  against pydantic **2.13.4**, and every live call died in litellm's own
+  response construction: `` `Message` is not fully defined; you should define all
+  referenced types, then call `Message.model_rebuild()` ``, surfaced as
+  `APIConnectionError`. The other worktrees hold 1.96.2 and work. `pyproject.toml`
+  floors the dependency at `litellm>=1.50` with no ceiling, so every new
+  environment picks up the break — and it bites **recording**, which is the first
+  thing a new worktree must do. Replay-mode runs and CI are unaffected, which is
+  why nothing caught it.
+- **Why I didn't act:** the venv pin unblocked #275 (`pip install litellm==1.96.2`);
+  editing `pyproject.toml` on this branch would put a dependency change in a
+  presentation-fix PR.
+- **Drafted fix:** file as a child of **#184**, titled *"A fresh install picks up
+  a litellm that cannot make a live call"*. Body: the traceback, the two
+  versions, and the point that replay-only CI cannot detect it. Acceptance:
+  `pyproject.toml` constrains litellm to a range where a recording run works, and
+  something exercises a live-call code path against the installed version — even
+  if only a construction-level smoke check that does not call a provider.
+  Labels `bug`, `track:checker`.
+- **Status:** filed (#278, sub-issue of #184)
+
+### [2026-08-19] No retry when the prescribing stage omits a criterion
+- **Kind:** decision
+- **Found during:** #275, Gate 1
+- **Where:** `src/acceptance/coverage/recommendations.py`
+- **Severity:** nice-to-have
+- **What's wrong:** nothing on the path retries. #275 makes an omission
+  survivable and legible, but the prescription is still lost for that criterion,
+  and #275's own evidence (12 of 13 returned, `stop_reason: "stop"`) suggests a
+  single re-ask for the missing ids would close most instances. What survives a
+  retry is also a far stronger signal than what survives a first call.
+- **Why I didn't act:** deliberately excluded from #275's mandate — it is a
+  second design question (how many re-asks, what the request key does with a
+  second call, how replay records it) and folding it in risks the disposition
+  fix that #258 is blocked on.
+- **Drafted fix:** **recommendation — file as a follow-up issue under #185**,
+  after #275 lands, titled *"Re-ask once for the criteria the prescribing stage
+  omitted"*. Acceptance: a bounded re-ask over the missing ids only; a second
+  omission is recorded as not-obtained exactly as #275 does; the retry request is
+  recorded and replays deterministically. **Alternative rejected:** doing it
+  inside #275 — it would expand a fix that unblocks another task, and the
+  not-obtained disposition is needed whether or not a retry exists.
+- **Status:** open
+
