@@ -17,8 +17,10 @@ same obligation and are entirely different behaviours.
 
 from __future__ import annotations
 
+import itertools
 import json
 import re
+from pathlib import Path
 
 import pytest
 
@@ -952,6 +954,126 @@ def test_two_runs_over_the_same_task_and_ledger_state_are_byte_identical():
 
 
 # --- merge decisions ---------------------------------------------------------
+
+
+# --- the corpus: stability must not be bought by freezing a loss in place -----
+
+_CORPUS = Path(__file__).resolve().parents[2] / "tests" / "fixtures" / "decompose-stability"
+_CORPUS_RUNS = sorted(path for path in _CORPUS.iterdir() if path.is_dir())
+_CORPUS_PAIRS = list(itertools.pairwise(_CORPUS_RUNS))
+
+
+def _ledger_over(registry, keys) -> LedgerEntry:
+    """A prior recording exactly this registry, one obligation per requirement.
+
+    Each obligation quotes the opening of its own requirement, so `stale_spans`
+    is genuinely exercised rather than trivially satisfied by an empty span list.
+    """
+    return LedgerEntry(
+        run_id="corpus-prior",
+        derivations=[
+            RequirementDerivation(
+                requirement_id=requirement.id,
+                text=requirement.text,
+                carry_key=keys[requirement.id],
+                derivation=Derivation.DERIVED,
+                disposition=Disposition.YIELDED,
+                obligations=[
+                    Obligation(
+                        id=f"ob-{requirement.id}",
+                        description=f"obligation for {requirement.id}",
+                        type=ObligationType.FUNCTIONAL,
+                        importance="normal",
+                        explicit=True,
+                        observable_behavior="holds",
+                        source_spans=[
+                            TextSpan(
+                                text=requirement.text[:24],
+                                start=0,
+                                end=min(24, len(requirement.text)),
+                            )
+                        ],
+                    )
+                ],
+            )
+            for requirement in registry
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    "earlier,later", _CORPUS_PAIRS, ids=[f"{a.name}->{b.name}" for a, b in _CORPUS_PAIRS]
+)
+def test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed(earlier, later):
+    """`completion-10`, over the real corpus rather than a fixture of my own.
+
+    The corpus at `tests/fixtures/decompose-stability/` is seven consecutive
+    `decompose` runs over a task file that was genuinely edited between them, and
+    the movements between those runs are what #195 turned into a scoreboard. The
+    way carry-forward could destroy them is exact and singular: **carry a
+    requirement whose text changed.** Do that and run N's decomposition is frozen
+    in place and every movement the corpus records disappears.
+
+    So this asserts the plan, over every consecutive pair: a requirement whose
+    text moved is re-asked, one whose text did not is carried, and one that
+    disappeared is reported. DR-180's constraint made mechanical — #191 is the
+    cautionary tale of a judge that scored beautifully on variance by answering
+    `caught` to 114 of 114 defects, and a carry-forward that carried everything
+    would score perfectly on every stability assertion in this module.
+
+    **No model call is issued**, by design: `plan_carry` is given no client, so
+    the residue is derived rather than aligned. Both outcomes are "re-asked",
+    which is the property under test, and the corpus has no recorded transcripts
+    to replay anyway.
+    """
+    earlier_registry = build_registry(parse_task_file((earlier / "current-task.md").read_text()))
+    later_registry = build_registry(parse_task_file((later / "current-task.md").read_text()))
+    keys_client = client_dispatching({})
+    prior = _ledger_over(earlier_registry, decompose_carry_keys(keys_client, earlier_registry))
+
+    plan = plan_carry(
+        later_registry, prior, decompose_carry_keys(keys_client, later_registry), client=None
+    )
+
+    earlier_texts = {requirement.text for requirement in earlier_registry}
+    later_texts = {requirement.text for requirement in later_registry}
+
+    # The pair must actually differ, or this case asserts nothing. The corpus
+    # README records an edit between every consecutive run.
+    assert earlier_texts != later_texts, f"{earlier.name} and {later.name} are identical"
+
+    changed = [r for r in later_registry if r.text not in earlier_texts]
+    unchanged = [r for r in later_registry if r.text in earlier_texts]
+    assert changed, "the corpus records an edit here; the plan must see one"
+
+    for requirement in changed:
+        assert requirement.id in plan.issues_calls_for, (
+            f"{requirement.id} changed between {earlier.name} and {later.name} "
+            f"and was not re-asked — this is exactly how carry-forward would "
+            f"freeze the corpus's movements in place"
+        )
+        assert requirement.id not in plan.carried
+
+    for requirement in unchanged:
+        assert requirement.id in plan.carried, (
+            f"{requirement.id} is byte-identical across {earlier.name} and "
+            f"{later.name} and should have cost no model call"
+        )
+
+    # A requirement the later run dropped is reported, not silently forgotten.
+    assert {derivation.text for derivation in plan.removed} == earlier_texts - later_texts
+
+
+def test_the_corpus_pairs_are_actually_loaded():
+    """A guard on the parametrisation itself.
+
+    An empty or mis-globbed corpus directory would collect zero cases, and a
+    parametrized test with no cases passes silently — the suite would report
+    green while asserting nothing about the corpus at all.
+    """
+    assert len(_CORPUS_RUNS) == 7
+    assert len(_CORPUS_PAIRS) == 6
+    assert all((run / "current-task.md").is_file() for run in _CORPUS_RUNS)
 
 
 def test_a_merge_decision_is_keyed_by_content_not_by_pair_position():
