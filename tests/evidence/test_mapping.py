@@ -113,12 +113,17 @@ def test_the_instruction_requires_every_overlapping_obligation_not_the_closest()
     # break in the source and would not match literally.
     instruction = " ".join(_SYSTEM_PROMPT.split())
 
-    assert "return EVERY id its assertions are aimed at, not the single best one" in instruction
-    assert "Do not choose between overlapping obligations; return them all." in instruction
+    assert "return every id that passes it" in instruction
+    assert "Do not choose between overlapping obligations." in instruction
+    # And the counterweight (#266 Gate 2 run 4): the first wording of this rule
+    # read as an invitation to map broadly, and the mapper went from 0 to 5.0
+    # tests per obligation. Each id still has to earn its place on its own.
+    assert "Every id returned must pass THE TEST on its own" in instruction
+    assert "not that a near miss may be included because a hit does" in instruction
     # Framed as an example, not as a taxonomy of obligation kinds.
     assert "illustration only" in instruction
     assert "never assume the mandate is shaped this way" in instruction
-    # The empty answer stays available — "return them all" must not read as
+    # The empty answer stays available — the overlap rule must not read as
     # pressure to map a test that is aimed at nothing.
     assert "a test aimed at nothing still maps to nothing" in instruction
 

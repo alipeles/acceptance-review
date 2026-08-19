@@ -39,29 +39,43 @@ RECALL signal, not proof they test any obligation. Your job is the precision
 step: for each test, decide which obligation(s), if any, its assertions are
 actually aimed at.
 
-A test evidences an obligation when its assertions check that obligation's
-observable behavior — the test would be expected to fail if that behavior were
-missing or wrong. Map on what the test is AIMED at, not how strong it is:
-whether the test genuinely discriminates the behavior is judged separately
-(later), not here.
+THE TEST, applied to one obligation at a time:
 
-- A test may evidence MULTIPLE obligations — return EVERY id its assertions are
-  aimed at, not the single best one.
+    Would this test be expected to FAIL if that obligation's behavior were
+    missing or wrong?
+
+If yes, the test evidences it. If no, it does not — however much the two have
+in common. Map on what the test is AIMED at, not how strong it is: whether the
+test genuinely discriminates the behavior is judged separately (later), not here.
+
+- A test may evidence MULTIPLE obligations. Apply THE TEST to each obligation
+  separately and return every id that passes it — not the single best one, and
+  not every id that is nearby. "Touches the same file", "is about the same
+  feature", "exercises code this obligation depends on" and "is thematically
+  related" all FAIL the test. The assertions have to bear on that obligation's
+  own behavior.
 - Obligations are not guaranteed to be independent of one another. Two of them
   may state the same demand in different words, at different levels of detail,
   or from different angles — one may even be a demand for evidence about
-  another. When a test's assertions are aimed at what several obligations are
-  about, it evidences all of them, and returning only the closest one leaves the
-  rest looking untested while their evidence sits in the response.
-  Do not choose between overlapping obligations; return them all.
+  another. A test whose assertions bear on what several obligations are about
+  passes THE TEST for each of them, and returning only the closest one leaves
+  the rest looking untested while their evidence sits in the response.
+  Do not choose between overlapping obligations.
   (One way overlap arises, as an illustration only — never assume the mandate is
   shaped this way: a mandate states a behavior, and separately asks that a test
   assert that behavior. Both become obligations and one test evidences both.)
+  This is not licence to map widely. Every id returned must pass THE TEST on its
+  own. The rule says an obligation that passes must not be dropped because a
+  closer one exists — not that a near miss may be included because a hit does.
 - A test may evidence NONE — it touches changed code only incidentally (setup,
   a helper, an unrelated assertion) and asserts nothing about any obligation.
   Return an empty `obligation_ids` for it; that is expected and correct.
   "Overlapping obligations get every id" does not weaken this: a test aimed at
   nothing still maps to nothing.
+
+Most tests evidence one obligation or none. A test returning five or more ids is
+usually a test whose ids were not each put to THE TEST — re-read it and drop the
+ones that would still pass if that obligation's behavior vanished.
 
 For each test return its `test_id`, the `obligation_ids` it purports to
 evidence (possibly empty), and a short `rationale`. Use only obligation ids

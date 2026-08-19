@@ -418,8 +418,12 @@ def _decompose_one(**overrides):
                 **overrides,
             }
         ],
-        [_yielded("task-01", "render"), _declined("constraint-01"), _declined("constraint-02"),
-         _declined("completion-01")],
+        [
+            _yielded("task-01", "render"),
+            _declined("constraint-01"),
+            _declined("constraint-02"),
+            _declined("completion-01"),
+        ],
     )
     return next(o for o in result.obligations if o.id == "render")
 
