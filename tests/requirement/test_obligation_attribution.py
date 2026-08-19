@@ -404,3 +404,78 @@ def test_two_runs_over_identical_task_text_produce_identical_review_state():
     second = _decompose(obligations, dispositions)
 
     assert first.model_dump_json() == second.model_dump_json()
+
+
+# --- #266: which evidence an obligation requires ------------------------------
+
+
+def _decompose_one(**overrides):
+    """One obligation under `task-01`, with its evidence fields overridable."""
+    result = _decompose(
+        [
+            {
+                **_obligation("render", "Render each invoice line.", "Render each invoice line."),
+                **overrides,
+            }
+        ],
+        [_yielded("task-01", "render"), _declined("constraint-01"), _declined("constraint-02"),
+         _declined("completion-01")],
+    )
+    return next(o for o in result.obligations if o.id == "render")
+
+
+def test_a_narrowing_with_a_reason_is_kept():
+    """The ordinary path: the model says less evidence is owed and says why, and
+    both survive to review state."""
+    obligation = _decompose_one(
+        required_evidence="code_only",
+        required_evidence_reason="a pinned version the source states outright",
+    )
+
+    assert obligation.required_evidence == "code_only"
+    assert obligation.required_evidence_reason == "a pinned version the source states outright"
+
+
+def test_a_narrowing_with_no_reason_is_discarded():
+    """The false-green guard, and the reason it exists.
+
+    Which evidence an obligation requires is a MODEL judgement now, where a
+    section heading used to settle it. A wrong "no test is owed" silently removes
+    the obligation from the axis the review measures it on, and nothing
+    downstream can catch that — an obligation off the test axis produces no
+    finding, by design.
+
+    So an unreasoned narrowing is not honoured. It is indistinguishable from the
+    question being skipped, and the safe reading of a skipped question is that
+    every kind of evidence is still owed. Found by defect injection: removing
+    this rule broke no test until this one existed.
+    """
+    obligation = _decompose_one(
+        required_evidence="code_only",
+        required_evidence_reason="",
+    )
+
+    assert obligation.required_evidence == "code_and_tests"
+    assert obligation.required_evidence_reason == ""
+
+
+def test_a_whitespace_only_reason_is_no_reason():
+    """`""` is the obvious case and a bare truthiness check would catch it. A
+    reason of spaces satisfies that check and says nothing, which is the same
+    withheld judgement wearing a different shape."""
+    obligation = _decompose_one(required_evidence="tests_only", required_evidence_reason="   \n ")
+
+    assert obligation.required_evidence == "code_and_tests"
+
+
+def test_a_reason_given_without_a_narrowing_is_dropped():
+    """The mirror case. A reason on an obligation requiring both kinds explains
+    nothing — there is no narrowing for it to justify — and carrying it would
+    render an explanation under an obligation that was never narrowed."""
+    obligation = _decompose_one(
+        required_evidence="code_and_tests",
+        required_evidence_reason="left over from somewhere",
+    )
+
+    assert obligation.required_evidence == "code_and_tests"
+    assert obligation.required_evidence_reason == ""
