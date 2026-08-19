@@ -1,0 +1,12 @@
+base a4abbf4215747d10fcb09b8a2277f9dc3d74a99d
+head 8904b4c
+
+Run 5's head plus three of run 5's six prescriptions closed — an empty-tree
+control, an ordered-list comparison that makes a duplicated entry observable, and
+a runtime probe that makes the root path a directory so an indirect read raises —
+and one docstring fix, made because the new module named the banned shape
+literally and the guard caught it. `--mode record`, live calls.
+
+This is the last run of the sequence: the five obligations still weak are all
+prescriptions whose named defect would not violate the obligation, and two of
+them regressed under tests written to close them.

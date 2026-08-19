@@ -1,0 +1,11 @@
+base 9def9e71b50443243996eddf5bb193e75131930f
+head 907779a68dda3109a3731ec08d5c03cf79cad739
+
+base is the merge-base with origin/main after the rebase onto #266, i.e. the
+commit the branch now forks from. head is the branch tip, passed explicitly
+rather than left to default to the working tree, so the untracked
+`dogfood-logs/258-gate1-run3/` files of this session stay out of the diff.
+
+Run in `--mode record` (live calls). Every transcript in the repo was
+invalidated when #266 landed, so no figure recorded before `9269171` is
+comparable to one recorded here.

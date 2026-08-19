@@ -1,0 +1,4 @@
+base 3aeb67604e2b14d977520391a66b2b3442555c1e
+head 1e9ac67  (working tree at time of run; branch 258-committed-task-file-corpus)
+
+base is the merge-base with origin/main, i.e. the commit the branch forked from.

@@ -1,0 +1,12 @@
+base a4abbf4215747d10fcb09b8a2277f9dc3d74a99d
+head a752f82c3f76729873d80334d08e29a23e66d76c
+
+base is the merge-base with origin/main after the rebase onto #279 (the fix for
+#275); head is the branch tip, passed explicitly so this session's own untracked
+files stay out of the diff.
+
+Run with `--mode record`, but **every request hit cache and no live call was
+made**. The rebase moved the SHAs and left the tree identical, so every request
+was byte-identical to #258 Gate 2 run 2's. This run is therefore run 2's model
+responses rendered by the fixed tool, not a second opinion — the newest
+transcript in `.acceptance/cache/` predates the run by an hour and a half.

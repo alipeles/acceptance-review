@@ -21,6 +21,7 @@ from markdown_it.tree import SyntaxTreeNode
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.source_ref import TextSpan
+from tests.requirement.corpus import committed_task_files
 from tests.requirement.region_coverage import assert_total_region_coverage, uncovered_regions
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -43,11 +44,13 @@ def _fixture_files() -> list[Path]:
 
 
 def _committed_task_files() -> list[Path]:
-    """The repository's own task files: the one in flight and every dogfood
-    run's committed input."""
-    files = [REPO_ROOT / "current-task.md"]
-    files.extend(sorted(REPO_ROOT.glob("dogfood-logs/*/current-task.md")))
-    return [f for f in files if f.is_file()]
+    """Every dogfood run's committed input.
+
+    The task file in flight used to head this list. It was dropped in #258:
+    this feeds a parametrize, so the case list was computed at collection time
+    from a scratch file, and the suite's *shape* moved with uncommitted work.
+    """
+    return committed_task_files(REPO_ROOT)
 
 
 def _decompose_stability_files() -> list[Path]:

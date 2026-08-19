@@ -1,4 +1,9 @@
+from pathlib import Path
+
+import pytest
+
 from acceptance.requirement.task_file import ParsedTaskFile, parse_task_file
+from tests.requirement.corpus import committed_task_files
 
 # The exact §7.1 example from the spec.
 SPEC_EXAMPLE = """# Task
@@ -89,14 +94,21 @@ def test_roundtrips_through_persistence():
     assert ParsedTaskFile.from_dict(parsed.to_dict()) == parsed
 
 
-def test_parses_the_projects_own_current_task_file():
-    from pathlib import Path
+@pytest.mark.parametrize("path", committed_task_files(), ids=lambda p: p.parent.name)
+def test_parses_every_committed_task_file(path: Path):
+    """Covers the committed corpus — every `dogfood-logs/*/current-task.md` —
+    and deliberately not the repository-root `current-task.md` (#258).
 
-    repo_root = Path(__file__).resolve().parents[2]
-    parsed = parse_task_file((repo_root / "current-task.md").read_text())
+    This asserted a property of *the task in flight* before, which is not a
+    property of the software at all: it passed or failed on whatever had been
+    written for the current piece of work. The corpus is a strictly better
+    regression guard — larger, stable, growing with each dogfood run, and every
+    entry governed by a commit.
+    """
+    parsed = parse_task_file(path.read_text())
 
     assert parsed.behavior
-    assert parsed.constraints  # the dogfooded task lists constraints
+    assert parsed.constraints  # every committed task file lists constraints
     assert parsed.completion_expectations
     for span in [*parsed.behavior, *parsed.constraints, *parsed.completion_expectations]:
         assert parsed.source[span.start : span.end] == span.text
