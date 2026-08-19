@@ -170,3 +170,26 @@ def test_the_affected_tests_have_the_same_outcome_with_and_without_it(snapshot: 
     assert "skipped" not in absent.stdout, absent.stdout[-2000:]
 
     assert _outcome(absent) == _outcome(present)
+
+
+def test_a_read_of_the_root_path_would_fail_the_affected_tests(snapshot: Path):
+    """The runtime counterpart to the source scan, and the case the scan cannot
+    see: a read reached *indirectly* — through a helper, an alias, a computed
+    path — leaves no literal `REPO_ROOT / "current-task.md"` for a regex to find.
+
+    Absence alone does not probe it either, since a read guarded by an existence
+    check passes happily when the file is not there. So the path is made
+    *unreadable as a file*: `current-task.md` is a directory, and any attempt to
+    read it raises `IsADirectoryError` however the path was arrived at.
+    """
+    task_dir = snapshot / "current-task.md"
+    assert not task_dir.exists()
+    task_dir.mkdir()
+    try:
+        result = _run_pytest(snapshot, "-q", *_AFFECTED)
+    finally:
+        task_dir.rmdir()
+
+    assert result.returncode == 0, result.stdout[-4000:]
+    assert "IsADirectoryError" not in result.stdout
+    assert " passed" in result.stdout

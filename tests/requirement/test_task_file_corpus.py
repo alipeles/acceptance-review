@@ -37,9 +37,11 @@ def test_a_path_outside_dogfood_logs_is_not_a_case(tmp_path: Path):
     directory, the corpus directory itself, and the repository root.
     """
     logs = tmp_path / "dogfood-logs"
-    committed = logs / "997-gate1-run1" / "current-task.md"
-    committed.parent.mkdir(parents=True)
-    committed.write_text("# Task\na committed run\n")
+    first = logs / "996-gate1-run1" / "current-task.md"
+    second = logs / "997-gate1-run1" / "current-task.md"
+    for committed in (first, second):
+        committed.parent.mkdir(parents=True)
+        committed.write_text("# Task\na committed run\n")
 
     (tmp_path / "current-task.md").write_text("# Task\nthe task in flight\n")
     (logs / "current-task.md").write_text("# Task\nloose in the corpus directory\n")
@@ -49,11 +51,28 @@ def test_a_path_outside_dogfood_logs_is_not_a_case(tmp_path: Path):
 
     found = committed_task_files(tmp_path)
 
-    # Not vacuous: the valid entry is still found.
-    assert found == [committed]
+    # Compared as an ordered list rather than as a membership test, so that
+    # admitting an outside path and duplicating a valid one are both visible —
+    # two committed entries are present precisely so duplication can show.
+    assert found == [first, second]
     for outside in (tmp_path / "current-task.md", logs / "current-task.md", sibling):
         assert outside.is_file()
         assert outside not in found
+
+
+def test_a_tree_with_no_committed_runs_yields_no_cases(tmp_path: Path):
+    """The control for every non-emptiness assertion here.
+
+    `test_the_corpus_is_not_empty` cannot tell "the corpus was found" from "the
+    builder returns something regardless": both look like a non-empty list. This
+    is the other half — pointed at a tree with no committed runs, the builder
+    returns nothing, and the paths it must not fall back to are all present.
+    """
+    (tmp_path / "current-task.md").write_text("# Task\nthe task in flight\n")
+    (tmp_path / "dogfood-logs").mkdir()
+    (tmp_path / "dogfood-logs" / "current-task.md").write_text("# Task\nloose\n")
+
+    assert committed_task_files(tmp_path) == []
 
 
 def test_each_committed_file_yields_exactly_one_case(tmp_path: Path):
