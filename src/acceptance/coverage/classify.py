@@ -23,7 +23,7 @@ from pydantic import Field
 from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_prompt, resolve_refs
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
-from acceptance.review_state import AdmissibleEvidence, ChangeSet, Obligation
+from acceptance.review_state import ChangeSet, Obligation
 from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 
 __all__ = ["CoverageStatus", "DiffRef", "ImplementationCoverage", "classify_coverage"]
@@ -173,7 +173,11 @@ def classify_coverage(
             )
             continue
         refs = resolve_refs(classification.diff_refs, label_to_ref)
-        boundary = obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY
+        # Keyed on satisfied-by-absence, not on which evidence is required
+        # (#266). Those were one field until `code_only` also came to mean a
+        # version pin or a configured value, whose supporting hunks are exactly
+        # the evidence and must not be stripped.
+        boundary = obligation.satisfied_by_absence
         if boundary and classification.status is CoverageStatus.ADDRESSED:
             # A respected boundary has no supporting hunks BY CONSTRUCTION: it is
             # satisfied by an absence, so any hunk cited under it is a change

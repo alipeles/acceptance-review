@@ -1,0 +1,173 @@
+Requirements: 31   with obligations: 30   deliberately none: 1
+
+[task-01] A review completes and reports even when some of its criteria are ones no test
+    could ever evidence.
+    -> review-completes-and-reports-with-no-test-evidence-criteria  [functional/explicit]
+       A review completes and reports even when some of its criteria are ones no test
+       could ever evidence.
+
+[constraint-01] A test recommendation may state that no test can evidence its criterion.
+    -> recommendation-may-state-no-test-can-evidence-criterion  [functional/explicit]
+       A test recommendation may state that no test can evidence its criterion.
+
+[constraint-02] A statement that no test can evidence a criterion carries a reason.
+    -> no-test-evidence-statement-carries-reason  [functional/explicit]
+       A statement that no test can evidence a criterion carries a reason.
+
+[constraint-03] A criterion answered with such a statement does not abort the review.
+    -> no-test-evidence-statement-does-not-abort-review  [functional/explicit]
+       A criterion answered with such a statement does not abort the review.
+
+[constraint-04] A criterion for which the model returns neither a recommendation nor
+    such a statement still aborts the review.
+    -> missing-recommendation-or-statement-aborts-review  [functional/explicit]
+       A criterion for which the model returns neither a recommendation nor such a
+       statement still aborts the review.
+
+[constraint-05] A statement that no test can evidence a criterion is recorded in the
+    persisted review state.
+    -> no-test-evidence-statement-is-persisted-in-review-state  [functional/explicit]
+       A statement that no test can evidence a criterion is recorded in the persisted
+       review state.
+
+[constraint-06] A recorded statement of that kind names the criterion it applies to.
+    -> recorded-statement-names-criterion  [functional/explicit]
+       A recorded statement that no test can evidence a criterion names the criterion it
+       applies to.
+
+[constraint-07] A review in which every weak criterion is answered that way produces a
+    report.
+    -> weak-criteria-all-statement-produces-report  [functional/explicit]
+       A review in which every weak criterion is answered with a statement that no test
+       can evidence it produces a report.
+
+[constraint-08] A criterion that the change addresses and that carries such a statement
+    is classified as indeterminate on the test-evidence axis.
+    -> addressed-criterion-indeterminate-on-test-evidence-axis  [functional/explicit]
+       A criterion that the change addresses and that carries a statement that no test
+       can evidence it is classified as indeterminate on the test-evidence axis.
+
+[constraint-09] The report states, for a criterion no test can evidence, that no test
+    can evidence it.
+    -> report-states-no-test-can-evidence-criterion  [functional/explicit]
+       The report states, for a criterion no test can evidence, that no test can
+       evidence it.
+
+[constraint-10] The report makes no such statement for a criterion that merely carries
+    no recommendation.
+    -> report-omits-no-test-statement-for-no-recommendation  [functional/explicit]
+       The report makes no such statement for a criterion that merely carries no
+       recommendation.
+
+[constraint-11] A review of a change that modifies only configuration files produces a
+    report.
+    -> config-only-change-produces-report  [compatibility/explicit]
+       A review of a change that modifies only configuration files produces a report.
+
+[constraint-12] Two runs over the same criteria and the same change produce the same
+    statements that no test can evidence them.
+    -> deterministic-statements-for-same-runs  [invariant/explicit]
+       Two runs over the same criteria and the same change produce the same statements
+       that no test can evidence them.
+
+[constraint-13] A recorded model exchange carries the reason the model stopped
+    generating.
+    -> recorded-model-exchange-carries-stop-reason  [functional/explicit]
+       A recorded model exchange carries the reason the model stopped generating.
+
+[exclusion-01] Whether the existing exclusion of criteria whose evidence is code alone
+    is folded into the same mechanism.
+    -> exclude-code-only-evidence-folding  [functional/explicit]
+       The change leaves the existing exclusion of criteria whose evidence is code alone
+       outside the new mechanism.
+
+[exclusion-02] How many criteria are carried in one recommendation request.
+    -> exclude-request-size  [compatibility/explicit]
+       The change leaves the number of criteria carried in one recommendation request
+       unchanged.
+
+[exclusion-03] Whether the model's judgement that no test can evidence a criterion is
+    correct.
+    -> exclude-model-judgement-correctness  [human_review/explicit]
+       The change does not take on verifying whether the model's judgement that no test
+       can evidence a criterion is correct.
+
+[exclusion-04] How a criterion's test evidence is classified as weak in the first place.
+    -> exclude-weakness-classification  [functional/explicit]
+       The change leaves unchanged how a criterion's test evidence is classified as weak
+       in the first place.
+
+[exclusion-05] How the overall completion verdict is derived for criteria that carry no
+    such statement.
+    -> exclude-completion-verdict-derivation  [functional/explicit]
+       The change leaves unchanged how the overall completion verdict is derived for
+       criteria that carry no such statement.
+
+[exclusion-06] Recommending non-test evidence in place of the test that cannot exist.
+    -> exclude-non-test-evidence-recommendation  [functional/explicit]
+       The change does not recommend non-test evidence in place of the test that cannot
+       exist.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker standing alone with no requirement under it.
+
+[completion-02] A test asserts that a criterion answered with a statement that no test
+    can evidence it does not abort the review.
+    -> test-review-does-not-abort-on-no-test-can-evidence-statement  [test_demand/explicit]
+       A test asserts that a criterion answered with a statement that no test can
+       evidence it does not abort the review.
+
+[completion-03] A test asserts that a criterion the model omits entirely still aborts
+    the review.
+    -> test-omitted-criterion-still-aborts-review  [test_demand/explicit]
+       A test asserts that a criterion the model omits entirely still aborts the review.
+
+[completion-04] A test asserts that such a statement reaches the persisted review state
+    attributed to its criterion.
+    -> test-statement-attributed-to-criterion-in-persisted-state  [test_demand/explicit]
+       A test asserts that such a statement reaches the persisted review state
+       attributed to its criterion.
+
+[completion-05] A test asserts that a review whose weak criteria are all answered that
+    way produces a report.
+    -> test-all-weak-criteria-answered-that-way-produce-report  [test_demand/explicit]
+       A test asserts that a review whose weak criteria are all answered that way
+       produces a report.
+
+[completion-06] A test asserts that an addressed criterion carrying such a statement is
+    classified indeterminate on the test-evidence axis.
+    -> test-addressed-criterion-classified-indeterminate-on-test-evidence-axis  [test_demand/explicit]
+       A test asserts that an addressed criterion carrying such a statement is
+       classified indeterminate on the test-evidence axis.
+
+[completion-07] A test asserts that the report states, for a criterion no test can
+    evidence, that no test can evidence it.
+    -> test-report-states-no-test-can-evidence-it  [test_demand/explicit]
+       A test asserts that the report states, for a criterion no test can evidence, that
+       no test can evidence it.
+
+[completion-08] A test asserts that the report makes no such statement for a criterion
+    that merely carries no recommendation.
+    -> test-report-omits-no-test-can-evidence-statement-for-no-recommendation  [test_demand/explicit]
+       A test asserts that the report makes no such statement for a criterion that
+       merely carries no recommendation.
+
+[completion-09] A test asserts that a review of a change modifying only configuration
+    files produces a report.
+    -> test-config-only-review-produces-report  [test_demand/explicit]
+       A test asserts that a review of a change modifying only configuration files
+       produces a report.
+
+[completion-10] A test asserts that two runs over the same criteria and change produce
+    the same statements.
+    -> test-repeat-runs-same-statements  [test_demand/explicit]
+       A test asserts that two runs over the same criteria and change produce the same
+       statements.
+
+[completion-11] A test asserts that a recorded model exchange carries the reason the
+    model stopped generating.
+    -> test-recorded-model-exchange-carries-stop-reason  [test_demand/explicit]
+       A test asserts that a recorded model exchange carries the reason the model
+       stopped generating.
+

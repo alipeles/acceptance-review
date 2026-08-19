@@ -45,6 +45,10 @@ def _obligation(oid: str, description: str, quote: str) -> dict:
         "explicit": True,
         "observable_behavior": "...",
         "source_quote": quote,
+        # Requiring both is the safe default the stage itself applies (#266);
+        # a fixture silent about which evidence is owed is not narrowing.
+        "required_evidence": "code_and_tests",
+        "required_evidence_reason": "",
     }
 
 
@@ -256,12 +260,17 @@ def test_an_obligation_is_not_refiled_onto_a_requirement_that_declined():
     assert "strayed" in [o.id for o in result.obligations]
 
 
-def test_refiling_takes_the_admissible_evidence_of_the_requirement_it_lands_in():
-    """Which evidence an obligation admits is decided by the section it sits in
-    (#153). An obligation re-filed into a scope exclusion is code-evidence-only,
-    exactly as one derived there directly would be — the section must follow the
-    re-filing, or the axis records the section the obligation only appeared to
-    come from."""
+def test_refiling_takes_the_satisfied_by_absence_of_the_requirement_it_lands_in():
+    """Whether an obligation is satisfied by work NOT done is decided by the
+    section it sits in (#153). An obligation re-filed into a scope exclusion is
+    satisfied by an absence, exactly as one derived there directly would be —
+    the section must follow the re-filing, or the field records the section the
+    obligation only appeared to come from.
+
+    Asserts the absence flag, not which evidence is required (#266). The two
+    were one field until a scope exclusion naming a BEHAVIOUR turned out to want
+    a regression test; the heading still settles the absence beyond argument,
+    and that is now all it settles."""
     task = """# Task
 Render each invoice line.
 
@@ -288,7 +297,10 @@ Render each invoice line.
 
     assert result.requirement_map.requirements_for_obligation("excluded") == ["exclusion-01"]
     refiled = next(o for o in result.obligations if o.id == "excluded")
-    assert refiled.admissible_evidence == "code_only"
+    assert refiled.satisfied_by_absence
+    # The control: an obligation that stayed in the Task section does not pick
+    # the flag up, so this is not passing because everything carries it.
+    assert not next(o for o in result.obligations if o.id == "render").satisfied_by_absence
 
 
 def test_a_quotation_matching_two_requirements_stays_with_the_one_it_was_attributed_to():
@@ -392,3 +404,82 @@ def test_two_runs_over_identical_task_text_produce_identical_review_state():
     second = _decompose(obligations, dispositions)
 
     assert first.model_dump_json() == second.model_dump_json()
+
+
+# --- #266: which evidence an obligation requires ------------------------------
+
+
+def _decompose_one(**overrides):
+    """One obligation under `task-01`, with its evidence fields overridable."""
+    result = _decompose(
+        [
+            {
+                **_obligation("render", "Render each invoice line.", "Render each invoice line."),
+                **overrides,
+            }
+        ],
+        [
+            _yielded("task-01", "render"),
+            _declined("constraint-01"),
+            _declined("constraint-02"),
+            _declined("completion-01"),
+        ],
+    )
+    return next(o for o in result.obligations if o.id == "render")
+
+
+def test_a_narrowing_with_a_reason_is_kept():
+    """The ordinary path: the model says less evidence is owed and says why, and
+    both survive to review state."""
+    obligation = _decompose_one(
+        required_evidence="code_only",
+        required_evidence_reason="a pinned version the source states outright",
+    )
+
+    assert obligation.required_evidence == "code_only"
+    assert obligation.required_evidence_reason == "a pinned version the source states outright"
+
+
+def test_a_narrowing_with_no_reason_is_discarded():
+    """The false-green guard, and the reason it exists.
+
+    Which evidence an obligation requires is a MODEL judgement now, where a
+    section heading used to settle it. A wrong "no test is owed" silently removes
+    the obligation from the axis the review measures it on, and nothing
+    downstream can catch that — an obligation off the test axis produces no
+    finding, by design.
+
+    So an unreasoned narrowing is not honoured. It is indistinguishable from the
+    question being skipped, and the safe reading of a skipped question is that
+    every kind of evidence is still owed. Found by defect injection: removing
+    this rule broke no test until this one existed.
+    """
+    obligation = _decompose_one(
+        required_evidence="code_only",
+        required_evidence_reason="",
+    )
+
+    assert obligation.required_evidence == "code_and_tests"
+    assert obligation.required_evidence_reason == ""
+
+
+def test_a_whitespace_only_reason_is_no_reason():
+    """`""` is the obvious case and a bare truthiness check would catch it. A
+    reason of spaces satisfies that check and says nothing, which is the same
+    withheld judgement wearing a different shape."""
+    obligation = _decompose_one(required_evidence="tests_only", required_evidence_reason="   \n ")
+
+    assert obligation.required_evidence == "code_and_tests"
+
+
+def test_a_reason_given_without_a_narrowing_is_dropped():
+    """The mirror case. A reason on an obligation requiring both kinds explains
+    nothing — there is no narrowing for it to justify — and carrying it would
+    render an explanation under an obligation that was never narrowed."""
+    obligation = _decompose_one(
+        required_evidence="code_and_tests",
+        required_evidence_reason="left over from somewhere",
+    )
+
+    assert obligation.required_evidence == "code_and_tests"
+    assert obligation.required_evidence_reason == ""

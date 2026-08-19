@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
-    AdmissibleEvidence,
     CompletionVerdict,
     MandateCoverage,
     Obligation,
@@ -30,9 +29,19 @@ from acceptance.review_state import (
 _EMPTY = "  (none)"
 _NO_CODE = "(no corresponding change)"
 _NO_TESTS = "(no mapped test)"
-# Deliberately not phrased as an absence. "(no mapped test)" under a boundary
-# obligation would read as a gap; this says the axis does not apply (#153).
-_NOT_APPLICABLE = "not applicable — confirmed by code evidence alone"
+
+
+def _not_required(obligation: Obligation) -> str:
+    """The "this axis was not owed" line, with the reason that justifies it.
+
+    Deliberately not phrased as an absence. "(no mapped test)" under such an
+    obligation would read as a gap (#153), and "not applicable" on its own is an
+    assertion a reader cannot argue with — which is what makes an incorrect one
+    invisible. The reason is the argument (#266), so a reader who believes a test
+    IS owed here has a specific sentence to disagree with.
+    """
+    reason = obligation.required_evidence_reason.strip()
+    return f"not required — {reason}" if reason else "not required"
 
 
 def _examined_claim(scope_examined: list[str]) -> str:
@@ -350,30 +359,35 @@ def _obligation_block(
             " — not re-derived for this head]"
         )
 
-    coverage = (obligation.coverage_status or "unclassified").replace("_", " ")
-    lines.append(f"       code evidence: {coverage}")
-    if obligation.coverage_refs:
-        for ref in obligation.coverage_refs:
-            item += 1
-            lines.append(f"         {index}.{item}  {ref}")
-    elif obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY:
-        # #153: one completeness claim over the examined set, never a listing.
-        # Printing every hunk here would read as "these changes support the
-        # obligation" when the claim is "these were checked and none breaches
-        # it" — and under a boundary obligation that is the whole diff, which
-        # is noise on top of being wrong. The count is what makes the claim
-        # auditable: it says how much "none of them" ranged over.
-        lines.append(f"         {_examined_claim(obligation.scope_examined)}")
+    if obligation.required_evidence.requires_code:
+        coverage = (obligation.coverage_status or "unclassified").replace("_", " ")
+        lines.append(f"       code evidence: {coverage}")
+        if obligation.coverage_refs:
+            for ref in obligation.coverage_refs:
+                item += 1
+                lines.append(f"         {index}.{item}  {ref}")
+        elif obligation.satisfied_by_absence:
+            # #153: one completeness claim over the examined set, never a listing.
+            # Printing every hunk here would read as "these changes support the
+            # obligation" when the claim is "these were checked and none breaches
+            # it" — and under a boundary obligation that is the whole diff, which
+            # is noise on top of being wrong. The count is what makes the claim
+            # auditable: it says how much "none of them" ranged over.
+            lines.append(f"         {_examined_claim(obligation.scope_examined)}")
+        else:
+            lines.append(f"         {_NO_CODE}")
     else:
-        lines.append(f"         {_NO_CODE}")
+        lines.append(f"       code evidence: {_not_required(obligation)}")
 
-    # #153: a boundary obligation is confirmed by the absence of excluded work,
-    # so it has no test axis to render. Printing "test evidence: unsupported /
-    # no tests" under it is not merely noise — it reads identically to a
-    # requirement whose tests are missing, which is the distinction this line
-    # exists to preserve. State instead that the axis does not apply.
-    if obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY:
-        lines.append(f"       test evidence: {_NOT_APPLICABLE}")
+    # An obligation that requires no test evidence has no test axis to render.
+    # Printing "test evidence: unsupported / no tests" under it is not merely
+    # noise — it reads identically to a requirement whose tests are missing,
+    # which is the distinction this line exists to preserve (#153). State
+    # instead that none is required, and why (#266): the reason is what a reader
+    # who thinks a test IS owed here can argue with, and without it the line is
+    # an assertion rather than a claim.
+    if not obligation.required_evidence.requires_tests:
+        lines.append(f"       test evidence: {_not_required(obligation)}")
     else:
         evidence = (obligation.evidence_class or "unclassified").replace("_", " ")
         tier = obligation.achieved_evidence_tier

@@ -12,12 +12,12 @@ from acceptance.coverage.recommendations import recommend_tests
 from acceptance.evidence.discrimination import ObligationDiscrimination, PlausibleDefect
 from acceptance.llm import SchemaValidationError
 from acceptance.review_state import (
-    AdmissibleEvidence,
     ChangeSet,
     DiffHunk,
     FileChange,
     Obligation,
     ObligationType,
+    RequiredEvidence,
 )
 from tests.support import client_returning as _client_returning
 
@@ -130,15 +130,13 @@ def test_strongly_supported_obligations_get_no_recommendation_and_no_model_call(
         _obligation("solid", "Well-tested behavior", "strongly_supported"),
     ]
     # The exploding client proves no model call is issued when nothing is weak.
-    recommendations = recommend_tests(obligations, [], _change_set(), _exploding_client())
-    assert recommendations == []
+    assert recommend_tests(obligations, [], _change_set(), _exploding_client()) == []
 
 
 def test_unclassified_obligations_are_not_recommended():
     # evidence_class=None means "not yet classified", not "weak" — skip it.
     obligations = [_obligation("pending", "Not yet classified", None)]
-    recommendations = recommend_tests(obligations, [], _change_set(), _exploding_client())
-    assert recommendations == []
+    assert recommend_tests(obligations, [], _change_set(), _exploding_client()) == []
 
 
 def test_recommendation_round_trips_through_persistence():
@@ -291,7 +289,9 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
         explicit=True,
         observable_behavior="pagination code appearing in the diff",
         evidence_class="unsupported",
-        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        required_evidence=RequiredEvidence.CODE_ONLY,
+        required_evidence_reason="no test can assert that excluded work was not done",
+        satisfied_by_absence=True,
     )
 
     result = recommend_tests([boundary], [], _change_set(), _exploding_client())
@@ -315,7 +315,9 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
         explicit=True,
         observable_behavior="pagination code appearing in the diff",
         evidence_class="unsupported",
-        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        required_evidence=RequiredEvidence.CODE_ONLY,
+        required_evidence_reason="no test can assert that excluded work was not done",
+        satisfied_by_absence=True,
     )
     client = _client_returning(
         {

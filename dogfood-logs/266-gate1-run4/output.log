@@ -1,0 +1,258 @@
+Requirements: 46   with obligations: 45   deliberately none: 1
+
+[task-01] Each criterion records which kinds of evidence it requires, and only the
+    stages that gather those kinds of evidence consider it.
+    -> criterion-records-required-evidence-kinds  [functional/explicit]   (also serves constraint-01)
+       Each criterion records which kinds of evidence it requires.
+    -> stage-gating-by-required-evidence-kinds  [functional/explicit]
+       Only the stages that gather the kinds of evidence a criterion requires consider
+       it.
+
+[constraint-01] Each criterion records which kinds of evidence it requires.
+    -> criterion-records-required-evidence-kinds  [functional/explicit]   (also serves task-01)
+       Each criterion records which kinds of evidence it requires.
+
+[constraint-02] The kinds recorded are exactly one of: both code and test evidence, code
+    evidence alone, test evidence alone, or neither.
+    -> criterion-required-evidence-kinds-enumerated  [boundary/explicit]
+       The kinds recorded are exactly one of: both code and test evidence, code evidence
+       alone, test evidence alone, or neither.
+
+[constraint-03] A criterion cannot record that test evidence is both required and not
+    required.
+    -> criterion-test-evidence-requirement-is-single-valued  [invariant/explicit]
+       A criterion cannot record that test evidence is both required and not required.
+
+[constraint-04] The kinds a criterion requires are decided when criteria are derived
+    from the mandate.
+    -> required-kinds-decided-at-derivation  [functional/explicit]
+       The kinds a criterion requires are decided when criteria are derived from the
+       mandate.
+
+[constraint-05] No later stage revises the kinds a criterion requires.
+    -> required-kinds-not-revised-later  [invariant/explicit]
+       No later stage revises the kinds a criterion requires.
+
+[constraint-06] A criterion requires both kinds of evidence unless a reason is given for
+    requiring fewer.
+    -> criterion-defaults-to-both-kinds-unless-reason-given  [functional/explicit]
+       A criterion requires both kinds of evidence unless a reason is given for
+       requiring fewer.
+
+[constraint-07] A criterion requiring fewer than both kinds carries the reason it does.
+    -> criterion-fewer-than-both-carries-reason  [functional/explicit]
+       A criterion requiring fewer than both kinds carries the reason for requiring
+       fewer.
+
+[constraint-08] The recorded kinds are part of the persisted review state.
+    -> recorded-kinds-persisted-review-state  [invariant/explicit]
+       The recorded kinds are included in the persisted review state.
+
+[constraint-09] A criterion that does not require test evidence is not offered to the
+    stage that matches tests to criteria.
+    -> no-testless-criteria-in-test-matching-stage  [functional/explicit]
+       A criterion that does not require test evidence is excluded from the stage that
+       matches tests to criteria.
+
+[constraint-10] A criterion that does not require test evidence is not rated on the
+    test-evidence axis.
+    -> no-testless-criteria-on-test-axis  [functional/explicit]
+       A criterion that does not require test evidence is left unrated on the test-
+       evidence axis.
+
+[constraint-11] A criterion that does not require test evidence is not prescribed a
+    test.
+    -> no-testless-criteria-prescribed-test  [functional/explicit]
+       A criterion that does not require test evidence is prescribed no test.
+
+[constraint-12] A criterion that does not require code evidence is not offered to the
+    stage that classifies whether the change addresses it.
+    -> no-code-less-criteria-in-addressing-stage  [functional/explicit]
+       A criterion that does not require code evidence is excluded from the stage that
+       classifies whether the change addresses it.
+
+[constraint-13] A criterion requiring neither kind is reported as needing evidence the
+    review cannot gather.
+    -> neither-kind-reported-unmeasurable  [functional/explicit]
+       A criterion requiring neither kind is reported as needing evidence the review
+       cannot gather.
+
+[constraint-14] A criterion the change addresses and that requires code evidence alone
+    is reported as satisfied rather than as unmeasured.
+    -> addressed-code-only-criterion-reported-satisfied  [functional/explicit]
+       A criterion the change addresses and that requires code evidence alone is
+       reported as satisfied rather than as unmeasured.
+
+[constraint-15] A criterion under a mandate's scope-exclusion heading may still require
+    test evidence.
+    -> criterion-scope-exclusion-may-still-require-test-evidence  [functional/explicit]
+       A criterion under a mandate's scope-exclusion heading may still require test
+       evidence.
+
+[constraint-16] A review of a change that modifies only configuration files produces a
+    report.
+    -> config-only-review-produces-report  [functional/explicit]
+       A review of a change that modifies only configuration files produces a report.
+
+[constraint-17] Two runs over the same mandate record the same required kinds.
+    -> same-mandate-same-required-kinds  [invariant/explicit]
+       Two runs over the same mandate record the same required kinds.
+
+[constraint-18] The report states, for a criterion that does not require test evidence,
+    that test evidence is not required, and why.
+    -> report-states-test-not-required-and-why  [functional/explicit]
+       The report states, for a criterion that does not require test evidence, that test
+       evidence is not required, and why.
+
+[constraint-19] The report distinguishes that from a criterion that requires test
+    evidence and has none.
+    -> report-distinguishes-no-test-from-missing-test  [functional/explicit]
+       The report distinguishes that from a criterion that requires test evidence and
+       has none.
+
+[constraint-20] A recorded model exchange carries the reason the model stopped
+    generating.
+    -> recorded-model-exchange-carries-stop-reason  [functional/explicit]
+       A recorded model exchange carries the reason the model stopped generating.
+
+[constraint-21] A test whose assertions bear on several criteria is recorded against
+    every one of those criteria.
+    -> test-recorded-against-every-covered-criterion  [functional/explicit]
+       A test whose assertions bear on several criteria is recorded against every one of
+       those criteria.
+
+[constraint-22] Criteria that overlap one another are not treated as alternatives when a
+    test bears on more than one of them.
+    -> overlapping-criteria-not-treated-as-alternatives  [functional/explicit]
+       Criteria that overlap one another are not treated as alternatives when a test
+       bears on more than one of them.
+
+[exclusion-01] How many criteria are carried in one request to the model.
+    -> exclude-criteria-per-request-count  [functional/explicit]
+       The change does not alter how many criteria are carried in one request to the
+       model.
+
+[exclusion-02] Whether the model's judgement about which kinds a criterion requires is
+    correct.
+    -> exclude-model-judgement-correctness  [functional/explicit]
+       The change does not alter whether the model's judgement about which kinds a
+       criterion requires is correct.
+
+[exclusion-03] How a criterion's test evidence is rated once the test-evidence axis
+    applies.
+    -> exclude-test-evidence-rating-axis  [functional/explicit]
+       The change does not alter how a criterion's test evidence is rated once the test-
+       evidence axis applies.
+
+[exclusion-04] Which evidence tier a finding is recorded at.
+    -> exclude-finding-evidence-tier  [functional/explicit]
+       The change does not alter which evidence tier a finding is recorded at.
+
+[exclusion-05] How the mandate is parsed into its sections.
+    -> exclude-mandate-parsing-into-sections  [functional/explicit]
+       The change does not alter how the mandate is parsed into its sections.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       This section marker names no checkable requirement beyond the heading itself.
+
+[completion-02] A test asserts that the kinds of evidence a criterion requires reach the
+    persisted review state.
+    -> test-evidence-persisted-review-state  [test_demand/explicit]
+       A test asserts that the kinds of evidence a criterion requires reach the
+       persisted review state.
+
+[completion-03] A test asserts that a criterion requiring fewer than both kinds carries
+    a reason.
+    -> test-reason-for-fewer-kinds  [test_demand/explicit]
+       A test asserts that a criterion requiring fewer than both kinds carries a reason.
+
+[completion-04] A test asserts that a criterion with no stated reason requires both
+    kinds.
+    -> test-no-reason-requires-both-kinds  [test_demand/explicit]
+       A test asserts that a criterion with no stated reason requires both kinds.
+
+[completion-05] A test asserts that a criterion not requiring test evidence is absent
+    from the input to the stage that matches tests to criteria.
+    -> test-no-test-evidence-absent-from-matching-input  [test_demand/explicit]
+       A test asserts that a criterion not requiring test evidence is absent from the
+       input to the stage that matches tests to criteria.
+
+[completion-06] A test asserts that a criterion not requiring test evidence is left
+    unrated on the test-evidence axis.
+    -> test-no-test-evidence-left-unrated  [test_demand/explicit]
+       A test asserts that a criterion not requiring test evidence is left unrated on
+       the test-evidence axis.
+
+[completion-07] A test asserts that a criterion not requiring test evidence is
+    prescribed no test.
+    -> test-no-test-evidence-prescribed-no-test  [test_demand/explicit]
+       A test asserts that a criterion not requiring test evidence is prescribed no
+       test.
+
+[completion-08] A test asserts that a criterion not requiring code evidence is absent
+    from the input to the stage that classifies whether the change addresses it.
+    -> test-no-code-evidence-absent-from-classification-input  [test_demand/explicit]
+       A test asserts that a criterion not requiring code evidence is absent from the
+       input to the stage that classifies whether the change addresses it.
+
+[completion-09] A test asserts that a criterion requiring neither kind is reported as
+    needing evidence the review cannot gather.
+    -> test-criterion-needing-neither-reported-as-unmeasurable  [test_demand/explicit]
+       A test asserts that a criterion requiring neither kind is reported as needing
+       evidence the review cannot gather.
+
+[completion-10] A test asserts that an addressed criterion requiring code evidence alone
+    is reported as satisfied.
+    -> test-criterion-code-only-addressed-reported-satisfied  [test_demand/explicit]
+       A test asserts that an addressed criterion requiring code evidence alone is
+       reported as satisfied.
+
+[completion-11] A test asserts that a criterion under a scope-exclusion heading can
+    require test evidence.
+    -> test-scope-exclusion-can-require-test-evidence  [test_demand/explicit]
+       A test asserts that a criterion under a scope-exclusion heading can require test
+       evidence.
+
+[completion-12] A test asserts that a review of a change modifying only configuration
+    files produces a report.
+    -> test-config-only-change-produces-report  [test_demand/explicit]
+       A test asserts that a review of a change modifying only configuration files
+       produces a report.
+
+[completion-13] A test asserts that two runs over the same mandate record the same
+    required kinds.
+    -> test-two-runs-same-mandate-same-required-kinds  [test_demand/explicit]
+       A test asserts that two runs over the same mandate record the same required
+       kinds.
+
+[completion-14] A test asserts that the report states why test evidence is not required
+    for a criterion that does not require it.
+    -> test-report-explains-why-test-evidence-not-required  [test_demand/explicit]
+       A test asserts that the report states why test evidence is not required for a
+       criterion that does not require it.
+
+[completion-15] A test asserts that the report renders that differently from a criterion
+    that requires test evidence and has none.
+    -> test-report-distinguishes-no-test-required-from-missing-test  [test_demand/explicit]
+       A test asserts that the report renders that differently from a criterion that
+       requires test evidence and has none.
+
+[completion-16] A test asserts that a recorded model exchange carries the reason the
+    model stopped generating.
+    -> test-recorded-model-exchange-carries-stop-reason  [test_demand/explicit]
+       A test asserts that a recorded model exchange carries the reason the model
+       stopped generating.
+
+[completion-17] A test asserts that a test bearing on several criteria is recorded
+    against every one of them.
+    -> test-bears-on-several-criteria-recorded-against-each  [test_demand/explicit]
+       A test asserts that a test bearing on several criteria is recorded against every
+       one of them.
+
+[completion-18] A test asserts that the mapping instruction requires every overlapping
+    criterion to be returned rather than the closest one.
+    -> mapping-instruction-returns-overlapping-criteria  [test_demand/explicit]
+       A test asserts that the mapping instruction requires every overlapping criterion
+       to be returned rather than the closest one.
+

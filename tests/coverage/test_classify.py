@@ -19,10 +19,10 @@ from acceptance.coverage.classify import (
     classify_coverage,
 )
 from acceptance.review_state import (
-    AdmissibleEvidence,
     ChangeSet,
     Obligation,
     ObligationType,
+    RequiredEvidence,
 )
 from tests.support import client_returning as _client_returning
 from tests.support import make_obligation as _obligation
@@ -243,7 +243,14 @@ def _boundary_obligation():
         importance="critical",
         explicit=True,
         observable_behavior="pagination code appearing in the diff",
-        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        # Both, because a scope exclusion carries both and they are independent
+        # (#266): the heading settles the absence, the model settles which
+        # evidence is owed. `classify` keys on the absence — the citation
+        # stripping below is about a boundary having no supporting hunks, which
+        # is false of a version pin that also requires code evidence alone.
+        required_evidence=RequiredEvidence.CODE_ONLY,
+        required_evidence_reason="no test can assert that excluded work was not done",
+        satisfied_by_absence=True,
     )
 
 

@@ -26,7 +26,6 @@ from acceptance.coverage.prompt import render_diff_section
 from acceptance.evidence.discrimination import ObligationDiscrimination
 from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
 from acceptance.review_state import (
-    AdmissibleEvidence,
     ChangeSet,
     Obligation,
     TestRecommendation,
@@ -60,8 +59,9 @@ recommendation with these discrete fields:
 - repo_conventions: relevant conventions or fixtures from the diff to follow
   (test file, naming, existing fixtures) so the added test fits the repo.
 
-Return one recommendation per criterion you are given, keyed by its
-`obligation_id`. If given no criteria, return an empty list."""
+Every criterion you are given requires test evidence — that was settled before
+this call and is not yours to revisit. Return one recommendation per criterion,
+keyed by its `obligation_id`. If given no criteria, return an empty list."""
 
 
 class _Recommendation(StrictResponseModel):
@@ -82,16 +82,23 @@ def _weak_obligations(obligations: list[Obligation]) -> list[Obligation]:
     """Obligations with a real evidence gap — evidence_class set and below
     strongly_supported (the M7.1 trigger).
 
-    Code-evidence-only obligations are excluded (#153). Theirs is not a gap a
-    test could close: they are satisfied by the absence of excluded work, and no
-    test can assert that work was not done. Recommending one would prescribe
-    evidence that cannot exist, which is worse than recommending nothing —
-    #146's review demanded a test for "we didn't also do something else".
+    Obligations that do not require test evidence never reach here (#266): the
+    pipeline holds them out of mapping and strength, so they carry no
+    `evidence_class` to be weak. The check below is the belt to that braces —
+    prescribing a test for a criterion no test is owed for demands evidence that
+    cannot exist, which is worse than prescribing nothing (#146's review asked
+    for a test proving "we didn't also do something else").
+
+    This used to be a judgement the model made HERE, per obligation, in a second
+    list beside the recommendations. That let two stages disagree about the same
+    obligation, and on a real run one response put three obligations in both
+    lists at once. The question has one answer and is now asked once, at
+    decomposition.
     """
     return [
         obligation
         for obligation in obligations
-        if obligation.admissible_evidence is not AdmissibleEvidence.CODE_ONLY
+        if obligation.required_evidence.requires_tests
         and obligation.evidence_class is not None
         and obligation.evidence_class != _STRONG
     ]
@@ -130,7 +137,8 @@ def recommend_tests(
     unusable: UnusableAnswerLog | None = None,
 ) -> list[TestRecommendation]:
     """Prescribe a §9.5 test recommendation for each not-strongly-supported
-    obligation. No weak obligations -> no model call."""
+    obligation that requires test evidence. No weak obligations -> no model
+    call."""
     weak = _weak_obligations(obligations)
     if not weak:
         return []
@@ -166,6 +174,11 @@ def recommend_tests(
     # produced a report where two carried no recommendation and nothing
     # distinguished it from a complete answer. That is M1.2.r1's missing
     # disposition, one stage downstream, and it is rejected the same way.
+    #
+    # Every obligation reaching here requires test evidence, decided at
+    # decomposition. So silence is once again the only thing this has to
+    # reject — there is no correct reason for the model to skip one, and no
+    # second list in which it might have answered instead (#266).
     returned: dict[str, _Recommendation] = {}
     for rec in result.recommendations:
         if rec.obligation_id in returned:

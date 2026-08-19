@@ -47,11 +47,11 @@ from acceptance.partition import partition
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import ParsedTaskFile
 from acceptance.review_state import (
-    AdmissibleEvidence,
     Disposition,
     Obligation,
     ObligationType,
     OpenQuestion,
+    RequiredEvidence,
     RequirementDisposition,
     RequirementMap,
     RequirementRef,
@@ -231,14 +231,68 @@ PROPERTY, and its positive form — "the checkout behavior is preserved" — say
 the same thing. A scope exclusion names WORK, and work has no positive form, so
 the only faithful statement of it is the negative one.
 
-`observable_behavior` names what a reader would look for IN THE CHANGE to find a
-breach — the work whose presence would refute the obligation — and never what a
-test would assert. No test can demonstrate that work was not done, and none will
-be asked for.
+`observable_behavior` names the WORK whose presence in the change would REFUTE
+the obligation — what a reader looks for in order to find a breach:
+
+    "pagination logic appearing in the diff"
+    "compression steps or archive creation in the export path"
+
+NOT a property the change leaves intact:
+
+    NOT -> "the implementation leaves pagination unchanged"
+    NOT -> "currency support is preserved"
+
+Those are the positive reframing this section already rejects for `description`,
+moved one field along, and it is rejected here too. The words "preserve",
+"keep", "maintain" and "unchanged" have no place in either field.
+
+Whether such an obligation needs a TEST is a separate question, answered under
+WHICH EVIDENCE AN OBLIGATION REQUIRES below. Most scope exclusions need none —
+no test can demonstrate that work was not done. Some do: a bullet excluding
+WORK ("we are not also building the export feature") is unevidenceable by test,
+while a bullet excluding a change to BEHAVIOR ("this does not alter how
+pagination works") names something a regression test asserts directly. Decide it
+per bullet; the heading does not settle it.
 
 Every bullet under one `## Scope exclusions` heading is treated the same way as
 its siblings — they are the same kind of statement. If one of them reads like it
 demands work, re-read it: it is naming the work it excludes.
+
+WHICH EVIDENCE AN OBLIGATION REQUIRES
+
+Set `required_evidence` on every obligation. It has exactly four values, and it
+is decided HERE — no later stage revisits it, and nothing downstream will ask
+you again:
+
+- `code_and_tests` — the default, and correct for almost everything. The change
+  must contain something that addresses the obligation, AND a test must
+  demonstrate the behavior.
+- `code_only` — the source itself settles it, and no test would add anything.
+  A pinned dependency version, a CI action's major version, a configuration
+  value, "implement this using pydantic", or work a scope exclusion says was not
+  done. A reader confirms these by looking at the change.
+- `tests_only` — the obligation asks for a TEST and no source change of its own,
+  as in a mandate's "a test asserts that X". The test is the whole of what it
+  demands.
+- `neither` — the repository cannot settle it at all: runtime behavior under
+  load, how something looks, a judgement only a person can make.
+
+Choose `code_and_tests` unless you can say WHY less is required, and put that
+why in `required_evidence_reason` — one specific sentence about THIS obligation,
+which a reader who disagrees can argue with. Leave the reason empty only for
+`code_and_tests`. A narrowing with no reason will be discarded and the
+obligation will require both kinds.
+
+Two mistakes to avoid, in opposite directions. Do not answer `code_only` merely
+because writing the test looks awkward, or because the behavior is hard to
+reach: "no test is owed" is a statement about the KIND of thing the obligation
+is, not about the effort of testing it, and a wrong one silently removes the
+obligation from the evidence the review checks. And do not answer
+`code_and_tests` for something a test genuinely cannot observe, which asks for
+evidence that cannot exist.
+
+Use `neither` rarely. It excuses the obligation from everything this review
+measures, so a mandate answered that way widely would be reviewed not at all.
 
 Each requirement's obligations are carried INSIDE its own disposition, so every
 obligation belongs to exactly one requirement. Account for each requirement on
@@ -266,6 +320,11 @@ class _DecomposedObligation(StrictResponseModel):
     explicit: bool
     observable_behavior: str
     source_quote: str
+    # Which kinds of evidence this obligation requires, decided here and nowhere
+    # else (#266). A single enum, so "both required and not required" is not a
+    # sayable answer; a reason, so narrowing is auditable rather than asserted.
+    required_evidence: RequiredEvidence
+    required_evidence_reason: str
 
 
 class _OpenQuestion(StrictResponseModel):
@@ -693,13 +752,20 @@ def decompose(
         # Obligations are lifted out of their dispositions in registry order, so
         # the flat list downstream reads in document order and two runs over the
         # same input produce it identically.
-        # Which kinds of evidence apply is decided from the parse, never from
-        # the model's answer. The section a requirement was parsed out of is
-        # already known here (`RequirementRef.section`), so an obligation
-        # derived from `## Scope exclusions` is marked code-evidence-only
+        # Whether an obligation is satisfied by work NOT done is decided from
+        # the parse, never from the model's answer. The section a requirement
+        # was parsed out of is already known here (`RequirementRef.section`), so
+        # an obligation derived from `## Scope exclusions` is marked
         # structurally — the same move #232 made for TEST_DEMAND and #219 for
         # sibling dispositions, both of which failed while they depended on the
         # model restating a distinction it had already been told.
+        #
+        # Which KINDS OF EVIDENCE it requires is a different question and the
+        # model does answer it (#266). The two were one field until a scope
+        # exclusion excluding a change to BEHAVIOR turned out to want a
+        # regression test, which the structural rule could never express. What
+        # the heading still settles beyond argument is the absence, and that is
+        # all it now settles.
         exclusion_ids = {
             requirement.id
             for requirement in registry
@@ -712,19 +778,26 @@ def decompose(
             for item in _decode_obligations(entry, unusable_answers):
                 # Which requirement an obligation belongs to is decided by where
                 # its quotation lands, not by which disposition carried it. The
-                # section that decides `admissible_evidence` then comes from the
-                # OWNING requirement — an obligation re-attributed into a scope
-                # exclusion is code-evidence-only, exactly as one derived there
-                # directly would be (#153).
+                # section that decides `satisfied_by_absence` then comes from
+                # the OWNING requirement — an obligation re-attributed into a
+                # scope exclusion is satisfied by an absence, exactly as one
+                # derived there directly would be (#153).
                 span, owner = _locate_quotation(
                     registry, parsed.source, item.source_quote, entry.requirement_id
                 )
                 section_id = owner.id if owner is not None else entry.requirement_id
-                admissible = (
-                    AdmissibleEvidence.CODE_ONLY
-                    if section_id in exclusion_ids
-                    else AdmissibleEvidence.CODE_AND_TESTS
-                )
+                by_absence = section_id in exclusion_ids
+                # A narrowing with no reason behind it is discarded. The reason
+                # is the only thing that makes "less evidence is owed here"
+                # auditable, so an unreasoned narrowing is indistinguishable
+                # from the question being skipped — and the safe reading of a
+                # skipped question is that every kind of evidence is still owed.
+                required = item.required_evidence
+                reason = item.required_evidence_reason.strip()
+                if required is not RequiredEvidence.CODE_AND_TESTS and not reason:
+                    required = RequiredEvidence.CODE_AND_TESTS
+                if required is RequiredEvidence.CODE_AND_TESTS:
+                    reason = ""
                 # Ids are minted here, in the order they always were, so an
                 # obligation that was attributed correctly keeps the id it had
                 # before this check existed. Only which requirement claims it —
@@ -742,7 +815,9 @@ def decompose(
                             explicit=item.explicit,
                             observable_behavior=item.observable_behavior,
                             source_spans=[span] if span is not None else [],
-                            admissible_evidence=admissible,
+                            required_evidence=required,
+                            required_evidence_reason=reason,
+                            satisfied_by_absence=by_absence,
                         ),
                     )
                 )

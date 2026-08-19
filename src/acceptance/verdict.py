@@ -31,7 +31,6 @@ from __future__ import annotations
 
 from acceptance.coverage.open_questions import derived_obligation_id
 from acceptance.review_state import (
-    AdmissibleEvidence,
     CompletionResult,
     CompletionVerdict,
     Disposition,
@@ -39,6 +38,7 @@ from acceptance.review_state import (
     MandateCoverage,
     Obligation,
     OpenQuestion,
+    RequiredEvidence,
     RequirementMap,
 )
 
@@ -141,13 +141,26 @@ def derive_verdict(
         if obligation.description in gap_obligations:
             material_gaps.append(obligation.id)  # code missing/partial — a coverage gap
             continue
-        if obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY:
+        if obligation.required_evidence is RequiredEvidence.NEITHER:
+            # The repository cannot settle this one at all (#266). Neither axis
+            # applies, so neither can clear it — it is routed to the same
+            # non-code review as `requires_other_evidence`, which is the honest
+            # answer and never a pass.
+            non_code.append(obligation.id)
+            continue
+        if not obligation.required_evidence.requires_tests:
             code_only.append(obligation.id)
             # #153: the test-evidence axis does not apply, so no value on it —
             # including None — is a gap. It still reached the coverage-gap check
             # above, which is the axis that DOES apply: a breached boundary is a
             # material gap like any other. Skipping the whole obligation instead
             # would make an exclusion unfalsifiable.
+            #
+            # #266: such an obligation is SATISFIED once the code evidence is in,
+            # not unmeasured. Its evidence requirement was decided deliberately
+            # and recorded with a reason, so there is nothing left outstanding —
+            # `indeterminate` would say the review failed to judge something it
+            # in fact judged.
             continue
         evidence = obligation.evidence_class
         if evidence == "requires_other_evidence":
