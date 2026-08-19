@@ -1647,7 +1647,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   recorded and replays deterministically. **Alternative rejected:** doing it
   inside #275 — it would expand a fix that unblocks another task, and the
   not-obtained disposition is needed whether or not a retry exists.
-- **Status:** open
+- **Status:** filed (#280, sub-issue of #185) — #275 landed as `441c829`
 
 ### [2026-08-19] Twenty ratings moved on a test-only change — a controlled #252 pair
 - **Kind:** filing (comment)
