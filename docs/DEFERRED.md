@@ -1680,3 +1680,116 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   that obligation's evidence, in obligation 1).
 - **Status:** filed (comment on #252)
 
+
+### [2026-08-19] The whole-review abort on a skipped recommendation survives #271 — FIXED by #279
+- **Kind:** filing
+- **Found during:** #269, Gate 2 run 3
+- **Where:** `src/acceptance/coverage/recommendations.py:196`
+- **Severity:** ~~blocker~~ — **resolved before filing**
+- **Resolution:** **#279** (*Record an omitted recommendation instead of
+  abandoning the review*) landed on `main` and fixes exactly this. Gate 2 run 4,
+  rebased onto it, renders the full report. **Do not file** — kept here as the
+  record of how it was found and confirmed fixed.
+- **What's wrong:** the review aborts before rendering with *"no recommendation
+  for 2 of 49 weak obligation(s): carry-forward-unchanged-merge-decisions,
+  reask-merge-decision-when-either-obligation-changed"*. **No report exists**, so
+  Gate 2 cannot be assessed at all — not clean, not unclean, unknown. 47 answered
+  obligations, every coverage finding and the verdict are all destroyed by two
+  skipped recommendations. Deterministic: reproduced identically on a replay
+  re-run.
+
+  This is the defect #258 was blocked on for a week and that **#271 landed to
+  close (#266)**. The comment #271 wrote directly above the raise states the
+  reasoning that was supposed to make it unreachable — *"Every obligation
+  reaching here requires test evidence, decided at decomposition. So silence is
+  once again the only thing this has to reject — there is no correct reason for
+  the model to skip one"*. The premise may be right; the conclusion does not
+  hold, because the model skipped two anyway.
+
+  Not a hard threshold: runs 1 and 2 of the same gate rendered at 44 and 49 weak
+  obligations. That restates #258's transcript finding — partitioning does not fix
+  this, it only shrinks how much each abort destroys.
+- **Why I didn't act:** `coverage/` is outside #269's area, and fixing the
+  recommender inside this branch would be a second delivery hiding in one PR.
+- **Drafted fix:** file as a child of **#185**, referencing #266 and #271 as the
+  prior attempt and #258 as the earlier victim. The design question to settle in
+  the issue: a skipped recommendation should degrade **that obligation** to "no
+  recommendation available", not destroy the report — the current rule treats an
+  incomplete answer as no answer, which is right for a disposition covering the
+  mandate (M1.2.r2) and wrong for an advisory prescription attached to one
+  obligation. Acceptance: a response that omits a recommendation for one weak
+  obligation still produces a report, that obligation is marked as carrying no
+  recommendation, and the omission is reported rather than silent. Labels `bug`,
+  `track:checker`. Evidence: `dogfood-logs/269-gate2-run3/`.
+- **Status:** closed — #279 landed the same fix independently. Nothing to file.
+
+### [2026-08-19] Adding tests made 33 obligations worse — ratings degrade on a re-judgement
+- **Kind:** filing
+- **Found during:** #269, Gate 2 runs 4 and 5 (supersedes the run 2/3 draft below)
+- **Where:** `src/acceptance/evidence/strength.py`, and the re-judgement path in
+  `rerun.py` / `pipeline.py`
+- **Severity:** blocker
+- **What's wrong:** run 5 differs from run 4 by one commit that **adds nine tests
+  and changes no source file**. The ratings moved like this:
+
+  | rating | run 4 | run 5 |
+  |---|---|---|
+  | strongly supported | **37** | **4** |
+  | partially supported | 3 | 48 |
+  | nominally supported | 8 | 0 |
+  | unsupported | 4 | 0 |
+
+  **33 obligations got worse because evidence was added.** The cleanest instance
+  is `unchanged-task-file-no-decompose-call`, where run 5 cites a strict
+  **superset** of run 4's tests — the same on-point test plus two more — and drops
+  from `strongly supported` to `partially supported`. The report's own delta
+  section spells it out: `Changes since 2276c135:` is line after line of
+  `test evidence: strongly supported -> partially supported`.
+
+  Run 5 is an incremental re-run — `find_prior_review` selected run 4's review and
+  re-judged what the change could affect. Nearly every obligation cites
+  `tests/requirement/test_carry_forward.py`, so nearly every obligation was
+  re-judged, and nearly every re-judgement came back a tier lower. Whether the
+  cause is the re-judgement path or the strength judge being harsher on a second
+  look is the question the issue has to settle; the observable fact is that a
+  rating is currently a function of **how many times an obligation has been
+  looked at**, not only of the evidence under it.
+
+  This bounds what any Gate 2 verdict in this repository is worth right now, which
+  is why it is a blocker rather than a should-fix.
+- **Severity note:** raised from should-fix after run 5. The run 2/3 instance
+  below is the same defect at two obligations, where it could still be argued as
+  noise.
+- **What's wrong:** `carry-forward-unchanged-merge-decisions` and
+  `reask-merge-decision-when-either-obligation-changed` were both
+  **`strongly supported`** in Gate 2 run 2, each citing two tests. One commit
+  later, in run 3, both are not-strongly-supported — `weak` is defined as exactly
+  that (`recommendations.py:139-142`), and their appearance in the weak set is
+  what triggers the abort filed above.
+
+  **Their evidence did not move.** The run-3 commit (`7fc842d`) touched
+  `requirement/obligations.py` and appended two tests to
+  `tests/requirement/test_carry_forward.py`. It did not touch
+  `requirement/linking.py`, which is the code these two obligations are about,
+  and it did not touch any of the four tests they cited in run 2 — all of which
+  still exist and still pass (1186 passing). The obligation text is identical in
+  both runs.
+
+  So a rating moved while the code under review, the obligation text and the
+  cited tests all stood still. What moved is unrelated content elsewhere in the
+  same diff and the same test file.
+- **Why I didn't act:** `evidence/` is outside #269's area, and no amount of test
+  writing inside #269 can fix a rating that moves for reasons unrelated to tests.
+- **Drafted fix:** file as a child of **#183**, cross-referencing **#251** (*a
+  criterion is re-judged only when its own inputs changed, and a changed rating
+  names the change*) — #251 is very close to being the fix, so check whether this
+  belongs as evidence on it rather than as a new issue. Acceptance, in two parts
+  because the run 4/5 pair separates them: (1) an obligation whose cited tests are
+  a superset of a prior run's, with unchanged obligation text, does not receive a
+  lower rating than that run gave it; (2) a rating that changes between two runs
+  names what changed, per #251. Evidence: `dogfood-logs/269-gate2-run4/` and
+  `-run5/` for the 37→4 collapse, `-run2/` and `-run3/` for the earlier
+  two-obligation instance. Labels `bug`, `track:checker`.
+- **Status:** filed (comment on #251). No separate issue: #251 already describes
+  this defect and cites two smaller instances of it, so splitting it off would
+  divide the evidence for one fix across two places.
