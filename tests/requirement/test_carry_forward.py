@@ -294,6 +294,139 @@ def test_a_fresh_run_prompt_is_unchanged_by_the_revision_block():
         assert "PREVIOUSLY DERIVED" not in prompt
 
 
+def test_a_revised_requirement_records_that_it_was_revised_and_why():
+    """`constraint-32` and `constraint-33`.
+
+    Found by the tool's own Gate 2, and it was a defect rather than a missing
+    test: a revised requirement's disposition came back saying `derived` with no
+    reason, which is exactly what a genuinely new requirement says. The two are
+    different — one had a predecessor and was re-asked against it — and losing the
+    distinction loses the only record that an identifier could have been reused.
+    """
+    first, _ = _run(_TASK)
+    prior = _ledger_from(first)
+
+    second, _ = _run(_EDITED, prior=prior, alignment=[{"ground_truth": "g0", "reviewer": "r0"}])
+
+    revised = [d for d in second.derivations if d.derivation is Derivation.REVISED]
+    assert len(revised) == 1
+    assert "The ledger is append-only." in revised[0].revision_reason
+
+    disposition = second.requirement_map.disposition_for(revised[0].requirement_id)
+    assert disposition.derivation == "revised"
+    assert disposition.revision_reason == revised[0].revision_reason
+    assert disposition.carried_from is not None
+
+    # And the untouched requirements are not stamped, so the mark means something.
+    others = [
+        d
+        for d in second.requirement_map.dispositions
+        if d.requirement_id != revised[0].requirement_id
+    ]
+    assert {d.derivation for d in others} == {"carried"}
+    assert all(d.revision_reason is None for d in others)
+
+
+def test_carrying_forward_does_not_freeze_a_superseded_obligation_in_place():
+    """DR-180's constraint, and the one this whole feature could most easily
+    violate: **do not buy stability by blunting the decomposer.**
+
+    #191 is the cautionary tale — its pre-change discrimination judge scored
+    beautifully on variance precisely because it answered `caught` to 114 of 114
+    defects. A carry-forward that carried everything would score perfectly on
+    every stability metric here and be exactly as useless.
+
+    The discriminating setup: the re-derivation returns a DIFFERENT obligation
+    from the one on file. An implementation that carried the edited requirement
+    anyway would still show the old obligation, and would pass every other test in
+    this module.
+    """
+    first, _ = _run(_TASK)
+    prior = _ledger_from(first)
+    # Exact text, not a substring: "append-only" also appears in the Completion
+    # bullet that demands a test of it, and that requirement is NOT being edited.
+    superseded = {
+        obligation.id
+        for derivation in prior.derivations
+        if derivation.text == "The ledger is append-only."
+        for obligation in derivation.obligations
+    }
+    assert superseded, "fixture must have an obligation on the requirement being edited"
+
+    parsed = parse_task_file(_EDITED)
+    registry = build_registry(parsed)
+    edited_id = next(r.id for r in registry if "only ever appended to" in r.text)
+    counting = _CountingClient(_EDITED, alignment=[{"ground_truth": "g0", "reviewer": "r0"}])
+    # The re-derivation answers with a new obligation id, as a real one would
+    # after a wording change that altered what is required.
+    counting.client._completion_fn = _answering(
+        {edited_id: ("ob-supersedes", "the ledger is only ever appended to")},
+        alignment=[{"ground_truth": "g0", "reviewer": "r0"}],
+    )
+
+    second = decompose(parsed, counting.client, prior=prior)
+
+    ids = {obligation.id for obligation in second.obligations}
+    assert "ob-supersedes" in ids
+    assert not (ids & superseded), "a superseded obligation was frozen in place"
+    # The requirements that did NOT change still kept theirs — the change is
+    # surgical rather than a full re-derivation wearing a carry-forward label.
+    assert second.requirement_map.disposition_for(edited_id).derivation == "revised"
+    assert (
+        sum(1 for d in second.derivations if d.derivation is Derivation.CARRIED)
+        == len(registry) - 1
+    )
+
+
+def _answering(by_requirement: dict[str, tuple[str, str]], alignment: list[dict] | None = None):
+    """A completion double answering the decompose call with chosen obligations.
+
+    Dispatches on the response schema, because a carrying run issues two different
+    kinds of call — the residue aligner and the re-derivation — and a double that
+    answered both with the same payload would fail the first.
+    """
+
+    def completion_fn(**kwargs):
+        from types import SimpleNamespace
+
+        if kwargs["response_format"]["json_schema"]["name"] == "_Alignment":
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(content=json.dumps({"matches": alignment or []}))
+                    )
+                ],
+                usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+            )
+
+        dispositions = [
+            {
+                "requirement_id": requirement_id,
+                "disposition": "yielded",
+                "obligation": {
+                    "id": obligation_id,
+                    "description": description,
+                    "type": "functional",
+                    "importance": "normal",
+                    "explicit": True,
+                    "observable_behavior": description,
+                    "source_quote": "",
+                    "required_evidence": "code_and_tests",
+                    "required_evidence_reason": "",
+                },
+                "more_obligations": [],
+            }
+            for requirement_id, (obligation_id, description) in by_requirement.items()
+        ]
+        payload = json.dumps({"open_questions": [], "requirement_dispositions": dispositions})
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=payload))],
+            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+        )
+
+    return completion_fn
+
+
 def test_a_removed_requirement_is_reported_and_its_obligations_dropped():
     """Reported rather than silent: a requirement that vanished took its
     obligations with it, and a run that simply stops mentioning them is

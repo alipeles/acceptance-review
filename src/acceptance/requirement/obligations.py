@@ -992,6 +992,13 @@ def decompose(
         parsed.unclaimed,
         carried_dispositions,
     )
+    # A revised requirement's disposition is built by the ordinary path, because
+    # it WAS asked of the model — so without this it would report itself as
+    # `derived` and carry no reason, which is the same thing a genuinely fresh
+    # requirement reports. The two are different: one had a predecessor and was
+    # re-asked against it, and losing that distinction loses the only record that
+    # an identifier could have been reused and was not.
+    requirement_map = _stamp_revisions(requirement_map, plan)
 
     if not plan.is_fresh():
         # Rebuild both flat lists by walking the map, so a carried obligation
@@ -1011,6 +1018,34 @@ def decompose(
         removed_requirements=list(plan.removed),
         calls_issued=calls_issued,
     )
+
+
+def _revision_reason(source: RequirementDerivation) -> str:
+    """Why a requirement was re-asked: the wording it used to have.
+
+    One definition, used by both the disposition and the ledger record, so the two
+    cannot drift into disagreeing about the same event.
+    """
+    return f"requirement text changed from: {source.text.strip()}"
+
+
+def _stamp_revisions(requirement_map: RequirementMap, plan: CarryPlan) -> RequirementMap:
+    """Mark the dispositions of requirements this run re-asked against a predecessor."""
+    if not plan.revised:
+        return requirement_map
+    stamped = [
+        disposition.model_copy(
+            update={
+                "derivation": Derivation.REVISED.value,
+                "carried_from": plan.revised[disposition.requirement_id].digest(),
+                "revision_reason": _revision_reason(plan.revised[disposition.requirement_id]),
+            }
+        )
+        if disposition.requirement_id in plan.revised
+        else disposition
+        for disposition in requirement_map.dispositions
+    ]
+    return requirement_map.model_copy(update={"dispositions": stamped})
 
 
 def _carried_disposition(
@@ -1096,7 +1131,7 @@ def _derivations(
                 reason=disposition.reason,
                 carried_from=source.digest() if source is not None else None,
                 revision_reason=(
-                    f"requirement text changed from: {source.text.strip()}"
+                    _revision_reason(source)
                     if kind is Derivation.REVISED and source is not None
                     else None
                 ),
