@@ -90,6 +90,18 @@ def _run_pytest(snapshot: Path, *args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _outcome(result: subprocess.CompletedProcess[str]) -> str:
+    """The `-q` summary without its timing — `"265 passed"`, `"1 failed, 264 passed"`.
+
+    Timing is the only part of that line that moves between two runs of the same
+    tests, so stripping it leaves a value that must be equal across the pair.
+    """
+    for line in reversed(result.stdout.splitlines()):
+        if " in " in line and ("passed" in line or "failed" in line or "error" in line):
+            return line.split(" in ")[0].strip()
+    return result.stdout[-500:]
+
+
 def _collected_ids(result: subprocess.CompletedProcess[str]) -> list[str]:
     """The node ids `--collect-only -q` printed, without its timing summary."""
     return [
@@ -117,7 +129,7 @@ def test_collection_is_identical_with_and_without_the_root_task_file(snapshot: P
         task_file.unlink(missing_ok=True)
 
     assert absent.returncode == 0, absent.stdout[-2000:]
-    assert present.returncode == 0, present.stdout[-2000:]
+    assert present.returncode == absent.returncode, present.stdout[-2000:]
 
     absent_ids = _collected_ids(absent)
     present_ids = _collected_ids(present)
@@ -130,13 +142,31 @@ def test_collection_is_identical_with_and_without_the_root_task_file(snapshot: P
     assert absent_ids == present_ids
 
 
-def test_the_tests_that_read_it_pass_when_it_is_absent(snapshot: Path):
-    """A fresh clone has no `current-task.md`, and before #258 the parse test
-    raised `FileNotFoundError` there before reaching an assertion."""
-    assert not (snapshot / "current-task.md").exists()
+def test_the_affected_tests_have_the_same_outcome_with_and_without_it(snapshot: Path):
+    """Outcomes, not only the case list.
 
-    result = _run_pytest(snapshot, "-q", *_AFFECTED)
+    A fresh clone has no `current-task.md`, and before #258 the parse test raised
+    `FileNotFoundError` there before reaching an assertion — so the absent run
+    has to pass. But collection can be identical while an *outcome* still moves:
+    a test that reads the file to compute an expected value keeps its id and
+    changes what it asserts. That is why both states are run and compared rather
+    than only the absent one.
+    """
+    task_file = snapshot / "current-task.md"
+    assert not task_file.exists()
+    try:
+        absent = _run_pytest(snapshot, "-q", *_AFFECTED)
+        task_file.write_text("# Task\nA task file that is not part of the corpus.\n")
+        present = _run_pytest(snapshot, "-q", *_AFFECTED)
+    finally:
+        task_file.unlink(missing_ok=True)
 
-    assert result.returncode == 0, result.stdout[-4000:]
-    assert " passed" in result.stdout
-    assert "no tests ran" not in result.stdout
+    assert absent.returncode == 0, absent.stdout[-4000:]
+    assert present.returncode == absent.returncode, present.stdout[-4000:]
+
+    # Not vacuous, and not quietly skipped: the affected tests really ran.
+    assert " passed" in absent.stdout
+    assert "no tests ran" not in absent.stdout
+    assert "skipped" not in absent.stdout, absent.stdout[-2000:]
+
+    assert _outcome(absent) == _outcome(present)

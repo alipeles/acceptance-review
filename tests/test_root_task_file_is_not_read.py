@@ -87,6 +87,14 @@ def test_the_scan_covers_helper_modules_and_conftest_too():
     assert TESTS_ROOT / "requirement" / "corpus.py" in sources
     assert any(p.name != "conftest.py" and not p.name.startswith("test_") for p in sources)
 
+    # The `fixtures` exclusion drops those files and nothing else. Without this,
+    # a widened exclusion — one more directory name, a typo that matches a real
+    # package — silently shrinks what the guard above can see, and the guard
+    # goes green by looking at less.
+    skipped = set(TESTS_ROOT.rglob("*.py")) - sources
+    assert skipped, "the exclusion is meant to drop the archetype fixtures"
+    assert all("fixtures" in p.parts for p in skipped)
+
 
 def test_the_pattern_matches_the_call_sites_258_removed():
     """The two real pre-#258 lines. A pattern that stopped matching these would
