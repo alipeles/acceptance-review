@@ -232,6 +232,37 @@ def test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained():
     assert log.indeterminate_obligations == {"proration"}
 
 
+def test_several_answers_survive_an_omission_and_several_omissions_are_each_recorded():
+    """The two-criterion case above cannot separate "keeps the answers" from
+    "keeps the one answer", and it cannot show that a second omission is
+    recorded rather than the first one standing for both.
+
+    Four criteria: two answered, two skipped, and the two skipped ones are not
+    adjacent in the supplied order — so an implementation that stopped at the
+    first gap, or that recorded one entry per response rather than per criterion,
+    fails here and passes the smaller case.
+    """
+    obligations = [
+        _obligation("daily-rate", "Daily rate uses days_in_month", "nominally_supported"),
+        _obligation("proration", "Proration handles partial months", "unsupported"),
+        _obligation("rounding", "Totals round half up", "nominally_supported"),
+        _obligation("credits", "Credits offset the next invoice", "unsupported"),
+    ]
+    response = {"recommendations": [_recommendation("daily-rate"), _recommendation("rounding")]}
+    log = UnusableAnswerLog()
+
+    result = recommend_tests(obligations, [], _change_set(), _client_returning(response), log)
+
+    assert [r.obligation_id for r in result.recommendations] == ["daily-rate", "rounding"]
+    # In supplied order, not response order and not "the first one we noticed".
+    assert [u.obligation_id for u in result.unobtained] == ["proration", "credits"]
+    assert [u.criterion for u in result.unobtained] == [
+        "Proration handles partial months",
+        "Credits offset the next invoice",
+    ]
+    assert log.indeterminate_obligations == {"proration", "credits"}
+
+
 def test_an_omission_does_not_mark_the_answered_obligations_indeterminate():
     """The other half of the same guarantee: a positive answer we could honour
     keeps its judgment. Marking the whole call indeterminate would discard

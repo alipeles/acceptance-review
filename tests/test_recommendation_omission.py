@@ -31,6 +31,7 @@ _TASK = (
     "- The checkout action is not on a Node 20 major version\n"
     "- Alpha behaves\n"
     "- Beta behaves\n"
+    "- Gamma behaves\n"
 )
 
 _PIN_REASON = "a property of the workflow file's action pin, which no pytest observes"
@@ -82,6 +83,7 @@ def _judgments(recommendations: list[dict]) -> dict:
                 ),
                 _obligation("alpha", "alpha() returns 1", "code_and_tests", ""),
                 _obligation("beta", "beta() returns 1", "code_and_tests", ""),
+                _obligation("gamma", "gamma() returns 1", "code_and_tests", ""),
             ],
             "open_questions": [],
             "requirement_dispositions": [],
@@ -96,7 +98,7 @@ def _judgments(recommendations: list[dict]) -> dict:
                     "rationale": "the diff implements it.",
                     "diff_refs": [],
                 }
-                for obligation_id in ("checkout-action", "alpha", "beta")
+                for obligation_id in ("checkout-action", "alpha", "beta", "gamma")
             ]
         },
         "_Detections": {"unrequested_changes": []},
@@ -149,10 +151,15 @@ def _review(tmp_path, recommendations: list[dict]) -> Review:
 
 @pytest.fixture
 def partial_review(tmp_path) -> Review:
-    """The real shape from `dogfood-logs/258-gate2-run2/`, at three obligations
-    instead of thirteen: the stage answers for one weak criterion and says
-    nothing about the other."""
-    return _review(tmp_path, [_prescription("beta")])
+    """The real shape from `dogfood-logs/258-gate2-run2/`, at four obligations
+    instead of thirteen: the stage answers for two weak criteria and says
+    nothing about a third.
+
+    Two answered rather than one, deliberately. With a single answer, "the
+    prescriptions that came back survive" and "one prescription survives" are
+    the same assertion, and the failure that started this — twelve answers
+    discarded to report a missing thirteenth — is about the plural."""
+    return _review(tmp_path, [_prescription("beta"), _prescription("gamma")])
 
 
 def test_an_omitted_criterion_still_produces_a_review(partial_review):
@@ -165,8 +172,13 @@ def test_an_omitted_criterion_still_produces_a_review(partial_review):
 def test_the_answered_criterion_keeps_its_prescription(partial_review):
     """What aborting cost. On the run this issue was filed from, twelve
     prescriptions were discarded to report that a thirteenth was missing."""
-    assert [r.obligation_id for r in partial_review.recommendations] == ["beta"]
-    assert partial_review.recommendations[0].required_assertions == ["assert beta() == 1"]
+    assert sorted(r.obligation_id for r in partial_review.recommendations) == ["beta", "gamma"]
+    # Whole prescriptions, not just their ids: an entry that survived with its
+    # §9.5 fields emptied would satisfy the id check and be useless to an agent.
+    for prescription in partial_review.recommendations:
+        assert prescription.required_assertions
+        assert prescription.plausible_defect
+        assert prescription.required_inputs
 
 
 def test_the_omitted_criterion_is_recorded_as_not_obtained(partial_review):
@@ -246,8 +258,13 @@ def test_the_not_obtained_record_survives_persistence(partial_review):
 def test_two_runs_over_the_same_inputs_render_the_same_report(tmp_path, tmp_path_factory):
     """M0.5: two recorded runs over one input are byte-identical, and the new
     path must not be where that stops being true."""
-    first = _review(tmp_path, [_prescription("beta")])
-    second = _review(tmp_path_factory.mktemp("second"), [_prescription("beta")])
+    # Two prescriptions alongside the omission, not one: with a single entry
+    # every ordering is the same ordering, so nothing about the report's
+    # stability is being asserted.
+    first = _review(tmp_path, [_prescription("gamma"), _prescription("beta")])
+    second = _review(
+        tmp_path_factory.mktemp("second"), [_prescription("gamma"), _prescription("beta")]
+    )
 
     def _without_revisions(report: str) -> str:
         return "\n".join(line for line in report.splitlines() if "revision" not in line.lower())
