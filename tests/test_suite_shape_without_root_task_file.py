@@ -175,7 +175,8 @@ def test_the_affected_tests_have_the_same_outcome_with_and_without_it(snapshot: 
 def test_a_read_of_the_root_path_would_fail_the_affected_tests(snapshot: Path):
     """The runtime counterpart to the source scan, and the case the scan cannot
     see: a read reached *indirectly* — through a helper, an alias, a computed
-    path — leaves no literal `REPO_ROOT / "current-task.md"` for a regex to find.
+    path — leaves no literal root-join-to-task-file-name for a regex to find.
+    (Naming that shape here would trip the scan, which is the point of it.)
 
     Absence alone does not probe it either, since a read guarded by an existence
     check passes happily when the file is not there. So the path is made
