@@ -27,7 +27,6 @@ __all__ = [
     "DECLARATION_ABSENT",
     "DECLARATION_MISMATCH",
     "UNREQUESTED_CHANGE",
-    "AdmissibleEvidence",
     "BuilderDeclaration",
     "ChangeSet",
     "CompletionResult",
@@ -49,6 +48,7 @@ __all__ = [
     "ObligationType",
     "OpenQuestion",
     "Project",
+    "RequiredEvidence",
     "RequirementDisposition",
     "RequirementMap",
     "RequirementRef",
@@ -60,7 +60,6 @@ __all__ = [
     "TestEvidence",
     "TestRecommendation",
     "TextSpan",
-    "UnevidenceableObligation",
     "UnrequestedChangeDisposition",
 ]
 
@@ -93,26 +92,64 @@ class ObligationType(str, Enum):
     TEST_DEMAND = "test_demand"
 
 
-class AdmissibleEvidence(str, Enum):
-    """Which kinds of evidence can bear on an obligation at all (#153).
+class RequiredEvidence(str, Enum):
+    """Which kinds of evidence an obligation REQUIRES (#153, restructured #266).
 
     A third axis, deliberately separate from the ones beside it: `type` is what
     the obligation is, `coverage_status` is whether the code responds,
     `evidence_class` is whether the tests discriminate. This is which kinds of
-    evidence are applicable in the first place.
+    evidence have to be present at all.
 
-    `CODE_ONLY` exists for obligations satisfied by an *absence* — the ones
-    derived from `## Scope exclusions`, where the requirement is that some work
-    was not done. No test can demonstrate an absence, so demanding test evidence
-    of such an obligation is a category error rather than a gap, and rating it
-    on the §9.3 strength axis measures nothing. Distinct from
-    `requires_other_evidence`, which says tests are the wrong *instrument* for a
-    thing that still needs evidencing (docs, visual, deploy); here the code
-    itself is the right and sufficient instrument.
+    Required, not *admissible* — the name this carried until #266. Every use of
+    it asks what must be there, never what is allowed to bear on the question:
+    the recommendation stage skips an obligation because no test is owed, the
+    report prints "not required", the verdict declines to call a missing test a
+    gap. Naming it for permission described none of that.
+
+    One enum rather than two booleans so the value is single and total. Two
+    booleans admit four states of which one is unreachable, and — the failure
+    that produced this restructure — let two stages disagree about the same
+    obligation. A model cannot answer "both required and not required" to a
+    question with one answer.
+
+    Deciding this is the decomposition's job and nothing downstream revises it
+    (#266). It was previously settled at the recommendation stage, which asked
+    the model a second time, per obligation, after mapping and strength had
+    already done work on obligations they should never have seen.
+
+    `CODE_ONLY` covers two shapes that look different and are not: a scope
+    exclusion satisfied by work not done, and a property the source states
+    outright — a pinned version, an action's major version, a library the
+    implementation must use. Neither is a gap a test could close, so neither is
+    rated on the §9.3 strength axis. Whether the obligation is satisfied by an
+    *absence* is a separate question and a separate field
+    (`satisfied_by_absence`): the two were conflated while this enum was the
+    only axis, and stripping citations from a version pin because a scope
+    exclusion has none would have been wrong.
+
+    `TESTS_ONLY` is for an obligation demanding a test and no source change of
+    its own — a mandate's "a test asserts that X". The test is the whole of what
+    it asks for.
+
+    `NEITHER` is for an obligation the review cannot settle from the repository
+    at all: runtime behavior, visual appearance, a judgement only a person can
+    make. It is reported as needing evidence the review cannot gather, never as
+    satisfied, and it should be rare — applying it widely would let the tool
+    excuse itself from the mandate one obligation at a time.
     """
 
     CODE_AND_TESTS = "code_and_tests"
     CODE_ONLY = "code_only"
+    TESTS_ONLY = "tests_only"
+    NEITHER = "neither"
+
+    @property
+    def requires_code(self) -> bool:
+        return self in (RequiredEvidence.CODE_AND_TESTS, RequiredEvidence.CODE_ONLY)
+
+    @property
+    def requires_tests(self) -> bool:
+        return self in (RequiredEvidence.CODE_AND_TESTS, RequiredEvidence.TESTS_ONLY)
 
 
 # The canonical `Finding.type` string for a §9.2 unrequested-change finding.
@@ -442,11 +479,29 @@ class Obligation(_Model):
     achieved_evidence_tier: EvidenceTier | None = None
     test_evidence: list[str] = Field(default_factory=list)
     evidence_class: EvidenceClassification | None = None
-    # #153's third axis: which kinds of evidence bear on this obligation at all,
-    # as opposed to how strong the evidence is (`evidence_class`) or whether the
-    # code responds (`coverage_status`). Defaults so every existing producer
-    # keeps its current meaning without restating it.
-    admissible_evidence: AdmissibleEvidence = AdmissibleEvidence.CODE_AND_TESTS
+    # #153's third axis: which kinds of evidence this obligation requires, as
+    # opposed to how strong the evidence is (`evidence_class`) or whether the
+    # code responds (`coverage_status`). Defaults to requiring both, so silence
+    # fails safe: an obligation nobody made a judgement about is still owed
+    # every kind of evidence, and cannot be quietly excused from the axis it
+    # would otherwise be measured on (#266).
+    required_evidence: RequiredEvidence = RequiredEvidence.CODE_AND_TESTS
+    # Why fewer than both kinds are required. Empty when both are, and required
+    # to be non-empty otherwise — see `requirement/obligations.py`, which drops
+    # a reasonless narrowing back to CODE_AND_TESTS. This is the whole of what
+    # makes the narrowing auditable: a reader who thinks a test IS owed here
+    # needs a specific sentence to disagree with, and "no reason given" is
+    # indistinguishable from the model skipping the question.
+    required_evidence_reason: str = ""
+    # Whether this obligation is satisfied by work NOT done, rather than by work
+    # present. Structural — it comes from the mandate's scope-exclusion heading,
+    # never from a model judgement — and deliberately independent of
+    # `required_evidence`: a behavioural exclusion ("pagination is unchanged")
+    # is satisfied by an absence AND may still want a regression test, while a
+    # version pin requires code evidence that is emphatically present. Conflating
+    # the two would strip a pin's citations on the reasoning that a boundary has
+    # none (#266).
+    satisfied_by_absence: bool = False
     # #153: the scope a non-violation claim covered, as "path#hunk" refs. Empty
     # for every ordinary obligation, whose evidence is `coverage_refs` instead.
     # This is what keeps the typed-and-linked invariant satisfied for a finding
@@ -612,31 +667,6 @@ class TestRecommendation(_Model):
     required_assertions: list[str] = Field(default_factory=list)
     plausible_defect: str
     repo_conventions: str
-
-
-class UnevidenceableObligation(_Model):
-    """A weak obligation for which no test is the right instrument (#266).
-
-    The counterpart to `TestRecommendation`, and deliberately a separate record
-    rather than a recommendation with its fields hollowed out: every field on
-    `TestRecommendation` is one of §9.5's discrete prescriptions, so making them
-    optional would let a half-filled recommendation render as a whole one. A
-    refusal is a different answer, not a degraded one.
-
-    The judgement itself is not new — `_weak_obligations` already declines to
-    recommend for `CODE_ONLY` obligations on exactly this reasoning ("no test can
-    assert that work was not done"), scoped to scope exclusions. This carries the
-    same judgement for the obligations that reasoning never reached: properties
-    of build steps, version pins, and whole-suite behavior.
-
-    Recorded rather than dropped, so the report can distinguish "no test can
-    evidence this" from "no test was recommended" — and so the obligation's
-    §9.3 `indeterminate` evidence class has a stated reason behind it.
-    """
-
-    obligation_id: str
-    criterion: str  # the obligation's observable behavior, restated
-    reason: str  # why no test is the right instrument for this criterion
 
 
 class CompletionVerdict(str, Enum):
@@ -892,11 +922,6 @@ class Review(_Model):
     open_questions: list[OpenQuestion] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[TestRecommendation] = Field(default_factory=list)
-    # Weak obligations no test can evidence (#266). Beside the recommendations
-    # rather than folded into them: a reader counting recommendations against
-    # weak obligations must be able to see that the shortfall was answered, not
-    # skipped.
-    unevidenceable: list[UnevidenceableObligation] = Field(default_factory=list)
     completion: CompletionResult | None = None
     limitations: list[str] = Field(default_factory=list)
     recommendation: str | None = None

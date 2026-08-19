@@ -22,7 +22,7 @@ import pytest
 
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
-from acceptance.review_state import AdmissibleEvidence, Disposition, ObligationType
+from acceptance.review_state import Disposition, ObligationType, RequiredEvidence
 from tests.support import recorded_client
 
 # Both properties in one file, so one recording covers them.
@@ -164,14 +164,20 @@ def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, req
 
 
 @pytest.mark.parametrize("requirement_id", _EXCLUSION_IDS)
-def test_every_scope_exclusion_yields_a_code_evidence_only_obligation(derived, requirement_id):
+def test_every_scope_exclusion_yields_an_obligation_satisfied_by_absence(derived, requirement_id):
     """#153. #230 split five siblings three ways in one call; #219 recorded the
     opposite half. #235 made the rule uniform by declining them all, which was
     stable but left nothing downstream to check that the boundary was respected.
 
     So they yield again — and the thing that makes that safe, rather than a
-    return to #230, is that the obligation is marked `CODE_ONLY` rather than
-    being an ordinary obligation nobody wrote a test for.
+    return to #230, is that the obligation is marked as satisfied by an ABSENCE
+    rather than being an ordinary obligation nobody wrote a test for.
+
+    This asserts `satisfied_by_absence`, not which evidence is required (#266).
+    The two were one field until a scope exclusion naming a BEHAVIOR turned out
+    to want a regression test. What the heading settles beyond argument is that
+    the obligation is met by work not done; whether a test is owed for it is a
+    judgement, and the test below is the one that covers it.
     """
     disposition = _disposition(derived, requirement_id)
     assert disposition.disposition is Disposition.YIELDED
@@ -179,16 +185,16 @@ def test_every_scope_exclusion_yields_a_code_evidence_only_obligation(derived, r
     obligations = _obligations_of(derived, requirement_id)
     assert obligations, f"{requirement_id} yielded no obligation"
     for obligation in obligations:
-        assert obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY, (
-            f"{obligation.id} is not on the code-evidence-only axis"
+        assert obligation.satisfied_by_absence, (
+            f"{obligation.id} is not marked as satisfied by an absence"
         )
 
 
-def test_only_exclusions_are_on_the_code_evidence_only_axis(derived):
+def test_only_exclusions_are_satisfied_by_absence(derived):
     """The negative case, and the reason the test above cannot stand alone: it
-    asserts exclusions ARE code-only, which an implementation marking EVERY
-    obligation code-only would satisfy — and that implementation would silently
-    exempt the whole mandate from test evidence.
+    asserts exclusions ARE marked, which an implementation marking EVERY
+    obligation would satisfy — and that implementation would silently exempt the
+    whole mandate.
 
     Raised by the tool's own recommendation on #153's Gate 2, which asked for
     "assert the ordinary non-exclusion requirement is not marked CODE_ONLY".
@@ -199,11 +205,52 @@ def test_only_exclusions_are_on_the_code_evidence_only_axis(derived):
     misfiled = [
         obligation.id
         for obligation in derived.obligations
-        if obligation.id not in exclusion_obligation_ids
-        and obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY
+        if obligation.id not in exclusion_obligation_ids and obligation.satisfied_by_absence
     ]
 
-    assert not misfiled, f"non-exclusion obligations marked code-evidence-only: {misfiled}"
+    assert not misfiled, f"non-exclusion obligations marked satisfied-by-absence: {misfiled}"
+
+
+def test_the_ordinary_requirements_still_require_test_evidence(derived):
+    """The false-green guard on #266's central risk.
+
+    Which evidence an obligation requires is now a MODEL judgement, where the
+    scope-exclusion heading used to settle it structurally. That buys the
+    flexibility a behavioural exclusion needs, and it costs the guarantee: a
+    model answering `code_only` too freely would excuse the mandate from test
+    evidence one obligation at a time, and every later stage would honour it
+    without complaint. Nothing downstream can catch that — an obligation off the
+    test axis produces no finding, by design.
+
+    So it is caught here, against real responses. The three Constraints in the
+    task file are ordinary behavioural requirements about CSV output; if any of
+    them comes back excused from test evidence, the judgement is too loose.
+    """
+    ordinary = [
+        obligation
+        for requirement_id in ("constraint-01", "constraint-02", "constraint-03")
+        for obligation in _obligations_of(derived, requirement_id)
+    ]
+    assert ordinary, "the ordinary constraints yielded no obligations"
+
+    excused = [o.id for o in ordinary if not o.required_evidence.requires_tests]
+    assert not excused, f"ordinary behavioural requirements excused from test evidence: {excused}"
+
+
+def test_a_narrowed_requirement_says_why(derived):
+    """A narrowing with no reason is indistinguishable from the question being
+    skipped, and `obligations.py` discards one — so any obligation that survives
+    with less than both kinds required must carry the sentence that justifies
+    it. Asserted over whatever this corpus happens to narrow, including nothing:
+    the property is about the pairing, not about any particular obligation."""
+    unreasoned = [
+        o.id
+        for o in derived.obligations
+        if o.required_evidence is not RequiredEvidence.CODE_AND_TESTS
+        and not o.required_evidence_reason.strip()
+    ]
+
+    assert not unreasoned, f"evidence narrowed with no reason given: {unreasoned}"
 
 
 def test_sibling_exclusions_share_one_disposition(derived):

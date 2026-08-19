@@ -22,19 +22,15 @@ never modifies code (§9.5).
 
 from __future__ import annotations
 
-from typing import NamedTuple
-
 from acceptance.coverage.prompt import render_diff_section
 from acceptance.evidence.discrimination import ObligationDiscrimination
 from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
 from acceptance.review_state import (
-    AdmissibleEvidence,
     ChangeSet,
     Obligation,
     TestRecommendation,
-    UnevidenceableObligation,
 )
-from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
+from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 
 # §9.3 classes that represent a real evidence gap — anything short of
 # strongly_supported earns a recommendation (the M7.1 trigger). An obligation
@@ -63,17 +59,9 @@ recommendation with these discrete fields:
 - repo_conventions: relevant conventions or fixtures from the diff to follow
   (test file, naming, existing fixtures) so the added test fits the repo.
 
-Some criteria cannot be evidenced by a test at all — a property of a build
-step, a pinned dependency version, an action's major version, or the behavior
-of a whole test run rather than of one test. For those, do NOT invent a
-recommendation. Return the criterion in `unevidenceable` instead, with a
-`reason` saying why no test is the right instrument for it. Prescribing a test
-that cannot exist is worse than prescribing nothing.
-
-Account for EVERY criterion you are given, in exactly one of the two lists —
-`recommendations` if a test could close the gap, `unevidenceable` if none
-could. Omitting a criterion from both is not an answer. If given no criteria,
-return two empty lists."""
+Every criterion you are given requires test evidence — that was settled before
+this call and is not yours to revisit. Return one recommendation per criterion,
+keyed by its `obligation_id`. If given no criteria, return an empty list."""
 
 
 class _Recommendation(StrictResponseModel):
@@ -86,34 +74,31 @@ class _Recommendation(StrictResponseModel):
     repo_conventions: str
 
 
-class _Unevidenceable(StrictResponseModel):
-    obligation_id: str
-    reason: str
-
-
 class _Recommendations(StrictResponseModel):
     recommendations: list[_Recommendation]
-    # Required, not defaulted: strict mode has no optional field, and the prompt
-    # asks for an explicit empty list rather than an omission. That is also the
-    # point of the change — a criterion accounted for nowhere must stay
-    # distinguishable from one the model deliberately declined.
-    unevidenceable: list[_Unevidenceable]
 
 
 def _weak_obligations(obligations: list[Obligation]) -> list[Obligation]:
     """Obligations with a real evidence gap — evidence_class set and below
     strongly_supported (the M7.1 trigger).
 
-    Code-evidence-only obligations are excluded (#153). Theirs is not a gap a
-    test could close: they are satisfied by the absence of excluded work, and no
-    test can assert that work was not done. Recommending one would prescribe
-    evidence that cannot exist, which is worse than recommending nothing —
-    #146's review demanded a test for "we didn't also do something else".
+    Obligations that do not require test evidence never reach here (#266): the
+    pipeline holds them out of mapping and strength, so they carry no
+    `evidence_class` to be weak. The check below is the belt to that braces —
+    prescribing a test for a criterion no test is owed for demands evidence that
+    cannot exist, which is worse than prescribing nothing (#146's review asked
+    for a test proving "we didn't also do something else").
+
+    This used to be a judgement the model made HERE, per obligation, in a second
+    list beside the recommendations. That let two stages disagree about the same
+    obligation, and on a real run one response put three obligations in both
+    lists at once. The question has one answer and is now asked once, at
+    decomposition.
     """
     return [
         obligation
         for obligation in obligations
-        if obligation.admissible_evidence is not AdmissibleEvidence.CODE_ONLY
+        if obligation.required_evidence.requires_tests
         and obligation.evidence_class is not None
         and obligation.evidence_class != _STRONG
     ]
@@ -144,32 +129,19 @@ def _render_prompt(
     return "\n".join(lines)
 
 
-class RecommendationOutcome(NamedTuple):
-    """What the stage decided for the weak obligations, split by kind.
-
-    Two lists rather than one, because they are different answers: a
-    recommendation says a test would close the gap, a refusal says no test is
-    the right instrument. Collapsing them would put the stage back where #266
-    found it, unable to tell a correct refusal from a missing answer.
-    """
-
-    recommendations: list[TestRecommendation]
-    unevidenceable: list[UnevidenceableObligation]
-
-
 def recommend_tests(
     obligations: list[Obligation],
     discriminations: list[ObligationDiscrimination],
     change_set: ChangeSet,
     client: ModelClient,
     unusable: UnusableAnswerLog | None = None,
-) -> RecommendationOutcome:
+) -> list[TestRecommendation]:
     """Prescribe a §9.5 test recommendation for each not-strongly-supported
-    obligation, or record that no test can evidence it. No weak obligations ->
-    no model call."""
+    obligation that requires test evidence. No weak obligations -> no model
+    call."""
     weak = _weak_obligations(obligations)
     if not weak:
-        return RecommendationOutcome([], [])
+        return []
 
     discriminations_by_obligation = {d.obligation_id: d for d in discriminations}
     messages = [
@@ -194,23 +166,19 @@ def recommend_tests(
         for obligation in weak
     }
 
-    # Every weak obligation is accounted for, in exactly one of the two lists,
-    # and only weak ones are. The "only" half was already enforced — `weak` is
-    # what the call supplies, and a foreign id is unrepresentable under
-    # constrained decoding. The "always" half was not: this loop used to iterate
-    # the response and skip what it could not place, so a response answering 3
-    # of 5 weak obligations produced a report where two carried no
-    # recommendation and nothing distinguished it from a complete answer. That
-    # is M1.2.r1's missing disposition, one stage downstream, and it is rejected
-    # the same way.
+    # A recommendation exists for a weak obligation, and only for a weak one.
+    # The "only" half was already enforced — `weak` is what the call supplies,
+    # and a foreign id is unrepresentable under constrained decoding. The
+    # "always" half was not: this loop used to iterate the response and skip
+    # what it could not place, so a response answering 3 of 5 weak obligations
+    # produced a report where two carried no recommendation and nothing
+    # distinguished it from a complete answer. That is M1.2.r1's missing
+    # disposition, one stage downstream, and it is rejected the same way.
     #
-    # What #266 adds is the third state the check had no room for. Silence is
-    # still rejected; a REFUSAL — "no test is the right instrument here" — is now
-    # an answer, so a mandate whose obligations are properties of build steps or
-    # version pins can be reviewed at all. The two must not collapse into each
-    # other, which is why an obligation in both lists is an error rather than a
-    # precedence rule: the response contradicted itself and neither answer can
-    # be trusted over the other.
+    # Every obligation reaching here requires test evidence, decided at
+    # decomposition. So silence is once again the only thing this has to
+    # reject — there is no correct reason for the model to skip one, and no
+    # second list in which it might have answered instead (#266).
     returned: dict[str, _Recommendation] = {}
     for rec in result.recommendations:
         if rec.obligation_id in returned:
@@ -224,96 +192,23 @@ def recommend_tests(
             )
         returned[rec.obligation_id] = rec
 
-    declined: dict[str, _Unevidenceable] = {}
-    for refusal in result.unevidenceable:
-        if refusal.obligation_id in declined:
-            raise SchemaValidationError(
-                f"obligation '{refusal.obligation_id}' was declined more than once"
-            )
-        if refusal.obligation_id not in criterion_by_id:
-            raise SchemaValidationError(
-                f"refusal named obligation '{refusal.obligation_id}', which the call "
-                "did not supply as weak"
-            )
-        declined[refusal.obligation_id] = refusal
-
-    # Two ways a refusal can be present but unusable. Neither raises, and the
-    # reason they do not is the whole of #266: this stage used to destroy a
-    # review over one obligation it could not place, and an answer we cannot
-    # honour is not a better excuse for that than an answer we never got. They
-    # become `UnusableAnswer`s — the established shape for "we asked, and what
-    # came back cannot be used" — which leaves the obligation `indeterminate`,
-    # raises a major finding naming it, and lets the other 33 be reported.
-    #
-    # The asymmetry with an OMITTED obligation, which still raises, is
-    # deliberate and is the issue's settled decision: silence is
-    # indistinguishable from truncation or a shed batch, so it stays fatal.
-    unusable_ids: dict[str, str] = {}
-    for obligation_id in list(declined):
-        if obligation_id in returned:
-            # The response contradicted itself. Not resolved by precedence:
-            # picking a side would report a judgement the model did not make.
-            unusable_ids[obligation_id] = "was both recommended for and declined as unevidenceable"
-        elif not declined[obligation_id].reason.strip():
-            # A refusal is only better than silence because it is auditable, and
-            # the reason is the whole of what makes it so. Required-ness in the
-            # schema does not get here: "" is a valid str, so the structure can
-            # be satisfied while the judgement is withheld.
-            unusable_ids[obligation_id] = "was declined as unevidenceable with no reason given"
-
-    for obligation_id in unusable_ids:
-        declined.pop(obligation_id, None)
-        returned.pop(obligation_id, None)
-    if unusable_ids and unusable is not None:
-        unusable.record(
-            UnusableAnswer(
-                stage=_STAGE, field="obligation_id", returned_id=obligation_id, reason=why
-            )
-            for obligation_id, why in sorted(unusable_ids.items())
-        )
-        unusable.mark_indeterminate(unusable_ids)
-
-    # An obligation whose answer was unusable is NOT missing. It was answered —
-    # badly, and it is already recorded as such, with the obligation left
-    # indeterminate and a major finding naming it. Counting it here as well
-    # would abort the review over an answer we have already reported on, which
-    # is the double jeopardy that makes the omission guard look like the defect
-    # it is not.
-    missing = [
-        obligation.id
-        for obligation in weak
-        if obligation.id not in returned
-        and obligation.id not in declined
-        and obligation.id not in unusable_ids
-    ]
+    missing = [obligation.id for obligation in weak if obligation.id not in returned]
     if missing:
         raise SchemaValidationError(
-            f"no recommendation and no refusal for {len(missing)} of {len(weak)} weak "
+            f"no recommendation for {len(missing)} of {len(weak)} weak "
             f"obligation(s): {', '.join(missing)}"
         )
 
-    return RecommendationOutcome(
-        recommendations=[
-            TestRecommendation(
-                obligation_id=obligation.id,
-                criterion=criterion_by_id[obligation.id],
-                required_inputs=returned[obligation.id].required_inputs,
-                boundary_conditions=returned[obligation.id].boundary_conditions,
-                expected_output=returned[obligation.id].expected_output,
-                required_assertions=returned[obligation.id].required_assertions,
-                plausible_defect=returned[obligation.id].plausible_defect,
-                repo_conventions=returned[obligation.id].repo_conventions,
-            )
-            for obligation in weak
-            if obligation.id in returned
-        ],
-        unevidenceable=[
-            UnevidenceableObligation(
-                obligation_id=obligation.id,
-                criterion=criterion_by_id[obligation.id],
-                reason=declined[obligation.id].reason,
-            )
-            for obligation in weak
-            if obligation.id in declined
-        ],
-    )
+    return [
+        TestRecommendation(
+            obligation_id=obligation.id,
+            criterion=criterion_by_id[obligation.id],
+            required_inputs=returned[obligation.id].required_inputs,
+            boundary_conditions=returned[obligation.id].boundary_conditions,
+            expected_output=returned[obligation.id].expected_output,
+            required_assertions=returned[obligation.id].required_assertions,
+            plausible_defect=returned[obligation.id].plausible_defect,
+            repo_conventions=returned[obligation.id].repo_conventions,
+        )
+        for obligation in weak
+    ]

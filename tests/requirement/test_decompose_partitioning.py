@@ -264,6 +264,8 @@ def test_two_batches_minting_the_same_obligation_id_stay_separate():
                         "explicit": True,
                         "observable_behavior": "...",
                         "source_quote": "Do the thing.",
+                        "required_evidence": "code_and_tests",
+                        "required_evidence_reason": "",
                     },
                     "more_obligations": [],
                 }

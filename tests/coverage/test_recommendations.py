@@ -12,14 +12,13 @@ from acceptance.coverage.recommendations import recommend_tests
 from acceptance.evidence.discrimination import ObligationDiscrimination, PlausibleDefect
 from acceptance.llm import SchemaValidationError
 from acceptance.review_state import (
-    AdmissibleEvidence,
     ChangeSet,
     DiffHunk,
     FileChange,
     Obligation,
     ObligationType,
+    RequiredEvidence,
 )
-from acceptance.supplied_ids import UnusableAnswerLog
 from tests.support import client_returning as _client_returning
 
 
@@ -111,7 +110,7 @@ def test_weak_criterion_gets_a_fully_populated_recommendation():
 
     recommendations = recommend_tests(
         obligations, discriminations, _change_set(), _client_returning(response)
-    ).recommendations
+    )
 
     assert len(recommendations) == 1
     rec = recommendations[0]
@@ -131,17 +130,13 @@ def test_strongly_supported_obligations_get_no_recommendation_and_no_model_call(
         _obligation("solid", "Well-tested behavior", "strongly_supported"),
     ]
     # The exploding client proves no model call is issued when nothing is weak.
-    outcome = recommend_tests(obligations, [], _change_set(), _exploding_client())
-    assert outcome.recommendations == []
-    assert outcome.unevidenceable == []
+    assert recommend_tests(obligations, [], _change_set(), _exploding_client()) == []
 
 
 def test_unclassified_obligations_are_not_recommended():
     # evidence_class=None means "not yet classified", not "weak" — skip it.
     obligations = [_obligation("pending", "Not yet classified", None)]
-    outcome = recommend_tests(obligations, [], _change_set(), _exploding_client())
-    assert outcome.recommendations == []
-    assert outcome.unevidenceable == []
+    assert recommend_tests(obligations, [], _change_set(), _exploding_client()) == []
 
 
 def test_recommendation_round_trips_through_persistence():
@@ -161,9 +156,7 @@ def test_recommendation_round_trips_through_persistence():
     }
     from acceptance.review_state import TestRecommendation
 
-    rec = recommend_tests(
-        obligations, [], _change_set(), _client_returning(response)
-    ).recommendations[0]
+    rec = recommend_tests(obligations, [], _change_set(), _client_returning(response))[0]
     assert TestRecommendation.from_dict(rec.to_dict()) == rec
 
 
@@ -268,7 +261,7 @@ def test_every_weak_obligation_gets_exactly_one_recommendation():
 
     recommendations = recommend_tests(
         obligations, discriminations, _change_set(), _client_returning(response)
-    ).recommendations
+    )
 
     assert [r.obligation_id for r in recommendations] == ["daily-rate", "proration"]
 
@@ -296,17 +289,14 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
         explicit=True,
         observable_behavior="pagination code appearing in the diff",
         evidence_class="unsupported",
-        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        required_evidence=RequiredEvidence.CODE_ONLY,
+        required_evidence_reason="no test can assert that excluded work was not done",
+        satisfied_by_absence=True,
     )
 
     result = recommend_tests([boundary], [], _change_set(), _exploding_client())
 
-    assert result.recommendations == []
-    # #266 gave the stage a way to say "no test can evidence this", which is the
-    # same judgement #153 makes here — but by a different route, and this one
-    # must stay the silent route. A boundary obligation never reaches the call,
-    # so it earns no refusal record either; one would imply the model was asked.
-    assert result.unevidenceable == []
+    assert result == []
 
 
 def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
@@ -325,7 +315,9 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
         explicit=True,
         observable_behavior="pagination code appearing in the diff",
         evidence_class="unsupported",
-        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        required_evidence=RequiredEvidence.CODE_ONLY,
+        required_evidence_reason="no test can assert that excluded work was not done",
+        satisfied_by_absence=True,
     )
     client = _client_returning(
         {
@@ -345,230 +337,4 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
 
     result = recommend_tests([ordinary, boundary], [], _change_set(), client)
 
-    assert [r.obligation_id for r in result.recommendations] == ["daily-rate"]
-
-
-# --- #266: a criterion no test can evidence ----------------------------------
-
-
-def _refusal(obligation_id: str, reason: str = "a property of a CI step, not of any test"):
-    return {"obligation_id": obligation_id, "reason": reason}
-
-
-def test_a_declined_obligation_does_not_abort_the_review():
-    """#266's headline. Before this, the only way to answer a criterion no test
-    could evidence was to say nothing about it — which the completeness guard
-    correctly rejects, taking every other answer in the call down with it."""
-    obligations = [
-        _obligation("checkout-action", "The checkout action is not on Node 20", "unsupported"),
-    ]
-    response = {"recommendations": [], "unevidenceable": [_refusal("checkout-action")]}
-
-    result = recommend_tests(obligations, [], _change_set(), _client_returning(response))
-
-    assert result.recommendations == []
-    assert [r.obligation_id for r in result.unevidenceable] == ["checkout-action"]
-    assert result.unevidenceable[0].reason == "a property of a CI step, not of any test"
-    # The criterion travels with the refusal, so a reader never has to join it
-    # back to the obligation list by id to know what was declined.
-    assert result.unevidenceable[0].criterion == "The checkout action is not on Node 20"
-
-
-def test_an_omitted_obligation_still_aborts_even_when_others_are_declined():
-    """The guard's original purpose, preserved. Silence must stay rejected — a
-    response that answers neither way is indistinguishable from a truncated one,
-    which is exactly the confusion #266 was diagnosed through.
-
-    Three weak obligations — one recommended, one declined, one passed over in
-    silence. The two answered ones are what make it a real test: a stage that
-    accepted the response because *something* came back for *someone* would
-    pass a two-obligation version of this."""
-    obligations = [
-        _obligation("daily-rate", "Daily rate uses days_in_month", "nominally_supported"),
-        _obligation("checkout-action", "The checkout action is not on Node 20", "unsupported"),
-        _obligation("proration", "Proration handles partial months", "unsupported"),
-    ]
-    response = {
-        "recommendations": [_recommendation("daily-rate")],
-        "unevidenceable": [_refusal("checkout-action")],
-    }
-
-    with pytest.raises(SchemaValidationError) as excinfo:
-        recommend_tests(obligations, [], _change_set(), _client_returning(response))
-
-    message = str(excinfo.value)
-    assert "proration" in message
-    assert "1 of 3" in message
-    # The two that WERE answered are not swept into the complaint.
-    assert "daily-rate" not in message
-    assert "checkout-action" not in message
-
-
-def test_an_obligation_both_recommended_for_and_declined_is_unusable_not_fatal():
-    """The two lists are different answers, so an obligation in both is a
-    response contradicting itself. Not resolved by precedence — picking a side
-    would report a judgement the model did not make — and *not* fatal either.
-
-    This raised until #266's own Gate 2 hit it on a real response and destroyed
-    the whole review, which is the exact failure this issue exists to remove,
-    reintroduced one level down. An answer we cannot honour is no better excuse
-    for discarding thirty other obligations than an answer we never received.
-
-    The second obligation is the control: it must survive, since surviving is
-    the entire point."""
-    obligations = [
-        _obligation("daily-rate", "Daily rate uses days_in_month", "unsupported"),
-        _obligation("proration", "Proration handles partial months", "unsupported"),
-    ]
-    response = {
-        "recommendations": [_recommendation("daily-rate"), _recommendation("proration")],
-        "unevidenceable": [_refusal("daily-rate")],
-    }
-    log = UnusableAnswerLog()
-
-    result = recommend_tests(obligations, [], _change_set(), _client_returning(response), log)
-
-    # The contradicted obligation appears in neither output — no side was picked.
-    assert [r.obligation_id for r in result.recommendations] == ["proration"]
-    assert result.unevidenceable == []
-    # It is recorded as unusable and left indeterminate, so the review cannot
-    # come back clean while carrying it.
-    assert [a.returned_id for a in log.answers] == ["daily-rate"]
-    assert "both recommended for and declined" in log.answers[0].reason
-    assert log.indeterminate_obligations == {"daily-rate"}
-
-
-def test_a_refusal_naming_an_obligation_the_call_did_not_supply_is_rejected():
-    """The same guarantee the recommendation list already had. A refusal is a
-    judgement about a specific criterion, so one aimed at an id the call never
-    offered is unusable by construction, not merely unmatched."""
-    obligations = [_obligation("daily-rate", "Daily rate uses days_in_month", "unsupported")]
-    response = {
-        "recommendations": [_recommendation("daily-rate")],
-        "unevidenceable": [_refusal("invented-id")],
-    }
-
-    with pytest.raises(SchemaValidationError, match="did not supply as weak"):
-        recommend_tests(obligations, [], _change_set(), _client_returning(response))
-
-
-@pytest.mark.parametrize("reason", ["", "   ", "\n"])
-def test_a_refusal_carrying_no_reason_is_unusable_not_fatal(reason):
-    """The reason is the whole of what makes a refusal better than silence — it
-    is the only thing a reader who disagrees can disagree with.
-
-    Required-ness in the schema does not get this: `""` is a valid `str`, so a
-    response could satisfy every structural check and still withhold the
-    judgement. Whitespace-only is included because it passes a bare truthiness
-    check, which is the obvious wrong way to write this.
-
-    Recorded rather than raised, for the reason given in the contradiction test
-    above: this stage does not get to destroy a review over one bad answer."""
-    obligations = [_obligation("daily-rate", "Daily rate uses days_in_month", "unsupported")]
-    response = {
-        "recommendations": [],
-        "unevidenceable": [_refusal("daily-rate", reason)],
-    }
-    log = UnusableAnswerLog()
-
-    result = recommend_tests(obligations, [], _change_set(), _client_returning(response), log)
-
-    assert result.unevidenceable == []
-    assert "no reason given" in log.answers[0].reason
-    assert log.indeterminate_obligations == {"daily-rate"}
-
-
-def test_a_refusal_carrying_a_reason_is_accepted():
-    """The control for the test above. Without it, rejecting every refusal would
-    pass — and that would reinstate the abort this whole change removes."""
-    obligations = [_obligation("daily-rate", "Daily rate uses days_in_month", "unsupported")]
-    response = {
-        "recommendations": [],
-        "unevidenceable": [_refusal("daily-rate", "a property of a version pin")],
-    }
-
-    result = recommend_tests(obligations, [], _change_set(), _client_returning(response))
-
-    assert result.unevidenceable[0].reason == "a property of a version pin"
-
-
-def test_every_weak_obligation_declined_still_returns_a_result():
-    """The all-refusals case at the stage boundary, which is where the abort
-    used to happen — `_render_prompt` had already run and the response had
-    already parsed when the completeness guard threw everything away.
-
-    The contrast is what makes it evidence rather than a smoke test: the same
-    obligations with one refusal REMOVED must still raise. Without that half, a
-    stage that had simply stopped checking completeness would pass."""
-    obligations = [
-        _obligation("checkout-action", "The checkout action is not on Node 20", "unsupported"),
-        _obligation("ruff-pin", "Dev dependencies pin an exact ruff version", "unsupported"),
-    ]
-    all_declined = {
-        "recommendations": [],
-        "unevidenceable": [_refusal("checkout-action"), _refusal("ruff-pin")],
-    }
-
-    result = recommend_tests(obligations, [], _change_set(), _client_returning(all_declined))
-
-    assert result.recommendations == []
-    assert [r.obligation_id for r in result.unevidenceable] == ["checkout-action", "ruff-pin"]
-
-    one_missing = {
-        "recommendations": [_recommendation("checkout-action")],
-        "unevidenceable": [],
-    }
-    with pytest.raises(SchemaValidationError, match="ruff-pin"):
-        recommend_tests(obligations, [], _change_set(), _client_returning(one_missing))
-
-
-def test_a_duplicate_refusal_is_rejected():
-    obligations = [_obligation("daily-rate", "Daily rate uses days_in_month", "unsupported")]
-    response = {
-        "recommendations": [],
-        "unevidenceable": [_refusal("daily-rate"), _refusal("daily-rate", "again")],
-    }
-
-    with pytest.raises(SchemaValidationError, match="declined more than once"):
-        recommend_tests(obligations, [], _change_set(), _client_returning(response))
-
-
-def test_the_refusal_schema_constrains_ids_to_the_obligations_supplied():
-    """Constrained decoding covers the new list too. Without it the refusal
-    would be the one place in the stage where a provider honouring the schema
-    could still mint an id, and the wrong criterion would be recorded as
-    unevidenceable — a false clean on a real gap."""
-    from tests.support import client_capturing_schemas
-
-    obligations = [_obligation("daily-rate", "Daily rate uses days_in_month", "unsupported")]
-    client, seen = client_capturing_schemas(
-        {"recommendations": [], "unevidenceable": [_refusal("daily-rate")]}
-    )
-
-    recommend_tests(obligations, [], _change_set(), client)
-
-    refusal_id = seen[0]["properties"]["unevidenceable"]["items"]["properties"]["obligation_id"]
-    assert refusal_id["enum"] == ["daily-rate"]
-
-
-def test_two_runs_over_the_same_obligations_produce_the_same_refusals():
-    """Determinism, and specifically not by way of the model repeating itself:
-    both output lists are built by walking the weak obligations in order, so the
-    order the response happened to use cannot reach the review state."""
-    obligations = [
-        _obligation("checkout-action", "The checkout action is not on Node 20", "unsupported"),
-        _obligation("ruff-pin", "Dev dependencies pin an exact ruff version", "unsupported"),
-    ]
-    # The response lists them in the opposite order to the obligations.
-    response = {
-        "recommendations": [],
-        "unevidenceable": [_refusal("ruff-pin"), _refusal("checkout-action")],
-    }
-
-    first = recommend_tests(obligations, [], _change_set(), _client_returning(response))
-    second = recommend_tests(obligations, [], _change_set(), _client_returning(response))
-
-    assert [r.to_dict() for r in first.unevidenceable] == [
-        r.to_dict() for r in second.unevidenceable
-    ]
-    assert [r.obligation_id for r in first.unevidenceable] == ["checkout-action", "ruff-pin"]
+    assert [r.obligation_id for r in result] == ["daily-rate"]

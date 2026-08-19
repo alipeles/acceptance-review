@@ -68,7 +68,6 @@ from acceptance.review_state import (
     Link,
     Obligation,
     Review,
-    UnevidenceableObligation,
     UnrequestedChangeDisposition,
 )
 from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog
@@ -130,31 +129,18 @@ def _apply_indeterminate(
     ]
 
 
-def _apply_unevidenceable(
-    obligations: list[Obligation], unevidenceable: list[UnevidenceableObligation]
-) -> list[Obligation]:
-    """Mark obligations no test can evidence as `indeterminate` (#266).
+def _in_original_order(original: list[Obligation], updated: list[Obligation]) -> list[Obligation]:
+    """Re-key `updated` back onto `original`'s order.
 
-    Only the evidence axis, and deliberately not the coverage axis: the change
-    may well have addressed the obligation, and the coverage stage said so on
-    evidence of its own. What is unavailable is *test* evidence, so the rating
-    that instrument produced — `unsupported`, or whatever weak class earned the
-    obligation its recommendation — is withdrawn rather than reported as a gap.
-
-    `verdict.py` routes `indeterminate` to `unable_to_determine` and lists the
-    obligation as an escalation candidate, which is the §9.3 treatment this
-    wants: a review that cannot measure part of its mandate does not come back
-    clean, and does not come back failing either.
+    Every stage that judges a SUBSET writes back by concatenation, which puts
+    the held-out obligations last and reorders the report for no reason the
+    reader can see. That mattered little when one derived-question obligation
+    was held out; #266 holds out every obligation a stage does not apply to, so
+    the report's numbering would otherwise reshuffle according to which stage
+    ran. Order is the mandate's, throughout.
     """
-    if not unevidenceable:
-        return obligations
-    refused = {entry.obligation_id for entry in unevidenceable}
-    return [
-        obligation.model_copy(update={"evidence_class": "indeterminate"})
-        if obligation.id in refused
-        else obligation
-        for obligation in obligations
-    ]
+    by_id = {obligation.id: obligation for obligation in updated}
+    return [by_id.get(obligation.id, obligation) for obligation in original]
 
 
 def unusable_answer_finding(answer: UnusableAnswer) -> Finding:
@@ -301,16 +287,28 @@ def run_review(
             fresh_obligations, prior, change_set, derived.obligations
         )
 
+    # Only obligations that REQUIRE test evidence reach the stages that gather
+    # it (#266). Previously every obligation did, and the ones no test could
+    # ever bear on were filtered out three stages later, at the recommendation
+    # step — after the mapper had already chosen among them and the strength
+    # classifier had already rated them. Two costs, both observed: the mapper
+    # picked between obligations that were never candidates, and ratings were
+    # produced for obligations whose ratings the report then discarded, which
+    # surfaced as rating movement nobody could explain.
+    needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+    no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+
     discovered = discover_tests(repo, change_set)
     mapping = map_tests_to_obligations(
-        obligations, discovered.tests, client, mapping_batch_size, unusable
+        needs_tests, discovered.tests, client, mapping_batch_size, unusable
     )
-    obligations = apply_test_mapping(obligations, mapping)
+    needs_tests = apply_test_mapping(needs_tests, mapping)
 
     test_evidence = extract_test_evidence(repo, discovered.tests, change_set, mapping)
-    discriminations = judge_discrimination(obligations, test_evidence, change_set, client, unusable)
-    strengths = classify_strength(obligations, test_evidence, discriminations)
-    obligations = apply_evidence_strength(obligations, strengths)
+    discriminations = judge_discrimination(needs_tests, test_evidence, change_set, client, unusable)
+    strengths = classify_strength(needs_tests, test_evidence, discriminations)
+    needs_tests = apply_evidence_strength(needs_tests, strengths)
+    obligations = _in_original_order(obligations, needs_tests + no_tests)
     # After strength, deliberately: an obligation whose judgment was never
     # obtained must not carry the strength the classifier inferred from its
     # absence. A re-run cannot improve a judgment it did not re-examine, and
@@ -322,29 +320,25 @@ def run_review(
     # and asking the coverage stage whether it exists is a category error. It is
     # held out of both the call and the write-back, since `_apply_coverage_status`
     # nulls the status of any obligation it has no record for.
-    to_classify = [o for o in obligations if o.id not in derived_ids]
-    held_out = [o for o in obligations if o.id in derived_ids]
+    #
+    # An obligation that requires no CODE evidence is held out for the same
+    # reason from the other direction (#266): asking whether the change
+    # addresses something the change was never asked to contain produces a
+    # verdict about nothing.
+    def _classifiable(obligation: Obligation) -> bool:
+        return obligation.id not in derived_ids and obligation.required_evidence.requires_code
+
+    to_classify = [o for o in obligations if _classifiable(o)]
+    held_out = [o for o in obligations if not _classifiable(o)]
     coverages = classify_coverage(to_classify, change_set, client, unusable)
-    obligations = _apply_coverage_status(to_classify, coverages) + held_out
+    obligations = _in_original_order(
+        obligations, _apply_coverage_status(to_classify, coverages) + held_out
+    )
     unrequested = detect_unrequested_changes(obligations, change_set, client, unusable)
     dispositioned = classify_dispositions(
         unrequested, obligations, coverages, change_set, policy, client
     )
-    recommendations, unevidenceable = recommend_tests(
-        obligations, discriminations, change_set, client, unusable
-    )
-    # An obligation no test can evidence is neither satisfied nor a gap: the
-    # instrument the evidence axis measures with does not apply to it, so §9.3
-    # `indeterminate` is the honest answer and the §3.7 bound on positive results
-    # forbids the other two (#266). Applied after the call, because the refusal
-    # is what the call decided.
-    obligations = _apply_unevidenceable(obligations, unevidenceable)
-    # Again, because the recommendation stage produces unusable answers of its
-    # own (a refusal contradicting a recommendation, or one with no reason) and
-    # the earlier call at the mapping/coverage boundary ran before it. Idempotent
-    # — it sets one field from a set of ids — so the second pass only picks up
-    # what the first could not have seen.
-    obligations = _apply_indeterminate(obligations, unusable)
+    recommendations = recommend_tests(obligations, discriminations, change_set, client, unusable)
 
     obligations_by_id = {obligation.id: obligation for obligation in obligations}
     findings = [
@@ -409,6 +403,5 @@ def run_review(
         declaration=declaration,
         findings=findings,
         recommendations=recommendations,
-        unevidenceable=unevidenceable,
         completion=completion,
     )

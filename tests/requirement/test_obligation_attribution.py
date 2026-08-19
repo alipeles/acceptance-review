@@ -45,6 +45,10 @@ def _obligation(oid: str, description: str, quote: str) -> dict:
         "explicit": True,
         "observable_behavior": "...",
         "source_quote": quote,
+        # Requiring both is the safe default the stage itself applies (#266);
+        # a fixture silent about which evidence is owed is not narrowing.
+        "required_evidence": "code_and_tests",
+        "required_evidence_reason": "",
     }
 
 
@@ -256,12 +260,17 @@ def test_an_obligation_is_not_refiled_onto_a_requirement_that_declined():
     assert "strayed" in [o.id for o in result.obligations]
 
 
-def test_refiling_takes_the_admissible_evidence_of_the_requirement_it_lands_in():
-    """Which evidence an obligation admits is decided by the section it sits in
-    (#153). An obligation re-filed into a scope exclusion is code-evidence-only,
-    exactly as one derived there directly would be — the section must follow the
-    re-filing, or the axis records the section the obligation only appeared to
-    come from."""
+def test_refiling_takes_the_satisfied_by_absence_of_the_requirement_it_lands_in():
+    """Whether an obligation is satisfied by work NOT done is decided by the
+    section it sits in (#153). An obligation re-filed into a scope exclusion is
+    satisfied by an absence, exactly as one derived there directly would be —
+    the section must follow the re-filing, or the field records the section the
+    obligation only appeared to come from.
+
+    Asserts the absence flag, not which evidence is required (#266). The two
+    were one field until a scope exclusion naming a BEHAVIOUR turned out to want
+    a regression test; the heading still settles the absence beyond argument,
+    and that is now all it settles."""
     task = """# Task
 Render each invoice line.
 
@@ -288,7 +297,10 @@ Render each invoice line.
 
     assert result.requirement_map.requirements_for_obligation("excluded") == ["exclusion-01"]
     refiled = next(o for o in result.obligations if o.id == "excluded")
-    assert refiled.admissible_evidence == "code_only"
+    assert refiled.satisfied_by_absence
+    # The control: an obligation that stayed in the Task section does not pick
+    # the flag up, so this is not passing because everything carries it.
+    assert not next(o for o in result.obligations if o.id == "render").satisfied_by_absence
 
 
 def test_a_quotation_matching_two_requirements_stays_with_the_one_it_was_attributed_to():

@@ -70,6 +70,10 @@ def _obligation(oid: str, description: str, quote: str) -> dict:
         "explicit": True,
         "observable_behavior": "...",
         "source_quote": quote,
+        # Requiring both is the safe default the stage itself applies (#266);
+        # a fixture silent about which evidence is owed is not narrowing.
+        "required_evidence": "code_and_tests",
+        "required_evidence_reason": "",
     }
 
 

@@ -11,13 +11,13 @@ import inspect
 
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.review_state import (
-    AdmissibleEvidence,
     CompletionVerdict,
     Finding,
     Link,
     Obligation,
     ObligationType,
     OpenQuestion,
+    RequiredEvidence,
 )
 from acceptance.verdict import derive_verdict
 
@@ -191,7 +191,9 @@ def _boundary_obligation(obligation_id: str, evidence_class: str | None = None) 
         explicit=True,
         observable_behavior="...",
         evidence_class=evidence_class,
-        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        required_evidence=RequiredEvidence.CODE_ONLY,
+        required_evidence_reason="no test can assert that excluded work was not done",
+        satisfied_by_absence=True,
     )
 
 
@@ -261,3 +263,56 @@ def test_a_positive_rationale_does_not_claim_tests_for_a_boundary_obligation():
     assert result.verdict is CompletionVerdict.NO_MATERIAL_GAPS
     assert "Every obligation" not in result.rationale
     assert "boundary" in result.rationale
+
+
+# --- #266: the four-value required-evidence axis ------------------------------
+
+
+def _requiring(obligation_id: str, required: RequiredEvidence) -> Obligation:
+    return Obligation(
+        id=obligation_id,
+        description=f"{obligation_id} behavior",
+        type=ObligationType.FUNCTIONAL,
+        importance="critical",
+        explicit=True,
+        observable_behavior="...",
+        required_evidence=required,
+        required_evidence_reason="stated so the narrowing is auditable",
+    )
+
+
+def test_an_obligation_requiring_neither_kind_needs_non_code_review():
+    """`neither` says the repository cannot settle the obligation at all. It is
+    routed to the same non-code review as `requires_other_evidence` — never to a
+    pass, and never to `incomplete`, which would assert a gap in work that may be
+    perfectly done."""
+    result = derive_verdict([_requiring("looks-right", RequiredEvidence.NEITHER)], [], [])
+
+    assert result.verdict is CompletionVerdict.NEEDS_NON_CODE_REVIEW
+
+
+def test_a_code_only_obligation_with_no_test_rating_is_not_a_gap():
+    """The rule #266 settles, and a reversal of its own first answer.
+
+    `Indeterminate` was right only while the tool could not tell "no test is owed
+    here" from "we failed to judge this". The requirement is now decided
+    deliberately and recorded with a reason, so an unrated test axis is expected
+    rather than missing — calling it unmeasured would report a failure that did
+    not happen.
+    """
+    result = derive_verdict([_requiring("ruff-pin", RequiredEvidence.CODE_ONLY)], [], [])
+
+    assert result.verdict is CompletionVerdict.NO_MATERIAL_GAPS
+    assert result.escalation_candidates == []
+
+
+def test_a_tests_only_obligation_is_still_judged_on_its_test_evidence():
+    """The other new value, and the half that must NOT be excused. `tests_only`
+    narrows away the code axis, not the test one, so weak test evidence under it
+    is a gap exactly as it would be for an ordinary obligation."""
+    obligation = _requiring("regression-test", RequiredEvidence.TESTS_ONLY)
+    weak = obligation.model_copy(update={"evidence_class": "unsupported"})
+
+    result = derive_verdict([weak], [], [])
+
+    assert result.verdict is CompletionVerdict.INCOMPLETE

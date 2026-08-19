@@ -131,7 +131,16 @@ def _nest_obligations(response: dict) -> dict:
     # Consumed positionally, not looked up in a dict: a fixture may legitimately
     # mint the same id twice (that is what `_unique` renaming is for), and a
     # dict would silently collapse the pair.
-    remaining = list(response["obligations"])
+    #
+    # `required_evidence` (#266) is a required field, so a fixture written
+    # before it existed would stop parsing. Defaulted to requiring both kinds —
+    # the same safe default the stage itself applies — because a fixture silent
+    # about which evidence is owed is not narrowing anything. A fixture that IS
+    # about the narrowing states it, and is left alone.
+    remaining = [
+        {"required_evidence": "code_and_tests", "required_evidence_reason": "", **obligation}
+        for obligation in response["obligations"]
+    ]
     consumed_by: dict[str, str] = {}
     dispositions = []
     for entry in response.get("requirement_dispositions", []):
@@ -214,15 +223,10 @@ def _completed(response: dict, **kwargs) -> dict:
             for rid in supplied
         )
         return _nest_obligations({**response, "requirement_dispositions": dispositions})
-    if "recommendations" in response:
-        # `unevidenceable` (#266) is a required field, so a fixture that names
-        # its recommendations explicitly would otherwise stop parsing. Filled
-        # with the empty list — declining nothing — because a fixture silent
-        # about refusals is not making one; a test that IS about refusals names
-        # them, and a non-empty list is left alone, exactly as above.
-        completed = {"unevidenceable": [], **response}
-        if response["recommendations"] == []:
-            completed["recommendations"] = [
+    if response.get("recommendations") == []:
+        return {
+            **response,
+            "recommendations": [
                 {
                     "obligation_id": obligation_id,
                     "required_inputs": "inputs where the defect changes the outcome",
@@ -233,13 +237,8 @@ def _completed(response: dict, **kwargs) -> dict:
                     "repo_conventions": "follow the existing test module",
                 }
                 for obligation_id in _supplied_enum("obligation_id", **kwargs)
-                # A refusal the fixture DID name is not also recommended for —
-                # the stage rejects an obligation answered twice, and completing
-                # over it would make that rejection unreachable from a double.
-                if obligation_id
-                not in {entry["obligation_id"] for entry in completed["unevidenceable"]}
-            ]
-        return completed
+            ],
+        }
     return _nest_obligations(response)
 
 
@@ -357,6 +356,7 @@ def client_dispatching(
     temperature: float = 0.0,
     seed: int | None = None,
     embedding_fn=None,
+    capture: list | None = None,
 ) -> ModelClient:
     """A client for multi-call hooks: each call returns the response keyed by
     its response schema's class name (e.g. `_Decomposition`, `_Coverage`).
@@ -364,6 +364,11 @@ def client_dispatching(
     Determinism controls are settable because a review's provenance now reports
     the client that made the calls (#160): a double that hardcoded them would
     make provenance describe the double instead of the run under test.
+
+    Pass `capture` to collect each call as `{"schema", "prompt"}`. A test about
+    which obligations a stage was GIVEN cannot be written against the response —
+    an obligation that was offered and then discarded produces the same output
+    as one that was never offered, and those are different behaviours (#266).
     """
 
     # Defaults underneath, so a test names only the stages it is about. Adding a
@@ -374,6 +379,13 @@ def client_dispatching(
 
     def completion_fn(**kwargs):
         schema_name = kwargs["response_format"]["json_schema"]["name"]
+        if capture is not None:
+            capture.append(
+                {
+                    "schema": schema_name,
+                    "prompt": "\n".join(m["content"] for m in kwargs["messages"]),
+                }
+            )
         return _fake_response(json.dumps(_completed(dispatch[schema_name], **kwargs)))
 
     return ModelClient(

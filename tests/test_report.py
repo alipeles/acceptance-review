@@ -5,7 +5,6 @@ computed verdict."""
 from acceptance.report import render_report
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
-    AdmissibleEvidence,
     CompletionResult,
     CompletionVerdict,
     Component,
@@ -15,6 +14,7 @@ from acceptance.review_state import (
     Obligation,
     ObligationType,
     OpenQuestion,
+    RequiredEvidence,
     Review,
     TestRecommendation,
     UnrequestedChangeDisposition,
@@ -477,7 +477,9 @@ def test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test()
         observable_behavior="...",
         coverage_status="addressed",
         evidence_class=None,
-        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        required_evidence=RequiredEvidence.CODE_ONLY,
+        required_evidence_reason="no test can assert that excluded work was not done",
+        satisfied_by_absence=True,
     )
     ordinary = _obligation("Active filters applied", "not_addressed", "unsupported")
 
@@ -487,9 +489,12 @@ def test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test()
 
     lines = report.splitlines()
     boundary_line = next(
-        line for line in lines if "test evidence" in line and "not applicable" in line
+        line for line in lines if "test evidence" in line and "not required" in line
     )
-    assert "confirmed by code evidence alone" in boundary_line
+    # The reason travels with the line (#266). "not applicable" on its own was an
+    # assertion a reader could not argue with, which is what makes an incorrect
+    # one invisible; the sentence behind it is the argument.
+    assert "no test can assert that excluded work was not done" in boundary_line
 
     # The ordinary obligation still reports its missing tests, so the
     # distinction is between the two renderings rather than a blanket change.
@@ -516,7 +521,9 @@ def test_a_respected_boundary_is_one_claim_over_the_examined_set_not_a_listing()
         explicit=True,
         observable_behavior="...",
         coverage_status="addressed",
-        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        required_evidence=RequiredEvidence.CODE_ONLY,
+        required_evidence_reason="no test can assert that excluded work was not done",
+        satisfied_by_absence=True,
         scope_examined=[
             "export.py#@@ -1 +9 @@",
             "export.py#@@ -20 +30 @@",
@@ -544,7 +551,9 @@ def test_a_boundary_with_nothing_examined_does_not_claim_non_violation():
         explicit=True,
         observable_behavior="...",
         coverage_status="addressed",
-        admissible_evidence=AdmissibleEvidence.CODE_ONLY,
+        required_evidence=RequiredEvidence.CODE_ONLY,
+        required_evidence_reason="no test can assert that excluded work was not done",
+        satisfied_by_absence=True,
         scope_examined=[],
     )
 

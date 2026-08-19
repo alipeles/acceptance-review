@@ -18,27 +18,30 @@ from __future__ import annotations
 
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
-    AdmissibleEvidence,
     CompletionVerdict,
     MandateCoverage,
     Obligation,
     RequirementMap,
     Review,
     TestRecommendation,
-    UnevidenceableObligation,
 )
 
 _EMPTY = "  (none)"
 _NO_CODE = "(no corresponding change)"
 _NO_TESTS = "(no mapped test)"
-# Deliberately not phrased as an absence. "(no mapped test)" under a boundary
-# obligation would read as a gap; this says the axis does not apply (#153).
-_NOT_APPLICABLE = "not applicable — confirmed by code evidence alone"
-# #266: the refusal must not read like the absence of a recommendation. A weak
-# obligation with nothing under it says "we found no tests and prescribed none",
-# which is what an aborted or incomplete answer looks like; this says the
-# question was considered and answered.
-_NO_TEST_CAN_EVIDENCE = "no test can evidence this criterion"
+
+
+def _not_required(obligation: Obligation) -> str:
+    """The "this axis was not owed" line, with the reason that justifies it.
+
+    Deliberately not phrased as an absence. "(no mapped test)" under such an
+    obligation would read as a gap (#153), and "not applicable" on its own is an
+    assertion a reader cannot argue with — which is what makes an incorrect one
+    invisible. The reason is the argument (#266), so a reader who believes a test
+    IS owed here has a specific sentence to disagree with.
+    """
+    reason = obligation.required_evidence_reason.strip()
+    return f"not required — {reason}" if reason else "not required"
 
 
 def _examined_claim(scope_examined: list[str]) -> str:
@@ -72,7 +75,6 @@ def render_report(review: Review) -> str:
     lines.append("Obligations:")
     if review.obligation_map:
         by_obligation = {rec.obligation_id: rec for rec in review.recommendations}
-        refused = {entry.obligation_id: entry for entry in review.unevidenceable}
         for index, obligation in enumerate(review.obligation_map, start=1):
             lines.append("")
             lines.extend(
@@ -81,7 +83,6 @@ def render_report(review: Review) -> str:
                     obligation,
                     review.requirement_map,
                     by_obligation.get(obligation.id),
-                    refused.get(obligation.id),
                 )
             )
     else:
@@ -332,7 +333,6 @@ def _obligation_block(
     obligation: Obligation,
     requirement_map: RequirementMap | None = None,
     recommendation: TestRecommendation | None = None,
-    unevidenceable: UnevidenceableObligation | None = None,
 ) -> list[str]:
     """One numbered obligation with both evidence axes nested beneath it, and
     the test recommendation that explains a weak one.
@@ -359,30 +359,35 @@ def _obligation_block(
             " — not re-derived for this head]"
         )
 
-    coverage = (obligation.coverage_status or "unclassified").replace("_", " ")
-    lines.append(f"       code evidence: {coverage}")
-    if obligation.coverage_refs:
-        for ref in obligation.coverage_refs:
-            item += 1
-            lines.append(f"         {index}.{item}  {ref}")
-    elif obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY:
-        # #153: one completeness claim over the examined set, never a listing.
-        # Printing every hunk here would read as "these changes support the
-        # obligation" when the claim is "these were checked and none breaches
-        # it" — and under a boundary obligation that is the whole diff, which
-        # is noise on top of being wrong. The count is what makes the claim
-        # auditable: it says how much "none of them" ranged over.
-        lines.append(f"         {_examined_claim(obligation.scope_examined)}")
+    if obligation.required_evidence.requires_code:
+        coverage = (obligation.coverage_status or "unclassified").replace("_", " ")
+        lines.append(f"       code evidence: {coverage}")
+        if obligation.coverage_refs:
+            for ref in obligation.coverage_refs:
+                item += 1
+                lines.append(f"         {index}.{item}  {ref}")
+        elif obligation.satisfied_by_absence:
+            # #153: one completeness claim over the examined set, never a listing.
+            # Printing every hunk here would read as "these changes support the
+            # obligation" when the claim is "these were checked and none breaches
+            # it" — and under a boundary obligation that is the whole diff, which
+            # is noise on top of being wrong. The count is what makes the claim
+            # auditable: it says how much "none of them" ranged over.
+            lines.append(f"         {_examined_claim(obligation.scope_examined)}")
+        else:
+            lines.append(f"         {_NO_CODE}")
     else:
-        lines.append(f"         {_NO_CODE}")
+        lines.append(f"       code evidence: {_not_required(obligation)}")
 
-    # #153: a boundary obligation is confirmed by the absence of excluded work,
-    # so it has no test axis to render. Printing "test evidence: unsupported /
-    # no tests" under it is not merely noise — it reads identically to a
-    # requirement whose tests are missing, which is the distinction this line
-    # exists to preserve. State instead that the axis does not apply.
-    if obligation.admissible_evidence is AdmissibleEvidence.CODE_ONLY:
-        lines.append(f"       test evidence: {_NOT_APPLICABLE}")
+    # An obligation that requires no test evidence has no test axis to render.
+    # Printing "test evidence: unsupported / no tests" under it is not merely
+    # noise — it reads identically to a requirement whose tests are missing,
+    # which is the distinction this line exists to preserve (#153). State
+    # instead that none is required, and why (#266): the reason is what a reader
+    # who thinks a test IS owed here can argue with, and without it the line is
+    # an assertion rather than a claim.
+    if not obligation.required_evidence.requires_tests:
+        lines.append(f"       test evidence: {_not_required(obligation)}")
     else:
         evidence = (obligation.evidence_class or "unclassified").replace("_", " ")
         tier = obligation.achieved_evidence_tier
@@ -392,12 +397,6 @@ def _obligation_block(
             for test_id in obligation.test_evidence:
                 item += 1
                 lines.append(f"         {index}.{item}  {test_id}")
-        elif unevidenceable is not None:
-            # Same slot as `(no mapped test)`, deliberately — this is the answer
-            # on that axis, not an annotation beside it. The reason is what makes
-            # it auditable: a reader who disagrees can say which part is wrong,
-            # which is impossible against silence.
-            lines.append(f"         {_NO_TEST_CAN_EVIDENCE} — {unevidenceable.reason}")
         else:
             lines.append(f"         {_NO_TESTS}")
 
