@@ -206,7 +206,8 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
 
   ```bash
   git fetch origin
-  git branch tmp origin/main          # temp branch at main's tip
+  git branch --no-track tmp origin/main   # temp branch at main's tip; --no-track
+                                          # so it runs sandboxed (see below)
   git switch tmp                      # your own worktree; edits survive the switch
   git add docs/DEFERRED.md session-state/<issue>.md   # explicit paths, never -A
   git commit -F <message-file>
@@ -485,13 +486,46 @@ layer, where it was catching an unrelated stat. **Do not re-add
 `Read(.env)`/`Read(.env.*)` to `.claude/settings.json`** without re-testing
 `.venv/bin/pytest -q --collect-only` inside the sandbox.
 
-**`gh` cannot run inside the sandbox on macOS.** It is a Go binary and verifies
-TLS through `com.apple.trustd.agent`, which the sandbox blocks, so every call
-dies with `tls: failed to verify certificate: x509: OSStatus -26276`. It is
-listed in `sandbox.excludedCommands` so it runs outside the sandbox
-automatically. If a `gh` call ever fails that way again, the exclusion is not
-taking effect — say so rather than reaching for the escape hatch on every call.
-`git` is unaffected: `git fetch`, `push` and the rest work sandboxed.
+**`gh` cannot run inside the sandbox on macOS, and `sandbox.excludedCommands` is
+not currently rescuing it.** Measured 2026-08-20: it hits **three** independent
+walls, and clearing one only reveals the next.
+
+1. **Its config.** `open ~/.config/gh/config.yml: operation not permitted` — the
+   project's `permissions.deny` carries `Read(~/.config/gh/**)`, and a `Read()`
+   deny is merged into the sandbox's filesystem `denyRead`. Fixed in **user**
+   settings with `sandbox.filesystem.allowRead: ["~/.config/gh"]`, which takes
+   precedence over `denyRead`. The `Read()` deny still stands, so the *Read tool*
+   cannot open the token — only the `gh` binary can. That is the split you want,
+   and it hot-reloads without a restart.
+2. **Its token.** `The token in keyring is invalid` — the token lives in the
+   macOS keyring, which the sandbox blocks. Same family as the harmless
+   `failed to store: 100001` that `git fetch` prints.
+3. **TLS.** `tls: failed to verify certificate: x509: OSStatus -26276`, because
+   verification goes through `com.apple.trustd.agent`.
+
+`excludedCommands: ["gh"]` is set in **both** the project and user settings and
+**still does not take effect** — walls 2 and 3 are exactly what an excluded
+command would never hit. Until that is resolved, **`gh` needs
+`dangerouslyDisableSandbox`, and you should say so rather than escaping
+silently.** Do not reach for `sandbox.network.enableWeakerNetworkIsolation`: it
+would clear only wall 3, leave the keyring blocked, and weaken every other
+sandboxed command.
+
+**`git` is NOT unaffected — but the branch operations are fixable, and the fix
+is a flag, not an escape.** `git branch` and `git worktree add` die with
+`could not lock config file .git/config: Operation not permitted`, because the
+sandbox protects `.git/config` (it can carry `core.sshCommand`, `core.pager` and
+aliases, so writing it is arbitrary code execution). What wants to write it is
+the **upstream tracking configuration**, not the branch itself, so `--no-track`
+removes the need entirely. Both of these run clean sandboxed:
+
+```bash
+git branch --no-track tmp origin/main
+git worktree add --no-track -b <branch> <path> origin/main
+```
+
+The throwaway-branch push above uses `--no-track` for this reason. `git fetch`,
+`push`, `add`, `commit` and the read-only subcommands were always fine.
 
 **A branch operation that rewrites `.claude/settings.json` fails inside the
 sandbox**, because the sandbox protects that file from writes. `git rebase`,
