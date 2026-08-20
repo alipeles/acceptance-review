@@ -483,9 +483,19 @@ because everything after it is judged against a broken gate.
 ```bash
 .venv/bin/pip install -e ".[dev]"   # first-time setup
 .venv/bin/pytest -q                 # full suite — replay mode, no API key needed
-.venv/bin/ruff check .              # lint, as CI runs it
+.venv/bin/ruff check .              # lint, as CI runs it — ONLY if the venv matches the pin
 .venv/bin/acceptance check --task current-task.md --base <rev> [--head <rev>]
 ```
+
+**`ruff check .` matches CI only when the venv matches the pin.** `pyproject.toml`
+pins `ruff==0.16.2`; an older ruff has a smaller default rule set and prints
+*"All checks passed!"* on a tree CI rejects. That kept `main` red for four
+commits — lint is a build step, so the whole `test` job died in ~25s before a
+test ran, blocking another session's PR. When the pinned version was finally
+installed there were **three** findings where the local run had reported none,
+and one of them was code written minutes earlier on the branch. Check with
+`.venv/bin/ruff --version`; `pip install -e ".[dev]"` needs the sandbox off,
+because it hits the same TLS wall as `gh`.
 
 Other subcommands: `decompose`, `diff`, `classify`, `recommendation`.
 

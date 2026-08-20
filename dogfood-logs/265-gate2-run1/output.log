@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/Users/alipeles1/GoogleDrive/code/AI_acceptance_tool/.venv/bin/acceptance", line 6, in <module>
+    sys.exit(main())
+  File "/Users/alipeles1/GoogleDrive/code/AI_acceptance_tool/src/acceptance/cli.py", line 917, in main
+    review = run_check(
+  File "/Users/alipeles1/GoogleDrive/code/AI_acceptance_tool/src/acceptance/cli.py", line 191, in run_check
+    review = run_review(
+  File "/Users/alipeles1/GoogleDrive/code/AI_acceptance_tool/src/acceptance/pipeline.py", line 320, in run_review
+    mapping = map_tests_to_obligations(
+  File "/Users/alipeles1/GoogleDrive/code/AI_acceptance_tool/src/acceptance/evidence/mapping.py", line 171, in map_tests_to_obligations
+    messages = assemble(
+  File "/Users/alipeles1/GoogleDrive/code/AI_acceptance_tool/src/acceptance/request_blocks.py", line 157, in assemble
+    _reject_provider_markers(block)
+  File "/Users/alipeles1/GoogleDrive/code/AI_acceptance_tool/src/acceptance/request_blocks.py", line 224, in _reject_provider_markers
+    raise BlockError(
+acceptance.request_blocks.BlockError: SUBJECT block contains 'cache_control'. Where a request's reusable opening ends is the client's to mark, not a stage's — see request_blocks and llm.ModelClient.

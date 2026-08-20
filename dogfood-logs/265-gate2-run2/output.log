@@ -1,0 +1,304 @@
+Task completion: INCOMPLETE
+
+2 obligation(s) with non-discriminating test evidence (test-request-unique-content-after-shared-content, test-shared-content-byte-identical-across-requests).
+
+Obligations:
+
+  1. Make model requests in a single review run open alike wherever they carry the same content, so shared content has the same opening across requests.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/request_blocks.py#@@ -0,0 +1,262 @@
+         1.2  src/acceptance/coverage/prompt.py#@@ -10,6 +10,7 @@ each other's internals.
+         1.3  src/acceptance/coverage/classify.py#@@ -147,10 +154,13 @@ def classify_coverage(
+         1.4  src/acceptance/coverage/unrequested.py#@@ -26,9 +26,16 @@ from enum import Enum
+         1.5  src/acceptance/coverage/recommendations.py#@@ -24,10 +24,11 @@ from __future__ import annotations
+         1.6  src/acceptance/coverage/open_questions.py#@@ -21,9 +21,10 @@ from __future__ import annotations
+         1.7  src/acceptance/coverage/disposition.py#@@ -82,6 +82,7 @@ from acceptance.coverage.prompt import DiffRef
+         1.8  src/acceptance/coverage/declaration_comparison.py#@@ -27,10 +27,11 @@ of the ladder.
+         1.9  src/acceptance/evidence/discrimination.py#@@ -25,6 +25,7 @@ from __future__ import annotations
+         1.10  src/acceptance/evidence/mapping.py#@@ -26,6 +26,7 @@ from acceptance.evidence.discovery import DiscoveredTest
+         1.11  src/acceptance/requirement/obligations.py#@@ -49,6 +49,7 @@ from acceptance.llm import (
+         1.12  src/acceptance/requirement/linking.py#@@ -61,6 +61,7 @@ from collections.abc import Sequence
+       test evidence: strongly supported  [tier: static]
+         1.13  tests/test_pipeline_request_openings.py::test_content_two_requests_share_is_written_the_same_way_in_both
+         1.14  tests/test_pipeline_request_openings.py::test_every_request_the_pipeline_issues_opens_with_the_shared_preamble
+         1.15  tests/test_pipeline_request_openings.py::test_the_requests_that_share_a_diff_share_a_real_opening
+         1.16  tests/test_request_blocks.py::test_every_request_opens_with_the_same_preamble
+         1.17  tests/test_request_blocks.py::test_the_same_content_is_written_the_same_way_in_two_requests
+
+  2. Ensure a provider that can reuse a repeated opening has as long an opening to reuse as the run allows.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/request_blocks.py#@@ -0,0 +1,262 @@
+         2.2  src/acceptance/llm.py#@@ -34,6 +34,7 @@ from typing import Any, TypeVar
+         2.3  src/acceptance/llm.py#@@ -133,6 +134,106 @@ def _default_completion_fn(**kwargs: Any) -> Any:
+         2.4  src/acceptance/llm.py#@@ -752,7 +853,10 @@ class ModelClient:
+       test evidence: strongly supported  [tier: static]
+         2.5  tests/test_pipeline_request_openings.py::test_the_requests_that_share_a_diff_share_a_real_opening
+         2.6  tests/test_request_blocks.py::test_a_request_with_no_subject_is_reusable_all_the_way_to_its_end
+
+  3. Content carried by more than one of a run's requests is byte-identical in each request that carries it.
+       requirements: constraint-01
+       code evidence: addressed
+         3.1  src/acceptance/coverage/prompt.py#@@ -10,6 +10,7 @@ each other's internals.
+         3.2  src/acceptance/request_blocks.py#@@ -0,0 +1,262 @@
+         3.3  src/acceptance/coverage/classify.py#@@ -147,10 +154,13 @@ def classify_coverage(
+         3.4  src/acceptance/coverage/unrequested.py#@@ -26,9 +26,16 @@ from enum import Enum
+         3.5  src/acceptance/coverage/recommendations.py#@@ -24,10 +24,11 @@ from __future__ import annotations
+         3.6  src/acceptance/coverage/open_questions.py#@@ -21,9 +21,10 @@ from __future__ import annotations
+         3.7  src/acceptance/coverage/disposition.py#@@ -82,6 +82,7 @@ from acceptance.coverage.prompt import DiffRef
+         3.8  src/acceptance/coverage/declaration_comparison.py#@@ -27,10 +27,11 @@ of the ladder.
+         3.9  src/acceptance/evidence/discrimination.py#@@ -25,6 +25,7 @@ from __future__ import annotations
+         3.10  src/acceptance/evidence/mapping.py#@@ -26,6 +26,7 @@ from acceptance.evidence.discovery import DiscoveredTest
+         3.11  tests/test_request_blocks.py#@@ -0,0 +1,224 @@
+         3.12  tests/test_pipeline_request_openings.py#@@ -0,0 +1,240 @@
+       test evidence: strongly supported  [tier: static]
+         3.13  tests/test_pipeline_request_openings.py::test_content_two_requests_share_is_written_the_same_way_in_both
+         3.14  tests/test_request_blocks.py::test_the_same_content_is_written_the_same_way_in_two_requests
+
+  4. Each request orders its content by how widely that content is shared across the run's requests: content carried by more of them precedes content carried by fewer, and content carried by that request alone comes last.
+       requirements: constraint-02
+       code evidence: addressed
+         4.1  src/acceptance/request_blocks.py#@@ -0,0 +1,262 @@
+         4.2  src/acceptance/coverage/classify.py#@@ -147,10 +154,13 @@ def classify_coverage(
+         4.3  src/acceptance/coverage/unrequested.py#@@ -26,9 +26,16 @@ from enum import Enum
+         4.4  src/acceptance/coverage/recommendations.py#@@ -24,10 +24,11 @@ from __future__ import annotations
+         4.5  src/acceptance/coverage/open_questions.py#@@ -21,9 +21,10 @@ from __future__ import annotations
+         4.6  src/acceptance/coverage/disposition.py#@@ -82,6 +82,7 @@ from acceptance.coverage.prompt import DiffRef
+         4.7  src/acceptance/coverage/declaration_comparison.py#@@ -27,10 +27,11 @@ of the ladder.
+         4.8  src/acceptance/evidence/discrimination.py#@@ -25,6 +25,7 @@ from __future__ import annotations
+         4.9  src/acceptance/evidence/mapping.py#@@ -26,6 +26,7 @@ from acceptance.evidence.discovery import DiscoveredTest
+         4.10  src/acceptance/requirement/obligations.py#@@ -49,6 +49,7 @@ from acceptance.llm import (
+         4.11  src/acceptance/requirement/linking.py#@@ -61,6 +61,7 @@ from collections.abc import Sequence
+         4.12  tests/test_request_blocks.py#@@ -0,0 +1,224 @@
+         4.13  tests/test_pipeline_request_openings.py#@@ -0,0 +1,240 @@
+       test evidence: strongly supported  [tier: static]
+         4.14  tests/test_pipeline_request_openings.py::test_no_request_places_content_unique_to_it_ahead_of_content_it_shares
+         4.15  tests/test_request_blocks.py::test_a_block_kind_carried_by_more_requests_sorts_before_one_carried_by_fewer
+         4.16  tests/test_request_blocks.py::test_shared_content_precedes_content_unique_to_the_request
+
+  5. Two requests of one run that share content share it as a leading run of bytes, not as a fragment somewhere inside them.
+       requirements: constraint-03
+       code evidence: addressed
+         5.1  src/acceptance/request_blocks.py#@@ -0,0 +1,262 @@
+         5.2  src/acceptance/llm.py#@@ -133,6 +134,106 @@ def _default_completion_fn(**kwargs: Any) -> Any:
+         5.3  src/acceptance/llm.py#@@ -752,7 +853,10 @@ class ModelClient:
+         5.4  tests/test_request_blocks.py#@@ -0,0 +1,224 @@
+         5.5  tests/test_reusable_opening_marker.py#@@ -0,0 +1,113 @@
+         5.6  tests/test_pipeline_request_openings.py#@@ -0,0 +1,240 @@
+       test evidence: strongly supported  [tier: static]
+         5.7  tests/test_pipeline_request_openings.py::test_every_request_the_pipeline_issues_opens_with_the_shared_preamble
+         5.8  tests/test_pipeline_request_openings.py::test_the_requests_that_share_a_diff_share_a_real_opening
+         5.9  tests/test_request_blocks.py::test_the_same_content_is_written_the_same_way_in_two_requests
+
+  6. Reordering a request leaves the request carrying the same content, with only the order of that content changed.
+       requirements: constraint-04
+       code evidence: addressed
+         6.1  src/acceptance/request_blocks.py#@@ -0,0 +1,262 @@
+         6.2  tests/test_request_blocks.py#@@ -0,0 +1,224 @@
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/test_request_blocks.py::test_reordering_a_request_leaves_it_carrying_the_same_content
+
+  7. Where a provider must be told where a request's reusable opening ends, the client marks that boundary and request-building code does not.
+       requirements: constraint-05
+       code evidence: addressed
+         7.1  src/acceptance/request_blocks.py#@@ -0,0 +1,262 @@
+         7.2  src/acceptance/llm.py#@@ -34,6 +34,7 @@ from typing import Any, TypeVar
+         7.3  src/acceptance/llm.py#@@ -133,6 +134,106 @@ def _default_completion_fn(**kwargs: Any) -> Any:
+         7.4  src/acceptance/llm.py#@@ -752,7 +853,10 @@ class ModelClient:
+         7.5  tests/test_request_blocks.py#@@ -0,0 +1,224 @@
+         7.6  tests/test_reusable_opening_marker.py#@@ -0,0 +1,113 @@
+       test evidence: strongly supported  [tier: static]
+         7.7  tests/coverage/test_classify.py::test_a_respected_boundary_records_the_scope_examined_not_the_changes
+         7.8  tests/coverage/test_classify.py::test_the_scope_examined_comes_from_the_diff_not_from_the_model
+         7.9  tests/test_request_blocks.py::test_a_stage_cannot_mark_the_end_of_its_own_reusable_opening
+         7.10  tests/test_reusable_opening_marker.py::test_a_provider_needing_a_breakpoint_gets_one_at_the_end_of_the_opening
+         7.11  tests/test_reusable_opening_marker.py::test_the_marker_is_absent_from_the_hashed_request
+
+  8. The client marks a reusable opening that is at least as long as the shortest reusable opening the provider in use can reuse.
+       requirements: constraint-06
+       code evidence: addressed
+         8.1  src/acceptance/llm.py#@@ -133,6 +134,106 @@ def _default_completion_fn(**kwargs: Any) -> Any:
+         8.2  tests/test_reusable_opening_marker.py#@@ -0,0 +1,113 @@
+       test evidence: strongly supported  [tier: static]
+         8.3  tests/coverage/test_classify.py::test_a_respected_boundary_records_the_scope_examined_not_the_changes
+         8.4  tests/coverage/test_classify.py::test_the_scope_examined_comes_from_the_diff_not_from_the_model
+         8.5  tests/test_request_blocks.py::test_a_request_with_no_subject_is_reusable_all_the_way_to_its_end
+         8.6  tests/test_reusable_opening_marker.py::test_an_opening_below_the_providers_minimum_is_left_unmarked
+         8.7  tests/test_reusable_opening_marker.py::test_the_haiku_minimum_is_higher_than_the_sonnet_one
+
+  9. The change does not alter what any stage is asked or what content any stage receives.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 61 changes across 33 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, so the source change itself settles it.
+
+  10. The change does not alter which stages exist, how a stage divides its work across calls, or how large those divisions are.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 61 changes across 33 files; none breaches this boundary
+       test evidence: not required — This exclusion is satisfied by the absence of structural changes in the source, not by runtime behavior.
+
+  11. The change does not affect model calls issued by the measurement harness.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 61 changes across 33 files; none breaches this boundary
+       test evidence: not required — This exclusion concerns a separate harness path, and the repository change itself is the evidence.
+
+  12. The change does not assert or depend on whether a provider actually reuses any part of an offered request.
+       requirements: exclusion-04
+       code evidence: not required — Provider-side reuse is external behavior that the repository cannot verify.
+       test evidence: not required — Provider-side reuse is external behavior that the repository cannot verify.
+
+  13. The change does not alter reporting of tokens, cost, or reused-token share.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 61 changes across 33 files; none breaches this boundary
+       test evidence: not required — This is an exclusion about report fields already present, so the source diff alone can settle it.
+
+  14. The change does not address what a token costs.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 61 changes across 33 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion naming work that must not be part of the change, so the source diff alone settles it.
+
+  15. A test fails when a request places content unique to it ahead of content it shares with another request of the same run.
+       requirements: completion-02
+       code evidence: not required — The requirement itself demands a test failure condition, so the test is the required evidence.
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: A test case shows a request with unique content ordered before shared content and the test fails.
+           inputs:  Construct at least two real pipeline requests from the same review run where one request contains a block shared with another request plus a later block unique to that request. Use a fixture/task that produces multiple stages or batched calls so the shared block is present in more than one request. The defective case should place the unique block before the shared block in one request.
+           detects: A stage assembles its request with stage-specific or batch-specific content before the shared opening, so the reusable prefix is shortened or lost.
+           full detail: acceptance recommendation --criterion test-request-unique-content-after-shared-content
+
+  16. A test fails when content carried by two of a run's requests is written differently in the two.
+       requirements: completion-03
+       code evidence: not required — The requirement itself demands a test failure condition, so the test is the required evidence.
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: A test case shows the same shared content rendered differently in two requests and the test fails.
+           inputs:  Construct two or more requests from the same run that both carry the same shared block, ideally the diff block or another shared opening block, while differing in their unique subject content. Use a fixture where the shared block is large enough to be reused and appears in multiple requests. The defective case should render the shared block with different bytes in the two requests.
+           detects: A stage renders the same shared content with slightly different formatting across requests, so the provider cannot reuse the prefix byte-for-byte.
+           full detail: acceptance recommendation --criterion test-shared-content-byte-identical-across-requests
+
+  17. A test fails when a request built by a stage marks the end of its own reusable opening.
+       requirements: completion-04
+       code evidence: not required — The requirement itself demands a test failure condition, so the test is the required evidence.
+       test evidence: strongly supported  [tier: static]
+         17.1  tests/test_request_blocks.py::test_a_stage_cannot_mark_the_end_of_its_own_reusable_opening
+
+  18. Two recorded runs over the same input produce byte-identical review state and byte-identical report output.
+       requirements: completion-05
+       code evidence: addressed
+         18.1  tests/fixtures/transcripts/02d89047dc7e2ab6e18b742a9e108680efe097f70ffbd2dd29839b48664e2518.json#@@ -0,0 +1 @@
+         18.2  tests/fixtures/transcripts/1d03416639ce97f86a6d43587a2c9eec5c983fd9e44cad9ef20254dc32f84dde.json#@@ -0,0 +1 @@
+         18.3  tests/fixtures/transcripts/5d194634b33865e4798d455fb9a2574679bd1b5dcc41f09e0543a120af7c57dc.json#@@ -0,0 +1 @@
+         18.4  tests/fixtures/transcripts/6012d93845b19996174cd3d6da7acc06b641546f6717f85db78e47aa8fb1071d.json#@@ -0,0 +1 @@
+         18.5  tests/fixtures/transcripts/8a5de666a27342d25745b0f76b6eb7345e0cb40e82077723d1d84c4446db2eda.json#@@ -0,0 +1 @@
+         18.6  tests/fixtures/transcripts/9b44a3a2e0acb52ca02c4f16d2de4974177afabb6b0fe4fd4da3ca64a18a3ebc.json#@@ -0,0 +1 @@
+         18.7  tests/fixtures/transcripts/9fd42c8b9e99eaa9d5f495cba4f421a8e9d0583d4c268cd6c801a25ea98c91df.json#@@ -0,0 +1 @@
+         18.8  tests/prompts/test_corpus_mechanism.py#@@ -361,18 +361,18 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
+         18.9  tests/prompts/test_corpus_mechanism.py#@@ -392,12 +392,12 @@ _APPROVED_TRANSCRIPTS = {
+         18.10  tests/prompts/test_corpus_mechanism.py#@@ -412,11 +412,11 @@ _APPROVED_TRANSCRIPTS = {
+         18.11  tests/test_pipeline_request_openings.py#@@ -0,0 +1,240 @@
+       test evidence: strongly supported  [tier: static]
+         18.12  tests/coverage/test_recommendations.py::test_two_runs_over_one_omitting_response_produce_identical_state
+         18.13  tests/evidence/test_mapping.py::test_a_test_maps_to_the_obligation_it_evidences
+         18.14  tests/evidence/test_mapping.py::test_archetype_1_mapping_accuracy_reports_a_real_number
+         18.15  tests/evidence/test_mapping.py::test_archetype_1_unmapped_obligations_are_flagged
+         18.16  tests/evidence/test_mapping.py::test_changing_the_batch_size_changes_every_request_key
+         18.17  tests/evidence/test_mapping.py::test_each_batch_is_recorded_as_its_own_request
+         18.18  tests/evidence/test_mapping.py::test_every_test_is_judged_against_every_obligation_across_the_calls
+         18.19  tests/evidence/test_mapping.py::test_no_candidate_tests_makes_no_model_call_and_flags_all_unmapped
+         18.20  tests/evidence/test_mapping.py::test_repeating_a_run_reuses_the_recorded_batches
+         18.21  tests/evidence/test_mapping.py::test_the_merged_mapping_does_not_depend_on_the_order_the_tests_arrive_in
+         18.22  tests/evidence/test_mapping.py::test_the_per_call_results_are_merged
+         18.23  tests/requirement/test_linking.py::test_the_same_derived_obligations_produce_the_same_links
+         18.24  tests/requirement/test_obligations.py::test_decomposition_round_trips_through_persistence
+         18.25  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         18.26  tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls
+
+Mandate coverage: 17 of 18 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: Section marker standing alone with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] `src/acceptance/llm.py` adds provider-specific reusable-opening logic (`mark_reusable_opening`, token thresholds, Anthropic cache markers) and changes `ModelClient.complete` to apply it. None of the listed obligations ask for provider-family detection, cache-control breakpoint insertion, token counting, or any change to the client’s send path; they only require request ordering and that the client, not request-building code, marks a boundary when needed.
+       src/acceptance/llm.py#@@ -34,6 +34,7 @@ from typing import Any, TypeVar
+       src/acceptance/llm.py#@@ -133,6 +134,106 @@ def _default_completion_fn(**kwargs: Any) -> Any:
+       src/acceptance/llm.py#@@ -752,7 +853,10 @@ class ModelClient:
+  2. [in_service] `src/acceptance/request_blocks.py` introduces a new request-block assembly abstraction, shared preamble, block kinds, ordering rules, reusable-opening helpers, and prompt introspection. The obligations require certain request properties, but they do not call for this new module, its API, or the specific block-based implementation details.
+       src/acceptance/request_blocks.py#@@ -0,0 +1,262 @@
+  3. [in_service] The prompt-rendering changes in `coverage/prompt.py` split existing renderers into `diff_block` and `obligations_block` wrappers around the same content. The obligations require the resulting request content properties, but not this new block abstraction or the refactoring of prompt helpers into shared block constructors.
+       src/acceptance/coverage/prompt.py#@@ -10,6 +10,7 @@ each other's internals.
+       src/acceptance/coverage/prompt.py#@@ -53,14 +54,37 @@ def render_diff_section(change_set: ChangeSet) -> list[str]:
+  4. [in_service] The stage files (`coverage/classify.py`, `coverage/declaration_comparison.py`, `coverage/disposition.py`, `coverage/open_questions.py`, `coverage/recommendations.py`, `coverage/unrequested.py`, `evidence/discrimination.py`, `evidence/mapping.py`, `requirement/linking.py`, `requirement/obligations.py`) are all rewritten to use `assemble` and block helpers instead of hand-built message lists. The obligations ask for the resulting request behavior, but not for this broad internal refactor across stage implementations.
+       src/acceptance/coverage/classify.py#@@ -20,9 +20,16 @@ from enum import Enum
+       src/acceptance/coverage/classify.py#@@ -147,10 +154,13 @@ def classify_coverage(
+       src/acceptance/coverage/declaration_comparison.py#@@ -27,10 +27,11 @@ of the ladder.
+       src/acceptance/coverage/declaration_comparison.py#@@ -87,12 +88,22 @@ class _Mismatches(StrictResponseModel):
+       src/acceptance/coverage/declaration_comparison.py#@@ -108,9 +119,6 @@ def _render_prompt(
+       src/acceptance/coverage/declaration_comparison.py#@@ -118,7 +126,7 @@ def _render_prompt(
+       src/acceptance/coverage/declaration_comparison.py#@@ -143,13 +151,13 @@ def compare_declaration(
+       src/acceptance/coverage/disposition.py#@@ -82,6 +82,7 @@ from acceptance.coverage.prompt import DiffRef
+       src/acceptance/coverage/disposition.py#@@ -377,20 +378,32 @@ def _dispositioned(
+       src/acceptance/coverage/disposition.py#@@ -401,7 +414,7 @@ def _render_judgment_prompt(
+       src/acceptance/coverage/disposition.py#@@ -412,13 +425,13 @@ def _judge_disposition(
+       src/acceptance/coverage/open_questions.py#@@ -21,9 +21,10 @@ from __future__ import annotations
+       src/acceptance/coverage/open_questions.py#@@ -97,13 +98,13 @@ class _Judgments(StrictResponseModel):
+       src/acceptance/coverage/open_questions.py#@@ -118,10 +119,13 @@ def resolve_open_questions(
+       src/acceptance/coverage/recommendations.py#@@ -24,10 +24,11 @@ from __future__ import annotations
+       src/acceptance/coverage/recommendations.py#@@ -126,11 +127,16 @@ def _surviving_defects(discrimination: ObligationDiscrimination | None) -> list[
+       src/acceptance/coverage/recommendations.py#@@ -141,8 +147,7 @@ def _render_prompt(
+       src/acceptance/coverage/recommendations.py#@@ -160,13 +165,13 @@ def recommend_tests(
+       src/acceptance/coverage/unrequested.py#@@ -26,9 +26,16 @@ from enum import Enum
+       src/acceptance/coverage/unrequested.py#@@ -102,10 +109,13 @@ def detect_unrequested_changes(
+       src/acceptance/evidence/discrimination.py#@@ -25,6 +25,7 @@ from __future__ import annotations
+       src/acceptance/evidence/discrimination.py#@@ -97,11 +98,29 @@ def _evidence_by_obligation(
+       src/acceptance/evidence/discrimination.py#@@ -120,14 +139,7 @@ def _render_prompt(
+       src/acceptance/evidence/discrimination.py#@@ -148,13 +160,13 @@ def judge_discrimination(
+       src/acceptance/evidence/mapping.py#@@ -26,6 +26,7 @@ from acceptance.evidence.discovery import DiscoveredTest
+       src/acceptance/evidence/mapping.py#@@ -112,19 +113,32 @@ class _Mappings(StrictResponseModel):
+       src/acceptance/evidence/mapping.py#@@ -154,10 +168,13 @@ def map_tests_to_obligations(
+       src/acceptance/requirement/linking.py#@@ -61,6 +61,7 @@ from collections.abc import Sequence
+       src/acceptance/requirement/linking.py#@@ -510,10 +511,12 @@ def link_duplicate_obligations(
+       src/acceptance/requirement/obligations.py#@@ -49,6 +49,7 @@ from acceptance.llm import (
+       src/acceptance/requirement/obligations.py#@@ -850,18 +851,26 @@ def decompose(
+  5. [in_service] The test-support change records raw `messages` alongside the joined prompt text. That is a test harness capability added to inspect request structure, but none of the listed obligations require changing the support fixture API.
+       tests/support.py#@@ -398,6 +398,11 @@ def client_dispatching(
+  6. [in_service] `tests/test_request_blocks.py` is a new unit-test module for the request-block assembler and related helpers. The listed obligations concern the pipeline behavior and request properties, but they do not specifically require this new test module or its helper-level assertions.
+       tests/test_request_blocks.py#@@ -0,0 +1,224 @@
+  7. [in_service] `tests/test_pipeline_request_openings.py` adds pipeline-level tests for request ordering and shared openings. The obligations do require the behavior being tested, but not this specific new test file or its exact structure.
+       tests/test_pipeline_request_openings.py#@@ -0,0 +1,240 @@
+  8. [in_service] `tests/test_reusable_opening_marker.py` adds tests for provider-side reusable-opening marking. The obligations mention the client marking a boundary and not changing asked/received content, but they do not explicitly require this new test module or its provider-specific assertions.
+       tests/test_reusable_opening_marker.py#@@ -0,0 +1,113 @@
+  9. [in_service] `tests/prompts/test_corpus_mechanism.py` updates approved transcript hashes to match the new prompt shapes. That is a test-corpus maintenance change caused by the refactor, not something the listed obligations themselves call for.
+       tests/prompts/test_corpus_mechanism.py#@@ -361,18 +361,18 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
+       tests/prompts/test_corpus_mechanism.py#@@ -392,12 +392,12 @@ _APPROVED_TRANSCRIPTS = {
+       tests/prompts/test_corpus_mechanism.py#@@ -412,11 +412,11 @@ _APPROVED_TRANSCRIPTS = {
+  10. [in_service] `tests/coverage/test_disposition.py` changes assertions to inspect the whole request instead of only the last message. The obligations do not specifically require this test rewrite; it is support for the new request layout.
+       tests/coverage/test_disposition.py#@@ -456,7 +456,11 @@ def test_policy_is_surfaced_to_the_model_judgment():
+       tests/coverage/test_disposition.py#@@ -735,7 +739,12 @@ def test_the_escalation_prompt_asks_both_limbs_of_the_litmus():
+       tests/coverage/test_disposition.py#@@ -753,5 +762,5 @@ def test_the_escalation_prompt_asks_both_limbs_of_the_litmus():
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run d4e73514c738223a
+  continuing 7971c67ae6329468
+  continue this run with: --continue d4e73514c738223a
+Model usage by stage:
+  stage                                             calls  prompt  output  cached  this run  recorded
+  ----------------------------  -------------------------  ------  ------  ------  --------  --------
+  decompose                       1 (0 live / 1 replayed)   5,830     261    0.0%   $0.0000   $0.0055
+  obligation linking              1 (0 live / 1 replayed)     725       0       —   $0.0000   $0.0000
+  test-to-obligation mapping    18 (0 live / 18 replayed)  85,609  13,004    4.5%   $0.0000   $0.1201
+  discrimination judgment         1 (0 live / 1 replayed)  13,716   1,275    0.0%   $0.0000   $0.0160
+  coverage classification         1 (0 live / 1 replayed)  79,073   2,302    0.0%   $0.0000   $0.0697
+  unrequested-change detection    1 (0 live / 1 replayed)  78,585   1,357    0.0%   $0.0000   $0.0650
+  test recommendation             1 (0 live / 1 replayed)  76,707     719    0.0%   $0.0000   $0.0608
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.3372 to record (24 call(s) replayed at no cost to this run)
+

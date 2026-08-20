@@ -36,6 +36,241 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-20] #265's own scope is wrong: three of its four target stages cannot be helped by prompt shape at all
+- **Kind:** filing (comment on existing issue #265)
+- **Found during:** #265, after Gate 2 run 2
+- **Where:** `docs/experiments/265-cache-key-scope/`
+- **Severity:** should-fix — the issue currently directs the next session at work
+  that is now known to be impossible
+- **What's wrong:** #265's 2026-08-20 comment says test recommendation,
+  unrequested-change detection and coverage classification need invariant content
+  hoisted above the variable part until their shared prefix clears the
+  1,024-token floor. Two measurements retire that.
+
+  1. **Those three stages issue exactly ONE call per review run**
+     (`pipeline.py:351-359`), so they have no sibling to share a prefix with.
+     Their measured 278/403/680-token "shared prefixes" are cross-*run* figures —
+     the system prompt, which is all two different runs share.
+  2. **Cross-stage sharing is impossible by construction.** The response schema
+     is in the provider's cache key, and its *name* alone is enough to break
+     reuse. Every stage sends a different response model.
+
+  Together: no reordering can ever make those three cache. The remaining route is
+  making them issue more than one call that shares an opening — batch
+  composition, which is a different piece of work.
+- **Why I didn't act:** rewriting the issue body is a backlog edit, and the
+  measurement should be attached to it first.
+- **Drafted fix:** comment on #265, then amend the issue's scope section:
+
+  > ## Two of this issue's premises do not survive measurement
+  >
+  > **Three of the four target stages issue one call per run.** `classify_coverage`,
+  > `detect_unrequested_changes` and `recommend_tests` are each called once from
+  > `pipeline.py:351-359`. They have no sibling call, so there is no within-run
+  > prefix to lengthen, and the 278/403/680-token figures above are cross-*run*
+  > floors — the system prompt, which is all two different runs share.
+  >
+  > **Cross-stage sharing is impossible.** Measured in
+  > `docs/experiments/265-cache-key-scope/`, six live calls against
+  > `openai/gpt-5.4-mini`:
+  >
+  > | case | schema | cached |
+  > |---|---|---|
+  > | identical repeat | `_Coverage` | **94.9%** |
+  > | identical opening, different tail | `_Coverage` | **95.0%** |
+  > | identical messages, different schema | `_Detections` | 0.0% |
+  > | identical messages, same schema fields, different schema NAME | `_Renamed` | 0.0% |
+  > | different opening | `_Coverage` | 0.0% |
+  >
+  > Both controls behave. The fourth row is the finding: byte-identical messages
+  > and byte-identical schema *fields*, differing only in the schema's name, reuse
+  > nothing. The response schema is in the cache key, and every stage sends a
+  > different one.
+  >
+  > Confirmed independently at this issue's own Gate 2: coverage classification
+  > and unrequested-change detection now open with a byte-identical ~70k-token
+  > diff block seconds apart, and both reported 0.0% cached.
+  >
+  > ## What the ordering lever is actually worth
+  >
+  > The 95.0% row is the sibling-call case — identical opening, different tail,
+  > same schema — which is what a partitioned stage issues. That is where #191's
+  > 84–93% came from, and it is what the ordering change buys for mapping,
+  > discrimination, decompose and obligation linking.
+  >
+  > So the lever works and was aimed at the wrong stages. The scope section should
+  > drop "hoist invariant content in the three big stages" and replace it with
+  > batch composition, which is the only remaining route for a stage that issues
+  > one call.
+  >
+  > ## Still unexplained
+  >
+  > Mapping is partitioned into 18 calls with a shared opening and measured
+  > **4.5%** at Gate 2, where this experiment says a sibling call should reach
+  > ~95%. Neither ordering nor the schema explains that, and it is now the open
+  > question this issue should carry — it is the same residue the original
+  > comment flagged as "3 of 464".
+- **Status:** open
+
+### [2026-08-20] #245 with the correct answer in the corpus: the mapper returned the twin id on one call and not on the one that counted
+- **Kind:** filing (comment on existing issue #245)
+- **Found during:** #265, Gate 2, run 2
+- **Where:** `dogfood-logs/265-gate2-run2/`, obligations 3/16 and 4/15
+- **Severity:** blocker — it is the only thing keeping #265's Gate 2 from clean
+- **What's wrong:** two Completion expectations came back `unsupported`,
+  `(no mapped test)`, while their Constraint twins came back `strongly
+  supported` **citing the exact test the Completion twin is told is missing**.
+  Same report, same run.
+
+  What makes this instance worth adding: the mapper produced the right answer.
+  Transcript `714a89b33d` returns *both* ids for the test, with a rationale
+  naming the twin relationship. A second transcript, `39e47c338f`, for the same
+  test in its own batch, returns only the Constraint id — and the run consumed
+  that one. Two calls, same test, same partition size, five minutes apart,
+  different answers.
+- **Why I didn't act:** #245 owns it. The tests the recommendations ask for
+  already exist and are already cited elsewhere in the same report, so writing
+  duplicates would be chasing a rating rather than fixing a defect — the
+  disposition #259's Gate 2 recorded for this same shape.
+- **Drafted fix:** comment on #245:
+
+  > A fourth instance, from #265's Gate 2 run 2 (`dogfood-logs/265-gate2-run2/`),
+  > and the first where **the correct mapping is in the corpus**.
+  >
+  > | # | obligation | rating | test |
+  > |---|---|---|---|
+  > | 4 | `shared-content-ordered-by-breadth` (constraint-02) | strongly supported | cites `test_no_request_places_content_unique_to_it_ahead_of_content_it_shares` |
+  > | 15 | `test-request-unique-content-after-shared-content` (completion-02) | **unsupported** | "(no mapped test)" |
+  > | 3 | `shared-content-byte-identical-across-requests` (constraint-01) | strongly supported | cites `test_content_two_requests_share_is_written_the_same_way_in_both` |
+  > | 16 | `test-shared-content-byte-identical-across-requests` (completion-03) | **unsupported** | "(no mapped test)" |
+  >
+  > The mapper is not blind to the relationship. Mapping transcript
+  > `714a89b33d` returns both ids for the test:
+  >
+  > ```
+  > ids : ['shared-content-ordered-by-breadth',
+  >        'test-request-unique-content-after-shared-content']
+  > why : Fails when content shared by multiple requests appears after
+  >       request-unique content, which is exactly the breadth-based ordering
+  >       rule and its corresponding failure case.
+  > ```
+  >
+  > That rationale is correct, and it names the twin relationship explicitly.
+  > But a second transcript, `39e47c338f`, judging the **same test in its own
+  > batch**, returned only `['shared-content-ordered-by-breadth']` — same
+  > partition size (12), five minutes apart — and that is the answer the run
+  > consumed.
+  >
+  > So the twin split here is not a limit of what the stage can perceive. It is
+  > **instability across calls**, with the good answer and the bad answer both on
+  > disk. That argues the fix is not a better prompt for recognising twins but
+  > either resolving the pair structurally (a Constraint and its Completion twin
+  > share mapped evidence by construction) or re-asking and reconciling, since a
+  > second call demonstrably produces the missing id.
+  >
+  > Confirmed the loss is at mapping and not downstream: `apply_test_mapping`
+  > (`mapping.py:241-254`) iterates every returned `obligation_id`, and
+  > `extraction.py:60` carries the whole list. The persisted review has
+  > `"test_evidence": []` on the Completion twin, matching the consumed mapping
+  > exactly.
+  >
+  > Both tests were falsified before being trusted — injecting the pre-change
+  > request shape makes the first fail, and reversing the assembler's sort makes
+  > the second fail — so this is not a case of a weak test being correctly
+  > declined.
+- **Status:** filed (#245 comment)
+
+### [2026-08-20] Decision: does a provider's cache key cover the response schema, and does that make cross-stage prefix reuse impossible?
+- **Kind:** decision
+- **Found during:** #265, Gate 2, run 2
+- **Where:** `dogfood-logs/265-gate2-run2/judgement.md`, the per-stage cached
+  share
+- **Severity:** should-fix — it decides whether #265's remaining work is worth
+  doing at all
+- **What's wrong:** #265's change makes coverage classification and
+  unrequested-change detection open with a **byte-identical ~70k-token diff
+  block**, issued seconds apart in one run. The second reused **none** of it:
+
+  ```
+  coverage classification        1 call   79,073 prompt   0.0% cached
+  unrequested-change detection   1 call   78,585 prompt   0.0% cached
+  test-to-obligation mapping    18 calls  85,609 prompt   4.5% cached
+  ```
+
+  So the cross-stage prefix — the lever this whole change was built for — did
+  not pay. The ordering is right and the bytes are identical; something else is
+  preventing reuse.
+- **Hypothesis, stated as one:** each stage sends a different `response_format`
+  schema (`_Coverage` vs `_Detections`). If the provider's cache key covers the
+  schema as well as the messages, no two stages can ever share a prefix however
+  their messages are ordered. This would also explain mapping's 3-of-464 in the
+  baseline, which #265's own comment recorded as explained by neither ordering
+  nor prefix length.
+- **Why I didn't act:** `exclusion-04` of this mandate puts provider reuse
+  behaviour out of scope, deliberately, so it is not a Gate 2 criterion. And
+  settling it is an experiment, not a code change.
+- **Drafted fix — recommendation: run the experiment before any further
+  ordering work.** Issue the same messages twice under one schema, and again
+  under two different schemas, and read `cached_tokens`. It is a handful of live
+  calls and it decides the direction of the rest of #265.
+
+  **If the hypothesis holds:** this change stays (it is correct and cheap, and
+  it is what makes sibling calls in a partitioned stage share an opening), but
+  #265's remaining lever is **batch composition**, not ordering — and the three
+  single-call stages cannot be helped by prompt shape at all, which contradicts
+  the reading in #265's comment.
+
+  **Rejected alternative:** carrying on with ordering work on the other stages
+  and measuring at the end. That is optimisation by anecdote, which is the thing
+  #265 says it exists to avoid.
+- **Status:** resolved (human approved running it, 2026-08-20). **The hypothesis
+  holds.** `docs/experiments/265-cache-key-scope/` — six live calls, both
+  controls behaving: an identical repeat reused 94.9%, a different opening reused
+  0%, and messages identical but for the schema **name** reused 0%. So the schema
+  is in the cache key and cross-stage sharing is impossible by construction.
+  The same run measured `same_schema_new_tail` — identical opening, different
+  tail, same schema — at **95.0%**, which is the sibling-call case the ordering
+  change creates. Lever works; it was aimed at the wrong stages. Follow-up
+  filings queued below.
+
+### [2026-08-20] A local venv behind the ruff pin makes `ruff check .` pass on a tree CI rejects
+- **Kind:** defect (working procedure)
+- **Found during:** #265, implementation — reported by the #292 session, which
+  found main red and could not go green
+- **Where:** `CLAUDE.md` *Commands*; the pin is `pyproject.toml:19`
+- **Severity:** should-fix — it kept `main` red for four consecutive commits and
+  blocked another session's PR
+- **What's wrong:** `pyproject.toml` pins `ruff==0.16.2` for CI. This venv had
+  **0.15.22**, and `BLE` is not in the older version's default rule set, so
+  `.venv/bin/ruff check .` printed *"All checks passed!"* on a tree where CI
+  reported `BLE001` and exited 1. Lint is a build step, so the whole `test` job
+  died in ~25s before a single test ran.
+
+  Three findings appeared the moment the pinned version was installed, not one:
+  the reported `BLE001` in `docs/experiments/265-prompt-cache-baseline/`, an
+  `I001` import-sort in `coverage/open_questions.py`, and a **second** `BLE001`
+  at `llm.py:227` in code written on this branch minutes earlier. So the drift
+  was actively hiding a fresh break as well as an old one.
+- **Why I didn't act further:** the two code fixes are done — the baseline-script
+  line is on `main` as `c63bf86`, the other two are on
+  `265-share-request-openings`. What is left is documentation, and `CLAUDE.md` is
+  the human's file.
+- **Drafted fix — recommendation: one line in `CLAUDE.md` under *Commands*,**
+  beside the existing `ruff check .` entry:
+
+  > `.venv/bin/ruff check .` only matches CI when the venv matches the pin in
+  > `pyproject.toml` (`ruff==0.16.2`). An older ruff has a smaller default rule
+  > set and passes trees CI rejects — this kept `main` red for four commits.
+  > Check with `.venv/bin/ruff --version`; `pip install -e ".[dev]"` needs the
+  > sandbox off, because it hits the same TLS wall as `gh`.
+
+  **Rejected alternative:** making CI install whatever ruff is current. The
+  workflow comment already explains why the pin exists — a floating version made
+  CI enforce whatever ruff had most recently released, and #239 is the scar. The
+  pin is right; the local venv is what drifted.
+- **Status:** fixed (human decision, 2026-08-20). Landed in `CLAUDE.md` under
+  *Commands*, beside the `ruff check .` line.
+
 ### [2026-08-20] Mapping dropped four intact tests from an unchanged obligation
 - **Kind:** filing (comment on existing issue #182)
 - **Found during:** #292, Gate 2, runs 1 and 2
