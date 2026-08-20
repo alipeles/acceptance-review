@@ -72,7 +72,22 @@ import litellm
 
 from acceptance.config import DEFAULT_MODEL, DEFAULT_SEED
 from acceptance.llm import inline_schema_refs
-from acceptance.request_blocks import SHARED_PREAMBLE
+
+# A copy, not an import. This experiment must run against `main`, and the module
+# that owns this constant (`acceptance.request_blocks`) lives on an unmerged
+# branch — importing it made the script unrunnable here and, less obviously,
+# reddened CI: ruff could not resolve the module, classified it as third-party,
+# and raised I001 on an import block that looks correct to anyone whose checkout
+# has the branch.
+#
+# Nothing here depends on the value matching. The preamble is only a plausible
+# system message of a realistic length; what is measured is which *differences*
+# between requests break reuse.
+_PREAMBLE = (
+    "You are an acceptance reviewer. You are given material to judge and, after "
+    "it, the instructions for one specific judgement. Answer only in the "
+    "requested schema, and answer only the question the instructions ask."
+)
 
 
 def _opening(nonce: str) -> str:
@@ -180,7 +195,7 @@ def _call(messages: list[dict], schema: dict, model: str) -> dict:
 
 def _messages(opening: str, tail: str) -> list[dict]:
     return [
-        {"role": "system", "content": SHARED_PREAMBLE},
+        {"role": "system", "content": _PREAMBLE},
         {"role": "user", "content": opening},
         {"role": "user", "content": tail},
     ]
