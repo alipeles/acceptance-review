@@ -1,40 +1,49 @@
 # Task
-The rule deciding whether a stored result may be reused is stated in one place
-that names no stage of the review, and the stage that already applies that rule
-reaches its answer through it.
+A criterion's test-evidence rating is re-derived only when that criterion's own
+inputs changed. Its inputs are its requirement text, the set of tests mapped to
+it, and the contents of those tests.
 
 ## Constraints
-- The rule deciding whether a stored result may be reused is stated in one place
-  that names no stage of the review.
-- The rule refuses reuse unless all four of these hold: the unit is still
-  present, re-deriving it would issue the same request, the logic turning a
-  response into a result has not moved, and the stored result still fits the
-  inputs it is being reused against.
-- What a unit is, how it is identified, which of its inputs enter the request
-  identity, and what it means for a stored result to fit its inputs, are supplied
-  by the caller rather than by the rule.
-- A refusal to reuse a stored result carries the reason for the refusal.
-- Requirement decomposition reaches its reuse decision through that one statement
-  of the rule rather than through a copy of it.
-- The request identity computed for a requirement is unchanged by this work.
+- A criterion whose requirement text, mapped test set and mapped test contents
+  are all unchanged keeps the rating stored for it.
+- A criterion whose requirement text, mapped test set and mapped test contents
+  are all unchanged costs no evidence-judgement request.
+- A criterion is compared by the contents of the tests mapped to it, not by
+  whether a file containing one of those tests was touched.
+- A criterion whose mapped test set gained or lost a member is judged again.
+- A criterion whose requirement text changed is judged again.
+- The earlier rule that decided staleness from whether a cited file was touched
+  is removed rather than left in place beside the new one.
+- Deciding whether a criterion's implementation coverage is re-derived is
+  separate from deciding whether its test-evidence rating is re-derived.
+- A review repeated over the same stored state and the same inputs produces the
+  same review state as the one before it.
 
 ## Scope exclusions
-- Applying the reuse rule to any stage other than requirement decomposition.
-- Narrowing which criteria are judged again on a repeated review.
-- Whether a stored result is correct on its merits.
+- Making the set of tests mapped to a criterion stable across runs.
+- Whether a rating is correct on its merits.
+- Which defects the judge names for a criterion it does judge.
+- Rejecting a re-judgement that names no change it was given.
 - Selecting which stored earlier state a repeated review continues.
-- The set of obligations requirement decomposition produces.
+- Narrowing which criteria are judged again in any stage other than
+  test-evidence judgement.
 
 ## Completion expectations
 - Implementation
-- The reuse rule is stated in one place that names no stage of the review.
-- The rule refuses reuse when any one of its four checks fails.
-- A caller supplies the unit's identity, the inputs entering the request
-  identity, and the test of whether a stored result fits those inputs.
-- A refusal to reuse carries the reason for the refusal.
-- Requirement decomposition's reuse decision is produced by the shared statement
-  of the rule and not by a copy of it.
-- The request identity computed for a requirement is byte-identical to the
-  identity computed for that requirement before this work.
-- Requirement decomposition produces the obligations it produced before this
-  work.
+- A criterion with unchanged requirement text, unchanged mapped test set and
+  unchanged mapped test contents keeps its stored rating and produces no
+  evidence-judgement request.
+- Adding a test to a file that already holds a mapped test leaves unchanged the
+  rating of a criterion whose own mapped tests were not edited.
+- Editing a test mapped to one criterion leaves every other criterion's rating
+  unchanged.
+- A criterion whose mapped test set gained or lost a member is judged again.
+- A criterion whose requirement text changed is judged again.
+- No rule deciding staleness from whether a cited file was touched remains in
+  the delivered code.
+- Implementation-coverage staleness and test-evidence staleness are decided
+  separately.
+- Two reviews over the same stored state and the same inputs produce
+  byte-identical review state.
+- The findings recorded as correct in `tests/fixtures/rating-stability/` are
+  still found.
