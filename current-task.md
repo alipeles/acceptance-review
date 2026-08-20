@@ -1,56 +1,53 @@
 # Task
-Make the cost of a run attributable to the stage that incurred it. Every model
-call the review pipeline issues records which stage issued it, how many tokens it
-used, what it cost, and how much of its prompt the provider served from cache. At
-the end of a run the tool reports that breakdown stage by stage, keeping what the
-run itself spent separate from what its evidence cost when that evidence was
-first recorded.
+Make a changed test-evidence rating justify itself. When a review repeated over
+stored earlier state judges a criterion again, the judge is told what the rating
+was and what changed about that criterion's dependencies, and a rating it moves
+must rest on one of the changes it was given.
 
 ## Constraints
-- Every model call the review pipeline issues records the stage that issued it.
-- No model call the review pipeline issues reports its stage as unknown.
-- Recorded usage carries the cached-token counts the provider reports alongside
-  the prompt token count.
-- A cached-token count the provider does not report is absent from the recorded
-  usage rather than recorded as zero.
-- A call answered from a recording is observed with the same fields as a call
-  answered by the provider.
-- Each observed call records the stage that issued it, its request key, whether
-  it was answered from a recording or by the provider, and its usage.
-- A run reports tokens, cost and cached prompt-token share for each stage that
-  issued a call.
-- The cached prompt-token share of a stage is the share of that stage's prompt
-  tokens that the provider served from its cache.
-- A run's report distinguishes calls answered by the provider from calls answered
-  from a recording.
-- The cost reported for a call answered from a recording is what that call cost
-  when it was recorded.
-- The amount a run reports as its own spend counts only calls answered by the
-  provider.
-- The command-line interface surfaces the breakdown.
-- Recording the stage of a call leaves that call's request key unchanged.
-- Recording cached-token counts in a call's usage leaves that call's request key
-  unchanged.
-- The breakdown appears in no review state.
-- The breakdown appears in no rendered report.
+- A judgement asked for a criterion that changed is given the rating stored for
+  that criterion.
+- A judgement asked for a criterion that changed is given the changes to that
+  criterion's dependencies.
+- The stored rating and the dependency changes given to a judgement are part of
+  the request that judgement is recorded under.
+- A judgement that alters a rating names one of the changes it was given.
+- A judgement that alters a rating while naming no change it was given is
+  rejected by the code that reads the judgement, rather than by the instruction
+  that asked for it.
+- A rejected judgement leaves the stored rating in place.
+- A rejected judgement is reported.
+- A review with no stored earlier state judges every criterion without reference
+  to any stored rating.
+- A review repeated over the same stored state and the same inputs produces the
+  same review state as the one before it.
 
 ## Scope exclusions
-- Any work to make a run cheaper, and any work to increase how much of a prompt
-  the provider serves from its cache.
-- Attributing cost to anything finer than the stage that issued the call.
-- Model calls issued by the measurement harness, which is not part of a review
-  run.
-- Recording what a call cost at any moment other than when the call was made.
-- Computing the price of a token, which the provider's own accounting already
-  reports for each call.
-- Presenting the breakdown anywhere other than the command line.
+- Narrowing which criteria are judged again.
+- Partitioning the evidence-judgement request per criterion.
+- Making the set of tests mapped to a criterion stable across runs.
+- Whether a rating is correct on its merits.
+- Which defects the judge names for a criterion it does judge.
+- Selecting which stored earlier state a repeated review continues.
+- Which judgements other than the test-evidence rating are carried forward.
+- Where the rule deciding whether a stored result may be carried forward is
+  defined.
 
 ## Completion expectations
 - Implementation
-- A run reports tokens, cost and cached prompt-token share by stage, with calls
-  answered by the provider distinguished from calls answered from a recording.
-- A test fails when a model call site in the review pipeline omits the stage that
-  issued it.
-- A test pins that recording usage fields leaves every request key unchanged.
-- Two recorded runs over the same input produce byte-identical review state and
-  byte-identical report output.
+- A judgement asked about a changed criterion receives the stored rating and the
+  changes to that criterion's dependencies.
+- The stored rating and the dependency changes are part of the request the
+  judgement is recorded under.
+- A judgement that alters a rating while naming a change it was given is
+  accepted.
+- A judgement that alters a rating while naming no change it was given is
+  rejected, and the stored rating stands.
+- The code that reads a judgement performs the rejection.
+- A rejected judgement is reported.
+- A review with no stored earlier state puts no stored rating in any
+  evidence-judgement request.
+- Two reviews over the same stored state and the same inputs produce
+  byte-identical review state.
+- The findings recorded as correct in `tests/fixtures/rating-stability/` are
+  still found.
