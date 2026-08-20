@@ -254,8 +254,9 @@ Scenarios 10–13 depend on GitHub/CI and are Stage 2.
   means queueing it (*Working agreement* §4), not stopping the work.
 - **The backlog's _content_ needs human review; its _commands_ do not.** Draft the
   item — title, body, labels, parent umbrella — and show it *alongside the
-  evidence that produced it*. This covers `gh issue create`, attaching a
-  sub-issue, and any comment that asserts a new finding on an existing issue.
+  evidence that produced it*. This covers `issue_write`, attaching a sub-issue
+  with `sub_issue_write`, and any `add_issue_comment` that asserts a new finding
+  on an existing issue.
   Editing your own draft after feedback is not a second approval; re-show it.
   The backlog is the plan (see *How work is tracked*), so filing is a change to
   the plan, and an agent that files as it goes writes the plan unsupervised.
@@ -456,10 +457,42 @@ because everything after it is judged against a broken gate.
 .venv/bin/pytest -q                 # full suite — replay mode, no API key needed
 .venv/bin/ruff check .              # lint, as CI runs it
 .venv/bin/acceptance check --task current-task.md --base <rev> [--head <rev>]
-gh issue view <n>                   # read a task
 ```
 
 Other subcommands: `decompose`, `diff`, `classify`, `recommendation`.
+
+**GitHub goes through the MCP tools, not `gh`.** The `mcp__github__*` tools run
+in-process, so they touch neither the sandbox, the macOS keyring, nor TLS
+verification — the three walls that make `gh` need an escape hatch (below). They
+also have no local git side-effects: `gh pr merge --delete-branch` failed during
+#264 with `'main' is already used by worktree`, because the CLI tries to move the
+local checkout. The MCP call does not.
+
+| want | use |
+|---|---|
+| read a task | `issue_read` (`method: "get"`) |
+| comment on an issue | `add_issue_comment` |
+| file an issue / attach a sub-issue | `issue_write`, `sub_issue_write` |
+| read a PR, its diff, its comments | `pull_request_read` |
+| **is CI green?** | `pull_request_read`, `method: "get_check_runs"` |
+| open a PR | `create_pull_request` |
+| merge | `merge_pull_request` (then delete the branch separately) |
+
+Two things this deliberately does NOT change:
+
+- **The approval boundaries stay where they were.** `issue_write`,
+  `sub_issue_write` and `add_issue_comment` are allowlisted and file without a
+  prompt, exactly as `Bash(gh *)` did — so *Working agreement* §4's review-then-
+  file rule is still the only rail, not a permission dialog. `create_pull_request`
+  and `merge_pull_request` are **not** allowlisted, so opening a PR and merging
+  still stop for a human (§3).
+- **A comment body is a parameter, not a file.** No `-F <file>` and no heredoc;
+  write the text straight into the call.
+
+**`gh` survives for one job: watching CI in the background.** `Monitor` runs a
+shell command and shell cannot call an MCP tool, so a background CI watch still
+shells out to `gh pr checks` — and therefore still needs the escape hatch. For a
+one-off "is it green yet", prefer `get_check_runs`.
 
 **Sessions start sandboxed.** `sandbox.enabled` is on by default in user
 settings, with `autoAllowBashIfSandboxed`, so a sandboxed Bash call runs without
@@ -487,8 +520,9 @@ layer, where it was catching an unrelated stat. **Do not re-add
 `.venv/bin/pytest -q --collect-only` inside the sandbox.
 
 **`gh` cannot run inside the sandbox on macOS, and `sandbox.excludedCommands` is
-not currently rescuing it.** Measured 2026-08-20: it hits **three** independent
-walls, and clearing one only reveals the next.
+not currently rescuing it.** This is why the MCP tools above are the default and
+`gh` is reserved for background CI watching. Measured 2026-08-20: it hits
+**three** independent walls, and clearing one only reveals the next.
 
 1. **Its config.** `open ~/.config/gh/config.yml: operation not permitted` — the
    project's `permissions.deny` carries `Read(~/.config/gh/**)`, and a `Read()`
