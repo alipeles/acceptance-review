@@ -36,6 +36,214 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-20] A review run reaches into `benchmark/` for a model call that names no stage
+- **Kind:** filing (new sub-issue of #184)
+- **Found during:** #292, Gate 1, run 1
+- **Where:** `src/acceptance/requirement/carry.py:166-171` calls
+  `src/acceptance/benchmark/alignment.py:77`
+- **Severity:** should-fix — a green guard over a violated constraint, and a
+  layering violation `CLAUDE.md` states as a structural fact
+- **What's wrong:** two things, one fix.
+
+  1. `align_obligations()` at `benchmark/alignment.py:77` calls
+     `client.complete(messages, _Alignment)` with no `stage=`, so
+     `ModelClient._observe_call` (`llm.py:405`) labels it
+     `UNKNOWN_STAGE`. #285's constraint is that no model call the review
+     pipeline issues reports its stage as unknown. `decompose` printed an
+     `unknown` row: 1 call, 881 prompt / 48 output tokens.
+  2. **`plan_carry` calls benchmark code from the review path.**
+     `requirement/carry.py:166` does a function-local
+     `from acceptance.benchmark.alignment import align_obligations` and calls it
+     at `:171`. `align_obligations`' own docstring (`alignment.py:17-18`) says it
+     "runs against known ground truth, not in the product's own review path",
+     and `CLAUDE.md` states `benchmark/` "is not part of a review run". Both are
+     false as written.
+- **Why the guard is green:** `tests/test_stage_attribution.py` passes 8/8. Its
+  AST scan (`:88`) filters `_EXCLUDED = ("benchmark",)` **by path**, so the
+  offending site is excluded — and `carry.py`'s in-function import hides the
+  reachability from a per-module scan regardless. Its wiring test (`:179`) does
+  run a real `run_review`, but with no ledger prior, so `plan_carry` returns at
+  `carry.py:115-119` before reaching the guard at `:165` and the call never
+  happens. **The only path that reaches the defect is the one path the wiring
+  test does not take.**
+- **Why it now fires on nearly every run:** the guard at `carry.py:165` needs a
+  prior ledger entry plus residue on both sides. #251's triage changed `CLAUDE.md`
+  to require `--continue` on every Gate 1 and Gate 2 re-run, which supplies that
+  prior — so a condition that used to be rare is now the default.
+- **Why I didn't act:** out of scope for #292, and it touches
+  `requirement/carry.py::plan_carry`, which **#291 already rewrites** on its
+  unpushed branch. Fixing it here would collide.
+- **Drafted fix:** file as a sub-issue of #184.
+
+  > **Title:** A review run reaches into `benchmark/` for a model call that names no stage
+  >
+  > Child of #184. Labels: `bug`, `track:checker`.
+  >
+  > ## What happens
+  >
+  > A `decompose` run continued with `--continue` prints an `unknown` row in its
+  > per-stage usage breakdown:
+  >
+  > ```
+  > decompose           1 (1 live / 0 replayed)   6,481     734
+  > obligation linking  2 (2 live / 0 replayed)   1,791     127
+  > unknown             1 (1 live / 0 replayed)     881      48
+  > ```
+  >
+  > The call is `align_obligations()` at `benchmark/alignment.py:77`, which
+  > passes no `stage=`, so `ModelClient._observe_call` (`llm.py:405`) labels it
+  > `UNKNOWN_STAGE`. This violates #285's constraint that no model call the
+  > review pipeline issues reports its stage as unknown.
+  >
+  > ## The larger half
+  >
+  > It is reached from **product** code. `requirement/carry.py:166` imports
+  > `acceptance.benchmark.alignment` inside `plan_carry()` and calls it at `:171`,
+  > guarded at `:165` by a prior ledger entry plus unmatched residue on both
+  > sides. So the review path depends on the measurement harness.
+  >
+  > `align_obligations`' docstring says the opposite (`alignment.py:17-18`):
+  > *"This is benchmark measurement infrastructure — it runs against known ground
+  > truth, not in the product's own review path."* `CLAUDE.md` says
+  > *"`benchmark/` is the measurement harness; it is not part of a review run."*
+  > Both are now false.
+  >
+  > ## Why no test caught it
+  >
+  > `tests/test_stage_attribution.py` passes 8/8.
+  >
+  > - Its AST scan (`:88`) excludes `benchmark/` **by path**, so the site is
+  >   outside what it polices. The scan has no notion of "reachable from the
+  >   review pipeline", and the in-function import would defeat a per-module
+  >   scan anyway.
+  > - Its wiring test (`:179`) runs a real `run_review`, but passes no ledger
+  >   prior, so `plan_carry` returns early at `carry.py:115-119` and never
+  >   reaches the call.
+  >
+  > The one path that reaches the defect is the one path the wiring test does
+  > not take — and since `CLAUDE.md` now requires `--continue` on every gate
+  > re-run, that path is the common case.
+  >
+  > ## Acceptance
+  >
+  > - The requirement-alignment call names the stage that issued it, and no
+  >   `decompose` or `check` run reports a stage of `unknown`.
+  > - A test drives a run **with a ledger prior and residue on both sides** —
+  >   the path that reaches `align_obligations` — and fails on an unattributed
+  >   call.
+  > - No module under `benchmark/` is imported from the review path, or the
+  >   statements to the contrary in `alignment.py`'s docstring and `CLAUDE.md`
+  >   are corrected to match a deliberate decision.
+  >
+  > ## Sequencing
+  >
+  > Touches `requirement/carry.py::plan_carry`, which #291 rewrites on an
+  > unpushed branch. Sequence after #291 lands, or fold into it.
+  >
+  > Evidence: `dogfood-logs/292-gate1-run1/`, `judgement.md` Finding 3.
+- **Status:** filed (#296, sub-issue of #184)
+
+### [2026-08-20] The Task headline yields a duplicate obligation with the verb left unconjugated
+- **Kind:** filing (new sub-issue of #181)
+- **Found during:** #292, Gate 1, run 1
+- **Where:** `src/acceptance/requirement/obligations.py` (decomposition); evidence
+  in `dogfood-logs/292-gate1-run1/output.log`, requirement `task-01`
+- **Severity:** should-fix — it manufactures a spurious obligation that mapping
+  and evidence judgement then spend a Gate 2 on
+- **What's wrong:** the headline *"Make a changed test-evidence rating justify
+  itself."* produced two obligations. One is a fair restatement; the other,
+  `changed-test-evidence-rating-justify-itself`, is *"A changed test-evidence
+  rating justify itself."* — the imperative "Make" stripped without the verb
+  being repaired, and typed `test_demand` rather than `functional`. It also
+  duplicates `constraint-04`, which states the same rule grammatically.
+- **Why I didn't act:** out of scope for #292, and rewording `current-task.md` to
+  dodge it would be tuning the input around a tool defect rather than fixing weak
+  wording. The headline is ordinary English, and #251's run 5 headline was
+  imperative too and decomposed cleanly — so the mood is not the trigger.
+- **Drafted fix:** file as a sub-issue of #181.
+
+  > **Title:** A Task headline in the imperative yields an obligation with the verb left unconjugated
+  >
+  > Child of #181. Labels: `bug`, `track:checker`.
+  >
+  > ## What happens
+  >
+  > #292's Gate 1 run 1 gave the decomposer this Task headline:
+  >
+  > > Make a changed test-evidence rating justify itself.
+  >
+  > `task-01` yielded two obligations. The second is
+  > `changed-test-evidence-rating-justify-itself`, described as *"A changed
+  > test-evidence rating justify itself."* — the imperative verb "Make" was
+  > removed and the remaining "justify" was left uninflected, producing a
+  > sentence that is not grammatical and an obligation that is a bare
+  > restatement of the headline.
+  >
+  > It is typed `test_demand`, not `functional`, so it will be carried into
+  > mapping and evidence judgement as a demand for a test of a sentence that
+  > states no behavior distinct from `constraint-04`
+  > (`changed-rating-names-one-given-change`), which says the same rule
+  > grammatically.
+  >
+  > ## Why it is not just cosmetic
+  >
+  > A duplicate obligation is a criterion mapping must find tests for and the
+  > judge must rate. It cannot be strongly supported on its own terms because it
+  > names no behavior of its own, so it is a standing source of a
+  > less-than-clean Gate 2 that no code change can close.
+  >
+  > ## Not the input's fault
+  >
+  > #251's Gate 1 run 5 (`dogfood-logs/251-gate1-run5/`) used an imperative
+  > headline of the same shape — *"Re-judge a criterion's test evidence only
+  > when … and make a changed rating justify itself."* — and produced two clean,
+  > grammatical obligations. The imperative mood alone does not trigger it.
+  >
+  > ## Acceptance
+  >
+  > - A Task headline in the imperative yields obligation descriptions that are
+  >   grammatical sentences.
+  > - An obligation that restates a Constraint verbatim in different words is
+  >   merged with it rather than carried alongside it.
+  >
+  > Evidence: `dogfood-logs/292-gate1-run1/output.log`, `judgement.md` Finding 1.
+- **Status:** filed (#297, sub-issue of #181)
+
+### [2026-08-20] A third instance of the unreconciled linking triangle, in #292's Gate 1
+- **Kind:** filing (comment on existing issue #242)
+- **Found during:** #292, Gate 1, run 1
+- **Where:** `src/acceptance/requirement/linking.py`; evidence in
+  `dogfood-logs/292-gate1-run1/output.log`, final block
+- **Severity:** nice-to-have — a known, already-filed defect; this only adds an
+  instance to it
+- **What's wrong:** three obligations were linked transitively but at least one
+  pair among them was denied, so none merged:
+  `stored-rating-and-changes-recorded-with-judgement-request` (constraint-03),
+  `changed-criterion-gets-stored-rating-and-dependency-changes` (completion-02),
+  `stored-rating-and-dependency-changes-in-request` (completion-03).
+  `constraint-03` and `completion-03` are the same sentence in the same words, so
+  this is a genuine redundancy the linker should have collapsed.
+- **Why I didn't act:** #242 already owns this defect; #251's Gate 1 runs 3 and 5
+  hit the same shape and accepted it as residual redundancy.
+- **Drafted fix:** comment on #242.
+
+  > A third instance, from #292's Gate 1 run 1
+  > (`dogfood-logs/292-gate1-run1/`), notable because the redundancy is exact
+  > rather than approximate: `constraint-03` and `completion-03` in the task file
+  > are the **same sentence in the same words**, and their two obligations still
+  > did not merge —
+  > `stored-rating-and-changes-recorded-with-judgement-request` and
+  > `stored-rating-and-dependency-changes-in-request`, with
+  > `changed-criterion-gets-stored-rating-and-dependency-changes` as the third
+  > corner. The linker merged the easier pair in the same run
+  > (`rejected-judgement-reported` across `constraint-07` and `completion-07`),
+  > so the failure is specific to the triangle, not to merging in general.
+  >
+  > Worth recording alongside it: these task files deliberately mirror each
+  > Constraint as a Completion expectation, so near-duplicate pairs are the
+  > format's normal output and the linker meets them on every run.
+- **Status:** filed (#242 comment)
+
 ### [2026-08-19] #225 in a controlled pair — a rating fell on a diff that only added tests, and the prescription it gained is satisfied by one of them
 - **Kind:** filing (comment on existing issue #225)
 - **Found during:** #258, Gate 2, runs 3 and 4
