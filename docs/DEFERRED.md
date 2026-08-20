@@ -3866,6 +3866,12 @@ the record.
   hypothesis: the obligation's id reads `adding-test-to-**unmapped**-file-…`,
   which asserts the opposite of its own description, and ids are shown to the
   mapper.
-- **Status:** **filed as #307**, sub-issue of #182, on 2026-08-20. Approved at
-  #293's Gate 2. #293 merged with the gate deliberately not clean, on the human's
+- **Status:** **recorded on #173**, on 2026-08-20. Approved at #293's Gate 2.
+  Filed first as #307, then found to be #173 — *"M4 mapping maps obligations to
+  plainly unrelated tests while rejecting the on-point one"* — seen from the other
+  side: there an obligation drew eleven unrelated tests and rejected the on-point
+  one, here it drew none while its on-point test went to four looser obligations.
+  #307 is closed as a duplicate of #173 and detached from #182; the evidence lives
+  on #173. Filing it separately was my error — I did not check #182's existing
+  children first. #293 merged with the gate deliberately not clean, on the human's
   approval, as #291 and #292 did.
