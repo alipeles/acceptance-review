@@ -92,8 +92,6 @@
       "Bash(brew *)"
     ],
     "deny": [
-      "Read(.env)",
-      "Read(.env.*)",
       "Read(*.pem)",
       "Read(id_rsa*)",
       "Read(credentials*)",
@@ -111,6 +109,12 @@
       "Bash(git filter-branch *)",
       "Bash(chown *)"
     ]
+  },
+  "sandbox": {
+    "network": {
+      "allowedDomains": ["api.github.com", "uploads.github.com"]
+    },
+    "excludedCommands": ["gh"]
   },
   "hooks": {
     "Notification": [

@@ -460,6 +460,39 @@ gh issue view <n>                   # read a task
 
 Other subcommands: `decompose`, `diff`, `classify`, `recommendation`.
 
+**Sessions start sandboxed.** `sandbox.enabled` is on by default in user
+settings, with `autoAllowBashIfSandboxed`, so a sandboxed Bash call runs without
+a prompt. Everything above works inside it. Two things follow:
+
+- **Do not reach for `dangerouslyDisableSandbox` as a first move.** It is for a
+  command that demonstrably failed *because of* a sandbox restriction —
+  "Operation not permitted", a blocked host, a write outside the allowed paths.
+  A command can fail for a hundred other reasons, and disabling the sandbox to
+  find out costs the protection and answers nothing.
+- **The sandbox is what makes the shapes below free.** Auto-allow applies to
+  sandboxed commands, so a compound command that has to leave the sandbox pays
+  twice. The habits list is not a style preference; it is the difference between
+  a call that runs and a call that stops for a human.
+
+**`.env` at the repo root and `pytest` collide, and the fix is a deletion.**
+`pytest` stats the repository root while computing its rootdir, so a
+`Read(.env)` deny rule makes the sandbox refuse the stat and **the entire suite
+fails to collect** — `PermissionError`, zero tests, before anything runs. The
+rule was removed for exactly this reason. Claude Code's built-in secret-file
+protection still covers the file, so an explicit read or a command naming `.env`
+still prompts; what changed is that the block moved off the sandbox's filesystem
+layer, where it was catching an unrelated stat. **Do not re-add
+`Read(.env)`/`Read(.env.*)` to `.claude/settings.json`** without re-testing
+`.venv/bin/pytest -q --collect-only` inside the sandbox.
+
+**`gh` cannot run inside the sandbox on macOS.** It is a Go binary and verifies
+TLS through `com.apple.trustd.agent`, which the sandbox blocks, so every call
+dies with `tls: failed to verify certificate: x509: OSStatus -26276`. It is
+listed in `sandbox.excludedCommands` so it runs outside the sandbox
+automatically. If a `gh` call ever fails that way again, the exclusion is not
+taking effect — say so rather than reaching for the escape hatch on every call.
+`git` is unaffected: `git fetch`, `push` and the rest work sandboxed.
+
 **Habits that cost permission prompts and buy nothing.** Measured across 25
 transcripts (3,324 unique Bash calls); together they outnumber every genuinely
 missing allowlist rule. The allowlist is close to complete — **prompts are caused
@@ -631,6 +664,34 @@ worthless. Hold your own reports to it:
   behavior were absent. If it wouldn't, the test is not evidence. Say so.
 - `Indeterminate` and "I could not verify this" are acceptable answers at a gate.
   A false green is not.
+
+## 6. Write for someone who was not in the session
+
+**I have not seen what you have seen.** You have the transcript, the file you
+just read, the run whose output scrolled past, and the reason you rejected the
+approach you rejected. I have the summary you write. Everything you leave
+implicit is simply gone.
+
+- **Plain language.** Short sentences, ordinary words, no ceremony. If a plain
+  word will do, use it.
+- **Expand the shorthand once.** An id, a stage name, a status value or an
+  internal term means nothing to a reader who was not watching. `NOT OBTAINED`
+  and `satisfied_by_absence` need a clause saying what they mean the first time
+  they appear in a report; after that the short form is fine.
+- **Say what happened before what it implies.** Lead with the observation — the
+  command, the number, the verdict — and put the reasoning after it. Do not open
+  with a conclusion I have no way to check.
+- **Name the thing, not its location in your context.** "The test I mentioned"
+  and "the second finding" are unresolvable from outside. Use the file, the test
+  name, the obligation id.
+- **Bad news first and in the first sentence.** A gate that is not clean, a
+  check that failed, a claim you had to withdraw — those lead. Burying them
+  under what went well is the one habit that makes a report untrustworthy.
+- **Distinguish what you verified from what you believe.** Both are useful and
+  they are not the same sentence.
+
+This is not a request for more words. A short report I can act on beats a long
+one I have to reverse-engineer.
 
 ---
 
