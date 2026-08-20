@@ -2004,3 +2004,121 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 - **Status:** filed (comment on #251). No separate issue: #251 already describes
   this defect and cites two smaller instances of it, so splitting it off would
   divide the evidence for one fix across two places.
+
+### [2026-08-19] Are the measurement harness's model calls in scope for per-stage cost attribution?
+- **Kind:** decision
+- **Found during:** #264, Gate 1
+- **Where:** `benchmark/instability.py:356`, `benchmark/alignment.py:77`
+- **Severity:** should-fix
+- **What's wrong:** #264's Acceptance says *"No call site reports as `unknown`"*,
+  and the issue body counts benchmark's call sites among those that would. But
+  CLAUDE.md's repo layout states plainly that `benchmark/` **is not part of a
+  review run**, and the thing #264 builds is a per-run, per-stage cost footer for
+  a review. Counting harness calls into a review run's footer would attribute
+  spend to a run that did not make it.
+
+  The exact inventory, walked today: **13** `.complete(` call sites, not the 14
+  the issue body claims. One of the 13 —
+  `benchmark/instability.py:262` — is a subclass override forwarding
+  `super().complete(..., stage)`, not an originating call. Of the remaining 12,
+  **10 are on the product path** and **2 are in `benchmark/`**. Three of the 10
+  already pass `stage=` (`evidence/mapping.py:174`, `requirement/linking.py:520`,
+  `requirement/obligations.py:877`), leaving **7 product-path sites to fix**.
+  `evidence/discrimination.py:159` does **not** pass it, contrary to the issue body.
+- **Why I didn't act:** resolving it silently would decide what the Acceptance
+  means. It changes what the enforcement test asserts, so it has to be settled
+  before that test is written.
+- **Drafted fix:** **Recommendation — exclude `benchmark/`.** Scope the
+  enforcement test to `src/acceptance/` minus `benchmark/`, so it fails when any
+  of the 10 product-path sites omits `stage=`, and leave the harness's 2 alone.
+  Rationale: the footer reports what a *review* cost, and the harness is a
+  separate program that happens to share the client. `current-task.md` carries
+  this as a scope exclusion (*"Model calls issued by the measurement harness,
+  which is not part of a review run"*), so approving this is approving the task
+  file as decomposed.
+
+  **Resolved 2026-08-19 (human): exclude `benchmark/`.** The enforcement test
+  scopes to `src/acceptance/` minus `benchmark/`, over the 10 product-path sites.
+
+  **Alternative rejected:** pass `stage=` at all 12 sites so `unknown` never
+  appears anywhere. It reads truer to the Acceptance's literal wording and costs
+  two extra keyword arguments, but it puts harness spend into a review run's
+  footer unless the aggregation then filters it back out — which is the same
+  decision, made twice and in a place where it is easy to get wrong.
+- **Status:** resolved (excluded — human decision, 2026-08-19); implemented in #264
+
+### [2026-08-19] #278 is narrower than filed: 1.93.0 cannot be installed fresh either
+- **Kind:** filing (comment on existing issue #278)
+- **Found during:** #264, environment setup before Gate 1
+- **Where:** `pyproject.toml:12`
+- **Severity:** should-fix
+- **What's wrong:** #278 reproduced today in a new worktree — a fresh
+  `pip install -e ".[dev]"` resolved **litellm 1.97.0** and every live call died
+  as described there. Two facts the issue does not yet carry:
+
+  1. **The root cause, precisely.** Rebuilding the model by hand gives
+     `PydanticUndefinedAnnotation: name 'ChatCompletionReasoningSummaryTextBlock'
+     is not defined`. That type **is** defined, in litellm's own
+     `litellm/types/llms/openai.py:526`, but `litellm/types/utils.py` annotates
+     `Message` with it as a string under a `TYPE_CHECKING` import, so pydantic
+     cannot resolve it at runtime. It is a litellm packaging bug, not a
+     version-skew problem with `openai` or `pydantic`.
+  2. **Pinning *down* is not a workaround in a fresh environment.**
+     `pip install litellm==1.93.0` fails: pip selects the **sdist**
+     (`litellm-1.93.0.tar.gz`) rather than a wheel, and the source build needs a
+     Rust toolchain it then tries to download —
+     `PermissionError: ... puccinialin/rustup-init/rustup-init.lock`. So the
+     acceptable range is bounded on *both* sides, and #278's Acceptance should
+     say which versions actually install *and* work. **1.96.2 is the only version
+     confirmed good** (by #275, and by the pre-existing venvs).
+- **Why I didn't act:** `pyproject.toml` is outside #264's area, and #278 already
+  owns the fix. Unblocked instead by cloning the working `.venv` into the
+  worktree and re-pointing its editable path file at the worktree's `src` — worth
+  recording as the escape hatch, since `pip install -e .` cannot rebuild the
+  environment while this is open.
+- **Drafted fix:** comment on **#278** with the two points above. No new issue.
+- **Status:** filed (comment on #278)
+
+### [2026-08-20] #251 on a pair whose test file is byte-identical — three ratings fell with no source change at all
+- **Kind:** filing (comment on existing issue #251)
+- **Found during:** #264, Gate 2 (runs 1 and 2)
+- **Where:** `evidence/mapping.py` — the mapping half, so #182 as much as #251
+- **Severity:** blocker (it is what keeps Gate 2 from ever coming back clean)
+- **What's wrong:** between the two runs, three obligations went
+  `strongly supported -> unsupported` and lost **every** mapped test, while:
+
+  - the intervening commit (`23cf2e7`) touched exactly two files,
+    `tests/support.py` and `tests/test_stage_attribution.py` (`git show --stat`);
+  - **no source file changed** — not one line under `src/`;
+  - **`tests/test_usage.py` is byte-identical between the two heads**, and it is
+    the file holding the tests that were cited and then were not.
+
+  | obligation | cited in run 1 | cited in run 2 |
+  |---|---|---|
+  | `no-finer-than-stage-cost-attribution` | `test_usage.py::test_each_stage_is_accounted_for_separately_and_in_a_stable_order` | (no mapped test) |
+  | `stage-attributed-run-cost` | same test | (no mapped test) |
+  | `model-call-stage-usage-cost-cache-recording` | `test_usage.py::test_usage_details_are_read_from_a_mapping_too` | (no mapped test) |
+
+  This is a tighter instance than the #269 pair already on #251: there the diff
+  had grown in several places, so "the mapping saw a different diff" was an
+  available explanation. Here the file carrying the lost tests did not change by
+  a single byte, and neither did the code under review or the obligation text.
+
+  **A mechanism worth checking, offered as a hypothesis.** #264's own footer —
+  the thing this task built — instruments the stage that failed, and it shows
+  mapping issuing **14 live calls in run 1** and **15 calls in run 2, of which
+  only 3 were live**. So the added test file moved *partition boundaries*, and
+  the three re-asked partitions answered differently from the recordings the
+  other twelve replayed. That is DR-164 territory and would explain why the
+  losses cluster on three obligations rather than scattering. Not verified:
+  reading the two runs' mapping transcripts side by side would settle it.
+- **Why I didn't act:** `evidence/mapping.py` is outside #264's area, and the
+  gate's own rule forbids the only alternative — chasing the rating by writing
+  more tests, which is what made #269's run 5 worse.
+- **Drafted fix:** comment on **#251**, cross-referencing **#182**, with the
+  table above, the `git show --stat` output, and the partition-count hypothesis
+  flagged as unverified. Evidence: `dogfood-logs/264-gate2-run1/` and `-run2/`,
+  which carry both `revisions.txt` files, so the pair is reproducible. No new
+  issue — #251 already describes this defect and this is its cleanest instance,
+  so splitting it off would divide the evidence for one fix.
+- **Status:** filed (comment on #251)
