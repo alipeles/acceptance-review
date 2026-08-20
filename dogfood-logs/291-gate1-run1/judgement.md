@@ -8,6 +8,16 @@ Base `bcf2779`. 6 live calls, $0.0241.
 20 requirements, 19 with obligations, 1 deliberately none. **No open questions
 were raised**, so there is nothing to triage under the gate's three cases.
 
+> **Correction, same day.** Do not read that line as evidence the mandate was
+> unambiguous. A per-requirement disposition is exactly one of `yielded`,
+> `open_question` or `no_obligation`, so a requirement that produces an
+> obligation *cannot also* raise a question, and the prompt tells the model
+> `yielded` "should be the large majority". Checked against the committed
+> corpus: the last run to print an `Open questions:` section is
+> `dogfood-logs/202-gate1-run{1,2}/`. Nothing in the ~30 issues since has raised
+> one. The axis is dead, so this run's silence reports nothing either way.
+> Raised by the #265 session; queued as a filing.
+
 - **No invented obligations.** Every obligation traces to a line of
   `current-task.md`.
 - **None of the real ones missing.** All six Constraints, all five substantive
