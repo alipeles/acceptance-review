@@ -322,6 +322,19 @@ then decompose it:
 .venv/bin/acceptance decompose --task current-task.md
 ```
 
+**On a re-run, pass `--continue <run id>`.** Every run prints
+`continue this run with: --continue <id>`; give the previous run's id when you
+decompose again after reworking `current-task.md`. Without it **nothing is
+carried forward** — that is #269's rule, *"No obligation is carried forward when
+no continued run is named"* — so the obligation set is free to move for reasons
+unrelated to your rewording. Measured at #251's Gate 1: rewording one Scope
+exclusion bullet inverted whether four *untouched* requirement pairs merged,
+and the same task file run with `--continue` reproduced the previous run's
+merges exactly, on one model call instead of five
+(`dogfood-logs/251-gate1-run{2,3,4}/`). A gate's second and third runs are
+exactly where stability matters, because they only exist because the first run
+found something.
+
 **2. Read the obligation breakdown and confirm it is accurate** — no invented
 obligations, none of the real ones missing. An inaccurate decomposition
 invalidates every downstream stage, so do not proceed past a breakdown you would
@@ -350,6 +363,12 @@ the next session either repeats it or assumes it.
 ```bash
 .venv/bin/acceptance check --task current-task.md --base <rev> [--head <rev>]
 ```
+
+`check` takes `--continue <run id>` as well, and the same rule applies: on a
+second or later round, name the previous round's run so decomposition is carried
+rather than re-derived. Note this is **not** the same mechanism as the prior
+*review* `rerun.py::find_prior_review` selects over git ancestry — that one
+carries judgements and needs no flag; `--continue` carries the obligation set.
 
 **Move forward only on a completely clean check.** Clean means all of:
 

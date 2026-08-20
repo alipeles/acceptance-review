@@ -1,0 +1,207 @@
+Requirements: 34   with obligations: 33   deliberately none: 1
+
+[task-01] Re-judge a criterion's test evidence only when something that criterion
+    depends on has changed, and make a changed rating justify itself. A criterion
+    depends on its requirement text, the set of tests mapped to it, and the contents of
+    those tests. When a review repeated over stored earlier state finds all three
+    unchanged, the stored rating stands and nothing is asked of the judge. When one of
+    them did change, the judge is told what the rating was and what changed, and a
+    rating it moves must rest on one of the changes it was given.
+    -> rejudge-only-on-dependency-change  [functional/explicit]
+       Re-judge a criterion's test evidence only when something that criterion depends
+       on has changed.
+    -> criterion-dependencies-are-text-set-and-contents  [invariant/explicit]
+       A criterion depends on its requirement text, the set of tests mapped to it, and
+       the contents of those tests.
+    -> unchanged-dependencies-keep-stored-rating  [regression/explicit]
+       When a review repeated over stored earlier state finds all three dependencies
+       unchanged, the stored rating stands and nothing is asked of the judge.
+    -> changed-dependencies-trigger-rejudge  [functional/explicit]
+       When one of the criterion's dependencies changes, the judge is told what the
+       rating was and what changed.
+    -> changed-rating-must-rest-on-given-change  [invariant/explicit]
+       A rating that moves must rest on one of the changes it was given.
+
+[constraint-01] A criterion whose requirement text, mapped test set and mapped test
+    contents are all unchanged keeps the rating stored for it.
+    -> unchanged-criterion-keeps-stored-rating  [invariant/explicit]
+       A criterion whose requirement text, mapped test set and mapped test contents are
+       all unchanged keeps the rating stored for it.
+
+[constraint-02] Such a criterion costs no evidence-judgement model call.
+    -> unchanged-criterion-no-model-call  [functional/explicit]
+       Such a criterion costs no evidence-judgement model call.
+
+[constraint-03] A criterion whose mapped test set gained or lost a member is judged
+    again.
+    -> mapped-test-set-change-rejudges-criterion  [functional/explicit]
+       A criterion whose mapped test set gained or lost a member is judged again.
+
+[constraint-04] A criterion the contents of whose mapped tests changed is judged again.
+    -> mapped-test-content-change-rejudges-criterion  [functional/explicit]
+       A criterion the contents of whose mapped tests changed is judged again.
+
+[constraint-05] A criterion is compared against the stored state by the contents of its
+    mapped tests, not by whether a file containing one of them was touched.
+    -> compare-by-mapped-test-contents-not-file-touch  [invariant/explicit]
+       A criterion is compared against the stored state by the contents of its mapped
+       tests, not by whether a file containing one of them was touched.
+
+[constraint-06] Adding a test that is not mapped to a criterion does not cause that
+    criterion to be judged again.
+    -> unmapped-test-does-not-rejudge-criterion  [functional/explicit]
+       A criterion is judged again only when a test added to the review is mapped to
+       that criterion.
+
+[constraint-07] Editing a test mapped to one criterion does not change the rating of a
+    criterion that test is not mapped to.
+    -> editing-mapped-test-does-not-affect-unmapped-criterion  [regression/explicit]
+       Editing a test mapped to one criterion leaves the rating of every criterion that
+       test is not mapped to unchanged.
+
+[constraint-08] A judgement asked for a criterion that changed is given the rating
+    stored for that criterion.
+    -> changed-criterion-gets-stored-rating  [functional/explicit]
+       A judgement requested for a changed criterion includes the stored rating for that
+       criterion.
+
+[constraint-09] A judgement asked for a criterion that changed is given the changes to
+    that criterion's dependencies.
+    -> changed-criterion-gets-dependency-changes  [functional/explicit]
+       A judgement requested for a changed criterion includes the changes to that
+       criterion's dependencies.
+
+[constraint-10] The stored rating and the dependency changes given to a judgement are
+    part of the request that judgement is recorded under.
+    -> stored-rating-and-changes-recorded-with-judgement-request  [invariant/explicit]
+       The stored rating and the dependency changes given to a judgement are recorded as
+       part of the request under which that judgement is recorded.
+
+[constraint-11] A judgement that alters a rating names one of the changes it was given.
+    -> changed-rating-cites-given-change  [functional/explicit]
+       A judgement that alters a rating names one of the changes it was given.
+
+[constraint-12] A judgement that alters a rating while naming no change it was given is
+    rejected by the code that reads the judgement, rather than by the instruction that
+    asked for it.
+    -> missing-change-rejection-happens-in-judgement-reader  [error_handling/explicit]
+       A judgement that alters a rating while naming no change it was given is rejected
+       by the code that reads the judgement.
+
+[constraint-13] A rejected judgement leaves the stored rating in place.
+    -> rejected-judgement-keeps-stored-rating  [regression/explicit]
+       A rejected judgement leaves the stored rating in place.
+
+[constraint-14] A rejected judgement is reported.
+    -> rejected-judgement-is-reported  [functional/explicit]
+       A rejected judgement is reported.
+
+[constraint-15] A review with no stored earlier state judges every criterion without
+    reference to any stored rating.
+    -> no-stored-state-judges-all-criteria  [functional/explicit]
+       A review with no stored earlier state judges every criterion without reference to
+       any stored rating.
+
+[constraint-16] A review repeated over the same stored state and the same inputs
+    produces the same review state as the one before it.
+    -> same-state-same-inputs-same-review-state  [regression/explicit]   (also serves completion-10)
+       A review repeated over the same stored state and the same inputs produces the
+       same review state as the one before it.
+
+[exclusion-01] Partitioning the evidence-judgement request per criterion.
+    -> no-per-criterion-request-partitioning  [compatibility/explicit]
+       The change does not partition the evidence-judgement request per criterion.
+
+[exclusion-02] Making the set of tests mapped to a criterion stable across runs.
+    -> no-stable-mapped-test-set-across-runs  [compatibility/explicit]
+       The set of tests mapped to a criterion is not made stable across runs.
+
+[exclusion-03] Whether a rating is correct on its merits.
+    -> no-merits-based-rating-judgement  [human_review/explicit]
+       Whether a rating is correct on its merits is not part of the change.
+
+[exclusion-04] Which defects the judge names for a criterion it does judge.
+    -> no-defect-naming-requirement-for-judges  [human_review/explicit]
+       The change does not require or preserve which defects the judge names for a
+       criterion it does judge.
+
+[exclusion-05] Selecting which stored earlier state a repeated review continues.
+    -> no-state-selection-change-for-repeated-review  [functional/explicit]
+       Selecting which stored earlier state a repeated review continues is not part of
+       the change.
+
+[exclusion-06] Which judgements other than the test-evidence rating are carried forward.
+    -> exclude-carry-forward-other-judgements  [regression/explicit]
+       The change does not alter which judgements other than the test-evidence rating
+       are carried forward.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       This is a section marker standing alone with no requirement under it.
+
+[completion-02] A criterion whose requirement text, mapped test set and mapped test
+    contents are unchanged keeps its stored rating.
+    -> criterion-stored-rating-preserved-when-dependencies-unchanged  [functional/explicit]
+       A criterion whose requirement text, mapped test set and mapped test contents are
+       unchanged keeps its stored rating.
+
+[completion-03] A criterion whose requirement text, mapped test set and mapped test
+    contents are unchanged issues no evidence-judgement call.
+    -> criterion-unchanged-dependencies-no-evidence-call  [functional/explicit]
+       A criterion whose requirement text, mapped test set and mapped test contents are
+       unchanged issues no evidence-judgement call.
+
+[completion-04] Adding a test to a file that already holds a mapped test leaves
+    unchanged the rating of a criterion whose own mapped tests were not edited.
+    -> mapped-test-file-addition-does-not-rejudge-unedited-criterion  [regression/explicit]
+       Adding a test to a file that already holds a mapped test leaves unchanged the
+       rating of a criterion whose own mapped tests were not edited.
+
+[completion-05] Editing a test mapped to one criterion leaves every other criterion's
+    rating unchanged.
+    -> editing-mapped-test-leaves-other-criteria-rating-unchanged  [regression/explicit]
+       Editing a test mapped to one criterion leaves every other criterion's rating
+       unchanged.
+
+[completion-06] A judgement asked about a changed criterion receives the stored rating
+    and the changes to that criterion's dependencies.
+    -> changed-criterion-judgement-receives-stored-rating-and-dependency-changes  [functional/explicit]
+       A judgement asked about a changed criterion receives the stored rating and the
+       changes to that criterion's dependencies.
+
+[completion-07] A judgement that alters a rating while naming a change it was given is
+    accepted.
+    -> rating-change-with-named-change-is-accepted  [functional/explicit]
+       A judgement that alters a rating while naming a change it was given is accepted.
+
+[completion-08] A judgement that alters a rating while naming no change it was given is
+    rejected, and the stored rating stands.
+    -> rating-change-without-named-change-is-rejected-and-stored-rating-stands  [error_handling/explicit]
+       A judgement that alters a rating while naming no change it was given is rejected,
+       and the stored rating stands.
+
+[completion-09] A review with no stored earlier state puts no stored rating in any
+    evidence-judgement request.
+    -> no-stored-rating-in-requests  [functional/explicit]
+       A review with no stored earlier state puts no stored rating in any evidence-
+       judgement request.
+
+[completion-10] Two reviews over the same stored state and the same inputs produce byte-
+    identical review state.
+    -> same-state-same-inputs-same-review-state  [regression/explicit]   (also serves constraint-16)
+       A review repeated over the same stored state and the same inputs produces the
+       same review state as the one before it.
+
+[completion-11] The findings recorded as correct in `tests/fixtures/rating-stability/`
+    are still found.
+    -> rating-stability-fixtures-still-found  [regression/explicit]
+       The findings recorded as correct in `tests/fixtures/rating-stability/` are still
+       found.
+run 5c3ee507607b7e10
+  continuing 1e1f030192c9884b
+  requirements: 2 derived, 31 carried, 1 revised; 1 decompose call(s)
+  continue this run with: --continue 5c3ee507607b7e10
+
+
+Unreconciled linking answers: answers contradict each other: these obligations are linked transitively but at least one pair among them was denied, so none of them were merged
+  affected: rejudge-only-on-dependency-change, unchanged-criterion-keeps-stored-rating, criterion-stored-rating-preserved-when-dependencies-unchanged

@@ -583,7 +583,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > resample variance than a pre-change baseline. There is no such baseline on the
   > discrimination axis until this is fixed, and #191 must not be judged against
   > a number the instrument cannot produce.
-- **Status:** open — **now a blocker for #191, not a side note**
+- **Status:** filed (#289, sub-issue of #186) — **a blocker for #191**
 
 ### [2026-08-12] A one-sided requirement is derived as a two-sided one — "does not reduce" became "preserves the number"
 - **Kind:** filing (new issue, child of #181)
@@ -1166,7 +1166,9 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > returns and never crosses the client (`ea42e4f`). The re-taken report is
   > byte-identical to the first everywhere except that axis, which went from 0
   > subjects to 114 — same recordings, corrected extraction.
-- **Status:** open
+- **Status:** filed (comment on #191). One line added at filing time: #289 now
+  carries the harness defect, and blocks judging #191 against a pre-change
+  number until it is fixed on `main`.
 
 ### [2026-08-12] Ratings moved on a tests-only diff in #191's own Gate 2 — post-change
 - **Kind:** filing (comment on existing issue #225)
@@ -1205,7 +1207,8 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   first time that separation could be observed at all, because before #191 no
   defect wording ever repeated between runs, so the verdict axis had nothing to
   compare.
-- **Status:** open
+- **Status:** filed (comment on #225). The persistent-recommendation half was
+  split out to #287 at filing time and the comment says so.
 
 ### [2026-08-12] A recommendation flagged the same obligation three runs running while citing the test that satisfies it
 - **Kind:** filing (new issue, child of #185)
@@ -1266,7 +1269,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   >
   > The garbled `detects` clause is evidence for (1): it describes a defect in
   > terms that do not correspond to the code's actual batching dimension.
-- **Status:** open
+- **Status:** filed (#287, sub-issue of #185)
 
 ### [2026-08-12] #245: a test mapped in round 1 reports "(no mapped test)" in round 3, while its file is cited in the same obligation
 - **Kind:** filing (comment on existing issue #245)
@@ -1288,7 +1291,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   mapping between runs; this one is internally contradictory within a single
   rendered obligation, which makes it visible to a reader without a second run
   to compare against.
-- **Status:** open
+- **Status:** filed (comment on #245)
 
 ### [2026-08-13] Unrequested-change detection is blind to REMOVALS
 - **Kind:** filing (new issue, child of #185)
@@ -1338,7 +1341,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > Suggested acceptance: a diff that deletes a prompt input, a guard, or an
   > assertion, with no obligation calling for the deletion, is reported as an
   > unrequested change — and is not dispositioned `in_service` by default.
-- **Status:** open
+- **Status:** filed (#288, sub-issue of #185)
 
 ### [2026-08-13] Token usage is recorded without the cached-token count
 - **Kind:** defect
@@ -1364,7 +1367,21 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   if cached is not None:
       usage["cached_tokens"] = cached
   ```
-- **Status:** open
+- **Status:** fixed on `main` by `82e4ec7` (#285), which landed while this entry
+  sat in the queue. `_extract_usage` now records `cached_tokens`,
+  `cache_creation_tokens` and `cache_write_tokens` through a `_usage_field`
+  accessor, with `tests/test_usage.py` and `tests/test_stage_attribution.py`
+  covering it — a wider fix than this entry drafted, and it makes the same
+  absent-is-not-zero argument.
+
+  **How this was nearly duplicated, which is the part worth keeping.** #251's
+  Gate 1 triage re-verified all 14 open entries and reported this one "still
+  live" — against a worktree six commits behind `origin/main`, with no `git
+  fetch` first. A duplicate fix was written, tested and about to be committed
+  before the fetch that preceded the commit revealed #285. **Re-verification at a
+  gate has to `git fetch` first**; a branch cut days ago is not the current code,
+  and the queue is precisely the place where slow-moving items get overtaken.
+
 ### [2026-08-13] A restatement inserts a negation the source does not carry — #262's second and harsher instance
 - **Kind:** filing (comment on existing issue #262)
 - **Found during:** #266, Gate 1
@@ -2122,3 +2139,245 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   issue — #251 already describes this defect and this is its cleanest instance,
   so splitting it off would divide the evidence for one fix.
 - **Status:** filed (comment on #251)
+
+### [2026-08-19] The Gate 1 procedure never passes `--continue`, so every gate re-run pays churn #269 already removes
+- **Kind:** defect (documentation)
+- **Found during:** #251, Gate 1 runs 2, 3 and 4
+- **Where:** `CLAUDE.md`, *Dogfooding — the review gates*, Gate 1 step 1
+- **Severity:** nice-to-have
+- **What's wrong:** runs 2 and 3 differ by one bullet in `## Scope exclusions`,
+  reworded from *"Partitioning the evidence-judgement request so that one
+  criterion's request carries no other criterion's tests"* to *"Partitioning the
+  evidence-judgement request per criterion"*. Four requirement pairs that were
+  **not** touched inverted whether they merged:
+
+  | pair | run 2 | run 3 | run 4 (`--continue` run 2) |
+  |---|---|---|---|
+  | `constraint-16` ↔ `completion-10` | **merged** | not merged | **merged** |
+  | `constraint-01` ↔ `completion-02` | not merged | **merged** | not merged |
+  | `constraint-02` ↔ `completion-03` | not merged | **merged** | not merged |
+  | `constraint-07` ↔ `completion-05` | not merged | **merged** | not merged |
+
+  **The third column is the point.** Runs 1–3 were all made without `--continue`,
+  so nothing was carried and #269's machinery never ran (`0 carried, 0 revised` in
+  each header). Run 4 replays run 3's task file naming run 2 as the continued run
+  — `31 carried, 1 revised, 2 derived`, one decompose call — and reproduces run
+  2's merge outcome exactly. `linking.py:482-500` carries a merge decision forward
+  whenever both its obligations are unchanged (#269's `constraint-32`), so
+  de-duping **is** covered and the stage is stable when the feature is used.
+
+  What is left is that the documented Gate 1 command is
+  `decompose --task current-task.md`, with no `--continue`. A gate's second and
+  third runs are exactly where stability matters — they exist because the first
+  run found something — and they are the runs that discard it.
+- **Why I didn't act:** it is a change to `CLAUDE.md`'s gate procedure, which is
+  not #251's area and is the human's to approve.
+- **Drafted fix:** **no issue.** Add to `CLAUDE.md` Gate 1, step 1: *"On a re-run
+  after reworking `current-task.md`, pass `--continue <previous run id>` — the run
+  prints the id to continue. Without it nothing is carried forward and the
+  obligation set is free to move for reasons unrelated to the rewording."* Note
+  that `check` needs the same treatment if it takes the flag. Evidence:
+  `dogfood-logs/251-gate1-run2/`, `-run3/`, `-run4/`.
+- **Status:** fixed on `main`. `CLAUDE.md` Gate 1 gained the `--continue`
+  paragraph with the #251 measurement as its evidence. `check` does take the flag
+  — verified with `check --help` — so Gate 2 gained a note too, distinguishing
+  `--continue` (carries the obligation set) from the prior *review* that
+  `find_prior_review` selects over git ancestry (carries judgements, needs no
+  flag).
+
+**Correction:** an earlier version of this entry was a `should-fix` filing against
+#181 claiming linking has no carry gate. That was wrong — `linking.py:482-500` is
+the gate — and the claim was made without having run the tool with `--continue`.
+The finding survives only as the documentation gap above.
+
+### [2026-08-19] #272 gains two instances, and the mechanism is a trailing subordinate clause
+- **Kind:** filing (comment on existing issue #272)
+- **Found during:** #251, Gate 1 runs 1 and 2
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** two more scope exclusions derived as prohibitions on
+  behaviour that must keep working, in one mandate, and both isolate the
+  mechanism #272 does not yet name:
+
+  | run | exclusion text | derived obligation |
+  |---|---|---|
+  | 1 | "Selecting which stored earlier state a repeated review continues, **which is done over git ancestry**." | "The change does not select which stored earlier state a repeated review continues **over git ancestry**." |
+  | 2 | "Partitioning the evidence-judgement request **so that one criterion's request carries no other criterion's tests**." | "The evidence-judgement request for one criterion **carries no other criterion's tests**." |
+
+  In both, a trailing subordinate clause was promoted into the obligation and the
+  main clause's sense was lost. Run 2's is the worse of the two: the mandate
+  excludes partitioning, so the request will keep carrying every criterion's
+  tests, and the obligation asserts the exact opposite. Deleting the trailing
+  clause fixed each one on the next run, which is what identifies the clause as
+  the cause. The same shape decomposed **correctly** at #269 Gate 1
+  (`dogfood-logs/269-gate1-run3/output.log:228`), so it is intermittent rather
+  than systematic.
+- **Why I didn't act:** `requirement/`, outside #251's area. Both were worked
+  around by rewording the task file, which is the sanctioned Gate 1 fix, but the
+  rewording is not the report.
+- **Drafted fix:** post as a **comment on #272** with the table above, the #269
+  counter-example, and the observation that the fix in both cases was deleting a
+  trailing clause — which suggests an acceptance test shaped as *"an exclusion
+  with a trailing relative or purpose clause yields an obligation whose sense
+  matches the main clause"*. Evidence: `dogfood-logs/251-gate1-run1/` and
+  `-run2/`.
+- **Status:** filed (comment on #272)
+
+### [2026-08-19] #277 gains an instance where the two obligations are byte-identical, not merely same-voiced
+- **Kind:** filing (comment on existing issue #277)
+- **Found during:** #251, Gate 1 run 1
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** `completion-02` ("A criterion whose requirement text, mapped
+  test set and mapped test contents are unchanged keeps its stored rating **and**
+  issues no evidence-judgement call") produced
+  `criterion-unchanged-keeps-stored-rating` and
+  `criterion-unchanged-no-evidence-judgement-call` — two obligations whose
+  descriptions are byte-identical to each other and to the whole requirement.
+  #277's instances differ in voice; these do not differ at all. It also differs in
+  cause: the requirement here genuinely holds two claims, so splitting it is
+  right — what is wrong is that neither half's description was narrowed to the
+  half it covers, leaving two obligations nothing downstream can tell apart. The
+  linking stage then reported it could not reconcile them.
+- **Why I didn't act:** `requirement/`, outside #251's area. Fixed for this
+  mandate by splitting the expectation into two bullets, which is a task-file fix
+  and does not address the tool behaviour.
+- **Drafted fix:** post as a **comment on #277** distinguishing the two causes —
+  #277's is one property yielding two obligations, this is two properties yielding
+  two obligations that are not narrowed to their property — and note that the
+  second may be the easier acceptance test to write: *an obligation's description
+  is not the whole of its requirement's text when that requirement yielded more
+  than one obligation*. Evidence: `dogfood-logs/251-gate1-run1/`.
+- **Status:** filed (comment on #277)
+
+### [2026-08-19] #242 gains a third all-duplicate cluster, from a different mandate
+- **Kind:** filing (comment on existing issue #242)
+- **Found during:** #251, Gate 1 run 3
+- **Where:** `src/acceptance/requirement/linking.py`
+- **Severity:** should-fix
+- **What's wrong:** the unreconciled-cluster message fired over
+  `changed-rating-must-name-a-change` (`completion-07`),
+  `changed-rating-names-one-given-change` (`constraint-11`) and
+  `changed-rating-justifies-itself` (Task prose). All three state one claim — a
+  judgement that alters a rating names one of the changes it was given — so, as in
+  the #275 instance already queued against #242, there is no spurious third member
+  to blame for the inconsistency: a pair among three synonymous obligations was
+  denied, and the all-or-nothing policy then merged none of them. Three
+  obligations survive to Gate 2 where there is one claim, each independently
+  demanding evidence.
+- **Why I didn't act:** `linking.py`, outside #251's area.
+- **Drafted fix:** post as a **comment on #242** — or fold into the #275 comment
+  already queued against it, if that one has not been posted when this is
+  approved. Carry the message verbatim and the three obligations with their source
+  requirements. Evidence: `dogfood-logs/251-gate1-run3/`.
+- **Status:** filed (comment on #242). Posted as its own comment, not folded —
+  the #275 one was already up.
+
+### [2026-08-19] `litellm>=1.50` admits 1.97.0, which cannot make a live call at all — ALREADY FILED as #278
+- **Kind:** filing (comment on existing issue #278), downgraded from a new filing
+- **Where:** `pyproject.toml:12`
+- **Found during:** #251, Gate 1
+- **Severity:** nice-to-have
+
+**Withdrawn as a new filing.** #278, *"A fresh install picks up a litellm that
+cannot make a live call"*, was opened 2026-08-19 from #275's Gate 1 with the same
+traceback and the same diagnosis. My instance adds only that #275 recovered with
+`litellm==1.96.2` and this worktree with `1.93.0`, both against pydantic 2.13.4 —
+worth a one-line comment on #278 confirming a second worktree hit it, and only if
+the comment already on that issue does not say so. The original draft follows for
+the record.
+
+- **What's wrong:** a fresh `.venv` in this worktree resolved `litellm` to 1.97.0,
+  and every `--mode record` call died before reaching the provider:
+  `PydanticUserError: 'Message' is not fully defined; you should define all
+  referenced types, then call 'Message.model_rebuild()'`, raised inside
+  `litellm/types/utils.py` constructing its own `ModelResponse`, and surfaced as
+  `APIConnectionError`. litellm 1.97.0 is incompatible with the resolved pydantic
+  2.13.4. Pinning `litellm==1.93.0` — the version the primary worktree's venv
+  holds — fixed it with no other change. **CI will not catch this**: the suite runs
+  in replay mode and never calls `litellm.completion`, so the break is invisible
+  until someone records, which is exactly when it is most expensive.
+- **Why I didn't act:** changing a dependency floor is a dependency decision and
+  touches every environment, not just #251's.
+- **Drafted fix:** cap the range in `pyproject.toml` —
+  `"litellm>=1.50,<1.97"` — or pin `litellm==1.93.0` outright. My recommendation
+  is the cap rather than the pin, so the floor keeps admitting the versions that
+  work. Worth a second item either way: a smoke test that constructs a
+  `litellm.ModelResponse` and runs in CI, so a resolver moving under us fails
+  loudly in replay-mode CI instead of silently at the next record run.
+- **Status:** filed (comment on #278). Rewritten before posting: the existing
+  comment there concluded that `litellm==1.93.0` *cannot be installed*, on the
+  evidence of a `puccinialin/rustup-init.lock` `PermissionError`. That is a
+  sandbox denial, not a pip failure — the same command succeeds with the sandbox
+  off, and 1.93.0 recorded three `decompose` runs and a live `align_obligations`
+  call on this worktree. So the comment is a correction, and 1.93.0 joins 1.96.2
+  as a confirmed-good version.
+
+### [2026-08-20] Carry-and-justify becomes a pipeline-wide contract, not a per-stage build
+- **Kind:** filing
+- **Found during:** #251, Gate 1 — raised by the human after run 4 showed #269's
+  pattern covering both decompose stages
+- **Where:** `src/acceptance/rerun.py`, `src/acceptance/requirement/carry.py`,
+  `src/acceptance/requirement/ledger.py`
+- **Severity:** should-fix
+- **What's wrong:** #269 established a three-part contract for one stage — work
+  from the named prior run, skip any unit whose own inputs are unchanged, and put
+  a unit whose inputs moved back in front of the model with the change in hand.
+  #251 is the second instance. Seven more model-call stages have nothing of the
+  kind, and the whole-pipeline mechanism that does exist — `rerun.py`, M7.5 —
+  carries at one coarse granularity: an obligation is stale if any *file* it cites
+  was touched (`stale_obligation_ids`). That rule is what produced the 37→4
+  collapse recorded on #251. So this is not greenfield: it is replacing one blunt
+  predicate with a per-stage contract.
+
+  Where it applies, by stage:
+
+  | stage | unit | its own inputs | applies? |
+  |---|---|---|---|
+  | decompose derivation | requirement | requirement text | **done (#269)** |
+  | linking / merge | obligation pair | both obligations | **done (#269)** |
+  | open-question resolution | question | question + diff | yes |
+  | test mapping | obligation | obligation + candidate tests | yes — and it is #182 |
+  | discrimination | criterion | criterion + mapped tests + their source | **#251** |
+  | coverage classification | obligation | obligation + cited hunks | yes |
+  | unrequested-change detection | — | the whole diff | **no** |
+  | disposition | unrequested change | that change + policy | yes |
+  | recommendation | weak obligation | obligation + its evidence | yes |
+  | declaration comparison | declaration claim | claim + obligations + evidence | yes |
+
+  Unrequested-change detection is the one genuine exception and `pipeline.py:299`
+  already says why: it is a judgement about the change as a whole, so there is no
+  unaffected subset. A mandate saying *"every stage"* would put an unsatisfiable
+  obligation in front of the tool.
+- **Why I didn't act:** it is a plan-level decision about sequencing several
+  issues, which is the human's.
+- **Drafted fix:** file as a child of **#184** (determinism & reproducibility),
+  titled *"Carry-and-justify is one contract every re-run stage implements"*.
+  Body: the table above; the statement of the contract in three parts; the point
+  that `rerun.py`'s file-level predicate is the current whole-pipeline answer and
+  is the measured defect site; and the sequencing — #269 and #251 are instances
+  one and two, this issue lifts the primitives out of `requirement/` and each
+  remaining stage becomes its own small issue against the extracted contract.
+
+  **Two things the issue must settle rather than assume:**
+
+  1. **Justification does not generalise as cleanly as carry.** `DR-269`
+     deliberately refused to show the model its prior answer — *"anchoring bias is
+     defeated by not asking"* — while #251's second half shows the stored rating.
+     Both are defensible: an evidence class is ordinal, so "it got worse" is a
+     claim that can be interrogated, whereas a merge decision is boolean and has
+     nothing to justify. Settle whether justification is universal or applies only
+     where the output is ordinal.
+  2. **Whether this closes into #253 or stands beside it.** #253 is the
+     *structural* determinism refactor and explicitly scopes judgement-stability
+     behaviour out, to #251 and #254. This is a third axis — incremental re-run
+     semantics — and I believe it stands alone, but #253's own "Open" section
+     already asks whether it should close into #184, and three overlapping
+     determinism issues is one too many.
+
+  Acceptance: the carry contract lives in one stage-agnostic module; #269's two
+  stages and #251's consume it rather than each defining it; each remaining stage
+  has its own issue naming its unit and its inputs; `rerun.py`'s file-level
+  predicate is retired rather than left beside the new one. Labels
+  `track:checker`, `decision`.
+- **Status:** filed (#286, sub-issue of #184)
