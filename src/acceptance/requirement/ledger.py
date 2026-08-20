@@ -47,6 +47,7 @@ from pathlib import Path
 
 from pydantic import Field
 
+from acceptance.carry import carry_key as shared_carry_key
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import Disposition, Obligation, OpenQuestion
 from acceptance.serialization import canonical_json
@@ -221,37 +222,25 @@ def carry_key(
     stage_logic_version: int,
     requirement_text: str,
 ) -> str:
-    """The key a carried entry is valid under.
+    """Decomposition's carry key: `carry.carry_key` with this stage's own input.
 
-    A carried entry stays valid exactly while re-deriving it today would issue the
-    same request — so this hashes the determinism controls that `llm.py` puts in a
-    request key, plus the stage-logic version the request cannot see.
+    The rule and the reasoning now live in `acceptance.carry`, which no stage
+    names (#251, #286). What stays here is the one decompose-specific fact — that
+    a requirement's own input is its text, and nothing else about the registry
+    (#178, `docs/DR-269-carry-key-excludes-registry-context.md`).
 
-    **What it deliberately excludes: the rest of the registry.** The decompose
-    prompt carries the whole task file as context on every call (#178), so the
-    real request key for any one requirement moves whenever any *other*
-    requirement is edited. Hashing that here would mean a carried entry is valid
-    only when nothing in the file changed at all, which is the one case where
-    carrying forward buys nothing — per-requirement carry-forward would be dead
-    code, and `constraint-04`'s edited-requirement path could never coexist with a
-    carried one.
-
-    The cost of excluding it is real and worth stating plainly: because the model
-    sees the whole registry, an unchanged requirement *could* legitimately
-    decompose differently once its neighbours change. Carrying it forward
-    suppresses that. That suppression is the stability this feature buys, not an
-    oversight — see `docs/DR-269-carry-key-excludes-registry-context.md`.
+    Spreading `inputs` rather than nesting it keeps this byte-identical to the
+    key #269 computed, so every ledger entry already on disk still matches.
     """
-    payload = {
-        "system_prompt": system_prompt,
-        "response_schema": response_schema,
-        "model": model,
-        "temperature": temperature,
-        "seed": seed,
-        "stage_logic_version": stage_logic_version,
-        "requirement_text": requirement_text,
-    }
-    return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
+    return shared_carry_key(
+        system_prompt=system_prompt,
+        response_schema=response_schema,
+        model=model,
+        temperature=temperature,
+        seed=seed,
+        stage_logic_version=stage_logic_version,
+        inputs={"requirement_text": requirement_text},
+    )
 
 
 class LedgerStore:

@@ -1,0 +1,234 @@
+Task completion: INCOMPLETE
+
+8 obligation(s) with non-discriminating test evidence (reuse-rule-stated-in-one-place-no-stage-named, reuse-decision-reaches-answer-through-shared-rule, reuse-rule-stated-in-one-place-constraint, reuse-rule-four-conditions, reuse-refusal-carries-reason-2, reuse-rule-applies-only-to-decomposition, merits-correctness-not-part-of-reuse-rule, reuse-refusal-carries-reason).
+
+Obligations:
+
+  1. The rule deciding whether a stored result may be reused is stated in one place that names no stage of the review.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/carry.py#@@ -0,0 +1,144 @@
+         1.2  src/acceptance/requirement/ledger.py#@@ -47,6 +47,7 @@ from pathlib import Path
+       test evidence: partially supported  [tier: static]
+         1.3  tests/test_carry.py::test_no_name_in_the_shared_rule_s_api_names_a_stage
+         1.4  tests/test_carry.py::test_the_shared_rule_imports_nothing_from_a_stage
+         recommended test: The implementation centralizes the reuse rule in a single statement and that statement does not name any review stage.
+           inputs:  Use a repository-wide text scan over all source files that could contain the reuse rule, including both `src/acceptance/carry.py` and any stage modules such as `src/acceptance/requirement/carry.py` or `src/acceptance/requirement/ledger.py`. The input should be chosen so the test can distinguish a single shared statement from duplicated copies: it must inspect the actual docstrings/comments/definitions rather than only runtime behavior.
+           detects: Developer leaves two separate copies of the reuse rule, one in `acceptance.carry` and another in a stage module, but both copies avoid stage names in their docstrings.
+           full detail: acceptance recommendation --criterion reuse-rule-stated-in-one-place-no-stage-named
+
+  2. The stage that already applies the reuse rule reaches its answer through that one statement.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/requirement/carry.py#@@ -138,24 +139,25 @@ def plan_carry(
+       test evidence: partially supported  [tier: static]
+         2.2  tests/test_carry.py::test_decomposition_reaches_its_carry_verdict_through_the_shared_rule
+         recommended test: The stage's reuse decision is computed by consulting the shared rule statement rather than an independent copy.
+           inputs:  Construct a decomposition carry scenario where the shared rule would clearly refuse or carry based on one condition, and then monkeypatch the shared `acceptance.carry.decide` to return a sentinel decision that is opposite to what an independent local check would produce. The input should make the local extra checks observable only if `plan_carry` bypasses or supplements the shared rule.
+           detects: The decomposition path calls the shared rule but also performs extra local checks that do not affect the tested case.
+           full detail: acceptance recommendation --criterion reuse-decision-reaches-answer-through-shared-rule
+
+  3. State the reuse rule in one place that names no stage of the review.
+       requirements: constraint-01, completion-02
+       code evidence: addressed
+         3.1  src/acceptance/carry.py#@@ -0,0 +1,144 @@
+       test evidence: partially supported  [tier: static]
+         3.2  tests/test_carry.py::test_no_name_in_the_shared_rule_s_api_names_a_stage
+         3.3  tests/test_carry.py::test_the_shared_rule_imports_nothing_from_a_stage
+         recommended test: The reuse rule appears as a single shared statement that does not name any review stage.
+           inputs:  Scan all relevant source/docstring locations for the reuse rule statement, but choose inputs that specifically detect duplication even when one shared copy exists and is clean. The test should compare the count of rule statements across modules rather than only checking the shared module.
+           detects: The reuse rule is duplicated in multiple places, but one shared copy exists and does not name any stage.
+           full detail: acceptance recommendation --criterion reuse-rule-stated-in-one-place-constraint
+
+  4. The reuse rule refuses reuse unless all four stated conditions hold: the unit is still present, re-deriving it would issue the same request, the logic turning a response into a result has not moved, and the stored result still fits the inputs it is being reused against.
+       requirements: constraint-02
+       code evidence: addressed
+         4.1  src/acceptance/carry.py#@@ -0,0 +1,144 @@
+       test evidence: partially supported  [tier: static]
+         4.2  tests/test_carry.py::test_a_stage_can_refuse_a_carry_whose_key_still_matches
+         4.3  tests/test_carry.py::test_a_unit_passing_every_check_is_carried_with_its_stored_result
+         4.4  tests/test_carry.py::test_a_unit_whose_request_would_differ_is_not_carried
+         4.5  tests/test_carry.py::test_a_unit_whose_stage_logic_moved_is_not_carried
+         4.6  tests/test_carry.py::test_a_unit_with_nothing_stored_is_not_carried
+         recommended test: A reader can see the rule only permits reuse when all four conditions are satisfied.
+           inputs:  Use a carry decision input where exactly three of the four conditions are satisfied and the fourth is not, then vary each condition independently so the test can prove all four are required. The most important input is one that would be incorrectly carried if the implementation accidentally ignored the stage-logic-version condition or any other single condition.
+           detects: Developer mistakenly allows reuse when stage logic moved, but only on cases where the stage logic version is unchanged in the test data.
+           full detail: acceptance recommendation --criterion reuse-rule-four-conditions
+
+  5. The caller supplies what a unit is, how it is identified, which of its inputs enter the request identity, and what it means for a stored result to fit its inputs.
+       requirements: constraint-03
+       code evidence: addressed
+         5.1  src/acceptance/carry.py#@@ -0,0 +1,144 @@
+       test evidence: strongly supported  [tier: static]
+         5.2  tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry
+         5.3  tests/requirement/test_carry_forward.py::test_a_changed_response_schema_invalidates_the_entries_derived_under_it
+         5.4  tests/requirement/test_carry_forward.py::test_a_changed_seed_invalidates_every_carried_entry
+         5.5  tests/requirement/test_carry_forward.py::test_a_changed_stage_logic_version_invalidates_every_carried_entry
+         5.6  tests/requirement/test_carry_forward.py::test_the_carry_key_reads_the_live_response_schema
+         5.7  tests/test_carry.py::test_the_key_moves_when_any_determinism_control_moves
+         5.8  tests/test_carry.py::test_the_key_moves_when_the_unit_s_own_input_moves
+         5.9  tests/test_carry.py::test_the_shared_key_spreads_a_stage_s_inputs_rather_than_nesting_them
+
+  6. A refusal to reuse a stored result carries the reason for the refusal.
+       requirements: constraint-04
+       code evidence: addressed
+         6.1  src/acceptance/carry.py#@@ -0,0 +1,144 @@
+       test evidence: partially supported  [tier: static]
+         6.2  tests/test_carry.py::test_a_missing_prior_is_reported_as_missing_rather_than_as_a_key_mismatch
+         recommended test: When reuse is refused, the refusal includes an explanatory reason value or message.
+           inputs:  Create a refusal case where the implementation could return a refusal object without any reason payload, such as `Decision(refusal=Refusal.NO_PRIOR)`. Use a scenario that definitely refuses reuse, like `prior=None`, so the test can inspect the refusal object directly.
+           detects: A refusal is returned without any reason payload, e.g. `Decision(refusal=Refusal.NO_PRIOR)` is the only information stored.
+           full detail: acceptance recommendation --criterion reuse-refusal-carries-reason-2
+
+  7. Requirement decomposition reaches its reuse decision through the shared statement of the rule rather than through a copy of it.
+       requirements: constraint-05, completion-06
+       code evidence: addressed
+         7.1  src/acceptance/requirement/carry.py#@@ -138,24 +139,25 @@ def plan_carry(
+       test evidence: strongly supported  [tier: static]
+         7.2  tests/test_carry.py::test_decomposition_reaches_its_carry_verdict_through_the_shared_rule
+
+  8. The request identity computed for a requirement is unchanged by this work.
+       requirements: constraint-06, completion-07
+       code evidence: addressed
+         8.1  src/acceptance/requirement/ledger.py#@@ -47,6 +47,7 @@ from pathlib import Path
+         8.2  src/acceptance/requirement/ledger.py#@@ -221,37 +222,25 @@ def carry_key(
+       test evidence: strongly supported  [tier: static]
+         8.3  tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry
+         8.4  tests/requirement/test_carry_forward.py::test_a_changed_response_schema_invalidates_the_entries_derived_under_it
+         8.5  tests/requirement/test_carry_forward.py::test_a_changed_seed_invalidates_every_carried_entry
+         8.6  tests/requirement/test_carry_forward.py::test_a_changed_stage_logic_version_invalidates_every_carried_entry
+         8.7  tests/requirement/test_carry_forward.py::test_the_carry_key_reads_the_live_response_schema
+         8.8  tests/requirement/test_carry_forward.py::test_the_ledger_records_the_request_key_of_each_derivation
+         8.9  tests/requirement/test_carry_forward.py::test_two_requirements_are_the_same_requirement_when_their_text_matches_exactly
+         8.10  tests/test_carry.py::test_moving_the_rule_left_the_decompose_carry_key_byte_identical
+         8.11  tests/test_carry.py::test_the_key_moves_when_any_determinism_control_moves
+         8.12  tests/test_carry.py::test_the_key_moves_when_the_unit_s_own_input_moves
+         8.13  tests/test_carry.py::test_the_shared_key_spreads_a_stage_s_inputs_rather_than_nesting_them
+
+  9. The reuse rule is applied only to requirement decomposition.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: No other review stage uses the reuse rule.
+           inputs:  Use a stage other than decomposition that has access to carry-related code paths or shared helpers, and feed it a scenario where the shared reuse rule would be tempting to apply. The input should be one that would reveal accidental reuse-rule use in another stage if that stage consults `acceptance.carry` or duplicates its logic.
+           detects: Another review stage uses the reuse rule even though only decomposition should.
+           full detail: acceptance recommendation --criterion reuse-rule-applies-only-to-decomposition
+
+  10. The change does not narrow which criteria are judged again on a repeated review.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion: the change is checked by whether it avoids narrowing the repeated-review criteria, which is settled by the source change itself.
+
+  11. The reuse rule does not make whether a stored result is correct on its merits part of the reuse decision.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The reuse decision depends on the stated reuse checks rather than on an independent merits-correctness judgment.
+           inputs:  Construct two cases with identical reuse-rule inputs but different merits/correctness outcomes, so the test can prove reuse depends only on the stated carry checks. One case should have a prior result that is reusable by the carry rule but would be judged differently on merits; the other should have the same carry inputs but a different merits judgment.
+           detects: The reuse decision depends on an independent merits-correctness judgment rather than on the stated reuse checks.
+           full detail: acceptance recommendation --criterion merits-correctness-not-part-of-reuse-rule
+
+  12. The change does not alter which stored earlier state a repeated review continues.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about selection logic, and the presence or absence of that logic is settled by the source change itself.
+
+  13. The change does not alter the set of obligations requirement decomposition produces.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 6 changes across 4 files; none breaches this boundary
+       test evidence: strongly supported  [tier: static]
+         13.1  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         13.2  tests/requirement/test_carry_forward.py::test_editing_one_requirement_leaves_every_other_requirement_carried
+         13.3  tests/requirement/test_carry_forward.py::test_the_plan_issues_calls_only_for_what_changed
+         13.4  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         13.5  tests/test_carry.py::test_moving_the_rule_left_the_decompose_carry_key_byte_identical
+
+  14. Refuse reuse when any one of the four reuse checks fails.
+       requirements: completion-03
+       code evidence: addressed
+         14.1  src/acceptance/carry.py#@@ -0,0 +1,144 @@
+       test evidence: strongly supported  [tier: static]
+         14.2  tests/test_carry.py::test_a_requirement_whose_key_moved_is_derived_rather_than_carried
+         14.3  tests/test_carry.py::test_a_stage_can_refuse_a_carry_whose_key_still_matches
+         14.4  tests/test_carry.py::test_a_unit_passing_every_check_is_carried_with_its_stored_result
+         14.5  tests/test_carry.py::test_a_unit_whose_request_would_differ_is_not_carried
+         14.6  tests/test_carry.py::test_a_unit_whose_stage_logic_moved_is_not_carried
+         14.7  tests/test_carry.py::test_a_unit_with_nothing_stored_is_not_carried
+
+  15. Accept caller-supplied unit identity, request-identity inputs, and the fit test for stored-result reuse.
+       requirements: completion-04
+       code evidence: addressed
+         15.1  src/acceptance/carry.py#@@ -0,0 +1,144 @@
+       test evidence: strongly supported  [tier: static]
+         15.2  tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry
+         15.3  tests/requirement/test_carry_forward.py::test_a_changed_response_schema_invalidates_the_entries_derived_under_it
+         15.4  tests/requirement/test_carry_forward.py::test_a_changed_seed_invalidates_every_carried_entry
+         15.5  tests/requirement/test_carry_forward.py::test_a_changed_stage_logic_version_invalidates_every_carried_entry
+         15.6  tests/requirement/test_carry_forward.py::test_the_carry_key_reads_the_live_response_schema
+         15.7  tests/test_carry.py::test_the_key_moves_when_any_determinism_control_moves
+         15.8  tests/test_carry.py::test_the_key_moves_when_the_unit_s_own_input_moves
+         15.9  tests/test_carry.py::test_the_shared_key_spreads_a_stage_s_inputs_rather_than_nesting_them
+
+  16. Carry the reason for any refusal to reuse a stored result.
+       requirements: completion-05
+       code evidence: addressed
+         16.1  src/acceptance/carry.py#@@ -0,0 +1,144 @@
+       test evidence: partially supported  [tier: static]
+         16.2  tests/test_carry.py::test_a_missing_prior_is_reported_as_missing_rather_than_as_a_key_mismatch
+         recommended test: A reuse refusal includes an explicit reason value or message.
+           inputs:  Force a refusal path and inspect the returned decision object for an explicit reason value or message. The input should be one that definitely refuses reuse, such as missing prior data or a moved request, so the test can verify the refusal is explanatory rather than merely boolean.
+           detects: A reuse refusal is represented only by a boolean or enum without any explanatory reason value/message.
+           full detail: acceptance recommendation --criterion reuse-refusal-carries-reason
+
+  17. Keep requirement decomposition producing the same obligations it produced before this work.
+       requirements: completion-08
+       code evidence: addressed
+         17.1  src/acceptance/requirement/carry.py#@@ -138,24 +139,25 @@ def plan_carry(
+       test evidence: strongly supported  [tier: static]
+         17.2  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         17.3  tests/requirement/test_carry_forward.py::test_editing_one_requirement_leaves_every_other_requirement_carried
+         17.4  tests/requirement/test_carry_forward.py::test_the_plan_issues_calls_only_for_what_changed
+         17.5  tests/requirement/test_requirement_map.py::test_one_obligation_cannot_be_carried_by_two_requirements
+         17.6  tests/test_carry.py::test_moving_the_rule_left_the_decompose_carry_key_byte_identical
+
+Mandate coverage: 19 of 20 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: The item is a section marker standing alone with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] The new shared `acceptance.carry` module is explicitly documented and implemented as stage-agnostic, but it adds a new `carry_key` API that hashes `stage_logic_version` and arbitrary `inputs` for any caller. The obligations only require the reuse rule and caller-supplied context for requirement decomposition; they do not call for introducing a general-purpose carry-key helper for other stages or a new exported module-level API beyond what decomposition needs.
+       src/acceptance/carry.py#@@ -0,0 +1,144 @@
+       src/acceptance/requirement/carry.py#@@ -35,6 +35,7 @@ from __future__ import annotations
+       src/acceptance/requirement/ledger.py#@@ -47,6 +47,7 @@ from pathlib import Path
+  2. [in_service] `acceptance.carry.decide` introduces a new refusal ordering and a `NOT_APPLICABLE` reason for the stage-specific fit check. The obligations require refusal reasons and four checks, but they do not specify this particular public decision object shape or the exact precedence among refusal causes.
+       src/acceptance/carry.py#@@ -0,0 +1,144 @@
+       src/acceptance/requirement/carry.py#@@ -35,6 +35,7 @@ from __future__ import annotations
+  3. [separable] The added tests include broad implementation-specific assertions about the shared module importing no stage packages and about API names not containing stage vocabulary. Those are extra verification constraints not demanded by the obligations, which only require the reuse rule, shared reuse path, unchanged request identity, and unchanged decomposition obligations.
+       tests/test_carry.py#@@ -0,0 +1,290 @@
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run fea8e0fd30dd6f0d
+  continuing 11c05b7b8cb69f67
+  continue this run with: --continue fea8e0fd30dd6f0d
+Model usage by stage:
+  stage                                           calls  prompt  output  cached  this run  recorded
+  ----------------------------  -----------------------  ------  ------  ------  --------  --------
+  obligation linking            1 (0 live / 1 replayed)     699       0       —   $0.0000   $0.0000
+  test-to-obligation mapping    4 (2 live / 2 replayed)  15,786   3,347    0.0%   $0.0114   $0.0269
+  discrimination judgment       1 (1 live / 0 replayed)   6,779   2,109    0.0%   $0.0146   $0.0146
+  coverage classification       1 (1 live / 0 replayed)   7,463   1,203   58.3%   $0.0081   $0.0081
+  unrequested-change detection  1 (1 live / 0 replayed)   6,792     344   56.5%   $0.0041   $0.0041
+  test recommendation           1 (1 live / 0 replayed)   6,665   2,662    0.0%   $0.0170   $0.0170
+  this run spent $0.0551 on 6 live call(s); the evidence cost $0.0706 to record (3 call(s) replayed at no cost to this run)
+
