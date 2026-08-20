@@ -61,6 +61,7 @@ from collections.abc import Sequence
 from acceptance.config import DEFAULT_LINK_PAIR_BATCH_SIZE
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.partition import partition
+from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.requirement.ledger import LedgerEntry, MergeDecision
 from acceptance.requirement.obligations import Decomposition
 from acceptance.review_state import (
@@ -510,10 +511,12 @@ def link_duplicate_obligations(
         by_pair_id = {pair_id: (left, right) for pair_id, left, right in batch.items}
         allowed = {"pair_id": list(by_pair_id)}
         result = client.complete(
-            [
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": _user_prompt(decomposition, batch.items)},
-            ],
+            assemble(
+                [
+                    Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+                    Block(BlockKind.SUBJECT, _user_prompt(decomposition, batch.items)),
+                ]
+            ),
             constrain(_Verdicts, allowed),
             batch.request_partition(),
             parse_as=_Verdicts,

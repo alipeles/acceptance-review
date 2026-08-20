@@ -398,6 +398,11 @@ def client_dispatching(
                 {
                     "schema": schema_name,
                     "prompt": "\n".join(m["content"] for m in kwargs["messages"]),
+                    # The messages as sent, not just their text. A test about
+                    # what a stage was GIVEN can use `prompt`; a test about how
+                    # the request is ORDERED needs the boundaries, which the
+                    # join destroys (#265).
+                    "messages": [dict(m) for m in kwargs["messages"]],
                 }
             )
         return _fake_response(json.dumps(_completed(dispatch[schema_name], **kwargs)), usage=usage)

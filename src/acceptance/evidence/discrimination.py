@@ -29,6 +29,7 @@ from acceptance.evidence.anchoring import RatingAnchor
 from acceptance.evidence.classification import evidence_class_for
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
+from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import ChangeSet, Obligation, TestEvidence
 from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
 
@@ -140,12 +141,30 @@ def _evidence_by_obligation(
     return by_obligation
 
 
-def _render_prompt(
+def _changed_code_block(change_set: ChangeSet) -> Block:
+    """The changed production code, which used to be appended after the criteria.
+
+    Order is what changed here. This block is the same in every discrimination
+    call of a run and the criteria block is not, so putting it first makes each
+    call a longer prefix of the same string. Behind it, the content is exactly
+    what this stage has always been shown — source files only, no hunk labels —
+    and deliberately not the shared `## Diff`, which carries test files too.
+    """
+    lines = ["## Changed production code"]
+    for file_change in change_set.files:
+        if file_change.category != "source":
+            continue
+        lines.append(f"### {file_change.path}")
+        for hunk in file_change.hunks:
+            lines.append(hunk.content)
+    return Block(BlockKind.CHANGED_CODE, "\n".join(lines))
+
+
+def _subject_block(
     obligations: list[Obligation],
     evidence_by_obligation: dict[str, list[TestEvidence]],
-    change_set: ChangeSet,
     anchors: Mapping[str, RatingAnchor],
-) -> str:
+) -> Block:
     by_id = {o.id: o for o in obligations}
     lines = ["## Criteria and their mapped tests", ""]
     for obligation_id, evidences in evidence_by_obligation.items():
@@ -170,14 +189,7 @@ def _render_prompt(
                 lines.append(f"    expected-value provenance: {evidence.expected_value_provenance}")
         lines.append("")
 
-    lines.append("## Changed production code")
-    for file_change in change_set.files:
-        if file_change.category != "source":
-            continue
-        lines.append(f"### {file_change.path}")
-        for hunk in file_change.hunks:
-            lines.append(hunk.content)
-    return "\n".join(lines)
+    return Block(BlockKind.SUBJECT, "\n".join(lines).rstrip())
 
 
 def _rejection(anchor: RatingAnchor, fresh_class: str, named: list[str]) -> UnusableAnswer:
@@ -241,14 +253,19 @@ def judge_discrimination(
     # section of the prompt explains.
     anchors = {oid: anchors[oid] for oid in evidence_by_obligation if oid in anchors}
 
+    # The anchor instructions ride with the stage's own instructions rather than
+    # in a block of their own: they are the same for every call that has any
+    # anchor at all, so they belong on the same side of the boundary as the rest
+    # of what this stage says. The per-criterion anchors themselves vary, and
+    # stay in the subject.
     system_prompt = _SYSTEM_PROMPT + _ANCHOR_INSTRUCTIONS if anchors else _SYSTEM_PROMPT
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {
-            "role": "user",
-            "content": _render_prompt(obligations, evidence_by_obligation, change_set, anchors),
-        },
-    ]
+    messages = assemble(
+        [
+            _changed_code_block(change_set),
+            Block(BlockKind.INSTRUCTIONS, system_prompt),
+            _subject_block(obligations, evidence_by_obligation, anchors),
+        ]
+    )
     allowed = {"obligation_id": list(evidence_by_obligation)}
     response_model: type[_Discrimination] = _Discrimination
     if anchors:

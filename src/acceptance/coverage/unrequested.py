@@ -26,9 +26,16 @@ from enum import Enum
 
 from pydantic import Field
 
-from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_prompt, resolve_refs
+from acceptance.coverage.prompt import (
+    DiffRef,
+    diff_block,
+    hunk_labels,
+    obligations_block,
+    resolve_refs,
+)
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
+from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import ChangeSet, Obligation
 from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
 
@@ -102,10 +109,13 @@ def detect_unrequested_changes(
 ) -> list[UnrequestedChange]:
     """Flag diff regions no obligation calls for as candidate unrequested changes."""
     label_to_ref = hunk_labels(change_set)
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {"role": "user", "content": render_diff_prompt(obligations, change_set)},
-    ]
+    messages = assemble(
+        [
+            diff_block(change_set),
+            obligations_block(obligations),
+            Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+        ]
+    )
     allowed = {"diff_refs": list(label_to_ref)}
     result = client.complete(
         messages, constrain(_Detections, allowed), parse_as=_Detections, stage=_STAGE

@@ -735,7 +735,12 @@ def test_the_escalation_prompt_asks_both_limbs_of_the_litmus():
     seen = {}
 
     def capture(**kwargs):
-        seen["system"] = kwargs["messages"][0]["content"]
+        # The whole request, not `messages[0]`. A stage's instructions are no
+        # longer the system message — they are an INSTRUCTIONS block inside the
+        # user message, so that every request of a run can open with the same
+        # bytes (see `request_blocks`). What this test is about is that the
+        # escalation prompt asks both limbs, not which message carries them.
+        seen["request"] = "\n".join(message["content"] for message in kwargs["messages"])
         content = json.dumps({"disposition": "separable", "rationale": "."})
         return SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
@@ -753,5 +758,5 @@ def test_the_escalation_prompt_asks_both_limbs_of_the_litmus():
         changes, [_obligation("ob-1")], [], change_set, ScopeExpansionPolicy.STRICT, client
     )
 
-    assert "Would every obligation still be satisfied" in seen["system"]  # limb (a)
-    assert "Would the rest of the diff still WORK" in seen["system"]  # limb (b)
+    assert "Would every obligation still be satisfied" in seen["request"]  # limb (a)
+    assert "Would the rest of the diff still WORK" in seen["request"]  # limb (b)

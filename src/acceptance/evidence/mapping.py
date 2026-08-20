@@ -26,6 +26,7 @@ from acceptance.evidence.discovery import DiscoveredTest
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
 from acceptance.partition import partition
+from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import Obligation
 from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
 
@@ -112,19 +113,32 @@ class _Mappings(StrictResponseModel):
     mappings: list[_TestMapping]
 
 
-def _render_prompt(obligations: list[Obligation], tests: list[DiscoveredTest]) -> str:
+def _obligations_block(obligations: list[Obligation]) -> Block:
+    """Every obligation, in every batch — the part of a mapping request that does
+    not move between the batches of one run.
+
+    This is not `prompt.obligations_block`: mapping shows each obligation's
+    observable behavior and no type, because it is matching tests to behavior
+    rather than citing criteria against a diff. Different content, so a block of
+    its own kind rather than a pretence of sharing with the coverage stages.
+    """
     lines = ["## Obligations", ""]
     for obligation in obligations:
         lines.append(f"- id={obligation.id}: {obligation.description}")
         if obligation.observable_behavior:
             lines.append(f"  observable behavior: {obligation.observable_behavior}")
-    lines.append("")
-    lines.append("## Candidate tests")
+    return Block(BlockKind.OBLIGATIONS, "\n".join(lines))
+
+
+def _tests_block(tests: list[DiscoveredTest]) -> Block:
+    """This batch's candidate tests — the only thing that differs between the
+    mapping calls of one run, which is why it goes last."""
+    lines = ["## Candidate tests"]
     for test in tests:
         lines.append("")
         lines.append(f"### {test.test_id}")
         lines.append(test.source or "(source unavailable)")
-    return "\n".join(lines)
+    return Block(BlockKind.SUBJECT, "\n".join(lines))
 
 
 def map_tests_to_obligations(
@@ -154,10 +168,13 @@ def map_tests_to_obligations(
 
     for batch in partition(tests, batch_size, key=lambda test: test.test_id):
         batch_test_ids = [test.test_id for test in batch.items]
-        messages = [
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": _render_prompt(obligations, list(batch.items))},
-        ]
+        messages = assemble(
+            [
+                _obligations_block(obligations),
+                Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+                _tests_block(list(batch.items)),
+            ]
+        )
         # Asked for with the ids of THIS batch: every obligation (each batch
         # judges all of them) but only this batch's tests. Parsed permissively so
         # one unusable id costs one judgment, not the whole batch — see

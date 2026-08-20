@@ -34,6 +34,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from acceptance.request_blocks import reusable_opening
 from acceptance.serialization import canonical_json
 
 DEFAULT_TRANSCRIPT_ROOT = Path(".acceptance/cache/transcripts")
@@ -131,6 +132,106 @@ def _default_completion_fn(**kwargs: Any) -> Any:
     import litellm
 
     return litellm.completion(drop_params=True, **kwargs)
+
+
+#: The shortest opening each provider family will reuse, in tokens. Below it a
+#: marker buys nothing, and Anthropic rejects a breakpoint under its minimum
+#: outright rather than ignoring it. Values are per model family and change with
+#: the provider's terms, so this is a table to be re-checked, not a constant.
+#: Read from the providers' documentation on 2026-08-20.
+_MIN_REUSABLE_OPENING_TOKENS = {
+    "anthropic": 1024,
+    "anthropic-haiku": 2048,
+}
+
+
+def _needs_explicit_marker(model: str) -> bool:
+    """Whether this provider must be TOLD where the reusable opening ends.
+
+    Anthropic-family models reuse an opening only where a `cache_control`
+    breakpoint says one ends. OpenAI-family models do it automatically on prefix
+    stability and offer no parameter at all, so for them the honest answer is
+    that there is nothing to mark — the ordering `request_blocks` does is the
+    whole of the lever.
+    """
+    return model.split("/", 1)[0] == "anthropic"
+
+
+def _minimum_reusable_opening(model: str) -> int:
+    if "haiku" in model.lower():
+        return _MIN_REUSABLE_OPENING_TOKENS["anthropic-haiku"]
+    return _MIN_REUSABLE_OPENING_TOKENS["anthropic"]
+
+
+def mark_reusable_opening(messages: list[dict], model: str) -> list[dict]:
+    """Return `messages` with the end of the reusable opening marked for `model`.
+
+    **This is the client's job and no stage's.** Where the boundary lies is a
+    fact about the request, which `request_blocks` knows; how to express it — or
+    whether it can be expressed at all — is a fact about the provider, which only
+    the client knows. Splitting it that way is what keeps a provider detail out
+    of every prompt builder, and `request_blocks.assemble` refuses a block that
+    tries to write one anyway.
+
+    Applied at send time, to a copy, and deliberately **not** to the hashed
+    request: the marker is provider-specific and carries no meaning for what was
+    asked, so putting it in the request key would make the same review
+    irreproducible across providers and would re-key every transcript the first
+    time this table changed.
+
+    Returns the messages unchanged when the provider needs no marker, and when
+    the opening is too short to be worth one — see `_minimum_reusable_opening`.
+    """
+    if not _needs_explicit_marker(model):
+        return messages
+
+    opening = reusable_opening(messages)
+    if not opening:
+        return messages
+
+    minimum = _minimum_reusable_opening(model)
+    if _count_tokens(opening, model) < minimum:
+        return messages
+
+    marked = [dict(message) for message in messages]
+    last = marked[len(opening) - 1]
+    # Anthropic takes the breakpoint on a content block, so the string content
+    # becomes a one-element list. Everything before this point in the request is
+    # what the provider may reuse.
+    last["content"] = [
+        {
+            "type": "text",
+            "text": last["content"],
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
+    return marked
+
+
+def _count_tokens(messages: list[dict], model: str) -> int:
+    """Token count for the opening, used only to decide whether to mark it.
+
+    Falls back to a character estimate when LiteLLM cannot count for this model,
+    because failing to *measure* an opening is not a reason to fail the call. The
+    estimate is deliberately conservative — it divides by 4, so it under-counts
+    a text-heavy prompt rather than over-counting it, and an uncertain case comes
+    out unmarked rather than marked below the provider's minimum.
+    """
+    text = "\n\n".join(
+        message["content"] for message in messages if isinstance(message.get("content"), str)
+    )
+    try:
+        import litellm
+
+        return int(litellm.token_counter(model=model, text=text))
+    except Exception:  # noqa: BLE001 — see below
+        # Deliberately blind. The count decides one thing: whether an opening
+        # clears a threshold. LiteLLM raises whatever the tokenizer beneath it
+        # raises — a missing model entry, an unreachable tokenizer download, a
+        # provider it does not know — and none of those is a reason to fail a
+        # call that would otherwise succeed. Narrowing to today's exception types
+        # would convert an unrecognised one into a crash on the live path.
+        return len(text) // 4
 
 
 def _default_embedding_fn(**kwargs: Any) -> Any:
@@ -752,7 +853,10 @@ class ModelClient:
 
         response = self._completion_fn(
             model=request["model"],
-            messages=request["messages"],
+            # Marked here rather than in `request`, so the provider-specific
+            # breakpoint never reaches the request key. What was asked is the
+            # same question whichever provider answers it.
+            messages=mark_reusable_opening(request["messages"], request["model"]),
             # LiteLLM's `response_format` is its provider-agnostic interface —
             # it translates this into each provider's own mechanism (Anthropic
             # takes structured output as tool use) and normalizes the reply.
