@@ -1110,7 +1110,9 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   the verdict axis, since a key present in only one is not a judgement that
   moved. Report a sensitivity per axis and never a blended one, for the same
   reason `content` and `shape` are never summed.
-- **Status:** open
+- **Status:** filed (#290, sub-issue of #186). Re-verified against the code at
+  `ed6f4b9` before filing — `_perturbation_result` is unchanged, so the drafted
+  fix was filed as written, with an Acceptance section added.
 
 ### [2026-08-12] Record #191's pre-change baseline figures on the issue
 - **Kind:** filing (comment on existing issue #191)
