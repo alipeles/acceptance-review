@@ -16,12 +16,14 @@ from __future__ import annotations
 import pytest
 
 from acceptance.request_blocks import (
+    PROVIDER_CACHE_MARKERS,
     REUSABLE_OPENING_MESSAGES,
     SHARED_PREAMBLE,
     Block,
     BlockError,
     BlockKind,
     assemble,
+    authored_prompts,
     reusable_opening,
 )
 
@@ -87,22 +89,66 @@ def test_every_request_opens_with_the_same_preamble():
     assert one[0] == two[0] == {"role": "system", "content": SHARED_PREAMBLE}
 
 
-@pytest.mark.parametrize("marker", ["cache_control", "<<<cache-breakpoint>>>"])
-def test_a_stage_cannot_mark_the_end_of_its_own_reusable_opening(marker):
-    """The mandate's third Completion expectation.
+def test_a_stage_cannot_mark_the_end_of_its_own_reusable_opening():
+    """The mandate's third Completion expectation, as a structural guarantee.
 
-    Where the opening ends is the client's to say, because only the client knows
-    which provider is being asked. A stage that wrote a breakpoint into its
-    prompt would produce text no provider reads as a marker, and the client's
-    real marker would then be the second one in the request.
+    A provider breakpoint is not a string — `llm.mark_reusable_opening` expresses
+    it by replacing a message's content with a list of content parts. `assemble`
+    only ever emits `str` contents, so no text a stage writes can become one.
+    That is why this is checked as a type rather than as a search for a word.
     """
-    with pytest.raises(BlockError, match=marker):
-        assemble(
-            [
-                Block(BlockKind.INSTRUCTIONS, f"judge this. {marker}: here"),
-                Block(BlockKind.SUBJECT, "the batch"),
-            ]
-        )
+    messages = assemble(
+        [
+            Block(BlockKind.INSTRUCTIONS, "judge this. cache_control: here"),
+            Block(BlockKind.SUBJECT, "the batch"),
+        ]
+    )
+
+    assert all(isinstance(m["content"], str) for m in messages), (
+        "a stage produced a structured content part, which is how — and only how "
+        "— a reusable-opening breakpoint is expressed"
+    )
+
+
+def test_no_prompt_a_stage_authors_mentions_a_provider_breakpoint():
+    """The other half: stages should not be writing marker text either.
+
+    Checked against the prompts stages AUTHOR, never against a live request.
+    Scanning a request would scan the diff and the test sources it was handed —
+    content quoted from the repository under review, not the stage's own words —
+    and this repository now mentions `cache_control` in `llm.py`.
+    """
+    offenders = {
+        name: marker
+        for name, prompt in authored_prompts().items()
+        for marker in PROVIDER_CACHE_MARKERS
+        if marker in prompt
+    }
+
+    assert not offenders, (
+        f"these stage prompts mention a provider breakpoint: {offenders}. Where a "
+        "request's reusable opening ends is the client's to mark — see llm."
+        "mark_reusable_opening."
+    )
+
+
+def test_reviewing_a_repository_that_mentions_prompt_caching_still_works():
+    """The regression a dogfood run of this change actually found.
+
+    An earlier guard rejected any block containing `cache_control`. The mapping
+    stage's subject is the SOURCE of the tests under review, so reviewing this
+    repository aborted the whole run at mapping — over a string the tool had
+    merely been shown. Content under review is data, never an instruction.
+    """
+    messages = assemble(
+        [
+            Block(BlockKind.DIFF, "## Diff\n+    last['cache_control'] = {'type': 'ephemeral'}"),
+            Block(BlockKind.INSTRUCTIONS, "classify the diff"),
+            Block(BlockKind.SUBJECT, "def test_marker():\n    assert 'cache_control' in sent"),
+        ]
+    )
+
+    assert "cache_control" in _user_text(messages)
 
 
 def test_reordering_a_request_leaves_it_carrying_the_same_content():

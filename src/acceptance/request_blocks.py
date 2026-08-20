@@ -40,9 +40,9 @@ match would mean feeding one stage something it does not receive today.
 **It does not mark where the reusable opening ends.** Anthropic-family models
 need an explicit `cache_control` breakpoint and OpenAI-family models need none,
 so the marker is provider-specific and belongs with the client that knows which
-provider it is talking to. `llm.py` places it. A stage that tried to place one
-would be writing a provider detail into a prompt, and `assemble` rejects the
-attempt rather than letting it through.
+provider it is talking to. `llm.py` places it. A stage cannot place one, because
+a block carries a plain string and a breakpoint is a structured content part —
+see `assemble` for why that is the guarantee rather than a text scan.
 """
 
 from __future__ import annotations
@@ -64,9 +64,11 @@ SHARED_PREAMBLE = (
     "requested schema, and answer only the question the instructions ask."
 )
 
-# A stage that renders a `cache_control` marker into its own prompt would be
-# doing the client's job with the wrong information — see the module docstring.
-_PROVIDER_CACHE_MARKERS = ("cache_control", "<<<cache-breakpoint>>>")
+# Names a provider gives to a reusable-opening breakpoint. Used by
+# `tests/test_request_blocks.py` to check the text stages AUTHOR — their
+# instructions — and deliberately not used to scan a request at runtime. See
+# `assemble` for why that distinction is load-bearing.
+PROVIDER_CACHE_MARKERS = ("cache_control", "<<<cache-breakpoint>>>")
 
 
 class BlockKind(Enum):
@@ -149,12 +151,28 @@ def assemble(blocks: list[Block]) -> list[dict]:
     the last two is omitted when it would be empty. Nothing about the *content*
     changes: a provider sees the same bytes in the same order it would have seen
     from one joined message.
+
+    ## Why there is no runtime scan for provider markers
+
+    An earlier version of this function rejected any block whose text contained
+    `cache_control`, on the reasoning that a stage writing one would be doing the
+    client's job. It was wrong, and a dogfood run of this very change is what
+    showed it: **a block's text is mostly not the stage's own words.** The
+    subject of a mapping request is the source of the tests under review, and the
+    diff block is the diff under review. Reviewing any repository that mentions
+    prompt caching — this one, now — made the tool abort at the mapping stage
+    with a `BlockError` about a string it had merely been shown.
+
+    The scan was also unnecessary. A block carries a `str`, and a provider
+    breakpoint is not a string: `llm.mark_reusable_opening` expresses it by
+    replacing a message's content with a list of content parts. A stage
+    therefore *cannot* emit one through this function, whatever it writes.
+    `tests/test_request_blocks.py` pins both halves — that assembled contents are
+    always plain strings, and that no prompt a stage AUTHORS mentions a marker,
+    checked against `authored_prompts()` rather than against a live request.
     """
     if not blocks:
         raise BlockError("a request must carry at least one block")
-
-    for block in blocks:
-        _reject_provider_markers(block)
 
     present = [block for block in blocks if block.text.strip()]
     if not present:
@@ -211,18 +229,34 @@ def reusable_opening(messages: list[dict]) -> list[dict]:
     return messages[:REUSABLE_OPENING_MESSAGES]
 
 
-def _reject_provider_markers(block: Block) -> None:
-    """Refuse a block that tries to mark its own reusable opening.
+def authored_prompts() -> dict[str, str]:
+    """Every system prompt a review-pipeline stage authors, by stage name.
 
-    Checked here rather than left to review because the failure is silent: a
-    stray `cache_control` string in a prompt is not an error to any provider,
-    it is just text, and the marker the client places would then be the second
-    one in the request.
+    Exists so a test can check the text stages WRITE for provider markers,
+    without scanning the text they QUOTE. See `assemble`'s note on why that
+    distinction had to be drawn.
     """
-    for marker in _PROVIDER_CACHE_MARKERS:
-        if marker in block.text:
-            raise BlockError(
-                f"{block.kind.name} block contains {marker!r}. Where a request's "
-                "reusable opening ends is the client's to mark, not a stage's — "
-                "see request_blocks and llm.ModelClient."
-            )
+    import importlib
+
+    modules = [
+        "acceptance.requirement.obligations",
+        "acceptance.requirement.linking",
+        "acceptance.evidence.mapping",
+        "acceptance.evidence.discrimination",
+        "acceptance.coverage.classify",
+        "acceptance.coverage.open_questions",
+        "acceptance.coverage.unrequested",
+        "acceptance.coverage.disposition",
+        "acceptance.coverage.recommendations",
+        "acceptance.coverage.declaration_comparison",
+    ]
+    prompts: dict[str, str] = {}
+    for name in modules:
+        module = importlib.import_module(name)
+        stage = getattr(module, "_STAGE", name)
+        for attr in dir(module):
+            if "SYSTEM_PROMPT" in attr:
+                value = getattr(module, attr)
+                if isinstance(value, str) and value.strip():
+                    prompts[f"{stage}:{attr}"] = value
+    return prompts
