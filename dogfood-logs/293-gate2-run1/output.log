@@ -1,0 +1,353 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) with non-discriminating test evidence (adding-test-to-unmapped-file-leaves-rating-unchanged).
+
+Obligations:
+
+  1. A criterion's test-evidence rating is re-derived only when that criterion's own inputs changed.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         1.2  src/acceptance/pipeline.py#@@ -328,21 +341,48 @@ def run_review(
+         1.3  tests/evidence/test_rejudge.py#@@ -0,0 +1,487 @@
+       test evidence: strongly supported  [tier: static]
+         1.4  tests/evidence/test_anchoring.py::test_a_criterion_the_prior_review_never_rated_is_not_anchored
+         1.5  tests/evidence/test_anchoring.py::test_a_criterion_with_no_nameable_change_is_not_anchored
+         1.6  tests/evidence/test_anchoring.py::test_a_mapped_test_the_prior_review_recorded_no_digest_for_names_no_change
+         1.7  tests/evidence/test_anchoring.py::test_a_move_resting_on_another_criterions_change_is_rejected
+         1.8  tests/evidence/test_anchoring.py::test_a_move_that_names_a_supplied_change_is_accepted
+         1.9  tests/evidence/test_anchoring.py::test_an_anchor_names_the_edited_test_itself_not_the_file_holding_it
+         1.10  tests/evidence/test_anchoring.py::test_the_pipeline_anchors_the_judgement_and_holds_the_rejected_rating
+         1.11  tests/evidence/test_rejudge.py::test_a_criterion_with_all_three_inputs_unchanged_keeps_its_stored_rating
+         1.12  tests/evidence/test_rejudge.py::test_a_gained_mapped_test_forces_a_re_judgement
+         1.13  tests/evidence/test_rejudge.py::test_a_lost_mapped_test_forces_a_re_judgement
+         1.14  tests/evidence/test_rejudge.py::test_a_mapped_test_that_vanished_from_discovery_is_not_treated_as_unchanged
+         1.15  tests/evidence/test_rejudge.py::test_a_reworded_requirement_forces_a_re_judgement
+         1.16  tests/evidence/test_rejudge.py::test_a_test_appended_to_the_same_file_does_not_disturb_the_rating
+         1.17  tests/evidence/test_rejudge.py::test_editing_a_mapped_test_forces_a_re_judgement
+         1.18  tests/evidence/test_rejudge.py::test_editing_one_criterions_test_leaves_another_criterion_alone
+         1.19  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         1.20  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         1.21  tests/test_rerun.py::test_a_stale_prior_verdict_is_replaced_rather_than_surviving
+         1.22  tests/test_rerun.py::test_an_unmoved_obligation_set_permits_reuse
+         1.23  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  2. A criterion's inputs are its requirement text, the set of tests mapped to it, and the contents of those tests.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         2.2  src/acceptance/review_state.py#@@ -541,6 +541,31 @@ class Obligation(_Model):
+       test evidence: strongly supported  [tier: static]
+         2.3  tests/evidence/test_anchoring.py::test_a_changed_criterion_is_given_the_changes_to_its_dependencies
+         2.4  tests/evidence/test_anchoring.py::test_a_gained_mapped_test_is_a_nameable_change
+         2.5  tests/evidence/test_anchoring.py::test_a_move_resting_on_another_criterions_change_is_rejected
+         2.6  tests/evidence/test_anchoring.py::test_a_move_that_names_a_supplied_change_is_accepted
+         2.7  tests/evidence/test_anchoring.py::test_a_reworded_requirement_is_itself_a_nameable_change
+         2.8  tests/evidence/test_anchoring.py::test_an_anchor_names_the_edited_test_itself_not_the_file_holding_it
+         2.9  tests/evidence/test_rejudge.py::test_a_carried_rating_is_written_back_with_this_runs_test_links
+         2.10  tests/evidence/test_rejudge.py::test_a_criterion_with_all_three_inputs_unchanged_keeps_its_stored_rating
+         2.11  tests/evidence/test_rejudge.py::test_a_gained_mapped_test_forces_a_re_judgement
+         2.12  tests/evidence/test_rejudge.py::test_a_lost_mapped_test_forces_a_re_judgement
+         2.13  tests/evidence/test_rejudge.py::test_a_mapped_test_that_vanished_from_discovery_is_not_treated_as_unchanged
+         2.14  tests/evidence/test_rejudge.py::test_a_reworded_requirement_forces_a_re_judgement
+         2.15  tests/evidence/test_rejudge.py::test_a_test_appended_to_the_same_file_does_not_disturb_the_rating
+         2.16  tests/evidence/test_rejudge.py::test_editing_a_mapped_test_forces_a_re_judgement
+         2.17  tests/evidence/test_rejudge.py::test_editing_one_criterions_test_leaves_another_criterion_alone
+         2.18  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         2.19  tests/evidence/test_rejudge.py::test_the_stored_digests_are_per_test_and_not_per_file
+         2.20  tests/evidence/test_rejudge.py::test_the_stored_key_is_computed_from_the_stored_digests
+         2.21  tests/test_rerun.py::test_an_unmoved_obligation_set_permits_reuse
+         2.22  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  3. A criterion whose requirement text, mapped test set and mapped test contents are all unchanged keeps the rating stored for it.
+       requirements: constraint-01, completion-02
+       code evidence: addressed
+         3.1  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         3.2  src/acceptance/pipeline.py#@@ -328,21 +341,48 @@ def run_review(
+         3.3  tests/evidence/test_rejudge.py#@@ -0,0 +1,487 @@
+       test evidence: strongly supported  [tier: static]
+         3.4  tests/evidence/test_anchoring.py::test_a_changed_criterion_is_given_the_rating_stored_for_it
+         3.5  tests/evidence/test_anchoring.py::test_a_criterion_the_prior_review_never_rated_is_not_anchored
+         3.6  tests/evidence/test_anchoring.py::test_a_criterion_with_no_nameable_change_is_not_anchored
+         3.7  tests/evidence/test_anchoring.py::test_a_judgement_that_holds_the_rating_needs_no_justification
+         3.8  tests/evidence/test_anchoring.py::test_a_mapped_test_the_prior_review_recorded_no_digest_for_names_no_change
+         3.9  tests/evidence/test_anchoring.py::test_a_move_that_names_no_change_is_rejected_and_the_stored_rating_stands
+         3.10  tests/evidence/test_anchoring.py::test_a_test_appended_to_the_same_file_leaves_the_criterion_unanchored
+         3.11  tests/evidence/test_anchoring.py::test_the_pipeline_anchors_the_judgement_and_holds_the_rejected_rating
+         3.12  tests/evidence/test_rejudge.py::test_a_carried_rating_is_labelled_with_the_revision_it_was_established_at
+         3.13  tests/evidence/test_rejudge.py::test_a_carried_rating_is_written_back_with_this_runs_test_links
+         3.14  tests/evidence/test_rejudge.py::test_a_criterion_with_all_three_inputs_unchanged_keeps_its_stored_rating
+         3.15  tests/evidence/test_rejudge.py::test_a_test_appended_to_the_same_file_does_not_disturb_the_rating
+         3.16  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         3.17  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         3.18  tests/test_rerun.py::test_a_stale_prior_verdict_is_replaced_rather_than_surviving
+         3.19  tests/test_rerun.py::test_an_unmoved_obligation_set_permits_reuse
+         3.20  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  4. A criterion whose requirement text, mapped test set, and mapped test contents are all unchanged is not asked about in the evidence-judgement request.
+       requirements: constraint-02, completion-02
+       code evidence: addressed
+         4.1  src/acceptance/pipeline.py#@@ -328,21 +341,48 @@ def run_review(
+         4.2  tests/evidence/test_rejudge.py#@@ -0,0 +1,487 @@
+       test evidence: strongly supported  [tier: static]
+         4.3  tests/evidence/test_anchoring.py::test_a_criterion_the_prior_review_never_rated_is_not_anchored
+         4.4  tests/evidence/test_anchoring.py::test_a_criterion_with_no_nameable_change_is_not_anchored
+         4.5  tests/evidence/test_anchoring.py::test_a_judgement_that_holds_the_rating_needs_no_justification
+         4.6  tests/evidence/test_anchoring.py::test_a_mapped_test_the_prior_review_recorded_no_digest_for_names_no_change
+         4.7  tests/evidence/test_anchoring.py::test_a_review_with_no_stored_state_puts_no_stored_rating_in_the_request
+         4.8  tests/evidence/test_rejudge.py::test_a_carried_rating_is_labelled_with_the_revision_it_was_established_at
+         4.9  tests/evidence/test_rejudge.py::test_a_criterion_with_all_three_inputs_unchanged_keeps_its_stored_rating
+         4.10  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         4.11  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         4.12  tests/test_rerun.py::test_a_stale_prior_verdict_is_replaced_rather_than_surviving
+         4.13  tests/test_rerun.py::test_an_unmoved_obligation_set_permits_reuse
+         4.14  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  5. A criterion is compared by the contents of the tests mapped to it, not by whether a file containing one of those tests was touched.
+       requirements: constraint-03
+       code evidence: addressed
+         5.1  src/acceptance/evidence/anchoring.py#@@ -67,13 +77,11 @@ class RatingAnchor(PersistableModel):
+         5.2  src/acceptance/evidence/anchoring.py#@@ -83,14 +91,44 @@ def _changes_for(
+         5.3  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         5.4  src/acceptance/rerun.py#@@ -151,11 +163,6 @@ def find_prior_review(
+         5.5  tests/evidence/test_anchoring.py#@@ -313,24 +323,88 @@ def test_a_rejected_judgement_is_reported():
+         5.6  tests/evidence/test_rejudge.py#@@ -0,0 +1,487 @@
+       test evidence: strongly supported  [tier: static]
+         5.7  tests/evidence/test_anchoring.py::test_a_move_that_names_no_change_is_rejected_and_the_stored_rating_stands
+         5.8  tests/evidence/test_anchoring.py::test_a_test_appended_to_the_same_file_leaves_the_criterion_unanchored
+         5.9  tests/evidence/test_anchoring.py::test_an_anchor_names_the_edited_test_itself_not_the_file_holding_it
+         5.10  tests/evidence/test_anchoring.py::test_the_pipeline_anchors_the_judgement_and_holds_the_rejected_rating
+         5.11  tests/evidence/test_rejudge.py::test_a_mapped_test_that_vanished_from_discovery_is_not_treated_as_unchanged
+         5.12  tests/evidence/test_rejudge.py::test_a_test_appended_to_the_same_file_does_not_disturb_the_rating
+         5.13  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         5.14  tests/evidence/test_rejudge.py::test_the_stored_digests_are_per_test_and_not_per_file
+         5.15  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         5.16  tests/test_rerun.py::test_a_stale_prior_verdict_is_replaced_rather_than_surviving
+
+  6. A criterion whose mapped test set gained or lost a member is judged again.
+       requirements: constraint-04, completion-05
+       code evidence: addressed
+         6.1  src/acceptance/evidence/anchoring.py#@@ -83,14 +91,44 @@ def _changes_for(
+         6.2  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         6.3  tests/evidence/test_rejudge.py#@@ -0,0 +1,487 @@
+       test evidence: strongly supported  [tier: static]
+         6.4  tests/evidence/test_anchoring.py::test_a_gained_mapped_test_is_a_nameable_change
+         6.5  tests/evidence/test_rejudge.py::test_a_gained_mapped_test_forces_a_re_judgement
+         6.6  tests/evidence/test_rejudge.py::test_a_lost_mapped_test_forces_a_re_judgement
+         6.7  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         6.8  tests/test_rerun.py::test_an_unmoved_obligation_set_permits_reuse
+         6.9  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  7. A criterion whose requirement text changed is judged again.
+       requirements: constraint-05, completion-06
+       code evidence: addressed
+         7.1  src/acceptance/evidence/anchoring.py#@@ -83,14 +91,44 @@ def _changes_for(
+         7.2  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         7.3  tests/evidence/test_rejudge.py#@@ -0,0 +1,487 @@
+       test evidence: strongly supported  [tier: static]
+         7.4  tests/evidence/test_anchoring.py::test_a_reworded_requirement_is_itself_a_nameable_change
+         7.5  tests/evidence/test_rejudge.py::test_a_reworded_requirement_forces_a_re_judgement
+         7.6  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         7.7  tests/test_rerun.py::test_an_unmoved_obligation_set_permits_reuse
+         7.8  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  8. The earlier rule that decided staleness from whether a cited file was touched is removed rather than left in place beside the new one.
+       requirements: constraint-06
+       code evidence: addressed
+         8.1  src/acceptance/rerun.py#@@ -166,27 +173,6 @@ def changed_paths(change_set: ChangeSet) -> set[str]:
+         8.2  src/acceptance/rerun.py#@@ -198,108 +184,57 @@ def _linking_inputs(obligations: list[Obligation]) -> list[tuple[str, str, str]]
+         8.3  src/acceptance/pipeline.py#@@ -301,14 +307,21 @@ def run_review(
+         8.4  src/acceptance/evidence/anchoring.py#@@ -20,11 +20,21 @@ can be interrogated and a justification for it can be demanded. Decomposition's
+       test evidence: not required — This is satisfied by the source structure itself: the old staleness rule must be absent from the delivered code.
+
+  9. Deciding whether a criterion's implementation coverage is re-derived is separate from deciding whether its test-evidence rating is re-derived.
+       requirements: constraint-07
+       code evidence: addressed
+         9.1  docs/DR-293-per-axis-carry.md#@@ -0,0 +1,153 @@
+         9.2  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         9.3  src/acceptance/pipeline.py#@@ -301,14 +307,21 @@ def run_review(
+         9.4  src/acceptance/rerun.py#@@ -198,108 +184,57 @@ def _linking_inputs(obligations: list[Obligation]) -> list[tuple[str, str, str]]
+       test evidence: strongly supported  [tier: static]
+         9.5  tests/benchmark/test_coverage.py::test_cli_and_benchmark_share_one_pipeline
+         9.6  tests/evidence/test_anchoring.py::test_the_pipeline_anchors_the_judgement_and_holds_the_rejected_rating
+         9.7  tests/evidence/test_rejudge.py::test_editing_a_mapped_test_forces_a_re_judgement
+         9.8  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         9.9  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         9.10  tests/test_rerun.py::test_a_stale_prior_verdict_is_replaced_rather_than_surviving
+
+  10. A review repeated over the same stored state and the same inputs produces the same review state as the one before it.
+       requirements: constraint-08
+       code evidence: addressed
+         10.1  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         10.2  tests/evidence/test_rejudge.py#@@ -0,0 +1,487 @@
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/evidence/test_anchoring.py::test_two_anchored_runs_over_the_same_input_are_byte_identical
+         10.4  tests/evidence/test_rejudge.py::test_two_runs_over_the_same_inputs_compute_the_same_key
+         10.5  tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+         10.6  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         10.7  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  11. The change does not make the set of tests mapped to a criterion stable across runs.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 36 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion, so the review checks the absence of that work in the delivered change.
+
+  12. The change does not make whether a rating is correct on its merits part of the reuse decision.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 36 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion, so the review checks the absence of that work in the delivered change.
+
+  13. The change does not make which defects the judge names for a criterion it does judge part of the reuse decision.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 36 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion, so the review checks the absence of that work in the delivered change.
+
+  14. The change does not reject a re-judgement that names no change it was given.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 36 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion: the delivered change is checked by the absence of the excluded rejection behavior in the source, not by a test.
+
+  15. The change does not alter which stored earlier state a repeated review continues.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 36 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about selection logic, and the presence or absence of that logic is settled by the source change itself.
+
+  16. The change does not narrow which criteria are judged again in any stage other than test-evidence judgement.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 36 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion, so the review checks the absence of that work in the delivered change.
+
+  17. Adding a test to a file that already holds a mapped test leaves unchanged the rating of a criterion whose own mapped tests were not edited.
+       requirements: completion-03
+       code evidence: addressed
+         17.1  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         17.2  tests/evidence/test_rejudge.py#@@ -0,0 +1,487 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: After adding a test to a file that already contains a mapped test, a criterion whose mapped tests were not edited keeps the same rating.
+           inputs:  Use a prior review where the criterion already has a mapped test set containing at least one test, and a fresh run where that mapped test’s source is byte-identical but an additional, unrelated test is appended to the same test file. The criterion under test must not gain, lose, or edit any of its mapped tests; only the file containing them changes by addition of an unmapped test.
+           detects: The implementation still treats any change to a file containing a mapped test as evidence that the criterion’s rating is stale, so appending an unrelated test to that file incorrectly causes the rating to change or be re-judged.
+           full detail: acceptance recommendation --criterion adding-test-to-unmapped-file-leaves-rating-unchanged
+
+  18. Editing a test mapped to one criterion leaves every other criterion's rating unchanged.
+       requirements: completion-04
+       code evidence: addressed
+         18.1  src/acceptance/evidence/anchoring.py#@@ -83,14 +91,44 @@ def _changes_for(
+         18.2  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         18.3  tests/evidence/test_rejudge.py#@@ -0,0 +1,487 @@
+       test evidence: strongly supported  [tier: static]
+         18.4  tests/evidence/test_rejudge.py::test_editing_one_criterions_test_leaves_another_criterion_alone
+
+  19. No rule deciding staleness from whether a cited file was touched remains in the delivered code.
+       requirements: completion-07
+       code evidence: addressed
+         19.1  src/acceptance/rerun.py#@@ -166,27 +173,6 @@ def changed_paths(change_set: ChangeSet) -> set[str]:
+         19.2  src/acceptance/evidence/anchoring.py#@@ -83,14 +91,44 @@ def _changes_for(
+         19.3  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+       test evidence: not required — This requirement is satisfied by the absence of the old rule in the source, which a test cannot directly prove.
+
+  20. Implementation-coverage staleness and test-evidence staleness are decided separately.
+       requirements: completion-08
+       code evidence: addressed
+         20.1  src/acceptance/pipeline.py#@@ -301,14 +307,21 @@ def run_review(
+         20.2  src/acceptance/pipeline.py#@@ -328,21 +341,48 @@ def run_review(
+         20.3  src/acceptance/rerun.py#@@ -198,108 +184,57 @@ def _linking_inputs(obligations: list[Obligation]) -> list[tuple[str, str, str]]
+         20.4  docs/DR-293-per-axis-carry.md#@@ -0,0 +1,153 @@
+       test evidence: strongly supported  [tier: static]
+         20.5  tests/benchmark/test_coverage.py::test_cli_and_benchmark_share_one_pipeline
+         20.6  tests/evidence/test_anchoring.py::test_the_pipeline_anchors_the_judgement_and_holds_the_rejected_rating
+         20.7  tests/evidence/test_rejudge.py::test_editing_a_mapped_test_forces_a_re_judgement
+         20.8  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         20.9  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         20.10  tests/test_rerun.py::test_a_stale_prior_verdict_is_replaced_rather_than_surviving
+
+  21. Two reviews over the same stored state and the same inputs produce byte-identical review state.
+       requirements: completion-09
+       code evidence: addressed
+         21.1  src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+         21.2  tests/evidence/test_rejudge.py#@@ -0,0 +1,487 @@
+       test evidence: strongly supported  [tier: static]
+         21.3  tests/evidence/test_anchoring.py::test_two_anchored_runs_over_the_same_input_are_byte_identical
+         21.4  tests/evidence/test_rejudge.py::test_two_runs_over_the_same_inputs_compute_the_same_key
+         21.5  tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+         21.6  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         21.7  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  22. The findings recorded as correct in `tests/fixtures/rating-stability/` are still found.
+       requirements: completion-10
+       code evidence: addressed
+         22.1  tests/test_rerun.py#@@ -446,11 +354,16 @@ _HEAD_JUDGMENTS = {
+         22.2  tests/test_rerun.py#@@ -473,7 +386,7 @@ _HEAD_JUDGMENTS = {
+         22.3  tests/test_rerun.py#@@ -613,6 +526,12 @@ _TWO_FILE_JUDGMENTS = {
+         22.4  tests/test_rerun.py#@@ -620,7 +539,13 @@ _TWO_FILE_JUDGMENTS = {
+         22.5  tests/test_rerun.py#@@ -716,9 +641,12 @@ def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path
+         22.6  tests/test_rerun.py#@@ -759,8 +687,8 @@ def test_a_review_written_under_an_older_schema_is_skipped_not_fatal(tmp_path):
+         22.7  tests/test_rerun.py#@@ -816,12 +744,18 @@ def test_only_the_affected_obligation_is_re_derived(tmp_path):
+       test evidence: strongly supported  [tier: static]
+         22.8  tests/benchmark/test_rating_regression.py::test_the_corpus_findings_survive_the_anchored_rejudgement
+
+Mandate coverage: 24 of 25 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: The item is a section marker standing alone with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] The new `build_anchors(..., digests: dict[str, str] | None = None)` parameter and its use in callers changes a public function's call contract beyond the task's stated need to re-derive test-evidence ratings; anchoring behavior now depends on an extra argument and defaults to weaker anchoring when omitted.
+       src/acceptance/evidence/anchoring.py#@@ -103,7 +141,10 @@ def _changes_for(
+       src/acceptance/evidence/anchoring.py#@@ -111,6 +152,14 @@ def build_anchors(
+       src/acceptance/evidence/anchoring.py#@@ -119,7 +168,7 @@ def build_anchors(
+       src/acceptance/pipeline.py#@@ -301,14 +307,21 @@ def run_review(
+  2. [in_service] `src/acceptance/evidence/rejudge.py` introduces a large new helper module with digest computation, carry-key logic, and carry labeling. The obligations require changing when test-evidence is re-derived and separating it from coverage, but they do not call for this specific internal architecture or helper split.
+       src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+       src/acceptance/pipeline.py#@@ -46,6 +46,14 @@ from acceptance.evidence.discovery import discover_tests
+       src/acceptance/pipeline.py#@@ -301,14 +307,21 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -328,21 +341,48 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -393,14 +433,28 @@ def run_review(
+  3. [in_service] `Obligation` gains stored fields `evidence_carry_key` and `mapped_test_digests`. The obligations require comparing by test contents and keeping stored ratings when inputs are unchanged, but they do not explicitly require persisting these new review-state fields; this is an implementation choice beyond the stated obligations.
+       src/acceptance/review_state.py#@@ -541,6 +541,31 @@ class Obligation(_Model):
+       src/acceptance/evidence/rejudge.py#@@ -0,0 +1,282 @@
+  4. [in_service] `run_review` now excludes carried criteria from `judge_discrimination` and `classify_strength`, and later re-inserts carried strengths. The obligations only require that unchanged criteria keep stored ratings and are not asked about in the evidence-judgement request; they do not require this broader pipeline restructuring or the new recommendation-carry path.
+       src/acceptance/pipeline.py#@@ -301,14 +307,21 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -328,21 +341,48 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -393,14 +433,28 @@ def run_review(
+  5. [in_service] `derivation_changed` is repurposed as the sole reuse gate for both axes, and the old file-touch staleness logic is removed from `rerun.py`. The obligations do require removing the file-touch rule, but the new `derivation_changed` semantics and the surrounding rewrite of rerun behavior go beyond that specific requirement.
+       src/acceptance/rerun.py#@@ -7,8 +7,21 @@ re-run is wrong in two ways — it re-bills judgments about code nobody touched
+       src/acceptance/rerun.py#@@ -151,11 +163,6 @@ def find_prior_review(
+       src/acceptance/rerun.py#@@ -166,27 +173,6 @@ def changed_paths(change_set: ChangeSet) -> set[str]:
+       src/acceptance/rerun.py#@@ -198,108 +184,57 @@ def _linking_inputs(obligations: list[Obligation]) -> list[tuple[str, str, str]]
+       src/acceptance/pipeline.py#@@ -59,11 +67,9 @@ from acceptance.requirement.linking import link_duplicate_obligations
+       src/acceptance/pipeline.py#@@ -301,14 +307,21 @@ def run_review(
+  6. [in_service] The test suite changes several expectations about coverage being re-derived for every obligation and about carried findings/recommendations disappearing or changing labels. The obligations are about test-evidence staleness and its separation from coverage, but these specific coverage and recommendation behavior changes are not directly called for.
+       tests/test_rerun.py#@@ -613,6 +526,12 @@ _TWO_FILE_JUDGMENTS = {
+       tests/test_rerun.py#@@ -620,7 +539,13 @@ _TWO_FILE_JUDGMENTS = {
+       tests/test_rerun.py#@@ -716,9 +641,12 @@ def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path
+       tests/test_rerun.py#@@ -759,8 +687,8 @@ def test_a_review_written_under_an_older_schema_is_skipped_not_fatal(tmp_path):
+       tests/test_rerun.py#@@ -816,12 +744,18 @@ def test_only_the_affected_obligation_is_re_derived(tmp_path):
+       tests/test_rerun.py#@@ -925,12 +859,16 @@ def test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun(tmp_path)
+  7. [in_service] The new documentation file `docs/DR-293-per-axis-carry.md` is explanatory material that is not required by the listed obligations, which are about code behavior and tests. It may be useful, but it is still an unrequested addition.
+       docs/DR-293-per-axis-carry.md#@@ -0,0 +1,153 @@
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 6f64baa7e8cf3a78
+  continuing a84c1b0c6e71916a
+  continue this run with: --continue 6f64baa7e8cf3a78
+Model usage by stage:
+  stage                                           calls  prompt  output  cached  this run  recorded
+  ----------------------------  -----------------------  ------  ------  ------  --------  --------
+  obligation linking            1 (0 live / 1 replayed)     982       0       —   $0.0000   $0.0000
+  test-to-obligation mapping    7 (7 live / 0 replayed)  34,272   6,639    0.0%   $0.0556   $0.0556
+  discrimination judgment       1 (1 live / 0 replayed)  18,296   2,502    0.0%   $0.0250   $0.0250
+  coverage classification       1 (1 live / 0 replayed)  25,392   1,843    0.0%   $0.0273   $0.0273
+  unrequested-change detection  1 (1 live / 0 replayed)  24,583     864    0.0%   $0.0223   $0.0223
+  test recommendation           1 (1 live / 0 replayed)  23,305     510    0.0%   $0.0198   $0.0198
+  this run spent $0.1500 on 11 live call(s); the evidence cost $0.1500 to record (1 call(s) replayed at no cost to this run)
+
