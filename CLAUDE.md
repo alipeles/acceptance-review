@@ -493,6 +493,16 @@ automatically. If a `gh` call ever fails that way again, the exclusion is not
 taking effect — say so rather than reaching for the escape hatch on every call.
 `git` is unaffected: `git fetch`, `push` and the rest work sandboxed.
 
+**A branch operation that rewrites `.claude/settings.json` fails inside the
+sandbox**, because the sandbox protects that file from writes. `git rebase`,
+`switch` and `checkout` all die with `unable to unlink old
+'.claude/settings.json': Operation not permitted` — and worse, the checkout is
+**partway done** when it fails, so the working tree is left holding the other
+branch's content while `HEAD` still points at yours. That looks alarming and is
+harmless: nothing is lost, both sides are committed somewhere. Recover with
+`git checkout -- .`, then re-run the operation with the sandbox off. Only an
+issue when a commit on either side touches that file.
+
 **Habits that cost permission prompts and buy nothing.** Measured across 25
 transcripts (3,324 unique Bash calls); together they outnumber every genuinely
 missing allowlist rule. The allowlist is close to complete — **prompts are caused
