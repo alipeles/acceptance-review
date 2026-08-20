@@ -123,7 +123,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > run 3 and run 4** — fourteen of fourteen, for obligations whose text never
   > moved and against source that never changed. Whatever the prescription
   > describes, it is not a stable property of the gap.
-- **Status:** open
+- **Status:** filed (#225 comment)
 
 ### [2026-08-19] Recommendations prescribe tests for behavior the mandate declares out of scope
 - **Kind:** filing (new issue, child of #185)
@@ -176,7 +176,8 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > boundaries the prescribed test must not require crossing, and reject or
   > re-ask for a prescription whose required inputs are an exclusion's subject.
   > The weaker version — prompt-only, no validation — is worth having on its own.
-- **Status:** open
+- **Status:** filed (#282, sub-issue of #185). A *Where* and an *Acceptance*
+  section were added at filing time, beyond the approved draft.
 
 ### [2026-08-19] A prescription's `detects` names a defect that would not violate the obligation
 - **Kind:** filing (new issue, child of #185)
@@ -243,7 +244,8 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > because there is nothing to detect. An obligation in this state cannot reach
   > `strongly supported` by any amount of work, so a gate that requires it is
   > unreachable rather than demanding — see `dogfood-logs/258-gate2-run6/`.
-- **Status:** open
+- **Status:** filed (#283, sub-issue of #185). A *Where* and an *Acceptance*
+  section were added at filing time, beyond the approved draft.
 
 ### [2026-08-19] #266 landed and the recommendation abort survived it — one omission of thirteen still destroys the whole report
 - **Kind:** filing (new issue, child of #185)
