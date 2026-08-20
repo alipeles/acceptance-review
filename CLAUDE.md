@@ -829,12 +829,26 @@ just read, the run whose output scrolled past, and the reason you rejected the
 approach you rejected. I have the summary you write. Everything you leave
 implicit is simply gone.
 
-- **Plain language.** Short sentences, ordinary words, no ceremony. If a plain
-  word will do, use it.
-- **Expand the shorthand once.** An id, a stage name, a status value or an
-  internal term means nothing to a reader who was not watching. `NOT OBTAINED`
-  and `satisfied_by_absence` need a clause saying what they mean the first time
-  they appear in a report; after that the short form is fine.
+- **Plain language, and clear beats clever.** Short sentences, ordinary words, no
+  ceremony. If a plain word will do, use it. **Do not compress a process into a
+  coined phrase.** "Queued as a blocker draft" was four words standing in for *"I
+  wrote the issue text into `docs/DEFERRED.md` and left it unfiled, because the
+  convention is that you approve backlog items before they reach GitHub"* — and
+  the short version is unreadable to anyone who was not in the session, which is
+  everyone. A phrase that sounds neat and needs decoding is worse than a plain
+  sentence one line longer. Writing is not the place to be economical; if a
+  sentence feels satisfying to write, treat that as a warning sign.
+- **Expand the shorthand once.** A stage name, a status value or an internal term
+  means nothing to a reader who was not watching. `NOT OBTAINED` and
+  `satisfied_by_absence` need a clause saying what they mean the first time they
+  appear in a report; after that the short form is fine.
+- **A bare issue number is not a reference — gloss it on first use.** I do not
+  remember what the numbers mean, and there are over a hundred open. `#242` is
+  noise; *"#242, where one wrong link stops a whole group of duplicate obligations
+  from merging"* is a reference. Give the gloss the first time the number appears
+  in a message, then use the number alone. This applies hardest where it is most
+  often skipped: gate reports, queue entries, and any sentence arguing that one
+  issue should be sequenced before another.
 - **Say what happened before what it implies.** Lead with the observation — the
   command, the number, the verdict — and put the reasoning after it. Do not open
   with a conclusion I have no way to check.

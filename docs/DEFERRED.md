@@ -3214,3 +3214,265 @@ the record.
   predicate is retired rather than left beside the new one. Labels
   `track:checker`, `decision`.
 - **Status:** filed (#286, sub-issue of #184)
+
+### [2026-08-20] The echoed-obligation defect is not a uniform low rate — it concentrates on scope exclusions
+- **Kind:** filing
+- **Found during:** design discussion on duplicate obligations (no issue in flight)
+- **Where:** `src/acceptance/requirement/obligations.py:220` (prompt) vs `:378-384` (schema)
+- **Severity:** should-fix
+- **What's wrong:** #256 — the open decision to rename `_Yielded`'s two obligation
+  fields so their relationship is stated — presents the echoed-head defect as a
+  low uniform rate (4 in 1,055 transcripts) with no mechanism. That is why it was
+  deferred as unurgent. A scan of the current transcript cache shows the four
+  occurrences are not spread out: all four are in **one response**, all four on
+  **scope-exclusion** requirements, and in that same response the non-exclusion
+  requirements used the two fields correctly.
+
+  > Over the 79 current-schema transcripts in `.acceptance/cache/` — current
+  > meaning obligations carried inside their disposition, after #204 — there are
+  > 505 yielded dispositions, 469 of them single-obligation:
+  >
+  > | requirement kind | echoed | total | rate |
+  > |---|---|---|---|
+  > | scope exclusion | 4 | 102 | 3.9% |
+  > | everything else | 0 | 403 | 0.0% |
+  >
+  > Fisher exact, two-sided: **p = 0.00159**.
+  >
+  > The single transcript carrying them (`c8f94d48113c…`):
+  >
+  > ```
+  > exclusion-03  n=2 echo=True   exclusion-04  n=2 echo=True
+  > exclusion-05  n=2 echo=True   exclusion-06  n=2 echo=True
+  > task-01       n=3 echo=False  task-02       n=2 echo=False
+  > task-03       n=2 echo=False
+  > ```
+
+  **The mechanism is a collision between the prompt and the schema.**
+  `_SYSTEM_PROMPT` tells the model that every scope-exclusion bullet "produces
+  EXACTLY ONE obligation stating the ABSENCE of the excluded work". The schema
+  then offers a required singular `obligation` *and* a `more_obligations` list.
+  Told the answer is singular and handed two slots, filling both is a defensible
+  reading. The echo fires exactly where the prompt is most emphatic about
+  singularity — the opposite of a random low-rate fault.
+- **Why I didn't act:** #256 is deferred by design to the next change that already
+  forces a re-record of the decompose transcripts, and that sequencing still
+  holds. This changes the issue's evidence, not its schedule.
+- **Drafted fix:** `add_issue_comment` on **#256** carrying the table, the Fisher
+  result, the transcript breakdown, and the prompt/schema collision. Two things
+  the comment should say that the issue does not:
+
+  1. **The deferral rationale needs restating.** "No measured urgency: 4
+     occurrences in 1,055 transcripts" understates it — the right denominator is
+     scope-exclusion dispositions, where the rate is 3.9%, and scope exclusions
+     are common in this repo's own mandates.
+  2. **The prompt sentence may matter more than the rename.** #256's deliverable
+     bundles a field rename with a prompt sentence. The evidence points at the
+     "EXACTLY ONE" instruction as the trigger, so the two halves are separable and
+     the prompt half is testable on its own.
+
+  Also worth noting on the issue: a paired A/B test is cheap and available — the
+  28 cached requests that contain scope exclusions, re-issued under variant
+  schemas, about 84 calls, roughly $0.75 — but it is powered only to show an
+  effect go to zero, not to measure a halving.
+- **Status:** open (approved for filing 2026-08-20)
+
+### [2026-08-20] Decision: derive dispositions and obligations in two passes, instead of encoding "at least one" as head-plus-rest
+- **Kind:** decision
+- **Found during:** design discussion on duplicate obligations (no issue in flight)
+- **Where:** `src/acceptance/requirement/obligations.py` — `_Yielded`, `_Decomposition`, `decompose`
+- **Severity:** should-fix
+- **What's wrong:** the split of a non-empty obligation list into a required
+  `obligation` plus a `more_obligations` list exists solely because OpenAI strict
+  mode rejects `minItems`, and it is the sole source of the ambiguity behind #256
+  (the field-rename decision) and #248 (the closed bug where an echoed head became
+  a second obligation). #256 accepts the encoding and tries to make the ambiguity
+  rarer with better field names. The alternative is to remove the need for a
+  multi-element schema at the point of derivation.
+- **Why I didn't act:** an open design decision that changes a response schema and
+  re-records the whole decompose corpus — the human's call, and CLAUDE.md says to
+  sequence that cost deliberately.
+- **Drafted fix:** file as a child of **#181** (the decomposition-quality
+  umbrella), labels `track:checker`, `decision`, titled *"Split derivation into a
+  disposition pass and a per-requirement obligation pass"*. Body:
+
+  > **Pass A — disposition.** Batched as today, so the request partitioning from
+  > DR-164 is unchanged. Returns exactly one disposition per requirement id and
+  > **carries no obligations at all**: `yielded`, `no_obligation` with a reason, or
+  > `open_question` with ids.
+  >
+  > **Pass B — obligations.** Scoped to **one** requirement that Pass A
+  > dispositioned `yielded`:
+  >
+  > ```python
+  > class _DerivedObligation(StrictResponseModel):
+  >     obligation: _DecomposedObligation   # required, singular — no list
+  >     states_further_obligations: bool
+  > ```
+  >
+  > Re-ask while `states_further_obligations` is true, passing the obligations
+  > already derived, up to a cap.
+  >
+  > **Non-emptiness stays structural**, via the required singular field, so #217 —
+  > which settled that a `yielded` disposition naming no obligations must be
+  > impossible to express rather than caught afterwards — is honoured. But there is
+  > no second slot, so #256's ambiguity does not exist, and the scope-exclusion
+  > case, where the echo actually concentrates, gets a schema matching the prompt's
+  > "EXACTLY ONE" exactly.
+  >
+  > **Multiplicity becomes an explicit judgement** — a boolean the model is asked —
+  > rather than something inferred from how it filled two fields.
+  >
+  > **What it buys beyond #256:**
+  >
+  > - **#231 becomes structural.** #231 is the open bug where derived obligations
+  >   are not local to their requirement: a two-line edit re-split two untouched
+  >   requirements and churned 27 of 33 obligation ids. Pass B's request contains
+  >   one requirement, so its request key is a function of that requirement alone.
+  >   An edit to requirement 7 cannot re-split requirement 12, because requirement
+  >   12's call is byte-identical and replays. #231's symptom is unreachable by
+  >   construction.
+  > - **#277** — the bug where one requirement yields two obligations stating the
+  >   same property in different voices — is less likely when the call is scoped to
+  >   one requirement and the default shape is one obligation. Not eliminated; the
+  >   model can still answer `states_further_obligations: true` wrongly.
+  > - **#298** — where a repeated disposition with renamed ids aborts the entire
+  >   review. Split, an unusable Pass B answer is a re-ask of one requirement
+  >   rather than a rejected batch.
+  > - **#205** — assigning obligation types in a separate pass — composes
+  >   naturally.
+  >
+  > **Costs, stated honestly:**
+  >
+  > - **Call volume.** 505 yielded dispositions across the current corpus against
+  >   79 batched calls — roughly six times as many, about $4.50 to re-record. A
+  >   33-requirement mandate goes from about 5 calls to about 35.
+  > - **But that cold-start figure overstates the steady state.** Per-requirement
+  >   calls are individually cacheable and compose with #269's carry-forward
+  >   ledger, so a re-run after a one-bullet edit re-issues one call rather than a
+  >   batch. Gate 1 re-runs — the case that matters, since a second run only exists
+  >   because the first found something — get cheaper, not dearer.
+  > - **Call count becomes input-dependent**, driven by a model boolean. Still
+  >   deterministic at temperature 0, but it is a new determinism surface (#184's
+  >   umbrella), and hitting the cap must be recorded as an unusable answer, never
+  >   silently truncated.
+  > - **Two-stage disagreement** — Pass A says `yielded`, Pass B produces nothing
+  >   usable — is a new failure mode needing a policy.
+  > - Re-records the whole decompose corpus, so sequence it *with* #256 rather than
+  >   after it. This change would be the re-record #256 is waiting for, and if it
+  >   lands, #256's rename is moot.
+  >
+  > **Open, to settle in the issue:**
+  >
+  > 1. **What context Pass B sees.** Locality argues for the requirement alone, but
+  >    a bullet's meaning can depend on its section — a `## Scope exclusions`
+  >    heading changes the required form entirely. Pass the *structured* section
+  >    context, never re-pasted markdown; the never-markdown-as-interchange
+  >    invariant applies.
+  > 2. **Whether Pass A can be trusted to classify without deriving.** Deciding
+  >    "this yields something checkable" may be unreliable without attempting the
+  >    derivation, in which case Pass A's `no_obligation` rate could rise. This is
+  >    the main risk to measure before committing, and it is cheap to measure:
+  >    replay the cached inputs through a disposition-only prompt and compare the
+  >    `no_obligation` set against what the current single call produced.
+  > 3. **Whether this supersedes #256 or subsumes it.** I believe it supersedes —
+  >    the rename mitigates an encoding this removes.
+  >
+  > **Acceptance:** an empty `yielded` stays impossible to express; no response
+  > shape can produce a byte-identical obligation pair inside one requirement;
+  > #195's decompose-regression suite passes with obligation ids stable across an
+  > edit to an unrelated requirement, which is #231's case; the cap and the
+  > two-stage-disagreement paths each have a recorded unusable answer.
+
+  My recommendation: worth doing, but on the strength of #231 (obligation churn
+  from unrelated edits) and #298 (one bad disposition aborting a review) rather
+  than #256. The duplicate-obligation cases actually blocking work — #277, #242
+  and the instance recorded on #277 from #251's Gate 1 — are untouched by either
+  this or the rename, and #242 is what #292's Gate 2 is stuck behind.
+- **Status:** open
+
+### [2026-08-20] Decomposition has not raised an open question since #217, because `yielded` and `open_question` are mutually exclusive
+- **Kind:** filing
+- **Found during:** design discussion (no issue in flight)
+- **Where:** `src/acceptance/requirement/obligations.py:352-431` (`_Yielded` / `_RaisedOpenQuestion`), `:1103` (`_in_registry_order`)
+- **Severity:** blocker
+- **What's wrong:** the decomposer has produced **zero** open questions since
+  2026-08-06 and has never once chosen the `open_question` disposition.
+
+  > Decompose transcripts in `.acceptance/cache/`, by recording date:
+  >
+  > | window | calls | open questions |
+  > |---|---|---|
+  > | 2026-07-21 … 2026-08-05 | 87 | 74 |
+  > | 2026-08-06 … 2026-08-20 | 96 | **0** |
+  >
+  > Every disposition ever returned, across the whole cache (1,109):
+  > `yielded` 1020, `no_obligation` 89, `open_question` **0**.
+
+  Two commits on the boundary cause it:
+
+  1. **#202 (`95a3856`, Aug 5)** — open questions used to flow straight from the
+     response into `Decomposition`. Now they survive only if a disposition names
+     them, and `_in_registry_order` silently drops any that nothing references.
+  2. **#217 (`1c71535`, Aug 6)** — the dispositions became a mutually exclusive
+     union. `_Yielded` carries no open-question field, so raising a question
+     costs the requirement's whole obligation set.
+
+  The prompt then settles the choice every time: `yielded` "should be the large
+  majority", `no_obligation` is narrowed to bare section markers, and REFERENCES
+  YOU CANNOT RESOLVE steers ambiguity back into `yielded`. A requirement that
+  both yields obligations and is materially ambiguous has no way to say so.
+
+  **The store already supports what the response schema forbids.**
+  `review_state.py:379-380` gives `RequirementDisposition` independent
+  `obligation_ids` and `open_question_ids` lists. #217 narrowed the wire below
+  the store it writes into.
+
+  **This contradicts a standing invariant.** CLAUDE.md: *"Uncertainty is
+  first-class. `Indeterminate` and open-question outputs are valid, expected
+  results — don't force a confident verdict."* The schema forces it.
+
+  #217's stated goal was making a *self-contradictory* disposition
+  unrepresentable — a `yielded` naming no obligations. Making "yielded AND
+  uncertain" unrepresentable appears to be collateral; I did not find it argued
+  in the commit or the module docstring, and the #217 issue should be checked
+  before the filing asserts intent.
+
+  **Confound considered and rejected as the main cause:** task-file wording has
+  genuinely improved over the same period. But the cut is abrupt across one day
+  rather than gradual, and the disposition has been chosen zero times — including
+  on Aug 5 transcripts where the model still raised 6 questions through the old
+  flat path. Better inputs produce fewer questions, not a categorical zero.
+- **Why I didn't act:** it changes a response schema and re-records the decompose
+  corpus, and it touches #217's settled design — the human's call.
+- **Drafted fix:** file as a child of **#181**, labels `bug`, `track:checker`,
+  titled *"Decomposition cannot raise an open question about a requirement that
+  also yields obligations, and has raised none since #217"*. Body: the tables
+  above, the two commits, the store/wire mismatch, and the invariant collision.
+
+  Candidate directions, not settled:
+
+  - Add `open_question_ids: list[str]` to `_Yielded`, so a requirement can yield
+    and still flag an ambiguity. Smallest change; matches the store; does not
+    reopen #217, whose invariant is about the obligation set being non-empty, not
+    about questions.
+  - Keep the union and add a fourth `yielded_with_question` shape. More explicit,
+    but a fourth shape is what #217 removed and the name invites confusion.
+  - Leave the schema and fix the prompt. Cheapest, but the evidence says the
+    schema decides this — the model is choosing rationally given the trade.
+
+  My recommendation: the first. Acceptance: a requirement can carry both
+  obligations and open questions in one disposition; an unreferenced open
+  question is a rejected response rather than a silent drop; #195's
+  decompose-regression suite gains a case over a task file with a genuine
+  ambiguity inside an otherwise-yielding requirement.
+
+  Sequence with **#113** (questions dropped downstream and never gating the
+  verdict) — fixing derivation alone would produce questions that still do not
+  reach the verdict.
+- **Status:** filed (#303, sub-issue of #181). Filed on the human's direct
+  instruction rather than at a gate. Direction settled by them: make open
+  questions compatible with obligations, i.e. the first candidate above.
+  #217's own deliverable confirms the mutual exclusivity was never intended —
+  it constrained each arm's own field to be non-empty and never said `yielded`
+  must lack `open_question_ids`.
