@@ -41,6 +41,12 @@ task file line by line:
 
 ## Open questions: none.
 
+**Corrected 2026-08-20:** read this as "the axis reported nothing", not as
+evidence the mandate was unambiguous. A requirement that yields obligations
+structurally cannot also raise an open question — see the correction in
+`dogfood-logs/265-gate1-run3/judgement.md` for the code references and the corpus
+count.
+
 ## The one thing worth acting on, and it is the input's fault
 
 `task-01` yielded `share-opening-text-across-run-requests`:

@@ -46,6 +46,22 @@ this decomposition.
 
 ## Open questions: none, in any of the three runs.
 
+**Corrected 2026-08-20, after the runs.** That line is not the positive signal it
+reads as, and it should not be counted as one. The decomposer **cannot** raise an
+open question about a requirement that yields obligations: `_Yielded`
+(`obligations.py:352`) carries obligations and no question field,
+`_RaisedOpenQuestion` (`:414`) carries questions and no obligations, and the
+dispositions are mutually exclusive per requirement. The prompt then pushes
+`yielded` as "the large majority".
+
+Across 140 committed run directories the last `output.log` that actually emits an
+`Open questions:` section is `202-gate1-run2`. Every later occurrence of the
+phrase — including this file's heading — is a human note recording an absence.
+
+So "no open questions" here means the axis reported nothing, not that the mandate
+was unambiguous. Gate 1 step 3 asks the operator to triage every open question
+raised; on this task that step had nothing to read and could not have had.
+
 ## Two known, already-filed defects showed up. Neither is new.
 
 1. **An `unknown` stage row.** The usage table carries
