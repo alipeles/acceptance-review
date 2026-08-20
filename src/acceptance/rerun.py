@@ -7,8 +7,21 @@ re-run is wrong in two ways — it re-bills judgments about code nobody touched
 whole change set, so an unrelated hunk elsewhere invalidates the transcript for
 an obligation whose own code and tests are identical.
 
-So a re-run carries unaffected judgments forward and re-derives the rest. Three
-things make that safe rather than a way to launder stale conclusions:
+So a re-run carries unaffected judgments forward and re-derives the rest.
+
+**What "unaffected" means changed in #293, and this module no longer decides it.**
+It used to be `stale_obligation_ids`: an obligation was affected if the change
+touched any file it cited, for both review axes at once. Appending a test to a
+module leaves every existing test in it byte-identical and still tripped that
+rule, and re-judging is not free of consequence — 33 obligations came back a tier
+lower in #269's Gate 2 on exactly that. The rule is deleted. The test-evidence
+rating is now carried per criterion by `evidence/rejudge.py`, comparing the
+criterion's requirement text, mapped tests and those tests' contents;
+implementation coverage is re-derived every run. What remains here is
+`derivation_changed`, which forbids reuse on either axis when the obligation set
+itself moved.
+
+Three things make carrying safe rather than a way to launder stale conclusions:
 
 - **The prior review is found by git ancestry, not by recency.** The store is
   keyed by revision and holds no ordering, and `Review` carries no timestamp —
@@ -37,7 +50,6 @@ from pydantic import ValidationError
 
 from acceptance.review_state import (
     ChangeSet,
-    Finding,
     Obligation,
     ObligationChange,
     Review,
@@ -151,11 +163,6 @@ def find_prior_review(
     return nearest[1] if nearest is not None else None
 
 
-def _test_file(test_identifier: str) -> str:
-    """The file part of a pytest node id (`path::test_name` -> `path`)."""
-    return test_identifier.split("::", 1)[0]
-
-
 def changed_paths(change_set: ChangeSet) -> set[str]:
     """Every path the new work touched, including a rename's old path."""
     paths: set[str] = set()
@@ -164,27 +171,6 @@ def changed_paths(change_set: ChangeSet) -> set[str]:
         if changed.old_path is not None:
             paths.add(changed.old_path)
     return paths
-
-
-def stale_obligation_ids(prior: Review, change_set: ChangeSet) -> set[str]:
-    """Ids of prior obligations the new work could have affected.
-
-    File-level, not hunk-level. A hunk header shifts when unrelated lines change
-    above it, so matching on hunks would claim a precision `coverage_refs` does
-    not have. Over-invalidating costs a re-derivation; under-invalidating reports
-    a stale judgment as current, so the comparison is deliberately coarse.
-
-    An obligation with neither code nor test citations is always stale: there is
-    nothing to prove the new work missed it.
-    """
-    touched = changed_paths(change_set)
-    stale: set[str] = set()
-    for obligation in prior.obligation_map:
-        cited = {ref.split("#", 1)[0] for ref in obligation.coverage_refs}
-        cited |= {_test_file(test) for test in obligation.test_evidence}
-        if not cited or cited & touched:
-            stale.add(obligation.id)
-    return stale
 
 
 def _linking_inputs(obligations: list[Obligation]) -> list[tuple[str, str, str]]:
@@ -198,108 +184,57 @@ def _linking_inputs(obligations: list[Obligation]) -> list[tuple[str, str, str]]
 def derivation_changed(prior: Review, derived: list[Obligation]) -> bool:
     """Whether stage 1's output moved since the prior review (#144).
 
-    The second staleness question, and it is asked separately from
-    `stale_obligation_ids` on purpose. That one asks whether the *change* could
-    have affected an obligation's judgment; this asks whether the obligation set
-    itself was computed from different inputs. The stages fail independently —
-    #167's Gate 2 showed a byte-identical mapped set with a flipped judgement
-    over it — so one question cannot stand in for the other.
-
     It matters because linking can merge a different pair over an unchanged id.
     An obligation that survived both runs under the same id may have absorbed a
     different set of requirements, which makes it a different obligation wearing
     a familiar slug, and carrying a prior judgment onto it would launder a stale
-    conclusion.
+    conclusion. So this forbids **every** reuse, on either axis.
+
+    **It is now the only staleness question this module asks** (#293). It used to
+    be the second of two: the first, `stale_obligation_ids`, marked an obligation
+    stale whenever any file it cited was touched, and decided implementation
+    coverage and the test-evidence rating together. That predicate is deleted.
+    The rating is now carried per criterion by comparing what the criterion
+    actually depends on — see `evidence/rejudge.py` — and implementation coverage
+    is classified for every obligation on every run.
+
+    The two axes are decided apart because they fail apart: #167's Gate 2 produced
+    a byte-identical mapped set with a flipped judgement over it, so one question
+    could never have stood in for the other.
+
+    Always re-deriving coverage is nearly free — `classify_coverage` is a single
+    batched call over the whole obligation set, so narrowing the list shortens one
+    prompt and never removes a call — and it errs toward re-deriving, where the
+    deleted rule's danger ran the other way, reporting a stale judgement as
+    current. It is still the blunt answer; #305 is the sharp one, comparing the
+    contents of the cited implementation spans the way the test axis now compares
+    mapped tests. Deliberately left there, since #293 excluded narrowing any stage
+    other than test-evidence judgement.
 
     A prior review recorded before `derived_obligation_map` existed reports
     unchanged, and that is correct rather than merely convenient: the risk this
     question guards against is a slug whose meaning moved because linking merged
-    a different set behind it, and linking did not run for such a review. With no
-    merges there is no hidden change of meaning, and the older staleness question
-    still covers everything else.
+    a different set behind it, and linking did not run for such a review.
     """
     if not prior.derived_obligation_map:
         return False
     return _linking_inputs(prior.derived_obligation_map) != _linking_inputs(derived)
 
 
-def obligations_to_rederive(
-    fresh: list[Obligation],
-    prior: Review,
-    change_set: ChangeSet,
-    derived: list[Obligation] | None = None,
-) -> list[Obligation]:
-    """The fresh obligations this run must judge from scratch: those the new work
-    could have affected, plus any the prior review never saw.
-
-    Matched by obligation id, a stable slug over the task text — so the same task
-    yields the same ids and a prior judgment lands on the obligation it was
-    actually made about.
-
-    When `derived` is supplied and stage 1's output moved, nothing is carried
-    forward: every id is suspect, because the same slug may now stand for a
-    different set of merged requirements (#144).
-    """
-    if derived is not None and derivation_changed(prior, derived):
-        return list(fresh)
-    stale = stale_obligation_ids(prior, change_set)
-    prior_ids = {obligation.id for obligation in prior.obligation_map}
-    return [
-        obligation
-        for obligation in fresh
-        if obligation.id in stale or obligation.id not in prior_ids
-    ]
-
-
-def merge_carried_forward(
-    fresh: list[Obligation], judged: list[Obligation], prior: Review
-) -> list[Obligation]:
-    """Judged obligations where this run re-derived them, prior ones elsewhere.
-
-    A prior judgment is taken wholesale — coverage status, evidence class,
-    citations, tier — rather than field by field: splicing a prior evidence class
-    onto fresh citations would produce a judgment no run ever actually made, and
-    the tier would no longer describe how the classification was reached.
-    """
-    judged_by_id = {obligation.id: obligation for obligation in judged}
-    prior_by_id = {obligation.id: obligation for obligation in prior.obligation_map}
-    merged = []
-    for obligation in fresh:
-        if obligation.id in judged_by_id:
-            merged.append(judged_by_id[obligation.id])
-            continue
-        previous = prior_by_id[obligation.id]
-        merged.append(
-            previous.model_copy(
-                update={
-                    # Keep the ORIGINAL revision when carrying a carried judgment
-                    # forward again, so the label names where the judgment was
-                    # established rather than the last run that happened to reuse it.
-                    "carried_forward_from": (
-                        previous.carried_forward_from or prior.reviewed_revision
-                    )
-                }
-            )
-        )
-    return merged
-
-
-def carried_findings(prior: Review, carried: list[Obligation]) -> list[Finding]:
-    """Prior findings about obligations this run did not re-derive.
-
-    Without these a re-run would silently *drop* the gap it reported last time
-    for code nobody touched — the verdict reads gaps off findings, so an
-    unaddressed obligation would look resolved simply because it was not
-    re-examined. Matched on `related_obligation`, which coverage findings set to
-    the obligation's description.
-    """
-    descriptions = {obligation.description for obligation in carried}
-    return [finding for finding in prior.findings if finding.related_obligation in descriptions]
-
-
 def carried_recommendations(prior: Review, carried: list[Obligation]) -> list[TestRecommendation]:
-    """Prior test recommendations for obligations this run did not re-derive —
-    otherwise the agent loses the instruction for a gap that is still open."""
+    """Prior test recommendations for obligations this run did not re-judge.
+
+    `carried` is now the criteria keeping a stored test-evidence rating (#293),
+    where it used to be the obligations a file-level staleness rule skipped
+    entirely. The reason is unchanged and is the important part: a criterion that
+    is not asked about produces no prescription, so without this the instruction
+    for a gap that is still open would disappear on the very run that decided the
+    gap had not moved.
+
+    There is no matching `carried_findings` any more. Findings here are coverage
+    findings, and coverage is re-derived for every obligation on every run, so no
+    gap can be dropped by not looking.
+    """
     carried_ids = {obligation.id for obligation in carried}
     return [
         recommendation

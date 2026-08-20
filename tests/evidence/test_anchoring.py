@@ -15,6 +15,7 @@ against an implementation that had no enforcement at all.
 
 from acceptance.evidence.anchoring import DependencyChange, RatingAnchor, build_anchors
 from acceptance.evidence.discrimination import judge_discrimination
+from acceptance.evidence.rejudge import test_source_digest as _source_digest
 from acceptance.evidence.strength import classify_strength, hold_rejected_ratings
 from acceptance.review_state import (
     ChangeSet,
@@ -39,6 +40,15 @@ def _obligation(obligation_id: str, description: str = "Prorate a partial month"
         observable_behavior="...",
         **kwargs,
     )
+
+
+def _digest(source: str) -> str:
+    """A test's content digest, computed the one way the tool computes it.
+
+    Aliased on import because pytest would otherwise collect the real function's
+    `test_`-prefixed name as a test case.
+    """
+    return _source_digest(source)
 
 
 def _evidence(identifier: str, obligation_ids: list[str]) -> TestEvidence:
@@ -313,22 +323,86 @@ def test_a_rejected_judgement_is_reported():
 # --- which criteria get anchored -------------------------------------------
 
 
-def test_an_anchor_names_the_changed_files_this_criterion_depends_on():
+def test_an_anchor_names_the_edited_test_itself_not_the_file_holding_it():
+    """#293: the mapped test is the unit, so the anchor names the test.
+
+    Its file is touched here and its content moved, which the file-level version
+    could not tell apart — and that is the distinction the next test turns on.
+    """
     anchors = build_anchors(
         _prior(
             evidence_class="strongly_supported",
             test_evidence=["test_billing.py::test_prorates"],
+            mapped_test_digests={"test_billing.py::test_prorates": _digest("old body")},
             coverage_refs=["billing.py#@@ -1 +1 @@"],
         ),
-        [_obligation("prorate")],
+        [_obligation("prorate", test_evidence=["test_billing.py::test_prorates"])],
         _change_set("test_billing.py", "billing.py"),
+        {"test_billing.py::test_prorates": _digest("new body")},
     )
 
     assert [change.id for change in anchors["prorate"].changes] == [
-        "mapped-test-file:test_billing.py",
+        "mapped-test-edited:test_billing.py::test_prorates",
         "implementation-file:billing.py",
     ]
     assert anchors["prorate"].stored_class == "strongly_supported"
+
+
+def test_a_test_appended_to_the_same_file_leaves_the_criterion_unanchored():
+    """The #291 Gate 2 regression, and the reason #292 did not bite on its own.
+
+    Two criteria fell a tier there on nine lines appended to `tests/test_carry.py`.
+    Their own mapped tests were byte-identical, but the file was touched, so
+    `mapped-test-file:` named a real change and naming it licensed the downgrade.
+    At content level there is nothing to name, so the criterion is not anchored —
+    and an unanchored criterion's stored rating is held by #292's existing
+    rejection, with no new enforcement code.
+    """
+    anchors = build_anchors(
+        _prior(
+            evidence_class="strongly_supported",
+            test_evidence=["test_billing.py::test_prorates"],
+            mapped_test_digests={"test_billing.py::test_prorates": _digest("unchanged body")},
+        ),
+        [_obligation("prorate", test_evidence=["test_billing.py::test_prorates"])],
+        _change_set("test_billing.py"),
+        {
+            "test_billing.py::test_prorates": _digest("unchanged body"),
+            "test_billing.py::test_appended_later": _digest("brand new"),
+        },
+    )
+
+    assert anchors == {}
+
+
+def test_a_gained_mapped_test_is_a_nameable_change():
+    """The other direction, and why the comparison is against the CURRENT mapped
+    set: closing a gap has to be able to RAISE a rating."""
+    anchors = build_anchors(
+        _prior(
+            evidence_class="nominally_supported",
+            test_evidence=["test_billing.py::test_prorates"],
+            mapped_test_digests={"test_billing.py::test_prorates": _digest("body")},
+        ),
+        [
+            _obligation(
+                "prorate",
+                test_evidence=[
+                    "test_billing.py::test_prorates",
+                    "test_billing.py::test_partial_period",
+                ],
+            )
+        ],
+        _change_set("test_billing.py"),
+        {
+            "test_billing.py::test_prorates": _digest("body"),
+            "test_billing.py::test_partial_period": _digest("new test"),
+        },
+    )
+
+    assert [change.id for change in anchors["prorate"].changes] == [
+        "mapped-test-added:test_billing.py::test_partial_period",
+    ]
 
 
 def test_a_reworded_requirement_is_itself_a_nameable_change():
@@ -343,16 +417,36 @@ def test_a_reworded_requirement_is_itself_a_nameable_change():
 
 def test_a_criterion_with_no_nameable_change_is_not_anchored():
     """Anchoring it would freeze its rating: with no change to rest on, every
-    move is rejected and no evidence could ever raise it again. Until #293 can
-    compare test CONTENTS, a sub-file change is invisible here, so the criterion
-    is left unanchored rather than held at a rating we cannot defend."""
+    move is rejected and no evidence could ever raise it again."""
+    anchors = build_anchors(
+        _prior(
+            evidence_class="strongly_supported",
+            test_evidence=["test_billing.py::test_prorates"],
+            mapped_test_digests={"test_billing.py::test_prorates": _digest("body")},
+        ),
+        [_obligation("prorate", test_evidence=["test_billing.py::test_prorates"])],
+        _change_set("something_else.py"),
+        {"test_billing.py::test_prorates": _digest("body")},
+    )
+
+    assert anchors == {}
+
+
+def test_a_mapped_test_the_prior_review_recorded_no_digest_for_names_no_change():
+    """A review stored before #293 has no digests, so nothing can be compared.
+
+    It names no change rather than assuming one, which leaves the criterion
+    unanchored and therefore free to move. The other direction — assuming a
+    change — would license any downgrade on the strength of missing data.
+    """
     anchors = build_anchors(
         _prior(
             evidence_class="strongly_supported",
             test_evidence=["test_billing.py::test_prorates"],
         ),
-        [_obligation("prorate")],
-        _change_set("something_else.py"),
+        [_obligation("prorate", test_evidence=["test_billing.py::test_prorates"])],
+        _change_set("test_billing.py"),
+        {"test_billing.py::test_prorates": _digest("anything at all")},
     )
 
     assert anchors == {}
@@ -363,6 +457,7 @@ def test_a_criterion_the_prior_review_never_rated_is_not_anchored():
         _prior(test_evidence=["test_billing.py::test_prorates"]),
         [_obligation("prorate")],
         _change_set("test_billing.py"),
+        {"test_billing.py::test_prorates": _digest("body")},
     )
 
     assert anchors == {}
@@ -475,6 +570,17 @@ def _wiring_review(tmp_path, client):
                 "prorate",
                 evidence_class="strongly_supported",
                 test_evidence=["test_billing.py::test_prorates"],
+                # What the prior review recorded the mapped test's body as (#293).
+                # A stand-in rather than the real base digest: all this fixture
+                # needs is that it DIFFERS from the head's, which it does, because
+                # `_wiring_repo` genuinely rewrites the body of `test_prorates`
+                # between the two commits. Without any recorded digest the test
+                # could not be compared at all, the criterion would not be
+                # anchored, and this test would silently stop exercising the
+                # enforcement it exists for.
+                mapped_test_digests={
+                    "test_billing.py::test_prorates": _digest("the base body of test_prorates")
+                },
             )
         ],
     )

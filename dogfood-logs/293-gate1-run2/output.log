@@ -1,0 +1,156 @@
+Requirements: 25   with obligations: 24   deliberately none: 1
+
+[task-01] A criterion's test-evidence rating is re-derived only when that criterion's
+    own inputs changed. Its inputs are its requirement text, the set of tests mapped to
+    it, and the contents of those tests.
+    -> criterion-test-evidence-re-derived-only-when-own-inputs-changed  [invariant/explicit]
+       A criterion's test-evidence rating is re-derived only when that criterion's own
+       inputs changed.
+    -> criterion-inputs-are-requirement-text-mapped-test-set-and-test-contents  [functional/explicit]
+       A criterion's inputs are its requirement text, the set of tests mapped to it, and
+       the contents of those tests.
+
+[constraint-01] A criterion whose requirement text, mapped test set and mapped test
+    contents are all unchanged keeps the rating stored for it.
+    -> unchanged-inputs-keep-stored-rating  [invariant/explicit]   (also serves completion-02)
+       A criterion whose requirement text, mapped test set and mapped test contents are
+       all unchanged keeps the rating stored for it.
+
+[constraint-02] A criterion whose requirement text, mapped test set and mapped test
+    contents are all unchanged is not asked about in the evidence-judgement request.
+    -> criterion-unchanged-inputs-no-judgement-request-2  [functional/explicit]   (also serves completion-02)
+       A criterion whose requirement text, mapped test set, and mapped test contents are
+       all unchanged is not asked about in the evidence-judgement request.
+
+[constraint-03] A criterion is compared by the contents of the tests mapped to it, not
+    by whether a file containing one of those tests was touched.
+    -> compare-by-test-contents-not-file-touch  [functional/explicit]
+       A criterion is compared by the contents of the tests mapped to it, not by whether
+       a file containing one of those tests was touched.
+
+[constraint-04] A criterion whose mapped test set gained or lost a member is judged
+    again.
+    -> mapped-test-set-change-triggers-rejudgement  [functional/explicit]   (also serves completion-05)
+       A criterion whose mapped test set gained or lost a member is judged again.
+
+[constraint-05] A criterion whose requirement text changed is judged again.
+    -> requirement-text-change-triggers-rejudgement  [functional/explicit]   (also serves completion-06)
+       A criterion whose requirement text changed is judged again.
+
+[constraint-06] The earlier rule that decided staleness from whether a cited file was
+    touched is removed rather than left in place beside the new one.
+    -> remove-file-touch-staleness-rule  [regression/explicit]
+       The earlier rule that decided staleness from whether a cited file was touched is
+       removed rather than left in place beside the new one.
+
+[constraint-07] Deciding whether a criterion's implementation coverage is re-derived is
+    separate from deciding whether its test-evidence rating is re-derived.
+    -> separate-coverage-from-test-evidence-staleness  [invariant/explicit]
+       Deciding whether a criterion's implementation coverage is re-derived is separate
+       from deciding whether its test-evidence rating is re-derived.
+
+[constraint-08] A review repeated over the same stored state and the same inputs
+    produces the same review state as the one before it.
+    -> repeat-review-same-state-same-inputs-same-review-state  [invariant/explicit]
+       A review repeated over the same stored state and the same inputs produces the
+       same review state as the one before it.
+
+[exclusion-01] Making the set of tests mapped to a criterion stable across runs.
+    -> making-the-set-of-tests-mapped-to-a-criterion-stable-across-runs-not-done  [regression/explicit]
+       The change does not make the set of tests mapped to a criterion stable across
+       runs.
+
+[exclusion-02] Whether a rating is correct on its merits.
+    -> whether-a-rating-is-correct-on-its-merits-not-done  [regression/explicit]
+       The change does not make whether a rating is correct on its merits part of the
+       reuse decision.
+
+[exclusion-03] Which defects the judge names for a criterion it does judge.
+    -> which-defects-the-judge-names-for-a-criterion-it-does-judge-not-done  [regression/explicit]
+       The change does not make which defects the judge names for a criterion it does
+       judge part of the reuse decision.
+
+[exclusion-04] Changing how a re-judgement that names no change is rejected.
+    -> rejecting-a-re-judgement-that-names-no-change-it-was-given-not-done  [regression/explicit]
+       The change does not reject a re-judgement that names no change it was given.
+
+[exclusion-05] Selecting which stored earlier state a repeated review continues.
+    -> no-stored-state-selection-change  [compatibility/explicit]
+       The change does not alter which stored earlier state a repeated review continues.
+
+[exclusion-06] Narrowing which criteria are judged again in any stage other than test-
+    evidence judgement.
+    -> narrowing-which-criteria-are-judged-again-in-any-stage-other-than-test-evidence-judgement-not-done  [regression/explicit]
+       The change does not narrow which criteria are judged again in any stage other
+       than test-evidence judgement.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       The item is a section marker standing alone with no requirement under it.
+
+[completion-02] A criterion with unchanged requirement text, unchanged mapped test set
+    and unchanged mapped test contents keeps its stored rating and is not asked about in
+    the evidence-judgement request.
+    -> unchanged-inputs-keep-stored-rating  [invariant/explicit]   (also serves constraint-01)
+       A criterion whose requirement text, mapped test set and mapped test contents are
+       all unchanged keeps the rating stored for it.
+    -> criterion-unchanged-inputs-no-judgement-request-2  [functional/explicit]   (also serves constraint-02)
+       A criterion whose requirement text, mapped test set, and mapped test contents are
+       all unchanged is not asked about in the evidence-judgement request.
+
+[completion-03] Adding a test to a file that already holds a mapped test leaves
+    unchanged the rating of a criterion whose own mapped tests were not edited.
+    -> adding-test-to-unmapped-file-leaves-rating-unchanged  [regression/explicit]
+       Adding a test to a file that already holds a mapped test leaves unchanged the
+       rating of a criterion whose own mapped tests were not edited.
+
+[completion-04] Editing a test mapped to one criterion leaves every other criterion's
+    rating unchanged.
+    -> editing-mapped-test-leaves-other-criteria-unchanged  [regression/explicit]
+       Editing a test mapped to one criterion leaves every other criterion's rating
+       unchanged.
+
+[completion-05] A criterion whose mapped test set gained or lost a member is judged
+    again.
+    -> mapped-test-set-change-triggers-rejudgement  [functional/explicit]   (also serves constraint-04)
+       A criterion whose mapped test set gained or lost a member is judged again.
+
+[completion-06] A criterion whose requirement text changed is judged again.
+    -> requirement-text-change-triggers-rejudgement  [functional/explicit]   (also serves constraint-05)
+       A criterion whose requirement text changed is judged again.
+
+[completion-07] No rule deciding staleness from whether a cited file was touched remains
+    in the delivered code.
+    -> no-cited-file-touched-staleness-rule  [compatibility/explicit]
+       No rule deciding staleness from whether a cited file was touched remains in the
+       delivered code.
+
+[completion-08] Implementation-coverage staleness and test-evidence staleness are
+    decided separately.
+    -> implementation-coverage-and-test-evidence-staleness-separate  [invariant/explicit]
+       Implementation-coverage staleness and test-evidence staleness are decided
+       separately.
+
+[completion-09] Two reviews over the same stored state and the same inputs produce byte-
+    identical review state.
+    -> repeated-reviews-byte-identical-review-state  [invariant/explicit]
+       Two reviews over the same stored state and the same inputs produce byte-identical
+       review state.
+
+[completion-10] The findings recorded as correct in `tests/fixtures/rating-stability/`
+    are still found.
+    -> rating-stability-fixtures-still-found  [regression/explicit]
+       The findings recorded as correct in `tests/fixtures/rating-stability/` are still
+       found.
+run a84c1b0c6e71916a
+  continuing 136b6616a990d48f
+  requirements: 0 derived, 22 carried, 3 revised; 1 decompose call(s)
+  continue this run with: --continue a84c1b0c6e71916a
+Model usage by stage:
+  stage                                 calls  prompt  output  cached  this run  recorded
+  ------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose           1 (1 live / 0 replayed)   6,355     638    0.0%   $0.0076   $0.0076
+  obligation linking  2 (2 live / 0 replayed)   1,932     145    0.0%   $0.0014   $0.0014
+  unknown             1 (1 live / 0 replayed)     416      48    0.0%   $0.0005   $0.0005
+  this run spent $0.0095 on 4 live call(s); the evidence cost $0.0095 to record (0 call(s) replayed at no cost to this run)
+
