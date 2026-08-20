@@ -9,9 +9,14 @@ nothing if one of them still decides for itself.
 
 from __future__ import annotations
 
+import ast
+import inspect
+from pathlib import Path
+
 import pytest
 
-from acceptance.carry import Refusal, carry_key, decide
+from acceptance import carry as shared_carry
+from acceptance.carry import Decision, Refusal, carry_key, decide
 from acceptance.requirement import carry as requirement_carry
 from acceptance.requirement.ledger import (
     DECOMPOSE_STAGE_LOGIC_VERSION,
@@ -214,3 +219,72 @@ def test_a_requirement_whose_key_moved_is_derived_rather_than_carried():
 
     assert not plan.carried
     assert plan.derived == ("constraint-01",)
+
+
+# A stage the rule must not know about. Split on `_` and matched as whole words,
+# so `stage_logic_version` passes — the rule may speak of *a* stage generically,
+# it just may not name a particular one.
+STAGE_VOCABULARY = frozenset(
+    {
+        "requirement",
+        "requirements",
+        "obligation",
+        "obligations",
+        "criterion",
+        "criteria",
+        "evidence",
+        "decompose",
+        "decomposition",
+        "coverage",
+        "mapping",
+        "discrimination",
+        "recommendation",
+        "declaration",
+        "verdict",
+    }
+)
+
+STAGE_PACKAGES = frozenset({"requirement", "evidence", "coverage", "change"})
+
+
+def _names_a_stage(name: str) -> bool:
+    return bool(set(name.lower().split("_")) & STAGE_VOCABULARY)
+
+
+def test_the_shared_rule_imports_nothing_from_a_stage():
+    """The rule is stated in one place that names no stage — checked first on its
+    imports, because a module that reaches into `requirement/` or `evidence/` has
+    a stage baked into it whatever its parameters are called."""
+    tree = ast.parse(Path(shared_carry.__file__).read_text(encoding="utf-8"))
+
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            imported.add(node.module)
+        elif isinstance(node, ast.Import):
+            imported.update(alias.name for alias in node.names)
+
+    offenders = {
+        module
+        for module in imported
+        if module.split(".")[:1] == ["acceptance"]
+        and module.split(".")[1:2]
+        and module.split(".")[1] in STAGE_PACKAGES
+    }
+
+    assert not offenders, f"the shared rule imports from a stage: {sorted(offenders)}"
+
+
+def test_no_name_in_the_shared_rule_s_api_names_a_stage():
+    """The second half of the same claim: the rule's own vocabulary. A parameter
+    called `requirement_text` or a refusal called `OBLIGATION_MOVED` would put a
+    stage back into the rule without any import to show for it."""
+    names = {field for field in Decision.__dataclass_fields__}
+    names |= {member.name for member in Refusal}
+    names |= {str(member.value) for member in Refusal}
+    for function in (decide, carry_key):
+        names |= set(inspect.signature(function).parameters)
+
+    offenders = {name for name in names if _names_a_stage(name)}
+
+    assert not offenders, f"the shared rule's API names a stage: {sorted(offenders)}"
