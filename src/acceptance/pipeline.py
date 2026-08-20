@@ -46,6 +46,14 @@ from acceptance.evidence.discovery import discover_tests
 from acceptance.evidence.discrimination import judge_discrimination
 from acceptance.evidence.extraction import extract_test_evidence
 from acceptance.evidence.mapping import apply_test_mapping, map_tests_to_obligations
+from acceptance.evidence.rejudge import (
+    apply_carry_keys,
+    carried_ids,
+    carried_strengths,
+    decide_rating_carry,
+    digests_by_test_id,
+    label_carried_ratings,
+)
 from acceptance.evidence.strength import (
     apply_evidence_strength,
     classify_strength,
@@ -59,11 +67,9 @@ from acceptance.requirement.linking import link_duplicate_obligations
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.rerun import (
-    carried_findings,
     carried_recommendations,
     compute_delta,
-    merge_carried_forward,
-    obligations_to_rederive,
+    derivation_changed,
     task_source_for,
 )
 from acceptance.review_state import (
@@ -301,14 +307,21 @@ def run_review(
     derived_ids = {obligation.id for obligation in question_obligations}
     obligations = decomposition.obligations + question_obligations
 
-    # Whole-diff stages below always run: unrequested-change detection is about
-    # the change as a whole, not about any one obligation, so there is no
-    # unaffected subset to carry forward.
-    fresh_obligations = obligations
-    if prior is not None:
-        obligations = obligations_to_rederive(
-            fresh_obligations, prior, change_set, derived.obligations
-        )
+    # Every obligation reaches every stage below (#293). There used to be a
+    # narrowing here — `obligations_to_rederive`, which dropped any obligation
+    # none of whose cited files the change touched, for BOTH review axes at once.
+    # That predicate is gone. Implementation coverage is now classified for every
+    # obligation on every run, and the test-evidence rating is carried per
+    # criterion, further down, by comparing what that criterion actually depends
+    # on. The two questions are decided separately because they fail
+    # independently.
+    #
+    # The one thing that still forbids reusing anything: if stage 1's output
+    # moved, an unchanged id may now stand for a different set of merged
+    # requirements, so no stored judgement about it can be trusted (#144).
+    carry_prior = prior
+    if prior is not None and derivation_changed(prior, derived.obligations):
+        carry_prior = None
 
     # Only obligations that REQUIRE test evidence reach the stages that gather
     # it (#266). Previously every obligation did, and the ones no test could
@@ -328,21 +341,48 @@ def run_review(
     needs_tests = apply_test_mapping(needs_tests, mapping)
 
     test_evidence = extract_test_evidence(repo, discovered.tests, change_set, mapping)
+
+    # A criterion whose requirement text, mapped test set and mapped test
+    # CONTENTS are all unchanged keeps the rating stored for it, and is not asked
+    # about at all (#293). This is the cost saving, and more importantly it is
+    # what stops a rating moving because the judge was asked a second time: at
+    # #291's Gate 2 two criteria fell a tier on nine lines appended to a module
+    # holding one of their tests, with all three of their own inputs identical.
+    rating_decisions = decide_rating_carry(carry_prior, needs_tests, discovered.tests, client)
+    keeping_rating = carried_ids(rating_decisions)
+    to_judge = [o for o in needs_tests if o.id not in keeping_rating]
+
     # A criterion the prior review already rated is re-judged WITH that rating and
     # the changes to its own dependencies, and a judgement that moves the rating
     # must rest on one of them (#292). Without a prior review there are no
     # anchors, the request is byte-identical to what a first review has always
     # sent, and every existing transcript still replays.
-    anchors = build_anchors(prior, needs_tests, change_set) if prior is not None else {}
-    discriminations = judge_discrimination(
-        needs_tests, test_evidence, change_set, client, unusable, anchors
+    #
+    # Only `to_judge` is anchored: a criterion keeping its stored rating is not in
+    # the request, so an anchor for it would put change ids into the response enum
+    # that no part of the prompt explains.
+    anchors = (
+        build_anchors(carry_prior, to_judge, change_set, digests_by_test_id(discovered.tests))
+        if carry_prior is not None
+        else {}
     )
-    strengths = classify_strength(needs_tests, test_evidence, discriminations)
+    discriminations = judge_discrimination(
+        to_judge, test_evidence, change_set, client, unusable, anchors
+    )
+    strengths = classify_strength(to_judge, test_evidence, discriminations)
     # The rejection was decided as the judgement was read; this applies it. Held
     # before `apply_evidence_strength`, so the obligation never carries the moved
     # rating even momentarily.
     strengths = hold_rejected_ratings(strengths, unusable.held_ratings)
+    # The carried ratings join here rather than being spliced onto the obligation
+    # separately, so every rating in this review — judged or kept — reaches the
+    # obligation through one write-back.
+    strengths = strengths + carried_strengths(rating_decisions, needs_tests)
     needs_tests = apply_evidence_strength(needs_tests, strengths)
+    # Record what each rating rested on, for the next run to compare against, and
+    # disclose which ratings this run did not re-derive.
+    needs_tests = apply_carry_keys(needs_tests, discovered.tests, client)
+    needs_tests = label_carried_ratings(needs_tests, rating_decisions, carry_prior)
     obligations = _in_original_order(obligations, needs_tests + no_tests)
     # After strength, deliberately: an obligation whose judgment was never
     # obtained must not carry the strength the classifier inferred from its
@@ -393,14 +433,28 @@ def run_review(
 
     delta = None
     if prior is not None:
-        judged = obligations
-        obligations = merge_carried_forward(fresh_obligations, judged, prior)
-        carried = [obligation for obligation in obligations if obligation.carried_forward_from]
-        # A re-run must not lose the gap it reported last time for code nobody
-        # touched: the verdict reads gaps off findings, so an unaddressed
-        # obligation that was not re-examined would otherwise look resolved.
-        findings.extend(carried_findings(prior, carried))
-        recommendations = recommendations + carried_recommendations(prior, carried)
+        # No findings are carried any more, and that is a consequence of #293
+        # rather than an omission. Findings here are coverage findings, and
+        # coverage is now classified for every obligation on every run — so there
+        # is no obligation this run failed to re-examine, and nothing whose gap
+        # could be silently dropped. The wholesale `merge_carried_forward` that
+        # used to do this had nothing left to carry once that narrowing went.
+        #
+        # Recommendations are the exception, and they are carried on the
+        # test-evidence axis instead. A criterion keeping its stored rating is not
+        # asked about this run, so `recommend_tests` cannot prescribe for it, and
+        # without this the instruction for a gap that is still open would vanish
+        # the moment the criterion stopped being re-judged — the same silent loss,
+        # arriving through the new door instead of the old one.
+        carried_rating = [
+            obligation for obligation in obligations if obligation.id in keeping_rating
+        ]
+        prescribed_ids = {recommendation.obligation_id for recommendation in recommendations}
+        recommendations = recommendations + [
+            recommendation
+            for recommendation in carried_recommendations(prior, carried_rating)
+            if recommendation.obligation_id not in prescribed_ids
+        ]
     findings.extend(
         finding
         for finding in (unrequested_finding(change) for change in dispositioned)

@@ -541,6 +541,31 @@ class Obligation(_Model):
     # fresh — a carried-forward judgment is evidence about an older head, and
     # presenting it as current would overstate what this run actually checked.
     carried_forward_from: str | None = None
+    # What this obligation's TEST-EVIDENCE rating was derived from, as a digest
+    # (#293). Its requirement text, the tests mapped to it, and the CONTENTS of
+    # those tests — so a later run can tell whether the rating it stored is still
+    # a rating about the same inputs.
+    #
+    # It has to be stored, because it cannot be recomputed later: `test_evidence`
+    # holds node ids, and the source those ids named at the time is gone by the
+    # next run. Without it the only available comparison is the one #293 deleted —
+    # whether some file holding a mapped test was touched — which fires when a
+    # test is appended to a module and every other test in it is byte-identical.
+    #
+    # None on an obligation no run has rated, and on every obligation stored
+    # before #293. Both mean "nothing to compare against", which re-derives — the
+    # conservative direction.
+    evidence_carry_key: str | None = None
+    # The content digest of each test mapped to this obligation, keyed by pytest
+    # node id (#293). `evidence_carry_key` above is computed FROM these, so the
+    # two cannot disagree about what the rating rested on.
+    #
+    # Stored separately as well as folded into the key because a digest answers a
+    # question the key cannot: *which* mapped test was edited. That is what
+    # #292's anchors name for the judge, and naming the file — all the anchors
+    # could do before — is what licensed a downgrade every time an unrelated test
+    # was appended to the same module.
+    mapped_test_digests: dict[str, str] = Field(default_factory=dict)
 
 
 class Link(_Model):

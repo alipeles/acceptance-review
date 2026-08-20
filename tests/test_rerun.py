@@ -6,13 +6,10 @@ import subprocess
 from pathlib import Path
 
 from acceptance.rerun import (
-    carried_findings,
     carried_recommendations,
     compute_delta,
+    derivation_changed,
     find_prior_review,
-    merge_carried_forward,
-    obligations_to_rederive,
-    stale_obligation_ids,
     task_source_for,
 )
 from acceptance.review_state import (
@@ -76,130 +73,41 @@ def _change_set(*paths: str) -> ChangeSet:
     )
 
 
-# --- which obligations must be re-derived ----------------------------------
+# --- the one remaining staleness question ----------------------------------
+#
+# #293 deleted `stale_obligation_ids` and `obligations_to_rederive`, which
+# decided both review axes by asking whether any cited file was touched, and
+# `merge_carried_forward`/`carried_findings`, which carried a prior obligation
+# wholesale for the obligations that rule skipped. Their tests went with them.
+# What replaces the test-evidence half lives in `tests/evidence/test_rejudge.py`;
+# implementation coverage is now re-derived every run, so it has no staleness
+# question of its own and nothing here to test.
 
 
-def test_an_obligation_whose_files_are_untouched_is_not_re_derived():
-    prior = _review("old", [_obligation("a", coverage_refs=["rounding.py#@@ -1 +1 @@"])])
-
-    stale = stale_obligation_ids(prior, _change_set("unrelated.py"))
-
-    assert stale == set()
-
-
-def test_an_obligation_whose_code_changed_is_re_derived():
-    prior = _review("old", [_obligation("a", coverage_refs=["rounding.py#@@ -1 +1 @@"])])
-
-    assert stale_obligation_ids(prior, _change_set("rounding.py")) == {"a"}
-
-
-def test_an_obligation_whose_test_changed_is_re_derived():
-    """Its code may be untouched while the evidence about it moved.
-
-    The code citation is deliberately present and untouched: without it the
-    obligation would be stale merely for having no citations at all, and this
-    test would pass whether or not test files are consulted (it did, until a
-    defect injection showed it could not fail).
-    """
+def test_a_moved_obligation_set_forbids_reuse():
+    """Linking can merge a different pair of requirements behind an unchanged
+    slug, which makes it a different obligation wearing a familiar id — so no
+    stored judgement about that id can be trusted, on either axis."""
     prior = _review(
         "old",
-        [
-            _obligation(
-                "a",
-                coverage_refs=["rounding.py#@@ -1 +1 @@"],
-                test_evidence=["test_rounding.py::test_ties"],
-            )
-        ],
+        [_obligation("a")],
+        derived_obligation_map=[_obligation("a", description="rounds ties to even")],
     )
 
-    assert stale_obligation_ids(prior, _change_set("test_rounding.py")) == {"a"}
+    assert derivation_changed(prior, [_obligation("a", description="rounds ties UP")]) is True
 
 
-def test_an_obligation_with_no_citations_is_always_re_derived():
-    """Nothing proves the new work missed it, so it cannot be assumed unaffected."""
+def test_an_unmoved_obligation_set_permits_reuse():
     prior = _review(
-        "old", [_obligation("a", coverage_status="not_addressed", evidence_class="unsupported")]
+        "old",
+        [_obligation("a")],
+        derived_obligation_map=[_obligation("a", description="rounds ties to even")],
     )
 
-    assert stale_obligation_ids(prior, _change_set("anything.py")) == {"a"}
-
-
-def test_a_renamed_files_old_path_also_invalidates():
-    """An obligation citing the pre-rename path is affected by the rename."""
-    prior = _review("old", [_obligation("a", coverage_refs=["old_name.py#@@ -1 +1 @@"])])
-    change_set = ChangeSet(
-        base_revision="base",
-        head_revision="head",
-        files=[
-            FileChange(
-                path="new_name.py", old_path="old_name.py", status="renamed", category="source"
-            )
-        ],
-    )
-
-    assert stale_obligation_ids(prior, change_set) == {"a"}
-
-
-def test_an_obligation_the_prior_review_never_saw_is_re_derived():
-    prior = _review("old", [_obligation("a", coverage_refs=["a.py#@@ -1 +1 @@"])])
-    fresh = [_obligation("a"), _obligation("b")]
-
-    targets = obligations_to_rederive(fresh, prior, _change_set("unrelated.py"))
-
-    assert [o.id for o in targets] == ["b"]
+    assert derivation_changed(prior, [_obligation("a", description="rounds ties to even")]) is False
 
 
 # --- carrying judgments forward --------------------------------------------
-
-
-def test_a_carried_forward_judgment_names_the_revision_it_was_established_at():
-    """A carried judgment is evidence about an OLDER head; the report has to be
-    able to say which one, or it presents stale evidence as current."""
-    prior = _review("abc123", [_obligation("a", evidence_class="unsupported")])
-
-    merged = merge_carried_forward([_obligation("a")], judged=[], prior=prior)
-
-    assert merged[0].carried_forward_from == "abc123"
-    assert merged[0].evidence_class == "unsupported"  # the prior judgment, not the fresh default
-
-
-def test_carrying_a_carried_judgment_forward_again_keeps_the_original_revision():
-    """Otherwise the label drifts to the last run that reused the judgment, and a
-    judgment established five heads ago would claim to be one head old."""
-    prior = _review("second", [_obligation("a", carried_forward_from="first")])
-
-    merged = merge_carried_forward([_obligation("a")], judged=[], prior=prior)
-
-    assert merged[0].carried_forward_from == "first"
-
-
-def test_a_re_derived_obligation_is_not_marked_carried_forward():
-    prior = _review("abc123", [_obligation("a", evidence_class="unsupported")])
-    judged = [_obligation("a", evidence_class="strongly_supported")]
-
-    merged = merge_carried_forward([_obligation("a")], judged=judged, prior=prior)
-
-    assert merged[0].carried_forward_from is None
-    assert merged[0].evidence_class == "strongly_supported"
-
-
-def test_a_prior_gap_finding_survives_a_rerun_that_did_not_re_examine_it():
-    """The verdict reads gaps off findings, so dropping the finding for an
-    obligation nobody touched would report an open gap as resolved — the re-run
-    would launder a gap by not looking at it."""
-    gap = Finding(
-        type="coverage_gap",
-        severity="high",
-        description="ties not handled",
-        evidence_tier=EvidenceTier.STATIC,
-        produced_by=Component.STATIC_ANALYZER,
-        links=[Link(kind="requirement", ref="task.md:1")],
-        related_obligation="obligation a",
-    )
-    prior = _review("old", [_obligation("a")], findings=[gap])
-    carried = [_obligation("a", carried_forward_from="old")]
-
-    assert carried_findings(prior, carried) == [gap]
 
 
 def test_a_prior_recommendation_survives_for_a_carried_obligation():
@@ -446,11 +354,16 @@ _HEAD_JUDGMENTS = {
         ]
     },
     # The re-run reaches the pipeline through the ANCHORED schema, because the
-    # prior review rated `ties-to-even` and the head touches the file holding its
-    # mapped test (#292). The rating moves, so the judgement has to say what it
-    # rests on — and here it genuinely rests on something: the builder added the
-    # tie test this whole archetype is about. Same verdicts as `_Discrimination`
-    # above, plus the justification.
+    # prior review rated `ties-to-even` and its mapped test set gained a member
+    # (#292). The rating moves, so the judgement has to say what it rests on — and
+    # here it genuinely rests on something: the builder added the tie test this
+    # whole archetype is about. Same verdicts as `_Discrimination` above, plus the
+    # justification.
+    #
+    # The change it names is the TEST, not the file holding it (#293). Under the
+    # file-level anchors this said `mapped-test-file:test_rounding.py`, which was
+    # satisfied by any edit anywhere in that module — including one that left
+    # every test mapped to this criterion byte-identical.
     "_AnchoredDiscrimination": {
         "obligations": [
             {
@@ -473,7 +386,7 @@ _HEAD_JUDGMENTS = {
                         "reason": "2.5 -> 2 fails under round-half-up.",
                     }
                 ],
-                "rests_on": ["mapped-test-file:test_rounding.py"],
+                "rests_on": ["mapped-test-added:test_rounding.py::test_ties_round_to_even"],
             },
         ]
     },
@@ -613,6 +526,12 @@ _TWO_FILE_JUDGMENTS = {
     },
     "_Mappings": {"mappings": []},
     "_Discrimination": {"obligations": []},
+    # BOTH obligations are classified, because implementation coverage is now
+    # re-derived for every obligation on every run (#293). Under the file-level
+    # narrowing this held only `alpha` — `beta` was never asked about, so a
+    # classification for it would have gone unused. An obligation the stage is
+    # asked about and returns nothing for is marked `unclear`, so leaving `beta`
+    # out here would silently weaken every assertion about it.
     "_Coverage": {
         "classifications": [
             {
@@ -620,7 +539,13 @@ _TWO_FILE_JUDGMENTS = {
                 "status": "addressed",
                 "rationale": "alpha.py implements it.",
                 "diff_refs": [],
-            }
+            },
+            {
+                "obligation_id": "beta",
+                "status": "not_addressed",
+                "rationale": "beta() still returns 0.",
+                "diff_refs": [],
+            },
         ]
     },
     "_Detections": {"unrequested_changes": []},
@@ -716,9 +641,12 @@ def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path
         prior=prior,
     )
 
-    # beta was never re-examined — only alpha.py changed — so it is carried.
+    # beta is re-classified this run rather than carried (#293): implementation
+    # coverage has no staleness rule any more, so nothing is skipped for having
+    # untouched files. The guarantee below is therefore stronger than it was —
+    # the gap is re-found, not remembered.
     beta = next(o for o in review.obligation_map if o.id == "beta")
-    assert beta.carried_forward_from == base
+    assert beta.carried_forward_from is None
     assert beta.coverage_status == "not_addressed"
 
     # And its gap is still reported, so the verdict still reflects it —
@@ -759,8 +687,8 @@ def test_a_review_written_under_an_older_schema_is_skipped_not_fatal(tmp_path):
     assert find_prior_review(store, second, repo, TASK) is None
 
 
-def test_only_the_affected_obligation_is_re_derived(tmp_path):
-    """Both halves of the split, at the pipeline level.
+def test_a_stale_prior_verdict_is_replaced_rather_than_surviving(tmp_path):
+    """A re-run must actually re-derive, at the pipeline level.
 
     The dogfood run reported this obligation unsupported and it was right: the
     gap-laundering test asserted the UNAFFECTED obligation was carried, but never
@@ -816,12 +744,18 @@ def test_only_the_affected_obligation_is_re_derived(tmp_path):
     )
 
     by_id = {o.id: o for o in review.obligation_map}
-    # alpha.py changed, so alpha was judged again — and the fresh judgment
-    # replaced the stale one rather than the prior verdict surviving.
+    # Both are judged again, and the fresh judgment replaces the stale one rather
+    # than the prior verdict surviving. Under the file-level rule this test also
+    # asserted that `beta` was NOT re-judged, because `beta.py` was untouched.
+    # #293 deleted that rule: implementation coverage is re-derived for every
+    # obligation, so "untouched files" no longer excuses an obligation from being
+    # looked at. What replaced it — a rating carried when the criterion's own
+    # mapped tests are byte-identical — is tested in `tests/evidence/test_rejudge.py`,
+    # which can exercise test contents as this two-file fixture cannot.
     assert by_id["alpha"].carried_forward_from is None
     assert by_id["alpha"].coverage_status == "addressed"
-    # beta.py did not, so beta was not re-judged.
-    assert by_id["beta"].carried_forward_from == base
+    assert by_id["beta"].carried_forward_from is None
+    assert by_id["beta"].coverage_status == "not_addressed"
 
 
 def test_exactly_one_prior_review_is_used_even_when_several_are_candidates(tmp_path):
@@ -925,12 +859,16 @@ def test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun(tmp_path)
         client=client_dispatching(_TWO_FILE_JUDGMENTS),
     )
 
+    # The run built on the SELECTED review, not the further one...
     assert review.delta is not None
     assert review.delta.prior_reviewed_revision == second
-    # alpha is carried — but from the SELECTED review, not the further one...
-    alpha = next(o for o in review.obligation_map if o.id == "alpha")
-    assert alpha.carried_forward_from == second
     # ...and the finding only the further review held never appears.
+    #
+    # This used to also assert `alpha.carried_forward_from == second`. #293 ended
+    # the wholesale carry that set it: coverage is re-derived every run, and the
+    # only thing that carries now is a test-evidence rating, which these
+    # hand-built prior reviews record no inputs for. The delta above is the
+    # remaining statement that one specific review was the one used.
     assert all("only the FURTHER review" not in finding.description for finding in review.findings)
 
 

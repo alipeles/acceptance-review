@@ -20,11 +20,21 @@ can be interrogated and a justification for it can be demanded. Decomposition's
 output has no such order, so there was nothing to demand. #286 asks whether this
 generalises; this is the first real answer, and `DR-292` records it.
 
-**The granularity is deliberately coarse, and deliberately temporary.** A
-criterion's dependencies are its requirement text, the tests mapped to it, and
-those tests' contents. Comparing test *contents* is #293's deliverable and does
-not exist yet, so the changes named here are file-level: which files holding this
-criterion's mapped tests or implementation were touched. #293 sharpens them.
+**The granularity was coarse and is no longer** (#293). A criterion's
+dependencies are its requirement text, the tests mapped to it, and those tests'
+contents, and all three are now compared at the level they are stated: a mapped
+test is named when it is added, removed, or **edited**, never merely because some
+file holding it was touched.
+
+That distinction is the whole of why #292 did not bite on its own. At #291's Gate
+2 two criteria fell a tier on nine lines appended to `tests/test_carry.py`, and
+nothing was rejected — `mapped-test-file:tests/test_carry.py` was a real
+file-level change, so naming it licensed the downgrade. At content level neither
+criterion is anchored at all, and the rejection below holds both ratings with no
+new enforcement code.
+
+Implementation citations stay file-level. They are still `coverage_refs`, whose
+precision is a file and a hunk label, and #293 changed the test axis only.
 
 **A criterion with no nameable change is not anchored at all.** Anchoring it
 would make its rating unmovable — no change to rest on means every move is
@@ -67,13 +77,11 @@ class RatingAnchor(PersistableModel):
         return {change.id for change in self.changes}
 
 
-def _test_file(test_identifier: str) -> str:
-    """The file part of a pytest node id (`path::test_name` -> `path`)."""
-    return test_identifier.split("::", 1)[0]
-
-
 def _changes_for(
-    previous: Obligation, fresh: Obligation, touched: set[str]
+    previous: Obligation,
+    fresh: Obligation,
+    touched: set[str],
+    digests: dict[str, str],
 ) -> list[DependencyChange]:
     changes: list[DependencyChange] = []
     if previous.description != fresh.description:
@@ -83,14 +91,44 @@ def _changes_for(
                 description="the criterion's own requirement text was reworded",
             )
         )
-    test_files = {_test_file(test) for test in previous.test_evidence}
-    for path in sorted(test_files & touched):
+    # Per test, not per file (#293). The file-level version named
+    # `mapped-test-file:<path>` whenever anything in that module moved, which
+    # licensed a downgrade every time a test was appended somewhere else in it —
+    # measured twice, at #269's and #291's Gate 2. A test the criterion does not
+    # map cannot justify moving the criterion's rating.
+    previous_tests = set(previous.test_evidence)
+    fresh_tests = set(fresh.test_evidence)
+    for test in sorted(fresh_tests - previous_tests):
         changes.append(
             DependencyChange(
-                id=f"mapped-test-file:{path}",
-                description=f"{path}, which holds a test mapped to this criterion, was changed",
+                id=f"mapped-test-added:{test}",
+                description=f"{test} is newly mapped to this criterion",
             )
         )
+    for test in sorted(previous_tests - fresh_tests):
+        changes.append(
+            DependencyChange(
+                id=f"mapped-test-removed:{test}",
+                description=f"{test} is no longer mapped to this criterion",
+            )
+        )
+    for test in sorted(previous_tests & fresh_tests):
+        # A test whose digest the prior review did not record cannot be compared,
+        # so it names no change. That is the same conservative direction the rest
+        # of this module takes: an unnameable change leaves the criterion
+        # unanchored, and an unanchored criterion is free to move rather than
+        # frozen.
+        stored = previous.mapped_test_digests.get(test)
+        current = digests.get(test)
+        if stored is None or current is None:
+            continue
+        if current != stored:
+            changes.append(
+                DependencyChange(
+                    id=f"mapped-test-edited:{test}",
+                    description=f"{test}, mapped to this criterion, was edited",
+                )
+            )
     code_files = {ref.split("#", 1)[0] for ref in previous.coverage_refs}
     for path in sorted(code_files & touched):
         changes.append(
@@ -103,7 +141,10 @@ def _changes_for(
 
 
 def build_anchors(
-    prior: Review, obligations: list[Obligation], change_set: ChangeSet
+    prior: Review,
+    obligations: list[Obligation],
+    change_set: ChangeSet,
+    digests: dict[str, str] | None = None,
 ) -> dict[str, RatingAnchor]:
     """Anchors for the criteria in `obligations` that the prior review rated.
 
@@ -111,6 +152,14 @@ def build_anchors(
     the prior review gave it a rating to hold, and at least one change to its
     dependencies can be named. The last condition is the load-bearing one — see
     the module docstring.
+
+    `digests` is this run's content digest per mapped test, keyed by node id
+    (#293) — the same values `rejudge.mapped_test_digests` computes and stores, so
+    an anchor and a carry decision are always talking about the same comparison.
+    Passed in rather than computed here, which keeps this module free of any
+    dependency on the carry machinery. Without it no mapped test can be compared
+    by content, so only mapping changes and requirement rewordings are nameable:
+    a weaker anchor set, never a wrong one, which is why it defaults.
     """
     touched = changed_paths(change_set)
     previous_by_id = {obligation.id: obligation for obligation in prior.obligation_map}
@@ -119,7 +168,7 @@ def build_anchors(
         previous = previous_by_id.get(fresh.id)
         if previous is None or previous.evidence_class is None:
             continue
-        changes = _changes_for(previous, fresh, touched)
+        changes = _changes_for(previous, fresh, touched, digests or {})
         if not changes:
             continue
         anchors[fresh.id] = RatingAnchor(
