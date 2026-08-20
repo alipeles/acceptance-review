@@ -1,0 +1,302 @@
+Task completion: INCOMPLETE
+
+2 obligation(s) with non-discriminating test evidence (changed-criterion-gets-stored-rating, rating-stability-fixtures-still-found).
+
+Obligations:
+
+  1. A rating it moves must rest on one of the changes it was given.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/evidence/discrimination.py#@@ -130,16 +180,54 @@ def _render_prompt(
+         1.2  src/acceptance/evidence/discrimination.py#@@ -148,16 +236,30 @@ def judge_discrimination(
+         1.3  src/acceptance/evidence/discrimination.py#@@ -170,20 +272,37 @@ def judge_discrimination(
+         1.4  src/acceptance/evidence/anchoring.py#@@ -0,0 +1,130 @@
+       test evidence: strongly supported  [tier: static]
+         1.5  tests/evidence/test_anchoring.py::test_a_move_resting_on_another_criterions_change_is_rejected
+         1.6  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  2. A changed test-evidence rating justify itself.
+       requirements: task-01
+       code evidence: not required — The requirement asks for a test demand, so the test itself is the whole obligation.
+       test evidence: strongly supported  [tier: static]
+         2.1  tests/evidence/test_strength.py::test_all_defects_caught_is_strongly_supported
+         2.2  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         2.3  tests/test_rerun.py::test_tests_appearing_for_a_non_code_obligation_is_not_a_closed_gap
+         2.4  tests/test_rerun.py::test_weak_evidence_becoming_strong_counts_as_a_closed_gap
+
+  3. A judgement requested for a changed criterion includes the stored rating for that criterion.
+       requirements: constraint-01
+       code evidence: addressed
+         3.1  src/acceptance/evidence/anchoring.py#@@ -0,0 +1,130 @@
+         3.2  src/acceptance/evidence/discrimination.py#@@ -109,6 +153,12 @@ def _render_prompt(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: the request sent to the judge includes the criterion's stored rating
+           inputs:  Use a re-judged criterion that already has a stored prior rating and whose current inputs changed, then force the model response to move the rating without naming any supplied change. The input must include at least one anchored criterion with a prior evidence_class and a changed mapped test or implementation file so the anchored path is taken and the stored rating is actually inserted into the request.
+           detects: The implementation fails to include the criterion’s stored rating in the judge request for anchored re-judgements, or otherwise does not actually pass that prior rating through to the model.
+           full detail: acceptance recommendation --criterion changed-criterion-gets-stored-rating
+
+  4. A judgement requested for a changed criterion includes the changes to that criterion's dependencies.
+       requirements: constraint-02
+       code evidence: addressed
+         4.1  src/acceptance/evidence/anchoring.py#@@ -0,0 +1,130 @@
+         4.2  src/acceptance/evidence/discrimination.py#@@ -109,6 +153,12 @@ def _render_prompt(
+       test evidence: strongly supported  [tier: static]
+         4.3  tests/evidence/test_anchoring.py::test_an_anchor_names_the_changed_files_this_criterion_depends_on
+
+  5. The stored rating and the dependency changes supplied to a judgement are recorded as part of the request under which that judgement is recorded.
+       requirements: constraint-03
+       code evidence: addressed
+         5.1  src/acceptance/evidence/discrimination.py#@@ -55,6 +59,25 @@ tested inputs is NOT caught (the input fails to discriminate).
+         5.2  src/acceptance/evidence/discrimination.py#@@ -86,6 +109,26 @@ class _Discrimination(StrictResponseModel):
+         5.3  src/acceptance/evidence/discrimination.py#@@ -109,6 +153,12 @@ def _render_prompt(
+       test evidence: strongly supported  [tier: static]
+         5.4  tests/evidence/test_anchoring.py::test_an_anchor_names_the_changed_files_this_criterion_depends_on
+
+  6. A judgement that alters a rating names one of the changes it was given.
+       requirements: constraint-04
+       code evidence: addressed
+         6.1  src/acceptance/evidence/discrimination.py#@@ -86,6 +109,26 @@ class _Discrimination(StrictResponseModel):
+         6.2  src/acceptance/evidence/discrimination.py#@@ -170,20 +272,37 @@ def judge_discrimination(
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/evidence/test_anchoring.py::test_a_move_resting_on_another_criterions_change_is_rejected
+
+  7. The code that reads a judgement rejects a rating-changing judgement that names no change it was given.
+       requirements: constraint-05
+       code evidence: addressed
+         7.1  src/acceptance/evidence/discrimination.py#@@ -130,16 +180,54 @@ def _render_prompt(
+         7.2  src/acceptance/evidence/discrimination.py#@@ -170,20 +272,37 @@ def judge_discrimination(
+         7.3  src/acceptance/supplied_ids.py#@@ -159,12 +159,24 @@ class UnusableAnswerLog:
+       test evidence: strongly supported  [tier: static]
+         7.4  tests/evidence/test_anchoring.py::test_a_move_resting_on_another_criterions_change_is_rejected
+         7.5  tests/evidence/test_anchoring.py::test_a_move_that_names_no_change_is_rejected_and_the_stored_rating_stands
+
+  8. A rejected judgement leaves the stored rating in place.
+       requirements: constraint-06
+       code evidence: addressed
+         8.1  src/acceptance/evidence/strength.py#@@ -152,6 +150,43 @@ def classify_strength(
+         8.2  src/acceptance/supplied_ids.py#@@ -159,12 +159,24 @@ class UnusableAnswerLog:
+         8.3  src/acceptance/evidence/discrimination.py#@@ -170,20 +272,37 @@ def judge_discrimination(
+       test evidence: strongly supported  [tier: static]
+         8.4  tests/evidence/test_anchoring.py::test_a_move_resting_on_another_criterions_change_is_rejected
+         8.5  tests/evidence/test_anchoring.py::test_a_move_that_names_no_change_is_rejected_and_the_stored_rating_stands
+         8.6  tests/evidence/test_anchoring.py::test_the_pipeline_anchors_the_judgement_and_holds_the_rejected_rating
+
+  9. A rejected judgement is reported.
+       requirements: constraint-07, completion-07
+       code evidence: addressed
+         9.1  src/acceptance/evidence/discrimination.py#@@ -130,16 +180,54 @@ def _render_prompt(
+         9.2  src/acceptance/evidence/discrimination.py#@@ -170,20 +272,37 @@ def judge_discrimination(
+         9.3  tests/evidence/test_anchoring.py#@@ -0,0 +1,524 @@
+       test evidence: strongly supported  [tier: static]
+         9.4  tests/evidence/test_anchoring.py::test_a_move_resting_on_another_criterions_change_is_rejected
+         9.5  tests/evidence/test_anchoring.py::test_a_rejected_judgement_is_reported
+         9.6  tests/evidence/test_anchoring.py::test_anchoring_without_a_log_is_refused
+         9.7  tests/evidence/test_anchoring.py::test_the_pipeline_anchors_the_judgement_and_holds_the_rejected_rating
+
+  10. A review with no stored earlier state judges every criterion without reference to any stored rating.
+       requirements: constraint-08
+       code evidence: addressed
+         10.1  src/acceptance/pipeline.py#@@ -41,11 +41,16 @@ from acceptance.coverage.open_questions import (
+         10.2  src/acceptance/evidence/discrimination.py#@@ -148,16 +236,30 @@ def judge_discrimination(
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/evidence/test_anchoring.py::test_a_review_with_no_stored_state_puts_no_stored_rating_in_the_request
+         10.4  tests/evidence/test_discrimination.py::test_no_mapped_tests_makes_no_model_call
+
+  11. A review repeated over the same stored state and the same inputs produces the same review state as the one before it.
+       requirements: constraint-09
+       code evidence: addressed
+         11.1  src/acceptance/evidence/discrimination.py#@@ -55,6 +59,25 @@ tested inputs is NOT caught (the input fails to discriminate).
+         11.2  src/acceptance/evidence/discrimination.py#@@ -86,6 +109,26 @@ class _Discrimination(StrictResponseModel):
+         11.3  src/acceptance/pipeline.py#@@ -41,11 +41,16 @@ from acceptance.coverage.open_questions import (
+       test evidence: strongly supported  [tier: static]
+         11.4  tests/evidence/test_anchoring.py::test_two_anchored_runs_over_the_same_input_are_byte_identical
+         11.5  tests/evidence/test_mapping.py::test_repeating_a_run_reuses_the_recorded_batches
+         11.6  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         11.7  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         11.8  tests/test_rerun.py::test_nothing_from_a_non_selected_ancestor_review_reaches_the_rerun
+         11.9  tests/test_rerun.py::test_the_nearest_ancestor_wins_regardless_of_write_order
+         11.10  tests/test_rerun.py::test_the_prior_review_is_an_ancestor_of_the_new_head
+
+  12. The change does not narrow which criteria are judged again.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 19 changes across 9 files; none breaches this boundary
+       test evidence: strongly supported  [tier: static]
+         12.1  tests/evidence/test_discrimination.py::test_criteria_without_mapped_tests_are_not_judged
+         12.2  tests/test_rerun.py::test_only_the_affected_obligation_is_re_derived
+
+  13. The change does not partition the evidence-judgement request per criterion.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 19 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion naming work that must not appear in the change, so the source diff alone settles it.
+
+  14. The change does not make the set of tests mapped to a criterion stable across runs.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 19 changes across 9 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the absence of that work in the implementation, which is visible directly in the source change.
+
+  15. The change does not make whether a rating is correct on its merits part of the judged behavior.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 19 changes across 9 files; none breaches this boundary
+       test evidence: not required — This exclusion concerns a work area that the implementation can omit, and that omission is established by inspecting the code change.
+
+  16. The change does not alter which defects the judge names for a criterion it does judge.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 19 changes across 9 files; none breaches this boundary
+       test evidence: strongly supported  [tier: static]
+         16.1  tests/evidence/test_discrimination.py::test_a_caught_defect_makes_the_criterion_discriminating
+         16.2  tests/evidence/test_discrimination.py::test_an_obligation_the_model_omits_is_conservatively_non_discriminating
+         16.3  tests/evidence/test_discrimination.py::test_discriminating_is_true_if_any_defect_is_caught
+         16.4  tests/evidence/test_discrimination.py::test_non_discriminating_input_is_judged_non_discriminating_with_a_reason
+
+  17. The change does not alter which stored earlier state a repeated review continues.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 19 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about selection logic, and the presence or absence of that logic is settled by the source change itself.
+
+  18. The change does not alter which judgements other than the test-evidence rating are carried forward.
+       requirements: exclusion-07
+       code evidence: addressed
+         examined 19 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion: the delivered source must show that this work was not done, and no test can directly demonstrate the absence of extra carried-forward judgements.
+
+  19. The change does not specify where the rule deciding whether a stored result may be carried forward is defined.
+       requirements: exclusion-08
+       code evidence: addressed
+         examined 19 changes across 9 files; none breaches this boundary
+       test evidence: not required — This exclusion is satisfied by the absence of a location-specific definition in the change, which a test cannot directly demonstrate.
+
+  20. A judgement asked about a changed criterion receives the stored rating and the changes to that criterion's dependencies.
+       requirements: completion-02
+       code evidence: addressed
+         20.1  src/acceptance/evidence/anchoring.py#@@ -0,0 +1,130 @@
+         20.2  src/acceptance/evidence/discrimination.py#@@ -55,6 +59,25 @@ tested inputs is NOT caught (the input fails to discriminate).
+         20.3  src/acceptance/evidence/discrimination.py#@@ -109,6 +153,12 @@ def _render_prompt(
+       test evidence: strongly supported  [tier: static]
+         20.4  tests/evidence/test_anchoring.py::test_a_changed_criterion_is_given_its_stored_rating_and_its_dependency_changes
+         20.5  tests/evidence/test_anchoring.py::test_an_anchor_names_the_changed_files_this_criterion_depends_on
+
+  21. The stored rating and the dependency changes are part of the request the judgement is recorded under.
+       requirements: completion-03
+       code evidence: addressed
+         21.1  src/acceptance/evidence/discrimination.py#@@ -55,6 +59,25 @@ tested inputs is NOT caught (the input fails to discriminate).
+         21.2  src/acceptance/evidence/discrimination.py#@@ -86,6 +109,26 @@ class _Discrimination(StrictResponseModel):
+         21.3  src/acceptance/evidence/discrimination.py#@@ -109,6 +153,12 @@ def _render_prompt(
+       test evidence: strongly supported  [tier: static]
+         21.4  tests/evidence/test_anchoring.py::test_a_changed_criterion_is_given_its_stored_rating_and_its_dependency_changes
+         21.5  tests/evidence/test_anchoring.py::test_an_anchor_names_the_changed_files_this_criterion_depends_on
+         21.6  tests/evidence/test_mapping.py::test_each_batch_is_recorded_as_its_own_request
+
+  22. A judgement that alters a rating while naming a change it was given is accepted.
+       requirements: completion-04
+       code evidence: addressed
+         22.1  src/acceptance/evidence/discrimination.py#@@ -86,6 +109,26 @@ class _Discrimination(StrictResponseModel):
+         22.2  src/acceptance/evidence/discrimination.py#@@ -170,20 +272,37 @@ def judge_discrimination(
+       test evidence: strongly supported  [tier: static]
+         22.3  tests/evidence/test_anchoring.py::test_a_move_that_names_a_supplied_change_is_accepted
+
+  23. A judgement that alters a rating while naming no change it was given is rejected, and the stored rating stands.
+       requirements: completion-05
+       code evidence: addressed
+         23.1  src/acceptance/evidence/discrimination.py#@@ -130,16 +180,54 @@ def _render_prompt(
+         23.2  src/acceptance/evidence/discrimination.py#@@ -170,20 +272,37 @@ def judge_discrimination(
+         23.3  src/acceptance/supplied_ids.py#@@ -159,12 +159,24 @@ class UnusableAnswerLog:
+         23.4  src/acceptance/evidence/strength.py#@@ -152,6 +150,43 @@ def classify_strength(
+       test evidence: strongly supported  [tier: static]
+         23.5  tests/evidence/test_anchoring.py::test_a_move_resting_on_another_criterions_change_is_rejected
+         23.6  tests/evidence/test_anchoring.py::test_a_move_that_names_no_change_is_rejected_and_the_stored_rating_stands
+
+  24. The code that reads a judgement performs the rejection.
+       requirements: completion-06
+       code evidence: addressed
+         24.1  src/acceptance/evidence/discrimination.py#@@ -130,16 +180,54 @@ def _render_prompt(
+         24.2  src/acceptance/evidence/discrimination.py#@@ -170,20 +272,37 @@ def judge_discrimination(
+       test evidence: strongly supported  [tier: static]
+         24.3  tests/evidence/test_anchoring.py::test_a_move_resting_on_another_criterions_change_is_rejected
+         24.4  tests/evidence/test_anchoring.py::test_a_move_that_names_no_change_is_rejected_and_the_stored_rating_stands
+
+  25. A review with no stored earlier state puts no stored rating in any evidence-judgement request.
+       requirements: completion-08
+       code evidence: addressed
+         25.1  src/acceptance/pipeline.py#@@ -41,11 +41,16 @@ from acceptance.coverage.open_questions import (
+         25.2  src/acceptance/evidence/discrimination.py#@@ -148,16 +236,30 @@ def judge_discrimination(
+       test evidence: strongly supported  [tier: static]
+         25.3  tests/evidence/test_anchoring.py::test_a_review_with_no_stored_state_puts_no_stored_rating_in_the_request
+
+  26. Two reviews over the same stored state and the same inputs produce byte-identical review state.
+       requirements: completion-09
+       code evidence: addressed
+         26.1  src/acceptance/evidence/discrimination.py#@@ -55,6 +59,25 @@ tested inputs is NOT caught (the input fails to discriminate).
+         26.2  src/acceptance/evidence/discrimination.py#@@ -86,6 +109,26 @@ class _Discrimination(StrictResponseModel):
+         26.3  src/acceptance/pipeline.py#@@ -41,11 +41,16 @@ from acceptance.coverage.open_questions import (
+       test evidence: strongly supported  [tier: static]
+         26.4  tests/evidence/test_anchoring.py::test_two_anchored_runs_over_the_same_input_are_byte_identical
+         26.5  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+         26.6  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         26.7  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+
+  27. The findings recorded as correct in `tests/fixtures/rating-stability/` are still found.
+       requirements: completion-10
+       code evidence: addressed
+         27.1  tests/evidence/test_anchoring.py#@@ -0,0 +1,524 @@
+         27.2  tests/test_rerun.py#@@ -445,6 +445,38 @@ _HEAD_JUDGMENTS = {
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: the rating-stability fixture findings continue to be discovered as correct
+           inputs:  Run the rating-stability fixture suite against the current pipeline with the anchored re-judgement changes enabled, using the existing tests/fixtures/rating-stability/ cases that previously recorded correct findings. The input must be the real fixture repository/state that exercises the known stable findings, not a synthetic single-case unit test.
+           detects: The new anchoring/rejection logic accidentally damps or suppresses the rating-stability fixture findings, causing cases that should still be found correct to disappear or be misclassified.
+           full detail: acceptance recommendation --criterion rating-stability-fixtures-still-found
+
+Mandate coverage: 27 of 28 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: The item is a section marker standing alone with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] The new anchoring path changes runtime behavior by rejecting and holding ratings in the discrimination reader, but the obligations only require the review to include stored ratings/dependency changes, reject invalid rating changes, and preserve repeat-review behavior; they do not ask for this new anchored request schema or rejection machinery as such.
+       src/acceptance/evidence/anchoring.py#@@ -0,0 +1,130 @@
+       src/acceptance/evidence/classification.py#@@ -0,0 +1,54 @@
+       src/acceptance/evidence/discrimination.py#@@ -23,10 +23,14 @@ the predictions by execution.
+       src/acceptance/evidence/discrimination.py#@@ -55,6 +59,25 @@ tested inputs is NOT caught (the input fails to discriminate).
+       src/acceptance/evidence/discrimination.py#@@ -86,6 +109,26 @@ class _Discrimination(StrictResponseModel):
+       src/acceptance/evidence/discrimination.py#@@ -101,6 +144,7 @@ def _render_prompt(
+       src/acceptance/evidence/discrimination.py#@@ -109,6 +153,12 @@ def _render_prompt(
+       src/acceptance/evidence/discrimination.py#@@ -130,16 +180,54 @@ def _render_prompt(
+       src/acceptance/evidence/discrimination.py#@@ -148,16 +236,30 @@ def judge_discrimination(
+       src/acceptance/evidence/discrimination.py#@@ -170,20 +272,37 @@ def judge_discrimination(
+       src/acceptance/evidence/strength.py#@@ -29,8 +29,11 @@ field the §11.1 evidence-classification-agreement metric (scoring.py) reads.
+       src/acceptance/evidence/strength.py#@@ -132,14 +135,9 @@ def classify_strength(
+       src/acceptance/evidence/strength.py#@@ -152,6 +150,43 @@ def classify_strength(
+       src/acceptance/pipeline.py#@@ -41,11 +41,16 @@ from acceptance.coverage.open_questions import (
+       src/acceptance/supplied_ids.py#@@ -159,12 +159,24 @@ class UnusableAnswerLog:
+  2. [separable] The added docs file is explanatory design prose and not required by any obligation; the task concerns behavior and tests, not a new decision record.
+       docs/DR-292-anchored-rejudgement.md#@@ -0,0 +1,112 @@
+  3. [in_service] The new anchoring test module adds many scenario tests and wiring helpers beyond what is strictly required by the listed obligations; while some tests may support requested behavior, the file also introduces extensive extra fixtures and acceptance cases not demanded by the obligations text.
+       tests/evidence/test_anchoring.py#@@ -0,0 +1,524 @@
+  4. [in_service] The change to the rerun fixture adds an anchored discrimination schema and justification for a specific test case, but the obligations do not mention modifying this rerun fixture or introducing a new anchored schema there.
+       tests/test_rerun.py#@@ -445,6 +445,38 @@ _HEAD_JUDGMENTS = {
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 13b24dfa89b21bcf
+  continuing 1ee26beb851d7843
+  continue this run with: --continue 13b24dfa89b21bcf
+Model usage by stage:
+  stage                                             calls  prompt  output  cached  this run  recorded
+  ----------------------------  -------------------------  ------  ------  ------  --------  --------
+  obligation linking              1 (0 live / 1 replayed)     898       0       —   $0.0000   $0.0000
+  test-to-obligation mapping    12 (12 live / 0 replayed)  58,043   8,767    0.0%   $0.0830   $0.0830
+  discrimination judgment         1 (1 live / 0 replayed)  10,263   2,495    0.0%   $0.0189   $0.0189
+  coverage classification         1 (1 live / 0 replayed)  15,170   1,966    0.0%   $0.0202   $0.0202
+  unrequested-change detection    1 (1 live / 0 replayed)  14,436     480    0.0%   $0.0130   $0.0130
+  test recommendation             1 (1 live / 0 replayed)  13,362     784    0.0%   $0.0135   $0.0135
+  this run spent $0.1487 on 16 live call(s); the evidence cost $0.1487 to record (1 call(s) replayed at no cost to this run)
+

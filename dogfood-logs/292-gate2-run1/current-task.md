@@ -1,6 +1,8 @@
 # Task
-A criterion's test-evidence rating is a function of that criterion's inputs, not
-of how many times it has been judged.
+Make a changed test-evidence rating justify itself. When a review repeated over
+stored earlier state judges a criterion again, the judge is told what the rating
+was and what changed about that criterion's dependencies, and a rating it moves
+must rest on one of the changes it was given.
 
 ## Constraints
 - A judgement asked for a criterion that changed is given the rating stored for
