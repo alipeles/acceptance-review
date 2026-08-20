@@ -123,7 +123,7 @@ def rates_for(model: str) -> tuple[float, float, float] | None:
 def tokens_in(text: str, model: str) -> int:
     try:
         return int(litellm.token_counter(model=model, text=text))
-    except Exception:
+    except Exception:  # noqa: BLE001 — a measurement script must not die counting
         return len(text) // 4  # only ever used for a threshold comparison
 
 
