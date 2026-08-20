@@ -456,7 +456,11 @@ def test_policy_is_surfaced_to_the_model_judgment():
     seen = {}
 
     def capture(**kwargs):
-        seen["prompt"] = kwargs["messages"][-1]["content"]
+        # The whole request. The policy is the same in every disposition call of
+        # a run, so it now sits in the request's shared opening rather than in
+        # the message carrying the one change being judged (#265). What this test
+        # asserts is that the model is TOLD the policy, not where it is told.
+        seen["prompt"] = "\n".join(message["content"] for message in kwargs["messages"])
         content = json.dumps({"disposition": "risky", "rationale": "adjacent edit"})
         return SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
