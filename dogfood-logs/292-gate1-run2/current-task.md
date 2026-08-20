@@ -1,6 +1,8 @@
 # Task
-A criterion's test-evidence rating is a function of that criterion's inputs, not
-of how many times it has been judged.
+A repeated review's judgements must not drift. When a review runs again over
+stored earlier state and judges a criterion for a second time, it works from the
+rating it recorded before and from the changes to that criterion's dependencies
+since then.
 
 ## Constraints
 - A judgement asked for a criterion that changed is given the rating stored for

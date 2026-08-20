@@ -1,0 +1,164 @@
+run e6c1f946e47d5280
+  continuing c149511423c47496
+  requirements: 0 derived, 27 carried, 1 revised; 1 decompose call(s)
+  continue this run with: --continue e6c1f946e47d5280
+Model usage by stage:
+  stage                                 calls  prompt  output  cached  this run  recorded
+  ------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose           1 (1 live / 0 replayed)   6,401     265   76.0%   $0.0027   $0.0027
+  obligation linking  1 (1 live / 0 replayed)     899       0       —   $0.0000   $0.0000
+  unknown             1 (1 live / 0 replayed)     323      24    0.0%   $0.0004   $0.0004
+  this run spent $0.0031 on 3 live call(s); the evidence cost $0.0031 to record (0 call(s) replayed at no cost to this run)
+Requirements: 28   with obligations: 27   deliberately none: 1
+
+[task-01] A criterion's test-evidence rating is a function of that criterion's inputs,
+    not of how many times it has been judged.
+    -> test-evidence-rating-depends-on-criterion-inputs  [functional/explicit]
+       A criterion's test-evidence rating is determined by that criterion's inputs.
+    -> test-evidence-rating-not-based-on-judging-count  [invariant/explicit]
+       A criterion's test-evidence rating is not determined by how many times it has
+       been judged.
+
+[constraint-01] A judgement asked for a criterion that changed is given the rating
+    stored for that criterion.
+    -> changed-criterion-gets-stored-rating  [functional/explicit]
+       A judgement requested for a changed criterion includes the stored rating for that
+       criterion.
+
+[constraint-02] A judgement asked for a criterion that changed is given the changes to
+    that criterion's dependencies.
+    -> changed-criterion-gets-dependency-changes  [functional/explicit]
+       A judgement requested for a changed criterion includes the changes to that
+       criterion's dependencies.
+
+[constraint-03] The stored rating and the dependency changes given to a judgement are
+    part of the request that judgement is recorded under.
+    -> stored-rating-and-changes-recorded-with-judgement-request  [invariant/explicit]
+       The stored rating and the dependency changes supplied to a judgement are recorded
+       as part of the request under which that judgement is recorded.
+
+[constraint-04] A judgement that alters a rating names one of the changes it was given.
+    -> changed-rating-names-one-given-change  [functional/explicit]
+       A judgement that alters a rating names one of the changes it was given.
+
+[constraint-05] A judgement that alters a rating while naming no change it was given is
+    rejected by the code that reads the judgement, rather than by the instruction that
+    asked for it.
+    -> reject-rating-change-without-named-change-in-reader  [error_handling/explicit]
+       The code that reads a judgement rejects a rating-changing judgement that names no
+       change it was given.
+
+[constraint-06] A rejected judgement leaves the stored rating in place.
+    -> rejected-judgement-keeps-stored-rating  [invariant/explicit]
+       A rejected judgement leaves the stored rating in place.
+
+[constraint-07] A rejected judgement is reported.
+    -> rejected-judgement-reported  [functional/explicit]   (also serves completion-07)
+       A rejected judgement is reported.
+
+[constraint-08] A review with no stored earlier state judges every criterion without
+    reference to any stored rating.
+    -> no-stored-state-judges-all-criteria  [functional/explicit]
+       A review with no stored earlier state judges every criterion without reference to
+       any stored rating.
+
+[constraint-09] A review repeated over the same stored state and the same inputs
+    produces the same review state as the one before it.
+    -> repeat-review-byte-identical-state  [regression/explicit]
+       A review repeated over the same stored state and the same inputs produces the
+       same review state as the one before it.
+
+[exclusion-01] Narrowing which criteria are judged again.
+    -> narrowing-which-criteria-are-judged-again-not-done  [regression/explicit]
+       The change does not narrow which criteria are judged again.
+
+[exclusion-02] Partitioning the evidence-judgement request per criterion.
+    -> no-per-criterion-request-partitioning  [compatibility/explicit]
+       The change does not partition the evidence-judgement request per criterion.
+
+[exclusion-03] Making the set of tests mapped to a criterion stable across runs.
+    -> no-stable-mapped-test-set  [compatibility/explicit]
+       The change does not make the set of tests mapped to a criterion stable across
+       runs.
+
+[exclusion-04] Whether a rating is correct on its merits.
+    -> no-merits-based-rating-judgement  [human_review/explicit]
+       The change does not make whether a rating is correct on its merits part of the
+       judged behavior.
+
+[exclusion-05] Which defects the judge names for a criterion it does judge.
+    -> no-defect-selection-by-judge  [functional/explicit]
+       The change does not alter which defects the judge names for a criterion it does
+       judge.
+
+[exclusion-06] Selecting which stored earlier state a repeated review continues.
+    -> no-stored-state-selection-change  [compatibility/explicit]
+       The change does not alter which stored earlier state a repeated review continues.
+
+[exclusion-07] Which judgements other than the test-evidence rating are carried forward.
+    -> exclude-carry-forward-other-judgements  [regression/explicit]
+       The change does not alter which judgements other than the test-evidence rating
+       are carried forward.
+
+[exclusion-08] Where the rule deciding whether a stored result may be carried forward is
+    defined.
+    -> where-carry-forward-rule-is-defined-not-specified  [docs_config/explicit]
+       The change does not specify where the rule deciding whether a stored result may
+       be carried forward is defined.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       The item is a section marker standing alone with no requirement under it.
+
+[completion-02] A judgement asked about a changed criterion receives the stored rating
+    and the changes to that criterion's dependencies.
+    -> changed-criterion-gets-stored-rating-and-dependency-changes  [functional/explicit]
+       A judgement asked about a changed criterion receives the stored rating and the
+       changes to that criterion's dependencies.
+
+[completion-03] The stored rating and the dependency changes are part of the request the
+    judgement is recorded under.
+    -> stored-rating-and-dependency-changes-in-request  [functional/explicit]
+       The stored rating and the dependency changes are part of the request the
+       judgement is recorded under.
+
+[completion-04] A judgement that alters a rating while naming a change it was given is
+    accepted.
+    -> changed-rating-must-name-a-change  [functional/explicit]
+       A judgement that alters a rating while naming a change it was given is accepted.
+
+[completion-05] A judgement that alters a rating while naming no change it was given is
+    rejected, and the stored rating stands.
+    -> changed-rating-with-no-change-is-rejected-and-rating-stands  [error_handling/explicit]
+       A judgement that alters a rating while naming no change it was given is rejected,
+       and the stored rating stands.
+
+[completion-06] The code that reads a judgement performs the rejection.
+    -> judgement-reader-performs-rejection  [functional/explicit]
+       The code that reads a judgement performs the rejection.
+
+[completion-07] A rejected judgement is reported.
+    -> rejected-judgement-reported  [functional/explicit]   (also serves constraint-07)
+       A rejected judgement is reported.
+
+[completion-08] A review with no stored earlier state puts no stored rating in any
+    evidence-judgement request.
+    -> no-stored-rating-in-requests  [functional/explicit]
+       A review with no stored earlier state puts no stored rating in any evidence-
+       judgement request.
+
+[completion-09] Two reviews over the same stored state and the same inputs produce byte-
+    identical review state.
+    -> byte-identical-review-state-on-repeat  [regression/explicit]
+       Two reviews over the same stored state and the same inputs produce byte-identical
+       review state.
+
+[completion-10] The findings recorded as correct in `tests/fixtures/rating-stability/`
+    are still found.
+    -> rating-stability-fixtures-still-found  [regression/explicit]
+       The findings recorded as correct in `tests/fixtures/rating-stability/` are still
+       found.
+
+
+Unreconciled linking answers: answers contradict each other: these obligations are linked transitively but at least one pair among them was denied, so none of them were merged
+  affected: stored-rating-and-changes-recorded-with-judgement-request, changed-criterion-gets-stored-rating-and-dependency-changes, stored-rating-and-dependency-changes-in-request

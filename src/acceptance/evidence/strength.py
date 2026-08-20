@@ -29,8 +29,11 @@ field the §11.1 evidence-classification-agreement metric (scoring.py) reads.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from pydantic import Field
 
+from acceptance.evidence.classification import evidence_class_for
 from acceptance.evidence.discrimination import ObligationDiscrimination
 from acceptance.evidence_tier import EvidenceTier
 from acceptance.model_base import PersistableModel
@@ -132,14 +135,9 @@ def classify_strength(
             )
             continue
 
-        caught = sum(1 for d in discrimination.defects if d.would_be_caught)
-        total = len(discrimination.defects)
-        if caught == total:
-            evidence_class: EvidenceClassification = "strongly_supported"
-        elif caught:
-            evidence_class = "partially_supported"
-        else:
-            evidence_class = "nominally_supported"
+        evidence_class = evidence_class_for(
+            True, [d.would_be_caught for d in discrimination.defects]
+        )
 
         results.append(
             EvidenceStrength(
@@ -150,6 +148,43 @@ def classify_strength(
             )
         )
     return results
+
+
+def hold_rejected_ratings(
+    results: list[EvidenceStrength], held: Mapping[str, str]
+) -> list[EvidenceStrength]:
+    """Restore the stored rating for criteria whose re-judgement was rejected (#292).
+
+    `held` comes from `UnusableAnswerLog.held_ratings`, written by the code that
+    read the judgement. This is only the write-back — the decision was made
+    there, where the response and the changes it was given are both in hand.
+
+    The classification is rewritten; the `test_links` are not. A rejected
+    judgement does not mean the criterion has different tests, it means the
+    rating may not move, so the links stay this run's and remain accurate.
+    """
+    if not held:
+        return results
+    updated = []
+    for result in results:
+        stored = held.get(result.obligation_id)
+        if stored is None or stored == result.evidence_class:
+            updated.append(result)
+            continue
+        updated.append(
+            result.model_copy(
+                update={
+                    "evidence_class": stored,
+                    "explanation": (
+                        f"Re-judged as {result.evidence_class}, which was rejected: the "
+                        f"judgement moved the rating without resting on any change to this "
+                        f"criterion's inputs. The recorded rating {stored} stands. "
+                        f"Original judgement: {result.explanation}"
+                    ),
+                }
+            )
+        )
+    return updated
 
 
 def apply_evidence_strength(

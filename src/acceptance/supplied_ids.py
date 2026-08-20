@@ -159,11 +159,23 @@ class UnusableAnswerLog:
     def __init__(self) -> None:
         self.answers: list[UnusableAnswer] = []
         self.indeterminate_obligations: set[str] = set()
+        # Criteria whose re-judgement moved the rating without naming a change it
+        # was given (#292), mapped to the rating that therefore stands. A dict
+        # rather than a set because the holder needs the value, and reading it
+        # back off the prior review at write-back time would mean two places
+        # deciding what "the stored rating" is.
+        self.held_ratings: dict[str, str] = {}
 
     def record(self, answers: Iterable[UnusableAnswer]) -> list[UnusableAnswer]:
         found = list(answers)
         self.answers.extend(found)
         return found
+
+    def hold_rating(self, obligation_id: str, stored_class: str) -> None:
+        """Record that a criterion's re-judgement was rejected, so its stored
+        rating stands (#292). The rejection itself is decided by the code that
+        reads the judgement; this only carries the decision to the write-back."""
+        self.held_ratings[obligation_id] = stored_class
 
     def mark_indeterminate(self, obligation_ids: Iterable[str]) -> None:
         """Obligations whose judgment was not obtained, so it cannot be reported

@@ -445,6 +445,38 @@ _HEAD_JUDGMENTS = {
             },
         ]
     },
+    # The re-run reaches the pipeline through the ANCHORED schema, because the
+    # prior review rated `ties-to-even` and the head touches the file holding its
+    # mapped test (#292). The rating moves, so the judgement has to say what it
+    # rests on — and here it genuinely rests on something: the builder added the
+    # tie test this whole archetype is about. Same verdicts as `_Discrimination`
+    # above, plus the justification.
+    "_AnchoredDiscrimination": {
+        "obligations": [
+            {
+                "obligation_id": "round-nearest",
+                "defects": [
+                    {
+                        "description": "truncates instead of rounding",
+                        "would_be_caught": True,
+                        "reason": "2.3 would return 2 either way, but 2.5 pins it.",
+                    }
+                ],
+                "rests_on": [],
+            },
+            {
+                "obligation_id": "ties-to-even",
+                "defects": [
+                    {
+                        "description": "rounds half up",
+                        "would_be_caught": True,
+                        "reason": "2.5 -> 2 fails under round-half-up.",
+                    }
+                ],
+                "rests_on": ["mapped-test-file:test_rounding.py"],
+            },
+        ]
+    },
     "_Coverage": {
         "classifications": [
             {
