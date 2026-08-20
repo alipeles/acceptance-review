@@ -1,0 +1,122 @@
+run c5eccc9b1e191874
+  requirements: 18 derived, 0 carried, 0 revised; 3 decompose call(s)
+  continue this run with: --continue c5eccc9b1e191874
+Model usage by stage:
+  stage                                 calls  prompt  output  cached  this run  recorded
+  ------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose           3 (0 live / 3 replayed)  17,746   2,658   46.2%   $0.0000   $0.0197
+  obligation linking  2 (0 live / 2 replayed)   1,499      83    0.0%   $0.0000   $0.0010
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.0207 to record (5 call(s) replayed at no cost to this run)
+Requirements: 18   with obligations: 17   deliberately none: 1
+
+[task-01] Make the model requests of a single review run share their opening text.
+    Content that several of a run's requests carry is written the same way in each of
+    them and placed at the front, ahead of the content that is unique to the request.
+    Where a provider must be told where the reusable opening ends, the client tells it,
+    and no individual request does.
+    -> share-opening-text-across-run-requests  [functional/explicit]
+       The model requests of a single review run share their opening text, with shared
+       content written the same way in each request and placed at the front ahead of
+       request-unique content.
+    -> client-marks-reusable-opening-end  [functional/explicit]   (also serves constraint-05)
+       Where a provider must be told where a request's reusable opening ends, the client
+       marks that boundary and request-building code does not.
+
+[constraint-01] Content carried by more than one of a run's requests is byte-identical
+    in each request that carries it.
+    -> shared-content-byte-identical-across-requests  [invariant/explicit]
+       Content carried by more than one of a run's requests is byte-identical in each
+       request that carries it.
+
+[constraint-02] Each request orders its content by how widely that content is shared
+    across the run's requests: content carried by more of them precedes content carried
+    by fewer, and content carried by that request alone comes last.
+    -> shared-content-ordered-by-breadth  [functional/explicit]
+       Each request orders its content by how widely that content is shared across the
+       run's requests: content carried by more of them precedes content carried by
+       fewer, and content carried by that request alone comes last.
+
+[constraint-03] Two requests of one run that share content share it as a leading run of
+    bytes, not as a fragment somewhere inside them.
+    -> shared-content-leading-run-of-bytes  [invariant/explicit]
+       Two requests of one run that share content share it as a leading run of bytes,
+       not as a fragment somewhere inside them.
+
+[constraint-04] Reordering a request changes only the order of what it carries; it
+    carries the same content afterwards as before.
+    -> request-reordering-preserves-carried-content  [functional/explicit]
+       Reordering a request leaves the request carrying the same content, with only the
+       order of that content changed.
+
+[constraint-05] Where a provider must be told where a request's reusable opening ends,
+    the client marks it and no request-building code does.
+    -> client-marks-reusable-opening-end  [functional/explicit]   (also serves task-01)
+       Where a provider must be told where a request's reusable opening ends, the client
+       marks that boundary and request-building code does not.
+
+[constraint-06] The client does not mark a reusable opening shorter than the shortest
+    one the provider in use can reuse.
+    -> reusable-opening-not-shorter-than-provider-minimum  [boundary/explicit]
+       The client marks a reusable opening that is at least as long as the shortest
+       reusable opening the provider in use can reuse.
+
+[exclusion-01] What any stage is asked, and what content any stage receives. This task
+    changes the order and the wording of content already carried, and adds none.
+    -> no-change-to-asked-or-received-content  [regression/explicit]
+       The change does not alter what any stage is asked or what content any stage
+       receives.
+
+[exclusion-02] Which stages exist, how a stage divides its work across calls, and how
+    large those divisions are.
+    -> no-change-to-stage-structure-or-call-partitioning  [regression/explicit]
+       The change does not alter which stages exist, how a stage divides its work across
+       calls, or how large those divisions are.
+
+[exclusion-03] Model calls issued by the measurement harness, which is not part of a
+    review run.
+    -> no-change-to-measurement-harness-model-calls  [compatibility/explicit]
+       The change does not affect model calls issued by the measurement harness.
+
+[exclusion-04] Whether a provider in fact reuses any part of a request it was offered,
+    which is the provider's own behavior and not this tool's.
+    -> no-claim-about-provider-reuse-behavior  [human_review/explicit]
+       The change does not assert or depend on whether a provider actually reuses any
+       part of an offered request.
+
+[exclusion-05] Reporting tokens, cost or reused-token share, which a run already
+    reports.
+    -> no-change-to-token-cost-or-reuse-reporting  [regression/explicit]
+       The change does not alter reporting of tokens, cost, or reused-token share.
+
+[exclusion-06] What a token costs.
+    -> exclude-token-cost  [functional/explicit]
+       The change does not address what a token costs.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       Section marker standing alone with no requirement under it.
+
+[completion-02] A test fails when a request places content unique to it ahead of content
+    it shares with another request of the same run.
+    -> test-request-unique-content-after-shared-content  [test_demand/explicit]
+       A test fails when a request places content unique to it ahead of content it
+       shares with another request of the same run.
+
+[completion-03] A test fails when content carried by two of a run's requests is written
+    differently in the two.
+    -> test-shared-content-byte-identical-across-requests  [test_demand/explicit]
+       A test fails when content carried by two of a run's requests is written
+       differently in the two.
+
+[completion-04] A test fails when a request built by a stage marks the end of its own
+    reusable opening.
+    -> test-stage-marks-own-reusable-opening-end  [test_demand/explicit]
+       A test fails when a request built by a stage marks the end of its own reusable
+       opening.
+
+[completion-05] Two recorded runs over the same input produce byte-identical review
+    state and byte-identical report output.
+    -> test-recorded-runs-byte-identical-state-and-output  [functional/explicit]
+       Two recorded runs over the same input produce byte-identical review state and
+       byte-identical report output.
+

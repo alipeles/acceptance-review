@@ -309,6 +309,15 @@ only reason #190's cases could use real inputs instead of invented ones. **The
 judgement**: it cannot be reconstructed from the output later, and without it the
 pair is a recording rather than a labelled fixture.
 
+**Check `output.log` is non-empty after writing it** — `wc -c` is enough. Twice
+during #265's Gate 1, `acceptance decompose … > output.log` exited 0 and left a
+**zero-byte** file, and re-running the identical command after `rm -f` produced
+the full 6.9 KB both times. It is not caused by the run making live calls; that
+hypothesis was tested against a probe task file that forced one, and the probe
+wrote its log fine. Cause unknown, so there is no defect to fix and no reliable
+way to avoid it — but a silently empty log destroys the run's only durable record
+while reporting success, and the loss is discovered long afterwards.
+
 This does not conflict with the no-committed-transcripts rule. That rule is about
 *transcripts*, which embed the full request as sent to the model; rendered reports
 and task files are already committed under `tests/fixtures/rating-stability/`.

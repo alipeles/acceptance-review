@@ -36,6 +36,219 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-20] A repeated disposition with mechanically-renamed ids aborts the whole review
+- **Kind:** filing (new sub-issue of #181)
+- **Found during:** #265, Gate 1, run 1
+- **Where:** `src/acceptance/requirement/obligations.py:1203-1216`
+  (`_filter_dispositions`) and `:1265-1269` (`_requirement_map`)
+- **Severity:** should-fix — it is not a bad finding, it is *no* finding: the run
+  produces nothing at all, and once recorded it is permanently fatal for that
+  input
+- **What's wrong:** the decompose call returned `task-01` twice. Both copies are
+  `yielded`, both carry the same seven obligations in the same order with the
+  same descriptions and the same `source_quote`s. They differ in exactly one
+  way: **every id in the second copy has `-dup` appended**, and the suffix is in
+  the model's own response, not added by our `_unique` helper.
+
+  `_filter_dispositions` already handles this case and says so in its comment —
+  *"a response that repeats itself verbatim is a degenerate generation rather
+  than a contradiction — observed once the obligations moved inside the
+  dispositions and responses grew: the model emitted its whole disposition list
+  twice."* But it tests `previous == entry`, whole-object equality, so the
+  perturbed ids slip past. `_requirement_map` then raises
+  `SchemaValidationError: requirement 'task-01' was disposed more than once`,
+  the CLI reports a model error, and the run ends. No obligations, no report, no
+  verdict — for all eighteen requirements, not just `task-01`.
+
+  The disposition being applied is #217's rule for a **self-contradiction**, two
+  *different* answers for one requirement. Two answers identical apart from a
+  mechanical suffix on every id are one answer, repeated.
+- **It is intermittent, and that makes it worse rather than better.** Run 2 was
+  the same task file, same model, same seed, with only the orphaned transcript
+  deleted so the identical request went out live — and it came back clean. So the
+  tool cannot stop the model repeating itself; what it controls is the response,
+  and today the response is to abandon the review. And because the bad answer is
+  recorded under the request key, every later run replays it and fails the same
+  way. Deleting the transcript is the only remedy and nothing says so.
+- **Why I didn't act:** it is in `requirement/`, outside #265's area (which is
+  request assembly and the client), and the fix needs a call on how far the
+  collapse should reach — see the draft.
+- **Drafted fix:** file as a sub-issue of #181, `bug` / `track:checker`:
+
+  > **Title:** A repeated disposition with mechanically-renamed ids aborts the entire review
+  >
+  > Child of #181. Labels: `bug`, `track:checker`.
+  >
+  > ## What happens
+  >
+  > From #265's Gate 1 run 1 (`dogfood-logs/265-gate1-run1/`):
+  >
+  > ```
+  > acceptance: model error: requirement 'task-01' was disposed more than once
+  > ```
+  >
+  > The third decompose batch was asked about two requirements and returned
+  > three dispositions — `exclusion-06`, `task-01`, `task-01`. The two `task-01`
+  > entries are the same disposition twice: same `yielded`, same seven
+  > obligations in the same order, same descriptions, same `source_quote`s. The
+  > only difference is that every id in the second copy ends in `-dup`:
+  >
+  > | copy | head obligation | in `more_obligations` |
+  > |---|---|---|
+  > | 1 | `share-opening-text-across-run-requests` | six ids |
+  > | 2 | `share-opening-text-across-run-requests-dup` | the same six, each `+-dup` |
+  >
+  > The suffix is the model's, visible in the recorded response body. It is not
+  > `_unique`'s `-2`.
+  >
+  > ## Why the existing guard misses it
+  >
+  > `_filter_dispositions` (`obligations.py:1203-1216`) exists for exactly this
+  > failure mode. Its comment names it:
+  >
+  > > An EXACT repeat of a disposition already returned in this response is
+  > > dropped, not rejected. … a response that repeats itself verbatim is a
+  > > degenerate generation rather than a contradiction — observed once the
+  > > obligations moved inside the dispositions and responses grew: the model
+  > > emitted its whole disposition list twice.
+  >
+  > The test is `previous == entry` — equality of the whole disposition object.
+  > Renaming the ids defeats it, so the copy is passed through as a *differing*
+  > duplicate and `_requirement_map` (`:1265-1269`) raises.
+  >
+  > That raise implements #217's rule against a **self-contradiction**: "two
+  > different answers for one requirement". These are not two different answers.
+  > The obligations say the same thing in the same words; only their labels
+  > moved, and the labels are ours to assign anyway — `_unique` already rewrites
+  > colliding ids.
+  >
+  > ## Consequence
+  >
+  > The whole review is abandoned, not the duplicate. Eighteen requirements were
+  > decomposed and none survive. And the response is **recorded**, so the failure
+  > is permanent for that input: every rerun replays the stored answer and dies
+  > identically. Clearing it means finding and deleting the transcript by hand,
+  > which nothing in the output suggests.
+  >
+  > This collides with the standing invariant that uncertainty is first-class.
+  > A degenerate repeat is at worst an indeterminate result about one
+  > requirement; it is not grounds for producing nothing.
+  >
+  > ## It is intermittent
+  >
+  > Run 2 (`dogfood-logs/265-gate1-run2/`) issued the byte-identical request
+  > live after the transcript was deleted, and returned a clean, complete answer
+  > — 18 requirements, 17 with obligations, no open questions. Same model, same
+  > seed, same input. So this is not a property of the task file, and no
+  > rewording avoids it.
+  >
+  > ## Suggested direction
+  >
+  > Compare dispositions for equality **ignoring ids** — the ids carry no
+  > meaning the pipeline does not assign itself, and `_unique` already renames
+  > collisions. A second copy whose obligations match the first field for field
+  > apart from their ids is a repeat, and should be dropped and recorded on
+  > `UnusableAnswerLog` as a degenerate generation, exactly as the verbatim case
+  > already is.
+  >
+  > Deliberately narrower than "drop any duplicate": a copy that differs in a
+  > `description`, `type` or `source_quote` is still a real contradiction and
+  > must still raise. This is the same shape of fix as #248, one level up — #248
+  > collapses a repeated **obligation** inside one disposition, this collapses a
+  > repeated **disposition** inside one response.
+  >
+  > Worth deciding alongside it: whether a `SchemaValidationError` from one
+  > batch should end the run at all, or be recorded against that batch's
+  > requirements while the rest of the review proceeds. That is the same
+  > argument #275 makes about one omitted recommendation aborting thirteen.
+  >
+  > ## Acceptance
+  >
+  > - A response that returns one requirement's disposition twice, identical
+  >   except for ids, yields that requirement's obligations once and completes.
+  > - The collapse is recorded on `UnusableAnswerLog`, not silent.
+  > - A second disposition differing in any field other than an id still raises.
+  > - A test drives `decompose` through the path, not only the helper.
+  >
+  > Evidence: `dogfood-logs/265-gate1-run1/` (`judgement.md`), and
+  > `dogfood-logs/265-gate1-run2/` for the clean re-issue of the same request.
+- **Status:** filed (#298, sub-issue of #181). A `Related:` line was added at
+  filing time, beyond the approved draft.
+
+### [2026-08-20] An imperative Task headline yields an obligation that states an instruction, not a property
+- **Kind:** filing (comment on existing issue #297)
+- **Found during:** #265, Gate 1, runs 2 and 3
+- **Where:** `dogfood-logs/265-gate1-run3/output.log`, requirement `task-01`
+- **Severity:** nice-to-have — #297 already owns the defect; this adds a variant
+  it does not cover
+- **What's wrong:** #297 is about an imperative headline losing its verb and
+  producing an ungrammatical obligation. This run shows the other outcome: the
+  imperative is carried through **intact and grammatical**, so the obligation
+  reads *"Make the model requests of a single review run open alike wherever they
+  carry the same content, so …"* — a well-formed instruction rather than a
+  property that could be true or false of the code. The grammar is not the
+  defect; carrying the mood is.
+- **Why I didn't act:** #297 owns it, and rewriting the mandate a third time to
+  dodge it would be tuning the input. The headline is ordinary house style.
+- **Drafted fix:** comment on #297:
+
+  > A variant from #265's Gate 1 (`dogfood-logs/265-gate1-run3/`), worth adding
+  > because it shows the grammar is not what is wrong.
+  >
+  > Headline: *"Make the model requests of a single review run open alike
+  > wherever they carry the same content, so a provider that can reuse a
+  > repeated opening has as long an opening to reuse as the run allows."*
+  >
+  > Derived obligation: *"Make the model requests of a single review run open
+  > alike wherever they carry the same content, so shared content is written the
+  > same way in each request and appears as long a reusable opening as the run
+  > allows."*
+  >
+  > Here the verb survives and the sentence is well formed — the failure in this
+  > issue's original instance does not occur. What survives with it is the
+  > **imperative mood**, so the obligation states a thing to do rather than a
+  > property that is true or false of a diff. Every downstream stage asks
+  > "is this satisfied?", which is not a question an instruction answers.
+  >
+  > That suggests the fix is not repairing the verb but converting the mood:
+  > an obligation derived from an imperative should be restated in the
+  > indicative, as the Constraints in the same file already are.
+  >
+  > A second instance for this issue's other Acceptance bullet, from run 2 of the
+  > same gate: before the headline was reworded, `task-01` yielded a single
+  > obligation conjoining `constraint-01` and `constraint-02`. Because it
+  > restates *two* constraints, it matches neither on its own and the linker
+  > merged it with neither — so a composite restatement is strictly harder to
+  > reconcile than the single-constraint restatement that bullet describes.
+- **Status:** filed (#297 comment)
+
+### [2026-08-20] A dogfood `output.log` can come back empty with exit 0
+- **Kind:** defect (working procedure, not the tool)
+- **Found during:** #265, Gate 1, runs 2 and 3
+- **Where:** `CLAUDE.md`, *Dogfooding — the review gates*
+- **Severity:** nice-to-have
+- **What's wrong:** twice in one gate, `acceptance decompose … > output.log`
+  exited 0 and left a **zero-byte** file; re-running the identical command after
+  `rm -f` produced the full 6.9 KB both times. Both empty files had mode `0600`
+  where a shell redirect normally gives `0644`. A silently empty log destroys the
+  dogfood run's only durable record while reporting success — and the gate
+  procedure requires that file.
+- **I could not reproduce it, and the obvious explanation is wrong.** The
+  hypothesis was that it happens when the run issues live calls. Tested with a
+  probe task file edited to force a live decompose call and redirected to a
+  file: 6,551 bytes, no failure. So there is no mechanism here and **nothing is
+  filed against the tool** — this looks like a shell or sandbox artifact.
+- **Why I didn't act:** unreproducible, and out of #265's area regardless.
+- **Drafted fix — recommendation: one line in `CLAUDE.md`,** under the
+  `dogfood-logs/` layout: *"Check `output.log` is non-empty after writing it. A
+  redirect has twice produced a zero-byte log on a successful run."*
+  **Rejected alternative:** chasing the cause. Two occurrences, no reproduction,
+  and the check costs one `wc -c`.
+- **Status:** fixed (human decision, 2026-08-20 — "just fix the CLAUDE.md issue").
+  The line landed under the `dogfood-logs/` layout in *Dogfooding — the review
+  gates*, stating plainly that the cause is unknown and that the live-calls
+  hypothesis was tested and disproved.
+
 ### [2026-08-20] Should a rating be allowed to FALL without naming a change?
 - **Kind:** decision
 - **Found during:** #292, Gate 2, run 1
