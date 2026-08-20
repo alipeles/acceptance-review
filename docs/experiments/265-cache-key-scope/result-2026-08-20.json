@@ -1,35 +1,36 @@
 {
   "model": "openai/gpt-5.4-mini",
+  "nonce": "r1787255025",
   "results": [
     {
       "case": "cold",
       "schema": "_Coverage",
       "share": 0.0,
-      "prompt_tokens": 8898,
-      "completion_tokens": 34,
+      "prompt_tokens": 9998,
+      "completion_tokens": 45,
       "cached_tokens": 0
     },
     {
       "case": "repeat_same",
       "schema": "_Coverage",
-      "share": 0.9494268374915711,
-      "prompt_tokens": 8898,
-      "completion_tokens": 37,
-      "cached_tokens": 8448
+      "share": 0.9473894778955791,
+      "prompt_tokens": 9998,
+      "completion_tokens": 39,
+      "cached_tokens": 9472
     },
     {
       "case": "same_schema_new_tail",
       "schema": "_Coverage",
-      "share": 0.9496402877697842,
-      "prompt_tokens": 8896,
-      "completion_tokens": 56,
-      "cached_tokens": 8448
+      "share": 0.947579031612645,
+      "prompt_tokens": 9996,
+      "completion_tokens": 64,
+      "cached_tokens": 9472
     },
     {
       "case": "different_schema",
       "schema": "_Detections",
       "share": 0.0,
-      "prompt_tokens": 8904,
+      "prompt_tokens": 10004,
       "completion_tokens": 16,
       "cached_tokens": 0
     },
@@ -37,18 +38,42 @@
       "case": "different_schema_same_shape",
       "schema": "_Renamed",
       "share": 0.0,
-      "prompt_tokens": 8899,
-      "completion_tokens": 34,
+      "prompt_tokens": 9999,
+      "completion_tokens": 57,
       "cached_tokens": 0
     },
     {
       "case": "different_prefix",
       "schema": "_Coverage",
       "share": 0.0,
-      "prompt_tokens": 8891,
-      "completion_tokens": 71,
+      "prompt_tokens": 9991,
+      "completion_tokens": 50,
+      "cached_tokens": 0
+    },
+    {
+      "case": "constrained_enum_cold",
+      "schema": "_Mappings",
+      "share": 0.0,
+      "prompt_tokens": 10021,
+      "completion_tokens": 53,
+      "cached_tokens": 0
+    },
+    {
+      "case": "constrained_enum_same",
+      "schema": "_Mappings",
+      "share": 0.9455924927623041,
+      "prompt_tokens": 10017,
+      "completion_tokens": 79,
+      "cached_tokens": 9472
+    },
+    {
+      "case": "constrained_enum_differs",
+      "schema": "_Mappings",
+      "share": 0.0,
+      "prompt_tokens": 10017,
+      "completion_tokens": 62,
       "cached_tokens": 0
     }
   ],
-  "verdict": "The response schema IS in the cache key, and the schema NAME alone is enough to break reuse. Cross-stage prefix sharing is impossible by construction: every stage sends a different response model. #265's remaining lever is batch composition within a partitioned stage, not prompt ordering across stages."
+  "verdict": "CROSS-STAGE: the response schema IS in the cache key, and the schema NAME alone is enough to break reuse. Two stages can never share an opening, because every stage sends a different response model.\n\nSIBLING CALLS: they CANNOT share an opening. The per-call id enum that `supplied_ids.constrain` embeds is enough to break reuse, so every batch of a partitioned stage is a cache miss by construction. Prompt ordering cannot help ANY stage as things stand, and #265's lever is the constrained-decoding design rather than the prompt."
 }

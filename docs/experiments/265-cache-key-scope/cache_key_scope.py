@@ -74,15 +74,31 @@ from acceptance.config import DEFAULT_MODEL, DEFAULT_SEED
 from acceptance.llm import inline_schema_refs
 from acceptance.request_blocks import SHARED_PREAMBLE
 
-# Long enough to clear OpenAI's 1,024-token minimum with room to spare, and
-# varied enough not to be a degenerate repeat of one token.
-_OPENING = "\n".join(
-    f"[hunk {i}] def handler_{i}(payload, *, retries={i}):\n"
-    f"    # normalise the {i}th field before dispatch\n"
-    f"    return dispatch(payload, retries=retries, strict=True)"
-    for i in range(220)
-)
-_ALT_OPENING = _OPENING.replace("handler_", "worker_").replace("dispatch", "route")
+
+def _opening(nonce: str) -> str:
+    """Long enough to clear OpenAI's 1,024-token minimum, and unique per run.
+
+    **The nonce is load-bearing.** Without it a second run inside the provider's
+    retention window starts warm: the `cold` row is not cold and the
+    `different_prefix` negative control HITS, because that opening was sent by
+    the previous run. That happened — the third run of this script reported 94.9%
+    on every row including both controls, which is why `verdict()` refuses to
+    conclude when the negative control hits.
+
+    A fresh nonce makes every opening in a run unseen, so the run measures reuse
+    it caused rather than reuse it inherited.
+    """
+    return "\n".join(
+        f"[hunk {i}] def handler_{i}_{nonce}(payload, *, retries={i}):\n"
+        f"    # normalise the {i}th field before dispatch\n"
+        f"    return dispatch(payload, retries=retries, strict=True)"
+        for i in range(220)
+    )
+
+
+def _alt_opening(nonce: str) -> str:
+    return _opening(nonce).replace("handler_", "worker_").replace("dispatch", "route")
+
 
 _SCHEMA_A = {
     "name": "_Coverage",
@@ -108,6 +124,31 @@ _SCHEMA_B = {
 }
 # Same fields as A, different name only.
 _SCHEMA_B2 = {**_SCHEMA_B, "name": "_Renamed", "schema": _SCHEMA_A["schema"]}
+
+
+def _constrained(values: list[str]) -> dict:
+    """Schema A with an id field constrained to `values` — what `constrain` builds.
+
+    This is the shape every partitioned stage actually sends. `supplied_ids.
+    constrain` restricts each id field to a `Literal` of the ids *that call*
+    supplied, so two sibling calls of one stage carry the same schema NAME and
+    the same fields but a different enum. Whether that difference breaks reuse is
+    a separate question from the name and the shape, and it is the one that
+    decides whether sibling calls can share an opening at all.
+    """
+    return {
+        "name": "_Mappings",
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "verdict": {"type": "string"},
+                "why": {"type": "string"},
+                "target_id": {"type": "string", "enum": values},
+            },
+            "required": ["verdict", "why", "target_id"],
+        },
+    }
 
 
 def _call(messages: list[dict], schema: dict, model: str) -> dict:
@@ -145,19 +186,34 @@ def _messages(opening: str, tail: str) -> list[dict]:
     ]
 
 
-def run(model: str, pause: float) -> list[dict]:
-    base = _messages(_OPENING, "Return a one-word verdict and a one-line reason.")
+def run(model: str, pause: float, nonce: str) -> list[dict]:
+    opening = _opening(nonce)
+    base = _messages(opening, "Return a one-word verdict and a one-line reason.")
     cases = [
         ("cold", base, _SCHEMA_A),
         ("repeat_same", base, _SCHEMA_A),
         (
             "same_schema_new_tail",
-            _messages(_OPENING, "Different question entirely; answer in the schema."),
+            _messages(opening, "Different question entirely; answer in the schema."),
             _SCHEMA_A,
         ),
         ("different_schema", base, _SCHEMA_B),
         ("different_schema_same_shape", base, _SCHEMA_B2),
-        ("different_prefix", _messages(_ALT_OPENING, "Return a verdict."), _SCHEMA_A),
+        ("different_prefix", _messages(_alt_opening(nonce), "Return a verdict."), _SCHEMA_A),
+        # The sibling-call pair. Same schema name, same fields, and an id enum
+        # that differs the way two batches of one partitioned stage differ. The
+        # first is the cold call for this schema; the second is the question.
+        ("constrained_enum_cold", base, _constrained(["a-1", "a-2", "a-3"])),
+        (
+            "constrained_enum_same",
+            _messages(opening, "A sibling batch, same enum."),
+            _constrained(["a-1", "a-2", "a-3"]),
+        ),
+        (
+            "constrained_enum_differs",
+            _messages(opening, "A sibling batch, different enum."),
+            _constrained(["b-1", "b-2", "b-3"]),
+        ),
     ]
 
     results = []
@@ -174,6 +230,17 @@ def run(model: str, pause: float) -> list[dict]:
 
 
 def verdict(results: list[dict]) -> str:
+    """Two independent findings, reported together.
+
+    They were separate branches of one `if` in the first version of this script,
+    which meant the cross-stage answer returned before the sibling-call rows were
+    read — and printed a conclusion about partitioned stages that the sibling
+    rows contradict. They are different questions and both get answered.
+    """
+    return f"{_cross_stage(results)}\n\n{_sibling(results)}"
+
+
+def _cross_stage(results: list[dict]) -> str:
     by_case = {r["case"]: r for r in results}
 
     def hit(name: str) -> bool:
@@ -201,21 +268,54 @@ def verdict(results: list[dict]) -> str:
         )
     if not hit("different_schema") and not hit("different_schema_same_shape"):
         return (
-            "The response schema IS in the cache key, and the schema NAME alone "
-            "is enough to break reuse. Cross-stage prefix sharing is impossible "
-            "by construction: every stage sends a different response model. "
-            "#265's remaining lever is batch composition within a partitioned "
-            "stage, not prompt ordering across stages."
+            "CROSS-STAGE: the response schema IS in the cache key, and the schema "
+            "NAME alone is enough to break reuse. Two stages can never share an "
+            "opening, because every stage sends a different response model."
         )
     if hit("different_schema_same_shape"):
         return (
-            "The schema SHAPE is in the cache key but the name is not. Stages "
-            "sharing a response shape could share an opening; stages with "
-            "different shapes cannot."
+            "CROSS-STAGE: the schema SHAPE is in the cache key but the name is "
+            "not. Stages sharing a response shape could share an opening; stages "
+            "with different shapes cannot."
         )
     return (
-        "The schema NAME is in the cache key but the shape is not — an odd "
-        "result, worth re-running before acting on it."
+        "CROSS-STAGE: the schema NAME is in the cache key but the shape is not — "
+        "an odd result, worth re-running before acting on it."
+    )
+
+
+def _sibling(results: list[dict]) -> str:
+    """Can two batches of ONE partitioned stage share an opening?
+
+    A separate question from the cross-stage one, because sibling calls already
+    agree on the schema's name and its fields. What they do not agree on is the
+    id enum `supplied_ids.constrain` embeds per call.
+    """
+    by_case = {r["case"]: r for r in results}
+    if "constrained_enum_differs" not in by_case:
+        return "SIBLING CALLS: not measured in this run."
+
+    def hit(name: str) -> bool:
+        return bool(by_case[name]["cached_tokens"])
+
+    if not hit("constrained_enum_same"):
+        return (
+            "SIBLING CALLS: INCONCLUSIVE — even an IDENTICAL constrained schema "
+            "missed, so the enum rows cannot be read."
+        )
+    if hit("constrained_enum_differs"):
+        return (
+            "SIBLING CALLS: they CAN share an opening. The id enum differs "
+            "between batches and reuse survived it, so the ordering change pays "
+            "for the partitioned stages and a low measured share has some other "
+            "cause."
+        )
+    return (
+        "SIBLING CALLS: they CANNOT share an opening. The per-call id enum that "
+        "`supplied_ids.constrain` embeds is enough to break reuse, so every batch "
+        "of a partitioned stage is a cache miss by construction. Prompt ordering "
+        "cannot help ANY stage as things stand, and #265's lever is the "
+        "constrained-decoding design rather than the prompt."
     )
 
 
@@ -224,22 +324,33 @@ def main() -> int:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--json", type=Path, help="write the full result here")
     parser.add_argument("--pause", type=float, default=3.0, help="seconds between calls")
+    parser.add_argument(
+        "--nonce",
+        default=None,
+        help="makes this run's openings unique. Defaults to the clock; pass one "
+        "explicitly only to reproduce a recorded run, which will report every "
+        "row as a hit if the provider still holds it.",
+    )
     args = parser.parse_args()
 
     if not (os.environ.get("OPENAI_API_KEY") or Path(".env").is_file()):
         print("no credentials found; this experiment makes live calls", file=sys.stderr)
         return 2
 
-    print(f"model {args.model}, seed {DEFAULT_SEED}, temperature 0.0")
-    print(f"opening is {len(_OPENING):,} chars\n")
-    results = run(args.model, args.pause)
+    nonce = args.nonce or f"r{int(time.time())}"
+    print(f"model {args.model}, seed {DEFAULT_SEED}, temperature 0.0, nonce {nonce}")
+    print(f"opening is {len(_opening(nonce)):,} chars\n")
+    results = run(args.model, args.pause, nonce)
 
     answer = verdict(results)
     print(f"\n{answer}")
 
     if args.json:
         args.json.write_text(
-            json.dumps({"model": args.model, "results": results, "verdict": answer}, indent=2)
+            json.dumps(
+                {"model": args.model, "nonce": nonce, "results": results, "verdict": answer},
+                indent=2,
+            )
             + "\n"
         )
     return 0

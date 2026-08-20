@@ -81,6 +81,13 @@ whether the checker works. GitHub Acceptance Review is Stage 2 — out of scope.
   control moved, so the recordings must be re-verified, and benchmark figures
   spanning that stage stop being comparable. Sequence prompt work to pay that
   cost once.
+
+  **The per-lane part stops holding as soon as anything shared builds the
+  request.** A change to common request-assembly moves every stage's key at the
+  same time, so the whole corpus orphans in one go rather than one lane's — and
+  "pay it once" becomes a repo-wide constraint rather than a per-lane one. Check
+  whether what you are editing is a stage's own prompt or something every stage
+  goes through before estimating the cost.
 - Interpreter is `.venv/`. Provider keys, needed only when recording, come from
   `.env` (gitignored).
 
