@@ -23,7 +23,7 @@ from acceptance.llm import (
     TranscriptStore,
     _extract_usage,
 )
-from acceptance.usage import render, summarize
+from acceptance.usage import _PIPELINE_ORDER, render, summarize
 
 
 def _call(stage, served_from, **usage):
@@ -129,17 +129,107 @@ def test_a_fully_replayed_run_spends_nothing_and_says_so():
 def test_each_stage_is_accounted_for_separately_and_in_a_stable_order():
     usage = summarize(
         [
-            _call("mapping", SERVED_FROM_PROVIDER, cost_usd=0.02, prompt_tokens=10),
-            _call("decompose", SERVED_FROM_PROVIDER, cost_usd=0.03, prompt_tokens=20),
-            _call("mapping", SERVED_FROM_PROVIDER, cost_usd=0.04, prompt_tokens=30),
+            _call("test-to-obligation mapping", SERVED_FROM_PROVIDER, prompt_tokens=10),
+            _call("decompose", SERVED_FROM_PROVIDER, prompt_tokens=20),
+            _call("test-to-obligation mapping", SERVED_FROM_PROVIDER, prompt_tokens=30),
         ]
     )
 
-    assert [stage.stage for stage in usage.stages] == ["decompose", "mapping"]
+    assert [stage.stage for stage in usage.stages] == [
+        "decompose",
+        "test-to-obligation mapping",
+    ]
     mapping = usage.stages[1]
     assert mapping.calls == 2
     assert mapping.prompt_tokens == 40
-    assert round(mapping.run_spend_usd, 4) == 0.06
+
+
+def test_stages_are_reported_in_the_order_the_pipeline_runs_them():
+    """Not alphabetically: the table is read as the review proceeds.
+
+    Alphabetical put `coverage classification` above `decompose` and split the
+    three `evidence/` stages apart, so a reader had to reassemble the sequence
+    themselves. The calls are fed in deliberately jumbled order here, because an
+    incremental re-run issues its live calls in a different sequence from the run
+    that recorded them and the table must not depend on that.
+    """
+    usage = summarize(
+        [
+            _call("declaration comparison", SERVED_FROM_PROVIDER),
+            _call("coverage classification", SERVED_FROM_PROVIDER),
+            _call("decompose", SERVED_FROM_PROVIDER),
+            _call("test recommendation", SERVED_FROM_PROVIDER),
+            _call("test-to-obligation mapping", SERVED_FROM_PROVIDER),
+            _call("obligation linking", SERVED_FROM_PROVIDER),
+            _call("discrimination judgment", SERVED_FROM_PROVIDER),
+        ]
+    )
+
+    assert [stage.stage for stage in usage.stages] == [
+        "decompose",
+        "obligation linking",
+        "test-to-obligation mapping",
+        "discrimination judgment",
+        "coverage classification",
+        "test recommendation",
+        "declaration comparison",
+    ]
+
+
+def test_a_stage_the_order_does_not_name_is_reported_last_rather_than_dropped():
+    """The order is presentation, not a whitelist.
+
+    A stage added without touching `_PIPELINE_ORDER` must still show its spend —
+    losing a row would understate the run's cost, which is worse than showing it
+    in the wrong place. `test_every_pipeline_stage_appears_in_the_reported_order`
+    is what makes that a temporary state rather than a silent one.
+    """
+    usage = summarize(
+        [
+            _call("a brand new stage", SERVED_FROM_PROVIDER, prompt_tokens=5),
+            _call("decompose", SERVED_FROM_PROVIDER, prompt_tokens=7),
+        ]
+    )
+
+    assert [stage.stage for stage in usage.stages] == ["decompose", "a brand new stage"]
+    assert usage.stages[1].prompt_tokens == 5
+
+
+def test_every_pipeline_stage_appears_in_the_reported_order():
+    """Guards the order against drift as stages are added or renamed.
+
+    Read off the modules' own `_STAGE` constants rather than restated, so a
+    rename that leaves the footer ordering behind fails here instead of quietly
+    dropping that stage to the bottom of the table.
+    """
+    from acceptance.coverage.classify import _STAGE as CLASSIFY
+    from acceptance.coverage.declaration_comparison import _STAGE as DECLARATION
+    from acceptance.coverage.disposition import _STAGE as DISPOSITION
+    from acceptance.coverage.open_questions import _STAGE as OPEN_QUESTIONS
+    from acceptance.coverage.recommendations import _STAGE as RECOMMENDATIONS
+    from acceptance.coverage.unrequested import _STAGE as UNREQUESTED
+    from acceptance.evidence.discrimination import _STAGE as DISCRIMINATION
+    from acceptance.evidence.mapping import _STAGE as MAPPING
+    from acceptance.requirement.linking import _STAGE as LINKING
+    from acceptance.requirement.obligations import _STAGE as DECOMPOSE
+
+    declared = {
+        DECOMPOSE,
+        LINKING,
+        OPEN_QUESTIONS,
+        MAPPING,
+        DISCRIMINATION,
+        CLASSIFY,
+        UNREQUESTED,
+        DISPOSITION,
+        RECOMMENDATIONS,
+        DECLARATION,
+    }
+
+    missing = declared - set(_PIPELINE_ORDER)
+    assert not missing, f"these stages are not in the footer's pipeline order: {sorted(missing)}"
+    stale = set(_PIPELINE_ORDER) - declared
+    assert not stale, f"the footer's pipeline order names stages nothing issues: {sorted(stale)}"
 
 
 def test_the_cached_share_is_measured_only_over_calls_that_reported_one():

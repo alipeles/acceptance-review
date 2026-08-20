@@ -32,6 +32,29 @@ from pydantic import BaseModel
 
 from acceptance.llm import SERVED_FROM_PROVIDER
 
+# The order `pipeline.py::run_review` actually calls the stages in (§10.1), which
+# is the order the footer reports them in. Alphabetical was the first cut and it
+# read badly: it put `coverage classification` above `decompose` and scattered
+# the three `evidence/` stages, so the one question the table is for — where does
+# the money go as a review proceeds — had to be reassembled by the reader.
+#
+# A stage this does not name still appears, after these and alphabetically among
+# themselves, so a new stage is reported rather than dropped. It is a
+# presentation order, not a whitelist. `tests/test_usage.py` fails when a stage
+# the pipeline can issue is missing from this tuple.
+_PIPELINE_ORDER = (
+    "decompose",
+    "obligation linking",
+    "open-question judgment",
+    "test-to-obligation mapping",
+    "discrimination judgment",
+    "coverage classification",
+    "unrequested-change detection",
+    "disposition judgment",
+    "test recommendation",
+    "declaration comparison",
+)
+
 # Every token field an aggregate sums. Cache-creation and cache-write counts are
 # summed but not shown per stage — they explain a cost figure when one is being
 # investigated, and cluttering the common case with them helps nobody.
@@ -120,13 +143,21 @@ def _number(usage: Mapping[str, Any], name: str) -> float | None:
     return value
 
 
+def _position(stage: str) -> tuple[int, str]:
+    """Sort key: pipeline order first, then anything unrecognised, alphabetically."""
+    if stage in _PIPELINE_ORDER:
+        return (_PIPELINE_ORDER.index(stage), "")
+    return (len(_PIPELINE_ORDER), stage)
+
+
 def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
     """Fold `ModelClient.observed_calls` into a per-stage aggregate.
 
-    Stages come out sorted by name so that two runs over the same input produce
-    the same rows in the same order — the footer is on stderr and out of the
-    byte-identical guarantee, but a report that reshuffles itself between runs is
-    unreadable regardless.
+    Stages come out in the order the pipeline runs them, so the table reads as
+    the review proceeds. The order is derived from the stage name alone, never
+    from the order calls happened to arrive in: two runs over the same input must
+    produce the same rows in the same order, and an incremental re-run issues its
+    live calls in a different sequence from the run that recorded them.
     """
     by_stage: dict[str, StageUsage] = {}
 
@@ -160,7 +191,7 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
             if from_provider:
                 stage.run_spend_usd += cost
 
-    return RunUsage(stages=[by_stage[name] for name in sorted(by_stage)])
+    return RunUsage(stages=[by_stage[name] for name in sorted(by_stage, key=_position)])
 
 
 def _share(value: float | None) -> str:
