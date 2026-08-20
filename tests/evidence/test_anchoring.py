@@ -129,20 +129,31 @@ def _judge(judgements, anchors, capture=None):
 # --- what the judgement is given -------------------------------------------
 
 
-def test_a_changed_criterion_is_given_its_stored_rating_and_its_dependency_changes():
-    """Acceptance: the anchored request carries both, and carries them where the
-    model reads them — in the prompt, not merely in the caller's variables."""
+def _anchored_prompt() -> str:
+    """The request text a judgement about one anchored criterion is sent."""
     capture: list = []
     _judge(
         _judgement(caught=True, rests_on=[]),
         {"prorate": _anchor("mapped-test-file:test_billing.py")},
         capture=capture,
     )
-
     anchored = [call for call in capture if call["schema"] == "_AnchoredDiscrimination"]
     assert len(anchored) == 1, "the anchored schema was not the one requested"
-    prompt = anchored[0]["prompt"]
-    assert "rating recorded by the earlier review: strongly_supported" in prompt
+    return anchored[0]["prompt"]
+
+
+def test_a_changed_criterion_is_given_the_rating_stored_for_it():
+    """Acceptance: the stored rating reaches the judge — in the prompt, where the
+    model reads it, not merely in the caller's variables."""
+    assert "rating recorded by the earlier review: strongly_supported" in _anchored_prompt()
+
+
+def test_a_changed_criterion_is_given_the_changes_to_its_dependencies():
+    """Acceptance: and so do the changes it is allowed to rest on, each with the
+    id it must cite to use it."""
+    prompt = _anchored_prompt()
+
+    assert "changes to this criterion's inputs since that rating:" in prompt
     assert "id=mapped-test-file:test_billing.py" in prompt
 
 

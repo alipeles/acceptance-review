@@ -172,6 +172,64 @@ def test_a_judge_that_never_issues_strongly_supported_fails_the_suite(corpus_wor
     assert report.gap_precision < 1.0
 
 
+def test_the_corpus_findings_survive_the_anchored_rejudgement(corpus_worktrees, monkeypatch):
+    """#292 acceptance: the findings recorded here are still found.
+
+    #292 added a re-judgement that can HOLD a rating — a judgement that moves a
+    criterion's rating without resting on a change to that criterion's inputs is
+    rejected, and the stored rating stands. A mechanism that can hold a rating
+    can in principle hold a wrong one, which is the failure `DR-180` calls the
+    dangerous direction, so this corpus needs to be scored with that mechanism
+    present rather than around it.
+
+    Two claims, and the second is what makes the first mean anything:
+
+    - the scoreboard still separates the two degenerate judges, so the ratings
+      it reads are still the judge's own;
+    - no anchor is built while scoring, so no rating was held. Every case here
+      is a FIRST review, which by construction has no stored rating to hold.
+
+    Without the second, a change that froze every rating would sail through the
+    first: the two judges would still differ on the cases scored before the
+    freeze took hold, and nobody would learn that the corpus had stopped
+    measuring the judge.
+    """
+    import acceptance.pipeline as pipeline_module
+
+    anchored_calls = []
+    real_build_anchors = pipeline_module.build_anchors
+
+    def counting_build_anchors(*args, **kwargs):
+        result = real_build_anchors(*args, **kwargs)
+        anchored_calls.append(result)
+        return result
+
+    monkeypatch.setattr(pipeline_module, "build_anchors", counting_build_anchors)
+
+    # The counter must be able to move, or "no anchor was built" is a claim about
+    # a patch that missed its target rather than about the run. `run_review`
+    # resolves this name at call time, so patching it here is what it will see.
+    from acceptance.review_state import ChangeSet as _ChangeSet
+    from acceptance.review_state import Review as _Review
+
+    pipeline_module.build_anchors(
+        _Review(mode="local", reviewed_revision="x", obligation_map=[]),
+        [],
+        _ChangeSet(base_revision="b", head_revision="h", files=[]),
+    )
+    assert len(anchored_calls) == 1, "the patch is not on the name the pipeline calls"
+    anchored_calls.clear()
+
+    permissive = _score_with(always_strong=True, tmp_path=corpus_worktrees / "a")
+    pessimistic = _score_with(always_strong=False, tmp_path=corpus_worktrees / "b")
+
+    assert permissive.evidence_agreement != pessimistic.evidence_agreement
+    assert not any(anchored_calls), (
+        "a corpus case built an anchor, so a rating could have been held and "
+        "these scores no longer describe the judge alone"
+    )
+
+
 def test_the_two_degenerate_judges_disagree_about_the_ratings(corpus_worktrees):
     """Guards the harness rather than the judge.
 

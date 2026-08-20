@@ -86,6 +86,38 @@ view cannot yet see a change that is real but sub-file. Freezing a rating we
 cannot explain is the same failure as moving one we cannot explain, pointing the
 other way. So the anchor applies only where there is something to name.
 
+## The rule is symmetric, and that was decided deliberately
+
+A rating that moves without resting on a supplied change is held **whichever way
+it moved**. Raising and lowering are treated identically.
+
+This was questioned at #292's Gate 2 and settled by the owner on 2026-08-20. The
+question was whether a *falling* rating should be let through unjustified, on the
+grounds that `DR-180` found the low rating correct in 7 of its 8 unstable
+obligations — so a fall is usually the judge finally noticing a real hole.
+
+**That argument was rejected, and the reasoning is worth keeping.** It confuses
+two problems:
+
+1. **A prior judgement must not move without a changed input.** This is the rule,
+   it applies everywhere in the pipeline, and it has no direction-dependent
+   exception. A rating that falls for no stated reason is exactly as untrustworthy
+   as one that rises for no stated reason — in both cases the verdict is a
+   function of how many times the obligation was looked at.
+2. **The first judgement should be right more often.** This is `DR-180`'s actual
+   finding: the tool errs toward "looks fine", and issues `strongly supported`
+   where it was not earned. That is a real and serious problem.
+
+Letting unexplained falls through would be using (1) to paper over (2): accepting
+instability as a repair mechanism for bad first judgements. It would make the
+tool's output depend on how many times it was run, which is the thing this issue
+exists to stop. (2) is owned separately, under #183 and `DR-180`.
+
+The consequence is accepted with open eyes: where the first pass issues an
+unearned `strongly supported`, this rule can hold it against a later, better
+judgement that fails to name a cause. The answer to that is to fix the first
+pass, not to reopen the door.
+
 ## What this must not become
 
 `DR-180`'s central finding is that the instability is **not symmetric noise**: in
