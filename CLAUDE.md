@@ -601,6 +601,12 @@ Verified sandboxed: `--no-track` exits 0 with no config write, and deleting such
 a branch afterwards is also clean — there is no tracking entry to remove, so
 `git branch -D` stops emitting `warning: update of config-file failed`.
 
+**`git branch -m` prints `fatal:` and still succeeds.** Renaming reports
+`fatal: branch is renamed, but update of config-file failed`, which reads like
+the rename was rolled back. It was not — the branch is renamed; only the config
+update failed, and with `--no-track` there was nothing in it to update anyway.
+Check with `git branch --show-current` rather than believing the word `fatal`.
+
 **Do not try to "fix" this by allowing writes to `.git/config`.** The protection
 is deliberate and the file is an arbitrary-code-execution vector; `--no-track`
 removes the need for the write rather than working around the guard. Probed to
