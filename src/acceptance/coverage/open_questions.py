@@ -126,7 +126,9 @@ def resolve_open_questions(
         "question_id": [question.id for question in open_questions],
         "diff_refs": list(label_to_ref),
     }
-    result = client.complete(messages, constrain(_Judgments, allowed), parse_as=_Judgments)
+    result = client.complete(
+        messages, constrain(_Judgments, allowed), parse_as=_Judgments, stage=_STAGE
+    )
     if unusable is not None:
         unusable.record(scan(result, allowed, _STAGE))
 

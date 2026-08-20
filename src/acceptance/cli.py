@@ -56,6 +56,8 @@ from acceptance.rerun import find_prior_review, task_digest
 from acceptance.review_state import ChangeSet, OpenQuestion, Review
 from acceptance.review_store import ReviewStore
 from acceptance.supplied_ids import UnusableAnswerLog
+from acceptance.usage import render as render_usage
+from acceptance.usage import summarize as summarize_usage
 
 
 class CliError(Exception):
@@ -248,6 +250,7 @@ def run_decompose(
     config: RunConfig,
     continue_from: str | None = None,
     ledger: LedgerStore | None = None,
+    client: ModelClient | None = None,
 ) -> tuple[Decomposition, UnusableAnswerLog, str]:
     """Parse a task file and decompose it into obligations + open questions.
 
@@ -261,7 +264,9 @@ def run_decompose(
     """
     text = _read_task(task)
     parsed = parse_task_file(text)
-    client = config.build_client()
+    # Accepted rather than always built here so the caller can read back what the
+    # run cost — `main` prints the per-stage footer off this client (#264).
+    client = client if client is not None else config.build_client()
     store = ledger if ledger is not None else LedgerStore()
     prior = store.read_if_present(continue_from)
     run_id = new_run_id()
@@ -306,6 +311,17 @@ def run_decompose(
         )
     )
     return linked, unusable, run_id
+
+
+def _report_usage(client: ModelClient) -> None:
+    """Print what the run cost, by stage, on STDERR.
+
+    stderr for the same reason the run id is on stderr: two runs over the same
+    input must produce byte-identical STDOUT, and cost is not reproducible — a
+    replayed run spends nothing where the run that recorded it spent money. The
+    §16 report and the persisted review never see this (#264).
+    """
+    print(render_usage(summarize_usage(client.observed_calls)), file=sys.stderr)
 
 
 def _report_run(run_id: str, continued_from: str | None, result: Decomposition) -> None:
@@ -893,6 +909,9 @@ def main(argv: list[str] | None = None) -> int:
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
+        # Built here, not inside run_check, so the per-stage cost footer can be
+        # read back off the client that issued the calls (#264).
+        client = config.build_client()
         try:
             run_id = new_run_id()
             review = run_check(
@@ -902,6 +921,7 @@ def main(argv: list[str] | None = None) -> int:
                 config,
                 ReviewStore(),
                 declaration=args.declaration,
+                client=client,
                 since=args.since,
                 continue_from=args.continue_from,
                 ledger=LedgerStore(),
@@ -937,6 +957,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.continue_from:
             print(f"  continuing {args.continue_from}", file=sys.stderr)
         print(f"  continue this run with: --continue {run_id}", file=sys.stderr)
+        _report_usage(client)
         return 0
 
     if args.command == "recommendation":
@@ -963,8 +984,11 @@ def main(argv: list[str] | None = None) -> int:
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
+        client = config.build_client()
         try:
-            result, unusable, run_id = run_decompose(args.task, config, args.continue_from)
+            result, unusable, run_id = run_decompose(
+                args.task, config, args.continue_from, client=client
+            )
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)
             return 1
@@ -985,6 +1009,7 @@ def main(argv: list[str] | None = None) -> int:
         # made. stderr is where the CLI already puts everything that is about the
         # run rather than about the review.
         _report_run(run_id, args.continue_from, result)
+        _report_usage(client)
         return 0
 
     if args.command == "diff":

@@ -41,6 +41,8 @@ from acceptance.review_state import (
     TestEvidence,
 )
 
+_STAGE = "declaration comparison"
+
 _SYSTEM_PROMPT = """\
 You compare a BUILDER DECLARATION against what a review actually found. The
 declaration is the builder's own end-of-cycle account of what they believe was
@@ -148,7 +150,7 @@ def compare_declaration(
             "content": _render_prompt(declaration, obligations, change_set, test_evidence),
         },
     ]
-    result = client.complete(messages, _Mismatches)
+    result = client.complete(messages, _Mismatches, stage=_STAGE)
     return [DeclarationMismatch(claim=m.claim, rationale=m.rationale) for m in result.mismatches]
 
 

@@ -283,7 +283,7 @@ def _embed(obligations: Sequence[Obligation], client: ModelClient) -> dict[str, 
     same sequence.
     """
     texts = [embedding_text(obligation) for obligation in obligations]
-    vectors = client.embed(texts)
+    vectors = client.embed(texts, stage=_STAGE)
     return {obligation.id: vector for obligation, vector in zip(obligations, vectors)}
 
 

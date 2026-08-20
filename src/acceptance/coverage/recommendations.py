@@ -172,7 +172,7 @@ def recommend_tests(
     # construction, not merely unmatched.
     allowed = {"obligation_id": [obligation.id for obligation in weak]}
     result = client.complete(
-        messages, constrain(_Recommendations, allowed), parse_as=_Recommendations
+        messages, constrain(_Recommendations, allowed), parse_as=_Recommendations, stage=_STAGE
     )
     if unusable is not None:
         unusable.record(scan(result, allowed, _STAGE))
