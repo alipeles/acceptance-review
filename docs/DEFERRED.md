@@ -70,7 +70,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > enforcement code. This issue is what makes #292's guard bite.
 - **Status:** filed (#293 comment, approved 2026-08-20).
 
-### [2026-08-20] NOT FILED — re-target needed: twin obligations left unmerged with no diagnostic, which is not #242's mechanism
+### [2026-08-20] Twin obligations left unmerged with no diagnostic — not #242's mechanism
 - **Kind:** filing (comment on existing issue #242)
 - **Found during:** #291, Gate 1 and Gate 2 run 2
 - **Where:** `dogfood-logs/291-gate1-run1/`, `dogfood-logs/291-gate2-run2/`
@@ -108,7 +108,12 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   generated ids differ only by a numeric suffix are either merged or reported as
   an unmerged pair with a reason; no run leaves a twin pair unmerged silently.
   Cross-reference #242 as the related-but-distinct diagnosed case.
-- **Status:** open — awaiting approval of the re-targeted draft above
+- **Status:** filed as #304, sub-issue of #181 (re-target approved 2026-08-20).
+  One correction carried into the filing: the two twins are **not** rated
+  differently on an identical evidence set. `reuse-refusal-on-any-failed-check`
+  (strongly supported) has all five of `reuse-rule-four-conditions`' tests **plus
+  one more**, so it is a superset, not a match. The disagreement stands and the
+  filing states it that way.
 
 ### [2026-08-20] Scope exclusions get three different dispositions in one run, and one recommendation is unwritable
 - **Kind:** filing (new sub-issue of #183)
