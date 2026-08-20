@@ -3481,3 +3481,263 @@ the record.
   #217's own deliverable confirms the mutual exclusivity was never intended —
   it constrained each arm's own field to be non-empty and never said `yielded`
   must lack `open_question_ids`.
+
+### [2026-08-20] #304 gains an instance: five of seven twin pairs unmerged, silently
+
+- **Kind:** filing
+- **Found during:** #293, Gate 1 (run `136b6616a990d48f`,
+  `dogfood-logs/293-gate1-run1/`)
+- **Where:** `src/acceptance/requirement/` — the obligation-linking pass
+- **Severity:** should-fix
+- **What's wrong:** `current-task.md` for #293 states each rule as a Constraint
+  and mirrors it as a Completion expectation, producing seven twin pairs. Two
+  merged (`constraint-04`/`completion-05`, `constraint-05`/`completion-06`) and
+  five did not, leaving five duplicate obligations that will be judged
+  independently at Gate 2. No `Unreconciled linking answers:` block appeared, so
+  this is #304 (twins unmerged with no diagnostic) and not #242 (which reports
+  itself).
+- **Why I didn't act:** #304 is already filed under #181; this is a second
+  measured instance on a different mandate, so it belongs as a comment on that
+  issue rather than as new work inside #293.
+- **Drafted fix:** an `add_issue_comment` on **#304**:
+
+  > Second instance, from #293's Gate 1 (`dogfood-logs/293-gate1-run1/`, run
+  > `136b6616a990d48f`).
+  >
+  > The mandate states each rule as a Constraint and mirrors it as a Completion
+  > expectation — seven such pairs. **Two merged, five did not:**
+  >
+  > | Constraint | Completion expectation | Merged? |
+  > |---|---|---|
+  > | `constraint-01` unchanged inputs keep the stored rating | `completion-02` (first half) | **no** |
+  > | `constraint-02` unchanged inputs cost no judgement request | `completion-02` (second half) | **no** |
+  > | `constraint-04` mapped test set changed → judged again | `completion-05` | yes |
+  > | `constraint-05` requirement text changed → judged again | `completion-06` | yes |
+  > | `constraint-06` the file-touch rule is removed | `completion-07` | **no** |
+  > | `constraint-07` coverage and evidence staleness decided separately | `completion-08` | **no** |
+  > | `constraint-08` a repeated review produces the same review state | `completion-09` | **no** |
+  >
+  > No `Unreconciled linking answers:` block was printed, which is what separates
+  > this from #242 — the failure is silent, and the only way to see it is to read
+  > the breakdown against the task file by hand.
+  >
+  > Two details worth keeping. First, the merge rate is not a property of the
+  > mandate's phrasing: `constraint-04`/`completion-05` and
+  > `constraint-05`/`completion-06` are word-for-word identical between the two
+  > sections and merged, while `constraint-06`/`completion-07` and
+  > `constraint-08`/`completion-09` say the same thing in different words and did
+  > not — so paraphrase, not identity, looks like the discriminator. Second,
+  > `completion-02` was split into two obligations whose second is contained in
+  > the first, and neither half merged with the constraint it restates, so one
+  > requirement contributed two unmerged twins rather than one.
+- **Status:** **filed** — approved at #293's Gate 1 and posted to #304 on
+  2026-08-20 as a single comment covering runs 1 and 2, merged with the run-2
+  addendum queued further down. The run-1 hypothesis that *"paraphrase, not
+  identity, is the discriminator"* did **not** survive run 2 and was dropped from
+  the filed text: `constraint-01` and `completion-02` are still a paraphrase and
+  merged anyway.
+
+### [2026-08-20] Decision: what decides implementation-coverage staleness once the file-touch rule is deleted
+
+- **Kind:** decision
+- **Found during:** #293, Gate 1
+- **Where:** `src/acceptance/rerun.py:169` (`stale_obligation_ids`) and
+  `src/acceptance/pipeline.py:309`
+- **Severity:** blocker for #293
+- **What's wrong:** #293 requires both that the file-touch staleness rule be
+  *removed* and that coverage staleness be decided *separately* from
+  test-evidence staleness — while its scope exclusions forbid *narrowing* which
+  criteria are judged again in any stage other than test-evidence judgement.
+  Today one predicate, `stale_obligation_ids`, gates both axes by asking whether
+  any cited file was touched. Deleting it leaves coverage with no staleness rule,
+  and the obvious replacement — comparing the contents of cited implementation
+  spans — is strictly *narrower* than the file-touch rule and so is excluded.
+- **Why I didn't act:** it decides the shape of the deliverable and changes the
+  cost profile of a shipped feature (M7.5's incremental re-run), so it is the
+  human's call at the gate rather than mine mid-task.
+- **Drafted fix:** **coverage stops carrying and is re-derived for every
+  obligation.** That satisfies all three requirements at once — the file-touch
+  rule is gone, the two axes are decided by different rules, and coverage is
+  *widened* rather than narrowed. The cost is near zero because
+  `classify_coverage` is a **single batched call** over the whole obligation set
+  (`src/acceptance/coverage/classify.py:142`), so narrowing the list only shrinks
+  one prompt; it never removes a call. The same argument #293's own issue makes
+  about mapping.
+
+  Rejected alternative: give coverage its own content-level rule, keyed on the
+  cited implementation spans. It preserves today's behaviour most closely and
+  would be the better end state, but it narrows a non-evidence stage, which
+  `current-task.md`'s fifth scope exclusion rules out, and it doubles the size of
+  this task.
+
+  Consequence either way, and it is inside #293's own area so it is part of the
+  work rather than a queue item: `rerun.py::merge_carried_forward` currently takes
+  a prior judgement **wholesale**, and its docstring argues explicitly against
+  splicing a prior evidence class onto fresh citations. Once the predicate splits,
+  an obligation can be fresh on coverage and carried on evidence, so that
+  wholesale rule has to become per-axis and the docstring's argument has to be
+  restated rather than deleted. That is a design change worth a Decision Record
+  (`docs/DR-293-*.md`), which #286 is owed anyway.
+- **Status:** **resolved** at #293's Gate 1, 2026-08-20. The human chose the
+  recommendation: implementation coverage stops carrying and is re-derived for
+  every requirement. They noted that a content-level rule for coverage is the
+  better answer and is wanted eventually, as a defence against instability rather
+  than as a cost saving — filed forward as the queue item below. No task-file edit
+  was needed: widening what gets re-derived is permitted by the fifth scope
+  exclusion, which forbids only *narrowing*.
+
+### [2026-08-20] Give the code-verdict half its own content-level staleness rule
+
+- **Kind:** filing
+- **Found during:** #293, Gate 1
+- **Where:** `src/acceptance/rerun.py`, `src/acceptance/pipeline.py:309`
+- **Severity:** nice-to-have
+- **What's wrong:** #293 deletes the "was a cited file edited?" rule and, on the
+  human's call, replaces it for implementation coverage with nothing — coverage is
+  simply re-derived for every requirement on every run. That is correct and nearly
+  free, because `classify_coverage` is a single batched call, but it is the blunt
+  answer. The sharp one is to compare the contents of the cited implementation
+  spans, the way #293 does for mapped tests.
+- **Why I didn't act:** deliberately deferred by the human at #293's Gate 1 —
+  "a more sophisticated answer in order to prevent instability, but that's a
+  future optimization". Doing it inside #293 would also have breached that task's
+  own scope exclusion against narrowing any stage other than test-evidence
+  judgement.
+- **Drafted fix:** file as a **sub-issue of #185** (findings model, verdict and
+  presentation — where coverage classification lives), sequenced after #293:
+
+  > **Title:** Implementation coverage is re-derived only when the cited code changed
+  >
+  > #293 deleted the file-level staleness rule and, for the implementation-coverage
+  > half, replaced it with "always re-derive". That is safe and costs almost
+  > nothing — `classify_coverage` is one batched call over the whole obligation
+  > set, so trimming the list shortens a prompt and never removes a call.
+  >
+  > It is still the blunt answer. Re-deriving a verdict is not free of consequence:
+  > that is the whole finding behind #293 and #292 on the evidence side, where
+  > asking the model again reliably produced a *worse* answer over unchanged
+  > inputs. There is no reason to think the coverage verdict is immune, and
+  > re-deriving it every run means it is exposed to that on every run.
+  >
+  > **Deliverable.** Decide implementation-coverage staleness by comparing the
+  > contents of the spans in `coverage_refs`, not by re-deriving unconditionally.
+  > Build it on `carry.py` as #291 and #293 do, not beside it.
+  >
+  > **Acceptance.**
+  > - A requirement whose cited implementation spans are byte-identical keeps its
+  >   stored coverage verdict.
+  > - A requirement whose cited implementation spans changed is classified again.
+  > - Editing code cited by one requirement leaves every other requirement's
+  >   coverage verdict unchanged.
+  > - Two reviews over the same stored state and inputs produce byte-identical
+  >   review state.
+  >
+  > Related: #293, #292, #291, #286, #185.
+- **Status:** **filed as #305**, sub-issue of #185, on 2026-08-20. The filed text
+  states the motive the human gave — instability, not cost — and adds one
+  acceptance item the draft lacked: an obligation citing no implementation at all
+  must still always be classified.
+
+### [2026-08-20] A reworded scope exclusion is re-derived from the new text and lands on the old, false obligation
+
+- **Kind:** filing
+- **Found during:** #293, Gate 1 (runs `136b6616a990d48f` and `a84c1b0c6e71916a`,
+  `dogfood-logs/293-gate1-run{1,2}/`)
+- **Where:** `src/acceptance/requirement/obligations.py` — scope-exclusion derivation
+- **Severity:** should-fix
+- **What's wrong:** #293's `exclusion-04` was reworded from *"Rejecting a
+  re-judgement that names no change it was given"* to *"Changing how a
+  re-judgement that names no change is rejected"*, precisely to stop the tool
+  asserting that the delivered change must not contain behaviour that #292
+  already built and that #293 depends on. **The derived obligation did not move at
+  all** — same id, same description, `satisfied_by_absence` still true.
+- **Why I didn't act:** rewording is the sanctioned fix for weak requirement text
+  and it was tried; the controlled pair shows it is not the lever, and CLAUDE.md
+  forbids rewording repeatedly to chase a gate.
+- **Drafted fix:** an `add_issue_comment` on **#301**:
+
+  > A sharper instance, with a controlled before/after pair, from #293's Gate 1
+  > (`dogfood-logs/293-gate1-run{1,2}/`).
+  >
+  > One scope exclusion was reworded between the two runs and nothing else about it
+  > changed:
+  >
+  > | | text | derived obligation |
+  > |---|---|---|
+  > | run 1 | Rejecting a re-judgement that names no change it was given. | The change does not reject a re-judgement that names no change it was given. |
+  > | run 2 | Changing how a re-judgement that names no change is rejected. | The change does not reject a re-judgement that names no change it was given. |
+  >
+  > Byte-identical description, byte-identical id
+  > (`rejecting-a-re-judgement-that-names-no-change-it-was-given-not-done`),
+  > `satisfied_by_absence: true` in both.
+  >
+  > **This is not the carry reusing a stale entry.**
+  > `.acceptance/ledger/a84c1b0c6e71916a.json` records the requirement as
+  > `derivation: "revised"` with `revision_reason: "requirement text changed
+  > from: Rejecting a re-judgement…"`, its `source_spans` quotes the **new**
+  > sentence, and `observable_behavior` was genuinely re-derived — it differs
+  > between the runs ("no work that rejects" → "no logic that rejects"). The model
+  > saw the new wording and normalised *"Changing how X is done"* back into *"The
+  > change does not do X"*.
+  >
+  > Those are different claims and the second one is false here. #292 built the
+  > rejection of a re-judgement that names no change; it stays, and #293 builds on
+  > it. The exclusion means "I am not touching that behaviour". The obligation says
+  > "that behaviour must be absent from the change" — and marks itself
+  > `satisfied_by_absence`, so at Gate 2 a diff that edits `evidence/anchoring.py`
+  > and `evidence/discrimination.py` for the right reasons is set up to be reported
+  > as breaching it.
+  >
+  > The general shape: an exclusion naming *a change to an existing behaviour* is
+  > collapsed into an exclusion naming *the behaviour itself*. Those coincide only
+  > when the behaviour does not already exist. Where it does, the derived
+  > obligation contradicts the delivered tree, and no rewording available to the
+  > task author fixes it.
+- **Status:** **filed** — posted to #301 on 2026-08-20, approved at #293's Gate 1.
+
+### [2026-08-20] #304 gains a second instance, and a meaning-preserving edit flips an untouched pair
+
+- **Kind:** filing
+- **Found during:** #293, Gate 1 run 2 (`a84c1b0c6e71916a`)
+- **Where:** `src/acceptance/requirement/` — the obligation-linking pass
+- **Severity:** should-fix
+- **What's wrong:** run 2 merges four of the seven twin pairs where run 1 merged
+  two. The only relevant edit between the runs made one trailing clause match its
+  twin word for word, without changing meaning — and the merge outcome flipped for
+  both halves of that requirement, including a pair whose own text was never
+  edited.
+- **Why I didn't act:** #304 is filed; this is evidence for it, not new work.
+- **Drafted fix:** fold into the #304 comment already drafted above rather than
+  filing separately — post one comment covering both runs, with run 2's table and
+  this paragraph appended:
+
+  > **Run 2 is the controlled half.** Two requirements were reworded after run 1 and
+  > nothing else changed. Merges went from two pairs to four:
+  >
+  > | pair | run 1 | run 2 |
+  > |---|---|---|
+  > | `constraint-01` ↔ `completion-02` | unmerged | **merged** |
+  > | `constraint-02` ↔ `completion-02` | unmerged | **merged** |
+  > | `constraint-04` ↔ `completion-05` | merged | merged |
+  > | `constraint-05` ↔ `completion-06` | merged | merged |
+  > | `constraint-06` ↔ `completion-07` | unmerged | unmerged |
+  > | `constraint-07` ↔ `completion-08` | unmerged | unmerged |
+  > | `constraint-08` ↔ `completion-09` | unmerged | unmerged |
+  >
+  > The edit that moved it made `constraint-02`'s trailing clause identical to
+  > `completion-02`'s. Meaning unchanged. And it flipped `constraint-01` too, whose
+  > text was never touched — so a merge decision moved because a *neighbouring*
+  > requirement was reworded.
+  >
+  > Lexical overlap is clearly not the whole rule — `constraint-01`'s "keeps the
+  > rating stored for it" and `completion-02`'s "keeps its stored rating" are still
+  > only a paraphrase, and merged. But it is enough of the rule that a task author
+  > can move merge decisions by rephrasing, which is the edit CLAUDE.md forbids for
+  > exactly this reason.
+  >
+  > One of the three still-unmerged pairs is defensible: `constraint-08` says a
+  > repeated review "produces the same review state" and `completion-09` says
+  > "byte-identical review state", which is a stronger claim. The other two are
+  > plain restatements.
+- **Status:** **filed** — merged into the single #304 comment above rather than
+  posted separately, on 2026-08-20.
