@@ -35,6 +35,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from acceptance.carry import decide
 from acceptance.llm import ModelClient
 from acceptance.review_state import RequirementRef
 
@@ -138,24 +139,25 @@ def plan_carry(
             continue
 
         matched_prior.add(candidate.text)
-        # Text is identical, so the only question left is whether re-deriving it
-        # today would issue the same request. If it would not, the entry is not
-        # carried — but it is also not *revised*, because nothing about the
-        # requirement changed. It is derived fresh, like any other requirement
-        # the tool has no valid answer for.
-        # Three independent reasons the answer on file cannot stand, named
-        # separately because they fail for different causes: the tool moved under
-        # it, the request that produced it would not be reissued, or it quotes
-        # text the requirement no longer has.
-        stale = (
-            not usable
-            or candidate.carry_key != current_keys.get(requirement.id)
-            or stale_spans(candidate, requirement.text)
+        # Text is identical, so the only question left is whether the answer on
+        # file can still stand. `carry.decide` asks it — the tool moved under the
+        # entry, the request that produced it would not be reissued, or it quotes
+        # text the requirement no longer has. If it cannot stand the entry is not
+        # carried, but it is also not *revised*: nothing about the requirement
+        # changed, so it is derived fresh like any other the tool has no valid
+        # answer for.
+        decision = decide(
+            requirement.id,
+            prior=candidate,
+            prior_key=candidate.carry_key,
+            current_key=current_keys.get(requirement.id),
+            stage_logic_matches=usable,
+            still_applies=not stale_spans(candidate, requirement.text),
         )
-        if stale:
-            derived.append(requirement.id)
-        else:
+        if decision.carried:
             carried[requirement.id] = candidate
+        else:
+            derived.append(requirement.id)
 
     # What is left on each side is the residue: requirements whose text moved, and
     # requirements that are new. Only a judgement can tell those apart.
