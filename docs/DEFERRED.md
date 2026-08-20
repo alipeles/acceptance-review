@@ -36,6 +36,29 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-20] Mapping dropped four intact tests from an unchanged obligation
+- **Kind:** filing (comment on existing issue #182)
+- **Found during:** #292, Gate 2, runs 1 and 2
+- **Where:** `src/acceptance/evidence/mapping.py`; evidence in
+  `dogfood-logs/292-gate2-run1/` and `-run2/`
+- **Severity:** should-fix — it bounds what #292 (PR #299) can guarantee
+- **What's wrong:** same task file, `--continue` on both runs, obligation blocks
+  byte-identical across 29 lines. Only `tests/` changed between them, in two
+  files. The obligation `changed-test-evidence-rating-justify-itself` went from
+  four mapped tests to none, and **none of those four was modified, renamed or
+  removed** — all four live in files that do not appear in the diff. The verdict
+  for that obligation flipped `strongly supported` → `unsupported`, and a
+  recommended test appeared prescribing evidence that already existed.
+- **Why I didn't act:** #182 is the umbrella that owns mapping instability, and
+  no change in #292's scope would fix it.
+- **Drafted fix:** comment on #182 — filed, see Status.
+- **Status:** filed (#182 comment, approved 2026-08-20). It bounds #292: the
+  anchored rejection stops a rating moving without a changed input, but the
+  rating is computed from the mapping, so a criterion whose mapped set churns is
+  re-judged against genuinely different evidence and the new rating passes the
+  check without a violation. The guarantee is incomplete until mapping is stable
+  under an additive change.
+
 ### [2026-08-20] A repeated disposition with mechanically-renamed ids aborts the whole review
 - **Kind:** filing (new sub-issue of #181)
 - **Found during:** #265, Gate 1, run 1
