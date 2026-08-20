@@ -1,0 +1,157 @@
+run 80d887644354ab0f
+  continuing e6c1f946e47d5280
+  requirements: 12 derived, 2 carried, 6 revised; 3 decompose call(s)
+  REMOVED task-01: A criterion's test-evidence rating is a function of that criterion's inputs, not
+of how many times it has been judged. (2 obligation(s) dropped)
+  REMOVED constraint-01: - A judgement asked for a criterion that changed is given the rating stored for
+  that criterion. (1 obligation(s) dropped)
+  REMOVED constraint-02: - A judgement asked for a criterion that changed is given the changes to that
+  criterion's dependencies. (1 obligation(s) dropped)
+  REMOVED constraint-03: - The stored rating and the dependency changes given to a judgement are part of
+  the request that judgement is recorded under. (1 obligation(s) dropped)
+  REMOVED constraint-04: A judgement that alters a rating names one of the changes it was given. (1 obligation(s) dropped)
+  REMOVED constraint-05: - A judgement that alters a rating while naming no change it was given is
+  rejected by the code that reads the judgement, rather than by the instruction
+  that asked for it. (1 obligation(s) dropped)
+  REMOVED constraint-06: A rejected judgement leaves the stored rating in place. (1 obligation(s) dropped)
+  REMOVED constraint-07: A rejected judgement is reported. (1 obligation(s) dropped)
+  REMOVED constraint-08: - A review with no stored earlier state judges every criterion without reference
+  to any stored rating. (1 obligation(s) dropped)
+  REMOVED constraint-09: - A review repeated over the same stored state and the same inputs produces the
+  same review state as the one before it. (1 obligation(s) dropped)
+  REMOVED exclusion-05: Which defects the judge names for a criterion it does judge. (1 obligation(s) dropped)
+  REMOVED exclusion-07: Which judgements other than the test-evidence rating are carried forward. (1 obligation(s) dropped)
+  REMOVED completion-02: - A judgement asked about a changed criterion receives the stored rating and the
+  changes to that criterion's dependencies. (1 obligation(s) dropped)
+  REMOVED completion-03: - The stored rating and the dependency changes are part of the request the
+  judgement is recorded under. (1 obligation(s) dropped)
+  REMOVED completion-04: - A judgement that alters a rating while naming a change it was given is
+  accepted. (1 obligation(s) dropped)
+  REMOVED completion-05: - A judgement that alters a rating while naming no change it was given is
+  rejected, and the stored rating stands. (1 obligation(s) dropped)
+  REMOVED completion-06: The code that reads a judgement performs the rejection. (1 obligation(s) dropped)
+  REMOVED completion-07: A rejected judgement is reported. (1 obligation(s) dropped)
+  REMOVED completion-08: - A review with no stored earlier state puts no stored rating in any
+  evidence-judgement request. (1 obligation(s) dropped)
+  REMOVED completion-10: - The findings recorded as correct in `tests/fixtures/rating-stability/` are
+  still found. (1 obligation(s) dropped)
+  continue this run with: --continue 80d887644354ab0f
+Model usage by stage:
+  stage                                 calls  prompt  output  cached  this run  recorded
+  ------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose           3 (3 live / 0 replayed)  18,247   2,459   30.9%   $0.0209   $0.0209
+  obligation linking  2 (2 live / 0 replayed)   1,701     183    0.0%   $0.0016   $0.0016
+  unknown             1 (1 live / 0 replayed)   1,236     132    0.0%   $0.0015   $0.0015
+  this run spent $0.0241 on 6 live call(s); the evidence cost $0.0241 to record (0 call(s) replayed at no cost to this run)
+Requirements: 20   with obligations: 19   deliberately none: 1
+
+[task-01] The rule deciding whether a stored result may be reused is stated in one place
+    that names no stage of the review, and the stage that already applies that rule
+    reaches its answer through it.
+    -> reuse-rule-stated-in-one-place-no-stage-named  [functional/explicit]
+       The rule deciding whether a stored result may be reused is stated in one place
+       that names no stage of the review.
+    -> reuse-decision-reaches-answer-through-shared-rule  [functional/explicit]
+       The stage that already applies the reuse rule reaches its answer through that one
+       statement.
+
+[constraint-01] The rule deciding whether a stored result may be reused is stated in one
+    place that names no stage of the review.
+    -> reuse-rule-stated-in-one-place-constraint  [functional/explicit]   (also serves completion-02)
+       State the reuse rule in one place that names no stage of the review.
+
+[constraint-02] The rule refuses reuse unless all four of these hold: the unit is still
+    present, re-deriving it would issue the same request, the logic turning a response
+    into a result has not moved, and the stored result still fits the inputs it is being
+    reused against.
+    -> reuse-rule-four-conditions  [functional/explicit]
+       The reuse rule refuses reuse unless all four stated conditions hold: the unit is
+       still present, re-deriving it would issue the same request, the logic turning a
+       response into a result has not moved, and the stored result still fits the inputs
+       it is being reused against.
+
+[constraint-03] What a unit is, how it is identified, which of its inputs enter the
+    request identity, and what it means for a stored result to fit its inputs, are
+    supplied by the caller rather than by the rule.
+    -> caller-supplies-reuse-context-2  [functional/explicit]
+       The caller supplies what a unit is, how it is identified, which of its inputs
+       enter the request identity, and what it means for a stored result to fit its
+       inputs.
+
+[constraint-04] A refusal to reuse a stored result carries the reason for the refusal.
+    -> reuse-refusal-carries-reason-2  [functional/explicit]
+       A refusal to reuse a stored result carries the reason for the refusal.
+
+[constraint-05] Requirement decomposition reaches its reuse decision through that one
+    statement of the rule rather than through a copy of it.
+    -> decomposition-uses-shared-reuse-rule  [regression/explicit]   (also serves completion-06)
+       Requirement decomposition reaches its reuse decision through the shared statement
+       of the rule rather than through a copy of it.
+
+[constraint-06] The request identity computed for a requirement is unchanged by this
+    work.
+    -> request-identity-unchanged  [regression/explicit]   (also serves completion-07)
+       The request identity computed for a requirement is unchanged by this work.
+
+[exclusion-01] Applying the reuse rule to any stage other than requirement
+    decomposition.
+    -> reuse-rule-applies-only-to-decomposition  [compatibility/explicit]
+       The reuse rule is applied only to requirement decomposition.
+
+[exclusion-02] Narrowing which criteria are judged again on a repeated review.
+    -> narrowing-criteria-judged-again-not-done  [regression/explicit]
+       The change does not narrow which criteria are judged again on a repeated review.
+
+[exclusion-03] Whether a stored result is correct on its merits.
+    -> merits-correctness-not-part-of-reuse-rule  [regression/explicit]
+       The reuse rule does not make whether a stored result is correct on its merits
+       part of the reuse decision.
+
+[exclusion-04] Selecting which stored earlier state a repeated review continues.
+    -> no-stored-state-selection-change  [compatibility/explicit]
+       The change does not alter which stored earlier state a repeated review continues.
+
+[exclusion-05] The set of obligations requirement decomposition produces.
+    -> no-change-to-obligation-set-produced-by-requirement-decomposition  [regression/explicit]
+       The change does not alter the set of obligations requirement decomposition
+       produces.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       The item is a section marker standing alone with no requirement under it.
+
+[completion-02] The reuse rule is stated in one place that names no stage of the review.
+    -> reuse-rule-stated-in-one-place-constraint  [functional/explicit]   (also serves constraint-01)
+       State the reuse rule in one place that names no stage of the review.
+
+[completion-03] The rule refuses reuse when any one of its four checks fails.
+    -> reuse-refusal-on-any-failed-check  [functional/explicit]
+       Refuse reuse when any one of the four reuse checks fails.
+
+[completion-04] A caller supplies the unit's identity, the inputs entering the request
+    identity, and the test of whether a stored result fits those inputs.
+    -> caller-supplies-reuse-context  [functional/explicit]
+       Accept caller-supplied unit identity, request-identity inputs, and the fit test
+       for stored-result reuse.
+
+[completion-05] A refusal to reuse carries the reason for the refusal.
+    -> reuse-refusal-carries-reason  [functional/explicit]
+       Carry the reason for any refusal to reuse a stored result.
+
+[completion-06] Requirement decomposition's reuse decision is produced by the shared
+    statement of the rule and not by a copy of it.
+    -> decomposition-uses-shared-reuse-rule  [regression/explicit]   (also serves constraint-05)
+       Requirement decomposition reaches its reuse decision through the shared statement
+       of the rule rather than through a copy of it.
+
+[completion-07] The request identity computed for a requirement is byte-identical to the
+    identity computed for that requirement before this work.
+    -> request-identity-unchanged  [regression/explicit]   (also serves constraint-06)
+       The request identity computed for a requirement is unchanged by this work.
+
+[completion-08] Requirement decomposition produces the obligations it produced before
+    this work.
+    -> obligations-produced-unchanged  [regression/explicit]
+       Keep requirement decomposition producing the same obligations it produced before
+       this work.
+

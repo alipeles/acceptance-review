@@ -1,51 +1,40 @@
 # Task
-A criterion's test-evidence rating is a function of that criterion's inputs, not
-of how many times it has been judged.
+The rule deciding whether a stored result may be reused is stated in one place
+that names no stage of the review, and the stage that already applies that rule
+reaches its answer through it.
 
 ## Constraints
-- A judgement asked for a criterion that changed is given the rating stored for
-  that criterion.
-- A judgement asked for a criterion that changed is given the changes to that
-  criterion's dependencies.
-- The stored rating and the dependency changes given to a judgement are part of
-  the request that judgement is recorded under.
-- A judgement that alters a rating names one of the changes it was given.
-- A judgement that alters a rating while naming no change it was given is
-  rejected by the code that reads the judgement, rather than by the instruction
-  that asked for it.
-- A rejected judgement leaves the stored rating in place.
-- A rejected judgement is reported.
-- A review with no stored earlier state judges every criterion without reference
-  to any stored rating.
-- A review repeated over the same stored state and the same inputs produces the
-  same review state as the one before it.
+- The rule deciding whether a stored result may be reused is stated in one place
+  that names no stage of the review.
+- The rule refuses reuse unless all four of these hold: the unit is still
+  present, re-deriving it would issue the same request, the logic turning a
+  response into a result has not moved, and the stored result still fits the
+  inputs it is being reused against.
+- What a unit is, how it is identified, which of its inputs enter the request
+  identity, and what it means for a stored result to fit its inputs, are supplied
+  by the caller rather than by the rule.
+- A refusal to reuse a stored result carries the reason for the refusal.
+- Requirement decomposition reaches its reuse decision through that one statement
+  of the rule rather than through a copy of it.
+- The request identity computed for a requirement is unchanged by this work.
 
 ## Scope exclusions
-- Narrowing which criteria are judged again.
-- Partitioning the evidence-judgement request per criterion.
-- Making the set of tests mapped to a criterion stable across runs.
-- Whether a rating is correct on its merits.
-- Which defects the judge names for a criterion it does judge.
+- Applying the reuse rule to any stage other than requirement decomposition.
+- Narrowing which criteria are judged again on a repeated review.
+- Whether a stored result is correct on its merits.
 - Selecting which stored earlier state a repeated review continues.
-- Which judgements other than the test-evidence rating are carried forward.
-- Where the rule deciding whether a stored result may be carried forward is
-  defined.
+- The set of obligations requirement decomposition produces.
 
 ## Completion expectations
 - Implementation
-- A judgement asked about a changed criterion receives the stored rating and the
-  changes to that criterion's dependencies.
-- The stored rating and the dependency changes are part of the request the
-  judgement is recorded under.
-- A judgement that alters a rating while naming a change it was given is
-  accepted.
-- A judgement that alters a rating while naming no change it was given is
-  rejected, and the stored rating stands.
-- The code that reads a judgement performs the rejection.
-- A rejected judgement is reported.
-- A review with no stored earlier state puts no stored rating in any
-  evidence-judgement request.
-- Two reviews over the same stored state and the same inputs produce
-  byte-identical review state.
-- The findings recorded as correct in `tests/fixtures/rating-stability/` are
-  still found.
+- The reuse rule is stated in one place that names no stage of the review.
+- The rule refuses reuse when any one of its four checks fails.
+- A caller supplies the unit's identity, the inputs entering the request
+  identity, and the test of whether a stored result fits those inputs.
+- A refusal to reuse carries the reason for the refusal.
+- Requirement decomposition's reuse decision is produced by the shared statement
+  of the rule and not by a copy of it.
+- The request identity computed for a requirement is byte-identical to the
+  identity computed for that requirement before this work.
+- Requirement decomposition produces the obligations it produced before this
+  work.
