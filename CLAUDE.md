@@ -575,10 +575,38 @@ removes the need entirely. Both of these run clean sandboxed:
 ```bash
 git branch --no-track tmp origin/main
 git worktree add --no-track -b <branch> <path> origin/main
+git switch --no-track -c <branch> origin/main     # the one-step form
 ```
 
 The throwaway-branch push above uses `--no-track` for this reason. `git fetch`,
 `push`, `add`, `commit` and the read-only subcommands were always fine.
+
+**`git switch -c` / `-C` without the flag is the trap, and it fails worse than
+the others.** `git branch` refuses and changes nothing; `git switch -C` **creates
+the branch, then fails setting up tracking**, leaving the index holding the new
+branch's tree while `HEAD` still points at the old one. Two consequences, both
+seen: `git status` shows main's whole tree as staged changes, and the obvious
+retry hits `fatal: a branch named X already exists` because the first attempt
+already made it.
+
+Recover in this order, because the middle step is destructive:
+
+```bash
+cp <your uncommitted files> "$TMPDIR"/     # reset --hard discards them
+git reset --hard HEAD                      # back to a sane state; untracked files survive
+git switch --no-track -c <branch> origin/main
+```
+
+Verified sandboxed: `--no-track` exits 0 with no config write, and deleting such
+a branch afterwards is also clean — there is no tracking entry to remove, so
+`git branch -D` stops emitting `warning: update of config-file failed`.
+
+**Do not try to "fix" this by allowing writes to `.git/config`.** The protection
+is deliberate and the file is an arbitrary-code-execution vector; `--no-track`
+removes the need for the write rather than working around the guard. Probed to
+be sure: `.git/probe.tmp`, `.git/foo.lock` and `.git/config2` all write fine, and
+`.git/config` and `.git/config.lock` are both refused — the rule is specific to
+git's config, not to the `.git` directory or to lock files.
 
 **A branch operation that rewrites `.claude/settings.json` fails inside the
 sandbox**, because the sandbox protects that file from writes. `git rebase`,
