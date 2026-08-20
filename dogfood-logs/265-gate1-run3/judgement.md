@@ -62,6 +62,12 @@ So "no open questions" here means the axis reported nothing, not that the mandat
 was unambiguous. Gate 1 step 3 asks the operator to triage every open question
 raised; on this task that step had nothing to read and could not have had.
 
+Filed as **#303**, which establishes more than was known when this correction was
+written: #217's own deliverable never required the dispositions to be mutually
+exclusive, and `review_state.RequirementDisposition` already carries
+`obligation_ids` and `open_question_ids` as independent lists — so the response
+schema was narrowed below the store it writes into, and nothing flagged it.
+
 ## Two known, already-filed defects showed up. Neither is new.
 
 1. **An `unknown` stage row.** The usage table carries
