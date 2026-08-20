@@ -41,11 +41,16 @@ from acceptance.coverage.open_questions import (
 )
 from acceptance.coverage.recommendations import recommend_tests
 from acceptance.coverage.unrequested import detect_unrequested_changes
+from acceptance.evidence.anchoring import build_anchors
 from acceptance.evidence.discovery import discover_tests
 from acceptance.evidence.discrimination import judge_discrimination
 from acceptance.evidence.extraction import extract_test_evidence
 from acceptance.evidence.mapping import apply_test_mapping, map_tests_to_obligations
-from acceptance.evidence.strength import apply_evidence_strength, classify_strength
+from acceptance.evidence.strength import (
+    apply_evidence_strength,
+    classify_strength,
+    hold_rejected_ratings,
+)
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
@@ -323,8 +328,20 @@ def run_review(
     needs_tests = apply_test_mapping(needs_tests, mapping)
 
     test_evidence = extract_test_evidence(repo, discovered.tests, change_set, mapping)
-    discriminations = judge_discrimination(needs_tests, test_evidence, change_set, client, unusable)
+    # A criterion the prior review already rated is re-judged WITH that rating and
+    # the changes to its own dependencies, and a judgement that moves the rating
+    # must rest on one of them (#292). Without a prior review there are no
+    # anchors, the request is byte-identical to what a first review has always
+    # sent, and every existing transcript still replays.
+    anchors = build_anchors(prior, needs_tests, change_set) if prior is not None else {}
+    discriminations = judge_discrimination(
+        needs_tests, test_evidence, change_set, client, unusable, anchors
+    )
     strengths = classify_strength(needs_tests, test_evidence, discriminations)
+    # The rejection was decided as the judgement was read; this applies it. Held
+    # before `apply_evidence_strength`, so the obligation never carries the moved
+    # rating even momentarily.
+    strengths = hold_rejected_ratings(strengths, unusable.held_ratings)
     needs_tests = apply_evidence_strength(needs_tests, strengths)
     obligations = _in_original_order(obligations, needs_tests + no_tests)
     # After strength, deliberately: an obligation whose judgment was never
