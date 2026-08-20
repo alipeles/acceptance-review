@@ -36,6 +36,99 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-20] #293's premise reproduces on a nine-line append, and #292's anchoring does not stop it
+- **Kind:** filing (comment on existing issue #293)
+- **Found during:** #291, Gate 2 runs 1 and 2
+- **Where:** `dogfood-logs/291-gate2-run{1,2}/`
+- **Severity:** should-fix — evidence for the next task, not a blocker on this one
+- **What's wrong:** the only source change between the two runs was two tests
+  appended to `tests/test_carry.py`. Two criteria whose requirement text, mapped
+  test set **and** mapped test contents were all byte-identical fell from
+  *strongly supported* to *partially supported*:
+  `reuse-decision-reaches-answer-through-shared-rule` and
+  `reuse-refusal-carries-reason`, each mapped to one unedited test. No rejected
+  judgement was reported, because `build_anchors` names dependency changes at file
+  granularity, so `mapped-test-file:tests/test_carry.py` was a genuine supplied
+  change and naming it licensed the downgrade.
+- **Why I didn't act:** it *is* #293, the next task; fixing it is outside #291.
+- **Drafted fix:** comment on #293:
+
+  > Reproduced at #291's Gate 2, on a smaller change than #269's.
+  > `dogfood-logs/291-gate2-run{1,2}/` are the two runs; the only difference
+  > between them is nine lines appended to `tests/test_carry.py`.
+  >
+  > Two criteria dropped a tier with byte-identical inputs on all three axes this
+  > issue names — requirement text, mapped test set, mapped test contents:
+  > `reuse-decision-reaches-answer-through-shared-rule` and
+  > `reuse-refusal-carries-reason`, each mapped to a single untouched test. That
+  > is this issue's third Acceptance item failing on demand.
+  >
+  > It also prices #292's file-level interim. Nothing was rejected: `build_anchors`
+  > supplied `mapped-test-file:tests/test_carry.py` as a real change, so naming it
+  > was enough. At content level the anchor for both criteria would name **no**
+  > change, and #292's existing rejection would hold the stored rating with no new
+  > enforcement code. This issue is what makes #292's guard bite.
+- **Status:** open
+
+### [2026-08-20] #242 twin-split: the same five tests produce two different ratings
+- **Kind:** filing (comment on existing issue #242)
+- **Found during:** #291, Gate 1 and Gate 2 run 2
+- **Where:** `dogfood-logs/291-gate1-run1/`, `dogfood-logs/291-gate2-run2/`
+- **Severity:** should-fix
+- **What's wrong:** `reuse-rule-four-conditions` (from the Constraint) is
+  *partially supported* while its twin `reuse-refusal-on-any-failed-check` (from
+  the mirrored Completion expectation) is *strongly supported* — **on the same
+  five tests**. At Gate 1 the linker left three of six twin pairs unmerged, two of
+  which produced ids differing only by a `-2` suffix
+  (`caller-supplies-reuse-context` / `caller-supplies-reuse-context-2`).
+- **Why I didn't act:** rewording the mandate to move the linker is the forbidden
+  kind of edit.
+- **Drafted fix:** comment on #242 with both run directories and the id pairs,
+  making the point that this instance is stronger than prose: the split shows up
+  as a rating disagreement over an identical evidence set, so it cannot be
+  explained by the twins having different support.
+- **Status:** open
+
+### [2026-08-20] Scope exclusions get three different dispositions in one run, and one recommendation is unwritable
+- **Kind:** filing (new sub-issue of #183)
+- **Found during:** #291, Gate 2 runs 1 and 2
+- **Where:** `src/acceptance/evidence/strength.py`, `src/acceptance/coverage/recommendation.py`
+- **Severity:** should-fix — it puts un-closable items on a gate that must be clean
+- **What's wrong:** five Scope-exclusion obligations in one run got three
+  treatments. `exclusion-02` and `exclusion-04`: *"test evidence: not required —
+  settled by the source change itself"*. `exclusion-01` and `exclusion-03`:
+  *unsupported*, with recommended tests. `exclusion-05`: *strongly supported*.
+  Nothing distinguishes them. Worse, the recommendation for
+  `merits-correctness-not-part-of-reuse-rule` asks for a case where the reuse
+  checks pass but the stored result is "bad on merits" — the rule takes no merits
+  input, so the requested test cannot be written and the item can never close.
+- **Why I didn't act:** an evidence-judgement defect, outside #291.
+- **Drafted fix:** sub-issue of **#183**, labels `bug`, `track:checker`. Body: a
+  scope exclusion asserts the change does *not* do something, so it has one
+  correct disposition, and this run shows the stage picking among three.
+  Deliverable: exclusions reach one disposition, and no recommendation is emitted
+  for an obligation whose inputs make the requested test unconstructable.
+  Acceptance: the five exclusions in `dogfood-logs/291-gate2-run2/` reach the same
+  disposition; no recommendation asks for an input the code cannot accept.
+- **Status:** open
+
+### [2026-08-20] Second instance of #182 mapping churn: five mapped tests fell to one, none edited
+- **Kind:** filing (comment on existing issue #182 — a second instance under the
+  entry already filed above)
+- **Found during:** #291, Gate 2 runs 1 and 2
+- **Where:** `dogfood-logs/291-gate2-run{1,2}/`
+- **Severity:** should-fix
+- **What's wrong:** `reuse-refusal-carries-reason-2` mapped five tests in run 1 and
+  one in run 2. None of the four dropped tests was edited, renamed or removed, and
+  the rating fell with the mapping. Different criterion and different diff from the
+  instance already filed on #182, so it is corroboration rather than a repeat.
+- **Why I didn't act:** #182 owns it; nothing in #291's scope fixes it.
+- **Drafted fix:** add to the existing #182 thread with both run directories and
+  the before/after mapped sets, noting it bounds #293 directly — #293 re-judges a
+  criterion whose mapped set gained or lost a member, so churn of this size spends
+  exactly the calls #293 exists to save.
+- **Status:** open
+
 ### [2026-08-20] #265's own scope is wrong: three of its four target stages cannot be helped by prompt shape at all
 - **Kind:** filing (comment on existing issue #265)
 - **Found during:** #265, after Gate 2 run 2
