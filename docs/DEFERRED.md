@@ -3838,3 +3838,34 @@ the record.
   counter-example showing a merge does happen, and the run 3 / run 4 pair showing
   it is independent of the carry.
 - **Status:** filed (comment on #242). Approved at #302's Gate 1.
+
+### [2026-08-20] The mapper declines the obligation a test restates, while accepting four looser ones
+
+- **Kind:** filing
+- **Found during:** #293, Gate 2 (`dogfood-logs/293-gate2-run1/`, run
+  `6f64baa7e8cf3a78`)
+- **Where:** `src/acceptance/evidence/mapping.py`
+- **Severity:** blocker — it was the only thing keeping #293's Gate 2 from clean
+- **What's wrong:** the obligation
+  `adding-test-to-unmapped-file-leaves-rating-unchanged` came back with no mapped
+  test, and the prescribed test is almost word for word
+  `tests/evidence/test_rejudge.py::test_a_test_appended_to_the_same_file_does_not_disturb_the_rating`,
+  which is in the diff under review and which the same report cites twice under
+  two other obligations.
+
+  **Not a partitioning defect.** Transcript `c3f75a2e…` held both the obligation
+  and the test in one request; the mapper returned four obligations for that test
+  and none was this one, and mapped no test at all to this obligation. Mapping was
+  not half-blind overall — two other obligations in the same run carry 20+ mapped
+  tests each.
+- **Why I didn't act:** there is no honest code change. The test exists, is
+  correct, and was defect-injected. Writing a second test to coax the mapper would
+  be rewriting the output rather than the software.
+- **Drafted fix:** file as a sub-issue of **#182**, carrying the transcript
+  evidence, the partitioning ruling-out, and one hypothesis marked as a
+  hypothesis: the obligation's id reads `adding-test-to-**unmapped**-file-…`,
+  which asserts the opposite of its own description, and ids are shown to the
+  mapper.
+- **Status:** **filed as #307**, sub-issue of #182, on 2026-08-20. Approved at
+  #293's Gate 2. #293 merged with the gate deliberately not clean, on the human's
+  approval, as #291 and #292 did.
