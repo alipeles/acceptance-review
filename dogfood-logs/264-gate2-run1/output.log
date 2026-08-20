@@ -1,0 +1,317 @@
+Task completion: INCOMPLETE
+
+3 obligation(s) with non-discriminating test evidence (cli-surfaces-breakdown, breakdown-absent-from-review-state, breakdown-absent-from-rendered-report).
+
+Obligations:
+
+  1. A run reports tokens, cost, and cached prompt-token share by stage, and distinguishes calls answered by the provider from calls answered from a recording.
+       requirements: completion-02
+       code evidence: addressed
+         1.1  src/acceptance/usage.py#@@ -0,0 +1,207 @@
+         1.2  src/acceptance/cli.py#@@ -308,6 +313,17 @@ def run_decompose(
+         1.3  src/acceptance/cli.py#@@ -937,6 +957,7 @@ def main(argv: list[str] | None = None) -> int:
+         1.4  src/acceptance/cli.py#@@ -985,6 +1009,7 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: strongly supported  [tier: static]
+         1.5  tests/test_usage.py::test_each_stage_is_accounted_for_separately_and_in_a_stable_order
+         1.6  tests/test_usage.py::test_the_cached_share_is_measured_only_over_calls_that_reported_one
+
+  2. A test fails when a model call site in the review pipeline omits the stage that issued it.
+       requirements: completion-03
+       code evidence: not required — The requirement asks for a test, not for source behavior by itself.
+       test evidence: strongly supported  [tier: static]
+         2.1  tests/coverage/test_classify.py::test_a_respected_boundary_records_the_scope_examined_not_the_changes
+         2.2  tests/coverage/test_classify.py::test_the_scope_examined_comes_from_the_diff_not_from_the_model
+         2.3  tests/test_stage_attribution.py::test_no_review_pipeline_call_site_omits_its_stage
+
+  3. A test pins that recording usage fields leaves every request key unchanged.
+       requirements: completion-04
+       code evidence: not required — The requirement asks specifically for a test that pins the invariant.
+       test evidence: strongly supported  [tier: static]
+         3.1  tests/test_usage.py::test_naming_the_stage_does_not_change_the_request_key
+         3.2  tests/test_usage.py::test_recording_usage_fields_does_not_change_the_request_key
+
+  4. Two recorded runs over the same input produce byte-identical review state and byte-identical report output.
+       requirements: completion-05
+       code evidence: addressed
+         4.1  src/acceptance/cli.py#@@ -308,6 +313,17 @@ def run_decompose(
+         4.2  src/acceptance/usage.py#@@ -0,0 +1,207 @@
+       test evidence: strongly supported  [tier: static]
+         4.3  tests/test_llm.py::test_recorded_transcripts_are_byte_identical_for_the_same_call
+         4.4  tests/test_llm.py::test_transcripts_record_no_wall_clock_state
+
+  5. Every model call the review pipeline issues records the stage that issued it.
+       requirements: constraint-01
+       code evidence: addressed
+         5.1  src/acceptance/llm.py#@@ -347,6 +385,42 @@ class ModelClient:
+         5.2  src/acceptance/llm.py#@@ -410,6 +484,9 @@ class ModelClient:
+         5.3  src/acceptance/llm.py#@@ -433,15 +510,16 @@ class ModelClient:
+         5.4  src/acceptance/llm.py#@@ -475,6 +553,7 @@ class ModelClient:
+         5.5  src/acceptance/llm.py#@@ -490,6 +569,12 @@ class ModelClient:
+         5.6  src/acceptance/coverage/classify.py#@@ -155,7 +155,9 @@ def classify_coverage(
+         5.7  src/acceptance/coverage/declaration_comparison.py#@@ -148,7 +150,7 @@ def compare_declaration(
+         5.8  src/acceptance/coverage/disposition.py#@@ -417,7 +419,7 @@ def _judge_disposition(
+         5.9  src/acceptance/coverage/open_questions.py#@@ -126,7 +126,9 @@ def resolve_open_questions(
+         5.10  src/acceptance/coverage/recommendations.py#@@ -172,7 +172,7 @@ def recommend_tests(
+         5.11  src/acceptance/coverage/unrequested.py#@@ -107,7 +107,9 @@ def detect_unrequested_changes(
+         5.12  src/acceptance/evidence/discrimination.py#@@ -157,7 +157,7 @@ def judge_discrimination(
+         5.13  src/acceptance/requirement/linking.py#@@ -283,7 +283,7 @@ def _embed(obligations: Sequence[Obligation], client: ModelClient) -> dict[str,
+       test evidence: strongly supported  [tier: static]
+         5.14  tests/test_stage_attribution.py::test_a_real_review_run_attributes_every_call_it_made
+
+  6. No model call the review pipeline issues reports its stage as unknown.
+       requirements: constraint-02
+       code evidence: addressed
+         6.1  src/acceptance/llm.py#@@ -38,6 +38,16 @@ from acceptance.serialization import canonical_json
+         6.2  src/acceptance/llm.py#@@ -347,6 +385,42 @@ class ModelClient:
+         6.3  src/acceptance/llm.py#@@ -410,6 +484,9 @@ class ModelClient:
+         6.4  src/acceptance/llm.py#@@ -433,15 +510,16 @@ class ModelClient:
+         6.5  src/acceptance/llm.py#@@ -475,6 +553,7 @@ class ModelClient:
+         6.6  src/acceptance/llm.py#@@ -490,6 +569,12 @@ class ModelClient:
+         6.7  tests/test_stage_attribution.py#@@ -0,0 +1,201 @@
+       test evidence: strongly supported  [tier: static]
+         6.8  tests/test_stage_attribution.py::test_a_real_review_run_attributes_every_call_it_made
+
+  7. Recorded usage carries the cached-token counts the provider reports alongside the prompt token count.
+       requirements: constraint-03
+       code evidence: addressed
+         7.1  src/acceptance/llm.py#@@ -247,16 +257,44 @@ def _extract_content(response: Any) -> str:
+       test evidence: strongly supported  [tier: static]
+         7.2  tests/test_usage.py::test_a_provider_reporting_zero_cached_tokens_records_the_zero
+         7.3  tests/test_usage.py::test_cache_counts_are_recorded_when_the_provider_reports_them
+         7.4  tests/test_usage.py::test_recording_usage_fields_does_not_change_the_request_key
+         7.5  tests/test_usage.py::test_usage_details_are_read_from_a_mapping_too
+
+  8. A cached-token count the provider does not report is absent from recorded usage rather than represented as zero.
+       requirements: constraint-04
+       code evidence: addressed
+         8.1  src/acceptance/llm.py#@@ -247,16 +257,44 @@ def _extract_content(response: Any) -> str:
+       test evidence: strongly supported  [tier: static]
+         8.2  tests/test_usage.py::test_a_cache_count_the_provider_omits_is_absent_rather_than_zero
+         8.3  tests/test_usage.py::test_recording_usage_fields_does_not_change_the_request_key
+         8.4  tests/test_usage.py::test_usage_details_are_read_from_a_mapping_too
+
+  9. A call answered from a recording is observed with the same fields as a call answered by the provider.
+       requirements: constraint-05
+       code evidence: addressed
+         9.1  src/acceptance/llm.py#@@ -347,6 +385,42 @@ class ModelClient:
+         9.2  src/acceptance/llm.py#@@ -410,6 +484,9 @@ class ModelClient:
+         9.3  src/acceptance/llm.py#@@ -433,15 +510,16 @@ class ModelClient:
+         9.4  src/acceptance/llm.py#@@ -475,6 +553,7 @@ class ModelClient:
+         9.5  tests/test_usage.py#@@ -0,0 +1,259 @@
+       test evidence: strongly supported  [tier: static]
+         9.6  tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls
+         9.7  tests/test_stage_attribution.py::test_a_real_review_run_attributes_every_call_it_made
+
+  10. Each observed call records the stage that issued it, its request key, whether it was answered from a recording or by the provider, and its usage.
+       requirements: constraint-06
+       code evidence: addressed
+         10.1  src/acceptance/llm.py#@@ -347,6 +385,42 @@ class ModelClient:
+         10.2  src/acceptance/llm.py#@@ -410,6 +484,9 @@ class ModelClient:
+         10.3  src/acceptance/llm.py#@@ -433,15 +510,16 @@ class ModelClient:
+         10.4  src/acceptance/llm.py#@@ -475,6 +553,7 @@ class ModelClient:
+         10.5  tests/test_stage_attribution.py#@@ -0,0 +1,201 @@
+       test evidence: strongly supported  [tier: static]
+         10.6  tests/test_stage_attribution.py::test_a_real_review_run_attributes_every_call_it_made
+         10.7  tests/test_usage.py::test_usage_details_are_read_from_a_mapping_too
+
+  11. A run reports tokens, cost and cached prompt-token share for each stage that issued a call.
+       requirements: constraint-07
+       code evidence: addressed
+         11.1  src/acceptance/usage.py#@@ -0,0 +1,207 @@
+         11.2  src/acceptance/cli.py#@@ -308,6 +313,17 @@ def run_decompose(
+         11.3  src/acceptance/cli.py#@@ -937,6 +957,7 @@ def main(argv: list[str] | None = None) -> int:
+         11.4  src/acceptance/cli.py#@@ -985,6 +1009,7 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: strongly supported  [tier: static]
+         11.5  tests/test_usage.py::test_each_stage_is_accounted_for_separately_and_in_a_stable_order
+         11.6  tests/test_usage.py::test_the_cached_share_is_measured_only_over_calls_that_reported_one
+
+  12. The cached prompt-token share of a stage is the share of that stage's prompt tokens that the provider served from its cache.
+       requirements: constraint-08
+       code evidence: addressed
+         12.1  src/acceptance/usage.py#@@ -0,0 +1,207 @@
+       test evidence: strongly supported  [tier: static]
+         12.2  tests/test_usage.py::test_a_stage_no_call_reported_caching_for_has_an_unmeasured_share
+         12.3  tests/test_usage.py::test_the_cached_share_is_measured_only_over_calls_that_reported_one
+
+  13. A run's report distinguishes calls answered by the provider from calls answered from a recording.
+       requirements: constraint-09
+       code evidence: addressed
+         13.1  src/acceptance/llm.py#@@ -347,6 +385,42 @@ class ModelClient:
+         13.2  src/acceptance/usage.py#@@ -0,0 +1,207 @@
+         13.3  src/acceptance/cli.py#@@ -308,6 +313,17 @@ def run_decompose(
+         13.4  src/acceptance/cli.py#@@ -937,6 +957,7 @@ def main(argv: list[str] | None = None) -> int:
+         13.5  src/acceptance/cli.py#@@ -985,6 +1009,7 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: strongly supported  [tier: static]
+         13.6  tests/test_usage.py::test_a_fully_replayed_run_spends_nothing_and_says_so
+         13.7  tests/test_usage.py::test_a_replayed_call_costs_this_run_nothing_but_still_cost_something_to_record
+
+  14. The cost reported for a call answered from a recording is what that call cost when it was recorded.
+       requirements: constraint-10
+       code evidence: addressed
+         14.1  src/acceptance/llm.py#@@ -347,6 +385,42 @@ class ModelClient:
+         14.2  src/acceptance/usage.py#@@ -0,0 +1,207 @@
+       test evidence: strongly supported  [tier: static]
+         14.3  tests/test_usage.py::test_a_replayed_call_costs_this_run_nothing_but_still_cost_something_to_record
+         14.4  tests/test_usage.py::test_a_transcript_missing_its_usage_fields_is_counted_but_not_priced
+
+  15. The amount a run reports as its own spend counts only calls answered by the provider.
+       requirements: constraint-11
+       code evidence: addressed
+         15.1  src/acceptance/usage.py#@@ -0,0 +1,207 @@
+       test evidence: strongly supported  [tier: static]
+         15.2  tests/test_usage.py::test_a_fully_replayed_run_spends_nothing_and_says_so
+         15.3  tests/test_usage.py::test_a_replayed_call_costs_this_run_nothing_but_still_cost_something_to_record
+         15.4  tests/test_usage.py::test_a_transcript_missing_its_usage_fields_is_counted_but_not_priced
+         15.5  tests/test_usage.py::test_each_stage_is_accounted_for_separately_and_in_a_stable_order
+
+  16. The command-line interface surfaces the stage-by-stage cost breakdown.
+       requirements: constraint-12
+       code evidence: addressed
+         16.1  src/acceptance/cli.py#@@ -893,6 +909,9 @@ def main(argv: list[str] | None = None) -> int:
+         16.2  src/acceptance/cli.py#@@ -902,6 +921,7 @@ def main(argv: list[str] | None = None) -> int:
+         16.3  src/acceptance/cli.py#@@ -937,6 +957,7 @@ def main(argv: list[str] | None = None) -> int:
+         16.4  src/acceptance/cli.py#@@ -963,8 +984,11 @@ def main(argv: list[str] | None = None) -> int:
+         16.5  src/acceptance/cli.py#@@ -985,6 +1009,7 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: CLI output includes the breakdown of tokens, cost, and cached prompt-token share by stage.
+           inputs:  Invoke the CLI command path that now prints usage on stderr after a successful run, using a fixture/client that produces at least two distinct stages and mixed call provenance: one live/provider call and one replayed/recorded call, with nonzero prompt/completion tokens and cached-token details on at least one stage. The input should make the per-stage table visibly nontrivial so the test can distinguish stage rows, token totals, cost, and cached prompt share.
+           detects: The CLI prints only a total usage line or omits the per-stage breakdown entirely, so tokens/cost/cache share by stage are not surfaced to users.
+           full detail: acceptance recommendation --criterion cli-surfaces-breakdown
+
+  17. Recording the stage of a call leaves that call's request key unchanged.
+       requirements: constraint-13
+       code evidence: addressed
+         17.1  src/acceptance/llm.py#@@ -433,15 +510,16 @@ class ModelClient:
+         17.2  tests/test_usage.py#@@ -0,0 +1,259 @@
+       test evidence: strongly supported  [tier: static]
+         17.3  tests/test_llm.py::test_record_mode_validates_and_persists_a_transcript
+         17.4  tests/test_usage.py::test_naming_the_stage_does_not_change_the_request_key
+
+  18. Recording cached-token counts in a call's usage leaves that call's request key unchanged.
+       requirements: constraint-14
+       code evidence: addressed
+         18.1  src/acceptance/llm.py#@@ -247,16 +257,44 @@ def _extract_content(response: Any) -> str:
+         18.2  tests/test_usage.py#@@ -0,0 +1,259 @@
+       test evidence: strongly supported  [tier: static]
+         18.3  tests/test_usage.py::test_naming_the_stage_does_not_change_the_request_key
+         18.4  tests/test_usage.py::test_recording_usage_fields_does_not_change_the_request_key
+
+  19. The breakdown appears in no review state.
+       requirements: constraint-15
+       code evidence: addressed
+         19.1  src/acceptance/usage.py#@@ -0,0 +1,207 @@
+         19.2  src/acceptance/cli.py#@@ -308,6 +313,17 @@ def run_decompose(
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: Review state output contains no stage-by-stage breakdown data.
+           inputs:  Construct a review-state-producing path (e.g. `run_review` or the review-state serialization helper) with a client that has observed calls containing stage, key, served_from, and usage data, then inspect the persisted/returned review state object or its serialized form. Use inputs that would make a breakdown tempting to include: multiple stages, nonzero usage, and cached-token details, so the test can prove the state intentionally excludes them.
+           detects: The implementation accidentally stores the new per-stage usage breakdown inside persisted review state, making review state nondeterministic and leaking run-specific cost data.
+           full detail: acceptance recommendation --criterion breakdown-absent-from-review-state
+
+  20. The breakdown appears in no rendered report.
+       requirements: constraint-16
+       code evidence: addressed
+         20.1  src/acceptance/cli.py#@@ -308,6 +313,17 @@ def run_decompose(
+         20.2  src/acceptance/cli.py#@@ -937,6 +957,7 @@ def main(argv: list[str] | None = None) -> int:
+         20.3  src/acceptance/cli.py#@@ -985,6 +1009,7 @@ def main(argv: list[str] | None = None) -> int:
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: Rendered report output contains no stage-by-stage breakdown data.
+           inputs:  Generate a rendered report from a review result that has stage-attributed usage available on the client, but render only the report artifact (not the CLI footer). Use a run with multiple stages and nonzero usage so any accidental inclusion of usage breakdown in the report would be obvious.
+           detects: The report renderer accidentally includes the new usage breakdown/footer, causing the persisted or user-facing report to leak run-specific cost data.
+           full detail: acceptance recommendation --criterion breakdown-absent-from-rendered-report
+
+  21. The change does not include work to make a run cheaper or to increase how much of a prompt the provider serves from its cache.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 30 changes across 13 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion, so the source change itself is the evidence that the excluded work was not done.
+
+  22. The change does not attribute cost to anything finer than the stage that issued the call.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 30 changes across 13 files; none breaches this boundary
+       test evidence: strongly supported  [tier: static]
+         22.1  tests/test_usage.py::test_each_stage_is_accounted_for_separately_and_in_a_stable_order
+
+  23. Model calls issued by the measurement harness are not part of a review run.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 30 changes across 13 files; none breaches this boundary
+       test evidence: not required — This exclusion is satisfied by the implementation's scope, and a test cannot directly demonstrate the absence of harness-issued review-run calls.
+
+  24. The change does not record what a call cost at any moment other than when the call was made.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 30 changes across 13 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about when cost recording happens, so the source change itself settles it.
+
+  25. The change does not compute the price of a token beyond the provider's own accounting for each call.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 30 changes across 13 files; none breaches this boundary
+       test evidence: not required — This exclusion is satisfied by the absence of token-price computation in the implementation.
+
+  26. The breakdown is presented only on the command line.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 30 changes across 13 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about presentation location, which is verified directly from the implementation.
+
+  27. A run's cost is attributable to the stage that incurred it.
+       requirements: task-01
+       code evidence: addressed
+         27.1  src/acceptance/usage.py#@@ -0,0 +1,207 @@
+       test evidence: strongly supported  [tier: static]
+         27.2  tests/test_usage.py::test_each_stage_is_accounted_for_separately_and_in_a_stable_order
+
+  28. Every model call the review pipeline issues records which stage issued it, how many tokens it used, what it cost, and how much of its prompt the provider served from cache.
+       requirements: task-01
+       code evidence: addressed
+         28.1  src/acceptance/llm.py#@@ -247,16 +257,44 @@ def _extract_content(response: Any) -> str:
+         28.2  src/acceptance/llm.py#@@ -347,6 +385,42 @@ class ModelClient:
+         28.3  src/acceptance/llm.py#@@ -410,6 +484,9 @@ class ModelClient:
+         28.4  src/acceptance/llm.py#@@ -433,15 +510,16 @@ class ModelClient:
+         28.5  src/acceptance/llm.py#@@ -475,6 +553,7 @@ class ModelClient:
+         28.6  src/acceptance/llm.py#@@ -490,6 +569,12 @@ class ModelClient:
+         28.7  src/acceptance/requirement/linking.py#@@ -283,7 +283,7 @@ def _embed(obligations: Sequence[Obligation], client: ModelClient) -> dict[str,
+       test evidence: strongly supported  [tier: static]
+         28.8  tests/test_usage.py::test_usage_details_are_read_from_a_mapping_too
+
+  29. At the end of a run the tool reports the breakdown stage by stage, keeping what the run itself spent separate from what its evidence cost when that evidence was first recorded.
+       requirements: task-01
+       code evidence: addressed
+         29.1  src/acceptance/cli.py#@@ -308,6 +313,17 @@ def run_decompose(
+         29.2  src/acceptance/cli.py#@@ -937,6 +957,7 @@ def main(argv: list[str] | None = None) -> int:
+         29.3  src/acceptance/cli.py#@@ -985,6 +1009,7 @@ def main(argv: list[str] | None = None) -> int:
+         29.4  src/acceptance/usage.py#@@ -0,0 +1,207 @@
+       test evidence: strongly supported  [tier: static]
+         29.5  tests/test_usage.py::test_each_stage_is_accounted_for_separately_and_in_a_stable_order
+
+Mandate coverage: 27 of 28 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: The bullet is a section marker naming the implementation section and does not itself state a checkable requirement.
+
+Unrequested changes:
+  (none)
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run dec26e67f2fc2fc0
+  continue this run with: --continue dec26e67f2fc2fc0
+Model usage by stage:
+  stage                                             calls  prompt  output  cached  this run  recorded
+  ----------------------------  -------------------------  ------  ------  ------  --------  --------
+  coverage classification         1 (1 live / 0 replayed)  13,198   2,307    0.0%   $0.0203   $0.0203
+  decompose                       4 (0 live / 4 replayed)  24,655   3,773       —   $0.0000   $0.0223
+  discrimination judgment         1 (1 live / 0 replayed)  10,021   2,620    0.0%   $0.0193   $0.0193
+  obligation linking              2 (0 live / 2 replayed)   1,911     127       —   $0.0000   $0.0013
+  test recommendation             1 (1 live / 0 replayed)  11,273   1,176    0.0%   $0.0137   $0.0137
+  test-to-obligation mapping    14 (14 live / 0 replayed)  69,028  10,021    0.0%   $0.0969   $0.0969
+  unrequested-change detection    1 (1 live / 0 replayed)  12,520     556    0.0%   $0.0119   $0.0119
+  this run spent $0.1621 on 18 live call(s); the evidence cost $0.1857 to record (6 call(s) replayed at no cost to this run)
+
