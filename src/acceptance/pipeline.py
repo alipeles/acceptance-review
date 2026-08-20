@@ -49,6 +49,7 @@ from acceptance.evidence.strength import apply_evidence_strength, classify_stren
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
+from acceptance.requirement.ledger import LedgerEntry
 from acceptance.requirement.linking import link_duplicate_obligations
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
@@ -237,6 +238,8 @@ def run_review(
     link_distance_threshold: float | None = DEFAULT_LINK_DISTANCE_THRESHOLD,
     task_identifier: str = "<inline>",
     prior: Review | None = None,
+    ledger_prior: LedgerEntry | None = None,
+    ledger_sink: list | None = None,
 ) -> Review:
     """Run the full static review pipeline and return the assembled Review.
 
@@ -254,7 +257,17 @@ def run_review(
     unusable = UnusableAnswerLog()
 
     parsed = parse_task_file(task_text)
-    derived = decompose(parsed, client, unusable, batch_size=decompose_batch_size)
+    # `ledger_prior` is a DIFFERENT kind of prior from `prior` above, and the two
+    # are deliberately not merged. `prior` is a stored Review, selected by git
+    # ancestry, and it carries JUDGEMENTS forward — the ratings over an obligation
+    # set. `ledger_prior` is a decompose ledger entry, named explicitly by the
+    # operator, and it carries the OBLIGATION SET itself. #269 exists because the
+    # second was missing: a changed task invalidated the whole decomposition, so
+    # judgements were being carried over a set that had been re-derived and
+    # re-identified underneath them.
+    derived = decompose(
+        parsed, client, unusable, batch_size=decompose_batch_size, prior=ledger_prior
+    )
     # Obligation determination is two stages (#144). Derivation accounts for each
     # requirement alone and cannot link (#204), so a requirement stated twice
     # yields two obligations; linking resolves them into one obligation named by
@@ -262,8 +275,13 @@ def run_review(
     # provenance so a movement in the final set can be attributed to the stage
     # that caused it.
     decomposition = link_duplicate_obligations(
-        derived, client, unusable, link_pair_batch_size, link_distance_threshold
+        derived, client, unusable, link_pair_batch_size, link_distance_threshold, ledger_prior
     )
+    # Handed back rather than written here: the pipeline does not own the run id,
+    # the parent pointer or the file, and a stage that wrote to disk on the way
+    # past would make the benchmark's own runs leave ledger entries behind.
+    if ledger_sink is not None:
+        ledger_sink.append((derived, decomposition))
 
     # Open-question resolution runs HERE, ahead of every judging stage, because
     # a question the diff resolves yields an obligation (#214) and that

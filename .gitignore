@@ -28,6 +28,14 @@ htmlcov/
 # the checker reads and is committed. Judge anything new here on its own merits.
 .acceptance/cache/
 .acceptance/reviews/
+# The decompose ledger (#269), judged on its own merits as the comment above
+# asks. It is per-run local state, like the transcript cache: one file per run,
+# holding the obligations that run derived, so committing it would add a file
+# per decomposition and put one worktree's run history in another's way. It
+# lives OUTSIDE `.acceptance/cache/` all the same, so that clearing the cache
+# does not take it — DR-259 lost two runs that way. Losing it costs re-derivation
+# and nothing else: carry-forward defaults to fresh.
+.acceptance/ledger/
 *.local
 
 # OS / editor

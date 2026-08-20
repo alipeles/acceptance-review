@@ -41,9 +41,23 @@ from typing import Literal
 from pydantic import Field
 
 from acceptance.config import DEFAULT_DECOMPOSE_BATCH_SIZE
-from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
+from acceptance.llm import (
+    ModelClient,
+    SchemaValidationError,
+    StrictResponseModel,
+    inline_schema_refs,
+)
 from acceptance.model_base import PersistableModel
 from acceptance.partition import partition
+from acceptance.requirement.carry import CarryPlan, derivation_kind, plan_carry
+from acceptance.requirement.ledger import (
+    DECOMPOSE_STAGE_LOGIC_VERSION,
+    Derivation,
+    LedgerEntry,
+    MergeDecision,
+    RequirementDerivation,
+    carry_key,
+)
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import ParsedTaskFile
 from acceptance.review_state import (
@@ -440,9 +454,28 @@ class Decomposition(PersistableModel):
     obligations: list[Obligation] = Field(default_factory=list)
     open_questions: list[OpenQuestion] = Field(default_factory=list)
     requirement_map: RequirementMap = Field(default_factory=RequirementMap)
+    # What this run settled per requirement, ready for the ledger (#269). Held
+    # here rather than written from inside `decompose` so that the stage stays a
+    # function of its inputs: the caller owns the run id, the parent pointer and
+    # the file, and decomposition owns only what it derived.
+    derivations: list[RequirementDerivation] = Field(default_factory=list)
+    # Requirements the continued run had and this task file does not. Reported
+    # rather than silently dropped — a removal that goes unreported is
+    # indistinguishable from a requirement that was never there.
+    removed_requirements: list[RequirementDerivation] = Field(default_factory=list)
+    calls_issued: int = 0
+    # Every "are these the same requirement?" answer this run stands on, carried
+    # and freshly asked alike. Populated by `link_duplicate_obligations`, which is
+    # a later stage — a bare `decompose` leaves it empty, and that is correct:
+    # derivation performs no linking (DR-204).
+    merge_decisions: list[MergeDecision] = Field(default_factory=list)
 
 
-def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
+def _user_prompt(
+    registry: list[RequirementRef],
+    answer_for: set[str],
+    revisions: dict[str, RequirementDerivation] | None = None,
+) -> str:
     """The identified requirements, as typed fields — all of them, every call.
 
     Deliberately NOT `parsed.source`. The pipeline runs `parse_task_file`, which
@@ -486,7 +519,67 @@ def _user_prompt(registry: list[RequirementRef], answer_for: set[str]) -> str:
             ),
         ]
     )
+    lines.extend(_revision_block(revisions or {}, answer_for))
     return "\n".join(lines)
+
+
+def _revision_block(
+    revisions: dict[str, RequirementDerivation],
+    answer_for: set[str],
+) -> list[str]:
+    """What a requirement used to say, and what it yielded, for the ones that changed.
+
+    **Appended only when this call is answering for a revised requirement**, so a
+    run with nothing to carry produces a prompt byte-identical to the one this
+    stage produced before carry-forward existed. That is what makes "a tool change
+    that leaves the decompose request unaltered carries every previously derived
+    obligation" true rather than aspirational: a fresh decomposition hashes to the
+    same request key it always did, and every recorded transcript still replays.
+
+    The model is shown the previous wording and what it produced, and asked to
+    justify the difference against a real diff. It is never shown its own prior
+    answer for bare approval — the input genuinely changed, so there is something
+    to reconcile. Reusing an id is offered, not demanded: an obligation that no
+    longer follows from the new text should not keep its identifier just because
+    one was available.
+    """
+    applicable = {
+        requirement_id: derivation
+        for requirement_id, derivation in sorted(revisions.items())
+        if requirement_id in answer_for
+    }
+    if not applicable:
+        return []
+
+    lines = [
+        "",
+        "PREVIOUSLY DERIVED",
+        "",
+        (
+            "These requirements were worded differently in the run this one "
+            "continues, and each already produced the obligations listed under it. "
+            "Where an obligation below still follows from the NEW wording, reuse its "
+            "id so it keeps its identity across the edit. Where the edit changed what "
+            "is required, derive what the new wording says and let the old id go — do "
+            "not preserve an obligation the new text no longer supports, and do not "
+            "reuse an id for something it did not previously mean."
+        ),
+    ]
+    for requirement_id, derivation in applicable.items():
+        lines.extend(
+            [
+                "",
+                f"[{requirement_id}] previously read:",
+                f"    {derivation.text.strip()}",
+            ]
+        )
+        if derivation.obligations:
+            lines.append("  and produced:")
+            for obligation in derivation.obligations:
+                lines.append(f"    {obligation.id}: {obligation.description}")
+        else:
+            lines.append(f"  and produced no obligation ({derivation.disposition.value}).")
+    return lines
 
 
 def _importance(value: str) -> str:
@@ -667,11 +760,39 @@ def _resolve_attributions(
     return obligations, derived_ids
 
 
+def decompose_carry_keys(client: ModelClient, registry: list[RequirementRef]) -> dict[str, str]:
+    """The key each requirement's derivation would be valid under, this run.
+
+    The response schema here is the UNCONSTRAINED `_Decomposition`, deliberately.
+    The real request constrains `requirement_id` to the batch's ids, so the schema
+    inside a request key depends on how the run happened to be partitioned — and a
+    carry key that moved when the batch size changed would discard work for a
+    reason that has nothing to do with whether the answer is still right.
+    """
+    schema = {
+        "name": _Decomposition.__name__,
+        "schema": inline_schema_refs(_Decomposition.model_json_schema()),
+    }
+    return {
+        requirement.id: carry_key(
+            system_prompt=_SYSTEM_PROMPT,
+            response_schema=schema,
+            model=client.model,
+            temperature=client.temperature,
+            seed=client.seed,
+            stage_logic_version=DECOMPOSE_STAGE_LOGIC_VERSION,
+            requirement_text=requirement.text,
+        )
+        for requirement in registry
+    }
+
+
 def decompose(
     parsed: ParsedTaskFile,
     client: ModelClient,
     unusable_answers: UnusableAnswerLog | None = None,
     batch_size: int = DEFAULT_DECOMPOSE_BATCH_SIZE,
+    prior: LedgerEntry | None = None,
 ) -> Decomposition:
     """Decompose a parsed task into typed obligations, open questions, and the
     mapping from each identified requirement to what it produced.
@@ -719,12 +840,29 @@ def decompose(
     # they still need per-batch resolution: each response mints its own ids.
     question_final: dict[str, dict[str, str]] = {}
 
-    for batch in partition(registry, batch_size, key=lambda requirement: requirement.id):
+    # What this run may take from the run it continues. With no prior it plans
+    # every requirement as `derived`, and everything below runs exactly as it did
+    # before carry-forward existed.
+    plan = plan_carry(registry, prior, decompose_carry_keys(client, registry), client)
+    to_ask = plan.issues_calls_for
+    asking = [requirement for requirement in registry if requirement.id in to_ask]
+    calls_issued = 0
+
+    for batch in partition(asking, batch_size, key=lambda requirement: requirement.id):
         batch_ids = [requirement.id for requirement in batch.items]
         messages = [
             {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": _user_prompt(registry, set(batch_ids))},
+            {
+                "role": "user",
+                # The registry passed here is the WHOLE one, never `asking`: the
+                # batch scopes what a call answers for, not what it may read
+                # (#178). A call shown only the requirements that changed could
+                # not notice that an untouched section settles a term the
+                # changed one leaves open.
+                "content": _user_prompt(registry, set(batch_ids), plan.revised),
+            },
         ]
+        calls_issued += 1
         # Constrained to THIS batch's ids, not the whole registry: a disposition
         # for a requirement another call owns is unrepresentable under
         # constrained decoding, and caught locally otherwise (#163). Obligation
@@ -842,16 +980,199 @@ def decompose(
 
     obligations, derived_ids = _resolve_attributions(attributions, dispositions, unusable_answers)
 
+    carried_dispositions = {
+        requirement_id: _carried_disposition(requirement_id, source)
+        for requirement_id, source in plan.carried.items()
+    }
+    requirement_map = _requirement_map(
+        registry,
+        dispositions,
+        derived_ids,
+        question_final,
+        parsed.unclaimed,
+        carried_dispositions,
+    )
+    # A revised requirement's disposition is built by the ordinary path, because
+    # it WAS asked of the model — so without this it would report itself as
+    # `derived` and carry no reason, which is the same thing a genuinely fresh
+    # requirement reports. The two are different: one had a predecessor and was
+    # re-asked against it, and losing that distinction loses the only record that
+    # an identifier could have been reused and was not.
+    requirement_map = _stamp_revisions(requirement_map, plan)
+
+    if not plan.is_fresh():
+        # Rebuild both flat lists by walking the map, so a carried obligation
+        # sits where its requirement sits rather than after everything asked for
+        # in this run. Only on a carrying run: with nothing carried, the lists
+        # the call loop already built are returned untouched, which keeps a fresh
+        # decomposition byte-for-byte what it was before this existed.
+        obligations, open_questions = _in_registry_order(
+            requirement_map, obligations, open_questions, plan
+        )
+
     return Decomposition(
         obligations=obligations,
         open_questions=open_questions,
-        requirement_map=_requirement_map(
-            registry,
-            dispositions,
-            derived_ids,
-            question_final,
-            parsed.unclaimed,
-        ),
+        requirement_map=requirement_map,
+        derivations=_derivations(registry, requirement_map, plan, obligations, open_questions),
+        removed_requirements=list(plan.removed),
+        calls_issued=calls_issued,
+    )
+
+
+def _revision_reason(source: RequirementDerivation) -> str:
+    """Why a requirement was re-asked: the wording it used to have.
+
+    One definition, used by both the disposition and the ledger record, so the two
+    cannot drift into disagreeing about the same event.
+    """
+    return f"requirement text changed from: {source.text.strip()}"
+
+
+def _stamp_revisions(requirement_map: RequirementMap, plan: CarryPlan) -> RequirementMap:
+    """Mark the dispositions of requirements this run re-asked against a predecessor."""
+    if not plan.revised:
+        return requirement_map
+    stamped = [
+        disposition.model_copy(
+            update={
+                "derivation": Derivation.REVISED.value,
+                "carried_from": plan.revised[disposition.requirement_id].digest(),
+                "revision_reason": _revision_reason(plan.revised[disposition.requirement_id]),
+            }
+        )
+        if disposition.requirement_id in plan.revised
+        else disposition
+        for disposition in requirement_map.dispositions
+    ]
+    return requirement_map.model_copy(update={"dispositions": stamped})
+
+
+def _carried_disposition(
+    requirement_id: str, source: RequirementDerivation
+) -> RequirementDisposition:
+    """The disposition a carried requirement keeps.
+
+    Rebuilt rather than copied so it is checked by the same validator every other
+    disposition passes — a carried `yielded` that names no obligation is as broken
+    as a derived one, and this is where that would surface.
+    """
+    return RequirementDisposition(
+        requirement_id=requirement_id,
+        disposition=source.disposition,
+        obligation_ids=[obligation.id for obligation in source.obligations],
+        open_question_ids=[question.id for question in source.open_questions],
+        reason=source.reason,
+        derivation=Derivation.CARRIED.value,
+        carried_from=source.digest(),
+    )
+
+
+def _in_registry_order(
+    requirement_map: RequirementMap,
+    obligations: list[Obligation],
+    open_questions: list[OpenQuestion],
+    plan: CarryPlan,
+) -> tuple[list[Obligation], list[OpenQuestion]]:
+    """The obligations and questions of every requirement, in registry order."""
+    by_obligation = {obligation.id: obligation for obligation in obligations}
+    by_question = {question.id: question for question in open_questions}
+    for source in plan.carried.values():
+        for obligation in source.obligations:
+            by_obligation[obligation.id] = obligation
+        for question in source.open_questions:
+            by_question[question.id] = question
+
+    ordered_obligations: list[Obligation] = []
+    ordered_questions: list[OpenQuestion] = []
+    seen: set[str] = set()
+    for disposition in requirement_map.dispositions:
+        for obligation_id in disposition.obligation_ids:
+            if obligation_id in by_obligation and obligation_id not in seen:
+                seen.add(obligation_id)
+                ordered_obligations.append(by_obligation[obligation_id])
+        for question_id in disposition.open_question_ids:
+            if question_id in by_question and question_id not in seen:
+                seen.add(question_id)
+                ordered_questions.append(by_question[question_id])
+    return ordered_obligations, ordered_questions
+
+
+def _derivations(
+    registry: list[RequirementRef],
+    requirement_map: RequirementMap,
+    plan: CarryPlan,
+    obligations: list[Obligation],
+    open_questions: list[OpenQuestion],
+) -> list[RequirementDerivation]:
+    """One ledger record per requirement, in registry order.
+
+    Written for every requirement, not only the ones that changed: the ledger is
+    what the NEXT run reads to decide what it may carry, so a requirement this run
+    merely carried must still appear, holding the same obligations. A ledger that
+    recorded only the derivations would carry work forward exactly once.
+    """
+    by_obligation = {obligation.id: obligation for obligation in obligations}
+    by_question = {question.id: question for question in open_questions}
+    records: list[RequirementDerivation] = []
+    for requirement in registry:
+        disposition = requirement_map.disposition_for(requirement.id)
+        if disposition is None:  # pragma: no cover - _requirement_map raises first
+            continue
+        kind = derivation_kind(plan, requirement.id)
+        source = plan.carried.get(requirement.id) or plan.revised.get(requirement.id)
+        records.append(
+            RequirementDerivation(
+                requirement_id=requirement.id,
+                text=requirement.text,
+                carry_key=plan.keys[requirement.id],
+                derivation=kind,
+                disposition=disposition.disposition,
+                reason=disposition.reason,
+                carried_from=source.digest() if source is not None else None,
+                revision_reason=(
+                    _revision_reason(source)
+                    if kind is Derivation.REVISED and source is not None
+                    else None
+                ),
+                obligations=[
+                    by_obligation[obligation_id]
+                    for obligation_id in disposition.obligation_ids
+                    if obligation_id in by_obligation
+                ],
+                open_questions=[
+                    by_question[question_id]
+                    for question_id in disposition.open_question_ids
+                    if question_id in by_question
+                ],
+            )
+        )
+    return records
+
+
+def build_ledger_entry(
+    derived: Decomposition,
+    run_id: str,
+    parent_run_id: str | None,
+    task_digest: str,
+    linked: Decomposition | None = None,
+) -> LedgerEntry:
+    """This run's ledger record, ready to write.
+
+    Two inputs, deliberately. The **derivations** come from `derived`, before
+    linking: what a later run carries forward per requirement is what this stage
+    derived, and recording the post-merge set would let one run's merge silently
+    become the next run's premise (DR-204). The **merge decisions** come from
+    `linked`, because that is the stage that made them.
+    """
+    return LedgerEntry(
+        run_id=run_id,
+        parent_run_id=parent_run_id,
+        stage_logic_version=DECOMPOSE_STAGE_LOGIC_VERSION,
+        task_digest=task_digest,
+        calls_issued=derived.calls_issued,
+        derivations=list(derived.derivations),
+        merge_decisions=list((linked or derived).merge_decisions),
     )
 
 
@@ -924,6 +1245,7 @@ def _requirement_map(
     derived_ids: dict[str, list[str]],
     question_final: dict[str, dict[str, str]],
     unread: list,
+    carried: dict[str, RequirementDisposition] | None = None,
 ) -> RequirementMap:
     """Reconcile the returned dispositions against the registry.
 
@@ -953,7 +1275,30 @@ def _requirement_map(
         raise SchemaValidationError(
             f"response disposed requirement ids not in the registry: {', '.join(unknown)}"
         )
-    missing = [requirement.id for requirement in registry if requirement.id not in by_requirement]
+    # A carried requirement was not asked about in this run, so no response
+    # accounts for it — and it must still be accounted for, because a registry
+    # requirement with no disposition is the malformed-response case this
+    # function exists to reject. Carrying is the one way a disposition arrives
+    # without a call behind it, and it is checked here rather than trusted: an
+    # id carried for a requirement the registry does not have is caught by the
+    # same rule as one the model invented.
+    carried = carried or {}
+    carried_unknown = sorted(set(carried) - known)
+    if carried_unknown:
+        raise SchemaValidationError(
+            f"carried dispositions for requirement ids not in the registry: "
+            f"{', '.join(carried_unknown)}"
+        )
+    both = sorted(set(carried) & set(by_requirement))
+    if both:
+        raise SchemaValidationError(
+            f"requirement(s) both carried and disposed by a response: {', '.join(both)}"
+        )
+    missing = [
+        requirement.id
+        for requirement in registry
+        if requirement.id not in by_requirement and requirement.id not in carried
+    ]
     if missing:
         raise SchemaValidationError(
             f"response did not account for {len(missing)} of {len(registry)} "
@@ -962,6 +1307,9 @@ def _requirement_map(
 
     dispositions: list[RequirementDisposition] = []
     for requirement in registry:
+        if requirement.id in carried:
+            dispositions.append(carried[requirement.id])
+            continue
         entry = by_requirement[requirement.id]
 
         if isinstance(entry, _NoObligation):

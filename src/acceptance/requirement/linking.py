@@ -61,6 +61,7 @@ from collections.abc import Sequence
 from acceptance.config import DEFAULT_LINK_PAIR_BATCH_SIZE
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.partition import partition
+from acceptance.requirement.ledger import LedgerEntry, MergeDecision
 from acceptance.requirement.obligations import Decomposition
 from acceptance.review_state import (
     Obligation,
@@ -432,6 +433,7 @@ def link_duplicate_obligations(
     unusable_answers: UnusableAnswerLog | None = None,
     pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
     distance_threshold: float | None = None,
+    prior: LedgerEntry | None = None,
 ) -> Decomposition:
     """Link the obligations that state the same requirement.
 
@@ -477,9 +479,33 @@ def link_duplicate_obligations(
             },
         )
 
-    if not askable:
+    # A merge decision over two obligations that are BOTH unchanged is the same
+    # question it was last time, so it is not asked again (#269). Either side
+    # changing puts the pair back in front of the model: the prompt renders both
+    # obligations, so a decision made about one wording is not a decision about
+    # another. `askable` shrinks to the genuinely open pairs.
+    carried_decisions: dict[tuple[str, str], bool] = {}
+    if prior is not None:
+        on_file = prior.decisions_by_pair()
+        still_askable = []
+        for pair in askable:
+            _, left, right = pair
+            key = MergeDecision.between(by_id[left], by_id[right], False).key
+            if key in on_file:
+                carried_decisions[key] = on_file[key]
+                if on_file[key]:
+                    confirmed.add(frozenset((left, right)))
+            else:
+                still_askable.append(pair)
+        askable = still_askable
+
+    # Nothing left to ask AND nothing carried means nothing to merge — the
+    # original early exit. With carried decisions in hand the tail below still has
+    # to run, because those decisions are what the clusters are built from.
+    if not askable and not carried_decisions:
         return decomposition
 
+    fresh_decisions: list[MergeDecision] = []
     for batch in partition(askable, pair_batch_size, key=lambda pair: pair[0]):
         by_pair_id = {pair_id: (left, right) for pair_id, left, right in batch.items}
         allowed = {"pair_id": list(by_pair_id)}
@@ -497,8 +523,14 @@ def link_duplicate_obligations(
         if unusable_answers is not None:
             unusable_answers.record(scan(result, allowed, _STAGE))
         for verdict in result.verdicts:
-            if verdict.same_requirement and verdict.pair_id in by_pair_id:
-                confirmed.add(frozenset(by_pair_id[verdict.pair_id]))
+            if verdict.pair_id not in by_pair_id:
+                continue
+            left, right = by_pair_id[verdict.pair_id]
+            fresh_decisions.append(
+                MergeDecision.between(by_id[left], by_id[right], verdict.same_requirement)
+            )
+            if verdict.same_requirement:
+                confirmed.add(frozenset((left, right)))
 
     survivor_of, inconsistent = _confirmed_clusters(ordered_ids, confirmed)
     if unusable_answers is not None and inconsistent:
@@ -516,9 +548,19 @@ def link_duplicate_obligations(
             for members in inconsistent
         )
 
+    # Every decision this run stands on, carried and fresh alike, so the next run
+    # inherits the whole set rather than only what this one happened to re-ask.
+    # Sorted, because two runs over the same input must record it identically.
+    decisions = [
+        MergeDecision(left=key[0], right=key[1], same_requirement=value)
+        for key, value in carried_decisions.items()
+    ] + fresh_decisions
+    decisions.sort(key=lambda decision: decision.key)
+
     return decomposition.model_copy(
         update={
             "obligations": _merged_obligations(obligations, survivor_of),
             "requirement_map": _relinked_map(decomposition.requirement_map, survivor_of),
+            "merge_decisions": decisions,
         }
     )

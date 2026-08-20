@@ -11,6 +11,7 @@ attributable.
 
 from __future__ import annotations
 
+from acceptance.requirement.ledger import LedgerStore
 from acceptance.requirement.linking import (
     _confirmed_clusters,
     _pairs,
@@ -537,7 +538,9 @@ def test_the_decompose_command_runs_the_linking_pass(tmp_path, monkeypatch):
         cli.RunConfig, "build_client", lambda self: client_dispatching({"_Decomposition": _DERIVED})
     )
 
-    result, _ = cli.run_decompose(str(task), cli.RunConfig())
+    result, _, _ = cli.run_decompose(
+        str(task), cli.RunConfig(), ledger=LedgerStore(tmp_path / "ledger")
+    )
 
     assert called == [2], "decompose must hand its derived obligations to the linking pass"
     assert len(result.obligations) <= 2
@@ -555,7 +558,9 @@ def test_the_decompose_command_surfaces_an_unreconciled_group(tmp_path, monkeypa
         cli.RunConfig, "build_client", lambda self: client_dispatching({"_Decomposition": _DERIVED})
     )
 
-    _, unusable = cli.run_decompose(str(task), cli.RunConfig())
+    _, unusable, _ = cli.run_decompose(
+        str(task), cli.RunConfig(), ledger=LedgerStore(tmp_path / "ledger")
+    )
 
     assert hasattr(unusable, "answers"), "decompose must carry the linking stage's log"
 
