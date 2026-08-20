@@ -3741,3 +3741,100 @@ the record.
   > plain restatements.
 - **Status:** **filed** — merged into the single #304 comment above rather than
   posted separately, on 2026-08-20.
+
+### [2026-08-20] A continued run keeps an obligation after its source sentence is deleted from the requirement
+- **Kind:** filing
+- **Found during:** #302, Gate 1
+- **Where:** `src/acceptance/requirement/` — the `--continue` carry path (#269's
+  mechanism), not the decomposer itself
+- **Severity:** should-fix
+- **What's wrong:** Editing a requirement to **delete** a sentence leaves the
+  obligation derived from that sentence in the carried set. The obligation then
+  traces to no text in the mandate, which breaches the standing invariant that
+  every finding links to exact requirement text.
+
+  Measured over two runs of the same task file, one carried and one fresh:
+
+  | run | mode | `exclusion-01` obligations |
+  |---|---|---|
+  | `f1f9a9c986aeaafe` (run 3) | `--continue e5c2490c4a564ea5` | **2** |
+  | `e884fa0078cdfdce` (run 4) | fresh, no carry | **1** |
+
+  `exclusion-01` was trimmed from two sentences to one. Run 3 prints the trimmed
+  one-sentence text and still carries
+  `changes-answers-carried-and-identified-not-asked-or-decided` — *"The work
+  changes how answers are carried and identified, not what is asked or decided"* —
+  which is verbatim the deleted sentence. The fresh run over identical text yields
+  one obligation. So the decomposer reads the current text correctly and the carry
+  is what retains the orphan.
+
+  This is a **deletion**, not a reword. #269's carry is built to hold an
+  obligation stable when its requirement is reworded, which is exactly right; the
+  gap is that a requirement whose text shrank still matches well enough to carry
+  everything it previously produced.
+
+  It matters more than a stray obligation, because `CLAUDE.md`'s Gate 1 tells
+  every session to re-run with `--continue` after reworking `current-task.md` —
+  so the defect fires precisely on the runs the procedure mandates, and the
+  orphan is invisible unless a fresh run is done alongside to compare.
+- **Why I didn't act:** outside #302's scope, which is response schemas. Fixing
+  carry semantics would also re-key the decompose stage and force a corpus
+  re-record that #302 is already going to pay once.
+- **Drafted fix:** file as a **sub-issue of #181** (decomposition).
+
+  > **Title:** A continued run keeps an obligation whose source sentence was deleted from the requirement
+  >
+  > **Body:** `--continue` carries obligations for a requirement whose text was
+  > edited. When the edit **deletes** a sentence, the obligation derived from that
+  > sentence is carried anyway, and afterwards links to no text in the mandate.
+  >
+  > Reproduced at #302's Gate 1 over one task file, `exclusion-01`, trimmed from
+  > two sentences to one:
+  >
+  > | run | mode | obligations |
+  > |---|---|---|
+  > | `f1f9a9c986aeaafe` | `--continue` | 2 — including the deleted sentence, verbatim |
+  > | `e884fa0078cdfdce` | fresh | 1 |
+  >
+  > Logs: `dogfood-logs/302-gate1-run3/` and `dogfood-logs/302-gate1-run4-diagnostic/`.
+  >
+  > Sharpest because `CLAUDE.md`'s Gate 1 requires `--continue` on every re-run
+  > after reworking the task file, so this fires on the mandated path, and nothing
+  > in the output reveals it — the run prints the *trimmed* requirement text above
+  > the stale obligation.
+  >
+  > **Acceptance:** deleting a sentence from a requirement drops the obligations
+  > derived from it on the next continued run; an obligation carried forward
+  > still quotes text present in the current requirement; the existing reword
+  > behavior (#269) is unchanged.
+- **Status:** filed (#306, sub-issue of #181). Approved at #302's Gate 1.
+
+### [2026-08-20] #242 gains a Task/Constraint duplicate pair that survives a fresh run
+- **Kind:** filing
+- **Found during:** #302, Gate 1
+- **Where:** `src/acceptance/requirement/` — obligation merging
+- **Severity:** nice-to-have
+- **What's wrong:** #302's mandate states its core demand in the `# Task`
+  headline and again as `constraint-01`. The two produce separate obligations
+  that are never merged:
+
+  - `task-01` → *"Every call a stage makes within one review run declares the
+    same answer format."*
+  - `constraint-01` → *"Every call a stage makes within one run declares the same
+    answer format, whatever items that particular call asks about."*
+
+  The tool demonstrably *can* merge a Task/Constraint pair — #265's Gate 1 run 3
+  merged `task-01` with `constraint-05` into one shared obligation — so this is a
+  non-merge, not a missing capability.
+
+  Reproduced **fresh as well as carried**: run 4 with no carry produces
+  `keep-stage-answer-format-stable-within-run` against
+  `same-answer-format-within-run`. Not an artifact of `--continue`.
+- **Why I didn't act:** the duplicate is redundant, not contradictory, and
+  deleting `constraint-01` to move the tool's output would be editing the input
+  to change what the review says. Left in place deliberately.
+- **Drafted fix:** `add_issue_comment` on **#242**, matching how the previous
+  three instances were recorded. Carry both obligation texts, the #265 run-3
+  counter-example showing a merge does happen, and the run 3 / run 4 pair showing
+  it is independent of the carry.
+- **Status:** filed (comment on #242). Approved at #302's Gate 1.
