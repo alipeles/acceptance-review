@@ -24,8 +24,11 @@ from pathlib import Path
 
 import acceptance
 from acceptance.change.diff import extract_change_set
+from acceptance.cli import main
 from acceptance.llm import UNKNOWN_STAGE
 from acceptance.pipeline import run_review
+from acceptance.report import render_report
+from acceptance.usage import render, summarize
 from tests.support import client_dispatching
 
 _SRC = Path(acceptance.__file__).parent
@@ -199,3 +202,145 @@ def test_a_real_review_run_attributes_every_call_it_made(tmp_path):
     for call in observed:
         assert set(call) == {"stage", "key", "served_from", "usage"}
         assert call["served_from"] in {"provider", "recording"}
+
+
+# Fragments that would betray the breakdown if it leaked into a persisted review
+# or a rendered report. Matched case-insensitively against the whole text.
+_COST_MARKERS = (
+    "model usage by stage",
+    "cost_usd",
+    "run_spend",
+    "evidence_cost",
+    "cached_tokens",
+    "served_from",
+    "replayed",
+)
+
+
+def _leaks(text: str) -> list[str]:
+    lowered = text.lower()
+    return [marker for marker in _COST_MARKERS if marker in lowered]
+
+
+def test_the_breakdown_never_reaches_review_state(tmp_path):
+    """Acceptance: cost stays out of the persisted review.
+
+    Not a stylistic boundary — a determinism one. Cost differs between two
+    recordings of the same review (a replayed call spends nothing where the run
+    that recorded it spent money), so a review carrying it could never be
+    byte-identical across runs, and M0.5 would be unsatisfiable.
+    """
+    repo, base, head = _repo(tmp_path)
+    client = client_dispatching(_JUDGMENTS)
+
+    review = run_review(
+        task_text=_TASK,
+        change_set=extract_change_set(repo, base, head),
+        repo=repo,
+        client=client,
+        reviewed_revision=head,
+    )
+
+    # The run really did produce a breakdown, and the markers really do trip on
+    # one — otherwise this test asserts the absence of a thing it cannot detect.
+    assert client.observed_calls
+    assert summarize(client.observed_calls).stages
+    assert _leaks(render(summarize(client.observed_calls)))
+
+    leaked = _leaks(review.to_canonical_json())
+    assert not leaked, f"the persisted review carries cost accounting: {leaked}"
+
+
+def test_the_breakdown_never_reaches_the_rendered_report(tmp_path):
+    """Acceptance: the §16 report says nothing about what the run cost."""
+    repo, base, head = _repo(tmp_path)
+    client = client_dispatching(_JUDGMENTS)
+
+    review = run_review(
+        task_text=_TASK,
+        change_set=extract_change_set(repo, base, head),
+        repo=repo,
+        client=client,
+        reviewed_revision=head,
+    )
+
+    assert summarize(client.observed_calls).stages
+    assert _leaks(render(summarize(client.observed_calls)))
+    leaked = _leaks(render_report(review))
+    assert not leaked, f"the rendered report carries cost accounting: {leaked}"
+
+
+def test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte(tmp_path):
+    """The property the two tests above protect, exercised directly.
+
+    A review that leaked cost would pass an absence check written against the
+    wrong spelling and still diverge here. This varies the usage between two
+    otherwise identical runs and demands the review state be unchanged.
+    """
+    repo, base, head = _repo(tmp_path)
+    change_set = extract_change_set(repo, base, head)
+
+    def once(usage):
+        client = client_dispatching(_JUDGMENTS, usage=usage)
+        review = run_review(
+            task_text=_TASK,
+            change_set=change_set,
+            repo=repo,
+            client=client,
+            reviewed_revision=head,
+        )
+        return review.to_canonical_json(), render_report(review), client.observed_calls
+
+    cheap_state, cheap_report, cheap_calls = once({"prompt_tokens": 10})
+    dear_state, dear_report, dear_calls = once({"prompt_tokens": 9000})
+
+    # The two runs really did consume different amounts. (Tokens, not dollars:
+    # `cost_usd` is priced by the provider library from a real response, so a
+    # hand-built double cannot set it — and tokens are what it is priced from.)
+    def prompt_tokens(calls):
+        return sum(stage.prompt_tokens for stage in summarize(calls).stages)
+
+    assert prompt_tokens(cheap_calls) != prompt_tokens(dear_calls)
+    assert cheap_state == dear_state
+    assert cheap_report == dear_report
+
+
+def test_the_check_command_prints_the_per_stage_breakdown(
+    git_repo, fixture_task_path, capsys, stub_model
+):
+    """Acceptance: the CLI actually surfaces it, on stderr and not on stdout.
+
+    Both halves matter. A breakdown nobody prints answers nothing; a breakdown
+    printed to stdout would put an unreproducible figure into the output the
+    dogfood logs capture, which is precisely what keeps two runs byte-identical.
+    """
+    exit_code = main(
+        [
+            "check",
+            "--task",
+            fixture_task_path,
+            "--base",
+            git_repo["base"],
+            "--head",
+            git_repo["head"],
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Model usage by stage:" in captured.err
+    assert "this run spent $" in captured.err
+    assert "the evidence cost $" in captured.err
+    assert "Model usage" not in captured.out
+
+
+def test_the_decompose_command_prints_the_per_stage_breakdown_too(
+    fixture_task_path, capsys, stub_model
+):
+    """Gate 1 spends money as well, so it reports what it spent."""
+    exit_code = main(["decompose", "--task", fixture_task_path])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert "Model usage by stage:" in captured.err
+    assert "Model usage" not in captured.out
