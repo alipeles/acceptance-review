@@ -157,7 +157,7 @@ def judge_discrimination(
     ]
     allowed = {"obligation_id": list(evidence_by_obligation)}
     result = client.complete(
-        messages, constrain(_Discrimination, allowed), parse_as=_Discrimination
+        messages, constrain(_Discrimination, allowed), parse_as=_Discrimination, stage=_STAGE
     )
     if unusable is not None and unusable.record(scan(result, allowed, _STAGE)):
         # An obligation we asked about but got no usable judgment for is not

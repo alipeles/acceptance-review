@@ -63,10 +63,19 @@ def embedding_fn_for(vectors_by_text: dict[str, list[float]], default: list[floa
     return embedding_fn
 
 
-def _fake_response(content: str) -> SimpleNamespace:
+def _fake_response(content: str, usage: dict | None = None) -> SimpleNamespace:
+    figures = (
+        usage
+        if usage is not None
+        else {
+            "prompt_tokens": 1,
+            "completion_tokens": 1,
+            "total_tokens": 2,
+        }
+    )
     return SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
-        usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+        usage=SimpleNamespace(**figures),
     )
 
 
@@ -357,6 +366,7 @@ def client_dispatching(
     seed: int | None = None,
     embedding_fn=None,
     capture: list | None = None,
+    usage: dict | None = None,
 ) -> ModelClient:
     """A client for multi-call hooks: each call returns the response keyed by
     its response schema's class name (e.g. `_Decomposition`, `_Coverage`).
@@ -369,6 +379,10 @@ def client_dispatching(
     which obligations a stage was GIVEN cannot be written against the response —
     an obligation that was offered and then discarded produces the same output
     as one that was never offered, and those are different behaviours (#266).
+
+    Pass `usage` to control what each call reports having cost. Only a test
+    about cost accounting needs it; the default stands in for a provider whose
+    figures nobody is asserting on (#264).
     """
 
     # Defaults underneath, so a test names only the stages it is about. Adding a
@@ -386,7 +400,7 @@ def client_dispatching(
                     "prompt": "\n".join(m["content"] for m in kwargs["messages"]),
                 }
             )
-        return _fake_response(json.dumps(_completed(dispatch[schema_name], **kwargs)))
+        return _fake_response(json.dumps(_completed(dispatch[schema_name], **kwargs)), usage=usage)
 
     return ModelClient(
         model=model,

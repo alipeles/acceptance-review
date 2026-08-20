@@ -27,7 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from enum import Enum
 from pathlib import Path
 from typing import Any, TypeVar
@@ -37,6 +37,16 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from acceptance.serialization import canonical_json
 
 DEFAULT_TRANSCRIPT_ROOT = Path(".acceptance/cache/transcripts")
+
+# What a call reports when its caller named no stage. A review-pipeline call site
+# that leaves this in place is a defect, and `tests/test_stage_attribution.py`
+# fails on one — the whole point of per-stage cost is that no spend lands in a
+# bucket named "we don't know" (#264).
+UNKNOWN_STAGE = "unknown"
+
+# Where a call's answer came from. `PROVIDER` is the only one this run paid for.
+SERVED_FROM_PROVIDER = "provider"
+SERVED_FROM_RECORDING = "recording"
 
 ResponseModelT = TypeVar("ResponseModelT", bound=BaseModel)
 
@@ -247,15 +257,43 @@ def _extract_content(response: Any) -> str:
     return content
 
 
+def _usage_field(raw: Any, name: str) -> Any:
+    """One usage figure, whether the provider returned an object or a mapping.
+
+    LiteLLM normalises most providers into `Usage` objects, but a completion_fn
+    injected by a test or a fixture is free to hand back plain dicts, and both
+    reach here.
+    """
+    if isinstance(raw, Mapping):
+        return raw.get(name)
+    return getattr(raw, name, None)
+
+
 def _extract_usage(response: Any) -> dict:
     """Token usage and cost, recorded so providers can be compared."""
     usage: dict[str, Any] = {}
     raw = getattr(response, "usage", None)
     if raw is not None:
         for name in ("prompt_tokens", "completion_tokens", "total_tokens"):
-            value = getattr(raw, name, None)
+            value = _usage_field(raw, name)
             if value is not None:
                 usage[name] = value
+
+        # The cache split, which is the only thing that explains a cost figure
+        # (#264). `litellm.completion_cost` already prices cached input at its
+        # own rate, so without these a run whose cost moved while its token
+        # counts stood still is unreadable.
+        #
+        # A count the provider did not report is OMITTED, never defaulted to
+        # zero: "this provider says nothing about caching" and "nothing was
+        # served from cache" are different claims, and writing 0 for the first
+        # would report a 0% cache hit rate as if it had been measured.
+        details = _usage_field(raw, "prompt_tokens_details")
+        if details is not None:
+            for name in ("cached_tokens", "cache_creation_tokens", "cache_write_tokens"):
+                value = _usage_field(details, name)
+                if value is not None:
+                    usage[name] = value
 
     # Only price a response LiteLLM itself produced. Looking the module up in
     # sys.modules rather than importing it keeps callers that inject their own
@@ -347,6 +385,42 @@ class ModelClient:
         # missing from a filtered run is only attributable if the reader can
         # tell which of those they are looking at.
         self._observed_prefilters: list[tuple[str, dict]] = []
+        # One entry per completed call, completion or embedding, as
+        # {stage, key, served_from, usage} — see `observed_calls` (#264).
+        self._observed_calls: list[dict[str, Any]] = []
+
+    def _observe_call(self, stage: str | None, key: str, served_from: str, record: dict) -> None:
+        """Note what one call cost and where its answer came from.
+
+        Appended on BOTH paths, because the two questions a reader has are
+        different and only one of them is about this run. A replayed call cost
+        this run nothing, while `record["usage"]` holds what it cost when it was
+        recorded — that is what the evidence cost to produce. Dropping replayed
+        calls here would leave the second unanswerable; adding their cost to the
+        first would invent a bill nobody paid. `served_from` is what keeps them
+        separable downstream.
+        """
+        self._observed_calls.append(
+            {
+                "stage": stage or UNKNOWN_STAGE,
+                "key": key,
+                "served_from": served_from,
+                "usage": dict(record.get("usage") or {}),
+            }
+        )
+
+    @property
+    def observed_calls(self) -> list[dict[str, Any]]:
+        """Every call this client completed, in the order it completed them.
+
+        Deliberately raw: aggregation lives in `acceptance.usage`, and this stays
+        a log so that a caller asking a question the aggregation does not answer
+        does not have to widen it.
+
+        A copy, because this feeds a CLI footer rather than review state and
+        nothing downstream should be able to edit the record of what was spent.
+        """
+        return [dict(call) for call in self._observed_calls]
 
     def build_request(
         self,
@@ -410,6 +484,9 @@ class ModelClient:
         request = self.build_request(messages, response_model, partition, stage_controls)
         key = request_key(request)
         record = self.store.read(key)
+        # Decided BEFORE the live call replaces `record`, which is the only
+        # moment the two are distinguishable.
+        served_from = SERVED_FROM_RECORDING if record is not None else SERVED_FROM_PROVIDER
 
         if record is None:
             if self.mode is Mode.REPLAY:
@@ -433,15 +510,16 @@ class ModelClient:
         # that of the recording it replays, so a transcript recorded against a
         # provider that discarded a control must not replay as pinned.
         self._observed_controls.append(record.get("controls_applied"))
+        self._observe_call(stage, key, served_from, record)
         if partition is not None:
             # `stage` is deliberately NOT in `build_request`: it names which
             # caller partitioned, which is provenance, not a determinism
             # control. Folding it into the hash would re-key every existing
             # mapping transcript for a label that cannot change an answer.
-            self._observed_partitions.append((stage or "unknown", partition))
+            self._observed_partitions.append((stage or UNKNOWN_STAGE, partition))
         return self._validate(record["response"], parse_as or response_model)  # type: ignore[arg-type]
 
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+    def embed(self, texts: Sequence[str], stage: str | None = None) -> list[list[float]]:
         """Vectors for `texts`, in order, from a live call or a transcript.
 
         Recorded and replayed exactly like `complete`, and for the same reason:
@@ -475,6 +553,7 @@ class ModelClient:
         request = self.build_embedding_request(texts)
         key = request_key(request)
         record = self.store.read(key)
+        served_from = SERVED_FROM_RECORDING if record is not None else SERVED_FROM_PROVIDER
 
         if record is None:
             if self.mode is Mode.REPLAY:
@@ -490,6 +569,12 @@ class ModelClient:
                 )
             record = self._persist_live_embedding(key, request)
 
+        # An embedding is a model call and costs money, so it belongs in the same
+        # spend total as a completion. It is reported under its caller's stage
+        # rather than a stage of its own: what a reader wants to know is what
+        # linking cost, not what linking's embeddings cost separately, and
+        # splitting them would attribute one stage's spend to two rows.
+        self._observe_call(stage, key, served_from, record)
         return self._validate_embeddings(record["response"], len(texts))
 
     def build_embedding_request(self, texts: Sequence[str]) -> dict:

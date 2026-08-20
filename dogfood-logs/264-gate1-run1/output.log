@@ -1,0 +1,168 @@
+Requirements: 28   with obligations: 27   deliberately none: 1
+
+[task-01] Make the cost of a run attributable to the stage that incurred it. Every model
+    call the review pipeline issues records which stage issued it, how many tokens it
+    used, what it cost, and how much of its prompt the provider served from cache. At
+    the end of a run the tool reports that breakdown stage by stage, keeping what the
+    run itself spent separate from what its evidence cost when that evidence was first
+    recorded.
+    -> stage-attributed-run-cost  [functional/explicit]
+       The cost of a run is attributable to the stage that incurred it.
+    -> record-model-call-stage-usage-cost-cache  [functional/explicit]
+       Every model call the review pipeline issues records which stage issued it, how
+       many tokens it used, what it cost, and how much of its prompt the provider served
+       from cache.
+    -> report-stage-breakdown-at-run-end  [functional/explicit]
+       At the end of a run the tool reports that breakdown stage by stage, keeping what
+       the run itself spent separate from what its evidence cost when that evidence was
+       first recorded.
+
+[constraint-01] Every model call the review pipeline issues records the stage that
+    issued it.
+    -> every-model-call-records-issuing-stage  [functional/explicit]
+       Every model call the review pipeline issues records the stage that issued it.
+
+[constraint-02] No model call the review pipeline issues reports its stage as unknown.
+    -> model-call-stage-is-never-unknown  [invariant/explicit]
+       No model call the review pipeline issues reports its stage as unknown.
+
+[constraint-03] Recorded usage carries the cached-token counts the provider reports
+    alongside the prompt token count.
+    -> recorded-usage-includes-provider-cached-token-counts  [functional/explicit]
+       Recorded usage carries the cached-token counts the provider reports alongside the
+       prompt token count.
+
+[constraint-04] A cached-token count the provider does not report is absent from the
+    recorded usage rather than recorded as zero.
+    -> cached-token-count-absent-when-unreported  [functional/explicit]
+       A cached-token count the provider does not report is absent from recorded usage
+       rather than recorded as zero.
+
+[constraint-05] A call answered from a recording is observed with the same fields as a
+    call answered by the provider.
+    -> recorded-call-matches-provider-call-fields  [invariant/explicit]
+       A call answered from a recording is observed with the same fields as a call
+       answered by the provider.
+
+[constraint-06] Each observed call records the stage that issued it, its request key,
+    whether it was answered from a recording or by the provider, and its usage.
+    -> observed-call-records-stage-request-key-source-usage  [functional/explicit]
+       Each observed call records the stage that issued it, its request key, whether it
+       was answered from a recording or by the provider, and its usage.
+
+[constraint-07] A run reports tokens, cost and cached prompt-token share for each stage
+    that issued a call.
+    -> run-reports-stage-tokens-cost-and-cached-share  [functional/explicit]
+       A run reports tokens, cost and cached prompt-token share for each stage that
+       issued a call.
+
+[constraint-08] The cached prompt-token share of a stage is the share of that stage's
+    prompt tokens that the provider served from its cache.
+    -> cached-prompt-share-derived-from-stage-prompt-tokens  [functional/explicit]
+       The cached prompt-token share of a stage is the share of that stage's prompt
+       tokens that the provider served from its cache.
+
+[constraint-09] A run's report distinguishes calls answered by the provider from calls
+    answered from a recording.
+    -> run-report-distinguishes-provider-vs-recording-calls  [functional/explicit]
+       A run's report distinguishes calls answered by the provider from calls answered
+       from a recording.
+
+[constraint-10] The cost reported for a call answered from a recording is what that call
+    cost when it was recorded.
+    -> recorded-call-cost-reflects-recorded-time-cost  [functional/explicit]
+       The cost reported for a call answered from a recording is what that call cost
+       when it was recorded.
+
+[constraint-11] The amount a run reports as its own spend counts only calls answered by
+    the provider.
+    -> run-own-spend-counts-provider-calls-only  [functional/explicit]
+       The amount a run reports as its own spend counts only calls answered by the
+       provider.
+
+[constraint-12] The command-line interface surfaces the breakdown.
+    -> cli-surfaces-breakdown  [functional/explicit]
+       The command-line interface surfaces the stage-by-stage cost breakdown.
+
+[constraint-13] Recording the stage of a call leaves that call's request key unchanged.
+    -> stage-recording-preserves-request-key  [invariant/explicit]
+       Recording the stage of a call leaves that call's request key unchanged.
+
+[constraint-14] Recording cached-token counts in a call's usage leaves that call's
+    request key unchanged.
+    -> cached-token-recording-preserves-request-key  [invariant/explicit]
+       Recording cached-token counts in a call's usage leaves that call's request key
+       unchanged.
+
+[constraint-15] The breakdown appears in no review state.
+    -> breakdown-absent-from-review-state  [regression/explicit]
+       The breakdown appears in no review state.
+
+[constraint-16] The breakdown appears in no rendered report.
+    -> breakdown-absent-from-rendered-report  [regression/explicit]
+       The breakdown appears in no rendered report.
+
+[exclusion-01] Reducing what a run costs, and changing how much of a prompt the provider
+    serves from its cache.
+    -> no-run-cost-or-cache-share-change  [regression/explicit]
+       The change does not alter what a run costs or how much of a prompt the provider
+       serves from its cache.
+
+[exclusion-02] Attributing cost to anything finer than the stage that issued the call.
+    -> no-finer-than-stage-cost-attribution  [regression/explicit]
+       The change does not attribute cost to anything finer than the stage that issued
+       the call.
+
+[exclusion-03] Model calls issued by the measurement harness, which is not part of a
+    review run.
+    -> no-harness-call-tracking  [regression/explicit]
+       The change does not include model calls issued by the measurement harness as part
+       of a review run.
+
+[exclusion-04] Recording what a call cost at any moment other than when the call was
+    made.
+    -> exclude-late-cost-recording  [regression/explicit]
+       The change excludes recording what a call cost at any moment other than when the
+       call was made.
+
+[exclusion-05] The price of a token, which the provider's own accounting supplies.
+    -> exclude-token-price-recomputation  [regression/explicit]
+       The change excludes using the provider's own accounting to supply the price of a
+       token.
+
+[exclusion-06] Presenting the breakdown anywhere other than the command line.
+    -> exclude-non-cli-breakdown  [regression/explicit]
+       The change excludes presenting the breakdown anywhere other than the command
+       line.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       The requirement is a section marker standing alone with no checkable mandate
+       beyond naming the implementation section.
+
+[completion-02] A run reports tokens, cost and cached prompt-token share by stage, with
+    calls answered by the provider distinguished from calls answered from a recording.
+    -> run-reports-stage-breakdown-with-provider-vs-recording-distinction  [functional/explicit]
+       A run reports tokens, cost, and cached prompt-token share by stage, and
+       distinguishes calls answered by the provider from calls answered from a
+       recording.
+
+[completion-03] A test fails when a model call site in the review pipeline omits the
+    stage that issued it.
+    -> test-fails-when-stage-is-omitted-at-call-site  [test_demand/explicit]
+       A test fails when a model call site in the review pipeline omits the stage that
+       issued it.
+
+[completion-04] A test pins that recording usage fields leaves every request key
+    unchanged.
+    -> test-pins-request-key-stability-for-recording-usage-fields  [test_demand/explicit]
+       A test pins that recording usage fields leave every request key unchanged.
+
+[completion-05] Two recorded runs over the same input produce byte-identical review
+    state and byte-identical report output.
+    -> two-recorded-runs-produce-byte-identical-state-and-report-output  [regression/explicit]
+       Two recorded runs over the same input produce byte-identical review state and
+       byte-identical report output.
+run e28c217866839a10
+  requirements: 28 derived, 0 carried, 0 revised; 4 decompose call(s)
+  continue this run with: --continue e28c217866839a10

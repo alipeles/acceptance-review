@@ -84,6 +84,8 @@ from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import ChangeSet, Obligation, UnrequestedChangeDisposition
 
+_STAGE = "disposition judgment"
+
 _SPLIT_RECOMMENDATION = (
     "Consider splitting this into its own PR / backlog item — it is separable from the mandate."
 )
@@ -417,7 +419,7 @@ def _judge_disposition(
             "content": _render_judgment_prompt(change, obligations, coverages, change_set, policy),
         },
     ]
-    result = client.complete(messages, _DispositionJudgment)
+    result = client.complete(messages, _DispositionJudgment, stage=_STAGE)
     return _dispositioned(change, result.disposition, result.rationale, decided_by="model")
 
 

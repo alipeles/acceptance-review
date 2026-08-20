@@ -155,7 +155,9 @@ def classify_coverage(
         "obligation_id": [obligation.id for obligation in obligations],
         "diff_refs": list(label_to_ref),
     }
-    result = client.complete(messages, constrain(_Coverage, allowed), parse_as=_Coverage)
+    result = client.complete(
+        messages, constrain(_Coverage, allowed), parse_as=_Coverage, stage=_STAGE
+    )
     if unusable is not None:
         unusable.record(scan(result, allowed, _STAGE))
 

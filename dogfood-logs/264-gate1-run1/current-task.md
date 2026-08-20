@@ -35,14 +35,13 @@ first recorded.
 - The breakdown appears in no rendered report.
 
 ## Scope exclusions
-- Any work to make a run cheaper, and any work to increase how much of a prompt
-  the provider serves from its cache.
+- Reducing what a run costs, and changing how much of a prompt the provider
+  serves from its cache.
 - Attributing cost to anything finer than the stage that issued the call.
 - Model calls issued by the measurement harness, which is not part of a review
   run.
 - Recording what a call cost at any moment other than when the call was made.
-- Computing the price of a token, which the provider's own accounting already
-  reports for each call.
+- The price of a token, which the provider's own accounting supplies.
 - Presenting the breakdown anywhere other than the command line.
 
 ## Completion expectations
