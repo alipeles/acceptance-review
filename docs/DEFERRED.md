@@ -68,9 +68,9 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > was enough. At content level the anchor for both criteria would name **no**
   > change, and #292's existing rejection would hold the stored rating with no new
   > enforcement code. This issue is what makes #292's guard bite.
-- **Status:** open
+- **Status:** filed (#293 comment, approved 2026-08-20).
 
-### [2026-08-20] #242 twin-split: the same five tests produce two different ratings
+### [2026-08-20] NOT FILED — re-target needed: twin obligations left unmerged with no diagnostic, which is not #242's mechanism
 - **Kind:** filing (comment on existing issue #242)
 - **Found during:** #291, Gate 1 and Gate 2 run 2
 - **Where:** `dogfood-logs/291-gate1-run1/`, `dogfood-logs/291-gate2-run2/`
@@ -83,11 +83,32 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   (`caller-supplies-reuse-context` / `caller-supplies-reuse-context-2`).
 - **Why I didn't act:** rewording the mandate to move the linker is the forbidden
   kind of edit.
-- **Drafted fix:** comment on #242 with both run directories and the id pairs,
-  making the point that this instance is stronger than prose: the split shows up
-  as a rating disagreement over an identical evidence set, so it cannot be
-  explained by the twins having different support.
-- **Status:** open
+- **Drafted fix:** **withheld at filing time — the #242 attribution does not hold.**
+  #242's mechanism is an inconsistent transitive cluster: a denied pair makes the
+  linker merge *none* of the cluster, and it announces itself with an
+  `Unreconciled linking answers:` block naming the affected obligations. Grepping
+  `dogfood-logs/291-gate1-run1/output.log` for `unreconciled`, `contradict` and
+  `denied` returns **nothing**. So these twins were not blocked by a spurious link;
+  they were simply never merged, silently. That is a different and arguably worse
+  failure — #242 at least reports itself.
+
+  Re-targeted draft, **needs approval before filing**: a new sub-issue of **#181**
+  (decomposition quality), labels `bug`, `track:checker`, titled *"Twin
+  Constraint/Completion obligations are left unmerged with no diagnostic"*. Body:
+  the repo's task-file convention states each rule as a Constraint and mirrors it
+  as a Completion expectation, so twins are the norm, not an edge case. In
+  `dogfood-logs/291-gate1-run1/` the linker merged three of six pairs and left
+  three unmerged, two of which produced ids differing only by a `-2` suffix
+  (`caller-supplies-reuse-context` / `caller-supplies-reuse-context-2`,
+  `reuse-refusal-carries-reason` / `reuse-refusal-carries-reason-2`) — the
+  decomposer naming the same obligation twice and the linker then not merging it.
+  Downstream cost measured at Gate 2: `reuse-rule-four-conditions` is *partially
+  supported* while its twin `reuse-refusal-on-any-failed-check` is *strongly
+  supported* **on the same five tests**. Acceptance: two obligations whose
+  generated ids differ only by a numeric suffix are either merged or reported as
+  an unmerged pair with a reason; no run leaves a twin pair unmerged silently.
+  Cross-reference #242 as the related-but-distinct diagnosed case.
+- **Status:** open — awaiting approval of the re-targeted draft above
 
 ### [2026-08-20] Scope exclusions get three different dispositions in one run, and one recommendation is unwritable
 - **Kind:** filing (new sub-issue of #183)
@@ -110,7 +131,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   for an obligation whose inputs make the requested test unconstructable.
   Acceptance: the five exclusions in `dogfood-logs/291-gate2-run2/` reach the same
   disposition; no recommendation asks for an input the code cannot accept.
-- **Status:** open
+- **Status:** filed as #301, sub-issue of #183 (approved 2026-08-20).
 
 ### [2026-08-20] Second instance of #182 mapping churn: five mapped tests fell to one, none edited
 - **Kind:** filing (comment on existing issue #182 — a second instance under the
@@ -127,7 +148,7 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   the before/after mapped sets, noting it bounds #293 directly — #293 re-judges a
   criterion whose mapped set gained or lost a member, so churn of this size spends
   exactly the calls #293 exists to save.
-- **Status:** open
+- **Status:** filed (#182 comment, approved 2026-08-20).
 
 ### [2026-08-20] #265's own scope is wrong: three of its four target stages cannot be helped by prompt shape at all
 - **Kind:** filing (comment on existing issue #265)
