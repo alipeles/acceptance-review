@@ -36,6 +36,44 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-08-20] Should a rating be allowed to FALL without naming a change?
+- **Kind:** decision
+- **Found during:** #292, Gate 2, run 1
+- **Where:** `src/acceptance/evidence/discrimination.py::judge_discrimination`,
+  the anchored rejection
+- **Severity:** blocker — it decides what #292 actually delivers, and #292's
+  Acceptance item about `tests/fixtures/rating-stability/` is what surfaced it
+- **What's wrong:** the rejection as implemented is **symmetric**: a rating that
+  moves without resting on a supplied change is held whichever way it moved.
+  `DR-180` says the two directions are not symmetric — in 7 of its 8 unstable
+  obligations the LOW rating was the correct one, and `strongly supported`
+  issued when unearned is the dangerous failure. So this shape is reachable: a
+  criterion is anchored because its test file changed; the judge correctly
+  downgrades it because it has finally noticed a pre-existing hole unrelated to
+  that change; it names nothing, because none of the changes is the reason; the
+  unearned `strongly_supported` is held. That is `DR-180`'s defect re-created by
+  the fix for a different one.
+- **Why I didn't act:** it changes what #292 delivers and the evidence points
+  both ways. Deciding it quietly is exactly what *Surface open decisions* forbids.
+- **Recommendation:** enforce **asymmetrically** — require a justification to
+  RAISE a rating, and let a fall through unjustified. The counter-argument is
+  #269's 37→4 collapse, which was a mass fall and was wrong; the answer to it is
+  that the collapse was caused by re-judging criteria that should never have been
+  re-judged, which is **#293's** deliverable. Using #292's rule to suppress
+  downgrades makes one issue pay for another's gap, in the direction `DR-180`
+  names as dangerous.
+- **Alternative rejected:** keep it symmetric and rely on the prompt plus the
+  schema enum to make omission rare. Rejected because "rare" is not a property
+  this project accepts in place of enforcement, and the failure is silent —
+  a held STRONG looks exactly like an earned one.
+- **Status:** resolved 2026-08-20 — **human decision: keep it symmetric.** My
+  recommendation was rejected. The rule is: *every change to a prior judgement,
+  anywhere in the pipeline, must be tied to a changed input.* No exception for
+  the direction of travel. The `DR-180` problem I was pointing at is real but is
+  a **separate** problem — making the FIRST judgement right — and is not to be
+  solved by tolerating unexplained movement in later ones. Recorded in
+  `DR-292`; the pipeline-wide half belongs to #286.
+
 ### [2026-08-20] A review run reaches into `benchmark/` for a model call that names no stage
 - **Kind:** filing (new sub-issue of #184)
 - **Found during:** #292, Gate 1, run 1
