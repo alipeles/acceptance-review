@@ -3875,3 +3875,256 @@ the record.
   on #173. Filing it separately was my error — I did not check #182's existing
   children first. #293 merged with the gate deliberately not clean, on the human's
   approval, as #291 and #292 did.
+
+### [2026-08-21] #173's premise does not survive measurement — the mapper is right 80% of the time and the pipeline takes one draw
+- **Kind:** filing
+- **Found during:** #173, pre-Gate-1 measurement
+- **Where:** `src/acceptance/evidence/mapping.py` (the stage), measured off
+  transcript `c3f75a2e067e…`
+- **Severity:** blocker (for #173 as scoped — it changes what the task is)
+- **What's wrong:** #173 is filed as a *precision* defect: the mapper declines
+  the on-point obligation↔test pairing and accepts looser ones. Re-issuing the
+  byte-identical recorded request 25 times against the same model, temperature
+  and seed shows it is not a precision defect but the visible tail of per-call
+  variance.
+
+  | measurement | result |
+  |---|---|
+  | on-point pairing returned | **20 of 25 draws (80%)** |
+  | distinct full answers | **23 across 25 draws** |
+  | mean pairwise edge agreement (Jaccard, test→obligation edges) | **0.73** |
+  | #173's own test — distinct id-sets | **10 variants, modal 12/25** |
+
+  The recorded failure reproduces as 1 draw in 5, with the identical four ids.
+  The stage is right about this pairing four times out of five; the pipeline
+  takes exactly one draw and stores it as the finding.
+
+  **Both standing hypotheses are null.** Two single-variable arms (N=5 each)
+  against a control that already scores 4/5: correcting the contradictory
+  obligation id (`adding-test-to-**unmapped**-file-…`) gave 5/5, and deleting
+  the system prompt's *"a test returning five or more ids is usually a test
+  whose ids were not each put to THE TEST"* sentence gave 4/5. Neither is
+  distinguishable from the control. One control draw returned five ids
+  *including* the on-point one, so the sentence is not acting as a hard cap.
+
+  **Confounds checked, not assumed:** `mark_reusable_opening` is a no-op for
+  `openai/gpt-5.4-mini`, so the control request is byte-identical to the
+  recorded one; and `_litellm_effective_controls` confirms `temperature=0.0`
+  and `seed=0` both survive to the provider rather than being silently dropped.
+  The variance is the provider's own.
+
+  **Scope of the claim, stated honestly:** this is one request, from the #293
+  instance, on one model. The *original* #173 instance — an obligation drawing
+  eleven plainly unrelated tests — is a different shape and I could **not**
+  test it: transcript `3997392e175b…` is not in the cache and transcripts are
+  gitignored, so it is unrecoverable without re-running that review against
+  pre-#265 code. It may still be a systematic failure.
+- **Why I didn't act:** it changes what #173 *is*, and therefore what
+  `current-task.md` should mandate. That is the human's call, not mine.
+- **Drafted fix:** comment on **#173** with the table above and the two null
+  arms, and re-title the issue away from "maps obligations to plainly unrelated
+  tests" toward per-call mapping variance. Then decide whether #173 closes into
+  **#150** (mapping stability, reopened) / **#180** (judgement stability), or
+  stays as the narrower mapping-layer half — the same question #180 already
+  raised on this issue on 2026-08-04 and which was never answered.
+- **Status:** **closed.** #173 was closed on 2026-08-21 as too narrowly scoped;
+  the human is filing a larger change in its place. All measurements are
+  recorded in `docs/DR-173-mapping-twin-splitting.md`. No comment was filed on
+  #173 itself — the DR is the record.
+
+### [2026-08-21] Unmerged twin obligations measurably starve each other of mapped tests
+- **Kind:** filing
+- **Found during:** #173, pre-Gate-1 measurement
+- **Where:** `src/acceptance/requirement/` (cause) surfacing in
+  `src/acceptance/evidence/mapping.py` (effect)
+- **Severity:** blocker
+- **What's wrong:** measured over the **recorded mapping corpus** — 53
+  `_Mappings` transcripts in `.acceptance/cache/transcripts/`, no model calls,
+  every judgement already recorded. Where two obligations in the same request
+  state the same demand, a test that evidences it is mapped to **only one of
+  them about half the time**.
+
+  Five twin pairs, each confirmed by reading both descriptions rather than
+  trusted from the similarity score:
+
+  | twin pair | both | exactly one | split |
+  |---|---|---|---|
+  | `changed-rating-must-name-a-change` / `changed-rating-names-one-given-change` | 0 | 7 | **100%** |
+  | `reuse-refusal-carries-reason` / `-2` | 1 | 4 | 80% |
+  | `stored-rating-…-recorded-with-judgement-request` / `stored-rating-and-dependency-changes-in-request` | 6 | 4 | 40% |
+  | `changed-criterion-gets-dependency-changes` / `…-stored-rating-and-dependency-changes` | 5 | 3 | 38% |
+  | `reuse-rule-stated-in-one-place-constraint` / `…-no-stage-named` | 2 | 0 | 0% |
+  | **total** | **14** | **18** | **56%** |
+
+  Two similarity candidates were rejected on reading as genuinely distinct
+  demands and are excluded above: `changed-criterion-gets-dependency-changes` /
+  `changed-criterion-gets-stored-rating`, and
+  `criterion-unchanged-inputs-no-judgement-request-2` /
+  `unchanged-inputs-keep-stored-rating`.
+
+  Restricting to the decomposer's own duplicate-slug marker alone — ids of the
+  form `<base>` and `<base>-2`, the highest-precision detector available — the
+  split rate is 4 of 13.
+
+  **This is systematic, not sampling noise**, and it mechanically produces
+  #173's headline symptom: if obligation X has a twin X′ and the mapper picks
+  X′, X reports *no mapped test* and the recommendation stage prescribes a test
+  that already exists and is cited elsewhere in the same report. That is #293's
+  instance and #216's.
+
+  **The decomposer already detects the collision.** A `-2` suffix means it
+  generated the same slug twice, noticed, and disambiguated instead of merging.
+  The information needed to merge is present at decomposition time and is being
+  thrown away.
+- **Limit on the number, stated honestly:** 53 requests but only **4 distinct
+  task decompositions** among them. The 32 opportunities are distinct test
+  judgements but cluster within 4 tasks, so 56% is a solid effect of uncertain
+  magnitude, not a precise rate. `dogfood-logs/` (170 directories) is unmined —
+  it holds rendered reports rather than transcripts and needs a different parser.
+- **Why I didn't act:** the fix is at the decomposition layer (#304), which is
+  out of scope for #173.
+- **Drafted fix:** comment on **#304** with the table above as measured
+  downstream cost — it converts #304 from a tidiness complaint into the
+  probable cause of a mapping defect. Comment on **#182** that its
+  mapping-precision children (#173, #245, #249) should be re-measured after
+  #304 lands, since some of their symptoms are likely its.
+- **Status:** open. **Replicated on independent data:** parsing the committed
+  `dogfood-logs/*/output.log` reports — **76 distinct decompositions**, versus
+  4 in the transcript corpus — gives both=200, exactly-one=228, **split 53%**,
+  against 56% from the transcripts. Two corpora, two parsers, same answer.
+  Restricted to pairs whose obligation text is **byte-identical**, splitting is
+  3 of 16 — undeniable errors, but thin. Split rate by similarity band rises as
+  pairs get *less* identical (45% at 0.80–0.89, 60% at 0.60–0.64), but that
+  band table is **confounded and must not be read as an error curve**: below
+  identity, mapping a test to only one of two obligations is often the correct
+  answer, so a perfect mapper would produce a rising curve too.
+
+  **Still open after #173 closed on 2026-08-21** — this is a filing against
+  #304, not against #173, and the evidence stands on its own. Recomputable at
+  any time via `acceptance.benchmark.twin_splitting`; detail in
+  `docs/DR-173-mapping-twin-splitting.md` §2.
+
+### [2026-08-21] Mapping prompt wording is a well-powered null; the defect is in the response shape
+- **Kind:** decision
+- **Found during:** #173, pre-Gate-1 measurement
+- **Where:** `src/acceptance/evidence/mapping.py` — the `_Mappings` response
+  schema and its system prompt
+- **Severity:** blocker (it decides what #173's mandate is)
+- **What's wrong:** four arms over 46 real corpus requests, 8 draws each,
+  **1,472 calls**. Metric is label-free: two obligations stating the same
+  demand must get the same answer, so "mapped to exactly one" is an objective
+  error. Guard metric is mean ids per test, so an arm cannot win by mapping
+  everything to everything.
+
+  | arm | split rate | vs control | correct (both) |
+  |---|---|---|---|
+  | control | 148/748 = 19.8% | — | 600 |
+  | remove the *"five or more ids"* sentence | 149/726 = 20.5% | z=−0.35, **p=0.72** | 577 |
+  | add an explicit "restatements must both be returned" rule | 111/690 = 16.1% | z=1.82, **p=0.068** | 579 |
+  | both changes | 123/633 = 19.4% | z=0.17, p=0.87 | 510 |
+
+  **The prompt-contradiction hypothesis is refuted.** The prompt does contain
+  two instructions in tension — *"return every id that passes"* versus *"a test
+  returning five or more ids is usually a test whose ids were not each put to
+  THE TEST"* — and removing the second changes nothing, on a sample large
+  enough to have caught a small effect. Recorded because it is a plausible
+  story that is wrong, and someone will propose it again.
+
+  The explicit twin rule is the only arm that moves, and weakly: 3.7 points,
+  p=0.068, under a fifth of the errors. Combining both changes loses the gain
+  and costs 90 correct mappings.
+- **The design conclusion:** the cause is structural, not verbal. The schema
+  asks for `test → [obligation_ids]` — one joint judgement in which every
+  obligation competes for a slot in a single shortlist. No prose can force
+  per-obligation evaluation when the output shape rewards picking a list, which
+  is how two obligations with *identical text* receive different answers.
+  Making each pairing its own question — `test × obligation → boolean` —
+  guarantees identical obligations the same answer structurally. A per-test
+  call carrying a boolean per obligation keeps the call count unchanged and
+  only grows the response; that is the shape to test first.
+- **Why I didn't act:** it is the mandate for #173 and wants agreement before
+  `current-task.md` is written around it.
+- **Note on cost:** this run was estimated at ~$2.90 and cost roughly **$13** —
+  the request selector returned 46 requests where I had assumed ~8, and the
+  script's own printed estimate was lost to output buffering before it
+  committed. Any future arm run must assert its job size before the first call.
+- **Status:** **closed** — recorded in `docs/DR-173-mapping-twin-splitting.md`
+  §3. The structural fix it proposed was piloted and **failed**; see the next
+  entry.
+
+### [2026-08-21] The forced per-obligation verdict cuts splits by destroying recall — do not build it
+- **Kind:** defect
+- **Found during:** #173, pre-Gate-1 measurement (capped pilot, 72 calls, $0.51)
+- **Where:** proposed change to `src/acceptance/evidence/mapping.py`'s response
+  schema
+- **Severity:** blocker (it removes the design the previous entry recommended)
+- **What's wrong:** the entry above concluded the defect was structural — that
+  `test → [obligation_ids]` lets obligations compete for slots in a shortlist —
+  and proposed replacing it with a verdict required for **every** obligation,
+  `test → {obligation_id: bool}`, enforced by `strict` mode so a shortlist is
+  impossible. Piloted over 6 corpus requests, 6 draws, against control:
+
+  | arm | splits | correct (both) | mean ids/test | tests answered | cost/call |
+  |---|---|---|---|---|---|
+  | control | 19/172 = 11% | 153 | 1.54 | 9.2 | $0.00423 |
+  | verdicts | 1/63 = **2%** | **62** | 0.57 | 9.2 | $0.00981 |
+
+  **The split rate improved for the wrong reason.** Both arms answered the same
+  number of tests (9.2), so nothing was skipped — the verdict arm simply
+  answered *false* far more often, losing **91 of 153 correct twin-mappings, a
+  59% recall loss**, to remove 18 splits. Asked in isolation whether a test
+  would fail if one obligation's behavior were missing, the model defaults to
+  no.
+
+  That is DR-164's failure mode — the mapping stage shedding work — which #164
+  exists to prevent. The guard metric (mean ids per test, 1.54 → 0.57) is what
+  caught it; a split-rate-only pilot would have reported this as a success.
+- **Why I didn't act:** the variant is dead as written; anything replacing it
+  must be scored on recall as well as splits.
+- **Drafted fix:** none yet. Any successor must hold `both` at or above control
+  while cutting `one`. Worth trying: keep the list shape but ask the model to
+  re-read its own answer against every obligation it omitted, as a second pass.
+- **Status:** **closed** — recorded in `docs/DR-173-mapping-twin-splitting.md`
+  §3, including the rule that any successor is scored on recall as well as
+  splits. The untested second-pass design is carried in the DR's closing
+  section.
+
+### [2026-08-21] Prompt caching is worth about half the mapping stage's cost and production appears to get none of it
+- **Kind:** filing
+- **Found during:** #173 structural pilot (usage recorded per call)
+- **Where:** `src/acceptance/llm.py`, request assembly generally
+- **Severity:** should-fix
+- **What's wrong:** measured cache behaviour over repeated mapping calls whose
+  requests share a prefix. Draws were run sequentially per request so the cache
+  could warm; draw 0 is the cold reference.
+
+  Warming curve (control arm): 48% → 73% → **94% → 94% → 94%** → 83% of prompt
+  tokens served from cache.
+
+  Once warm, **94% of input tokens are reused**, and measured cost/call fell to
+  **$0.00423** against **$0.0089** for the recorded pre-#265 transcript at 0%
+  cached — roughly **half**.
+
+  **Every recorded transcript in the corpus shows `cached_tokens: 0`.** They all
+  predate #265, so this is the first evidence of what that work can buy — but
+  whether a live review realises it is **unmeasured**. Within one review the
+  obligations block is shared by every partitioned mapping call, so it should
+  warm after the first call.
+- **A limit worth stating, because it constrains every future fix:** the
+  discount applies to **input only**. The failed verdict arm's penalty was 2.5×
+  *output* (787 → 1,981 completion tokens/call), which is never cached, so its
+  cost stayed 2.3× control even at a 74% hit rate and does **not** amortize as
+  the cache warms. No design that grows the response can be paid for by
+  caching.
+- **Why I didn't act:** out of scope for #173, and it belongs with #265's work
+  rather than with mapping.
+- **Drafted fix:** run one live review post-#265 and report `cached_tokens` per
+  stage; if it is still near zero, file against #265's umbrella (#184,
+  determinism & reproducibility, which owns `llm.py`). Cheap to check and worth
+  roughly half the model spend of a run.
+- **Status:** **open, and independent of #173** — this is a filing against #184
+  and survives #173's closure on 2026-08-21. Detail in
+  `docs/DR-173-mapping-twin-splitting.md` §4, including the constraint that the
+  discount is input-only, which bounds the cost of any future stage redesign.
+
+
