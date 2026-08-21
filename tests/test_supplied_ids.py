@@ -276,9 +276,21 @@ def test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers():
     assert not log.answers
 
 
-def test_each_partition_constrains_test_ids_to_its_own_batch():
-    """A partitioned stage constrains each call to its own partition — every
-    obligation (each batch judges all of them), but only that batch's tests."""
+def test_every_batch_of_a_stage_asks_for_the_identical_schema():
+    """Two batches of one partitioned stage send byte-identical `response_format`
+    (#302).
+
+    The provider's prompt-cache key covers the response schema, so a per-batch
+    `test_id` enum made every batch after the first a guaranteed miss — measured
+    at 461 of 464 recorded mapping calls caching nothing, over a 1,729-token
+    prefix that was eligible the whole time. The enum is what had to go, and
+    nothing else about the request moved.
+
+    `obligation_ids` stays constrained: that set is identical in every batch of a
+    run, so it splits no prefix, and it is the field #163's defect was actually
+    about — the model naming obligations it had read out of the pasted test
+    sources.
+    """
     obligations = [make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL)]
     tests = [_test("t.py::test_a"), _test("t.py::test_b")]
     client, seen = client_capturing_schemas({"mappings": []})
@@ -286,12 +298,70 @@ def test_each_partition_constrains_test_ids_to_its_own_batch():
     map_tests_to_obligations(obligations, tests, client, batch_size=1)
 
     assert len(seen) == 2
-    enums = [s["properties"]["mappings"]["items"]["properties"]["test_id"]["enum"] for s in seen]
-    assert enums == [["t.py::test_a"], ["t.py::test_b"]]
-    # Every batch still judges every obligation.
+    assert json.dumps(seen[0], sort_keys=True) == json.dumps(seen[1], sort_keys=True)
+
+    item = seen[0]["properties"]["mappings"]["items"]["properties"]
+    # The batch's own tests are NOT named in the schema — that is the change.
+    assert "enum" not in item["test_id"]
+    # Every batch still judges every obligation, and still may only name those.
     for schema in seen:
         obligation_field = schema["properties"]["mappings"]["items"]["properties"]["obligation_ids"]
         assert obligation_field["items"]["enum"] == ["ob-1"]
+
+
+def test_a_test_the_response_passes_over_is_recorded_as_unanswered():
+    """A batch may come back short, and a skipped test must not read as a test
+    judged to evidence nothing (#302).
+
+    No schema ever prevented this — an enum restricts which values may appear,
+    never how many entries do — so before #302 an omission was silently
+    indistinguishable from a negative judgment, and any obligation resting on
+    the skipped test was reported as having no test at all. That is #163's defect
+    shape: the review calling a change untested when it went unreviewed.
+    """
+    obligations = [make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL)]
+    tests = [_test("t.py::test_a"), _test("t.py::test_b")]
+    # Answers for one of the two tests it was given, and says nothing about the other.
+    response = {
+        "mappings": [{"test_id": "t.py::test_a", "obligation_ids": [], "rationale": "incidental"}]
+    }
+    log = UnusableAnswerLog()
+
+    result = map_tests_to_obligations(
+        obligations, tests, client_returning(response), batch_size=2, unusable=log
+    )
+
+    unanswered = [a for a in log.answers if a.returned_id == "t.py::test_b"]
+    assert len(unanswered) == 1
+    assert unanswered[0].field == "test_id"
+    assert unanswered[0].reason == "no judgment returned for this test"
+    # And the obligation is INDETERMINATE, not reported as having no test:
+    # the answer that would have mapped it is the one we did not get.
+    assert result.indeterminate_obligation_ids == ["ob-1"]
+    assert result.unmapped_obligation_ids == []
+
+
+def test_a_test_judged_twice_is_recorded_rather_than_silently_deduplicated():
+    """Two judgments for one test either agree or they disagree, and keeping the
+    first without saying so is the tool choosing between answers it has no basis
+    to choose between (#302)."""
+    obligations = [make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL)]
+    tests = [_test("t.py::test_a")]
+    response = {
+        "mappings": [
+            {"test_id": "t.py::test_a", "obligation_ids": ["ob-1"], "rationale": "first"},
+            {"test_id": "t.py::test_a", "obligation_ids": [], "rationale": "second, disagreeing"},
+        ]
+    }
+    log = UnusableAnswerLog()
+
+    result = map_tests_to_obligations(obligations, tests, client_returning(response), unusable=log)
+
+    repeats = [a for a in log.answers if a.reason and "more than once" in a.reason]
+    assert len(repeats) == 1
+    assert repeats[0].returned_id == "t.py::test_a"
+    # The first judgment stands, as the recorded reason says it does.
+    assert [(m.test_id, m.obligation_ids) for m in result.mappings] == [("t.py::test_a", ["ob-1"])]
 
 
 def test_the_schema_asked_for_differs_from_the_shape_parsed():

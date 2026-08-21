@@ -1,0 +1,128 @@
+run e5c2490c4a564ea5
+  continuing 21f0671ad55f65d1
+  requirements: 0 derived, 17 carried, 2 revised; 1 decompose call(s)
+  continue this run with: --continue e5c2490c4a564ea5
+Model usage by stage:
+  stage                                 calls  prompt  output  cached  this run  recorded
+  ------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose           1 (0 live / 1 replayed)   6,102     367   46.1%   $0.0000   $0.0043
+  obligation linking  1 (0 live / 1 replayed)     798       0       —   $0.0000   $0.0000
+  unknown             1 (0 live / 1 replayed)     379      36    0.0%   $0.0000   $0.0004
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.0048 to record (3 call(s) replayed at no cost to this run)
+Requirements: 19   with obligations: 18   deliberately none: 1
+
+[task-01] Keep each stage's answer format the same across a review run, so that a
+    provider able to reuse a repeated request is offered one.
+    -> same-answer-format-per-stage-call  [invariant/explicit]
+       Every call a stage makes within one review run declares the same answer format.
+    -> provider-can-reuse-repeated-request  [functional/explicit]
+       A provider able to reuse a repeated request is offered one.
+
+[constraint-01] Every call a stage makes within one run declares the same answer format,
+    whatever items that particular call asks about.
+    -> same-answer-format-within-run  [invariant/explicit]
+       Every call a stage makes within one run declares the same answer format, whatever
+       items that particular call asks about.
+
+[constraint-02] An answer says which item it is about, naming that item by the
+    identifier the request gave it.
+    -> answer-identifies-item-by-request-id  [functional/explicit]
+       An answer says which item it is about, naming that item by the identifier the
+       request gave it.
+
+[constraint-03] A call is answered about as many items as its answer format provides
+    for, and a call asking about fewer items than that is still answered in full.
+    -> answer-call-about-as-many-items-as-format-provides  [functional/explicit]
+       A call is answered about as many items as its answer format provides for, and a
+       call asking about fewer items than that is still answered in full.
+
+[constraint-04] An answer naming an item its call did not ask about is recorded as an
+    answer not obtained, and is never read as a judgement about any item.
+    -> unasked-item-answers-are-not-read-as-judgements  [functional/explicit]
+       An answer naming an item its call did not ask about is recorded as an answer not
+       obtained, and is never read as a judgement about any item.
+
+[constraint-05] A conclusion that holds only if every item was judged is withheld for a
+    run in which some answer was not obtained.
+    -> withhold-every-item-conclusion-when-any-answer-not-obtained  [regression/explicit]
+       A conclusion that holds only if every item was judged is withheld for a run in
+       which some answer was not obtained.
+
+[constraint-06] An identifier drawn from a set that is the same for every call of a run
+    stays restricted to that set.
+    -> identifier-set-stays-restricted-within-run  [invariant/explicit]
+       An identifier drawn from a set that is the same for every call of a run stays
+       restricted to that set.
+
+[exclusion-01] What any stage is asked, and the judgement it is asked to make. This work
+    changes how answers are carried and identified, not what is asked or decided.
+    -> does-not-change-asked-items-or-judgements  [compatibility/explicit]
+       The change does not alter what any stage is asked or the judgement it is asked to
+       make.
+    -> changes-answers-carried-and-identified-not-asked-or-decided  [functional/explicit]
+       The work changes how answers are carried and identified, not what is asked or
+       decided.
+
+[exclusion-02] Which stages exist, how a stage divides its work across calls, and how
+    large those divisions are.
+    -> does-not-change-stage-structure-or-call-partitioning  [compatibility/explicit]
+       The change does not alter which stages exist, how a stage divides its work across
+       calls, or how large those divisions are.
+
+[exclusion-03] The order in which a request carries its content.
+    -> does-not-change-request-content-order  [compatibility/explicit]
+       The change does not alter the order in which a request carries its content.
+
+[exclusion-04] Any guarantee about what a provider does with a request it was offered.
+    Whether it reuses one is the provider's own behavior, which this work neither
+    promises nor prevents.
+    -> does-not-change-provider-request-reuse-behavior  [compatibility/explicit]
+       The change does not alter whether a provider reuses any part of a request it was
+       offered.
+
+[exclusion-05] Reporting tokens, cost or reused-token share, which a run already
+    reports.
+    -> exclude-reporting-tokens-cost-or-reused-token-share  [functional/explicit]
+       The change does not alter reporting tokens, cost, or reused-token share, which a
+       run already reports.
+
+[exclusion-06] Model calls issued by the measurement harness, which is not part of a
+    review run.
+    -> exclude-measurement-harness-model-calls  [functional/explicit]
+       The change does not alter model calls issued by the measurement harness, which is
+       not part of a review run.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       The bullet is a section marker standing alone with no requirement under it.
+
+[completion-02] A test fails when two calls of one stage in a run declare different
+    answer formats.
+    -> stage-answer-format-consistency-test  [test_demand/explicit]
+       A test fails when two calls of one stage in a run declare different answer
+       formats.
+
+[completion-03] A test fails when an answer naming an item its call did not ask about is
+    read as a judgement about an item.
+    -> out-of-scope-answer-not-judged-test  [test_demand/explicit]
+       A test fails when an answer naming an item its call did not ask about is read as
+       a judgement about an item.
+
+[completion-04] A test fails when a call is answered about fewer items than its answer
+    format provides for.
+    -> undersized-answer-completeness-test  [test_demand/explicit]
+       A test fails when a call is answered about fewer items than its answer format
+       provides for.
+
+[completion-05] A test fails when a conclusion depending on every item having been
+    judged is stated for a run in which some answer was not obtained.
+    -> withheld-conclusion-when-answers-missing-test  [test_demand/explicit]
+       A test fails when a conclusion depending on every item having been judged is
+       stated for a run in which some answer was not obtained.
+
+[completion-06] Two recorded runs over the same input produce byte-identical review
+    state and byte-identical report output.
+    -> deterministic-review-state-and-report-output  [regression/explicit]
+       Two recorded runs over the same input produce byte-identical review state and
+       byte-identical report output.
+
