@@ -163,14 +163,28 @@ def unusable_answer_finding(answer: UnusableAnswer) -> Finding:
     review itself failing to answer a question it asked, which is precisely the
     thing a reader must not mistake for a clean result.
     """
-    return Finding(
-        type=UNUSABLE_ANSWER,
-        severity="major",
-        description=(
+    # `reason` is what distinguishes the cases, so it has to reach the reader.
+    # Without it every unusable answer is described as an id "never supplied",
+    # which is true only of the original case — it is already wrong for #204's
+    # no-linking rejection, where the response minted the id itself, and
+    # `UnusableAnswer.reason` exists precisely because "a reader seeing only
+    # `field=obligation_id` could not tell what was wrong with it". A reader told
+    # the wrong story about why a judgment is missing cannot act on it.
+    if answer.reason:
+        description = (
+            f"The {answer.stage} stage has no usable judgment for "
+            f"{answer.returned_id!r} ({answer.field!r}): {answer.reason}."
+        )
+    else:
+        description = (
             f"The {answer.stage} stage returned {answer.returned_id!r} for "
             f"{answer.field!r}, which was never supplied to that call. The "
             "judgment it was meant to carry was not obtained."
-        ),
+        )
+    return Finding(
+        type=UNUSABLE_ANSWER,
+        severity="major",
+        description=description,
         evidence_tier=EvidenceTier.STATIC,
         produced_by=Component.STATIC_ANALYZER,
         links=[Link(kind="requirement", ref=answer.returned_id, text=answer.stage)],
