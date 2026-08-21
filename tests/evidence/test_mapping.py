@@ -496,10 +496,18 @@ def test_two_batches_of_one_run_offer_the_provider_the_same_reusable_opening():
     checking only the schema, or only the messages, cannot tell a reusable
     request apart from one that merely looks similar.
 
-    Both halves are asserted here, and each has its own way of being lost. Put
-    the per-batch `test_id` enum back and the schemas diverge; move
-    `_obligations_block` after the tests and the shared opening ends before the
-    invariant content, leaving nothing worth reusing. Either defect fails this.
+    Both halves are asserted. **Only the schema half is discriminating here**,
+    and that is worth stating rather than leaving to be discovered: putting the
+    per-batch `test_id` enum back fails this test (verified by injecting it),
+    which is the defect #302 removes.
+
+    The opening half is asserted but is not this change's to break. `assemble`
+    sorts blocks by `BlockKind`'s declared order, so a caller cannot put the
+    batch's own tests first by passing them first — injecting that reordering
+    leaves this test passing. The guarantee belongs to #265 and is covered by
+    `test_no_request_places_content_unique_to_it_ahead_of_content_it_shares`.
+    It is asserted anyway because a reusable request needs both halves, and a
+    reader should see the whole condition in one place.
 
     Length is deliberately not asserted. Whether the opening clears the
     provider's 1,024-token floor is a property of real obligations, measured at
