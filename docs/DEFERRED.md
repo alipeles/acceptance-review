@@ -4165,4 +4165,114 @@ the record.
   absent. No behavior change, no transcript impact.
 - **Status:** open
 
+### [2026-08-21] One requirement split across twelve `yielded` dispositions aborts the whole review — a second cause for #298's crash
+
+- **Kind:** filing
+- **Found during:** #313, Gate 1 (runs 1 and 2 —
+  `dogfood-logs/313-gate1-run1/`, `dogfood-logs/313-gate1-run2/`)
+- **Where:** `src/acceptance/requirement/obligations.py:1275` (the raise), with
+  the guard that misses it at `:1214-1244`
+- **Severity:** blocker — it produced no decomposition at all, so #313's Gate 1
+  cannot be reached on this task file
+- **What's wrong:** decompose batch 1 was asked about `exclusion-05`,
+  `exclusion-06` and `task-01`, and returned fourteen dispositions: the two
+  exclusions, then **twelve** for `task-01`. All twelve say `yielded` and each
+  carries a *different* obligation — the model split one requirement across
+  twelve dispositions instead of nesting twelve obligations inside one
+  disposition's `more_obligations`. Only the first copy used that field; the
+  other eleven left it empty. `_requirement_map` treats any two non-identical
+  dispositions for one requirement as a self-contradiction and raises, ending
+  the run. Three of the four batches had answered cleanly; eighteen
+  requirements were decomposed and none survive.
+- **Why this is not #298:** #298 is the same crash at the same line, from
+  #265's Gate 1, but its cause is a *verbatim repeat* with `-dup` appended to
+  every id — a degenerate generation. Its proposed fix, comparing dispositions
+  for equality while ignoring ids, does not catch this: the copies here differ
+  in every field, not only their ids. Nor is it #248 (a repeated obligation
+  *inside* one disposition). What all three share is the abort site.
+- **Why I didn't act:** the fault is in `requirement/`, the #181 decomposition
+  umbrella's area, not #313's. The §4 fix-it-now exception needs both
+  "unachievable Acceptance" *and* "inside the task's own area"; only the first
+  holds.
+- **Drafted filing — child of #181, labels `bug`, `track:checker`:**
+
+  **Title:** One requirement split across many `yielded` dispositions aborts
+  the whole review
+
+  **Body:**
+
+  Child of #181. A second, distinct cause of the crash #298 reports; #298's
+  proposed fix does not cover it.
+
+  From #313's Gate 1 (`dogfood-logs/313-gate1-run1/`):
+
+  ```
+  acceptance: model error: requirement 'task-01' was disposed more than once
+  ```
+
+  Batch 1 was asked about three requirements and returned fourteen
+  dispositions — `exclusion-05`, `exclusion-06`, and `task-01` twelve times.
+  Every `task-01` copy says `yielded`. Each carries a different obligation,
+  with its own description, type and `source_quote`, and the twelve together
+  are a reasonable decomposition of the Task paragraph — distinct, grounded in
+  its text, nothing invented. The model expressed one answer twelve times
+  instead of once with twelve obligations in `more_obligations`; only the first
+  copy used that field at all.
+
+  **Why the existing guards miss it.** `_batch_dispositions`
+  (`obligations.py:1214-1244`) drops only an EXACT repeat (`previous == entry`).
+  #298 proposes widening that to equality-ignoring-ids. Neither test fires here:
+  the copies differ in every field. So they reach `_requirement_map`
+  (`:1275`), which raises.
+
+  That raise implements #217's ban on a self-contradictory disposition — "two
+  different answers for one requirement". Twelve dispositions all agreeing on
+  `yielded` are **one** answer, badly shaped. A contradiction would be
+  `yielded` against `no_obligation`, or two copies disagreeing about the same
+  obligation's type or text.
+
+  **Consequence.** The whole review is abandoned, not the malformed part. Three
+  of four batches answered cleanly and are discarded with the fourth. The
+  response is recorded, so the failure is permanent for that input: run 2
+  replayed it and died identically. Clearing it means finding and deleting the
+  transcript by hand, which nothing in the output suggests. And a crashed run
+  writes no ledger entry, so there is no run id for `--continue` and the next
+  attempt cannot carry anything forward.
+
+  This collides with the standing invariant that uncertainty is first-class. A
+  requirement whose obligations arrived across several agreeing dispositions is
+  at worst an indeterminate result about one requirement; it is not grounds for
+  producing nothing.
+
+  **Suggested direction.** When every disposition returned for one requirement
+  agrees on its `disposition` kind, merge them rather than raise: union their
+  obligations in returned order, `_unique` the ids as it already does for
+  collisions, and record the merge on `UnusableAnswerLog` so it is visible
+  rather than silent. Keep the raise for the case #217 actually names — copies
+  whose `disposition` values differ, or which disagree about a shared
+  obligation. Deliberately narrower than "drop any duplicate": the twelve
+  obligations here are real work and dropping eleven of them would silently
+  lose most of a requirement's decomposition, which is worse than the abort.
+
+  Worth deciding alongside it, and shared with #298: whether one batch's
+  `SchemaValidationError` should end the run at all, or be recorded against
+  that batch's requirements while the rest of the review proceeds. Same
+  argument #275 makes about one omitted recommendation aborting thirteen.
+
+  **Acceptance**
+  - A response returning one requirement's disposition several times, all
+    agreeing on the disposition kind and each carrying different obligations,
+    yields the union of those obligations and completes.
+  - The merge is recorded on `UnusableAnswerLog`, not silent.
+  - Copies whose `disposition` values differ still raise.
+  - A test drives `decompose` through the path, not only the helper.
+
+  Evidence: `dogfood-logs/313-gate1-run1/judgement.md` (batch-by-batch
+  disposition ids and the twelve obligations), `dogfood-logs/313-gate1-run2/`
+  for the deterministic replay.
+
+  Related: #181, #217, #248, #275, #298.
+- **Status:** FILED as #317 (2026-08-21), attached to #181, and taken as the
+  task in flight ahead of #313 — the human's call at #313's Gate 1.
+
 
