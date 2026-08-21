@@ -1,0 +1,142 @@
+run b35e72704d1fc4f9
+  continuing b1c236b5709e2768
+  requirements: 0 derived, 20 carried, 2 revised; 1 decompose call(s)
+  continue this run with: --continue b35e72704d1fc4f9
+Model usage by stage:
+  stage                                 calls  prompt  output  cached  this run  recorded
+  ------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose           1 (0 live / 1 replayed)   6,230     416    0.0%   $0.0000   $0.0065
+  obligation linking  2 (0 live / 2 replayed)   1,688     159    0.0%   $0.0000   $0.0014
+  unknown             1 (0 live / 1 replayed)     377      36    0.0%   $0.0000   $0.0004
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.0084 to record (4 call(s) replayed at no cost to this run)
+Requirements: 22   with obligations: 21   deliberately none: 1
+
+[task-01] An answer that accounts for the same requirement more than once no longer
+    costs the review every requirement it read. What the review does with such an answer
+    turns on whether those accounts agree with one another.
+    -> combine-agreeing-accounts-2  [functional/explicit]
+       When several accounts of one requirement agree on that requirement's outcome, the
+       review combines them into one account and carries on.
+    -> disagreement-stops-review  [error_handling/explicit]   (also serves constraint-05)
+       Several accounts of one requirement that disagree about that requirement's
+       outcome stop the review.
+
+[constraint-01] Several accounts of one requirement that agree on that requirement's
+    outcome are combined into a single account of it.
+    -> combine-agreeing-accounts  [functional/explicit]
+       Several accounts of one requirement that agree on that requirement's outcome are
+       combined into a single account of it.
+
+[constraint-02] The combined account states every obligation the separate accounts
+    stated, in the order the answer returned them, and drops none of them.
+    -> preserve-all-obligations-in-combined-account  [invariant/explicit]
+       The combined account states every obligation the separate accounts stated, in the
+       order the answer returned them, and drops none of them.
+
+[constraint-03] Where combining would leave two obligations carrying the same
+    identifier, they are made distinct, as obligations whose identifiers collide for any
+    other reason already are.
+    -> disambiguate-colliding-obligation-identifiers  [invariant/explicit]
+       Where combining would leave two obligations carrying the same identifier, they
+       are made distinct, as obligations whose identifiers collide for any other reason
+       already are.
+
+[constraint-04] The review records that it combined several accounts of a requirement,
+    and which requirement, rather than combining them silently.
+    -> record-that-combining-happened  [explanation_observability/explicit]
+       The review records that it combined several accounts of a requirement, and which
+       requirement, rather than combining them silently.
+
+[constraint-05] Several accounts of one requirement that disagree about that
+    requirement's outcome stop the review.
+    -> disagreement-stops-review  [error_handling/explicit]   (also serves task-01)
+       Several accounts of one requirement that disagree about that requirement's
+       outcome stop the review.
+
+[constraint-06] Several accounts that agree on the outcome but state one shared
+    obligation differently stop the review.
+    -> stop-on-differently-stated-shared-obligation  [error_handling/explicit]
+       Several accounts that agree on the outcome but state one shared obligation
+       differently stop the review.
+
+[constraint-07] A requirement accounted for exactly once is unaffected.
+    -> single-account-unaffected  [invariant/explicit]
+       A requirement accounted for exactly once is unaffected.
+
+[exclusion-01] How much of a review an answer the review cannot read at all stops.
+    -> cannot-read-answer-scope  [compatibility/explicit]
+       The review does not let an unreadable answer stop the whole review or only the
+       requirements that answer was asked about.
+
+[exclusion-02] What the review asks in order to obtain an answer, and the shape of
+    answer it asks for.
+    -> cannot-resolve-question-shape  [functional/explicit]
+       The review does not alter what it asks in order to obtain an answer, or the shape
+       of answer it asks for.
+
+[exclusion-03] How the review finds requirements in the mandate, and how many it finds.
+    -> cannot-change-requirement-discovery  [functional/explicit]
+       The review does not alter how it finds requirements in the mandate, or how many
+       it finds.
+
+[exclusion-04] Which obligations an account states, and whether they are the right ones
+    for the requirement.
+    -> cannot-change-obligation-selection  [functional/explicit]
+       The review does not alter which obligations an account states, or whether they
+       are the right ones for the requirement.
+
+[exclusion-05] Combining obligations that one single account states more than once.
+    -> cannot-combine-duplicate-obligations-within-one-account  [functional/explicit]
+       The review does not combine obligations that one single account states more than
+       once.
+
+[completion-01] Implementation.
+    -- no obligation, deliberately
+       Section marker only; it names no checkable requirement by itself.
+
+[completion-02] A test fails when several accounts of one requirement that agree on its
+    outcome stop the review.
+    -> combined-agreeing-accounts-stop-review  [test_demand/explicit]
+       A test fails when several accounts of one requirement that agree on its outcome
+       stop the review.
+
+[completion-03] A test fails when an obligation stated by one of several agreeing
+    accounts is missing from the combined account.
+    -> missing-obligation-from-combined-account  [test_demand/explicit]
+       A test fails when an obligation stated by one of several agreeing accounts is
+       missing from the combined account.
+
+[completion-04] A test fails when combining leaves two obligations carrying the same
+    identifier.
+    -> duplicate-obligation-id-after-combining  [test_demand/explicit]
+       A test fails when combining leaves two obligations carrying the same identifier.
+
+[completion-05] A test fails when accounts are combined and the review does not record
+    it.
+    -> record-combining-of-accounts  [test_demand/explicit]
+       A test fails when accounts are combined and the review does not record it.
+
+[completion-06] A test fails when accounts disagreeing about a requirement's outcome are
+    combined instead of stopping the review.
+    -> disagreeing-accounts-stop-instead-of-combining  [test_demand/explicit]
+       A test fails when accounts disagreeing about a requirement's outcome are combined
+       instead of stopping the review.
+
+[completion-07] A test fails when accounts agreeing on the outcome but stating one
+    shared obligation differently are combined instead of stopping the review.
+    -> shared-obligation-differently-stated-stops-review  [test_demand/explicit]
+       A test fails when accounts agreeing on the outcome but stating one shared
+       obligation differently are combined instead of stopping the review.
+
+[completion-08] A test exercises the whole path from the answer through to the
+    obligations produced, not the combining step alone.
+    -> end-to-end-path-from-answer-to-obligations  [test_demand/explicit]
+       A test exercises the whole path from the answer through to the obligations
+       produced, not the combining step alone.
+
+[completion-09] Two recorded runs over the same input produce byte-identical review
+    state and byte-identical report output.
+    -> byte-identical-review-state-and-report-output  [functional/explicit]
+       Two recorded runs over the same input produce byte-identical review state and
+       byte-identical report output.
+

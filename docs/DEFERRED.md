@@ -3694,6 +3694,22 @@ the record.
   > obligation contradicts the delivered tree, and no rewording available to the
   > task author fixes it.
 - **Status:** **filed** — posted to #301 on 2026-08-20, approved at #293's Gate 1.
+- **Third instance, #317's Gate 1 (2026-08-21) — drafted follow-up comment on
+  #301, needs approval.** Different mandate, different exclusion shape, same
+  "rewording moves nothing" outcome. `exclusion-01` read *"Whether an answer the
+  review cannot read should stop the whole review or only the requirements that
+  answer was asked about"* and yielded *"The review does not let an unreadable
+  answer stop the whole review **or only the requirements that answer was asked
+  about**"* — incoherent, since it denies both halves of an exhaustive pair. It
+  was reworded into a noun phrase matching its four well-behaved neighbours,
+  *"How much of a review an answer the review cannot read at all stops."* The
+  requirement **was** re-derived — its obligation `type` moved `functional` →
+  `compatibility`, and the run reports it among "2 revised" — and the
+  description came back **byte-identical**, now corresponding to no text in the
+  mandate at all. Adds to #301: the failure is not specific to
+  *"changing how X is done"* phrasings; a *"whether A or B"* phrasing collapses
+  the same way, and the malformed obligation outlives the wording that produced
+  it. Evidence: `dogfood-logs/317-gate1-run{1,2}/`.
 
 ### [2026-08-20] #304 gains a second instance, and a meaning-preserving edit flips an untouched pair
 
@@ -4003,6 +4019,20 @@ the record.
   #304, not against #173, and the evidence stands on its own. Recomputable at
   any time via `acceptance.benchmark.twin_splitting`; detail in
   `docs/DR-173-mapping-twin-splitting.md` §2.
+
+  **Fresh instance, #317's Gate 1 (2026-08-21), and it sharpens the last point
+  above.** `dogfood-logs/317-gate1-run2/`: `task-01` yielded
+  `combine-agreeing-accounts-2` stating the same property as `constraint-01`'s
+  `combine-agreeing-accounts` — same generated slug, `-2` applied, no merge. In
+  the **same run** the linker correctly merged `disagreement-stops-review`
+  across `task-01` and `constraint-05` and labelled it "(also serves
+  constraint-05)", so this is not a linker that was idle. And the duplicate
+  survived a rewrite of `task-01` that removed the sentence stating the
+  property: run 1's Task paragraph restated `constraint-01`, run 2's names only
+  the topic, and the decomposer manufactured the full restatement anyway. The
+  `-2` marker being the highest-precision detector available, and still unused
+  while a merge lands beside it, is the concrete form of "the information needed
+  to merge is present at decomposition time and is being thrown away".
 
 ### [2026-08-21] Mapping prompt wording is a well-powered null; the defect is in the response shape
 - **Kind:** decision
