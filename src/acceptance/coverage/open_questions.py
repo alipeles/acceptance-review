@@ -21,9 +21,10 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from acceptance.coverage.prompt import DiffRef, hunk_labels, render_diff_section, resolve_refs
+from acceptance.coverage.prompt import DiffRef, diff_block, hunk_labels, resolve_refs
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
+from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import (
     ChangeSet,
     Link,
@@ -97,13 +98,13 @@ class _Judgments(StrictResponseModel):
     resolutions: list[_Judged]
 
 
-def _render_prompt(open_questions: list[OpenQuestion], change_set: ChangeSet) -> str:
+def _subject_block(open_questions: list[OpenQuestion]) -> Block:
+    """The questions this call is about. The diff they are asked against is a
+    separate, shared block that `assemble` places ahead of this one."""
     lines = ["## Open questions", ""]
     for question in open_questions:
         lines.append(f"- id={question.id}: {question.question}")
-    lines.append("")
-    lines.extend(render_diff_section(change_set))
-    return "\n".join(lines)
+    return Block(BlockKind.SUBJECT, "\n".join(lines))
 
 
 def resolve_open_questions(
@@ -118,10 +119,13 @@ def resolve_open_questions(
         return []
 
     label_to_ref = hunk_labels(change_set)
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {"role": "user", "content": _render_prompt(open_questions, change_set)},
-    ]
+    messages = assemble(
+        [
+            diff_block(change_set),
+            Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+            _subject_block(open_questions),
+        ]
+    )
     allowed = {
         "question_id": [question.id for question in open_questions],
         "diff_refs": list(label_to_ref),

@@ -27,10 +27,11 @@ of the ladder.
 
 from __future__ import annotations
 
-from acceptance.coverage.prompt import render_diff_section
+from acceptance.coverage.prompt import diff_block
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
+from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import (
     DECLARATION_MISMATCH,
     BuilderDeclaration,
@@ -87,12 +88,22 @@ class _Mismatches(StrictResponseModel):
     mismatches: list[_Mismatch]
 
 
-def _render_prompt(
+def _subject_block(
     declaration: BuilderDeclaration,
     obligations: list[Obligation],
-    change_set: ChangeSet,
     test_evidence: list[TestEvidence],
-) -> str:
+) -> Block:
+    """Everything this call carries that no other request does.
+
+    The diff used to sit in the middle of this string, between the obligations
+    and the tests. It is now a block of its own, so the request opens with the
+    material the other coverage stages also carry.
+
+    The obligation list here is **not** `prompt.obligations_block`: this stage
+    shows descriptions alone, without ids or types, because it is comparing
+    prose claims rather than citing criteria. That is different content, so it
+    stays part of the subject rather than pretending to be the shared block.
+    """
     lines = ["## Builder declaration", ""]
     for label, value in _declaration_sections(declaration):
         if value:
@@ -108,9 +119,6 @@ def _render_prompt(
         lines.append("(none)")
     lines.append("")
 
-    lines.extend(render_diff_section(change_set))
-    lines.append("")
-
     lines.append("## Tests that actually exist")
     if test_evidence:
         for evidence in test_evidence:
@@ -118,7 +126,7 @@ def _render_prompt(
             lines.append(f"- {evidence.identifier}: {assertions}")
     else:
         lines.append("(none)")
-    return "\n".join(lines)
+    return Block(BlockKind.SUBJECT, "\n".join(lines))
 
 
 def _declaration_sections(declaration: BuilderDeclaration) -> list[tuple[str, str]]:
@@ -143,13 +151,13 @@ def compare_declaration(
     client: ModelClient,
 ) -> list[DeclarationMismatch]:
     """Flag declaration claims matching neither the task nor the code/tests."""
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": _render_prompt(declaration, obligations, change_set, test_evidence),
-        },
-    ]
+    messages = assemble(
+        [
+            diff_block(change_set),
+            Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+            _subject_block(declaration, obligations, test_evidence),
+        ]
+    )
     result = client.complete(messages, _Mismatches, stage=_STAGE)
     return [DeclarationMismatch(claim=m.claim, rationale=m.rationale) for m in result.mismatches]
 

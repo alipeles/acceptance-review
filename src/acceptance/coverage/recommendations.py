@@ -24,10 +24,11 @@ from __future__ import annotations
 
 from pydantic import Field
 
-from acceptance.coverage.prompt import render_diff_section
+from acceptance.coverage.prompt import diff_block
 from acceptance.evidence.discrimination import ObligationDiscrimination
 from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
 from acceptance.model_base import PersistableModel
+from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import (
     ChangeSet,
     Obligation,
@@ -126,11 +127,16 @@ def _surviving_defects(discrimination: ObligationDiscrimination | None) -> list[
     return [d.description for d in discrimination.defects if not d.would_be_caught]
 
 
-def _render_prompt(
+def _subject_block(
     weak: list[Obligation],
     discriminations_by_obligation: dict[str, ObligationDiscrimination],
-    change_set: ChangeSet,
-) -> str:
+) -> Block:
+    """The weak criteria this call must prescribe for.
+
+    The diff used to be appended *after* this list, which put the largest and
+    most widely shared thing in the request behind the part unique to this call.
+    It is now a block of its own that `assemble` places first.
+    """
     lines = ["## Criteria needing stronger test evidence", ""]
     for obligation in weak:
         lines.append(f"### id={obligation.id}")
@@ -141,8 +147,7 @@ def _render_prompt(
             lines.append("plausible defects the current tests do NOT catch:")
             lines.extend(f"  - {d}" for d in defects)
         lines.append("")
-    lines.extend(render_diff_section(change_set))
-    return "\n".join(lines)
+    return Block(BlockKind.SUBJECT, "\n".join(lines).rstrip())
 
 
 def recommend_tests(
@@ -160,13 +165,13 @@ def recommend_tests(
         return RecommendationResult()
 
     discriminations_by_obligation = {d.obligation_id: d for d in discriminations}
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": _render_prompt(weak, discriminations_by_obligation, change_set),
-        },
-    ]
+    messages = assemble(
+        [
+            diff_block(change_set),
+            Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+            _subject_block(weak, discriminations_by_obligation),
+        ]
+    )
     # Only the WEAK obligations are supplied — those are the ones the call is
     # about, so a recommendation for any other obligation is unusable by
     # construction, not merely unmatched.

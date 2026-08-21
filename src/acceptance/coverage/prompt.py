@@ -10,6 +10,7 @@ each other's internals.
 from __future__ import annotations
 
 from acceptance.model_base import PersistableModel
+from acceptance.request_blocks import Block, BlockKind
 from acceptance.review_state import ChangeSet, Obligation
 
 
@@ -53,14 +54,37 @@ def render_diff_section(change_set: ChangeSet) -> list[str]:
     return lines
 
 
-def render_diff_prompt(obligations: list[Obligation], change_set: ChangeSet) -> str:
-    """Render obligations + the labeled diff for the model to reason over."""
+def diff_block(change_set: ChangeSet) -> Block:
+    """The `## Diff` block, as the one string every stage that shows a diff uses.
+
+    Five stages carry this and a provider reuses a repeated opening only when it
+    is repeated *exactly*, so the value of routing them all through one function
+    is byte-identity, not tidiness. A stage that rendered the same hunks with its
+    own spacing would produce a block that looks the same to a reader and shares
+    no prefix with the others.
+
+    Rendering that is deliberately **not** shared: `evidence/discrimination.py`
+    shows source files only, without hunk labels. That is a different view of the
+    change, not a different formatting of this one, and unifying them would
+    change what that stage is shown.
+    """
+    return Block(BlockKind.DIFF, "\n".join(render_diff_section(change_set)))
+
+
+def obligations_block(obligations: list[Obligation]) -> Block:
+    """The `## Obligations` list, shared by coverage classification and
+    unrequested-change detection.
+
+    The two stages pass different obligation sets on some runs — classification
+    is given only the obligations it must classify — so this is one renderer
+    producing one block *kind*, not a guarantee that the bytes match. When the
+    sets do coincide the blocks are equal and the prefix is shared; when they do
+    not, the diff above them is still shared, which is the larger half.
+    """
     lines = ["## Obligations", ""]
     for obligation in obligations:
         lines.append(f"- id={obligation.id} [{obligation.type.value}]: {obligation.description}")
-    lines.append("")
-    lines.extend(render_diff_section(change_set))
-    return "\n".join(lines)
+    return Block(BlockKind.OBLIGATIONS, "\n".join(lines))
 
 
 def resolve_refs(labels: list[str], label_to_ref: dict[str, DiffRef]) -> list[DiffRef]:

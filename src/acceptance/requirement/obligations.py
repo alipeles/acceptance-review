@@ -49,6 +49,7 @@ from acceptance.llm import (
 )
 from acceptance.model_base import PersistableModel
 from acceptance.partition import partition
+from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.requirement.carry import CarryPlan, derivation_kind, plan_carry
 from acceptance.requirement.ledger import (
     DECOMPOSE_STAGE_LOGIC_VERSION,
@@ -850,18 +851,26 @@ def decompose(
 
     for batch in partition(asking, batch_size, key=lambda requirement: requirement.id):
         batch_ids = [requirement.id for requirement in batch.items]
-        messages = [
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {
-                "role": "user",
+        messages = assemble(
+            [
+                Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
                 # The registry passed here is the WHOLE one, never `asking`: the
                 # batch scopes what a call answers for, not what it may read
                 # (#178). A call shown only the requirements that changed could
                 # not notice that an untouched section settles a term the
                 # changed one leaves open.
-                "content": _user_prompt(registry, set(batch_ids), plan.revised),
-            },
-        ]
+                #
+                # It is one SUBJECT block rather than a shared registry block and
+                # a per-batch block, because `_user_prompt` marks each
+                # requirement `ANSWER FOR THIS` or `context only` **inline**, so
+                # the registry text genuinely differs between batches. Hoisting
+                # the marker out to the trailing id list — which already names
+                # the same ids — would make the registry invariant and shareable,
+                # but it would change what each call is shown, which this task
+                # excludes.
+                Block(BlockKind.SUBJECT, _user_prompt(registry, set(batch_ids), plan.revised)),
+            ]
+        )
         calls_issued += 1
         # Constrained to THIS batch's ids, not the whole registry: a disposition
         # for a requirement another call owns is unrepresentable under

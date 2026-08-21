@@ -82,6 +82,7 @@ from acceptance.coverage.prompt import DiffRef
 from acceptance.coverage.unrequested import UnrequestedChange
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
+from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import ChangeSet, Obligation, UnrequestedChangeDisposition
 
 _STAGE = "disposition judgment"
@@ -377,20 +378,32 @@ def _dispositioned(
     )
 
 
-def _render_judgment_prompt(
-    change: UnrequestedChange,
+def _obligations_block(
     obligations: list[Obligation],
     coverages: list[ImplementationCoverage],
-    change_set: ChangeSet,
     policy: ScopeExpansionPolicy,
-) -> str:
+) -> Block:
+    """The policy and the obligations with their coverage — the part that is the
+    same in every disposition call of a run.
+
+    One call is made per unrequested change, so a run with several of them issues
+    several requests that differ only in the change under review. Holding this
+    block apart is what lets `assemble` put all of that sameness at the front.
+
+    The obligation rendering carries each one's coverage status, so it is this
+    stage's own content rather than `prompt.obligations_block`.
+    """
     status_by_id = {c.obligation_id: c.status.value for c in coverages}
     lines = [f"Scope-expansion policy: {policy.value}", "", "## Obligations (with coverage)"]
     for obligation in obligations:
         status = status_by_id.get(obligation.id, "unclassified")
         lines.append(f"- id={obligation.id} [{status}]: {obligation.description}")
-    lines.append("")
-    lines.append("## Unrequested change under review")
+    return Block(BlockKind.OBLIGATIONS, "\n".join(lines))
+
+
+def _subject_block(change: UnrequestedChange, change_set: ChangeSet) -> Block:
+    """The one change this call judges, with the hunks it concerns."""
+    lines = ["## Unrequested change under review"]
     lines.append(f"kind={change.kind.value}; rationale={change.rationale}")
     lines.append("")
     lines.append("### Changed hunks")
@@ -401,7 +414,7 @@ def _render_judgment_prompt(
         hunk = hunk_by_key.get((ref.file, ref.hunk_header))
         if hunk is not None:
             lines.append(hunk.content)
-    return "\n".join(lines)
+    return Block(BlockKind.SUBJECT, "\n".join(lines))
 
 
 def _judge_disposition(
@@ -412,13 +425,13 @@ def _judge_disposition(
     policy: ScopeExpansionPolicy,
     client: ModelClient,
 ) -> DispositionedChange:
-    messages = [
-        {"role": "system", "content": _SYSTEM_PROMPT},
-        {
-            "role": "user",
-            "content": _render_judgment_prompt(change, obligations, coverages, change_set, policy),
-        },
-    ]
+    messages = assemble(
+        [
+            _obligations_block(obligations, coverages, policy),
+            Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+            _subject_block(change, change_set),
+        ]
+    )
     result = client.complete(messages, _DispositionJudgment, stage=_STAGE)
     return _dispositioned(change, result.disposition, result.rationale, decided_by="model")
 

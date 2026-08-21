@@ -361,18 +361,18 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
 _APPROVED_TRANSCRIPTS = {
     # --- unrequested-change disposition (#146), 08-unrequested-change-risky-adjacent
     # gpt-5.4-mini, LOOSE -> separable
-    "4b42b8d09463c45c7a7dbcd16e04a81da478e920d86884c725880ade4a616841.json": (
+    "1d03416639ce97f86a6d43587a2c9eec5c983fd9e44cad9ef20254dc32f84dde.json": (
         "orders.py",
         "ship_order",
     ),
     # gpt-5.4-mini, STRICT -> risky
-    "da0e5bd015e737c58fc0c9171c13f7811d0c093a42cef011ff9868ec3b562b78.json": (
+    "02d89047dc7e2ab6e18b742a9e108680efe097f70ffbd2dd29839b48664e2518.json": (
         "orders.py",
         "ship_order",
     ),
     # claude-sonnet-5, STRICT -> risky. The provider-agnosticism claim (M0.4)
     # held to recorded evidence rather than a hand-run experiment (#158).
-    "1da205e181df6f1daf95e807191775b81bf73437acf2eec9d2a14fdc32ae2cb5.json": (
+    "9b44a3a2e0acb52ca02c4f16d2de4974177afabb6b0fe4fd4da3ca64a18a3ebc.json": (
         "orders.py",
         "ship_order",
     ),
@@ -392,12 +392,12 @@ _APPROVED_TRANSCRIPTS = {
     # batched — and the invoice task's remaining pairs fit a single call. The
     # count dropping is the structural skip, visible in the corpus.
     # derivation
-    "a810ba93e2f5e8839d6b095a8b08f9e0d2ea9da0585aaaf2416154e4836d8853.json": (
+    "6012d93845b19996174cd3d6da7acc06b641546f6717f85db78e47aa8fb1071d.json": (
         "invoice",
         "CSV",
     ),
     # linking sweep
-    "2f3e06bae1104c0ce1970b23b224cface8c941e9fa9582b540b605fc3eb87077.json": (
+    "5d194634b33865e4798d455fb9a2574679bd1b5dcc41f09e0543a120af7c57dc.json": (
         "invoice",
         "CSV",
     ),
@@ -412,11 +412,11 @@ _APPROVED_TRANSCRIPTS = {
     # derivation at 8 requirements per call and this file states 11. Both
     # batches carry the fixture-level markers: DR-204 puts the WHOLE registry
     # in every batch's prompt, and only `answer_for` is scoped.
-    "b42e6b2fefb800a71c9c09d7a5f7cffb56a0d4c164247e0b1bbab044abbb17c7.json": (
+    "9fd42c8b9e99eaa9d5f495cba4f421a8e9d0583d4c268cd6c801a25ea98c91df.json": (
         "invoice",
         "CSV",
     ),
-    "f31875e84b1c433e1d6b54c2e4f2db16718f2d280a048a3788675fb2fca6dbc1.json": (
+    "8a5de666a27342d25745b0f76b6eb7345e0cb40e82077723d1d84c4446db2eda.json": (
         "invoice",
         "CSV",
     ),
