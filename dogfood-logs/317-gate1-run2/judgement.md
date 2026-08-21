@@ -1,4 +1,14 @@
-# Judgement — #317 Gate 1, run 2 — **Gate 1 PASSED**
+# Judgement — #317 Gate 1, run 2 — **superseded by run 3**
+
+> **This run did NOT pass Gate 1, and this file said it did.** Re-reading the
+> breakdown below found a contradiction in the mandate that this judgement
+> missed: `disambiguate-colliding-obligation-identifiers` (constraint-03) and
+> `stop-on-differently-stated-shared-obligation` (constraint-06) demand opposite
+> things about the same mechanical condition — two obligations sharing an
+> identifier. The second was also scope invented beyond issue #317. Both bullets
+> were removed and the gate re-armed; `dogfood-logs/317-gate1-run3/` is where
+> Gate 1 actually passes. The findings recorded below about the two tool defects
+> are unaffected and still stand.
 
 *Run at `a10cdc0` on branch `317-disposition-union`, 2026-08-21, after the
 wording fixes run 1 called for.*
