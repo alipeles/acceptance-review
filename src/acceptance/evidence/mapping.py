@@ -175,25 +175,47 @@ def map_tests_to_obligations(
                 _tests_block(list(batch.items)),
             ]
         )
-        # Asked for with the ids of THIS batch: every obligation (each batch
-        # judges all of them) but only this batch's tests. Parsed permissively so
-        # one unusable id costs one judgment, not the whole batch — see
-        # `supplied_ids`.
-        allowed = {
+        # Two id sets, and the difference between them is deliberate (#302).
+        #
+        # `detectable` is what a returned id is CHECKED against. `constrained` is
+        # what the response SCHEMA restricts. They differ on `test_id`: its ids
+        # are this batch's, so naming them in the schema gives every batch of a
+        # run a different schema — and the provider's prompt-cache key covers the
+        # schema, so no two batches could ever share a cached prefix. Measured:
+        # 461 of 464 recorded mapping calls cached nothing, over the 1,729-token
+        # prefix `_obligations_block` exists to keep in front.
+        #
+        # This stage and no other. Decompose's within-run prefix is 694 tokens
+        # and linking's are 583 and 509, against a provider minimum of 1,024, so
+        # neither can be served from cache whatever its schema does and both keep
+        # their enums (`docs/DR-302-per-batch-id-enum.md`).
+        #
+        # `obligation_ids` is identical in every batch of a run, so constraining
+        # it splits no prefix and it stays exactly as DR-163 left it — which is
+        # the field #163's defect was actually about, the model naming
+        # obligations it had read out of the pasted test sources.
+        #
+        # Dropping `test_id` from the schema costs nothing that was load-bearing:
+        # the batch-membership check below predates the enum and outlives it, and
+        # `scan` still records a foreign id. Parsed permissively either way, so
+        # one unusable id costs one judgment and not the whole batch.
+        detectable = {
             "test_id": batch_test_ids,
             "obligation_ids": sorted(valid_obligation_ids),
         }
+        constrained = {"obligation_ids": detectable["obligation_ids"]}
         result = client.complete(
             messages,
-            constrain(_Mappings, allowed),
+            constrain(_Mappings, constrained),
             batch.request_partition(),
             parse_as=_Mappings,
             stage=_STAGE,
         )
 
-        unusable_answers.extend(scan(result, allowed, _STAGE))
+        unusable_answers.extend(scan(result, detectable, _STAGE))
 
         batch_test_id_set = set(batch_test_ids)
+        answered_in_batch: set[str] = set()
         for mapping in result.mappings:
             # A batch may only speak for its own tests. Without this, a model that
             # echoes tests from a neighbouring batch would have its duplicate
@@ -202,7 +224,20 @@ def map_tests_to_obligations(
             if mapping.test_id not in batch_test_id_set:
                 continue
             if mapping.test_id in seen_test_ids:
-                continue  # already judged, in its own batch
+                # Judged twice. Recorded rather than dropped: either the two
+                # judgments agree, in which case the record is harmless, or they
+                # disagree, in which case keeping the first silently is the tool
+                # choosing between two answers it has no basis to choose between.
+                unusable_answers.append(
+                    UnusableAnswer(
+                        stage=_STAGE,
+                        field="test_id",
+                        returned_id=mapping.test_id,
+                        reason="judged more than once; the first judgment stands",
+                    )
+                )
+                continue
+            answered_in_batch.add(mapping.test_id)
             seen_test_ids.add(mapping.test_id)
             obligation_ids = [oid for oid in mapping.obligation_ids if oid in valid_obligation_ids]
             mapped_obligation_ids.update(obligation_ids)
@@ -211,6 +246,25 @@ def map_tests_to_obligations(
                     test_id=mapping.test_id,
                     obligation_ids=obligation_ids,
                     rationale=mapping.rationale,
+                )
+            )
+
+        # A batch can come back short: nothing in a list-shaped response requires
+        # one entry per test, and no schema ever did — an enum restricts which
+        # values may appear, never how many entries do. Left unrecorded, a
+        # skipped test is indistinguishable from a test judged to evidence
+        # nothing, and any obligation resting on it is then reported as having no
+        # test at all. That is the #163 defect shape: the review telling the
+        # reader their change is untested when the truth is that it went
+        # unreviewed. Sorted so the record depends only on which answers were
+        # missing, not on the order the response listed the others.
+        for missing_test_id in sorted(batch_test_id_set - answered_in_batch):
+            unusable_answers.append(
+                UnusableAnswer(
+                    stage=_STAGE,
+                    field="test_id",
+                    returned_id=missing_test_id,
+                    reason="no judgment returned for this test",
                 )
             )
 

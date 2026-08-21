@@ -40,6 +40,7 @@ from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from tests.support import (
     _EMPTY_BY_SCHEMA,
+    _candidate_tests,
     _completed,
     _fake_response,
     constant_embedding_fn,
@@ -115,7 +116,15 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
             # judge with no mapped tests would score `unsupported` and look
             # pessimistic, so the mapping must be generous in BOTH judges for
             # the difference between them to be the verdict and nothing else.
-            tests = _enums(schema, "test_id")
+            # From the PROMPT, not the schema. #302 dropped mapping's per-batch
+            # `test_id` enum — its ids differ per batch and the provider's
+            # cache key covers the schema — so the prompt is the only place the
+            # batch is named, and it is where the real model reads it. Answering
+            # for every test also matters in its own right: a test the response
+            # passes over is now recorded as a judgment not obtained, so a double
+            # that skipped one would drive the whole run indeterminate rather
+            # than steering the verdict this suite is about.
+            tests = _candidate_tests(messages=kwargs.get("messages") or [])
             allowed = _enums(schema, "obligation_ids") or [o["id"] for o in obligations]
             return _fake_response(
                 json.dumps(
