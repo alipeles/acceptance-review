@@ -399,6 +399,37 @@ Anything short of that is a stop. It is not a judgement call and not a threshold
 to negotiate down. Record the result in `session-state/<issue>.md` — clean or not, and at
 which SHA.
 
+#### Suspended while the defect-first evidence work is in flight
+
+**From 2026-08-21, until #312's sub-issues have landed — #313, #314, #315 and
+#316 — the "clean or stop" rule above does not apply.** Gate 2's machinery is
+the very thing that work is replacing: the mapping question is unanswerable as
+posed, a mapping miss is unrecoverable downstream, and the strength denominator
+is self-serving (`docs/DR-312-defect-first-evidence.md`, Context). Iterating a
+task to a clean check against an instrument we already know to be broken spends
+real effort on a reading that is about to change. For tasks in this stretch:
+
+- **Run `check` once.** Do not re-run it to chase a clean result. This also
+  suspends, for Gate 2 only, the re-arm rule below — a correction made in
+  response to a finding does not oblige another run.
+- **Fix what the run genuinely identifies** — a real defect in the work under
+  review, or genuinely weak wording in `current-task.md`.
+- **File what is genuinely new**, as a drafted queue item reviewed at the gate
+  (*Working agreement* §4).
+- **A finding that is only evidence of an already-known defect needs nothing.**
+  Do not re-file it, do not re-record it against its issue, do not work around
+  it. Note it in a line and move on.
+- **Then move forward.** A less-than-clean check is not a stop here.
+
+What does not change: **Gate 1 is untouched** and still needs a decomposition
+you would defend. The check is still *run*, and its result still recorded in
+`session-state/<issue>.md` with the SHA, clean or not. A finding attributed to a
+tool defect still may not be silently dropped — this stops the *iterating*, not
+the *looking*. Anything flagged as needing non-code evidence or human review is
+still a pause.
+
+**Delete this block when #316 lands.**
+
 ### Rules that apply at both gates
 
 - **Read the test recommendations before forming an opinion.** When an obligation
