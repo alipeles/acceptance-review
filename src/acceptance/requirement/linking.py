@@ -525,15 +525,49 @@ def link_duplicate_obligations(
         )
         if unusable_answers is not None:
             unusable_answers.record(scan(result, allowed, _STAGE))
+        answered: set[str] = set()
         for verdict in result.verdicts:
             if verdict.pair_id not in by_pair_id:
                 continue
+            if verdict.pair_id in answered:
+                # Judged twice. Recorded rather than absorbed: without this the
+                # pair contributed two MergeDecisions, and if they disagreed the
+                # cluster built from them depended on which one sorted first.
+                if unusable_answers is not None:
+                    unusable_answers.record(
+                        [
+                            UnusableAnswer(
+                                stage=_STAGE,
+                                field="pair_id",
+                                returned_id=verdict.pair_id,
+                                reason="judged more than once; the first verdict stands",
+                            )
+                        ]
+                    )
+                continue
+            answered.add(verdict.pair_id)
             left, right = by_pair_id[verdict.pair_id]
             fresh_decisions.append(
                 MergeDecision.between(by_id[left], by_id[right], verdict.same_requirement)
             )
             if verdict.same_requirement:
                 confirmed.add(frozenset((left, right)))
+
+        # A pair the response passed over is not merged, and an unmerged pair is
+        # indistinguishable from a pair judged to be two different requirements —
+        # so an omission here quietly produces the duplicate obligations #242
+        # tracks, with nothing saying the question went unanswered. Sorted, so the
+        # record depends only on which verdicts were missing.
+        if unusable_answers is not None:
+            unusable_answers.record(
+                UnusableAnswer(
+                    stage=_STAGE,
+                    field="pair_id",
+                    returned_id=pair_id,
+                    reason="no verdict returned for this pair",
+                )
+                for pair_id in sorted(set(by_pair_id) - answered)
+            )
 
     survivor_of, inconsistent = _confirmed_clusters(ordered_ids, confirmed)
     if unusable_answers is not None and inconsistent:

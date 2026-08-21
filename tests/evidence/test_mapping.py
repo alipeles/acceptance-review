@@ -8,6 +8,7 @@ A client that raises proves the no-candidate-tests path takes no model call.
 """
 
 import json
+import os
 import tempfile
 from pathlib import Path
 
@@ -18,7 +19,12 @@ from acceptance.evidence.discovery import DiscoveredTest, DiscoveryReason, disco
 from acceptance.evidence.mapping import apply_test_mapping, map_tests_to_obligations
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_state import Obligation, ObligationType, Review
-from tests.support import client_answering_per_call, client_returning, make_obligation
+from tests.support import (
+    _fake_response,
+    client_answering_per_call,
+    client_returning,
+    make_obligation,
+)
 
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 
@@ -480,3 +486,68 @@ def test_archetype_1_unmapped_obligations_are_flagged(tmp_path):
     result = map_tests_to_obligations(obligations, discovered.tests, client_returning(response))
 
     assert "returns-in-parens" in result.unmapped_obligation_ids
+
+
+def test_two_batches_of_one_run_offer_the_provider_the_same_reusable_opening():
+    """What #302 actually delivers, and what the schema test alone cannot show.
+
+    A provider reuses a repeated request only when the request OPENS the same way
+    *and* asks for the same answer format — its cache key covers both. So
+    checking only the schema, or only the messages, cannot tell a reusable
+    request apart from one that merely looks similar.
+
+    Both halves are asserted. **Only the schema half is discriminating here**,
+    and that is worth stating rather than leaving to be discovered: putting the
+    per-batch `test_id` enum back fails this test (verified by injecting it),
+    which is the defect #302 removes.
+
+    The opening half is asserted but is not this change's to break. `assemble`
+    sorts blocks by `BlockKind`'s declared order, so a caller cannot put the
+    batch's own tests first by passing them first — injecting that reordering
+    leaves this test passing. The guarantee belongs to #265 and is covered by
+    `test_no_request_places_content_unique_to_it_ahead_of_content_it_shares`.
+    It is asserted anyway because a reusable request needs both halves, and a
+    reader should see the whole condition in one place.
+
+    Length is deliberately not asserted. Whether the opening clears the
+    provider's 1,024-token floor is a property of real obligations, measured at
+    1,729 tokens in `docs/experiments/265-prompt-cache-baseline/`; toy fixtures
+    could only pin a number that means nothing.
+    """
+    obligations = [
+        make_obligation("ob-1", "Discount reduces the total", ObligationType.FUNCTIONAL),
+        make_obligation("ob-2", "The total shows two decimal places", ObligationType.FUNCTIONAL),
+    ]
+    tests = [_test("t.py::test_a"), _test("t.py::test_b")]
+    requests: list[tuple[str, str]] = []
+
+    def capture(**kwargs):
+        requests.append(
+            (
+                "\n".join(message["content"] for message in kwargs["messages"]),
+                json.dumps(kwargs["response_format"]["json_schema"]["schema"], sort_keys=True),
+            )
+        )
+        return _fake_response(json.dumps({"mappings": []}))
+
+    client = ModelClient(
+        model="openai/gpt-5.4-mini",
+        mode=Mode.RECORD,
+        store=TranscriptStore(tempfile.mkdtemp()),
+        completion_fn=capture,
+    )
+    map_tests_to_obligations(obligations, tests, client, batch_size=1)
+
+    assert len(requests) == 2
+    first, second = requests
+
+    # The answer format is what the cache key covers besides the messages.
+    assert first[1] == second[1]
+
+    opening = os.path.commonprefix([first[0], second[0]])
+    # The opening carries the invariant content: every obligation, in both calls.
+    assert "## Obligations" in opening
+    assert "ob-1" in opening and "ob-2" in opening
+    # And it ends before each batch's own tests, which are the part that differs.
+    assert "t.py::test_a" not in opening
+    assert "t.py::test_b" not in opening

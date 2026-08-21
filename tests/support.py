@@ -79,6 +79,48 @@ def _fake_response(content: str, usage: dict | None = None) -> SimpleNamespace:
     )
 
 
+def _candidate_tests(**kwargs) -> list[str]:
+    """The test ids a mapping call is asking about, read off its prompt.
+
+    `mapping.py::_tests_block` writes one `### <test_id>` heading per candidate
+    under `## Candidate tests`. Since #302 dropped mapping's per-batch `test_id`
+    enum that is the only place they appear — and it is where the real model
+    reads them, so a double reading them here answers the same question it does.
+    Decompose and linking keep their enums, so `_supplied_enum` still serves
+    those.
+    """
+    for message in kwargs.get("messages") or []:
+        content = message.get("content", "")
+        if "## Candidate tests" not in content:
+            continue
+        tail = content.split("## Candidate tests", 1)[1]
+        return [
+            line[4:].strip()
+            for line in tail.splitlines()
+            if line.startswith("### ") and line[4:].strip()
+        ]
+    return []
+
+
+def _pairs_asked_about(**kwargs) -> list[str]:
+    """The pair ids a linking call is asking about, read off its prompt.
+
+    `linking.py::_user_prompt` writes each as `[<pair_id>]` on its own line.
+    Linking keeps its `pair_id` enum, so this is not about the schema — it is
+    that #302 made linking record a pair its answer passed over, so a double
+    must answer for every pair rather than returning a bare `[]`.
+    """
+    found: list[str] = []
+    for message in kwargs.get("messages") or []:
+        for line in message.get("content", "").splitlines():
+            stripped = line.strip()
+            if stripped.startswith("[") and stripped.endswith("]"):
+                pair_id = stripped[1:-1]
+                if pair_id and pair_id not in found:
+                    found.append(pair_id)
+    return found
+
+
 def _supplied_enum(field: str, **kwargs) -> list[str]:
     """The ids a call supplied for `field`, read back off the schema it sent.
 
@@ -232,6 +274,31 @@ def _completed(response: dict, **kwargs) -> dict:
             for rid in supplied
         )
         return _nest_obligations({**response, "requirement_dispositions": dispositions})
+    if response.get("mappings") == []:
+        # Since #302 a candidate test the response passes over is recorded as a
+        # judgment not obtained, and drives the run's unmapped obligations to
+        # `indeterminate`. So `[]` no longer means "these tests evidence
+        # nothing" — that has to be SAID, one entry per test with an empty
+        # `obligation_ids`, which is what the stage's own prompt asks for and
+        # what a real response does. A double returning a bare `[]` against a
+        # non-empty batch is now the broken kind, not the neutral kind.
+        return {
+            **response,
+            "mappings": [
+                {"test_id": test_id, "obligation_ids": [], "rationale": "test double"}
+                for test_id in _candidate_tests(**kwargs)
+            ],
+        }
+    if response.get("verdicts") == []:
+        # Same reason: #302 records a pair the response passed over, so "none of
+        # these pairs are the same requirement" has to be stated per pair.
+        return {
+            **response,
+            "verdicts": [
+                {"pair_id": pair_id, "same_requirement": False, "reason": "test double"}
+                for pair_id in _pairs_asked_about(**kwargs)
+            ],
+        }
     if response.get("recommendations") == []:
         return {
             **response,
