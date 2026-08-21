@@ -1,0 +1,241 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) with non-discriminating test evidence (offer-reusable-request-when-provider-can-reuse).
+
+Obligations:
+
+  1. Each stage's answer format stays the same across a review run.
+       requirements: task-01, constraint-01
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         1.1  tests/evidence/test_mapping.py::test_changing_the_batch_size_changes_every_request_key
+         1.2  tests/evidence/test_mapping.py::test_each_batch_is_recorded_as_its_own_request
+         1.3  tests/test_supplied_ids.py::test_every_batch_of_a_stage_asks_for_the_identical_schema
+
+  2. A provider able to reuse a repeated request is offered one.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/evidence/mapping.py#@@ -175,25 +175,47 @@ def map_tests_to_obligations(
+         2.2  docs/DR-302-per-batch-id-enum.md#@@ -0,0 +1,260 @@
+         2.3  tests/test_supplied_ids.py#@@ -276,9 +276,21 @@ def test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers():
+       test evidence: nominally supported  [tier: static]
+         2.4  tests/evidence/test_mapping.py::test_every_test_is_judged_against_every_obligation_across_the_calls
+         2.5  tests/requirement/test_link_prefilter.py::test_a_pair_within_the_threshold_is_sent_to_the_model
+         2.6  tests/test_supplied_ids.py::test_every_batch_of_a_stage_asks_for_the_identical_schema
+         recommended test: When a provider can reuse a repeated request, the system offers that reusable request.
+           inputs:  Use a provider/test double that can observe whether the system emits a reusable request for a repeated prompt, and a stage/run setup with at least two calls that are identical in the reusable prefix and eligible for reuse. The input should include one repeated request that the provider could reuse if the reuse path is present, plus a control path where the same logical work is done without reuse. Choose a case where the defective implementation that always sends fresh requests or perturbs partitioning changes the provider-visible request identity/cacheability.
+           detects: A developer removes the repeated-request reuse path so each batch is always sent as a fresh request even when the provider could have reused a prior one, or changes partitioning so the provider cannot reuse an otherwise repeated request.
+           full detail: acceptance recommendation --criterion offer-reusable-request-when-provider-can-reuse
+
+  3. An answer says which item it is about, naming that item by the identifier the request gave it.
+       requirements: constraint-02
+       code evidence: addressed
+         3.1  src/acceptance/evidence/mapping.py#@@ -175,25 +175,47 @@ def map_tests_to_obligations(
+         3.2  src/acceptance/requirement/linking.py#@@ -525,9 +525,27 @@ def link_duplicate_obligations(
+         3.3  tests/support.py#@@ -79,6 +79,48 @@ def _fake_response(content: str, usage: dict | None = None) -> SimpleNamespace:
+         3.4  tests/test_supplied_ids.py#@@ -286,14 +298,72 @@ def test_each_partition_constrains_test_ids_to_its_own_batch():
+       test evidence: strongly supported  [tier: static]
+         3.5  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         3.6  tests/evidence/test_mapping.py::test_a_test_can_map_to_multiple_obligations
+         3.7  tests/evidence/test_mapping.py::test_a_test_maps_to_the_obligation_it_evidences
+         3.8  tests/evidence/test_mapping.py::test_apply_test_mapping_populates_test_evidence
+         3.9  tests/evidence/test_mapping.py::test_unknown_ids_are_dropped
+         3.10  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_not_merged_even_if_confirmed
+         3.11  tests/requirement/test_linking.py::test_one_requirement_stated_in_two_sections_yields_one_obligation_linked_to_both
+         3.12  tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers
+         3.13  tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped
+         3.14  tests/test_supplied_ids.py::test_a_test_judged_twice_is_recorded_rather_than_silently_deduplicated
+         3.15  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+         3.16  tests/test_supplied_ids.py::test_scan_finds_ids_that_were_never_supplied
+         3.17  tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id
+
+  4. An item a call asked about, which its answer passes over, is recorded as an answer not obtained.
+       requirements: constraint-03
+       code evidence: addressed
+         4.1  src/acceptance/evidence/mapping.py#@@ -214,6 +249,25 @@ def map_tests_to_obligations(
+         4.2  src/acceptance/requirement/linking.py#@@ -535,6 +553,22 @@ def link_duplicate_obligations(
+         4.3  tests/support.py#@@ -79,6 +79,48 @@ def _fake_response(content: str, usage: dict | None = None) -> SimpleNamespace:
+         4.4  tests/support.py#@@ -232,6 +274,31 @@ def _completed(response: dict, **kwargs) -> dict:
+         4.5  tests/test_supplied_ids.py#@@ -286,14 +298,72 @@ def test_each_partition_constrains_test_ids_to_its_own_batch():
+       test evidence: strongly supported  [tier: static]
+         4.6  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         4.7  tests/evidence/test_mapping.py::test_a_test_evidencing_nothing_leaves_obligations_unmapped
+         4.8  tests/evidence/test_mapping.py::test_archetype_1_unmapped_obligations_are_flagged
+         4.9  tests/evidence/test_mapping.py::test_no_candidate_tests_makes_no_model_call_and_flags_all_unmapped
+         4.10  tests/requirement/test_linking.py::test_an_unsupplied_obligation_id_is_recorded_rather_than_silently_dropped
+         4.11  tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers
+         4.12  tests/test_supplied_ids.py::test_a_test_the_response_passes_over_is_recorded_as_unanswered
+         4.13  tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
+         4.14  tests/test_supplied_ids.py::test_an_unusable_answer_leaves_the_obligation_indeterminate
+         4.15  tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id
+         4.16  tests/test_supplied_ids.py::test_the_schema_asked_for_differs_from_the_shape_parsed
+
+  5. An answer naming an item its call did not ask about is recorded as an answer not obtained, and is never read as a judgement about any item.
+       requirements: constraint-04
+       code evidence: addressed
+         5.1  src/acceptance/evidence/mapping.py#@@ -175,25 +175,47 @@ def map_tests_to_obligations(
+         5.2  src/acceptance/evidence/mapping.py#@@ -202,7 +224,20 @@ def map_tests_to_obligations(
+         5.3  src/acceptance/requirement/linking.py#@@ -525,9 +525,27 @@ def link_duplicate_obligations(
+         5.4  tests/support.py#@@ -79,6 +79,48 @@ def _fake_response(content: str, usage: dict | None = None) -> SimpleNamespace:
+       test evidence: strongly supported  [tier: static]
+         5.5  tests/evidence/test_mapping.py::test_a_batch_may_not_answer_for_a_test_outside_it
+         5.6  tests/evidence/test_mapping.py::test_a_test_evidencing_nothing_leaves_obligations_unmapped
+         5.7  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_not_merged_even_if_confirmed
+         5.8  tests/requirement/test_linking.py::test_an_unsupplied_obligation_id_is_recorded_rather_than_silently_dropped
+         5.9  tests/test_supplied_ids.py::test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers
+         5.10  tests/test_supplied_ids.py::test_a_foreign_obligation_id_is_recorded_not_silently_dropped
+         5.11  tests/test_supplied_ids.py::test_a_usable_judgment_survives_an_unusable_one_in_the_same_response
+         5.12  tests/test_supplied_ids.py::test_scan_finds_ids_that_were_never_supplied
+         5.13  tests/test_supplied_ids.py::test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id
+
+  6. A conclusion that holds only if every item was judged is withheld for a run in which some answer was not obtained.
+       requirements: constraint-05
+       code evidence: addressed
+         6.1  src/acceptance/evidence/mapping.py#@@ -214,6 +249,25 @@ def map_tests_to_obligations(
+         6.2  tests/support.py#@@ -232,6 +274,31 @@ def _completed(response: dict, **kwargs) -> dict:
+         6.3  tests/test_supplied_ids.py#@@ -286,14 +298,72 @@ def test_each_partition_constrains_test_ids_to_its_own_batch():
+       test evidence: strongly supported  [tier: static]
+         6.4  tests/evidence/test_mapping.py::test_archetype_1_unmapped_obligations_are_flagged
+         6.5  tests/evidence/test_mapping.py::test_no_candidate_tests_makes_no_model_call_and_flags_all_unmapped
+         6.6  tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean
+         6.7  tests/test_supplied_ids.py::test_a_test_the_response_passes_over_is_recorded_as_unanswered
+         6.8  tests/test_supplied_ids.py::test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable
+
+  7. An identifier drawn from a set that is the same for every call of a run stays restricted to that set.
+       requirements: constraint-06
+       code evidence: addressed
+         7.1  src/acceptance/evidence/mapping.py#@@ -175,25 +175,47 @@ def map_tests_to_obligations(
+         7.2  docs/DR-302-per-batch-id-enum.md#@@ -0,0 +1,260 @@
+         7.3  tests/test_supplied_ids.py#@@ -276,9 +276,21 @@ def test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers():
+       test evidence: strongly supported  [tier: static]
+         7.4  tests/evidence/test_mapping.py::test_every_test_is_judged_against_every_obligation_across_the_calls
+         7.5  tests/requirement/test_link_prefilter.py::test_the_linking_call_actually_carries_the_prefilter_controls
+         7.6  tests/requirement/test_linking.py::test_one_requirement_stated_in_two_sections_yields_one_obligation_linked_to_both
+         7.7  tests/test_supplied_ids.py::test_a_foreign_id_does_not_validate_against_the_constrained_schema
+         7.8  tests/test_supplied_ids.py::test_a_list_valued_id_field_constrains_its_items
+         7.9  tests/test_supplied_ids.py::test_a_single_supplied_id_is_still_sent_as_an_enum
+         7.10  tests/test_supplied_ids.py::test_a_union_of_item_shapes_constrains_every_member
+         7.11  tests/test_supplied_ids.py::test_every_batch_of_a_stage_asks_for_the_identical_schema
+         7.12  tests/test_supplied_ids.py::test_supplied_ids_become_an_enum_on_the_field_the_model_sees
+
+  8. The change does not alter what any stage is asked, or the judgement it is asked to make.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 12 changes across 6 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, so the source change itself is the evidence.
+
+  9. The change does not alter which stages exist, how a stage divides its work across calls, or how large those divisions are.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 12 changes across 6 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being added, so it is settled by inspecting the source change.
+
+  10. The change does not alter the order in which a request carries its content.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 12 changes across 6 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about preserving the absence of ordering changes, which is visible in the source diff.
+
+  11. The change does not alter the answer format of calls whose shared opening is shorter than the shortest one the provider in use can reuse.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 12 changes across 6 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, which is settled by inspecting the change itself.
+
+  12. The change does not alter reporting tokens, cost, or reused-token share, which a run already reports.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 12 changes across 6 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by not changing already-reported metrics, which can be checked directly in the source.
+
+  13. The change excludes model calls issued by the measurement harness from the review run scope.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 12 changes across 6 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion: the delivered source must reflect that harness-issued calls are outside the review run, and no test can directly demonstrate an excluded work item was not done.
+
+  14. A test fails when two calls of one stage, whose shared opening the provider in use could reuse, declare different answer formats.
+       requirements: completion-02
+       code evidence: not required — The requirement itself demands a test failure case, so the obligation is satisfied by the test alone.
+       test evidence: indeterminate  [tier: static]
+         (no mapped test)
+         recommended test: NOT OBTAINED — no prescription was produced
+           why: the recommendation stage was given 3 criteria and returned 1; no prescription was produced for this one
+
+  15. A test fails when an answer naming an item its call did not ask about is read as a judgement about an item.
+       requirements: completion-03
+       code evidence: not required — The requirement is explicitly about a test asserting the failure condition, so only the test is required.
+       test evidence: strongly supported  [tier: static]
+         15.1  tests/requirement/test_linking.py::test_a_behaviour_and_a_demand_for_a_test_of_it_are_not_merged_even_if_confirmed
+         15.2  tests/requirement/test_linking.py::test_an_unsupplied_obligation_id_is_recorded_rather_than_silently_dropped
+
+  16. A test fails when an item a call asked about is passed over by the answer and read as a judgement about that item.
+       requirements: completion-04
+       code evidence: not required — The requirement itself demands a test failure case, so the obligation is satisfied by the test alone.
+       test evidence: strongly supported  [tier: static]
+         16.1  tests/requirement/test_linking.py::test_an_unsupplied_obligation_id_is_recorded_rather_than_silently_dropped
+
+  17. A test fails when a conclusion depending on every item having been judged is stated for a run in which some answer was not obtained.
+       requirements: completion-05
+       code evidence: not required — The requirement is a demand for a test of the failure condition, so the test is the whole evidence required.
+       test evidence: indeterminate  [tier: static]
+         (no mapped test)
+         recommended test: NOT OBTAINED — no prescription was produced
+           why: the recommendation stage was given 3 criteria and returned 1; no prescription was produced for this one
+
+  18. Two recorded runs over the same input produce byte-identical review state and byte-identical report output.
+       requirements: completion-06
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         18.1  tests/evidence/test_mapping.py::test_repeating_a_run_reuses_the_recorded_batches
+         18.2  tests/evidence/test_mapping.py::test_the_merged_mapping_does_not_depend_on_the_order_the_tests_arrive_in
+         18.3  tests/requirement/test_link_prefilter.py::test_both_records_survive_a_round_trip_through_the_persisted_review
+         18.4  tests/requirement/test_link_prefilter.py::test_two_runs_over_the_same_obligation_set_choose_the_same_pairs
+         18.5  tests/requirement/test_linking.py::test_the_same_derived_obligations_produce_the_same_links
+         18.6  tests/test_supplied_ids.py::test_scan_reports_each_unusable_id_once
+
+Mandate coverage: 18 of 19 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: The bullet is a section marker standing alone with no requirement under it.
+
+Unrequested changes:
+  1. [in_service] Adds a new decision record documenting and justifying the schema change, but no obligation asks for documentation or a DR file.
+       docs/DR-302-per-batch-id-enum.md#@@ -0,0 +1,260 @@
+  2. [in_service] Changes mapping so `test_id` is no longer constrained in the request schema and adds new handling for duplicate/missing test answers; the obligations require preserving request content/order and detecting unasked or missing-item answers, but do not require changing the schema or these extra behaviors.
+       src/acceptance/evidence/mapping.py#@@ -175,25 +175,47 @@ def map_tests_to_obligations(
+       src/acceptance/evidence/mapping.py#@@ -202,7 +224,20 @@ def map_tests_to_obligations(
+       src/acceptance/evidence/mapping.py#@@ -214,6 +249,25 @@ def map_tests_to_obligations(
+  3. [in_service] Adds duplicate- and missing-pair handling in linking, including recording unusable answers for repeated or omitted verdicts; the obligations mention only preserving stage structure and detecting unasked/missing-item answers, not changing linking's verdict-processing behavior.
+       src/acceptance/requirement/linking.py#@@ -525,9 +525,27 @@ def link_duplicate_obligations(
+       src/acceptance/requirement/linking.py#@@ -535,6 +553,22 @@ def link_duplicate_obligations(
+  4. [in_service] Introduces new test-support helpers that parse candidate tests and pairs from prompts and synthesize fallback responses for empty mappings/verdicts; these are harness behaviors not called for by the listed obligations.
+       tests/support.py#@@ -79,6 +79,48 @@ def _fake_response(content: str, usage: dict | None = None) -> SimpleNamespace:
+       tests/support.py#@@ -232,6 +274,31 @@ def _completed(response: dict, **kwargs) -> dict:
+  5. [in_service] Adds and rewrites tests to assert the new schema identity, unanswered-test recording, and duplicate-judgment recording behaviors; the obligations require tests for inconsistent formats, unasked-item judgement, underfilled answers, and withheld conclusions, but not these specific new assertions or the schema-change test.
+       tests/test_supplied_ids.py#@@ -276,9 +276,21 @@ def test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers():
+       tests/test_supplied_ids.py#@@ -286,14 +298,72 @@ def test_each_partition_constrains_test_ids_to_its_own_batch():
+  6. [in_service] Updates the degenerate judge benchmark helper to derive candidate tests from the prompt instead of the schema, which changes benchmark behavior outside the requested acceptance criteria.
+       tests/benchmark/degenerate_judges.py#@@ -40,6 +40,7 @@ from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
+       tests/benchmark/degenerate_judges.py#@@ -115,7 +116,15 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run e6e809b630f5a656
+  continuing 094ddce626d72e7f
+  continue this run with: --continue e6e809b630f5a656
+Model usage by stage:
+  stage                                           calls  prompt  output  cached  this run  recorded
+  ----------------------------  -----------------------  ------  ------  ------  --------  --------
+  obligation linking            1 (0 live / 1 replayed)     776       0       —   $0.0000   $0.0000
+  test-to-obligation mapping    6 (0 live / 6 replayed)  24,867   5,160    0.0%   $0.0000   $0.0419
+  discrimination judgment       1 (0 live / 1 replayed)   6,551   1,428    0.0%   $0.0000   $0.0113
+  coverage classification       1 (0 live / 1 replayed)  10,018   1,223    0.0%   $0.0000   $0.0130
+  unrequested-change detection  1 (0 live / 1 replayed)   9,536     515    0.0%   $0.0000   $0.0095
+  test recommendation           1 (0 live / 1 replayed)   8,874     461    0.0%   $0.0000   $0.0087
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.0844 to record (11 call(s) replayed at no cost to this run)
+
