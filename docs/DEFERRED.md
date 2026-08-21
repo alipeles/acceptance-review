@@ -4133,4 +4133,36 @@ the record.
   `docs/DR-173-mapping-twin-splitting.md` §4, including the constraint that the
   discount is input-only, which bounds the cost of any future stage redesign.
 
+### [2026-08-21] `discovery.py`'s docstring claims a call graph the module does not have
+
+- **Kind:** defect
+- **Found during:** #312, while drafting sub-issue #314's Inputs
+- **Where:** `src/acceptance/evidence/discovery.py:4`
+- **Severity:** should-fix
+- **What's wrong:** the module docstring says existing tests are connected to a
+  changed symbol "by call graph, non-call reference, import, or naming". There
+  is no call graph. `_names_called` collects the names called directly inside a
+  test node, `_names_referenced` collects every identifier in it, and
+  `_imported_module_stems` collects the module's top-level import stems; those
+  three are intersected with `_changed_symbol_names` and
+  `_changed_module_stems`. Nothing resolves a called name to a definition and
+  nothing follows an edge transitively, so the module reports positive
+  name overlap and cannot establish that a static path is absent.
+- **Why this matters beyond tidiness:** the claim was believed. DR-312's
+  resolved question 2 originally had the reachability prefilter reusing "M4.1
+  discovery's call graph", taken from this docstring without reading the code.
+  A code check caught it before #314 was filed, and the DR now carries an
+  amendment; had it not, #314 would have been scoped against machinery that does
+  not exist. A docstring that overstates its module is a live trap for exactly
+  the design work that reads docstrings to scope an issue.
+- **Why I didn't act:** out of scope for #312, which ships a design record and a
+  backlog split and touches no source.
+- **Drafted fix:** one line. Replace "by call graph, non-call reference, import,
+  or naming" with wording that matches the implementation — e.g. "by overlap
+  between the names a test calls or references, or the modules it imports, and
+  the symbols and modules the change touched". Optionally add the limitation
+  the amendment turns on: this reports positive overlap and cannot prove a path
+  absent. No behavior change, no transcript impact.
+- **Status:** open
+
 
