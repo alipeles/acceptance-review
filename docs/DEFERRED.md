@@ -4105,11 +4105,17 @@ the record.
   **$0.00423** against **$0.0089** for the recorded pre-#265 transcript at 0%
   cached — roughly **half**.
 
-  **Every recorded transcript in the corpus shows `cached_tokens: 0`.** They all
-  predate #265, so this is the first evidence of what that work can buy — but
-  whether a live review realises it is **unmeasured**. Within one review the
-  obligations block is shared by every partitioned mapping call, so it should
-  warm after the first call.
+  **This is not the first evidence that the ordering works.** #191's branch
+  measured **84–93%** of each *discrimination* verdict request served from the
+  provider's cache, live, because both its prompts put the invariant code block
+  first (`session-state/191.md`, 2026-08-13); #265 generalised that ordering to
+  every stage. The correction matters to how this is filed: the question is not
+  whether prefix ordering buys reuse, but whether #265 extended it to mapping.
+
+  Every recorded transcript in the corpus still shows `cached_tokens: 0` and
+  they all predate #265, so **mapping in a live run remains unmeasured**. Within
+  one review the obligations block is shared by every partitioned mapping call,
+  so it should warm after the first call.
 - **A limit worth stating, because it constrains every future fix:** the
   discount applies to **input only**. The failed verdict arm's penalty was 2.5×
   *output* (787 → 1,981 completion tokens/call), which is never cached, so its
