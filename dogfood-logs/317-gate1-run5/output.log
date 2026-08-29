@@ -1,0 +1,191 @@
+Requirements: 30   with obligations: 29   deliberately none: 1
+
+[task-01] Every requirement of a mandate is accounted for on its own, and an obligation
+    quotes the requirement it came from. The mandate's opening summary is accounted for
+    last, against the obligations the rest of the mandate already produced, so that a
+    property the rest of the mandate states does not become a second obligation and a
+    property only the summary states is not lost.
+    -> account-each-requirement-separately  [functional/explicit]
+       Every requirement of a mandate is accounted for on its own, and an obligation
+       quotes the requirement it came from.
+    -> summary-accounted-last-against-existing-obligations  [functional/explicit]
+       The mandate's opening summary is accounted for last, against the obligations the
+       rest of the mandate already produced, so that a property the rest of the mandate
+       states does not become a second obligation and a property only the summary states
+       is not lost.
+
+[constraint-01] A requirement other than the opening summary is accounted for by a step
+    asked about that requirement alone, and that step returns exactly one account of it.
+    -> single-requirement-step  [invariant/explicit]
+       A requirement other than the opening summary is accounted for by a step asked
+       about that requirement alone, and that step returns exactly one account of it.
+
+[constraint-02] The quotation an obligation carries is chosen from the text of the
+    requirement its step was asked about, so a quotation belonging to a different
+    requirement cannot be given.
+    -> quotation-from-same-requirement  [invariant/explicit]
+       The quotation an obligation carries is chosen from the text of the requirement
+       its step was asked about, so a quotation belonging to a different requirement
+       cannot be given.
+
+[constraint-03] No step that accounts for a requirement other than the opening summary
+    is asked to account for the opening summary.
+    -> no-summary-cross-accounting  [invariant/explicit]
+       No step that accounts for a requirement other than the opening summary is asked
+       to account for the opening summary.
+
+[constraint-04] The opening summary is accounted for by a step that first divides it
+    into stretches of its own words and then decides, for each stretch, whether the
+    obligations already derived from the rest of the mandate require the same thing.
+    -> summary-split-and-compare-stretches  [functional/explicit]
+       The opening summary is accounted for by a step that first divides it into
+       stretches of its own words and then decides, for each stretch, whether the
+       obligations already derived from the rest of the mandate require the same thing.
+
+[constraint-05] Every stretch is a substring of the opening summary, and every stretch
+    is decided exactly once.
+    -> summary-stretches-are-substrings-once  [invariant/explicit]
+       Every stretch is a substring of the opening summary, and every stretch is decided
+       exactly once.
+
+[constraint-06] A stretch the already-derived obligations require yields no obligation.
+    -> summary-stretch-already-required-yields-none  [invariant/explicit]
+       A stretch the already-derived obligations require yields no obligation.
+
+[constraint-07] A stretch they do not require yields obligations, derived by a step
+    asked about that stretch alone.
+    -> summary-stretch-not-required-yields-obligation  [functional/explicit]
+       A stretch they do not require yields obligations, derived by a step asked about
+       that stretch alone.
+
+[constraint-08] The step that decides whether a stretch is already required yields no
+    obligations itself.
+    -> summary-decision-step-yields-none  [invariant/explicit]
+       The step that decides whether a stretch is already required yields no obligations
+       itself.
+
+[constraint-09] An obligation derived from a stretch carries that stretch as its
+    quotation, taken from the mandate rather than from the answer that named it.
+    -> stretch-derived-obligation-uses-stretch-quote  [invariant/explicit]
+       An obligation derived from a stretch carries that stretch as its quotation, taken
+       from the mandate rather than from the answer that named it.
+
+[constraint-10] A step may name the model it runs on; a step that names none uses the
+    run's own model.
+    -> step-may-name-model-or-use-run-model  [compatibility/explicit]
+       A step may name the model it runs on; a step that names none uses the run's own
+       model.
+
+[constraint-11] A completed run says which model each step used.
+    -> completed-run-records-model-per-step  [explanation_observability/explicit]
+       A completed run says which model each step used.
+
+[constraint-12] Where a step tells the answering party what order its request presents
+    its parts in, that statement is true of the request as sent.
+    -> step-request-order-reflects-sent-request  [invariant/explicit]
+       Where a step tells the answering party what order its request presents its parts
+       in, that statement is true of the request as sent.
+
+[exclusion-01] Which text in the mandate counts as a requirement, and how many
+    requirements are found.
+    -> mandate-text-and-count-unchanged  [regression/explicit]
+       The change does not alter which text in the mandate counts as a requirement, or
+       how many requirements are found.
+
+[exclusion-02] Whether the obligations derived for a requirement are the right ones for
+    it.
+    -> right-obligations-for-requirement  [compatibility/explicit]
+       The change does not alter whether the obligations derived for a requirement are
+       the right ones for it.
+
+[exclusion-03] What the review does with an answer it cannot read at all.
+    -> unreadable-answer-handling  [compatibility/explicit]
+       The change does not alter what the review does with an answer it cannot read at
+       all.
+
+[exclusion-04] Combining obligations that state the same thing as one another.
+    -> obligation-deduplication  [compatibility/explicit]
+       The change does not alter combining obligations that state the same thing as one
+       another.
+
+[exclusion-05] Which model is the right one for any step, and what any step costs.
+    -> model-and-cost-selection  [compatibility/explicit]
+       The change does not alter which model is the right one for any step, or what any
+       step costs.
+
+[exclusion-06] Comparing figures recorded before this change with figures recorded after
+    it.
+    -> before-after-figure-comparison  [compatibility/explicit]
+       The change does not alter comparing figures recorded before this change with
+       figures recorded after it.
+
+[completion-01] Implementation.
+    -- no obligation, deliberately
+       Section marker only: "Implementation."
+
+[completion-02] A test fails when a step accounting for a requirement other than the
+    opening summary is asked about more than that one requirement.
+    -> test-fails-on-step-overreach  [test_demand/explicit]
+       A test fails when a step accounting for a requirement other than the opening
+       summary is asked about more than that one requirement.
+
+[completion-03] A test fails when an obligation carries a quotation belonging to a
+    requirement its step was not asked about.
+    -> test-fails-on-wrong-quotation-source  [test_demand/explicit]
+       A test fails when an obligation carries a quotation belonging to a requirement
+       its step was not asked about.
+
+[completion-04] A test fails when a step that accounts for a requirement other than the
+    opening summary is asked to account for the opening summary.
+    -> test-fails-on-summary-misrouting  [test_demand/explicit]
+       A test fails when a step that accounts for a requirement other than the opening
+       summary is asked to account for the opening summary.
+
+[completion-05] A test fails when a stretch of the opening summary is decided more than
+    once, or is left undecided, or is not a substring of the opening summary.
+    -> test-fails-on-stretch-decoding-errors  [test_demand/explicit]
+       A test fails when a stretch of the opening summary is decided more than once, or
+       is left undecided, or is not a substring of the opening summary.
+
+[completion-06] A test fails when a stretch the already-derived obligations require
+    yields an obligation.
+    -> test-fails-on-unneeded-stretch-obligation  [test_demand/explicit]
+       A test fails when a stretch the already-derived obligations require yields an
+       obligation.
+
+[completion-07] A test fails when a stretch they do not require yields none.
+    -> test-fails-on-missing-obligation-for-unrequired-stretch  [test_demand/explicit]
+       A test fails when a stretch they do not require yields none.
+
+[completion-08] A test fails when an obligation derived from a stretch carries a
+    quotation other than that stretch.
+    -> test-fails-on-wrong-stretch-quotation  [test_demand/explicit]
+       A test fails when an obligation derived from a stretch carries a quotation other
+       than that stretch.
+
+[completion-09] A test fails when a step naming its own model is run on the run's model
+    instead.
+    -> step-uses-own-model  [test_demand/explicit]
+       A test fails when a step naming its own model is run on the run's model instead.
+
+[completion-10] A test exercises the whole path from the mandate through to the
+    obligations produced, not any one step alone.
+    -> whole-path-test  [test_demand/explicit]
+       A test exercises the whole path from the mandate through to the obligations
+       produced, not any one step alone.
+
+[completion-11] Two recorded runs over the same input produce byte-identical review
+    state and byte-identical report output.
+    -> deterministic-review-output  [compatibility/explicit]
+       Two recorded runs over the same input produce byte-identical review state and
+       byte-identical report output.
+run 0b7c947eb8c27f5c
+  requirements: 30 derived, 0 carried, 0 revised; 4 decompose call(s)
+  continue this run with: --continue 0b7c947eb8c27f5c
+Model usage by stage:
+  stage                                 calls  prompt  output  cached  this run  recorded
+  ------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose           4 (0 live / 4 replayed)  25,417   4,279    0.0%   $0.0000   $0.0383
+  obligation linking  2 (0 live / 2 replayed)   2,420     231    0.0%   $0.0000   $0.0020
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.0403 to record (6 call(s) replayed at no cost to this run)
+

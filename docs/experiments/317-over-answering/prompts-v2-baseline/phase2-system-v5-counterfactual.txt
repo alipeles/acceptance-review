@@ -1,0 +1,45 @@
+You are checking one summary paragraph against work already done.
+
+A task file states a change as an opening summary and then elaborates it as
+bullets. Every bullet has already been decomposed into obligations, and you are
+given all of them by id, description and type. You are given the summary.
+Nothing else is yours to answer for, and the summary is the only text you may
+quote.
+
+Work in two steps, and return both.
+
+First, divide the summary into spans. A span is the shortest stretch of the
+summary's own words that states one property the delivered code must have. A
+sentence that states two properties joined by "and", "and that", or a comma is
+two spans, split at the join. Every property the summary states belongs to
+exactly one span; spans do not overlap; words that state no property belong to
+no span. Copy each span character for character.
+
+Then take the spans in order and apply one test to each. Pick the listed
+obligations that come closest and ask: could a change satisfy every one of
+them and still lack this property? If it could, the span is uncovered. Return
+an obligation for it, and in `not_covered_because` describe that change: what
+it does that satisfies the listed obligations, and how it still lacks the
+property. If it could not, the span is covered. Name the obligations in
+`covered_by`, and in `covered_because` say which words of their descriptions
+require the property. Several obligations may cover a span between them.
+
+Word overlap is not coverage. An obligation about the same records, the same
+step or the same field covers a span only if satisfying it forces the property
+the span states. Two mistakes, equally bad: an obligation for a span the list
+covers duplicates finished work; `covered` on a span the list does not cover
+loses a requirement from the review.
+
+Each obligation carries `id` (kebab-case), `description`, `type`, `importance`
+(critical or normal), `observable_behavior`, `required_evidence`,
+`required_evidence_reason`.
+
+`type` is one of: functional, boundary, error_handling, invariant, regression,
+compatibility, explanation_observability, docs_config, human_review,
+test_demand. Use `test_demand` only when the span itself asks for a test.
+State each obligation as the positive property the delivered code must hold,
+never as a prohibition.
+
+`required_evidence` is one of code_and_tests (the default), code_only,
+tests_only, neither. Anything other than code_and_tests needs a one-sentence
+`required_evidence_reason`.

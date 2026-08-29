@@ -3394,7 +3394,16 @@ the record.
   than #256. The duplicate-obligation cases actually blocking work — #277, #242
   and the instance recorded on #277 from #251's Gate 1 — are untouched by either
   this or the rename, and #242 is what #292's Gate 2 is stuck behind.
-- **Status:** open
+- **Status:** **CLOSED, resolved against, 2026-08-29.** Approved at #317's Gate 1.
+  Pass B as drafted here is a call scoped to **one** requirement with a free-text
+  quotation, and `docs/experiments/317-over-answering/findings.md` §7 measures
+  that as the corpus's worst-performing shape: of the four recorded calls asking
+  about a single `task-*` requirement, three return an obligation quoting a
+  requirement they were not asked about, and the two largest instances anywhere
+  are of exactly this form. #317 takes the per-requirement call but pairs it with
+  a quotation restricted to that requirement's own spans, which is the version
+  that works. "At least one obligation" then needs no encoding at all: one
+  requirement, one required field.
 
 ### [2026-08-20] Decomposition has not raised an open question since #217, because `yielded` and `open_question` are mutually exclusive
 - **Kind:** filing
@@ -4306,3 +4315,150 @@ the record.
   task in flight ahead of #313 — the human's call at #313's Gate 1.
 
 
+
+### [2026-08-29] #317's issue body proposes the wrong fix and must be rewritten before it can be closed
+
+- **Kind:** filing
+- **Found during:** #317, Gate 1 (runs `7cb6be48b0942761` and `0b7c947eb8c27f5c`,
+  `dogfood-logs/317-gate1-run{4,5}/`), on the evidence in
+  `docs/experiments/317-over-answering/findings.md`
+- **Where:** GitHub issue #317
+- **Severity:** blocker — the issue is the plan, and the plan is wrong
+- **What's wrong:** #317's Acceptance asks for agreeing dispositions to be
+  merged. `findings.md` §1 shows the fourteen dispositions in the recorded
+  failure are not one requirement split twelve ways: entries 3-13 quote
+  `constraint-01` … `constraint-12` verbatim, one per constraint, and the
+  `requirement_id` enum collapsed eleven intended labels onto the one value it
+  was allowed to write. Merging gives `task-01` sixteen obligations, eleven of
+  which `_resolve_attributions` then scatters onto constraints another batch
+  already derived — manufacturing eleven duplicate pairs to avoid an abort.
+- **Why I didn't act:** rewriting the backlog is a change to the plan, and the
+  human approves those.
+- **Drafted fix:** replace #317's body with the text below, keeping its title's
+  subject but restating it, its labels (`bug`, `track:checker`) and its parent
+  (#181, the umbrella for decomposition defects). Close it when this lands.
+
+  > **Title:** The decomposer answers for requirements it was only shown as
+  > context, and the summary paragraph is where it happens
+  >
+  > Child of #181. Supersedes this issue's own original proposal, which was to
+  > merge agreeing dispositions; `docs/experiments/317-over-answering/findings.md`
+  > shows that repairs the wrong thing.
+  >
+  > **What the evidence says.** Over the 1,748 recorded transcripts: 8 of 35
+  > decompose batches containing a `task-*` requirement return an obligation
+  > quoting a requirement the call was not asked about, against 0 of 68 batches
+  > without one (Fisher one-sided p = 0.0001). Five of the eight return the right
+  > number of dispositions and misattribute silently; only three crash. The crash
+  > `#298` and this issue both report is the loud minority of one defect.
+  >
+  > **Why the count is the wrong thing to constrain.** A response model with one
+  > required field per requirement id accepts five of the eight recorded failures
+  > unchanged and converts the other three from a crash into silent
+  > misattribution. `DR-302` already priced fixed slots and rejected them; on this
+  > stage the schema goes from 11 KB to 93 KB at batch size 8.
+  >
+  > **The change.** Three pieces, one re-record:
+  >
+  > 1. **One requirement per call**, with `source_quote` an enum of that
+  >    requirement's own spans. An obligation about `constraint-03` becomes
+  >    unrepresentable in a call about `task-01` — unsayable, not detected
+  >    afterwards. Measured schema cost: +1,506 bytes, +14%, against 93 KB for
+  >    the fixed-slot shape. `_locate_quotation` and `_resolve_attributions`
+  >    retire. This makes #231's per-requirement request key structural.
+  > 2. **The summary paragraph is accounted for last**, in a step of its own
+  >    that divides it into spans of its own words and decides, per span,
+  >    whether the obligations already derived require the same thing. That step
+  >    returns no obligations; uncovered spans are handed to the ordinary
+  >    per-requirement decomposer. Measured over 20 draws on two mandates, this
+  >    shape never once marked a genuinely uncovered property as covered, and
+  >    marked a covered property as uncovered in 4 of 20 — a duplicate
+  >    obligation rather than a lost requirement.
+  > 3. **The prompt contradictions** `findings.md` §6 names. Two disappear
+  >    structurally under (1). The third does not: the shared preamble tells the
+  >    model it is given material and then instructions, while `assemble` sends
+  >    instructions first.
+  >
+  > The summary step needs `openai/gpt-5.4`; `gpt-5.4-mini` failed it in three
+  > different ways across three prompts, at $0.011 per review for that call. So a
+  > step gains the ability to name its own model.
+  >
+  > **Acceptance**
+  > - A call accounting for a requirement other than the summary is asked about
+  >   that one requirement and returns exactly one account of it.
+  > - An obligation's quotation is drawn from the requirement its call was asked
+  >   about; a quotation belonging to another requirement is unrepresentable.
+  > - No call accounting for another requirement is asked about the summary.
+  > - The summary's spans are substrings of the summary and each is decided
+  >   exactly once; a span the derived obligations already require yields no
+  >   obligation; a span they do not require yields one, quoting that span.
+  > - A step naming its own model runs on it; a completed run says which model
+  >   each step used.
+  > - A test drives the whole path from mandate to obligations, not one step.
+  > - Two recorded runs over the same input are byte-identical.
+  >
+  > **Deferred, deliberately:** the re-record. The test suite injects its own
+  > `completion_fn` and reads no recorded transcript, `decompose` defaults to
+  > record-on-cache-miss, and only `check` (which defaults to replay) and the
+  > benchmark corpora need rebuilding. Benchmark figures do not span this change.
+  >
+  > Evidence: `docs/experiments/317-over-answering/findings.md` and the four
+  > experiment arms beside it; `dogfood-logs/313-gate1-run{1,2}/` for the
+  > original crash.
+  >
+  > Related: #181, #217, #231, #248, #275, #298, #306, `DR-302`.
+- **Status:** **FILED** — #317's title and body replaced on 2026-08-29. Approved
+  at #317's Gate 1.
+
+### [2026-08-29] A continued run does not merely orphan an obligation — it inverts a replaced scope exclusion
+
+- **Kind:** filing
+- **Found during:** #317, Gate 1 (`dogfood-logs/317-gate1-run{4,5}/`)
+- **Where:** `src/acceptance/requirement/` — the `--continue` carry path (#269's
+  mechanism), already filed as #306
+- **Severity:** should-fix
+- **What's wrong:** #306 records that a continued run keeps an obligation whose
+  source sentence was deleted, leaving it tracing to no text. This instance is
+  worse. `current-task.md` was replaced wholesale, and run 4
+  (`--continue 40c12c90018b3526`) produced, for `exclusion-04` — *"Combining
+  obligations that state the same thing as one another"*, a **scope exclusion** —
+  the obligation `combine-agreeing-accounts-2`: *"The review combines agreeing
+  accounts of the same requirement into one account and carries on."* That
+  requires the delivered change to do the excluded work. `completion-06`
+  likewise kept the id `combined-agreeing-accounts-stop-review` from the
+  replaced mandate while printing a description about summary spans.
+
+  The fresh run over identical text (`0b7c947eb8c27f5c`, run 5) yields
+  *"The change does not alter combining obligations that state the same thing as
+  one another"* — correct. So the decomposer reads the new text correctly and
+  the carry is what inverts it.
+- **Why I didn't act:** #306 is the issue for this path and out of scope for
+  #317; and `--continue` was the wrong flag here anyway, since #269's carry
+  exists to hold an obligation stable across a **rewording**, not a replacement.
+- **Drafted fix:** an `add_issue_comment` on **#306**:
+
+  > A stronger instance from #317's Gate 1, where the carried obligation does not
+  > merely orphan — it **inverts** the requirement.
+  >
+  > `current-task.md` was replaced wholesale between the runs. Run 4 continued
+  > from the previous mandate's run; run 5 was fresh over identical text.
+  >
+  > | | `exclusion-04` text | derived obligation |
+  > |---|---|---|
+  > | run 4, `--continue` | Combining obligations that state the same thing as one another. | The review combines agreeing accounts of the same requirement into one account and carries on. |
+  > | run 5, fresh | Combining obligations that state the same thing as one another. | The change does not alter combining obligations that state the same thing as one another. |
+  >
+  > Run 4's obligation requires the delivered change to do the work the mandate
+  > **excludes**. `completion-06` in the same run kept the id
+  > `combined-agreeing-accounts-stop-review` from the replaced mandate while
+  > printing a description about summary spans, so the id no longer names what
+  > the obligation says either.
+  >
+  > Suggested guard: a carried obligation whose requirement's text has been
+  > replaced rather than reworded is dropped, and the requirement re-derived. The
+  > ledger already records `derivation` and `revision_reason`, so the signal is
+  > present.
+  >
+  > Logs: `dogfood-logs/317-gate1-run{4,5}/`.
+- **Status:** **FILED** as a comment on #306 on 2026-08-29
+  (`#306#issuecomment-5463979670`). Approved at #317's Gate 1.

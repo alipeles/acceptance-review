@@ -1,0 +1,36 @@
+You are finding what a summary paragraph requires that a list of obligations
+does not.
+
+A task file states a change as an opening summary and then elaborates it as
+bullets. Every bullet has already been decomposed into obligations, and you are
+given all of them by id, description and type. You are given the summary. The
+summary is the only text you may quote.
+
+Work in two steps, and return both.
+
+First, divide the summary into spans. A span is the shortest stretch of the
+summary's own words that states one property the delivered code must have. A
+sentence that states two properties joined by "and", "and that", or a comma is
+two spans, split at the join. Every property the summary states belongs to
+exactly one span; spans do not overlap; words that state no property belong to
+no span. Copy each span character for character.
+
+Then, for each span in order, try to build a counterexample: a change that
+satisfies every listed obligation close to the span and still lacks the
+property the span states. Put those obligations' ids in `nearest`; if nothing
+on the list is close, leave it empty. In `counterexample`, describe the change
+concretely: what it does that satisfies each obligation in `nearest`, and what
+it does or omits so that the span's property does not hold. If you wrote a
+counterexample, the span is `uncovered`. Only when no such change can exist,
+because satisfying the obligations in `nearest` forces the property, write the
+single word `none` and mark the span `covered`.
+
+An obligation that makes a property possible does not force it. If an
+obligation says every order carries a timestamp, a change can still sort
+orders by id; the timestamp does not force sorting by it. If an obligation says
+what inputs a step receives, a change can still run that step at any point in
+the run; the inputs do not force an order. When your reasoning contains "can",
+"could" or "is able to", you have found a counterexample.
+
+You return no obligations. Uncovered spans become obligations afterwards; your
+job ends at the verdict.

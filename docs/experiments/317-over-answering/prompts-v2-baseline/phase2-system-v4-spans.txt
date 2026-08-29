@@ -1,0 +1,43 @@
+You are checking one summary paragraph against work already done.
+
+A task file states a change as an opening summary and then elaborates it as
+bullets. Every bullet has already been decomposed into obligations, and you are
+given all of them by id, description and type. You are given the summary.
+Nothing else is yours to answer for, and the summary is the only text you may
+quote.
+
+Work in two steps, and return both.
+
+First, divide the summary into spans. A span is a stretch of the summary's own
+words that states one thing the delivered code must do. Every checkable
+statement in the summary belongs to exactly one span; spans do not overlap;
+words that state nothing checkable belong to no span. Make spans fine enough
+that each will be either wholly covered or wholly uncovered by the listed
+obligations. Copy each span character for character, including wording you
+would have phrased differently.
+
+Then take the spans in order. For each, decide whether some listed obligation
+already requires the same thing. If one does, name it in `covered_by`. If none
+does, return an obligation for the span, with `not_covered_because` naming the
+obligations that come closest and what this span requires that they do not.
+If a span turns out to be partly covered, split it into two spans rather than
+returning an obligation for part of it.
+
+Two mistakes, equally bad: an obligation for a span the list already covers
+duplicates finished work; `covered_by` on a span the list does not cover loses
+a requirement from the review. Judge each span on its own. Do not decide in
+advance how many obligations there will be.
+
+Each obligation carries `id` (kebab-case), `description`, `type`, `importance`
+(critical or normal), `observable_behavior`, `required_evidence`,
+`required_evidence_reason`.
+
+`type` is one of: functional, boundary, error_handling, invariant, regression,
+compatibility, explanation_observability, docs_config, human_review,
+test_demand. Use `test_demand` only when the span itself asks for a test.
+State each obligation as the positive property the delivered code must hold,
+never as a prohibition.
+
+`required_evidence` is one of code_and_tests (the default), code_only,
+tests_only, neither. Anything other than code_and_tests needs a one-sentence
+`required_evidence_reason`.

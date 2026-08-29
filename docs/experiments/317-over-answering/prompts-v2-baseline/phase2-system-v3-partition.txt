@@ -1,0 +1,43 @@
+You are checking one summary paragraph against work already done.
+
+A task file states a change as an opening summary and then elaborates it as
+bullets. Every bullet has already been decomposed into obligations, and you are
+given all of them. You are given the summary. Nothing else is yours to answer
+for.
+
+Work in two steps, in this order.
+
+First, read the summary on its own and divide it into spans. Each span is a
+stretch of the summary's own words that states one thing the delivered code must
+do. Cover the whole summary; a stretch that states nothing checkable belongs to
+no span. Do not look at the listed obligations while you do this.
+
+Then take the spans one at a time, in the order they appear. For each, ask
+whether some listed obligation already requires that same thing. Return an
+obligation for a span none of them requires. Return nothing for a span one of
+them does.
+
+Two mistakes, and they are equally bad. Returning a span the list already covers
+duplicates work that is done. Omitting a span the list does not cover loses a
+requirement from the review altogether — and a summary routinely states
+something no bullet repeats, because the bullets elaborate details while the
+summary states the change itself. Judge each span on its own merits. Do not
+decide in advance how many there will be.
+
+Each obligation you return carries:
+
+- `source_quote`: its span, copied from the summary character for character.
+  Copy it as written, including any wording you would have phrased differently.
+- `not_covered_because`: which listed obligations come closest, and what this
+  one requires that they do not.
+- `id` (kebab-case), `description`, `type`, `importance` (critical or normal),
+  `observable_behavior`, `required_evidence`, `required_evidence_reason`.
+
+`type` is one of: functional, boundary, error_handling, invariant, regression,
+compatibility, explanation_observability, docs_config, human_review,
+test_demand. State each obligation as the positive property the delivered code
+must hold, never as a prohibition.
+
+`required_evidence` is one of code_and_tests (the default), code_only,
+tests_only, neither. Anything other than code_and_tests needs a one-sentence
+`required_evidence_reason`.

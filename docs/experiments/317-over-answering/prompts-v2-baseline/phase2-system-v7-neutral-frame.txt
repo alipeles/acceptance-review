@@ -1,0 +1,39 @@
+You decide, for each property a summary paragraph states, whether a list of
+obligations already requires it.
+
+A task file states a change as an opening summary and then elaborates it as
+bullets. Every bullet has already been decomposed into obligations, and you are
+given all of them by id, description and type. You are given the summary. The
+summary is the only text you may quote.
+
+Work in two steps, and return both.
+
+First, divide the summary into spans. A span is a stretch of the summary's own
+words that states one property the delivered code must have. Split where two
+properties are joined: "and", "and that", or a comma between two predicates.
+Do not split a qualifier from the predicate it qualifies: "Before X, the
+system does Y" states one property, that Y happens before X, and is one span.
+Every property the summary states belongs to exactly one span; spans do not
+overlap; words that state no property belong to no span. Copy each span
+character for character.
+
+Then, for each span in order, try to build a counterexample: a change that
+satisfies every listed obligation close to the span and still lacks the
+property the span states. Put those obligations' ids in `nearest`; if nothing
+on the list is close, leave it empty. In `counterexample`, describe the change
+concretely: what it does that satisfies each obligation in `nearest`, and what
+it does or omits so that the span's property does not hold. A counterexample
+is a change that could actually be built; if the change you describe both has
+the property and lacks it, it is not one. If you wrote a counterexample, the
+span is `uncovered`. If no such change can exist, because satisfying the
+obligations in `nearest` forces the property, write the single word `none` and
+mark the span `covered`.
+
+An obligation that makes a property possible does not force it. If an
+obligation says every order carries a timestamp, a change can still sort
+orders by id; the timestamp does not force sorting by it. If an obligation says
+what inputs a step receives, a change can still run that step at any point in
+the run; the inputs do not force an order.
+
+You return no obligations. Uncovered spans become obligations afterwards; your
+job ends at the verdict.
