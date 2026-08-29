@@ -70,17 +70,51 @@ def _obligations_of(decomposition, requirement_id: str) -> list[str]:
     return list(disposition.obligation_ids) if disposition else []
 
 
-def test_one_behaviour_demanded_in_two_sections_ends_on_one_obligation(linked):
-    """The headline judgement. The Task prose and `constraint-01` demand the same
-    thing — a header row naming every column — so they are one requirement stated
-    twice, and the surviving obligation is named by both."""
+def test_one_behaviour_demanded_in_two_sections_yields_one_obligation(linked):
+    """The headline judgement, and #317 moved where it is made.
+
+    The Task prose and `constraint-01` demand the same thing — a header row
+    naming every column. That used to produce two obligations which linking then
+    merged, so the survivor was named by both requirements. Now the summary step
+    decides the paragraph span by span against the obligations the bullets
+    already produced, finds that span already required, and derives no duplicate
+    at all.
+
+    So the assertion is on the outcome rather than on the merge: exactly one
+    obligation in the whole set demands the header row, and the summary's
+    disposition records that its span was already required and by what. A
+    duplicate that is never created cannot be lost by a merge that misfires,
+    which is the failure `#242` and `#304` are about.
+    """
     _, after = linked
 
-    prose = _obligations_of(after, "task-01")
-    constraint = _obligations_of(after, "constraint-01")
+    by_id = {obligation.id: obligation for obligation in after.obligations}
+    # Behaviour obligations only. `completion-01` demands a TEST of the header
+    # row, which is a different requirement and must stay separate — the very
+    # thing `test_a_behaviour_and_a_requirement_to_test_it_are_not_merged`
+    # asserts, so counting it here would contradict that test.
+    header_row = [
+        obligation
+        for obligation in after.obligations
+        if "header row" in obligation.description.lower()
+        and obligation.type is not ObligationType.TEST_DEMAND
+    ]
+    assert len(header_row) == 1, [o.description for o in header_row]
 
-    assert prose and constraint
-    assert set(prose) & set(constraint)
+    # It belongs to the bullet, and the Task prose does not restate it.
+    assert header_row[0].id in _obligations_of(after, "constraint-01")
+    assert header_row[0].id not in _obligations_of(after, "task-01")
+
+    # And the summary says why it derived nothing for that span, rather than
+    # simply being silent about it.
+    summary = after.requirement_map.disposition_for("task-01")
+    assert summary is not None and summary.reason
+    assert "already required by" in summary.reason
+    assert header_row[0].id in summary.reason
+    # The Task prose still yields what only IT states, so this is not the
+    # paragraph being silenced.
+    assert _obligations_of(after, "task-01")
+    assert all("csv" in by_id[i].description.lower() for i in _obligations_of(after, "task-01"))
 
 
 def test_a_behaviour_and_a_requirement_to_test_it_are_not_merged(linked):
@@ -135,11 +169,31 @@ def test_a_requirement_and_its_reason_clause_are_one_requirement(linked):
     assert len(_obligations_of(after, "constraint-02")) == 1
 
 
-def test_linking_reduces_the_obligation_count_it_was_given(linked):
-    """Stage 1 and stage 2 are separately observable, and the pass did work."""
+def test_linking_swept_every_pair_and_found_nothing_to_merge(linked):
+    """Stage 1 and stage 2 are separately observable, and the pass ran.
+
+    This used to assert the count DROPPED, because derivation reliably handed
+    linking a cross-section duplicate to merge. Since #317 it does not: the
+    summary step finds the Task prose's header-row span already required and
+    derives no second obligation for it, so on this fixture there is nothing left
+    to merge and a count drop would mean linking had merged two obligations that
+    are not the same requirement — the silent-destruction failure this stage errs
+    against.
+
+    So assert the pass did its work rather than that it changed the answer: every
+    pair was judged, and every judgement was `not the same requirement`. A pass
+    that returned early, or that was never called, produces no verdicts at all
+    and fails here.
+    """
     before, after = linked
 
-    assert len(after.obligations) < len(before.obligations)
+    assert len(after.obligations) == len(before.obligations)
+    assert after.merge_decisions, "the linking sweep recorded no judgement at all"
+    assert not any(decision.same_requirement for decision in after.merge_decisions)
+    # A complete sweep over N obligations is N*(N-1)/2 pairs, minus the pairs
+    # settled in code — a `test_demand` obligation beside a behaviour one cannot
+    # merge, so it is never asked about (DR-232).
+    assert len(after.merge_decisions) > len(after.obligations)
 
 
 def test_every_requirement_still_names_an_obligation_after_linking(linked):

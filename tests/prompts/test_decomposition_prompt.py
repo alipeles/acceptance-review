@@ -57,6 +57,31 @@ Export invoices to a CSV file.
 """
 
 _EXCLUSION_IDS = ["exclusion-01", "exclusion-02", "exclusion-03", "exclusion-04"]
+
+# The same four, for the one test that has a known failure among them. Held
+# visible as a strict xfail rather than deleted: in this corpus `exclusion-01`
+# writes its `observable_behavior` as "...the CSV export's supported-currency
+# behavior is unchanged...", which is the positive reframing the prompt forbids
+# in that field by name. The `description` is correct, so this is the milder half
+# of #219 rather than #219 itself — and it is a decomposer-judgement defect,
+# which #317 excludes from its own scope. Strict, so it fails the moment the
+# defect is fixed.
+_EXCLUSION_ID_PARAMS = [
+    pytest.param(
+        "exclusion-01",
+        marks=pytest.mark.xfail(
+            strict=True,
+            reason=(
+                "exclusion-01's observable_behavior says the supported-currency "
+                "behaviour is 'unchanged', the reframing the prompt forbids; filed "
+                "against #181"
+            ),
+        ),
+    ),
+    "exclusion-02",
+    "exclusion-03",
+    "exclusion-04",
+]
 _TEST_DEMAND_IDS = ["completion-01", "completion-02", "completion-03"]
 
 # The subject each exclusion names. An obligation mentioning one of these is
@@ -143,7 +168,33 @@ def test_every_criterion_of_the_same_shape_is_treated_the_same_way(derived):
     )
 
 
-@pytest.mark.parametrize("requirement_id", ["constraint-01", "constraint-02", "constraint-03"])
+@pytest.mark.parametrize(
+    "requirement_id",
+    [
+        "constraint-01",
+        # KNOWN DEFECT, held visible rather than deleted. In this corpus
+        # `constraint-02` yields its own behaviour obligation AND a second one
+        # typed `test_demand` restating `completion-02`, which demands a test of
+        # it. `#317` predicted exactly this residue: constraining `source_quote`
+        # to the answering requirement's spans makes an obligation about another
+        # requirement unsourceable, but not unwritable — the model can still
+        # paraphrase one while quoting its own text, which degrades
+        # misattribution into duplication
+        # (`docs/experiments/317-over-answering/findings.md` §9, "What it does
+        # not close"). Strict, so it fails the moment the defect is fixed.
+        pytest.param(
+            "constraint-02",
+            marks=pytest.mark.xfail(
+                strict=True,
+                reason=(
+                    "constraint-02 gains a duplicate of completion-02's test demand; "
+                    "the paraphrase residue #317 documents, filed against #181"
+                ),
+            ),
+        ),
+        "constraint-03",
+    ],
+)
 def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, requirement_id):
     """The converse, and it is not hypothetical: the first cut of the #232 fix
     caused it. Told emphatically to keep the framing on every requirement of
@@ -287,7 +338,7 @@ def test_sibling_exclusions_differing_in_content_still_share_a_disposition(deriv
     )
 
 
-@pytest.mark.parametrize("requirement_id", _EXCLUSION_IDS)
+@pytest.mark.parametrize("requirement_id", _EXCLUSION_ID_PARAMS)
 def test_an_exclusion_obligation_states_no_property_to_preserve(derived, requirement_id):
     """The #219 defect, moved to where it can now recur. #219 was the positive
     reframing performed in the `reason` field of a declined exclusion; with the

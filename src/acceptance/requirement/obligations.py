@@ -1145,27 +1145,35 @@ def decompose(
                     f"question: {normalise(decision.text)!r}"
                 )
         obligations.extend(span_obligations)
-        # A summary that yielded nothing is `no_obligation` carrying the coverage
-        # argument, not a silence. Every span it states was decided, and the
-        # reason names what each was held to be required by.
+        # The span-by-span account goes on the disposition WHATEVER it is, not
+        # only when the summary yielded nothing. A covered span is a requirement
+        # this paragraph states and another requirement already carries, and
+        # under the shape this replaces that fact was recorded — the paragraph
+        # derived its own duplicate and the linking stage merged the two, leaving
+        # both requirements naming one obligation. Deriving no duplicate is the
+        # improvement; losing the record of why would be a regression hidden
+        # inside it.
+        account = coverage_reason(decisions)
         if span_obligations:
             accounted[summary.id] = RequirementDisposition(
                 requirement_id=summary.id,
                 disposition=Disposition.YIELDED,
                 obligation_ids=[obligation.id for obligation in span_obligations],
                 open_question_ids=span_question_ids,
+                reason=account,
             )
         elif span_question_ids:
             accounted[summary.id] = RequirementDisposition(
                 requirement_id=summary.id,
                 disposition=Disposition.OPEN_QUESTION,
                 open_question_ids=span_question_ids,
+                reason=account,
             )
         else:
             accounted[summary.id] = RequirementDisposition(
                 requirement_id=summary.id,
                 disposition=Disposition.NO_OBLIGATION,
-                reason=coverage_reason(decisions),
+                reason=account,
             )
 
     requirement_map = _requirement_map(

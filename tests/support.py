@@ -828,7 +828,15 @@ RECORDED_TRANSCRIPTS = pathlib.Path(__file__).parent / "fixtures" / "transcripts
 # It stays a CLOSED set, not "any model": a recording's whole value is that it
 # reflects a model the tool actually runs, and an unlisted model in the corpus
 # means something recorded that should not have. Add a model here deliberately.
-APPROVED_CORPUS_MODELS = ("openai/gpt-5.4-mini", "anthropic/claude-sonnet-5")
+#
+# `openai/gpt-5.4` is here because a STAGE may name its own model (#317), not
+# because the run's default moved: the summary step runs on it, so a corpus
+# recorded through `decompose` necessarily holds recordings against it.
+APPROVED_CORPUS_MODELS = (
+    "openai/gpt-5.4-mini",
+    "openai/gpt-5.4",
+    "anthropic/claude-sonnet-5",
+)
 
 
 def recording_enabled() -> bool:

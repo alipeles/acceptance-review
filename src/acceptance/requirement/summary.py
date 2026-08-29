@@ -302,24 +302,28 @@ def decide_spans(
 
 
 def coverage_reason(decisions: Sequence[SpanDecision]) -> str:
-    """Why a summary that yielded nothing yielded nothing.
+    """The span-by-span account of how this summary was settled.
 
-    Every span, with the obligations that were held to force it. A
-    `no_obligation` disposition must carry a reason, and the reason a reader
-    needs here is which already-derived obligations the summary was measured
-    against — not the bare fact that it produced nothing.
+    One line per span: covered, and by which already-derived obligations, or
+    uncovered, in which case an obligation was authored for it.
+
+    Carried on the disposition whatever the disposition is. A covered span is a
+    requirement the paragraph states and another requirement already carries, and
+    under the shape this replaces that fact was recorded — the paragraph derived
+    its own duplicate and the linking stage merged the two, leaving both
+    requirements naming one obligation. Not deriving the duplicate is the
+    improvement; losing the record of why would be a regression hidden inside it.
     """
     if not decisions:
         return (
             "the summary was divided into no spans, so it states no property of its own "
             "for the delivered change to have"
         )
-    parts = [
-        f"{normalise(decision.text)!r} -> "
-        + (", ".join(decision.nearest) if decision.nearest else "no obligation named")
-        for decision in decisions
-    ]
-    return (
-        "every property this summary states is already required by obligations derived "
-        "from the rest of the mandate: " + "; ".join(parts)
-    )
+    parts = []
+    for decision in decisions:
+        if decision.covered:
+            by = ", ".join(decision.nearest) if decision.nearest else "no obligation named"
+            parts.append(f"{normalise(decision.text)!r} already required by {by}")
+        else:
+            parts.append(f"{normalise(decision.text)!r} not already required, so it yielded")
+    return "each property this summary states, and how it was settled: " + "; ".join(parts)
