@@ -14,6 +14,13 @@ that never records it.
 
 `benchmark/` is deliberately out of scope: it is not part of a review run
 (CLAUDE.md, repo layout), and its spend must not land in a review's footer.
+
+That exclusion had a hole, found at #313's Gate 1. `requirement/carry.py`
+imports `align_obligations` from the benchmark harness, so its model call was
+made *by* a review and *from* a module the scan skips, and landed in the
+`unknown` bucket on every continued run whose requirement text moved. The scan
+below now follows imports out of `benchmark/` as well, and a wiring test drives
+the carry path itself.
 """
 
 from __future__ import annotations
@@ -99,6 +106,68 @@ def test_no_review_pipeline_call_site_omits_its_stage():
 
     assert not offenders, (
         "these review-pipeline model calls do not name the stage that issued them, "
+        f"so their cost would aggregate as {UNKNOWN_STAGE!r}: {offenders}"
+    )
+
+
+def _benchmark_imports(path: Path) -> set[str]:
+    """Names a review-pipeline module pulls in from `acceptance.benchmark`.
+
+    Such a name is a model call the scan above cannot see: the call site is in
+    `benchmark/`, which is excluded, but the spend belongs to the review that
+    triggered it.
+    """
+    tree = ast.parse(path.read_text())
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
+            "acceptance.benchmark"
+        ):
+            names.update(alias.asname or alias.name for alias in node.names)
+    return names
+
+
+def test_the_import_scan_still_finds_the_one_crossing_it_polices():
+    """Guards the test below from passing vacuously, as its sibling does.
+
+    If `align_obligations` moves into the pipeline the crossing disappears and
+    this fails — which is the right outcome, and a visible test edit rather than
+    a scan that quietly polices nothing.
+    """
+    crossings = {
+        str(path.relative_to(_SRC)): sorted(_benchmark_imports(path))
+        for path in _product_modules()
+        if _benchmark_imports(path)
+    }
+
+    assert crossings == {"requirement/carry.py": ["align_obligations"]}, (
+        f"the set of review-pipeline modules reaching into benchmark/ changed: {crossings}"
+    )
+
+
+def test_no_call_into_benchmark_from_the_pipeline_omits_its_stage():
+    """Acceptance: the crossing that produced the `unknown` row cannot recur.
+
+    `benchmark/` is excluded from the scan above because its own spend is not a
+    review's. A pipeline module that imports from it inherits the review's
+    obligation to attribute, so the call must name a stage here instead.
+    """
+    offenders = []
+    for path in _product_modules():
+        imported = _benchmark_imports(path)
+        if not imported:
+            continue
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+                continue
+            if node.func.id not in imported:
+                continue
+            if not any(keyword.arg == "stage" for keyword in node.keywords):
+                offenders.append(f"{path.relative_to(_SRC)}:{node.lineno} {node.func.id}")
+
+    assert not offenders, (
+        "these calls run a model on the review's behalf from inside benchmark/, "
         f"so their cost would aggregate as {UNKNOWN_STAGE!r}: {offenders}"
     )
 

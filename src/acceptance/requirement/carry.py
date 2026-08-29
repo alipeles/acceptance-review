@@ -46,6 +46,12 @@ from .ledger import (
     RequirementDerivation,
 )
 
+# This step issues a model call, so it names itself in the run's per-stage cost
+# footer like every other (#264). Its own name, not `decompose`: it fires only on
+# a continued run whose requirement text moved, and folding it into decompose
+# would hide a cost that appears on some runs and not others.
+_STAGE = "requirement carry alignment"
+
 
 @dataclass(frozen=True)
 class CarryPlan:
@@ -174,6 +180,7 @@ def plan_carry(
             [derivation.text for derivation in residue_prior],
             [requirement.text for requirement in unmatched],
             client,
+            stage=_STAGE,
         )
         prior_by_residue_text = {derivation.text: derivation for derivation in residue_prior}
         for requirement in unmatched:
