@@ -23,10 +23,41 @@ import glob
 import json
 import re
 
-STOP = set(
-    "the a an and or of to in is are be that this it for as with by on not no any "
-    "each every its their from at than then when where which".split()
-)
+STOP = {
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "of",
+    "to",
+    "in",
+    "is",
+    "are",
+    "be",
+    "that",
+    "this",
+    "it",
+    "for",
+    "as",
+    "with",
+    "by",
+    "on",
+    "not",
+    "no",
+    "any",
+    "each",
+    "every",
+    "its",
+    "their",
+    "from",
+    "at",
+    "than",
+    "then",
+    "when",
+    "where",
+    "which",
+}
 
 
 def content_words(text: str) -> set[str]:
@@ -44,7 +75,8 @@ def main() -> None:
 
     for path in glob.glob(".acceptance/cache/reviews/*"):
         try:
-            review = json.load(open(path))
+            with open(path) as handle:
+                review = json.load(handle)
         except (ValueError, OSError):
             continue
         dispositions = (review.get("requirement_map") or {}).get("dispositions") or []
@@ -74,7 +106,9 @@ def main() -> None:
 
     print(f"reviews carrying a requirement map: {reviews}")
     share = 100 * task_obligations / max(1, all_obligations)
-    print(f"obligations from task-* requirements: {task_obligations} / {all_obligations} ({share:.0f}%)")
+    print(
+        f"obligations from task-* requirements: {task_obligations} / {all_obligations} ({share:.0f}%)"
+    )
     print(f"\nnearest bullet-derived obligation, by lexical overlap (n={len(scores)}):")
     for bucket in (">=0.5", ">=0.35", "<0.35"):
         print(f"  {bucket:>6}: {buckets[bucket]}")

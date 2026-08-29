@@ -137,6 +137,7 @@ _BEHAVIOURS = {"faithful": _faithful, "lossy": _lossy, "permissive": _permissive
 def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
     """A decomposer whose output is decided by `behaviour`, not by the task."""
     build = _BEHAVIOURS[behaviour]
+
     # Derivation is partitioned by requirement (#204), so a task file of any
     # size draws several calls. The label-seeded payload models the decomposer's
     # WHOLE output, so it is emitted on the first call only — a real partitioned

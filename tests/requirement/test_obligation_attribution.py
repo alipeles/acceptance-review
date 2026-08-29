@@ -168,10 +168,7 @@ def test_a_call_is_offered_only_its_own_requirements_quotations():
 
     decompose(parsed, model_client_with(completion_fn))
 
-    by_id = {
-        r.id: r
-        for r in build_registry(parsed)
-    }
+    by_id = {r.id: r for r in build_registry(parsed)}
     for requirement_id, quotes in offered.items():
         assert quotes == quotable_spans(by_id[requirement_id].text)
 

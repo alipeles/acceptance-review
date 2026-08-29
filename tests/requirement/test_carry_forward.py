@@ -130,7 +130,9 @@ class _CountingClient:
         it — a count that named only `_Decomposition` would report the ledger as
         wrong on every mandate with an opening paragraph.
         """
-        return sum(1 for call in self.calls if call["schema"] in ("_Decomposition", "_SummarySpans"))
+        return sum(
+            1 for call in self.calls if call["schema"] in ("_Decomposition", "_SummarySpans")
+        )
 
     def prompts_for(self, schema: str) -> list[str]:
         return [call["prompt"] for call in self.calls if call["schema"] == schema]

@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from pathlib import Path
 from typing import Literal
 
 from pydantic import create_model
@@ -79,7 +80,7 @@ def slot_model(ids: list[str], scoped: bool, texts: dict[str, str]) -> type:
 
 
 def main(path: str) -> None:
-    parsed = parse_task_file(open(path).read())
+    parsed = parse_task_file(Path(path).read_text())
     registry = build_registry(parsed)
     texts = {ref.id: ref.span.text for ref in registry}
     ids = [ref.id for ref in registry]
@@ -96,8 +97,10 @@ def main(path: str) -> None:
 
     print("\nquote-enum size per requirement (sentences offered):")
     for ref in registry[:6]:
-        print(f"  {ref.id:15} {len(sentences(ref.span.text)):>2}  "
-              f"{len(json.dumps(sentences(ref.span.text))):>5} bytes")
+        print(
+            f"  {ref.id:15} {len(sentences(ref.span.text)):>2}  "
+            f"{len(json.dumps(sentences(ref.span.text))):>5} bytes"
+        )
 
 
 if __name__ == "__main__":

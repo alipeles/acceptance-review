@@ -644,8 +644,8 @@ def summarize(root: Path, out_root: Path) -> None:
         print(
             f"{row['draw']:<12}{row['seed']:>5}{row['listed']:>8}{row['spans']:>7}"
             f"{row['covered']:>9}{row['uncovered']:>11}"
-            f"{str(row['exact_substring']):>7}{str(row['rejected_first']):>10}"
-            f"{str(row['retried']):>9}{cost:>11}"
+            f"{row['exact_substring']!s:>7}{row['rejected_first']!s:>10}"
+            f"{row['retried']!s:>9}{cost:>11}"
         )
     total = [row["cost_usd"] for row in rows if row["cost_usd"] is not None]
     if total:

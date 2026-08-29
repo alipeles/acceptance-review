@@ -20,7 +20,7 @@ import re
 from math import comb
 
 TRANSCRIPTS = ".acceptance/cache/transcripts"
-ID_LINE = re.compile(r"^\[([^\]]+)\] \((\w+)\) \[(ANSWER FOR THIS|context only)\] ", re.M)
+ID_LINE = re.compile(r"^\[([^\]]+)\] \((\w+)\) \[(ANSWER FOR THIS|context only)\] ", re.MULTILINE)
 ASKED = re.compile(
     r"Return exactly one disposition for each of these requirement ids, "
     r"and for no others:\n\n(.+?)\n"
@@ -67,7 +67,8 @@ def calls() -> list[dict]:
     for name in sorted(os.listdir(TRANSCRIPTS)):
         path = os.path.join(TRANSCRIPTS, name)
         try:
-            record = json.load(open(path))
+            with open(path) as handle:
+                record = json.load(handle)
         except (ValueError, OSError):
             continue
         request = record.get("request", {})
@@ -118,8 +119,7 @@ def calls() -> list[dict]:
 def fisher_one_sided(a: int, b: int, c: int, d: int) -> float:
     total, row, col = a + b + c + d, a + b, a + c
     return sum(
-        comb(row, k) * comb(c + d, col - k) / comb(total, col)
-        for k in range(a, min(row, col) + 1)
+        comb(row, k) * comb(c + d, col - k) / comb(total, col) for k in range(a, min(row, col) + 1)
     )
 
 
