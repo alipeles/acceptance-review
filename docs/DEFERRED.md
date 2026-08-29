@@ -4462,3 +4462,113 @@ the record.
   > Logs: `dogfood-logs/317-gate1-run{4,5}/`.
 - **Status:** **FILED** as a comment on #306 on 2026-08-29
   (`#306#issuecomment-5463979670`). Approved at #317's Gate 1.
+
+### [2026-08-29] The shared preamble orphans every stage's transcripts at once, and #317 measured what that costs
+
+- **Kind:** filing
+- **Found during:** #317, Gate 2
+- **Where:** `src/acceptance/request_blocks.py::SHARED_PREAMBLE`
+- **Severity:** should-fix — a fact about sequencing, not a bug in the code
+- **What's wrong:** CLAUDE.md says a change to common request-assembly moves
+  every stage's key at the same time. #317 is the first change to make one, and
+  the cost was measured rather than estimated. Reverting the preamble alone and
+  re-running `tests/prompts` gave 21 passed / 28 errors; with the new preamble,
+  15 passed / 6 failed / 28 errors. The 28 errors are #317's own prompt and
+  schema edits orphaning the decomposition and linking corpora — unavoidable.
+  The 6 are the disposition-prompt corpus and the corpus-mechanism tests,
+  orphaned purely by the shared preamble, on stages #317 does not touch.
+- **Why I didn't act:** the preamble change is required by #317's own mandate —
+  the old sentence told the model material came before instructions, which
+  `assemble` contradicts — and it is done. What is queued is recording the
+  measurement where the next person planning a shared-prefix change will find it.
+- **Drafted fix:** an `add_issue_comment` on **#265**, the prompt-cache work
+  that owns `request_blocks.py`:
+
+  > #317 made the first edit to `SHARED_PREAMBLE` and measured what a shared
+  > request-assembly change costs, by reverting the preamble alone and
+  > re-running `tests/prompts`:
+  >
+  > | preamble | tests/prompts |
+  > |---|---|
+  > | old text | 21 passed, 28 errors |
+  > | new text | 15 passed, 6 failed, 28 errors |
+  >
+  > The 28 errors are #317's own decomposition and linking prompt edits. The 6
+  > extra are the disposition corpus and the corpus-mechanism tests, on stages
+  > #317 never touches — the shared-prefix cost, isolated.
+  >
+  > The committed corpus also grew from 7 transcripts to 25, because derivation
+  > went from batches of eight to one call per requirement. A future shared
+  > change re-records all 25, not 7.
+- **Status:** open
+
+### [2026-08-29] Two decomposition-prompt quality assertions now fail and are held as strict xfails
+
+- **Kind:** filing
+- **Found during:** #317, Gate 2 (the re-recorded prompt corpus)
+- **Where:** `tests/prompts/test_decomposition_prompt.py`
+- **Severity:** should-fix — decomposer judgement, which #317's mandate excludes
+- **What's wrong:** on the corpus recorded against the new prompts, two
+  long-standing quality assertions fail:
+  1. `constraint-02` ("The export escapes embedded commas in the customer
+     name") yields its own behaviour obligation **and** a second one typed
+     `test_demand` restating `completion-02`, which is what demands a test of
+     it. `findings.md` §9 predicts exactly this: constraining `source_quote` to
+     the answering requirement's spans makes an obligation about another
+     requirement unsourceable but not unwritable, so misattribution degrades to
+     duplication. This is that residue, observed.
+  2. `exclusion-01` writes its `observable_behavior` as *"...the CSV export's
+     supported-currency behavior is **unchanged**..."*. The prompt forbids
+     "preserve", "keep", "maintain" and "unchanged" in that field by name. The
+     `description` is correct, so this is the milder half of #219.
+- **Why I didn't act:** *"Whether the obligations derived for a requirement are
+  the right ones for it"* is a Scope exclusion of #317's mandate. Both are held
+  visible as `xfail(strict=True)` naming the cause, the pattern CLAUDE.md
+  records for #152, so each fails the moment it is fixed.
+- **Drafted fix:** a new issue, child of **#181** (the decomposition-quality
+  umbrella), labels `bug`, `track:checker`:
+
+  > **Title:** One requirement per call leaves the paraphrase residue #317
+  > documented, and it is now visible in the prompt corpus
+  >
+  > #317 constrained `source_quote` to the answering requirement's own spans, so
+  > an obligation about a different requirement cannot be sourced from one. It
+  > can still be *written*: the model paraphrases the other requirement while
+  > quoting its own text. `findings.md` §9 says so explicitly and calls the
+  > result duplication rather than misattribution — the milder failure, and the
+  > linking stage's existing job.
+  >
+  > It is now observable rather than predicted. On the corpus recorded at #317,
+  > `constraint-02` of `tests/prompts/test_decomposition_prompt.py`'s invoice
+  > task yields two obligations: the behaviour, and a `test_demand` restating
+  > `completion-02`. Linking did not merge them.
+  >
+  > Held by `xfail(strict=True)` on that parameter, so it fails when fixed.
+  >
+  > A second, unrelated slip in the same corpus: `exclusion-01`'s
+  > `observable_behavior` says the supported-currency behaviour is "unchanged",
+  > which the prompt forbids in that field by name. Also held as a strict xfail.
+- **Status:** open
+
+### [2026-08-29] The `decompose` command still does not pass its unusable-answer log to `decompose`
+
+- **Kind:** defect
+- **Found during:** #317, while wiring the summary step
+- **Where:** `src/acceptance/cli.py::run_decompose`
+- **Severity:** should-fix — Gate 1 loses diagnostics it already renders
+- **What's wrong:** `run_decompose` builds an `UnusableAnswerLog`, passes it to
+  `link_duplicate_obligations`, and renders it — but calls
+  `decompose(parsed, client, prior=prior)` without it. So every unusable answer
+  derivation records is dropped on the `decompose` path, and only linking's
+  reach the reader. `run_check` passes it correctly, so the two commands report
+  different things about the same stage. #317 adds more for it to drop: a
+  quotation outside its requirement, and a summary partition that could not be
+  used.
+- **Why I didn't act:** it is a one-argument fix on a line #317 already touches,
+  but it changes what Gate 1 prints, which is outside this issue's scope.
+- **Drafted fix:** pass the log through —
+  `derived = decompose(parsed, client, unusable, prior=prior)` — and add a test
+  that a decomposition recording an unusable answer has it rendered by
+  `acceptance decompose`. File as a child of **#181**, labels `bug`,
+  `track:checker`.
+- **Status:** open
