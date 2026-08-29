@@ -95,10 +95,16 @@ def _client(summary_answer, *, decline_spans: bool = False, calls: list | None =
             disposition = {
                 "requirement_id": asked,
                 "disposition": "yielded",
+                # A PARAPHRASE, not the span. This is what the model does when
+                # it authors a quotation — it repairs the source's grammar — and
+                # it is why code sets the quotation from the mandate instead.
+                # A double echoing the span back would make the override
+                # untestable, because the wrong answer and the right one would
+                # be the same bytes.
                 "obligation": _obligation(
                     "runs-nightly",
                     "The export runs nightly.",
-                    _supplied_enum("source_quote", **kwargs)[0],
+                    "the export runs each night",
                 ),
                 "more_obligations": [],
             }
