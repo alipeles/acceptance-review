@@ -462,8 +462,17 @@ def _repo(tmp_path):
     return repo, base, git("rev-parse", "HEAD")
 
 
-def _reviewed(tmp_path, answer: dict | None = None):
-    repo, base, head = _repo(tmp_path)
+def _review_over(built, answer: dict | None = None):
+    """One review over an already-built repo.
+
+    Two reviews that must agree byte for byte have to run over the SAME repo.
+    Building one each would compare reviews whose `reviewed_revision` differs:
+    the two repos hold identical content but their commits are stamped with the
+    time they were made, so the head SHAs match only when both landed inside the
+    same second. That is a test that passes most of the time, which is worse
+    than one that does not exist.
+    """
+    repo, base, head = built
     client = client_dispatching(
         {"_Decomposition": _DECOMPOSITION, **(answer or _answer([_defect(code_refs=[])]))}
     )
@@ -474,6 +483,10 @@ def _reviewed(tmp_path, answer: dict | None = None):
         client=client,
         reviewed_revision=head,
     )
+
+
+def _reviewed(tmp_path, answer: dict | None = None):
+    return _review_over(_repo(tmp_path), answer)
 
 
 def test_the_pipeline_really_calls_the_enumerator(tmp_path):
@@ -524,8 +537,9 @@ def test_recording_ways_of_failing_changes_no_verdict_and_no_rating(tmp_path):
     identical — that is what "advisory" means, and it is what makes a later
     rating movement attributable to the stage that caused it (DR-312 decision 5).
     """
-    with_defects = _reviewed(tmp_path / "a", _answer([_defect(code_refs=[])]))
-    without = _reviewed(tmp_path / "b", _answer([], reason="Nothing plausible."))
+    built = _repo(tmp_path)
+    with_defects = _review_over(built, _answer([_defect(code_refs=[])]))
+    without = _review_over(built, _answer([], reason="Nothing plausible."))
 
     assert any(entry.defects for entry in with_defects.defect_sets)
     assert not any(entry.defects for entry in without.defect_sets)
@@ -550,8 +564,9 @@ def test_the_enumerated_sets_survive_a_round_trip_through_persisted_state(tmp_pa
 
 def test_two_runs_over_the_same_input_agree_byte_for_byte(tmp_path):
     """M0.5, over the stage this issue adds."""
-    first = _reviewed(tmp_path / "one")
-    second = _reviewed(tmp_path / "two")
+    built = _repo(tmp_path)
+    first = _review_over(built)
+    second = _review_over(built)
 
     assert first.to_canonical_json() == second.to_canonical_json()
     assert render_report(first) == render_report(second)
