@@ -19,6 +19,7 @@ from __future__ import annotations
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     CompletionVerdict,
+    DefectSet,
     MandateCoverage,
     Obligation,
     RequirementMap,
@@ -113,6 +114,10 @@ def render_report(review: Review) -> str:
         lines.append(_EMPTY)
     lines.append("")
 
+    if review.defect_sets:
+        lines.extend(_defect_block(review.defect_sets))
+        lines.append("")
+
     if review.delta is not None:
         lines.extend(_delta_block(review.delta))
         lines.append("")
@@ -149,6 +154,37 @@ def render_report(review: Review) -> str:
         lines.append("Recommended next instruction: (none)")
 
     return "\n".join(lines)
+
+
+def _defect_block(defect_sets: list[DefectSet]) -> list[str]:
+    """The enumerated ways the change could fail each criterion (#313).
+
+    **Advisory.** Labelled so in the heading, because nothing here moved the
+    verdict or any criterion's rating and a reader would otherwise reasonably
+    assume it had. It is deliberately placed after the criteria and the mandate
+    coverage: it is context for those judgements, not one of them.
+
+    A set that was reused rather than produced again says so, per the mandate.
+    A reader has to be able to tell which parts of a review are fresh — a
+    carried set is a statement about an earlier head, and presenting it as
+    current would overstate what this run examined.
+    """
+    lines = ["Ways the change could fail a criterion (advisory — no verdict depends on these):"]
+    for entry in defect_sets:
+        reused = "  (reused from an earlier run)" if entry.carried_from else ""
+        lines.append("")
+        lines.append(f"  {entry.obligation_id}{reused}")
+        if not entry.defects:
+            # An empty set is a result, not a blank. Rendering the reason is what
+            # makes it one a reader can disagree with.
+            lines.append(f"    none enumerated: {entry.reason}")
+            continue
+        for defect in entry.defects:
+            lines.append(f"    [{defect.type.value}] {defect.id}")
+            lines.append(f"      {defect.description}")
+            for ref in defect.code_refs:
+                lines.append(f"      {ref}")
+    return lines
 
 
 def _has_gaps(review: Review) -> bool:

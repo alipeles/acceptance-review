@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
     TEST_DEMAND = "test_demand"
 
 
+class DefectType(str, Enum):
+    """A way a change can fail an obligation (DR-313, from DR-312 decision 4).
+
+    Classification only. Every defect's `description` is free text regardless,
+    and nothing downstream — the reachability prefilter, pair mapping, M8.4
+    mutation — reads this field, so `OTHER` costs nothing but per-type scoring
+    granularity on the defects that use it.
+
+    The four before the divider are walked for EVERY obligation type; the rest
+    are walked only for the obligation type they belong to. Which list an
+    obligation type gets is `defects/taxonomy.py`, deliberately not here: this
+    is the vocabulary, that is the stage logic that spends it.
+    """
+
+    QUALIFIER_IGNORED = "qualifier_ignored"
+    CONDITION_INVERTED = "condition_inverted"
+    SCOPE_TOO_NARROW = "scope_too_narrow"
+    NOT_WIRED = "not_wired"
+
+    WRONG_OUTPUT_SHAPE = "wrong_output_shape"
+    MISSING_CASE = "missing_case"
+    BOUNDARY_WRONG_SIDE = "boundary_wrong_side"
+    BOUNDARY_UNHANDLED = "boundary_unhandled"
+    ERROR_SWALLOWED = "error_swallowed"
+    WRONG_ERROR_SURFACED = "wrong_error_surfaced"
+    ESTABLISHED_NOT_MAINTAINED = "established_not_maintained"
+    UNENFORCED_ON_ONE_PATH = "unenforced_on_one_path"
+    PRIOR_BEHAVIOR_ALTERED = "prior_behavior_altered"
+    PRIOR_BEHAVIOR_REMOVED = "prior_behavior_removed"
+    OLD_INPUT_REJECTED = "old_input_rejected"
+    STORED_FORM_UNREADABLE = "stored_form_unreadable"
+    EXPLANATION_ABSENT = "explanation_absent"
+    EXPLANATION_STATES_WRONG_CAUSE = "explanation_states_wrong_cause"
+    DOCUMENTED_NOT_IMPLEMENTED = "documented_not_implemented"
+    DEFAULT_DISAGREES_WITH_DOCS = "default_disagrees_with_docs"
+
+    OTHER = "other"
+    """The escape. A defect the checklist has no value for, carrying a free
+    description. DR-312 asks for its share as a standing metric: a rising share
+    is a taxonomy gap, and a near-zero share alongside poor enumeration recall
+    is odd defects being forced into the nearest slot."""
+
+
+class Defect(_Model):
+    """One concrete way the delivered code could plausibly fail an obligation.
+
+    Enumerated BEFORE any test is looked at, which is the whole point of the
+    defect-first shape (DR-312): a denominator chosen by something that can see
+    what is already covered drifts toward it, and a thinner enumeration then
+    earns a stronger rating (#252).
+
+    Identified and persisted so every later consumer refers to a defect by
+    `id` rather than restating it. `code_refs` are `path#hunk` labels, the same
+    currency `Obligation.coverage_refs` uses, so a defect is linked to exact
+    lines like every other typed record (§13.6).
+    """
+
+    id: str
+    obligation_id: str
+    type: DefectType
+    description: str
+    code_refs: list[str] = Field(default_factory=list)
+
+
+class DefectSet(_Model):
+    """Every defect enumerated for one obligation, or a reasoned absence.
+
+    A set with no defects is a valid, meaningful result — #270's shape, where an
+    obligation true by construction earns a defect that cannot exist — but only
+    when it says why. `reason` is required to be non-empty for an empty set and
+    empty otherwise, so "nothing found" and "not looked at" stay distinguishable.
+
+    `carried_from` records that this set was reused rather than produced again,
+    which the review reports: a reader has to be able to tell which parts of a
+    review are fresh, exactly as `Obligation.carried_forward_from` does.
+    """
+
+    obligation_id: str
+    defects: list[Defect] = Field(default_factory=list)
+    reason: str = ""
+    # The obligation's own text, as the identity a later run matches on. Not the
+    # id: obligation ids are model-chosen and move when a requirement is
+    # reworded, so keying on one would carry a set onto a different obligation.
+    # Same reason `RequirementDerivation` keys on requirement text.
+    obligation_text: str = ""
+    # What this set is valid under: the determinism controls, the stage-logic
+    # version, this obligation's text, and `region_digests` below.
+    carry_key: str = ""
+    # The content digest of each changed region this set's defects implicate,
+    # keyed by `path#hunk` label (DR-293's shape). Stored as well as folded into
+    # the key because it answers a question the key cannot — *which* implicated
+    # region moved — and because it cannot be recomputed later: the labels name
+    # hunks of a diff that is gone by the next run.
+    region_digests: dict[str, str] = Field(default_factory=dict)
+    carried_from: str | None = None
+
+
 class RequiredEvidence(str, Enum):
     """Which kinds of evidence an obligation REQUIRES (#153, restructured #266).
 
@@ -998,6 +1095,17 @@ class Review(_Model):
     # of which requirements produced nothing.
     requirement_map: RequirementMap | None = None
     open_questions: list[OpenQuestion] = Field(default_factory=list)
+    # One entry per obligation the enumeration stage was asked about (#313).
+    # Advisory: nothing here reaches `completion` or any obligation's rating,
+    # which is what makes #312's staged migration attributable — a rating that
+    # moves while this is only being *recorded* has some other cause.
+    #
+    # An obligation with no entry at all is different from one with an empty
+    # entry, and both occur: a `test_demand` obligation is excluded from
+    # enumeration entirely (DR-313 decision 2, because the enumerator may not
+    # see tests and such an obligation is about a test), while an obligation
+    # with no plausible static defect gets an entry whose `reason` says so.
+    defect_sets: list[DefectSet] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[TestRecommendation] = Field(default_factory=list)
     # Criteria the recommendation stage was asked about and returned nothing for

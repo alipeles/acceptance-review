@@ -457,6 +457,14 @@ def _completed(response: dict, **kwargs) -> dict:
         if response.get("__whole_summary_uncovered__"):
             return uncovered_summary([_summary_text(**kwargs)])
         return covered_summary(**kwargs)
+    # Defect enumeration asks about ONE criterion per call and constrains
+    # `obligation_id` to it, so a fixed fixture cannot name it. Filled from the
+    # call's own enum, exactly as the recommendation branch below does — a blank
+    # would otherwise be scanned as an id the call never supplied and file an
+    # unusable-answer finding in every unrelated test (#313).
+    if _schema_name(**kwargs) == "_Enumeration" and not response.get("obligation_id"):
+        supplied = _supplied_enum("obligation_id", **kwargs)
+        return {**response, "obligation_id": supplied[0] if supplied else ""}
     if response.get("requirement_dispositions") == []:
         supplied = _supplied_enum("requirement_id", **kwargs)
         obligations = response.get("obligations") or []
@@ -770,6 +778,17 @@ _EMPTY_BY_SCHEMA = {
     # completion helper fills a supplied-id enum when it sees one, so the double
     # answers the pairs it was actually given rather than none of them.
     "_Verdicts": {"verdicts": []},
+    # Defect enumeration (#313). `obligation_id` is filled in by the completion
+    # helper from the supplied-id enum, so the double answers about the criterion
+    # it was actually asked about. No defects and a reason for the empty set,
+    # which is a valid answer rather than a degenerate one — and the stage is
+    # advisory, so a test with no opinion about defects gets a review whose
+    # verdict and ratings are what they were before this stage existed.
+    "_Enumeration": {
+        "obligation_id": "",
+        "defects": [],
+        "reason": "No defects were enumerated by this test's model double.",
+    },
     "_Mappings": {"mappings": []},
     "_Discrimination": {"discriminations": []},
     "_Coverage": {"classifications": []},

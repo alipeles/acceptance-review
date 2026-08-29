@@ -40,6 +40,7 @@ from acceptance.coverage.open_questions import (
 )
 from acceptance.coverage.recommendations import recommend_tests
 from acceptance.coverage.unrequested import detect_unrequested_changes
+from acceptance.defects.enumeration import enumerate_defects
 from acceptance.evidence.anchoring import build_anchors
 from acceptance.evidence.discovery import discover_tests
 from acceptance.evidence.discrimination import judge_discrimination
@@ -298,11 +299,6 @@ def run_review(
     decomposition = link_duplicate_obligations(
         derived, client, unusable, link_pair_batch_size, link_distance_threshold, ledger_prior
     )
-    # Handed back rather than written here: the pipeline does not own the run id,
-    # the parent pointer or the file, and a stage that wrote to disk on the way
-    # past would make the benchmark's own runs leave ledger entries behind.
-    if ledger_sink is not None:
-        ledger_sink.append((derived, decomposition))
 
     # Open-question resolution runs HERE, ahead of every judging stage, because
     # a question the diff resolves yields an obligation (#214) and that
@@ -316,6 +312,37 @@ def run_review(
     question_obligations = derive_obligations(open_questions, resolutions)
     derived_ids = {obligation.id for obligation in question_obligations}
     obligations = decomposition.obligations + question_obligations
+
+    # Defect enumeration runs HERE, before test discovery, and the position is
+    # the point (#313). The stage must never see a test — a denominator chosen
+    # by something that can see what is already covered drifts toward it, and a
+    # thin enumeration then earns a strong rating (#252). Running it before any
+    # test has been discovered makes that structural rather than a promise: at
+    # this line there is no test evidence in existence for it to be handed.
+    #
+    # Advisory in this milestone. Nothing below reads `defect_sets`, and no
+    # verdict or rating depends on it. That is DR-312 decision 5's staged
+    # migration: landing enumeration beside the existing chain rather than in
+    # place of it is what lets a later rating movement be attributed to one
+    # cause instead of three.
+    defect_sets = enumerate_defects(
+        obligations,
+        change_set,
+        client,
+        unusable,
+        prior=list(ledger_prior.defect_sets) if ledger_prior is not None else None,
+    )
+
+    # Handed back rather than written here: the pipeline does not own the run id,
+    # the parent pointer or the file, and a stage that wrote to disk on the way
+    # past would make the benchmark's own runs leave ledger entries behind.
+    #
+    # Handed back HERE rather than straight after linking, which is where it used
+    # to sit, because the entry now carries the defect sets as well and they do
+    # not exist until the line above. One hand-back, so a caller cannot write an
+    # entry holding half of what the run produced.
+    if ledger_sink is not None:
+        ledger_sink.append((derived, decomposition, defect_sets))
 
     # Every obligation reaches every stage below (#293). There used to be a
     # narrowing here — `obligations_to_rederive`, which dropped any obligation
@@ -507,6 +534,7 @@ def run_review(
         # from one place (M1.2.r1).
         requirement_map=decomposition.requirement_map,
         open_questions=open_questions,
+        defect_sets=defect_sets,
         change_set=change_set,
         declaration=declaration,
         findings=findings,

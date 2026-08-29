@@ -205,7 +205,7 @@ def run_check(
     )
     store.write(review)
     if ledger is not None and sink:
-        derived, linked = sink[0]
+        derived, linked, defect_sets = sink[0]
         ledger.write(
             build_ledger_entry(
                 derived,
@@ -213,6 +213,7 @@ def run_check(
                 parent_run_id=continue_from,
                 task_digest=task_digest(task_text),
                 linked=linked,
+                defect_sets=defect_sets,
             )
         )
     return review
