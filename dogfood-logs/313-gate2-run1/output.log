@@ -1,0 +1,663 @@
+Task completion: UNABLE-TO-DETERMINE
+
+1 obligation(s) could not be classified from static evidence; deeper retrieval or execution would be needed to decide.
+
+Obligations:
+
+  1. Before any test is looked at, record for each criterion derived from the mandate the concrete ways the delivered code could plausibly fail that criterion.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/pipeline.py#@@ -317,6 +313,37 @@ def run_review(
+         1.2  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+       test evidence: indeterminate  [tier: static]
+         (no mapped test)
+         recommended test: The review output includes failure-mode notes for each derived criterion before any test results are examined.
+           inputs:  A review run with at least one derived criterion and at least one test result available in the overall pipeline, but with the assertion focused on the review output immediately after criterion derivation / defect enumeration and before any test-evidence stage contributes findings. Use a change set that produces a non-empty defect enumeration for one criterion so the output has something to inspect.
+           detects: The review output omits the defect/failure-mode notes, renders them only after test results, or fails to include them for some derived criteria because the enumeration stage is skipped, filtered incorrectly, or wired into the wrong report section.
+           full detail: acceptance recommendation --criterion pre-test-failure-modes
+
+  2. Each recorded way of failing carries a unique identifier within the review, the criterion it belongs to, a classification, a free-text description, and the regions of changed source it implicates.
+       requirements: constraint-01
+       code evidence: addressed
+         2.1  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+         2.2  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+         2.3  src/acceptance/report.py#@@ -113,6 +114,10 @@ def render_report(review: Review) -> str:
+         2.4  src/acceptance/requirement/ledger.py#@@ -184,6 +184,15 @@ class LedgerEntry(PersistableModel):
+         2.5  src/acceptance/requirement/obligations.py#@@ -1357,6 +1358,7 @@ def build_ledger_entry(
+       test evidence: strongly supported  [tier: static]
+         2.6  tests/defects/test_enumeration.py::test_each_defect_carries_its_criterion_a_type_a_description_and_its_code_regions
+         2.7  tests/defects/test_enumeration.py::test_every_defect_id_is_unique_within_the_review
+
+  3. Every part of the review that refers to a recorded way of failing names it by its identifier rather than restating its content.
+       requirements: constraint-02
+       code evidence: addressed
+         3.1  src/acceptance/report.py#@@ -151,6 +156,37 @@ def render_report(review: Review) -> str:
+         3.2  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+         3.3  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+       test evidence: strongly supported  [tier: static]
+         3.4  tests/defects/test_enumeration.py::test_the_review_reports_the_recorded_ways_of_failing
+         3.5  tests/requirement/test_carry_forward.py::test_an_edited_requirements_persisting_obligations_keep_their_identifiers
+
+  4. A classification is either a value from the fixed vocabulary or a single escape value meaning the vocabulary has no value for this way of failing.
+       requirements: constraint-03
+       code evidence: addressed
+         4.1  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+         4.2  src/acceptance/defects/taxonomy.py#@@ -0,0 +1,144 @@
+         4.3  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+       test evidence: strongly supported  [tier: static]
+         4.4  tests/defects/test_enumeration.py::test_a_defect_typed_other_is_recorded_as_such
+         4.5  tests/defects/test_enumeration.py::test_the_checklist_walked_is_the_one_for_that_criterion_s_type
+         4.6  tests/defects/test_enumeration.py::test_the_escape_is_offered_alongside_the_checklist
+         4.7  tests/test_report.py::test_unclassified_obligation_renders_as_unclassified
+
+  5. The recorded ways of failing persist with the rest of the review's state, and a review reloaded from storage carries them unchanged.
+       requirements: constraint-04
+       code evidence: addressed
+         5.1  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+         5.2  src/acceptance/requirement/ledger.py#@@ -184,6 +184,15 @@ class LedgerEntry(PersistableModel):
+         5.3  src/acceptance/requirement/obligations.py#@@ -1357,6 +1358,7 @@ def build_ledger_entry(
+         5.4  tests/defects/test_enumeration.py#@@ -0,0 +1,572 @@
+       test evidence: strongly supported  [tier: static]
+         5.5  tests/defects/test_enumeration.py::test_the_enumerated_sets_survive_a_round_trip_through_persisted_state
+         5.6  tests/requirement/test_carry_forward.py::test_a_ledger_file_is_never_rewritten
+         5.7  tests/requirement/test_carry_forward.py::test_an_edited_requirements_persisting_obligations_keep_their_identifiers
+         5.8  tests/test_review_store.py::test_stored_form_is_canonical
+         5.9  tests/test_unevidenceable_obligations.py::test_it_survives_persistence
+
+  6. The step that produces recorded ways of failing is given the criterion and the changed source, and is not given a test.
+       requirements: constraint-05
+       code evidence: addressed
+         6.1  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+         6.2  src/acceptance/pipeline.py#@@ -317,6 +313,37 @@ def run_review(
+         6.3  tests/defects/test_enumeration.py#@@ -0,0 +1,572 @@
+       test evidence: not required — This requirement is about the inputs to the recording step and explicitly says the step is given no test, so source structure alone settles it.
+
+  7. The step that records ways of failing is guided by a checklist of ways to fail chosen by the criterion's type, while still allowing it to record a way of failing that no checklist entry names.
+       requirements: constraint-06
+       code evidence: addressed
+         7.1  src/acceptance/defects/taxonomy.py#@@ -0,0 +1,144 @@
+         7.2  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+         7.3  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+       test evidence: strongly supported  [tier: static]
+         7.4  tests/defects/test_enumeration.py::test_the_checklist_walked_is_the_one_for_that_criterion_s_type
+         7.5  tests/defects/test_enumeration.py::test_the_escape_is_offered_alongside_the_checklist
+
+  8. Recording no way of failing for a criterion is a valid result for that criterion, and the review carries the reason the set is empty.
+       requirements: constraint-07
+       code evidence: addressed
+         8.1  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+         8.2  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+         8.3  src/acceptance/report.py#@@ -151,6 +156,37 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported  [tier: static]
+         8.4  tests/defects/test_enumeration.py::test_a_criterion_with_no_plausible_defect_yields_an_empty_set_with_its_reason
+         8.5  tests/defects/test_enumeration.py::test_an_empty_set_with_no_reason_is_recorded_as_one_rather_than_left_blank
+
+  9. A criterion's set of records is reused rather than produced again exactly while both that criterion's text and the contents of the source regions its records implicate are unchanged.
+       requirements: constraint-08
+       code evidence: addressed
+         9.1  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+         9.2  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+         9.3  src/acceptance/requirement/ledger.py#@@ -184,6 +184,15 @@ class LedgerEntry(PersistableModel):
+       test evidence: strongly supported  [tier: static]
+         9.4  tests/defects/test_enumeration.py::test_a_set_is_produced_again_when_the_contents_of_its_implicated_region_change
+         9.5  tests/defects/test_enumeration.py::test_a_set_is_reused_when_the_criterion_and_its_implicated_regions_are_unchanged
+         9.6  tests/requirement/test_carry_forward.py::test_the_decisions_a_run_stands_on_are_recorded_carried_and_fresh_alike
+
+  10. A criterion whose text changed has its entire set of recorded ways of failing produced again, with no part of the previously recorded set retained for that criterion.
+       requirements: constraint-09
+       code evidence: addressed
+         10.1  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+         10.2  tests/defects/test_enumeration.py#@@ -0,0 +1,572 @@
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/defects/test_enumeration.py::test_a_carried_set_is_re_identified_onto_this_run_s_criterion_id
+         10.4  tests/defects/test_enumeration.py::test_a_criterion_whose_text_changed_keeps_no_part_of_its_earlier_set
+         10.5  tests/defects/test_enumeration.py::test_a_set_is_produced_again_when_the_contents_of_its_implicated_region_change
+
+  11. A continuing run reuses every set it is entitled to reuse.
+       requirements: constraint-10
+       code evidence: addressed
+         11.1  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+         11.2  src/acceptance/pipeline.py#@@ -317,6 +313,37 @@ def run_review(
+         11.3  src/acceptance/requirement/ledger.py#@@ -184,6 +184,15 @@ class LedgerEntry(PersistableModel):
+       test evidence: strongly supported  [tier: static]
+         11.4  tests/defects/test_enumeration.py::test_a_set_is_reused_when_the_criterion_and_its_implicated_regions_are_unchanged
+         11.5  tests/defects/test_enumeration.py::test_changing_one_criterion_leaves_every_other_criterion_s_set_reused
+         11.6  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         11.7  tests/requirement/test_carry_forward.py::test_a_tool_change_that_leaves_the_request_unaltered_carries_everything
+         11.8  tests/requirement/test_carry_forward.py::test_the_decisions_a_run_stands_on_are_recorded_carried_and_fresh_alike
+         11.9  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+         11.10  tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+         11.11  tests/requirement/test_carry_forward.py::test_two_requirements_are_the_same_requirement_when_their_text_matches_exactly
+
+  12. A continuing run produces again only the sets it is not entitled to reuse.
+       requirements: constraint-10
+       code evidence: addressed
+         12.1  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+       test evidence: strongly supported  [tier: static]
+         12.2  tests/defects/test_enumeration.py::test_a_set_is_produced_again_when_the_contents_of_its_implicated_region_change
+         12.3  tests/defects/test_enumeration.py::test_changing_one_criterion_leaves_every_other_criterion_s_set_reused
+         12.4  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         12.5  tests/requirement/test_carry_forward.py::test_a_tool_change_that_leaves_the_request_unaltered_carries_everything
+         12.6  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+         12.7  tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+         12.8  tests/requirement/test_carry_forward.py::test_two_requirements_are_the_same_requirement_when_their_text_matches_exactly
+
+  13. A run continuing an earlier run produces again only the sets it is not entitled to reuse.
+       requirements: constraint-11
+       code evidence: addressed
+         13.1  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+         13.2  src/acceptance/pipeline.py#@@ -317,6 +313,37 @@ def run_review(
+       test evidence: strongly supported  [tier: static]
+         13.3  tests/defects/test_enumeration.py::test_a_set_is_produced_again_when_the_contents_of_its_implicated_region_change
+         13.4  tests/defects/test_enumeration.py::test_changing_one_criterion_leaves_every_other_criterion_s_set_reused
+         13.5  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         13.6  tests/requirement/test_carry_forward.py::test_a_tool_change_that_leaves_the_request_unaltered_carries_everything
+         13.7  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+         13.8  tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+         13.9  tests/requirement/test_carry_forward.py::test_two_requirements_are_the_same_requirement_when_their_text_matches_exactly
+
+  14. Where a set was reused rather than produced again, the review says so.
+       requirements: constraint-12
+       code evidence: addressed
+         14.1  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+         14.2  src/acceptance/report.py#@@ -151,6 +156,37 @@ def render_report(review: Review) -> str:
+         14.3  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+       test evidence: strongly supported  [tier: static]
+         14.4  tests/defects/test_enumeration.py::test_a_set_is_reused_when_the_criterion_and_its_implicated_regions_are_unchanged
+         14.5  tests/defects/test_enumeration.py::test_the_report_says_when_a_set_was_reused_rather_than_produced_again
+         14.6  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         14.7  tests/requirement/test_carry_forward.py::test_a_tool_change_that_leaves_the_request_unaltered_carries_everything
+         14.8  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+
+  15. The review reports the recorded ways of failing.
+       requirements: constraint-13
+       code evidence: addressed
+         15.1  src/acceptance/report.py#@@ -113,6 +114,10 @@ def render_report(review: Review) -> str:
+         15.2  src/acceptance/report.py#@@ -151,6 +156,37 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported  [tier: static]
+         15.3  tests/defects/test_enumeration.py::test_the_pipeline_really_calls_the_enumerator
+         15.4  tests/defects/test_enumeration.py::test_the_review_reports_the_recorded_ways_of_failing
+
+  16. The review reports completion and every criterion rating exactly as it would if no way of failing had been recorded.
+       requirements: constraint-14
+       code evidence: addressed
+         16.1  src/acceptance/pipeline.py#@@ -317,6 +313,37 @@ def run_review(
+         16.2  src/acceptance/pipeline.py#@@ -507,6 +534,7 @@ def run_review(
+         16.3  src/acceptance/report.py#@@ -113,6 +114,10 @@ def render_report(review: Review) -> str:
+         16.4  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+       test evidence: strongly supported  [tier: static]
+         16.5  tests/defects/test_enumeration.py::test_recording_ways_of_failing_changes_no_verdict_and_no_rating
+
+  17. The change does not add judging whether any test would fail if the delivered code contained a recorded way of failing.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 34 changes across 16 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the absence of that judging logic in the delivered change, which a reader can verify directly from the source.
+
+  18. The change does not derive any rating, classification, or conclusion about a criterion from its recorded ways of failing.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 34 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about review logic, and the source change itself is what must show the excluded derivation is absent.
+
+  19. The change does not alter which criteria the review derives from the mandate or how it derives them.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 34 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about review logic, so the source change itself is the evidence; no test can directly demonstrate that the excluded derivation work was not done.
+
+  20. The change does not alter how the review gathers, judges, or rates test evidence today.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 34 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about review logic, so it is checked by inspecting the change rather than by a test.
+
+  21. The change does not include running the delivered code or altering it to produce a failure.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 34 changes across 16 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is settled by inspecting the change; no test can demonstrate that the excluded runtime failure-injection work was not done.
+
+  22. The change does not compare a recorded set against an expected set supplied from outside the review.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 34 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, and the source diff alone can show whether such comparison logic was added.
+
+  23. A test asserts that the step that records ways of failing is given no test.
+       requirements: completion-02
+       code evidence: not required — The requirement itself demands a test, so the test is the whole obligation and no source change is separately required.
+       test evidence: strongly supported  [tier: static]
+         23.1  tests/defects/test_enumeration.py::test_the_enumerator_is_given_no_test
+
+  24. A test asserts that a criterion with no plausible way of failing is given an empty set carrying its reason instead of an invented way of failing.
+       requirements: completion-03
+       code evidence: not required — The requirement itself demands a test that fails under this condition, so the obligation is the test rather than source behavior.
+       test evidence: strongly supported  [tier: static]
+         24.1  tests/defects/test_enumeration.py::test_a_criterion_with_no_plausible_defect_yields_an_empty_set_with_its_reason
+         24.2  tests/defects/test_enumeration.py::test_an_empty_set_with_no_reason_is_recorded_as_one_rather_than_left_blank
+
+  25. A test asserts that a set is reused rather than produced again across two continued runs when the criterion's text and the contents of its implicated source regions are both unchanged.
+       requirements: completion-04
+       code evidence: not required — This requirement explicitly asks for a test failure condition, so the obligation is the presence of a test and not a source behavior.
+       test evidence: strongly supported  [tier: static]
+         25.1  tests/defects/test_enumeration.py::test_a_set_is_reused_when_the_criterion_and_its_implicated_regions_are_unchanged
+         25.2  tests/requirement/test_carry_forward.py::test_two_requirements_are_the_same_requirement_when_their_text_matches_exactly
+
+  26. A test asserts that a criterion whose text changed keeps no part of the set recorded for it before.
+       requirements: completion-05
+       code evidence: not required — This requirement explicitly demands a test assertion, so the obligation is satisfied by the test alone.
+       test evidence: strongly supported  [tier: static]
+         26.1  tests/defects/test_enumeration.py::test_a_criterion_whose_text_changed_keeps_no_part_of_its_earlier_set
+
+  27. A test asserts that changing one criterion's text leaves every other criterion's set reused rather than produced again.
+       requirements: completion-06
+       code evidence: not required — The requirement itself asks for a test assertion, so the obligation is the test and no source behavior beyond that test is demanded.
+       test evidence: strongly supported  [tier: static]
+         27.1  tests/defects/test_enumeration.py::test_changing_one_criterion_leaves_every_other_criterion_s_set_reused
+         27.2  tests/requirement/test_carry_forward.py::test_two_requirements_are_the_same_requirement_when_their_text_matches_exactly
+
+  28. Recording ways of failing does not change the review's completion conclusion or any criterion's rating.
+       requirements: completion-07
+       code evidence: addressed
+         28.1  src/acceptance/pipeline.py#@@ -317,6 +313,37 @@ def run_review(
+         28.2  src/acceptance/pipeline.py#@@ -507,6 +534,7 @@ def run_review(
+         28.3  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+       test evidence: strongly supported  [tier: static]
+         28.4  tests/defects/test_enumeration.py::test_recording_ways_of_failing_changes_no_verdict_and_no_rating
+
+  29. Two recorded runs over the same input produce byte-identical review state and byte-identical report output.
+       requirements: completion-08
+       code evidence: addressed
+         29.1  src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+         29.2  src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+         29.3  tests/defects/test_enumeration.py#@@ -0,0 +1,572 @@
+       test evidence: strongly supported  [tier: static]
+         29.4  tests/defects/test_enumeration.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+         29.5  tests/requirement/test_carry_forward.py::test_a_carried_disposition_records_the_digest_it_came_from_not_a_run_id
+         29.6  tests/requirement/test_carry_forward.py::test_two_runs_over_the_same_task_and_ledger_state_are_byte_identical
+         29.7  tests/test_carry.py::test_moving_the_rule_left_the_decompose_carry_key_byte_identical
+         29.8  tests/test_determinism.py::test_canonical_json_is_sorted_and_stable
+         29.9  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         29.10  tests/test_recommendation_omission.py::test_two_runs_over_the_same_inputs_render_the_same_report
+         29.11  tests/test_review_store.py::test_stored_form_is_canonical
+         29.12  tests/test_stage_attribution.py::test_the_breakdown_never_reaches_review_state
+         29.13  tests/test_stage_attribution.py::test_the_breakdown_never_reaches_the_rendered_report
+         29.14  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+
+Mandate coverage: 28 of 29 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation.
+       reason: The requirement is only the section marker "Implementation." standing alone, with no substantive requirement under it.
+
+Unrequested changes:
+  1. [risky] `align_obligations` now accepts an optional `stage` parameter and forwards it to `client.complete`. None of the listed obligations require changing the benchmark alignment helper's public signature or its call contract; the task is about recording failure modes, not altering benchmark alignment APIs.
+       src/acceptance/benchmark/alignment.py#@@ -61,6 +68,7 @@ def align_obligations(
+       src/acceptance/benchmark/alignment.py#@@ -74,7 +82,7 @@ def align_obligations(
+  2. [risky] `run_check` now unpacks and writes `defect_sets` into the ledger entry. The obligations require the recorded failures to persist with review state and be reported, but they do not require the CLI check path to change its ledger-writing behavior or payload shape.
+       src/acceptance/cli.py#@@ -205,7 +205,7 @@ def run_check(
+       src/acceptance/cli.py#@@ -213,6 +213,7 @@ def run_check(
+  3. [in_service] A new `acceptance.defects` package, taxonomy, and enumeration pipeline were added. The obligations ask for recorded failure modes, checklist guidance, persistence, carry/reuse, and reporting, but they do not explicitly require introducing this new module structure or the specific defect taxonomy implementation details.
+       src/acceptance/defects/__init__.py#@@ -0,0 +1,16 @@
+       src/acceptance/defects/enumeration.py#@@ -0,0 +1,428 @@
+       src/acceptance/defects/taxonomy.py#@@ -0,0 +1,144 @@
+  4. [in_service] `run_review` now invokes defect enumeration before test discovery and appends `defect_sets` into the ledger sink tuple. The obligations require the recording step to exist and be test-blind, but they do not require this pipeline-stage insertion or the changed sink payload plumbing.
+       src/acceptance/pipeline.py#@@ -40,6 +40,7 @@ from acceptance.coverage.open_questions import (
+       src/acceptance/pipeline.py#@@ -298,11 +299,6 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -317,6 +313,37 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -507,6 +534,7 @@ def run_review(
+  5. [in_service] `render_report` now emits a new advisory defect block. The obligations require the review to report recorded ways of failing, but they do not require this specific report section placement, heading text, or formatting behavior.
+       src/acceptance/report.py#@@ -19,6 +19,7 @@ from __future__ import annotations
+       src/acceptance/report.py#@@ -113,6 +114,10 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -151,6 +156,37 @@ def render_report(review: Review) -> str:
+  6. [risky] `plan_carry` now passes a `stage` argument when calling the benchmark alignment helper. The obligations cover carry/reuse behavior, but they do not require changing the carry planner's call site to benchmark alignment or introducing stage attribution there.
+       src/acceptance/requirement/carry.py#@@ -46,6 +46,12 @@ from .ledger import (
+       src/acceptance/requirement/carry.py#@@ -174,6 +180,7 @@ def plan_carry(
+  7. [in_service] `LedgerEntry` and `build_ledger_entry` now persist `defect_sets`. The obligations require recorded failures to persist with review state, but they do not specifically require extending the ledger entry schema and builder signature in this way.
+       src/acceptance/requirement/ledger.py#@@ -49,7 +49,7 @@ from pydantic import Field
+       src/acceptance/requirement/ledger.py#@@ -184,6 +184,15 @@ class LedgerEntry(PersistableModel):
+       src/acceptance/requirement/obligations.py#@@ -66,6 +66,7 @@ from acceptance.requirement.summary import (
+       src/acceptance/requirement/obligations.py#@@ -1357,6 +1358,7 @@ def build_ledger_entry(
+       src/acceptance/requirement/obligations.py#@@ -1365,6 +1367,10 @@ def build_ledger_entry(
+       src/acceptance/requirement/obligations.py#@@ -1374,6 +1380,7 @@ def build_ledger_entry(
+  8. [in_service] `review_state` gained new `DefectType`, `Defect`, `DefectSet`, and `Review.defect_sets` models. The task requires recording and persisting failure modes, but it does not explicitly require this new state-model expansion or the exact field layout.
+       src/acceptance/review_state.py#@@ -93,6 +93,103 @@ class ObligationType(str, Enum):
+       src/acceptance/review_state.py#@@ -998,6 +1095,17 @@ class Review(_Model):
+  9. [in_service] The test support helpers were changed to special-case `_Enumeration` responses and provide a default empty enumeration payload. The obligations require tests for the new behavior, but they do not require altering the shared test double machinery to synthesize enumeration responses.
+       tests/support.py#@@ -457,6 +457,14 @@ def _completed(response: dict, **kwargs) -> dict:
+       tests/support.py#@@ -770,6 +778,17 @@ _EMPTY_BY_SCHEMA = {
+  10. [separable] `tests/test_carry.py` and `tests/test_stage_attribution.py` were expanded to cover stage attribution and benchmark-import scanning. The obligations require carry/reuse and no-test-attribution behavior, but not these specific additional attribution tests or the benchmark-import scan logic.
+       tests/test_carry.py#@@ -17,6 +17,7 @@ import pytest
+       tests/test_carry.py#@@ -32,6 +33,7 @@ from acceptance.review_state import (
+       tests/test_carry.py#@@ -205,6 +207,44 @@ def test_decomposition_reaches_its_carry_verdict_through_the_shared_rule(monkeyp
+       tests/test_stage_attribution.py#@@ -14,6 +14,13 @@ that never records it.
+       tests/test_stage_attribution.py#@@ -103,6 +110,68 @@ def test_no_review_pipeline_call_site_omits_its_stage():
+
+Ways the change could fail a criterion (advisory — no verdict depends on these):
+
+  pre-test-failure-modes
+    [not_wired] pre-test-failure-modes/defect-not-rendered-before-tests
+      The new defect-enumeration stage is computed in `pipeline.py`, but the review report path may still omit it or render it only after later evidence stages, so the output would not actually include failure-mode notes before test results are examined.
+      src/acceptance/pipeline.py#2
+      src/acceptance/pipeline.py#3
+      src/acceptance/report.py#1
+    [scope_too_narrow] pre-test-failure-modes/defect-stage-not-invoked-for-all-derived-criteria
+      `enumerate_defects()` only runs over obligations where `enumerable(o.type)` is true, so any derived criterion type that is not in that predicate gets no failure-mode note at all even though the criterion asks for each derived criterion.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/defects/taxonomy.py#0
+    [wrong_output_shape] pre-test-failure-modes/defect-empty-set-without-clear-note
+      When an obligation has no plausible defects, the code stores an empty `DefectSet` with a reason string, but the report renders that as a special advisory block rather than a straightforward per-criterion failure-mode note, so the observable output shape can differ from the criterion's requested notes-per-criterion form.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/report.py#1
+
+  recorded-failure-fields
+    [missing_case] recorded-failure-fields/missing-criterion-field
+      The recorded failure entry can be written without the criterion it belongs to: `DefectSet` stores `obligation_id`, `defects`, `reason`, `obligation_text`, `carry_key`, `region_digests`, and `carried_from`, but there is no field that records the criterion classification/type for the set itself, so the review record does not carry all five required fields at the set level.
+      src/acceptance/review_state.py#0
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/cli.py#1
+      src/acceptance/pipeline.py#2
+      src/acceptance/report.py#1
+    [scope_too_narrow] recorded-failure-fields/non-unique-defect-ids
+      The per-defect identifier is only made unique within one enumerated answer, not within the whole review: `_defects_from` deduplicates against a local `seen` set, so two recorded defects from different obligations can still end up with the same `obligation_id/slug`-based id if the same slug is reused.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/review_state.py#0
+    [missing_case] recorded-failure-fields/region-refs-can-be-dropped
+      Recorded failures can lose their implicated changed-source regions when the labels are not present in `label_to_ref`: `_defects_from` filters `entry.code_refs` down to labels found in the current change set, so a defect answer that names a changed region label not present in the mapping is recorded with fewer or no implicated regions instead of preserving the model's full set.
+      src/acceptance/defects/enumeration.py#0
+
+  use-recorded-way-identifiers
+    [other] use-recorded-way-identifiers/report-renders-defect-descriptions
+      The report's new defect block prints each defect's free-text description under its identifier, so review output still repeats the content of the recorded way of failing instead of referring to it only by identifier.
+      src/acceptance/report.py#1
+    [other] use-recorded-way-identifiers/carry-path-keeps-obligation-text-as-identity
+      The new defect-set carry path keys reuse on `obligation_text`, and the stored `DefectSet` also persists `obligation_text`; that means the review state still carries the recorded way of failing by restating its content rather than only by identifier, so a reworded obligation can be matched by content instead of an identifier.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/review_state.py#0
+      src/acceptance/requirement/ledger.py#1
+
+  classification-escape-value
+    [qualifier_ignored] classification-escape-value/escape-accepted-for-covered-values
+      The escape value is accepted even when the checklist has a matching fixed-vocabulary value, so a covered failure can be reported as `other` instead of being kept in the fixed vocabulary.
+      src/acceptance/defects/taxonomy.py#0
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/review_state.py#0
+    [established_not_maintained] classification-escape-value/escape-not-kept-singleton
+      The code can produce more than one escape classification path by mapping an unconvertible type to `OTHER` after schema narrowing, so the invariant that there is exactly one escape value is not preserved across the response-to-record conversion.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/review_state.py#0
+
+  persist-recorded-failures
+    [other] persist-recorded-failures/defect-sets-not-written-to-review-storage
+      The new `Review.defect_sets` field is added to the in-memory model, but the review persistence path may not serialize and deserialize it, so a saved review can reload with the recorded failures missing or reset to defaults.
+      src/acceptance/review_state.py#1
+      src/acceptance/report.py#1
+      src/acceptance/cli.py#1
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+    [other] persist-recorded-failures/ledger-entry-carry-path-drops-defect-sets
+      The ledger entry builder and CLI wiring now pass `defect_sets`, but if the storage/reload path reconstructs review state from a ledger entry without reading that field back into `Review`, the recorded failures will not persist across reloads.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/review_state.py#1
+
+  no-test-for-recording-step
+    [other] no-test-for-recording-step/test-input-still-reachable
+      The recording stage still assembles and passes the full diff-derived message bundle, and the diff content can still include test files because the new filter only removes files by category from the change set; if any test-like content survives in the visible change set or is reintroduced through the assembled prompt path, the step is still effectively given test input.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/pipeline.py#2
+      src/acceptance/benchmark/alignment.py#0
+    [scope_too_narrow] no-test-for-recording-step/recording-step-not-isolated-from-test-discovery
+      The new enumeration call is placed before test discovery in the pipeline, but only for the main review path; any alternate path that invokes the recording step outside this ordering could still supply test-derived inputs, so the no-test guarantee does not hold for all executions covered by the criterion.
+      src/acceptance/pipeline.py#2
+      src/acceptance/pipeline.py#3
+    [other] no-test-for-recording-step/carry-path-reuses-alignment-with-stage
+      The carry/rewording path now reuses the alignment helper with an explicit stage, but that helper still accepts arbitrary caller-provided inputs; if the reused call is ever fed test-derived descriptions from the prior run, the recording-related step can still be influenced by test information even though the benchmark caller passes none.
+      src/acceptance/benchmark/alignment.py#1
+      src/acceptance/benchmark/alignment.py#2
+      src/acceptance/requirement/carry.py#0
+      src/acceptance/requirement/carry.py#1
+
+  checklist-guided-failure-recording
+    [other] checklist-guided-failure-recording/checklist-not-applied-to-enum
+      The enumerator still accepts defect types from the full vocabulary instead of narrowing the response schema to the checklist chosen for the obligation type, so a criterion can record failures that are not guided by its type-selected checklist.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/defects/taxonomy.py#0
+    [other] checklist-guided-failure-recording/other-entry-not-preserved
+      The code filters `code_refs` against the current change-set labels and drops any reference that is not present, which can erase an additional recorded failure's linkage instead of preserving the extra failure record the criterion allows.
+      src/acceptance/defects/enumeration.py#0
+
+  empty-failing-set-valid-with-reason
+    none enumerated: The diff adds explicit support for empty defect sets with a reason: `DefectSet` requires `reason` to distinguish empty from absent, `enumerate_defects` fills in a fallback reason when no defects are returned, and the report renders that reason for empty sets. I do not see a plausible code path in the changed code that records an empty set without a reason.
+
+  reuse-recorded-set-when-criterion-and-source-unchanged
+    [scope_too_narrow] reuse-recorded-set-when-criterion-and-source-unchanged/carry-key-uses-current-region-digests-for-new-enumerations
+      A newly enumerated defect set is keyed with `region_digests` computed from the defects just returned, so if the model implicates a region that was unchanged but not mentioned in the stored set, the carry key can fail to reflect the full set of implicated source-region contents the criterion depends on.
+      src/acceptance/defects/enumeration.py#0
+    [prior_behavior_altered] reuse-recorded-set-when-criterion-and-source-unchanged/reused-set-keeps-old-region-digests
+      When a prior defect set is carried forward, the code updates the obligation id and defects but leaves the stored `region_digests` and `carry_key` from the earlier run intact, so the reused record is not revalidated against the current source-region contents before being treated as current.
+      src/acceptance/defects/enumeration.py#0
+    [condition_inverted] reuse-recorded-set-when-criterion-and-source-unchanged/carry-match-ignores-source-region-contents
+      The reuse decision is driven by `candidate.carry_key` and the obligation text lookup, but the current source-region contents are only folded into the recomputed key after the candidate is selected; if the prior record's implicated regions changed without changing the text, the code can still select the prior set before the source-content check has any effect.
+      src/acceptance/defects/enumeration.py#0
+
+  recompute-changed-criterion-records
+    [established_not_maintained] recompute-changed-criterion-records/criterion-text-change-reuses-prior-defect-set
+      The carry path reuses a prior DefectSet when the obligation text matches, and the new enumeration path does not force a fresh defect set for a criterion whose text changed, so a changed criterion can keep previously recorded failures instead of being regenerated from scratch.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/review_state.py#0
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/pipeline.py#2
+    [unenforced_on_one_path] recompute-changed-criterion-records/partial-retention-through-carried-defect-fields
+      When a prior DefectSet is carried forward, the code updates the obligation id but otherwise preserves the stored defects and their code_refs, so a changed criterion can retain part of its previously recorded failure set instead of replacing it entirely.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/review_state.py#0
+
+  reuse-entitled-sets-on-continued-run
+    [scope_too_narrow] reuse-entitled-sets-on-continued-run/continued-run-uses-only-first-sink-entry
+      The continued-run ledger write now unpacks only `sink[0]`, so if the run produces more than one sink entry, only the first one gets its defect sets persisted and the rest are not reused on the next continued run.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+    [missing_case] reuse-entitled-sets-on-continued-run/defect-sets-not-carried-into-ledger-entry-before-313
+      `build_ledger_entry` now accepts `defect_sets`, but the continued-run path depends on the caller passing them through; any continued run that reaches the ledger write without that new argument will persist an entry with an empty defect-set list and lose reuse entitlement.
+      src/acceptance/cli.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#3
+      src/acceptance/review_state.py#1
+
+  regenerate-only-nonreusable-sets
+    [condition_inverted] regenerate-only-nonreusable-sets/carry-check-uses-current-regions
+      The reuse check is keyed with `region_digests_for(visible, _labels(candidate))`, so it recomputes digests from the current run's visible change set instead of the stored set's implicated regions. That can make a set look reusable when the current diff happens to contain the same labels, or force regeneration for a set that should have been reused.
+      src/acceptance/defects/enumeration.py#0
+    [scope_too_narrow] regenerate-only-nonreusable-sets/empty-set-reason-never-reused
+      When a prior defect set is carried forward, the code copies the stored defects but does not preserve any distinction for sets that were previously empty with a reason. If the carry decision is wrong for only some obligation texts or region combinations, those sets will be regenerated even though they are entitled to reuse.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/review_state.py#0
+    [not_wired] regenerate-only-nonreusable-sets/ledger-prior-defect-sets-not-carried-into-check
+      The pipeline now passes `prior=list(ledger_prior.defect_sets)` into `enumerate_defects`, but the ledger entry builder only stores `defect_sets` on the check path. If a continuing run is resumed from an older ledger entry that lacks this field, there is no reuse input and every set is regenerated.
+      src/acceptance/pipeline.py#2
+      src/acceptance/requirement/ledger.py#0
+      src/acceptance/requirement/obligations.py#1
+
+  continued-run-produces-only-uncached-sets
+    [scope_too_narrow] continued-run-produces-only-uncached-sets/continued-run-still-enumerates-carried-defect-sets
+      The new defect enumeration stage is wired into `run_review`, but the continued-run reuse path only carries prior defect sets forward by matching on obligation text and region digests. If that matching misses a reusable set because the prior entry is absent, renamed, or keyed differently, the run will regenerate a set that should have been reused, so a continued run can still produce more than just uncached sets.
+      src/acceptance/pipeline.py#2
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/review_state.py#0
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#2
+
+  reuse-says-so
+    none enumerated: The report renderer now explicitly annotates carried defect sets with "(reused from an earlier run)" when `carried_from` is present, so reused sets are not silently omitted. The criterion is satisfied by the added rendering branch, and there is no plausible static defect in the diff that would make reused sets fail to be marked as reused.
+
+  report-recorded-ways-of-failing
+    [missing_case] report-recorded-ways-of-failing/defect-block-not-rendered-for-empty-sets
+      The report only adds the defect block when `review.defect_sets` is truthy, so a recorded empty set is omitted entirely instead of being reported by identifier with its reason.
+      src/acceptance/report.py#1
+    [scope_too_narrow] report-recorded-ways-of-failing/defect-sets-not-shown-for-carried-entries
+      The defect block renders carried entries the same as fresh ones except for a parenthetical note, but it does not ensure the recorded ways of failing are included for every carried set in the review output path if the set is reused from prior state and not present in `review.defect_sets`.
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#1
+
+  completion-and-ratings-unchanged
+    [established_not_maintained] completion-and-ratings-unchanged/defect-sets-fed-into-review-state
+      The new defect_sets field is added to Review and populated in the pipeline, so the review state now carries recorded ways of failing through the rest of the report path; if any downstream logic consults or derives from that field, completion or criterion ratings can diverge from the no-defect run.
+      src/acceptance/pipeline.py#2
+      src/acceptance/pipeline.py#3
+      src/acceptance/review_state.py#1
+    [established_not_maintained] completion-and-ratings-unchanged/report-renders-defect-section
+      render_report now emits a defect block whenever review.defect_sets is non-empty, so the review output is no longer identical to the output of the same review without recorded ways of failing; the report text itself changes even though the criterion requires completion and ratings to remain exactly unchanged.
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+    [other] completion-and-ratings-unchanged/ledger-entry-carries-defect-sets
+      The ledger entry builder and CLI now persist defect_sets alongside the existing review data, so a continued run can replay or reuse recorded ways of failing; if that persisted state is consulted when computing completion or ratings, the result can differ from the same review with no defect records.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+
+  no-test-judgment-about-recorded-failure
+    [other] no-test-judgment-about-recorded-failure/test-failure-judgment-added-in-enumeration-stage
+      The new defect enumeration stage is wired into the review pipeline before test discovery, but it does not itself evaluate whether tests would fail for a recorded defect set; it only enumerates defects and records them as advisory output.
+      src/acceptance/pipeline.py#2
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/report.py#1
+
+  no-derive-ratings-from-recorded-failures
+    [other] no-derive-ratings-from-recorded-failures/defect-sets-fed-into-review-state
+      The new `defect_sets` field is added to `Review` and populated in `run_review`, so recorded ways of failing are now carried through the review object and rendered in the report; if any downstream logic later reads that field to influence a criterion rating or conclusion, the change would be deriving a result from recorded failures.
+      src/acceptance/review_state.py#1
+      src/acceptance/pipeline.py#2
+      src/acceptance/report.py#1
+    [other] no-derive-ratings-from-recorded-failures/ledger-carries-failure-records-forward
+      `build_ledger_entry` now persists `defect_sets`, and `run_check` writes them into the ledger entry, so a later run can reuse recorded failures as prior state; if any rating or classification path consults that carried-forward failure record, the implementation would be deriving a conclusion from recorded failures.
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/cli.py#1
+
+  derive-criteria-from-mandate-and-method
+    [other] derive-criteria-from-mandate-and-method/defect-enumeration-added-to-review-path
+      The review pipeline now calls `enumerate_defects` and stores `defect_sets` on `Review`, so the review logic has gained a new derived-criteria stage that appears in output and persisted state. That changes what the review derives from the mandate and how the derivation is represented.
+      src/acceptance/pipeline.py#2
+      src/acceptance/pipeline.py#3
+      src/acceptance/report.py#1
+      src/acceptance/review_state.py#1
+    [other] derive-criteria-from-mandate-and-method/ledger-entry-carries-defect-sets
+      `build_ledger_entry` and `LedgerEntry` now persist `defect_sets`, so the derivation method is no longer confined to the existing mandate/coverage chain. This new stored review artifact changes the review's derived criteria surface and can affect continuation behavior.
+      src/acceptance/requirement/ledger.py#0
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+    [other] derive-criteria-from-mandate-and-method/carry-alignment-now-stage-aware
+      `align_obligations` now accepts a `stage` parameter and forwards it to `client.complete`, and `requirement/carry.py` passes a stage name. That changes the derivation method used for matching reworded requirements, so the review no longer derives criteria the same way as before.
+      src/acceptance/benchmark/alignment.py#1
+      src/acceptance/benchmark/alignment.py#2
+      src/acceptance/requirement/carry.py#0
+      src/acceptance/requirement/carry.py#1
+
+  no-test-evidence-gathering-judgment-rating
+    [documented_not_implemented] no-test-evidence-gathering-judgment-rating/test-evidence-stage-added-to-pipeline
+      The pipeline now calls `enumerate_defects(...)` before test discovery and threads `defect_sets` into the review and ledger/report outputs, so the review's outputs and execution path are altered even though the criterion says test-evidence gathering, judging, and rating should not change today.
+      src/acceptance/pipeline.py#2
+      src/acceptance/pipeline.py#3
+      src/acceptance/review_state.py#1
+      src/acceptance/report.py#1
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+    [other] no-test-evidence-gathering-judgment-rating/benchmark-alignment-now-carries-stage
+      `align_obligations` now accepts a `stage` parameter and passes it through to `client.complete`, which changes the review-call accounting path used by the benchmark alignment helper and can affect review-stage outputs/footers rather than leaving test-evidence logic untouched.
+      src/acceptance/benchmark/alignment.py#1
+      src/acceptance/benchmark/alignment.py#2
+    [other] no-test-evidence-gathering-judgment-rating/requirement-carry-stage-name-added
+      `requirement/carry.py` now names its own stage and passes that stage into `align_obligations`, changing review-call attribution behavior in the review path instead of leaving the existing test-evidence machinery unchanged.
+      src/acceptance/requirement/carry.py#0
+      src/acceptance/requirement/carry.py#1
+
+  no-runtime-failure-injection
+    [other] no-runtime-failure-injection/runtime-execution-in-diff
+      The diff includes code that is meant to run the delivered code path and exercise it at runtime: the new defect enumeration stage is wired into the pipeline, report rendering, and ledger persistence, so the change is not limited to static text or metadata.
+      src/acceptance/pipeline.py#2
+      src/acceptance/report.py#1
+      src/acceptance/cli.py#1
+      src/acceptance/requirement/ledger.py#1
+    [other] no-runtime-failure-injection/failure-injection-via-stage-hooks
+      The change alters model-call behavior to pass stage names into live execution paths, including benchmark alignment and requirement carry alignment, which is a runtime behavior change rather than a non-executing description-only edit.
+      src/acceptance/benchmark/alignment.py#1
+      src/acceptance/benchmark/alignment.py#2
+      src/acceptance/requirement/carry.py#0
+      src/acceptance/requirement/carry.py#1
+
+  no-external-expected-set-comparison
+    [other] no-external-expected-set-comparison/external-set-comparison-in-carry-alignment
+      `requirement/carry.py` now calls `align_obligations` with `stage=_STAGE`, and `align_obligations` forwards that stage into `client.complete`; this reuses the alignment machinery in the review flow to match prior wording against current wording, which is a comparison against an externally supplied prior set rather than a purely internal one.
+      src/acceptance/benchmark/alignment.py#1
+      src/acceptance/benchmark/alignment.py#2
+      src/acceptance/requirement/carry.py#0
+      src/acceptance/requirement/carry.py#1
+    [other] no-external-expected-set-comparison/defect-set-carry-uses-prior-ledger-entry
+      `enumerate_defects` accepts `prior` defect sets from `ledger_prior` and reuses a carried set when the stored carry key matches, so the review flow now compares a recorded set against a prior set supplied from outside the current run's review state.
+      src/acceptance/pipeline.py#2
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/review_state.py#0
+
+  completion-07-no-rating-or-conclusion-change
+    [prior_behavior_altered] completion-07-no-rating-or-conclusion-change/defect-sets-fed-into-verdict-path
+      The new defect-set plumbing is threaded into the review state and report, but the pipeline now records `defect_sets` as part of the run output and passes them through the same review object that drives later rendering; if any downstream completion logic reads the expanded review state, recording failures could change the completion conclusion or a criterion rating.
+      src/acceptance/pipeline.py#2
+      src/acceptance/pipeline.py#3
+      src/acceptance/review_state.py#1
+      src/acceptance/review_state.py#0
+      src/acceptance/report.py#1
+    [prior_behavior_altered] completion-07-no-rating-or-conclusion-change/defect-set-carry-affects-reused-review-state
+      `LedgerEntry` now persists `defect_sets`, and `build_ledger_entry` always writes them back into the stored run record; if a continued review reuses that stored state, the newly recorded failure sets can become part of the premise for later stages and alter a completion conclusion or rating that used to be independent of them.
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+
+  byte-identical-runs
+    [prior_behavior_altered] byte-identical-runs/report-includes-nondeterministic-defect-order
+      The new defect enumeration block is rendered from `review.defect_sets` without any explicit stable ordering of the sets or of each set's defects, so two recorded runs that enumerate the same defects in a different iteration order can produce different report bytes.
+      src/acceptance/report.py#1
+      src/acceptance/defects/enumeration.py#0
+    [prior_behavior_altered] byte-identical-runs/ledger-entry-now-carries-defect-sets
+      `build_ledger_entry` now persists `defect_sets`, and those sets include carry metadata and region digests derived from the current run; if any of that content varies across repeated runs, the persisted review state will no longer be byte-identical.
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/review_state.py#0
+    [prior_behavior_altered] byte-identical-runs/carry-key-depends-on-current-region-digests
+      The defect-set carry key now incorporates `region_digests`, which are computed from the implicated changed regions; if the same input is recorded twice but the set of implicated regions is derived differently, the stored carry key and carried state can differ between runs.
+      src/acceptance/defects/enumeration.py#0
+      src/acceptance/review_state.py#0
+    [prior_behavior_altered] byte-identical-runs/report-prints-carried-from-run-specific-marker
+      The report block prints a `(reused from an earlier run)` marker whenever `carried_from` is present, so if the same logical review is replayed with different carry history the generated report bytes will differ even when the underlying input is unchanged.
+      src/acceptance/report.py#1
+      src/acceptance/review_state.py#0
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 68d1e6a6621eab41
+  continuing 3d391de59262b762
+  continue this run with: --continue 68d1e6a6621eab41
+Model usage by stage:
+  stage                         model                                       calls   prompt  output  cached  this run  recorded
+  ----------------------------  ----------------------  -------------------------  -------  ------  ------  --------  --------
+  obligation linking            voyage/voyage-3.5-lite    1 (0 live / 1 replayed)    1,264       0       —   $0.0000   $0.0000
+  test-to-obligation mapping    openai/gpt-5.4-mini     14 (14 live / 0 replayed)   67,997   9,598   31.6%   $0.0797   $0.0797
+  discrimination judgment       openai/gpt-5.4-mini       1 (1 live / 0 replayed)   17,248   1,617    0.0%   $0.0202   $0.0202
+  coverage classification       openai/gpt-5.4-mini       1 (1 live / 0 replayed)   21,500   2,070    0.0%   $0.0254   $0.0254
+  unrequested-change detection  openai/gpt-5.4-mini       1 (1 live / 0 replayed)   20,991   1,066    0.0%   $0.0205   $0.0205
+  disposition judgment          openai/gpt-5.4-mini       4 (4 live / 0 replayed)    9,731     336    0.0%   $0.0088   $0.0088
+  test recommendation           openai/gpt-5.4-mini       1 (1 live / 0 replayed)   19,490     454    0.0%   $0.0167   $0.0167
+  defect enumeration            openai/gpt-5.4-mini     24 (24 live / 0 replayed)  294,346   6,806    0.0%   $0.2514   $0.2514
+  this run spent $0.4227 on 46 live call(s); the evidence cost $0.4227 to record (1 call(s) replayed at no cost to this run)
+
