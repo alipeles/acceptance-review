@@ -56,7 +56,7 @@ from acceptance.review_state import (
     RequirementSection,
 )
 from acceptance.source_ref import TextSpan
-from tests.support import client_dispatching
+from tests.support import _supplied_enum, client_dispatching, covered_summary
 
 _TASK = """# Task
 The tool records what it derived.
@@ -124,7 +124,15 @@ class _CountingClient:
 
     @property
     def decompose_calls(self) -> int:
-        return sum(1 for call in self.calls if call["schema"] == "_Decomposition")
+        """Every call derivation issued, the summary step's included (#317).
+
+        `calls_issued` counts the whole stage, and the summary pass is part of
+        it — a count that named only `_Decomposition` would report the ledger as
+        wrong on every mandate with an opening paragraph.
+        """
+        return sum(
+            1 for call in self.calls if call["schema"] in ("_Decomposition", "_SummarySpans")
+        )
 
     def prompts_for(self, schema: str) -> list[str]:
         return [call["prompt"] for call in self.calls if call["schema"] == schema]
@@ -404,9 +412,24 @@ def _answering(by_requirement: dict[str, tuple[str, str]], alignment: list[dict]
                 usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
             )
 
-        dispositions = [
-            {
-                "requirement_id": requirement_id,
+        if kwargs["response_format"]["json_schema"]["name"] == "_SummarySpans":
+            return SimpleNamespace(
+                choices=[
+                    SimpleNamespace(
+                        message=SimpleNamespace(content=json.dumps(covered_summary(**kwargs)))
+                    )
+                ],
+                usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+            )
+
+        # One requirement per call (#317), so the answer is the entry for the id
+        # this call asked about; a requirement this fixture says nothing about
+        # declines.
+        asked = _supplied_enum("requirement_id", **kwargs)[0]
+        if asked in by_requirement:
+            obligation_id, description = by_requirement[asked]
+            disposition = {
+                "requirement_id": asked,
                 "disposition": "yielded",
                 "obligation": {
                     "id": obligation_id,
@@ -421,9 +444,13 @@ def _answering(by_requirement: dict[str, tuple[str, str]], alignment: list[dict]
                 },
                 "more_obligations": [],
             }
-            for requirement_id, (obligation_id, description) in by_requirement.items()
-        ]
-        payload = json.dumps({"open_questions": [], "requirement_dispositions": dispositions})
+        else:
+            disposition = {
+                "requirement_id": asked,
+                "disposition": "no_obligation",
+                "reason": "not this test's subject",
+            }
+        payload = json.dumps({"open_questions": [], "requirement_disposition": disposition})
         return SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(content=payload))],
             usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),

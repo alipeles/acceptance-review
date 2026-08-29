@@ -200,7 +200,7 @@ def test_a_real_review_run_attributes_every_call_it_made(tmp_path):
     assert not unattributed, f"{len(unattributed)} call(s) reported no stage: {unattributed}"
     # And each observation carries the four fields the aggregate needs.
     for call in observed:
-        assert set(call) == {"stage", "key", "served_from", "usage"}
+        assert set(call) == {"stage", "key", "served_from", "model", "usage"}
         assert call["served_from"] in {"provider", "recording"}
 
 

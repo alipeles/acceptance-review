@@ -448,8 +448,21 @@ class ModelClient:
         completion_fn: Callable[..., Any] | None = None,
         embedding_model: str | None = None,
         embedding_fn: Callable[..., Any] | None = None,
+        stage_models: Mapping[str, str] | None = None,
     ) -> None:
         self.model = model
+        # Stages that name their own model (#317). A stage absent from this map
+        # runs on `model`, which is what almost every stage does; the map exists
+        # because a judgment can genuinely need a different judge. #317's summary
+        # step is the first: `gpt-5.4-mini` failed it in three different ways
+        # across three prompt versions — returning nothing, marking every span
+        # covered, and marking every span uncovered.
+        #
+        # The chosen model is part of the request and so part of its key, exactly
+        # as it always was. Moving a stage onto a different model therefore
+        # orphans that stage's recordings and no others, which is the correct
+        # consequence: a different judge is a different answer.
+        self._stage_models = dict(stage_models or {})
         self.mode = mode
         self.store = store if store is not None else TranscriptStore()
         self.temperature = temperature
@@ -490,7 +503,35 @@ class ModelClient:
         # {stage, key, served_from, usage} — see `observed_calls` (#264).
         self._observed_calls: list[dict[str, Any]] = []
 
-    def _observe_call(self, stage: str | None, key: str, served_from: str, record: dict) -> None:
+    def model_for(self, stage: str | None) -> str:
+        """The model this stage runs on: its own if it names one, else the run's."""
+        return self._stage_models.get(stage or UNKNOWN_STAGE, self.model)
+
+    @property
+    def stage_models_in_force(self) -> dict[str, str]:
+        """Which model each stage's calls actually ran on, observed not configured.
+
+        Every stage that issued a call appears, whether it named a model or
+        inherited the run's — "a completed run says which model each step used"
+        is a claim about the run that happened, and a stage omitted because it
+        took the default would leave a reader inferring it.
+
+        A stage whose calls disagree is omitted rather than reported at a model
+        only some of them ran under, exactly as `partition_sizes_in_force` and
+        `controls_in_force` do on disagreement.
+        """
+        by_stage: dict[str, set[str]] = {}
+        for call in self._observed_calls:
+            model = call.get("model")
+            if isinstance(model, str):
+                by_stage.setdefault(call["stage"], set()).add(model)
+        return {
+            stage: models.pop() for stage, models in sorted(by_stage.items()) if len(models) == 1
+        }
+
+    def _observe_call(
+        self, stage: str | None, key: str, served_from: str, record: dict, model: str
+    ) -> None:
         """Note what one call cost and where its answer came from.
 
         Appended on BOTH paths, because the two questions a reader has are
@@ -506,6 +547,11 @@ class ModelClient:
                 "stage": stage or UNKNOWN_STAGE,
                 "key": key,
                 "served_from": served_from,
+                # The model this call actually went to, which is not always the
+                # run's: a stage may name its own (#317). Read off the request
+                # rather than off `self.model`, so a replayed call reports the
+                # model its transcript was recorded against.
+                "model": model,
                 "usage": dict(record.get("usage") or {}),
             }
         )
@@ -529,10 +575,18 @@ class ModelClient:
         response_model: type[BaseModel],
         partition: dict[str, Any] | None = None,
         stage_controls: dict[str, Any] | None = None,
+        stage: str | None = None,
     ) -> dict:
-        """The recorded, hashed description of a call."""
+        """The recorded, hashed description of a call.
+
+        `stage` selects the model — a stage that names one runs on it (#317) —
+        and reaches the hash only through that model. The label itself stays out,
+        for the reason `complete` gives: it is provenance, and folding it in
+        would re-key every existing transcript for something that cannot change
+        an answer.
+        """
         request: dict[str, Any] = {
-            "model": self.model,
+            "model": self.model_for(stage),
             "messages": messages,
             "temperature": self.temperature,
             "response_schema": {
@@ -582,7 +636,7 @@ class ModelClient:
         `SchemaValidationError` that discards every judgment in the batch. The
         stage then checks the ids itself — see `supplied_ids`.
         """
-        request = self.build_request(messages, response_model, partition, stage_controls)
+        request = self.build_request(messages, response_model, partition, stage_controls, stage)
         key = request_key(request)
         record = self.store.read(key)
         # Decided BEFORE the live call replaces `record`, which is the only
@@ -611,7 +665,7 @@ class ModelClient:
         # that of the recording it replays, so a transcript recorded against a
         # provider that discarded a control must not replay as pinned.
         self._observed_controls.append(record.get("controls_applied"))
-        self._observe_call(stage, key, served_from, record)
+        self._observe_call(stage, key, served_from, record, request["model"])
         if partition is not None:
             # `stage` is deliberately NOT in `build_request`: it names which
             # caller partitioned, which is provenance, not a determinism
@@ -675,7 +729,7 @@ class ModelClient:
         # rather than a stage of its own: what a reader wants to know is what
         # linking cost, not what linking's embeddings cost separately, and
         # splitting them would attribute one stage's spend to two rows.
-        self._observe_call(stage, key, served_from, record)
+        self._observe_call(stage, key, served_from, record, request["model"])
         return self._validate_embeddings(record["response"], len(texts))
 
     def build_embedding_request(self, texts: Sequence[str]) -> dict:

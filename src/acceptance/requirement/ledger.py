@@ -64,7 +64,14 @@ DEFAULT_LEDGER_ROOT = Path(".acceptance/ledger")
 # Bump this by hand when that happens. It is deliberately an integer and not a
 # hash of the module: a hash would invalidate on every comment edit, which is the
 # failure mode that trains people to clear the ledger instead of reading it.
-DECOMPOSE_STAGE_LOGIC_VERSION = 1
+#
+# 2 (#317): a call answers for one requirement and can only quote that
+# requirement's own spans, so the attribution step that re-filed an obligation
+# onto whichever requirement its quotation landed in is gone; the opening summary
+# is accounted for by a separate step over spans of its own words; and
+# `satisfied_by_absence` is read off the answering requirement's section rather
+# than the quotation's owner.
+DECOMPOSE_STAGE_LOGIC_VERSION = 2
 
 
 class Derivation(str, Enum):

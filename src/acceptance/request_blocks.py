@@ -58,10 +58,19 @@ from enum import Enum
 # differed per stage put a difference in the first message of every request and
 # so made a shared prefix impossible. What is left here is only what is true of
 # every call the pipeline makes.
+#
+# **It says nothing about the order of the request's parts, deliberately.** It
+# used to open "You are given material to judge and, after it, the instructions
+# for one specific judgement", and that was false: `assemble` puts INSTRUCTIONS
+# before SUBJECT, so for a stage carrying neither a diff nor an obligation list
+# the instructions come first. It is not repairable by restating the order
+# either, because the order is not the same for every stage — a stage carrying a
+# DIFF block genuinely does get material first. A sentence that is true of some
+# requests and false of others is worse than no sentence, since the model reads
+# it on every one of them.
 SHARED_PREAMBLE = (
-    "You are an acceptance reviewer. You are given material to judge and, after "
-    "it, the instructions for one specific judgement. Answer only in the "
-    "requested schema, and answer only the question the instructions ask."
+    "You are an acceptance reviewer. Answer only in the requested schema, and "
+    "answer only the question the instructions ask."
 )
 
 # Names a provider gives to a reusable-opening breakpoint. Used by

@@ -34,6 +34,7 @@ from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_store import ReviewStore
 from tests.support import (
     _EMPTY_BY_SCHEMA,
+    WHOLE_SUMMARY_UNCOVERED,
     _completed,
     _fake_response,
     client_finding_nothing,
@@ -346,6 +347,11 @@ def test_archetype_8_unrequested_change_gap_matches_via_its_obligation(tmp_path)
                     }
                 ]
             },
+            # This archetype's task file is a Task paragraph and nothing else,
+            # so every obligation comes from the summary step (#317): with the
+            # covered answer there is no bullet for the ordinary decomposer to
+            # answer about, and the case would score an empty obligation set.
+            "_SummarySpans": WHOLE_SUMMARY_UNCOVERED,
             # cart.py is modified (not a pure addition) and leave-existing is not
             # `addressed`, so the disposition escalates to a model judgment.
             "_DispositionJudgment": {
@@ -422,6 +428,11 @@ def test_archetype_8_unrequested_change_metric_does_not_route_through_coverage(t
                     }
                 ]
             },
+            # This archetype's task file is a Task paragraph and nothing else,
+            # so every obligation comes from the summary step (#317): with the
+            # covered answer there is no bullet for the ordinary decomposer to
+            # answer about, and the case would score an empty obligation set.
+            "_SummarySpans": WHOLE_SUMMARY_UNCOVERED,
             # cart.py is modified (not a pure addition) and leave-existing is not
             # `addressed`, so the disposition escalates to a model judgment.
             "_DispositionJudgment": {

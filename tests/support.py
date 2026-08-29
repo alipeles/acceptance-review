@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import pathlib
+import re
 import tempfile
 from types import SimpleNamespace
 
@@ -227,6 +228,211 @@ def _nest_obligations(response: dict) -> dict:
     }
 
 
+_REGISTRY_LINE = re.compile(r"^\[([^\]]+)\] \(([^)]+)\) \[(ANSWER FOR THIS|context only)\] (.*)$")
+
+
+def _registry_from_prompt(**kwargs) -> list[dict]:
+    """The requirement listing a decompose call carries, read back off its prompt.
+
+    `_user_prompt` renders every requirement as
+    `[id] (section) [ANSWER FOR THIS|context only] <text>`, wrapped across
+    following lines where the source is — task prose is hard-wrapped, so a
+    requirement is not always one line.
+
+    Needed because since #317 a call answers for ONE requirement, so a fixture
+    that lists the whole mandate's obligations has to be split across the calls
+    rather than repeated in each; repeating them would multiply the set and
+    `_unique` would rename the copies.
+    """
+    for message in reversed(kwargs.get("messages") or []):
+        lines = message.get("content", "").splitlines()
+        found: list[dict] = []
+        for line in lines:
+            match = _REGISTRY_LINE.match(line)
+            if match:
+                found.append(
+                    {
+                        "id": match.group(1),
+                        "section": match.group(2),
+                        "answering": match.group(3) == "ANSWER FOR THIS",
+                        "text": match.group(4),
+                    }
+                )
+            elif found and line.strip():
+                found[-1]["text"] += "\n" + line
+            elif found:
+                break
+        if found:
+            return found
+    return []
+
+
+def _quotes_this_requirement(obligation: dict, requirement_text: str) -> bool:
+    """Whether this obligation's quotation lies in the requirement being asked about.
+
+    Whitespace-insensitive, like the stage's own `locate_within`: task prose is
+    hard-wrapped, so an exact-substring test would answer no for a property of
+    the file's line width.
+    """
+    quote = " ".join(str(obligation.get("source_quote", "")).split())
+    return bool(quote) and quote in " ".join(requirement_text.split())
+
+
+def _schema_name(**kwargs) -> str:
+    return kwargs.get("response_format", {}).get("json_schema", {}).get("name", "")
+
+
+def _one_disposition(response: dict, **kwargs) -> dict:
+    """Translate the fixture's disposition LIST into the one entry this call wants.
+
+    Since #317 a decompose call is asked about one requirement and returns one
+    disposition, so the wire shape has no list. Fixtures keep writing the whole
+    mandate's dispositions in one dict — that is how they read — and this picks
+    out the entry for the requirement each call actually asks about. A fixture
+    listing five requirements is therefore now answering five calls with the same
+    dict, which is exactly what the stage does.
+
+    A requirement the fixture says nothing about declines, as it did when one
+    call answered for a whole batch and the fixture named only some of them.
+    """
+    if "requirement_dispositions" not in response:
+        return response
+    schema = kwargs.get("response_format", {}).get("json_schema", {}).get("schema", {})
+    if "requirement_disposition" not in schema.get("properties", {}):
+        return response
+    entries = response["requirement_dispositions"]
+    supplied = _supplied_enum("requirement_id", **kwargs)
+    if len(supplied) != 1:
+        # An UNCONSTRAINED `_Decomposition` — a harness-level test calling
+        # `complete` directly rather than through the stage, so there is no
+        # requirement to pick by. Any well-formed single disposition will do.
+        return {
+            **{k: v for k, v in response.items() if k != "requirement_dispositions"},
+            "requirement_disposition": entries[0]
+            if entries
+            else {
+                "requirement_id": "requirement-01",
+                "disposition": "no_obligation",
+                "reason": "no obligation, deliberately (test double)",
+            },
+        }
+    wanted = supplied[0]
+    match = next((e for e in entries if e.get("requirement_id") == wanted), None)
+    if match is None and "-span-" in wanted:
+        # A call authoring obligations for an uncovered span of the summary. The
+        # span's id is `<summary id>-span-NN` and no fixture writes one, so the
+        # summary's own entry answers for it: a fixture saying "task-01 yields
+        # this obligation" keeps meaning that once the summary is accounted for
+        # span by span.
+        parent = wanted.split("-span-")[0]
+        match = next((e for e in entries if e.get("requirement_id") == parent), None)
+        if match is not None:
+            match = {**match, "requirement_id": wanted}
+    chosen = match or {
+        "requirement_id": wanted,
+        "disposition": "no_obligation",
+        "reason": "no obligation, deliberately (test double)",
+    }
+    rest = {k: v for k, v in response.items() if k != "requirement_dispositions"}
+
+    # An open question goes out on the call whose disposition names it, and on no
+    # other. Repeating the fixture's whole question list per call would mint the
+    # same question once per requirement, with `_unique` renaming the copies —
+    # and the disposition would then name a different question from the one the
+    # rest of the pipeline resolved.
+    def _names(entry: dict) -> set[str]:
+        ids = {entry["open_question_id"]} if entry.get("open_question_id") else set()
+        return ids | set(entry.get("more_open_question_ids") or [])
+
+    named_here = _names(chosen)
+    named_anywhere = set().union(*(_names(entry) for entry in entries)) if entries else set()
+    # A question no disposition names belongs to a fixture that is about the
+    # questions rather than about which requirement raised them. It goes out on
+    # the first requirement the mandate offers — the same rule the homeless
+    # obligations follow, and for the same reason: deterministic, and once.
+    listed = _registry_from_prompt(**kwargs)
+    first_answerable = next((r["id"] for r in listed if r["section"] != "task"), None)
+    rest["open_questions"] = [
+        question
+        for question in (rest.get("open_questions") or [])
+        if question["id"] in named_here
+        or (question["id"] not in named_anywhere and wanted == first_answerable)
+    ]
+    return {**rest, "requirement_disposition": chosen}
+
+
+def covered_summary(**kwargs) -> dict:
+    """The neutral answer for the summary pass (#317): one span, already required.
+
+    Neutral in the same sense as `constant_embedding_fn`. The summary step exists
+    to decide whether the bullets already require what the opening paragraph
+    says, and for a fixture that is not about it the answer that changes nothing
+    is "yes" — the summary yields no obligation of its own and no further call is
+    made. Answering `uncovered` would instead have every unrelated test author an
+    extra obligation from a span.
+
+    A test that IS about the summary pass supplies its own spans and verdicts.
+    """
+    nearest = _supplied_enum("nearest", **kwargs)
+    return {
+        "spans": [_summary_text(**kwargs)],
+        "span_dispositions": [
+            {
+                "span_index": 0,
+                "nearest": nearest[:1],
+                "counterexample": "none",
+                "disposition": "covered",
+            }
+        ],
+    }
+
+
+def uncovered_summary(spans: list[str]) -> dict:
+    """A summary pass answer holding each named span uncovered.
+
+    For a test that wants the opening summary to yield obligations of its own.
+    Each span must appear in the summary verbatim, and each one then gets a call
+    of its own asked about that span alone — which `_one_disposition` answers
+    from the fixture's entry for the summary.
+    """
+    return {
+        "spans": list(spans),
+        "span_dispositions": [
+            {
+                "span_index": index,
+                "nearest": [],
+                "counterexample": (
+                    "a change satisfying every listed obligation without this property"
+                ),
+                "disposition": "uncovered",
+            }
+            for index in range(len(spans))
+        ],
+    }
+
+
+#: A fixture's `_SummarySpans` response meaning "the whole opening paragraph is
+#: uncovered", for a mandate whose text the fixture does not have to hand — the
+#: benchmark archetypes, whose task files are a Task paragraph and nothing else.
+#: With the covered answer such a mandate yields no obligation at all, because
+#: there are no bullets for the ordinary decomposer to answer about.
+WHOLE_SUMMARY_UNCOVERED = {"__whole_summary_uncovered__": True}
+
+
+def _summary_text(**kwargs) -> str:
+    """The summary as the call presents it, read back off the prompt.
+
+    A span must be a substring of the summary or the stage rejects the whole
+    answer, so a double cannot invent one. `summary.py::_user_prompt` puts the
+    summary last, under a `The summary:` line.
+    """
+    for message in reversed(kwargs.get("messages") or []):
+        content = message.get("content", "")
+        if "The summary:" in content:
+            return content.split("The summary:", 1)[1].strip()
+    return ""
+
+
 def _completed(response: dict, **kwargs) -> dict:
     """Fill an empty response list from the ids the call supplied.
 
@@ -244,24 +450,53 @@ def _completed(response: dict, **kwargs) -> dict:
     """
     if not isinstance(response, dict):
         return response
+    # The summary pass has its own schema, and a fixture written for the
+    # decomposer says nothing it can use. Answered here so an unrelated test does
+    # not have to know the stage exists.
+    if _schema_name(**kwargs) == "_SummarySpans" and "span_dispositions" not in response:
+        if response.get("__whole_summary_uncovered__"):
+            return uncovered_summary([_summary_text(**kwargs)])
+        return covered_summary(**kwargs)
     if response.get("requirement_dispositions") == []:
         supplied = _supplied_enum("requirement_id", **kwargs)
         obligations = response.get("obligations") or []
         # Since #204 an obligation is carried inside the disposition that
-        # derived it, so it cannot be an orphan. A fixture that supplies
-        # obligations and leaves dispositions to be filled gets them attached to
-        # the first requirement the call was given; the rest decline. Which
-        # requirement owns them is not what such a fixture is about — it is
-        # about the obligations themselves — and before #204 they sat in a flat
-        # list owned by nobody, which is no longer representable.
+        # derived it, so it cannot be an orphan; since #317 a call answers for
+        # one requirement, so the fixture's obligations have to be SPLIT across
+        # the calls rather than repeated in each — repeating them would multiply
+        # the set and `_unique` would rename the copies.
+        #
+        # Split by quotation: an obligation whose `source_quote` lies in the
+        # requirement this call asks about belongs to this call, which is the
+        # same rule the stage itself applies. A fixture whose quotations do not
+        # land anywhere gets its obligations on the first requirement offered, so
+        # a test that is about the obligations rather than about ownership still
+        # sees all of them.
+        listed = _registry_from_prompt(**kwargs)
+        answering = next((r for r in listed if r["answering"]), None)
+        answering_text = answering["text"] if answering else ""
+        mine = [o for o in obligations if _quotes_this_requirement(o, answering_text)]
+        # An obligation whose quotation lands in NO requirement belongs to a
+        # fixture that is about the obligations rather than about ownership. It
+        # goes to the first requirement the mandate offers, which is where it
+        # went when one call answered for the whole batch — deterministic, and
+        # the same requirement on every call, so it is emitted exactly once.
+        homeless = [
+            o
+            for o in obligations
+            if not any(_quotes_this_requirement(o, r["text"]) for r in listed)
+        ]
+        first_answerable = next((r["id"] for r in listed if r["section"] != "task"), None)
+        if answering is not None and answering["id"] == first_answerable:
+            mine = mine + [o for o in homeless if o not in mine]
         dispositions = []
-        if supplied and obligations:
+        if supplied and mine:
             dispositions.append(
                 {
                     "requirement_id": supplied[0],
                     "disposition": "yielded",
-                    "obligation_id": obligations[0]["id"],
-                    "more_obligation_ids": [o["id"] for o in obligations[1:]],
+                    "obligation_id": mine[0]["id"],
+                    "more_obligation_ids": [o["id"] for o in mine[1:]],
                 }
             )
             supplied = supplied[1:]
@@ -273,7 +508,14 @@ def _completed(response: dict, **kwargs) -> dict:
             }
             for rid in supplied
         )
-        return _nest_obligations({**response, "requirement_dispositions": dispositions})
+        # Only this call's obligations are offered for nesting, so an obligation
+        # another call owns is not consumed here.
+        return _one_disposition(
+            _nest_obligations(
+                {**response, "obligations": mine, "requirement_dispositions": dispositions}
+            ),
+            **kwargs,
+        )
     if response.get("mappings") == []:
         # Since #302 a candidate test the response passes over is recorded as a
         # judgment not obtained, and drives the run's unmapped obligations to
@@ -315,10 +557,15 @@ def _completed(response: dict, **kwargs) -> dict:
                 for obligation_id in _supplied_enum("obligation_id", **kwargs)
             ],
         }
-    return _nest_obligations(response)
+    return _one_disposition(_nest_obligations(response), **kwargs)
 
 
-def client_returning(response: dict, model: str = _DEFAULT_MODEL, embedding_fn=None) -> ModelClient:
+def client_returning(
+    response: dict,
+    model: str = _DEFAULT_MODEL,
+    embedding_fn=None,
+    summary: dict | None = None,
+) -> ModelClient:
     """A client whose every call returns the same fixed response.
 
     A `requirement_dispositions` of `[]` is completed from the requirements the
@@ -326,10 +573,19 @@ def client_returning(response: dict, model: str = _DEFAULT_MODEL, embedding_fn=N
     fixture's whole requirement list to stay well-formed. It is a convenience
     for tests that are not about dispositions; a test that IS about them names
     them explicitly and this leaves it alone.
+
+    `summary` answers the summary pass (#317), which has its own schema and can
+    take nothing from a decomposer fixture. Left unset it is `covered_summary` —
+    the opening paragraph states nothing the bullets do not — so an unrelated
+    test is unaffected by the step existing. `uncovered_summary` is the other
+    side, for a test that wants the summary to yield.
     """
 
     def completion_fn(**kwargs):
-        return _fake_response(json.dumps(_completed(response, **kwargs)))
+        chosen = response
+        if _schema_name(**kwargs) == "_SummarySpans":
+            chosen = summary if summary is not None else {}
+        return _fake_response(json.dumps(_completed(chosen, **kwargs)))
 
     return ModelClient(
         model=model,
@@ -500,6 +756,11 @@ _EMPTY_BY_SCHEMA = {
         "open_questions": [],
         "requirement_dispositions": [],
     },
+    # The summary pass (#317). Filled in by `covered_summary` from the request,
+    # because a span must be a substring of the summary the call was shown and no
+    # fixed dict can satisfy that. "Already required" is the neutral answer: the
+    # summary yields nothing of its own and no further call is made.
+    "_SummarySpans": {},
     # Every pair comes back "not the same requirement", so the de-duplication
     # pass runs its full sweep and merges nothing — a test's derived obligations
     # reach the rest of the pipeline exactly as it wrote them (#144).
@@ -567,7 +828,15 @@ RECORDED_TRANSCRIPTS = pathlib.Path(__file__).parent / "fixtures" / "transcripts
 # It stays a CLOSED set, not "any model": a recording's whole value is that it
 # reflects a model the tool actually runs, and an unlisted model in the corpus
 # means something recorded that should not have. Add a model here deliberately.
-APPROVED_CORPUS_MODELS = ("openai/gpt-5.4-mini", "anthropic/claude-sonnet-5")
+#
+# `openai/gpt-5.4` is here because a STAGE may name its own model (#317), not
+# because the run's default moved: the summary step runs on it, so a corpus
+# recorded through `decompose` necessarily holds recordings against it.
+APPROVED_CORPUS_MODELS = (
+    "openai/gpt-5.4-mini",
+    "openai/gpt-5.4",
+    "anthropic/claude-sonnet-5",
+)
 
 
 def recording_enabled() -> bool:

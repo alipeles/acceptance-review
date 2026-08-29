@@ -1,4 +1,4 @@
-"""Obligation derivation is partitioned by requirement batch (#204, DR-204).
+"""Obligation derivation issues one call per requirement (#204, DR-204, #317).
 
 One call over the whole registry sheds work the way DR-164 measured a stage
 later: an observed run over ~36 requirements at ~2.5k input tokens produced no
@@ -6,7 +6,12 @@ obligation for 9 of them, in a schema-valid response nothing downstream could
 question. Size was never the binding constraint — the number of independent
 judgments in one response is.
 
-The batch scopes what a call must ANSWER FOR, never what it may READ.
+#204 partitioned the requirements into batches. #317 narrowed the batch to one,
+which is not a further turn of the same dial: it is what lets `source_quote` be
+an enum of the answering requirement's own spans, so an obligation about another
+requirement becomes unsayable rather than detected afterwards.
+
+The call scopes what must be ANSWERED FOR, never what may be READ.
 
 Responses are injected through the harness's completion_fn per the replay-first
 invariant — no live calls.
@@ -20,7 +25,12 @@ import pytest
 
 from acceptance.config import RunConfig
 from acceptance.llm import SchemaValidationError
-from acceptance.requirement.obligations import _Decomposition, decompose
+from acceptance.requirement.obligations import (
+    ONE_REQUIREMENT_PER_CALL,
+    _Decomposition,
+    decompose,
+)
+from acceptance.requirement.summary import SUMMARY_STAGE
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.supplied_ids import UnusableAnswerLog
 from tests.support import _completed, _fake_response, _supplied_enum, model_client_with
@@ -32,11 +42,12 @@ def _task(n: int) -> str:
 
 
 def _declining(**kwargs) -> dict:
-    """A well-formed response that declines each batch's own ids.
+    """A well-formed response that declines the requirement the call asked about.
 
     Declining rather than yielding keeps the response valid without inventing
     obligation ids, which is not what these tests are about — they are about how
-    the work is SPLIT.
+    the work is SPLIT. The summary pass gets the covered answer from `_completed`,
+    so the opening paragraph yields nothing and issues no further call.
     """
     return _completed(
         {"obligations": [], "open_questions": [], "requirement_dispositions": []},
@@ -45,7 +56,7 @@ def _declining(**kwargs) -> dict:
 
 
 def _client(calls: list[dict]):
-    """Records every decompose request and declines each batch's own ids."""
+    """Records every ordinary decompose request and declines its requirement."""
 
     def completion_fn(**kwargs):
         if kwargs["response_format"]["json_schema"]["name"] == "_Decomposition":
@@ -58,35 +69,41 @@ def _client(calls: list[dict]):
 # --- how the work is split --------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "constraints, size, expected_calls",
-    [
-        # N constraints is N+1 requirements: the Task paragraph is one too.
-        (3, 8, 1),  # 4 requirements, fewer than one batch
-        (7, 8, 1),  # 8 requirements, exactly one batch
-        (8, 8, 2),  # 9 requirements, one over
-        (20, 8, 3),  # 21 requirements, ceil(21 / 8)
-        (5, 1, 6),  # 6 requirements, one call each
-    ],
-)
-def test_a_task_file_of_n_requirements_produces_ceil_n_over_size_calls(
-    constraints, size, expected_calls
-):
+@pytest.mark.parametrize("constraints", [1, 3, 8, 20])
+def test_a_task_file_of_n_requirements_produces_one_call_per_requirement(constraints):
+    """The opening paragraph is not among them: it is accounted for by the
+    summary step, which has its own call and its own schema."""
     calls: list[dict] = []
     parsed = parse_task_file(_task(constraints))
 
-    decompose(parsed, _client(calls), batch_size=size)
+    decompose(parsed, _client(calls))
 
-    assert len(calls) == expected_calls
+    assert len(calls) == constraints
+    for call in calls:
+        assert len(_supplied_enum("requirement_id", **call)) == 1
+
+
+def test_no_ordinary_call_is_asked_to_account_for_the_opening_summary():
+    """The whole reason the summary has a step of its own. Asked about directly
+    it answers for the mandate: 8 of 35 recorded calls with a `task-*`
+    requirement in their answering set derived obligations for requirements they
+    had only been shown, against 0 of 68 without one."""
+    calls: list[dict] = []
+
+    decompose(parse_task_file(_task(6)), _client(calls))
+
+    answered = [_supplied_enum("requirement_id", **call)[0] for call in calls]
+    assert not any(rid.startswith("task-") for rid in answered)
+    assert sorted(answered) == sorted(f"constraint-{i:02d}" for i in range(1, 7))
 
 
 def test_every_requirement_carries_a_disposition_after_the_merge():
-    """The property partitioning must not cost. Splitting the work is only safe
-    if the merged result still accounts for the whole mandate — otherwise it
-    trades one silent loss for another."""
+    """The property splitting must not cost. Splitting the work is only safe if
+    the merged result still accounts for the whole mandate — otherwise it trades
+    one silent loss for another."""
     parsed = parse_task_file(_task(20))
 
-    result = decompose(parsed, _client([]), batch_size=8)
+    result = decompose(parsed, _client([]))
 
     registry_ids = [r.id for r in result.requirement_map.requirements]
     disposed = [d.requirement_id for d in result.requirement_map.dispositions]
@@ -94,26 +111,26 @@ def test_every_requirement_carries_a_disposition_after_the_merge():
     assert len(registry_ids) == 21  # 20 constraints + the Task paragraph
 
 
-def test_the_batch_scopes_what_a_call_answers_for_not_what_it_reads():
+def test_a_call_answers_for_one_requirement_and_reads_them_all():
     """#204 deliverable 2. Every call sees the whole task file; only the
-    answering is split. A call shown just its own bullets could not notice that
-    a later section settles a term an earlier one leaves open (#178)."""
+    answering is split. A call shown just its own bullet could not notice that a
+    later section settles a term an earlier one leaves open (#178)."""
     calls: list[dict] = []
     parsed = parse_task_file(_task(20))
 
-    decompose(parsed, _client(calls), batch_size=8)
+    decompose(parsed, _client(calls))
 
-    assert len(calls) == 3
+    assert len(calls) == 20
     for call in calls:
         prompt = call["messages"][-1]["content"]
         # Every requirement's text, in every call.
         for i in range(1, 21):
             assert f"Constraint number {i} holds." in prompt
-        # But each call is told to answer for only some of them.
-        assert prompt.count("[ANSWER FOR THIS]") <= 8
+        # But exactly one of them is asked for.
+        assert prompt.count("[ANSWER FOR THIS]") == 1
         assert "[context only]" in prompt
 
-    # Between them the calls answer for every requirement exactly once.
+    # Between them the calls answer for every bullet exactly once.
     answered = [
         line.split("]")[0].lstrip("[")
         for call in calls
@@ -121,24 +138,26 @@ def test_the_batch_scopes_what_a_call_answers_for_not_what_it_reads():
         if "[ANSWER FOR THIS]" in line
     ]
     assert sorted(answered) == sorted(set(answered))
-    assert len(answered) == 21
+    assert len(answered) == 20
 
 
-# --- the batch size is a determinism control --------------------------------
+# --- the partition descriptor is a determinism control ----------------------
 
 
-def test_changing_the_batch_size_changes_the_request_key():
+def test_changing_the_partition_size_changes_the_request_key():
     """A determinism control in the same sense as the seed: it changes what is
     asked of the model, so recordings made under the old partitioning must be
-    re-verified rather than silently replayed."""
+    re-verified rather than silently replayed. That is why derivation still
+    carries a descriptor now that the size is fixed at one — a transcript
+    recorded when it was eight must not replay as though nothing had moved."""
     client = RunConfig().build_client()
     messages = [{"role": "user", "content": "batch"}]
 
+    at_one = client.build_request(messages, _Decomposition, {"size": 1})
     at_eight = client.build_request(messages, _Decomposition, {"size": 8})
-    at_twelve = client.build_request(messages, _Decomposition, {"size": 12})
 
-    assert at_eight["partition"] == {"size": 8}
-    assert at_eight != at_twelve
+    assert at_one["partition"] == {"size": 1}
+    assert at_one != at_eight
 
 
 def test_the_batch_index_and_count_never_enter_the_request():
@@ -163,129 +182,115 @@ def test_provenance_reports_the_derivation_size_observed_from_the_calls():
 
     calls: list[dict] = []
     client = _client(calls)
-    decompose(parse_task_file(_task(20)), client, batch_size=8)
+    decompose(parse_task_file(_task(20)), client)
 
-    assert provenance_for(client).request_partition_sizes == {"decompose": 8}
-
-
-# --- a batch may only answer for its own requirements ------------------------
+    assert provenance_for(client).request_partition_sizes == {"decompose": ONE_REQUIREMENT_PER_CALL}
 
 
-def test_a_disposition_for_a_requirement_the_call_was_not_given_is_recorded():
-    """Not silently filtered. The requirement belongs to another batch, which
-    answers for it; letting this one through would make the merged result depend
-    on which batch returned last."""
-    parsed = parse_task_file(_task(20))
+def test_provenance_reports_the_model_each_step_used():
+    """A step may name its own model (#317), so the run's model is no longer the
+    whole answer. Observed from the calls for the same reason the partition size
+    is: a reader asking which judge produced a finding needs the one that
+    answered, not the one that was configured."""
+    from acceptance.config import provenance_for
+
+    client = _client([])
+    decompose(parse_task_file(_task(4)), client)
+
+    stage_models = provenance_for(client).stage_models
+    assert set(stage_models) == {"decompose", SUMMARY_STAGE}
+    assert stage_models["decompose"] == client.model
+    assert stage_models[SUMMARY_STAGE] == client.model_for(SUMMARY_STAGE)
+
+
+# --- a call may only answer for the requirement it was asked about ------------
+
+
+def test_a_disposition_for_a_requirement_the_call_was_not_asked_about_is_recorded():
+    """Not silently filed. The requirement belongs to another call, which answers
+    for it; letting this one through would make the merged result depend on which
+    call returned last.
+
+    Unreachable under constrained decoding, where `requirement_id` is a
+    single-valued enum — which is why the local check has to exist anyway (#163):
+    the harness deliberately runs against providers whose structured-output
+    support differs.
+    """
+    parsed = parse_task_file(_task(6))
     unusable = UnusableAnswerLog()
 
     def completion_fn(**kwargs):
         payload = _declining(**kwargs)
-        # Answer for a requirement this call was NOT given. Added only where it
-        # really is outside the call's share — adding it to the batch that owns
-        # it would be a duplicate disposition, a different rejection.
-        if "constraint-01" not in _supplied_enum("requirement_id", **kwargs):
-            payload["requirement_dispositions"] = list(payload["requirement_dispositions"]) + [
-                {
-                    "requirement_id": "constraint-01",
-                    "disposition": "no_obligation",
-                    "reason": "overstepping this batch",
-                }
-            ]
-        return _fake_response(json.dumps(payload))
-
-    result = decompose(parsed, model_client_with(completion_fn), unusable, batch_size=8)
-
-    overstepped = [a for a in unusable.answers if a.returned_id == "constraint-01"]
-    assert overstepped, "a batch answering outside its own ids must be recorded"
-    assert all(a.stage == "decompose" for a in overstepped)
-    # `scan` also records it as an id the call was not supplied, without a
-    # reason; the batch-scoping rejection is the one that explains itself.
-    assert any("not asked to answer for" in (a.reason or "") for a in overstepped)
-
-    # And the requirement is not treated as disposed by a call that did not own
-    # it: constraint-01's disposition is the one its OWN batch returned.
-    assert result.requirement_map.disposition_for("constraint-01") is not None
-
-
-def test_an_id_outside_the_registry_entirely_is_still_refused_by_name():
-    """Distinct from overstepping a batch: that is a call answering for another
-    call's requirement, this is a response inventing one. The first is recorded
-    and dropped; the second is a malformed response and is refused loudly, so
-    the error names the id rather than reporting some other requirement as
-    unaccounted for."""
-    parsed = parse_task_file(_task(3))
-
-    def completion_fn(**kwargs):
-        payload = _declining(**kwargs)
-        payload["requirement_dispositions"] = list(payload["requirement_dispositions"]) + [
-            {
-                "requirement_id": "constraint-99",
+        asked = _supplied_enum("requirement_id", **kwargs)
+        if asked and asked[0] == "constraint-03":
+            # Answer for a requirement this call was not asked about.
+            payload["requirement_disposition"] = {
+                "requirement_id": "constraint-01",
                 "disposition": "no_obligation",
-                "reason": "no such requirement",
+                "reason": "overstepping",
             }
-        ]
         return _fake_response(json.dumps(payload))
 
     with pytest.raises(SchemaValidationError) as raised:
-        decompose(parsed, model_client_with(completion_fn), batch_size=8)
+        decompose(parsed, model_client_with(completion_fn), unusable)
 
-    assert "constraint-99" in str(raised.value)
+    # The requirement whose answer was displaced is the one reported missing.
+    assert "constraint-03" in str(raised.value)
+    overstepped = [a for a in unusable.answers if a.returned_id == "constraint-01"]
+    assert overstepped, "a call answering outside its own id must be recorded"
+    assert all(a.stage == "decompose" for a in overstepped)
+    assert any("not asked about" in (a.reason or "") for a in overstepped)
 
 
 # --- ids are minted per call, so resolution must be per call -----------------
 
 
-def test_two_batches_minting_the_same_obligation_id_stay_separate():
-    """The mis-link partitioning is supposed to make impossible.
+def test_two_calls_minting_the_same_obligation_id_stay_separate():
+    """The mis-link splitting the work is supposed to make impossible.
 
-    Each response mints its own obligation ids, so two batches can both return
+    Each response mints its own obligation ids, so two calls can both return
     `shared-slug` meaning different things. `_unique` renames the second, but a
-    GLOBAL model-id -> final-id map would resolve the second batch's disposition
-    onto the FIRST batch's obligation — a requirement silently attached to an
+    GLOBAL model-id -> final-id map would resolve the second call's disposition
+    onto the FIRST call's obligation — a requirement silently attached to an
     obligation derived from another requirement, which is exactly what DR-204
-    forbids and what partitioning is meant to make unrepresentable.
+    forbids.
     """
-    parsed = parse_task_file(_task(12))  # 13 requirements -> 2 batches at size 8
+    parsed = parse_task_file(_task(2))
 
     def completion_fn(**kwargs):
-        supplied = _supplied_enum("requirement_id", **kwargs)
-        payload = {
-            "open_questions": [],
-            "requirement_dispositions": [
+        if kwargs["response_format"]["json_schema"]["name"] == "_SummarySpans":
+            return _fake_response(json.dumps(_declining(**kwargs)))
+        asked = _supplied_enum("requirement_id", **kwargs)[0]
+        return _fake_response(
+            json.dumps(
                 {
-                    "requirement_id": supplied[0],
-                    "disposition": "yielded",
-                    # Carried, not referenced — each batch mints its own.
-                    "obligation": {
-                        "id": "shared-slug",
-                        "description": f"Derived for {supplied[0]}.",
-                        "type": "functional",
-                        "importance": "normal",
-                        "explicit": True,
-                        "observable_behavior": "...",
-                        "source_quote": "Do the thing.",
-                        "required_evidence": "code_and_tests",
-                        "required_evidence_reason": "",
+                    "open_questions": [],
+                    "requirement_disposition": {
+                        "requirement_id": asked,
+                        "disposition": "yielded",
+                        # Carried, not referenced — each call mints its own.
+                        "obligation": {
+                            "id": "shared-slug",
+                            "description": f"Derived for {asked}.",
+                            "type": "functional",
+                            "importance": "normal",
+                            "explicit": True,
+                            "observable_behavior": "...",
+                            "source_quote": _supplied_enum("source_quote", **kwargs)[0],
+                            "required_evidence": "code_and_tests",
+                            "required_evidence_reason": "",
+                        },
+                        "more_obligations": [],
                     },
-                    "more_obligations": [],
                 }
-            ]
-            + [
-                {
-                    "requirement_id": rid,
-                    "disposition": "no_obligation",
-                    "reason": "not this test's subject",
-                }
-                for rid in supplied[1:]
-            ],
-        }
-        return _fake_response(json.dumps(payload))
+            )
+        )
 
-    result = decompose(parsed, model_client_with(completion_fn), batch_size=8)
+    result = decompose(parsed, model_client_with(completion_fn))
 
     # Renamed, not merged.
     assert [o.id for o in result.obligations] == ["shared-slug", "shared-slug-2"]
-    # And each requirement holds ITS OWN batch's obligation, not the first one's.
+    # And each requirement holds ITS OWN call's obligation, not the first one's.
     claimed = {
         d.requirement_id: d.obligation_ids
         for d in result.requirement_map.dispositions

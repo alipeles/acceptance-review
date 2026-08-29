@@ -43,6 +43,9 @@ from acceptance.config import Mode, RunConfig
 
 _EMPTY_BY_SCHEMA = {
     "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
+    # The summary pass (#317) — filled in from the request by `_completed`,
+    # because a span has to be a substring of the summary the call was shown.
+    "_SummarySpans": {},
     "_Mappings": {"mappings": []},
     "_Discrimination": {"discriminations": []},
     "_Coverage": {"classifications": []},
@@ -444,6 +447,7 @@ def _observing_factory(calls):
                     "open_questions": [],
                     "requirement_dispositions": [],
                 },
+                "_SummarySpans": {},
                 "_Mappings": {"mappings": []},
                 "_Discrimination": {"discriminations": []},
                 "_Coverage": {"classifications": []},

@@ -358,65 +358,121 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
 # recorded capability (#144) made the single-fixture check untenable: it would
 # have had to be loosened to an OR, and an OR over markers passes for a
 # transcript containing neither.
+#
+# **The corpus grew from 7 to 25 with #317, and the growth is the change itself.**
+# Derivation now issues one call per requirement rather than one per batch of
+# eight, so the eleven-requirement invoice task that recorded 2 transcripts
+# records 19: ten bullets, the summary step, and the calls that author
+# obligations for the summary spans it left uncovered. The two `_SummarySpans`
+# recordings are against `openai/gpt-5.4` rather than the run's model, which is
+# the recorded evidence that a stage may name its own model.
+#
+# Grouped by response schema and model, and generated from what was recorded
+# rather than hand-listed — the ids are request hashes, so they are not
+# authorable by hand and carry no meaning beyond identity.
 _APPROVED_TRANSCRIPTS = {
-    # --- unrequested-change disposition (#146), 08-unrequested-change-risky-adjacent
-    # gpt-5.4-mini, LOOSE -> separable
-    "1d03416639ce97f86a6d43587a2c9eec5c983fd9e44cad9ef20254dc32f84dde.json": (
-        "orders.py",
-        "ship_order",
-    ),
-    # gpt-5.4-mini, STRICT -> risky
-    "02d89047dc7e2ab6e18b742a9e108680efe097f70ffbd2dd29839b48664e2518.json": (
-        "orders.py",
-        "ship_order",
-    ),
-    # claude-sonnet-5, STRICT -> risky. The provider-agnosticism claim (M0.4)
-    # held to recorded evidence rather than a hand-run experiment (#158).
-    "9b44a3a2e0acb52ca02c4f16d2de4974177afabb6b0fe4fd4da3ca64a18a3ebc.json": (
-        "orders.py",
-        "ship_order",
-    ),
-    # --- obligation linking (#144), the invoice-export task in
-    # tests/prompts/test_linking_prompt.py. Subject matter unrelated to
-    # decomposition on purpose: #204 established that a control task file
-    # reproduces a decomposition defect exactly, which is what rules out
-    # dogfood contamination as the cause of a result.
-    #
-    # Markers are fixture-level ("invoice"/"CSV") rather than requirement-level:
-    # a pair batch holds only the pairs it was given, so a marker naming one
-    # obligation is absent from every batch that does not include it.
-    #
-    # ONE linking sweep, where the same fixture needed two before DR-232. The
-    # sweep no longer asks about a `test_demand` obligation paired with a
-    # behavior one — that pair cannot merge, so it is settled in code and never
-    # batched — and the invoice task's remaining pairs fit a single call. The
-    # count dropping is the structural skip, visible in the corpus.
-    # derivation
-    "6012d93845b19996174cd3d6da7acc06b641546f6717f85db78e47aa8fb1071d.json": (
+    # _Decomposition, openai/gpt-5.4-mini — 19 recording(s)
+    "0db605cd8cd79d4e96b2b00eb0cfb97e08e363ea3fa4d8b67a5257d33d7e9b4b.json": (
         "invoice",
         "CSV",
     ),
-    # linking sweep
-    "5d194634b33865e4798d455fb9a2574679bd1b5dcc41f09e0543a120af7c57dc.json": (
+    "0e54ccb1b994dbd7414eb804023bd7e0c747756725ee333c5b86ac8f4dcb1110.json": (
         "invoice",
         "CSV",
     ),
-    # --- obligation derivation (#232, #219, #230), the invoice-export task in
-    # tests/prompts/test_decomposition_prompt.py. Same control domain as the
-    # linking fixture and a different task file: this one carries the two
-    # shapes those issues are about — Completion expectations phrased "A test
-    # asserts that ...", and a Scope exclusions section whose bullets name work
-    # rather than a property.
-    #
-    # TWO derivation recordings for one task file, because #204 partitions
-    # derivation at 8 requirements per call and this file states 11. Both
-    # batches carry the fixture-level markers: DR-204 puts the WHOLE registry
-    # in every batch's prompt, and only `answer_for` is scoped.
-    "9fd42c8b9e99eaa9d5f495cba4f421a8e9d0583d4c268cd6c801a25ea98c91df.json": (
+    "26008f3105fd2990bd6cdb6c211dd81019dcd057b732cfc9eafcadafc17d2627.json": (
         "invoice",
         "CSV",
     ),
-    "8a5de666a27342d25745b0f76b6eb7345e0cb40e82077723d1d84c4446db2eda.json": (
+    "386663bc208e63c446b8ed03ca6e94ed9a77f25412788158506e8106e1edbfcf.json": (
+        "invoice",
+        "CSV",
+    ),
+    "4cbdec07c03d64fcabfc8f08da97d5e37b011ca233780f4b5d063591aea3c49f.json": (
+        "invoice",
+        "CSV",
+    ),
+    "4ce568d1bd2c53de22936ccb532443a63c8be0d051581b29918660bac7b002e5.json": (
+        "invoice",
+        "CSV",
+    ),
+    "5ddc8915319828f44218b4945dcdc4c24ca3bdb2d23282deb3b54bf1919e0040.json": (
+        "invoice",
+        "CSV",
+    ),
+    "7a6f5c1d2ba5cb3abf47579535bb63764ca57e28d749bdc52edfe0bd9677118c.json": (
+        "invoice",
+        "CSV",
+    ),
+    "832eb1033ea699d8d9b9760860a508443fdfaf0838941dbdcd22133dd97409f1.json": (
+        "invoice",
+        "CSV",
+    ),
+    "949f73831132b5d9290e4d2bdc8cf21e3d1f3c79096ccfc2623fed5be734fc3f.json": (
+        "invoice",
+        "CSV",
+    ),
+    "9b3bdd7227e632dd543fc3413711b192d4cc7e74f93d1a45c2c2ba6dd30f9ee6.json": (
+        "invoice",
+        "CSV",
+    ),
+    "a362ebf22aa06b6aa78eb9646890dc29b7288195892418423bfd18d9377f06f5.json": (
+        "invoice",
+        "CSV",
+    ),
+    "b0b789be229a87b9096031e1edc0d88fa488e1f949df864be5632be1a58ce70d.json": (
+        "invoice",
+        "CSV",
+    ),
+    "c8b9491a44ea3813a5278efc85f819806bf08b4e52cb65aeeea77f11a58c6e53.json": (
+        "invoice",
+        "CSV",
+    ),
+    "cf319802ba28e5af17cd7e568c98571e98c6d134b70ea8d25d5585faf19725c8.json": (
+        "invoice",
+        "CSV",
+    ),
+    "d1118d9bc44851922064ecc3460420bba83e4136e2b905ef52fb2e5576983a6e.json": (
+        "invoice",
+        "CSV",
+    ),
+    "d63bf090aac4b8e9a3ea5d8585993dfb05256b5cf26fe21d2e24c45a06f3696a.json": (
+        "invoice",
+        "CSV",
+    ),
+    "ec291f98c787637453b50a03ea4cd48fb3a4c8adcf86b665109749585706ef3d.json": (
+        "invoice",
+        "CSV",
+    ),
+    "f86d8eb1202ac352ded60177bc2f04a2dec9e55db82eff9a140563f5c3da211e.json": (
+        "invoice",
+        "CSV",
+    ),
+    # _DispositionJudgment, anthropic/claude-sonnet-5 — 1 recording(s)
+    "e601a647baf1a5f1e0f06f0123daa9d21befb9cacca0781c80905feeec5087d0.json": (
+        "orders.py",
+        "ship_order",
+    ),
+    # _DispositionJudgment, openai/gpt-5.4-mini — 2 recording(s)
+    "d1f41f92c113058057149c4a995e8b7732663d26007399ee86903c038e9dcca2.json": (
+        "orders.py",
+        "ship_order",
+    ),
+    "f849fc68649871fe2ad953733b0355379f13ab0ae4928e181878d3973363000a.json": (
+        "orders.py",
+        "ship_order",
+    ),
+    # _SummarySpans, openai/gpt-5.4 — 2 recording(s)
+    "94cb56e14aa637b5a3d8a71371422f5674305f7eade464a12217ac5fa2b411df.json": (
+        "invoice",
+        "CSV",
+    ),
+    "9c623b442c391c1781307a53af26e5a98ea17b8db0e86ca98a431b35eb7e2f4c.json": (
+        "invoice",
+        "CSV",
+    ),
+    # _Verdicts, openai/gpt-5.4-mini — 1 recording(s)
+    "017183bb4468ccade80b41f1a5319c3662c7c53594b0350a7b6c421449cbef84.json": (
         "invoice",
         "CSV",
     ),

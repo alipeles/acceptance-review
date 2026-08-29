@@ -37,10 +37,10 @@ from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from tests.support import (
     _EMPTY_BY_SCHEMA,
+    _completed,
     _fake_response,
-    _nest_obligations,
-    _supplied_enum,
     constant_embedding_fn,
+    covered_summary,
 )
 
 # Obligations the permissive decomposer adds on top of a faithful set, standing
@@ -137,6 +137,7 @@ _BEHAVIOURS = {"faithful": _faithful, "lossy": _lossy, "permissive": _permissive
 def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
     """A decomposer whose output is decided by `behaviour`, not by the task."""
     build = _BEHAVIOURS[behaviour]
+
     # Derivation is partitioned by requirement (#204), so a task file of any
     # size draws several calls. The label-seeded payload models the decomposer's
     # WHOLE output, so it is emitted on the first call only — a real partitioned
@@ -144,59 +145,26 @@ def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
     # repeating the set per batch would multiply it, with `_unique` renaming the
     # copies (`report-format`, `report-format-2`, ...). The union across calls is
     # what these cases score, and it is the ground truth exactly once.
-    emitted = {"done": False}
-
     def completion_fn(**kwargs):
-        spec = kwargs["response_format"]["json_schema"]
-        name = spec["name"]
+        name = kwargs["response_format"]["json_schema"]["name"]
         if name == "_Decomposition":
-            response = (
-                {"obligations": [], "open_questions": [], "requirement_dispositions": []}
-                if emitted["done"]
-                else build(labels)
-            )
-            emitted["done"] = True
-            # Seeded from a case's LABELS, which name obligations and questions
-            # but no requirement ids — those come from the parse a double
-            # bypasses. Every requirement is therefore declined, which leaves
-            # the obligation and open-question content these cases score
-            # untouched while keeping the response well-formed. Since M1.2.r2 a
-            # response disposing nothing does not parse, so the empty list these
-            # doubles used to send is no longer a neutral choice.
-            # Seeded from a case's LABELS, which name obligations and questions
-            # but no requirement ids — those come from the parse a double
-            # bypasses. Since #204 an obligation is carried inside the
-            # disposition that derived it, so it must have an owner: the whole
-            # label set is attached to the first requirement this call was
-            # given, and the rest are declined.
+            # Handed over with `requirement_dispositions` left empty, so the
+            # shared adapter splits the label-seeded set across the per-requirement
+            # calls (#317). Seeded from a case's LABELS, which name obligations and
+            # questions but no requirement ids — those come from the parse a double
+            # bypasses — so no obligation's quotation lands in any requirement and
+            # the whole set goes to the first requirement the mandate offers, once.
             #
             # Ownership is not what these cases score. They score the obligation
-            # ids, descriptions and types, and the questions raised — all
-            # untouched by which requirement carries them. Before #204 the
-            # obligations sat in a flat list owned by nobody, which is no longer
-            # representable.
-            supplied = _supplied_enum("requirement_id", **kwargs)
-            obligations = response.get("obligations", [])
-            dispositions = []
-            if supplied and obligations:
-                dispositions.append(
-                    {
-                        "requirement_id": supplied[0],
-                        "disposition": "yielded",
-                        "obligation_id": obligations[0]["id"],
-                        "more_obligation_ids": [o["id"] for o in obligations[1:]],
-                    }
-                )
-            dispositions.extend(
-                {
-                    "requirement_id": rid,
-                    "disposition": "no_obligation",
-                    "reason": "seeded from ground-truth labels, which carry no requirement ids",
-                }
-                for rid in supplied[1 if (supplied and obligations) else 0 :]
-            )
-            response = {**response, "requirement_dispositions": dispositions}
-            return _fake_response(json.dumps(_nest_obligations(response)))
+            # ids, descriptions and types, and the questions raised — all untouched
+            # by which requirement carries them.
+            response = {**build(labels), "requirement_dispositions": []}
+            return _fake_response(json.dumps(_completed(response, **kwargs)))
+        if name == "_SummarySpans":
+            # The summary step (#317) answers "already required", so the opening
+            # paragraph yields nothing and issues no further call — keeping the
+            # scored set exactly the labels.
+            return _fake_response(json.dumps(covered_summary(**kwargs)))
         return _fake_response(json.dumps(_EMPTY_BY_SCHEMA[name]))
 
     return ModelClient(

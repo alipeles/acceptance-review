@@ -1,0 +1,494 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) with non-discriminating test evidence (implementation-test).
+
+Obligations:
+
+  1. Account for the mandate's opening summary after the obligations produced from the rest of the mandate, so summary-only properties are not lost and rest-of-mandate properties do not become a second obligation.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/requirement/obligations.py#@@ -846,160 +1023,166 @@ def decompose(
+         1.2  src/acceptance/requirement/summary.py#@@ -0,0 +1,329 @@
+       test evidence: strongly supported  [tier: static]
+         1.3  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_yields_one_obligation
+         1.4  tests/requirement/test_carry_forward.py::test_a_revised_requirement_records_that_it_was_revised_and_why
+         1.5  tests/requirement/test_decompose_partitioning.py::test_every_requirement_carries_a_disposition_after_the_merge
+         1.6  tests/requirement/test_requirement_map.py::test_a_fully_accounted_response_disposes_every_requirement
+         1.7  tests/requirement/test_requirement_map.py::test_a_requirement_no_response_accounts_for_is_rejected
+
+  2. A step asked about one non-summary requirement accounts for exactly that one requirement.
+       requirements: constraint-01
+       code evidence: addressed
+         2.1  src/acceptance/requirement/obligations.py#@@ -846,160 +1023,166 @@ def decompose(
+         2.2  src/acceptance/requirement/obligations.py#@@ -490,28 +515,34 @@ def _user_prompt(
+         2.3  tests/requirement/test_decompose_partitioning.py#@@ -58,35 +69,41 @@ def _client(calls: list[dict]):
+         2.4  tests/requirement/test_decompose_partitioning.py#@@ -94,26 +111,26 @@ def test_every_requirement_carries_a_disposition_after_the_merge():
+       test evidence: strongly supported  [tier: static]
+         2.5  tests/benchmark/test_coverage.py::test_the_shared_pipeline_partitions_the_mapping_call
+         2.6  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         2.7  tests/requirement/test_decompose_partitioning.py::test_a_call_answers_for_one_requirement_and_reads_them_all
+         2.8  tests/requirement/test_decompose_partitioning.py::test_a_disposition_for_a_requirement_the_call_was_not_asked_about_is_recorded
+         2.9  tests/requirement/test_decompose_partitioning.py::test_a_task_file_of_n_requirements_produces_one_call_per_requirement
+         2.10  tests/requirement/test_decompose_partitioning.py::test_two_calls_minting_the_same_obligation_id_stay_separate
+         2.11  tests/requirement/test_requirement_map.py::test_two_requirements_minting_the_same_id_keep_separate_obligations
+         2.12  tests/requirement/test_requirement_map.py::test_two_requirements_stating_the_same_thing_yield_two_obligations
+
+  3. An obligation carries a quotation taken from the text of the requirement its step was asked about, not from any different requirement.
+       requirements: constraint-02
+       code evidence: addressed
+         3.1  src/acceptance/requirement/obligations.py#@@ -647,128 +678,100 @@ def _decode_obligations(
+         3.2  src/acceptance/requirement/spans.py#@@ -0,0 +1,99 @@
+         3.3  tests/support.py#@@ -227,6 +228,211 @@ def _nest_obligations(response: dict) -> dict:
+         3.4  tests/requirement/test_obligation_attribution.py#@@ -69,13 +90,23 @@ def _declined(rid: str) -> dict:
+       test evidence: strongly supported  [tier: static]
+         3.5  tests/requirement/test_decompose_partitioning.py::test_two_calls_minting_the_same_obligation_id_stay_separate
+         3.6  tests/requirement/test_obligation_attribution.py::test_a_call_is_offered_only_its_own_requirements_quotations
+         3.7  tests/requirement/test_obligation_attribution.py::test_a_quotation_matching_no_requirement_at_all_is_recorded
+         3.8  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_another_requirement_stays_where_it_was_derived
+         3.9  tests/requirement/test_obligation_attribution.py::test_an_obligation_quoting_its_own_requirement_keeps_it
+         3.10  tests/requirement/test_obligation_attribution.py::test_the_same_sentence_in_two_requirements_stays_with_each_ones_own_call
+
+  4. No step that accounts for a requirement other than the opening summary is asked to account for the opening summary.
+       requirements: constraint-03, completion-04
+       code evidence: addressed
+         4.1  src/acceptance/requirement/obligations.py#@@ -846,160 +1023,166 @@ def decompose(
+         4.2  tests/requirement/test_decompose_partitioning.py#@@ -58,35 +69,41 @@ def _client(calls: list[dict]):
+         4.3  tests/requirement/test_decompose_partitioning.py#@@ -94,26 +111,26 @@ def test_every_requirement_carries_a_disposition_after_the_merge():
+       test evidence: strongly supported  [tier: static]
+         4.4  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         4.5  tests/requirement/test_decompose_partitioning.py::test_a_call_answers_for_one_requirement_and_reads_them_all
+         4.6  tests/requirement/test_decompose_partitioning.py::test_a_disposition_for_a_requirement_the_call_was_not_asked_about_is_recorded
+         4.7  tests/requirement/test_decompose_partitioning.py::test_a_task_file_of_n_requirements_produces_one_call_per_requirement
+         4.8  tests/requirement/test_decompose_partitioning.py::test_no_ordinary_call_is_asked_to_account_for_the_opening_summary
+         4.9  tests/requirement/test_obligation_attribution.py::test_a_call_is_offered_only_its_own_requirements_quotations
+
+  5. Account for the opening summary by first dividing it into stretches of its own words and then deciding, for each stretch, whether the obligations already derived from the rest of the mandate require the same thing.
+       requirements: constraint-04
+       code evidence: addressed
+         5.1  src/acceptance/requirement/summary.py#@@ -0,0 +1,329 @@
+         5.2  src/acceptance/requirement/obligations.py#@@ -846,160 +1023,166 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_yields_one_obligation
+
+  6. Every stretch is a substring of the opening summary, and each stretch is decided exactly once.
+       requirements: constraint-05
+       code evidence: addressed
+         6.1  src/acceptance/requirement/summary.py#@@ -0,0 +1,329 @@
+       test evidence: strongly supported  [tier: static]
+         6.2  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_yields_one_obligation
+
+  7. A stretch the already-derived obligations require yields no obligation.
+       requirements: constraint-06
+       code evidence: addressed
+         7.1  src/acceptance/requirement/summary.py#@@ -0,0 +1,329 @@
+         7.2  src/acceptance/requirement/obligations.py#@@ -846,160 +1023,166 @@ def decompose(
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_yields_one_obligation
+
+  8. A stretch of the opening summary that the already-derived obligations do not require yields obligations, derived by a step asked about that stretch alone.
+       requirements: constraint-07
+       code evidence: addressed
+         8.1  src/acceptance/requirement/obligations.py#@@ -846,160 +1023,166 @@ def decompose(
+         8.2  src/acceptance/requirement/summary.py#@@ -0,0 +1,329 @@
+       test evidence: strongly supported  [tier: static]
+         8.3  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_yields_one_obligation
+
+  9. The step that decides whether a stretch is already required yields no obligations itself.
+       requirements: constraint-08
+       code evidence: addressed
+         9.1  src/acceptance/requirement/summary.py#@@ -0,0 +1,329 @@
+       test evidence: strongly supported  [tier: static]
+         9.2  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_yields_one_obligation
+
+  10. An obligation derived from a stretch carries that stretch as its quotation, taken from the mandate rather than from the answer that named it.
+       requirements: constraint-09
+       code evidence: addressed
+         10.1  src/acceptance/requirement/obligations.py#@@ -647,128 +678,100 @@ def _decode_obligations(
+         10.2  src/acceptance/requirement/spans.py#@@ -0,0 +1,99 @@
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/prompts/test_linking_prompt.py::test_one_behaviour_demanded_in_two_sections_yields_one_obligation
+         10.4  tests/requirement/test_obligation_attribution.py::test_a_quotation_is_found_across_a_line_break
+         10.5  tests/requirement/test_obligation_attribution.py::test_the_obligations_own_content_is_left_alone
+         10.6  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         10.7  tests/requirement/test_obligations.py::test_each_obligation_links_to_its_source_span
+
+  11. A step uses the model it names, and a step that names no model uses the run's own model.
+       requirements: constraint-10
+       code evidence: addressed
+         11.1  src/acceptance/llm.py#@@ -448,8 +448,21 @@ class ModelClient:
+         11.2  src/acceptance/llm.py#@@ -529,10 +575,18 @@ class ModelClient:
+         11.3  src/acceptance/config.py#@@ -129,6 +136,11 @@ class RunConfig(BaseModel):
+         11.4  src/acceptance/requirement/obligations.py#@@ -778,7 +781,7 @@ def decompose_carry_keys(client: ModelClient, registry: list[RequirementRef]) ->
+       test evidence: strongly supported  [tier: static]
+         11.5  tests/benchmark/test_instability.py::test_a_caller_supplied_model_set_is_actually_measured
+         11.6  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         11.7  tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry
+         11.8  tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+
+  12. A completed run records which model each step used.
+       requirements: constraint-11
+       code evidence: addressed
+         12.1  src/acceptance/llm.py#@@ -490,7 +503,35 @@ class ModelClient:
+         12.2  src/acceptance/config.py#@@ -189,5 +199,6 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+         12.3  src/acceptance/review_state.py#@@ -890,6 +890,15 @@ class ReviewProvenance(_Model):
+         12.4  src/acceptance/usage.py#@@ -72,6 +73,12 @@ class StageUsage(BaseModel):
+         12.5  src/acceptance/usage.py#@@ -211,6 +222,10 @@ def render(usage: RunUsage) -> str:
+       test evidence: strongly supported  [tier: static]
+         12.6  tests/benchmark/test_instability.py::test_a_caller_supplied_model_set_is_actually_measured
+         12.7  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         12.8  tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry
+         12.9  tests/requirement/test_decompose_partitioning.py::test_provenance_reports_the_model_each_step_used
+         12.10  tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+
+  13. Where a step states the order of its request parts, that order matches the request as sent.
+       requirements: constraint-12
+       code evidence: addressed
+         13.1  src/acceptance/request_blocks.py#@@ -58,10 +58,19 @@ from enum import Enum
+         13.2  tests/requirement/test_decompose_partitioning.py#@@ -94,26 +111,26 @@ def test_every_requirement_carries_a_disposition_after_the_merge():
+       test evidence: strongly supported  [tier: static]
+         13.3  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         13.4  tests/requirement/test_decompose_partitioning.py::test_a_call_answers_for_one_requirement_and_reads_them_all
+         13.5  tests/requirement/test_obligation_attribution.py::test_the_same_sentence_in_two_requirements_stays_with_each_ones_own_call
+         13.6  tests/test_pipeline_request_openings.py::test_no_request_places_content_unique_to_it_ahead_of_content_it_shares
+
+  14. The change does not alter which text in the mandate counts as a requirement or how many requirements are found.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 165 changes across 59 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about what work the change must not do, so it is settled by the source change itself rather than by tests.
+
+  15. The change does not alter whether the obligations derived for a requirement are the right ones for it.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 165 changes across 59 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about review behavior, so it is checked by inspecting the change rather than by a test.
+
+  16. The review does not produce any disposition or obligation from an answer it cannot read at all.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 165 changes across 59 files; none breaches this boundary
+       test evidence: not required — This exclusion is about the review's handling of unreadable input, which is settled by the implementation path rather than by a repository test.
+
+  17. The change does not combine obligations that state the same thing as one another.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 165 changes across 59 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the source change itself; a test cannot directly demonstrate that no merging of same-meaning obligations was performed.
+
+  18. The change does not alter which model is the right one for any step.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 165 changes across 59 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the source change itself; a test cannot directly demonstrate that the model-selection rule was not altered.
+
+  19. The change does not alter what any step costs.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 165 changes across 59 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by inspecting the change for cost-accounting logic; a test would not establish that step costs were not changed.
+
+  20. The change does not compare figures recorded before this change with figures recorded after it.
+       requirements: exclusion-06
+       code evidence: addressed
+         examined 165 changes across 59 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, so a reader can confirm it directly from the change without needing a test.
+
+  21. Implement the requirement described by the opening summary.
+       requirements: completion-01
+       code evidence: addressed
+         21.1  src/acceptance/cli.py#@@ -23,7 +23,6 @@ from pathlib import Path
+         21.2  src/acceptance/cli.py#@@ -197,7 +196,6 @@ def run_check(
+         21.3  src/acceptance/cli.py#@@ -277,12 +275,7 @@ def run_decompose(
+         21.4  src/acceptance/cli.py#@@ -612,7 +605,7 @@ def run_classify(
+         21.5  src/acceptance/config.py#@@ -28,6 +28,22 @@ from acceptance.review_state import DeterminismControls, LinkPrefilter, ReviewPr
+         21.6  src/acceptance/config.py#@@ -129,6 +136,11 @@ class RunConfig(BaseModel):
+         21.7  src/acceptance/llm.py#@@ -448,8 +448,21 @@ class ModelClient:
+         21.8  src/acceptance/llm.py#@@ -529,10 +575,18 @@ class ModelClient:
+         21.9  src/acceptance/pipeline.py#@@ -258,7 +257,6 @@ def run_review(
+         21.10  src/acceptance/pipeline.py#@@ -290,9 +288,7 @@ def run_review(
+         21.11  src/acceptance/requirement/obligations.py#@@ -82,6 +86,13 @@ from acceptance.supplied_ids import (
+         21.12  src/acceptance/requirement/obligations.py#@@ -788,11 +791,182 @@ def decompose_carry_keys(client: ModelClient, registry: list[RequirementRef]) ->
+         21.13  src/acceptance/requirement/summary.py#@@ -0,0 +1,329 @@
+         21.14  src/acceptance/usage.py#@@ -44,6 +44,7 @@ from acceptance.llm import SERVED_FROM_PROVIDER
+         21.15  tests/benchmark/test_coverage.py#@@ -34,6 +34,7 @@ from acceptance.llm import Mode, ModelClient, TranscriptStore
+         21.16  tests/benchmark/test_instability.py#@@ -43,6 +43,9 @@ from acceptance.config import Mode, RunConfig
+         21.17  tests/prompts/test_decomposition_prompt.py#@@ -57,6 +57,31 @@ Export invoices to a CSV file.
+         21.18  tests/prompts/test_linking_prompt.py#@@ -70,17 +70,51 @@ def _obligations_of(decomposition, requirement_id: str) -> list[str]:
+         21.19  tests/requirement/test_decompose_partitioning.py#@@ -1,4 +1,4 @@
+         21.20  tests/requirement/test_obligation_attribution.py#@@ -1,4 +1,4 @@
+         21.21  tests/support.py#@@ -227,6 +228,211 @@ def _nest_obligations(response: dict) -> dict:
+         21.22  tests/test_cli.py#@@ -3,7 +3,8 @@ import json
+         21.23  tests/test_usage.py#@@ -212,9 +212,11 @@ def test_every_pipeline_stage_appears_in_the_reported_order():
+       test evidence: indeterminate  [tier: static]
+         (no mapped test)
+         recommended test: NOT OBTAINED — no prescription was produced
+           why: the recommendation stage was given 8 criteria and returned 7; no prescription was produced for this one
+
+  22. A test asserts that the requirement described by the opening summary is implemented.
+       requirements: completion-01
+       code evidence: not required — The requirement text is only the section marker "Implementation.", so the only checkable demand here is that the implementation be present and exercised by tests.
+       test evidence: nominally supported  [tier: static]
+         22.1  tests/prompts/test_decomposition_prompt.py::test_a_constraint_stating_a_behaviour_is_not_given_test_framing
+         22.2  tests/prompts/test_decomposition_prompt.py::test_a_criterion_demanding_a_test_yields_an_obligation_demanding_a_test
+         22.3  tests/prompts/test_decomposition_prompt.py::test_every_criterion_of_the_same_shape_is_treated_the_same_way
+         recommended test: A test is added that asserts the opening-summary requirement is implemented.
+           inputs:  A task file whose opening summary is the only place a requirement appears, plus a fixture/client that can return a summary verdict for that paragraph and ordinary decomposition results for the bullets. Use a case where the summary-specific behavior is observable in the final decomposition, not just in intermediate prompts.
+           detects: The current tests may exercise only decomposition framing or linking, while the opening-summary path itself could regress or be omitted without failing.
+           full detail: acceptance recommendation --criterion implementation-test
+
+  23. A test fails when a step accounting for a requirement other than the opening summary is asked about more than that one requirement.
+       requirements: completion-02
+       code evidence: not required — The requirement itself asks for a test failure condition, so the obligation is to have a test that asserts that condition.
+       test evidence: indeterminate  [tier: static]
+         (no mapped test)
+         recommended test: A test failure is reported when a step for a non-summary requirement is asked about multiple requirements.
+           inputs:  A non-summary requirement call whose response is malformed by including multiple requirement ids in the asked-about field or equivalent one-call shape. Use a provider stub that ignores the single-requirement constraint and returns a multi-requirement answer for one call.
+           detects: A step could still accept or silently normalize a response that answers for multiple requirements, defeating the one-requirement-per-call guarantee.
+           full detail: acceptance recommendation --criterion step-asked-about-more-than-one-requirement-fails
+
+  24. A test asserts that an obligation carrying a quotation from a different requirement than the one its step was asked about fails.
+       requirements: completion-03
+       code evidence: not required — The requirement itself asks for a test failure condition, so the obligation is the presence of that test rather than a source behavior.
+       test evidence: indeterminate  [tier: static]
+         (no mapped test)
+         recommended test: A test failure occurs when an obligation includes a quotation belonging to a requirement outside the step's asked-about requirement.
+           inputs:  A response for one requirement whose obligation source_quote is taken from a different requirement in the same task file. Choose two requirements with overlapping wording so the wrong quote is plausible but still distinguishable by the prompt helpers.
+           detects: A wrong requirement quote could still be accepted if it happens to appear somewhere in the file, causing misattribution or silent re-filing.
+           full detail: acceptance recommendation --criterion test-fails-on-wrong-requirement-quote
+
+  25. A test asserts that every stretch of the opening summary is decided exactly once, with no stretch left undecided and every stretch being a substring of the opening summary.
+       requirements: completion-05
+       code evidence: not required — The requirement itself demands a test failure condition, so the obligation is satisfied by a test and does not require source behavior of its own.
+       test evidence: indeterminate  [tier: static]
+         (no mapped test)
+         recommended test: A test failure is triggered if any opening-summary stretch is decided more than once, left undecided, or is not a substring of the opening summary.
+           inputs:  A summary paragraph that can be split into at least two spans, with one span covered and one uncovered, plus a client stub that returns a verdict for each span exactly once. Make one span intentionally borderline so a duplicate or missing decision would be visible.
+           detects: The summary step could skip a span, decide one twice, or accept a non-substring span without the current tests noticing.
+           full detail: acceptance recommendation --criterion opening-summary-stretch-decided-once
+
+  26. A test fails when a stretch the already-derived obligations require yields an obligation.
+       requirements: completion-06
+       code evidence: not required — This requirement explicitly asks for a test that fails in this case, so the obligation is the test itself.
+       test evidence: indeterminate  [tier: static]
+         (no mapped test)
+         recommended test: A test case covering a stretch already required by the derived obligations produces an obligation result.
+           inputs:  A summary span that is already required by the derived obligations, paired with a client response that still tries to emit an obligation for that span. Use a case where the bullets already cover the property so the correct behavior is to treat the span as covered and produce no new obligation.
+           detects: A summary span already required by bullets could still be re-authored as a duplicate obligation, which the current tests may not catch if they only check the happy path.
+           full detail: acceptance recommendation --criterion test-fails-on-required-stretch
+
+  27. A test fails when a stretch they do not require yields an obligation.
+       requirements: completion-07
+       code evidence: not required — This requirement explicitly asks for a test failure condition, so the obligation is the presence of a test that asserts that condition.
+       test evidence: indeterminate  [tier: static]
+         (no mapped test)
+         recommended test: A test case covering a stretch not required by the already-derived obligations fails if the system produces an obligation for that stretch.
+           inputs:  A summary span that is not required by the already-derived obligations, with a client response that incorrectly marks it covered or otherwise suppresses the obligation. Use a span that is clearly outside the bullet-derived obligations so the defect is unambiguous.
+           detects: The system could incorrectly treat an uncovered summary stretch as already required and suppress the obligation, leaving a real requirement unaccounted for.
+           full detail: acceptance recommendation --criterion stretch-they-do-not-require-yields-obligation
+
+  28. A test asserts that an obligation derived from a stretch carries that stretch as its quotation.
+       requirements: completion-08
+       code evidence: not required — The requirement itself is a demand for a test, so the test is the whole obligation.
+       test evidence: strongly supported  [tier: static]
+         28.1  tests/requirement/test_obligations.py::test_archetype_1_includes_the_omitted_obligation
+         28.2  tests/requirement/test_obligations.py::test_each_obligation_links_to_its_source_span
+
+  29. A test fails when a step naming its own model is run on that step's named model instead of the run's model.
+       requirements: completion-09
+       code evidence: not required — The requirement itself asks for a test failure condition, so the obligation is to have a test that demonstrates that condition.
+       test evidence: strongly supported  [tier: static]
+         29.1  tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry
+
+  30. A test exercises the whole path from the mandate through to the obligations produced, not any one step alone.
+       requirements: completion-10
+       code evidence: not required — The requirement itself asks for a test, and the test is the whole of what it demands.
+       test evidence: indeterminate  [tier: static]
+         (no mapped test)
+         recommended test: A test covers the end-to-end flow from mandate input through obligation production.
+           inputs:  A full mandate input that exercises task parsing, summary handling, ordinary decomposition, attribution, linking, and provenance in one run. Use the invoice-export corpus or another existing end-to-end fixture that now traverses the summary step.
+           detects: A change could pass the focused unit tests while breaking the integrated flow from mandate input through obligation production, especially around the new summary stage and one-requirement-per-call plumbing.
+           full detail: acceptance recommendation --criterion whole-path-test
+
+  31. Two recorded runs over the same input produce byte-identical review state and byte-identical report output.
+       requirements: completion-11
+       code evidence: addressed
+         31.1  tests/benchmark/test_instability.py#@@ -43,6 +43,9 @@ from acceptance.config import Mode, RunConfig
+         31.2  tests/benchmark/test_instability.py#@@ -444,6 +447,7 @@ def _observing_factory(calls):
+         31.3  tests/support.py#@@ -227,6 +228,211 @@ def _nest_obligations(response: dict) -> dict:
+         31.4  tests/test_rerun.py#@@ -25,6 +25,7 @@ from acceptance.review_state import (
+         31.5  tests/test_usage.py#@@ -212,9 +212,11 @@ def test_every_pipeline_stage_appears_in_the_reported_order():
+       test evidence: strongly supported  [tier: static]
+         31.6  tests/benchmark/test_labels.py::test_full_loop_scores_the_noop_checker_as_all_miss
+         31.7  tests/prompts/test_corpus_mechanism.py::test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls
+         31.8  tests/requirement/test_carry_forward.py::test_a_carried_disposition_records_the_digest_it_came_from_not_a_run_id
+         31.9  tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_issues_no_decompose_call
+         31.10  tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_returns_byte_identical_obligations
+         31.11  tests/requirement/test_carry_forward.py::test_a_run_identifier_appears_in_no_rendered_report
+         31.12  tests/requirement/test_carry_forward.py::test_a_run_identifier_appears_in_no_review_state
+         31.13  tests/requirement/test_carry_forward.py::test_a_tool_change_that_leaves_the_request_unaltered_carries_everything
+         31.14  tests/requirement/test_carry_forward.py::test_two_runs_over_the_same_task_and_ledger_state_are_byte_identical
+         31.15  tests/requirement/test_requirement_map.py::test_requirement_ids_are_identical_across_two_runs_over_identical_text
+         31.16  tests/test_cli.py::test_a_default_cli_run_is_seeded
+         31.17  tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+         31.18  tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical
+         31.19  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         31.20  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         31.21  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+         31.22  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         31.23  tests/test_recommendation_omission.py::test_two_runs_over_the_same_inputs_render_the_same_report
+         31.24  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+
+Mandate coverage: 30 of 30 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] `RunConfig` gained a new public field `stage_models`, and `ModelClient` gained a new public constructor parameter/property for stage-specific model selection. Those are API surface changes beyond the requested obligation set, which only asks for summary accounting and per-step attribution behavior.
+       src/acceptance/config.py#@@ -129,6 +136,11 @@ class RunConfig(BaseModel):
+       src/acceptance/config.py#@@ -166,6 +175,7 @@ class RunConfig(BaseModel):
+       src/acceptance/llm.py#@@ -448,8 +448,21 @@ class ModelClient:
+  2. [in_service] `ModelClient.build_request` now accepts an extra `stage` parameter, changing a public method signature. The obligations require using the named/run model and recording it, but they do not require exposing stage selection through this method's signature.
+       src/acceptance/llm.py#@@ -529,10 +575,18 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -582,7 +636,7 @@ class ModelClient:
+  3. [in_service] `ReviewProvenance` and `StageUsage` gained new public fields (`stage_models`, `models`) and the usage report header/output shape changed to include model columns. Those are outward-facing schema/report changes not directly required by the obligation list.
+       src/acceptance/review_state.py#@@ -890,6 +890,15 @@ class ReviewProvenance(_Model):
+       src/acceptance/usage.py#@@ -72,6 +73,12 @@ class StageUsage(BaseModel):
+       src/acceptance/usage.py#@@ -211,6 +222,10 @@ def render(usage: RunUsage) -> str:
+       src/acceptance/usage.py#@@ -220,11 +235,14 @@ def render(usage: RunUsage) -> str:
+  4. [in_service] The shared preamble text was shortened and its wording about request-part order was removed. The obligations cover request ordering and summary accounting, but they do not require rewriting the shared prompt prose itself.
+       src/acceptance/request_blocks.py#@@ -58,10 +58,19 @@ from enum import Enum
+  5. [in_service] `DECOMPOSE_STAGE_LOGIC_VERSION` was bumped from 1 to 2. That is an internal ledger/versioning change to invalidate recordings, not a requested behavior change in the obligation set.
+       src/acceptance/requirement/ledger.py#@@ -64,7 +64,14 @@ DEFAULT_LEDGER_ROOT = Path(".acceptance/ledger")
+  6. [in_service] `_user_prompt` was rewritten from a batch-oriented prompt to a one-requirement prompt, including new explanatory text about the summary step and per-requirement answering. The obligations require the new behavior, but not all of this prompt prose and framing text.
+       src/acceptance/requirement/obligations.py#@@ -474,7 +499,7 @@ class Decomposition(PersistableModel):
+       src/acceptance/requirement/obligations.py#@@ -490,28 +515,34 @@ def _user_prompt(
+       src/acceptance/requirement/obligations.py#@@ -520,7 +551,7 @@ def _user_prompt(
+  7. [in_service] The new summary-step machinery (`_ask_about`, `_usable_disposition`, `_record_questions`, `_span_requirement`, `_already_derived`) and the new summary-specific decomposition flow are requested in broad strokes, but the added explanatory/guard logic around them goes beyond the minimal obligation wording and changes adjacent behavior in how responses are validated and recorded.
+       src/acceptance/requirement/obligations.py#@@ -788,11 +791,182 @@ def decompose_carry_keys(client: ModelClient, registry: list[RequirementRef]) ->
+       src/acceptance/requirement/obligations.py#@@ -801,11 +975,19 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -826,19 +1008,14 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -846,160 +1023,166 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -1009,15 +1192,12 @@ def decompose(
+       src/acceptance/requirement/obligations.py#@@ -1083,7 +1263,14 @@ def _in_registry_order(
+       src/acceptance/requirement/obligations.py#@@ -1104,6 +1291,11 @@ def _in_registry_order(
+       src/acceptance/requirement/obligations.py#@@ -1185,79 +1377,21 @@ def build_ledger_entry(
+       src/acceptance/requirement/obligations.py#@@ -1284,29 +1418,29 @@ def _requirement_map(
+       src/acceptance/requirement/obligations.py#@@ -1316,8 +1450,8 @@ def _requirement_map(
+  8. [separable] `_in_registry_order` now appends obligations/questions that were not seen in the earlier pass, changing ordering/retention behavior beyond the specific summary-accounting obligations. The requested behavior is to account for the summary last and preserve correctness, not to alter the fallback ordering semantics in this way.
+       src/acceptance/requirement/obligations.py#@@ -1083,7 +1263,14 @@ def _in_registry_order(
+       src/acceptance/requirement/obligations.py#@@ -1104,6 +1291,11 @@ def _in_registry_order(
+  9. [separable] `_requirement_map` was renamed/reworked to accept `accounted` instead of `carried`, and its error messages changed accordingly. The obligations require summary accounting and per-step attribution, but not this broader reconciliation API/message rewrite.
+       src/acceptance/requirement/obligations.py#@@ -1185,79 +1377,21 @@ def build_ledger_entry(
+       src/acceptance/requirement/obligations.py#@@ -1284,29 +1418,29 @@ def _requirement_map(
+       src/acceptance/requirement/obligations.py#@@ -1316,8 +1450,8 @@ def _requirement_map(
+  10. [risky] `requirement_dispositions` was replaced by a singular `requirement_disposition` in the decomposition schema. The requested behavior is one requirement per call, but this schema-shape change is broader than the obligation wording and affects the public response contract.
+       src/acceptance/requirement/obligations.py#@@ -435,6 +451,15 @@ class _Decomposition(StrictResponseModel):
+       src/acceptance/requirement/obligations.py#@@ -444,7 +469,7 @@ class _Decomposition(StrictResponseModel):
+       tests/requirement/test_requirement_map.py#@@ -278,27 +306,25 @@ def test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations():
+       tests/requirement/test_requirement_map.py#@@ -307,29 +333,31 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
+       tests/requirement/test_requirement_map.py#@@ -337,9 +365,11 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
+       tests/requirement/test_requirement_map.py#@@ -361,7 +391,7 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
+       tests/requirement/test_requirement_map.py#@@ -411,18 +441,16 @@ def test_the_schema_cannot_express_an_open_question_disposition_with_no_question
+       tests/requirement/test_requirement_map.py#@@ -502,56 +530,78 @@ def test_an_open_question_disposition_naming_no_real_question_is_rejected():
+  11. [in_service] The new `requirement/summary.py` module introduces a full summary-coverage judgment system with its own prompt, schema, and verdict logic. The obligations require accounting for the opening summary last and deriving obligations from uncovered stretches, but not the entire additional judgment framework and its detailed heuristics.
+       src/acceptance/requirement/summary.py#@@ -0,0 +1,329 @@
+  12. [in_service] `usage.py` now tracks per-stage models and renders them in the usage report. The obligations mention recording which model each step used, but the report-formatting and aggregation changes are broader than the core attribution requirement.
+       src/acceptance/usage.py#@@ -72,6 +73,12 @@ class StageUsage(BaseModel):
+       src/acceptance/usage.py#@@ -167,6 +174,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+       src/acceptance/usage.py#@@ -211,6 +222,10 @@ def render(usage: RunUsage) -> str:
+       src/acceptance/usage.py#@@ -220,11 +235,14 @@ def render(usage: RunUsage) -> str:
+  13. [in_service] The benchmark and prompt tests were extensively rewritten to accommodate the new summary step, one-requirement-per-call flow, and new transcript corpus. Those test-harness changes are supporting scaffolding for the new behavior, but the specific edits to corpus selection, xfails, and fixture plumbing go beyond the obligation text itself.
+       tests/benchmark/degenerate_decomposers.py#@@ -37,10 +37,10 @@ from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
+       tests/benchmark/degenerate_decomposers.py#@@ -144,59 +144,26 @@ def decomposer(labels: GroundTruthLabels, *, behaviour: str) -> ModelClient:
+       tests/benchmark/test_coverage.py#@@ -34,6 +34,7 @@ from acceptance.llm import Mode, ModelClient, TranscriptStore
+       tests/benchmark/test_coverage.py#@@ -346,6 +347,11 @@ def test_archetype_8_unrequested_change_gap_matches_via_its_obligation(tmp_path)
+       tests/benchmark/test_coverage.py#@@ -422,6 +428,11 @@ def test_archetype_8_unrequested_change_metric_does_not_route_through_coverage(t
+       tests/benchmark/test_instability.py#@@ -43,6 +43,9 @@ from acceptance.config import Mode, RunConfig
+       tests/benchmark/test_instability.py#@@ -444,6 +447,7 @@ def _observing_factory(calls):
+       tests/prompts/test_corpus_mechanism.py#@@ -358,65 +358,121 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
+       tests/prompts/test_decomposition_prompt.py#@@ -57,6 +57,31 @@ Export invoices to a CSV file.
+       tests/prompts/test_decomposition_prompt.py#@@ -143,7 +168,33 @@ def test_every_criterion_of_the_same_shape_is_treated_the_same_way(derived):
+       tests/prompts/test_decomposition_prompt.py#@@ -287,7 +338,7 @@ def test_sibling_exclusions_differing_in_content_still_share_a_disposition(deriv
+       tests/prompts/test_linking_prompt.py#@@ -70,17 +70,51 @@ def _obligations_of(decomposition, requirement_id: str) -> list[str]:
+       tests/prompts/test_linking_prompt.py#@@ -135,11 +169,31 @@ def test_a_requirement_and_its_reason_clause_are_one_requirement(linked):
+       tests/requirement/test_carry_forward.py#@@ -56,7 +56,7 @@ from acceptance.review_state import (
+       tests/requirement/test_carry_forward.py#@@ -124,7 +124,13 @@ class _CountingClient:
+       tests/requirement/test_carry_forward.py#@@ -404,9 +410,24 @@ def _answering(by_requirement: dict[str, tuple[str, str]], alignment: list[dict]
+       tests/requirement/test_carry_forward.py#@@ -421,9 +442,13 @@ def _answering(by_requirement: dict[str, tuple[str, str]], alignment: list[dict]
+       tests/requirement/test_decompose_partitioning.py#@@ -1,4 +1,4 @@
+       tests/requirement/test_decompose_partitioning.py#@@ -6,7 +6,12 @@ obligation for 9 of them, in a schema-valid response nothing downstream could
+       tests/requirement/test_decompose_partitioning.py#@@ -20,7 +25,12 @@ import pytest
+       tests/requirement/test_decompose_partitioning.py#@@ -32,11 +42,12 @@ def _task(n: int) -> str:
+       tests/requirement/test_decompose_partitioning.py#@@ -45,7 +56,7 @@ def _declining(**kwargs) -> dict:
+       tests/requirement/test_decompose_partitioning.py#@@ -58,35 +69,41 @@ def _client(calls: list[dict]):
+       tests/requirement/test_decompose_partitioning.py#@@ -94,26 +111,26 @@ def test_every_requirement_carries_a_disposition_after_the_merge():
+       tests/requirement/test_decompose_partitioning.py#@@ -121,24 +138,26 @@ def test_the_batch_scopes_what_a_call_answers_for_not_what_it_reads():
+       tests/requirement/test_decompose_partitioning.py#@@ -163,129 +182,115 @@ def test_provenance_reports_the_derivation_size_observed_from_the_calls():
+       tests/requirement/test_obligation_attribution.py#@@ -1,4 +1,4 @@
+       tests/requirement/test_obligation_attribution.py#@@ -11,19 +11,38 @@ Observed in #180's Gate 1: a one-sentence Task requirement yielded seven
+       tests/requirement/test_obligation_attribution.py#@@ -35,6 +54,8 @@ Render each invoice line.
+       tests/requirement/test_obligation_attribution.py#@@ -69,13 +90,23 @@ def _declined(rid: str) -> dict:
+       tests/requirement/test_obligation_attribution.py#@@ -94,6 +125,7 @@ def test_an_obligation_quoting_its_own_requirement_keeps_it():
+       tests/requirement/test_obligation_attribution.py#@@ -102,175 +134,148 @@ def test_an_obligation_quoting_its_own_requirement_keeps_it():
+       tests/requirement/test_obligation_attribution.py#@@ -280,38 +285,32 @@ Render each invoice line.
+       tests/requirement/test_obligation_attribution.py#@@ -319,25 +318,31 @@ The export writes a header row naming every column.
+       tests/requirement/test_obligation_attribution.py#@@ -346,12 +351,12 @@ The export writes a header row naming every column.
+       tests/requirement/test_obligation_attribution.py#@@ -360,126 +365,30 @@ column.
+       tests/requirement/test_obligations.py#@@ -15,6 +15,7 @@ from acceptance.requirement.obligations import Decomposition, decompose
+       tests/requirement/test_obligations.py#@@ -23,6 +24,18 @@ FLOATING_RATE_TASK = """# Task
+       tests/requirement/test_obligations.py#@@ -79,7 +92,9 @@ FLOATING_RATE_RESPONSE = {
+       tests/requirement/test_obligations.py#@@ -96,7 +111,9 @@ def test_floating_rate_example_yields_five_typed_criteria():
+       tests/requirement/test_obligations.py#@@ -172,7 +189,27 @@ def test_archetype_1_includes_the_omitted_obligation():
+       tests/requirement/test_obligations.py#@@ -212,7 +249,9 @@ def test_duplicate_ids_are_made_unique():
+       tests/requirement/test_obligations.py#@@ -267,7 +306,9 @@ def test_underspecified_qualifier_yields_an_open_question_not_an_obligation():
+       tests/requirement/test_requirement_map.py#@@ -40,8 +40,24 @@ from acceptance.review_state import (
+       tests/requirement/test_requirement_map.py#@@ -165,7 +181,7 @@ def test_a_fully_accounted_response_disposes_every_requirement():
+       tests/requirement/test_requirement_map.py#@@ -177,38 +193,50 @@ def test_a_fully_accounted_response_disposes_every_requirement():
+       tests/requirement/test_requirement_map.py#@@ -229,7 +257,7 @@ def test_a_requirement_deliberately_yielding_nothing_carries_its_reason():
+       tests/requirement/test_requirement_map.py#@@ -249,7 +277,7 @@ def test_a_disposition_cannot_reference_an_obligation_at_all():
+       tests/requirement/test_requirement_map.py#@@ -278,27 +306,25 @@ def test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations():
+       tests/requirement/test_requirement_map.py#@@ -307,29 +333,31 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
+       tests/requirement/test_requirement_map.py#@@ -337,9 +365,11 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
+       tests/requirement/test_requirement_map.py#@@ -361,7 +391,7 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
+       tests/requirement/test_requirement_map.py#@@ -399,7 +429,7 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
+       tests/requirement/test_requirement_map.py#@@ -411,18 +441,16 @@ def test_the_schema_cannot_express_an_open_question_disposition_with_no_question
+       tests/requirement/test_requirement_map.py#@@ -502,56 +530,78 @@ def test_an_open_question_disposition_naming_no_real_question_is_rejected():
+       tests/requirement/test_requirement_map.py#@@ -680,14 +730,13 @@ def test_two_requirements_minting_the_same_id_keep_separate_obligations():
+       tests/requirement/test_requirement_map.py#@@ -699,7 +748,10 @@ def test_two_requirements_minting_the_same_id_keep_separate_obligations():
+       tests/requirement/test_requirement_map.py#@@ -719,7 +771,7 @@ def test_decompose_cannot_reach_a_diff_or_a_head_revision():
+       tests/requirement/test_requirement_map.py#@@ -768,7 +820,7 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
+       tests/requirement/test_requirement_map.py#@@ -777,17 +829,18 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
+       tests/support.py#@@ -13,6 +13,7 @@ from __future__ import annotations
+       tests/support.py#@@ -227,6 +228,211 @@ def _nest_obligations(response: dict) -> dict:
+       tests/support.py#@@ -244,24 +450,53 @@ def _completed(response: dict, **kwargs) -> dict:
+       tests/support.py#@@ -273,7 +508,14 @@ def _completed(response: dict, **kwargs) -> dict:
+       tests/support.py#@@ -315,10 +557,15 @@ def _completed(response: dict, **kwargs) -> dict:
+       tests/support.py#@@ -326,10 +573,19 @@ def client_returning(response: dict, model: str = _DEFAULT_MODEL, embedding_fn=N
+       tests/support.py#@@ -500,6 +756,11 @@ _EMPTY_BY_SCHEMA = {
+       tests/support.py#@@ -567,7 +828,15 @@ RECORDED_TRANSCRIPTS = pathlib.Path(__file__).parent / "fixtures" / "transcripts
+       tests/test_cli.py#@@ -3,7 +3,8 @@ import json
+       tests/test_cli.py#@@ -133,8 +134,18 @@ def test_check_records_determinism_flags_in_provenance(
+       tests/test_rerun.py#@@ -25,6 +25,7 @@ from acceptance.review_state import (
+       tests/test_rerun.py#@@ -315,6 +316,10 @@ _HEAD_JUDGMENTS = {
+       tests/test_stage_attribution.py#@@ -200,7 +200,7 @@ def test_a_real_review_run_attributes_every_call_it_made(tmp_path):
+       tests/test_usage.py#@@ -212,9 +212,11 @@ def test_every_pipeline_stage_appears_in_the_reported_order():
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 30820e1364fc6d09
+  continue this run with: --continue 30820e1364fc6d09
+Model usage by stage:
+  stage                         model                                                            calls   prompt  output  cached  this run  recorded
+  ----------------------------  -------------------------------------------  -------------------------  -------  ------  ------  --------  --------
+  decompose                     openai/gpt-5.4-mini                          30 (0 live / 30 replayed)  189,571   4,965    0.0%   $0.0000   $0.1645
+  decompose-summary             openai/gpt-5.4                                 1 (0 live / 1 replayed)    2,018     300    0.0%   $0.0000   $0.0095
+  obligation linking            voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (0 live / 2 replayed)    2,166     138    0.0%   $0.0000   $0.0013
+  test-to-obligation mapping    openai/gpt-5.4-mini                          34 (0 live / 34 replayed)  172,420  22,948   33.3%   $0.0000   $0.1939
+  discrimination judgment       openai/gpt-5.4-mini                            1 (0 live / 1 replayed)   30,630   2,403    0.0%   $0.0000   $0.0338
+  coverage classification       openai/gpt-5.4-mini                            1 (0 live / 1 replayed)  214,781   2,072    0.0%   $0.0000   $0.1704
+  unrequested-change detection  openai/gpt-5.4-mini                            1 (0 live / 1 replayed)  214,430   2,283    0.0%   $0.0000   $0.1711
+  disposition judgment          openai/gpt-5.4-mini                            4 (0 live / 4 replayed)   12,523     338    0.0%   $0.0000   $0.0109
+  test recommendation           openai/gpt-5.4-mini                            1 (0 live / 1 replayed)  210,712   2,097    0.0%   $0.0000   $0.1675
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.9229 to record (75 call(s) replayed at no cost to this run)
+

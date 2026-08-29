@@ -28,6 +28,22 @@ from acceptance.review_state import DeterminismControls, LinkPrefilter, ReviewPr
 # LiteLLM model string. Provider-agnostic: swap freely via --model / RunConfig.
 DEFAULT_MODEL = "openai/gpt-5.4-mini"
 
+# Stages that name their own model, overriding the run's (#317). A stage absent
+# here runs on `model`, which is almost every stage.
+#
+# `decompose-summary` decides, per span of the mandate's opening summary, whether
+# the obligations already derived from the bullets require that property.
+# `gpt-5.4-mini` failed it in three different ways across three prompt versions:
+# returning nothing, marking every span covered, and marking every span
+# uncovered. Measured at about $0.011 per review for that one call.
+#
+# WHICH model is right for a stage is a judgement that belongs with the stage,
+# not with this table's mechanism — the mechanism is what #317 delivers, and this
+# entry is the one value that work measured.
+DEFAULT_STAGE_MODELS = {
+    "decompose-summary": "openai/gpt-5.4",
+}
+
 # Fixed by default so the "fixed seed/temperature + cached transcripts"
 # strategy this module documents is actually in force. The value is arbitrary;
 # only its fixedness matters. Leaving it None — as it was — meant half the
@@ -43,20 +59,11 @@ DEFAULT_SEED = 0
 # stage was measured shedding work, at ~1.5x the total input tokens.
 DEFAULT_MAPPING_BATCH_SIZE = 12
 
-# Requirements per obligation-derivation call (#204). Same determinism-control
-# status as the mapping size, and the same consequence: changing it invalidates
-# every recorded decompose transcript.
-#
-# The failure being partitioned is the same one DR-164 measured a stage later —
-# a single call over ~36 requirements at ~2.5k input tokens produced no
-# obligation for 9 of them. Decompose has no diff, so the repeated context is
-# just the requirement list and partitioning costs a fraction of what it would
-# on the diff-dominated stages DR-164 decision 2 declined to split.
-#
-# 8 rather than 12: derivation asks more of each item than mapping does. Mapping
-# returns one relevance judgment per test; derivation enumerates, splits, types,
-# quotes and disposes for every requirement in the batch.
-DEFAULT_DECOMPOSE_BATCH_SIZE = 8
+# There is no decompose batch size any more (#317). Derivation issues one call
+# per requirement, and that is not a knob: it is what lets `source_quote` be an
+# enum of the answering requirement's own spans, so raising it would remove the
+# guarantee rather than trade accuracy for cost. See
+# `requirement/obligations.py::ONE_REQUIREMENT_PER_CALL`.
 
 # Obligation PAIRS per linking call (#144). Same determinism-control status as
 # the two above.
@@ -129,6 +136,11 @@ class RunConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     model: str = DEFAULT_MODEL
+    # Per-stage overrides of `model` (#317). A determinism control of the same
+    # kind as the seed — it decides which judge answers — and it reaches the
+    # request the same way, through the model in the hash, so moving a stage onto
+    # a different model invalidates that stage's recordings and no others.
+    stage_models: dict[str, str] = Field(default_factory=lambda: dict(DEFAULT_STAGE_MODELS))
     mode: Mode = Mode.REPLAY
     temperature: float = 0.0
     seed: int | None = DEFAULT_SEED
@@ -137,9 +149,6 @@ class RunConfig(BaseModel):
     # rather than parameterising the provider call, so it reaches the mapping
     # stage through the pipeline instead of through build_client().
     mapping_batch_size: int = Field(default=DEFAULT_MAPPING_BATCH_SIZE, ge=1)
-    # The same kind of control for obligation derivation (#204), reaching the
-    # stage the same way and for the same reason.
-    decompose_batch_size: int = Field(default=DEFAULT_DECOMPOSE_BATCH_SIZE, ge=1)
     # And for obligation linking (#144), whose unit is a PAIR of obligations
     # rather than an obligation — see the constant's note.
     link_pair_batch_size: int = Field(default=DEFAULT_LINK_PAIR_BATCH_SIZE, ge=1)
@@ -166,6 +175,7 @@ class RunConfig(BaseModel):
             seed=self.seed,
             completion_fn=completion_fn,
             embedding_model=self.embedding_model,
+            stage_models=self.stage_models,
         )
 
 
@@ -189,5 +199,6 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
         controls_requested=DeterminismControls(temperature=client.temperature, seed=client.seed),
         controls_in_force=(None if in_force is None else DeterminismControls(**in_force)),
         request_partition_sizes=client.partition_sizes_in_force,
+        stage_models=client.stage_models_in_force,
         link_prefilter=(None if prefilter is None else LinkPrefilter(**prefilter)),
     )

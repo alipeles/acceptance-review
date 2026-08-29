@@ -3,7 +3,8 @@ import json
 import pytest
 
 from acceptance.cli import main, run_check
-from acceptance.config import DEFAULT_DECOMPOSE_BATCH_SIZE, DEFAULT_SEED, RunConfig
+from acceptance.config import DEFAULT_SEED, RunConfig
+from acceptance.requirement.obligations import ONE_REQUIREMENT_PER_CALL
 from acceptance.review_state import Disposition
 from acceptance.review_store import ReviewStore
 from tests.support import client_finding_nothing
@@ -133,8 +134,18 @@ def test_check_records_determinism_flags_in_provenance(
         # stage makes no call — but derivation partitions every run, so it
         # reports its own size. Per stage because the two are different work
         # at different scale (#204); an EMPTY mapping is the "unpartitioned
-        # run" claim, not a null.
-        "request_partition_sizes": {"decompose": DEFAULT_DECOMPOSE_BATCH_SIZE},
+        # run" claim, not a null. Decompose reports 1 because it now issues one
+        # call per requirement (#317).
+        "request_partition_sizes": {"decompose": ONE_REQUIREMENT_PER_CALL},
+        # Every stage that issued a call, and the model it ran on (#317). All
+        # on the run's model here: the stage-model table is a `RunConfig`
+        # setting, and this test injects its own client.
+        "stage_models": {
+            "coverage classification": "openai/gpt-5",
+            "decompose": "openai/gpt-5",
+            "decompose-summary": "openai/gpt-5",
+            "unrequested-change detection": "openai/gpt-5",
+        },
         # None, not a zero-valued record: this stub finds no obligations at
         # all, so linking returns before it prefilters anything and the honest
         # claim is that no filter ran (#259). A run that filtered and excluded

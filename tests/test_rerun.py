@@ -25,6 +25,7 @@ from acceptance.review_state import (
     TestRecommendation,
 )
 from acceptance.review_store import ReviewStore
+from tests.support import WHOLE_SUMMARY_UNCOVERED
 
 TASK = "# Task\nRound half to even.\n"
 
@@ -315,6 +316,10 @@ _HEAD_JUDGMENTS = {
         "open_questions": [],
         "requirement_dispositions": [],
     },
+    # Archetype 9's task file is a Task paragraph and nothing else, so every
+    # obligation comes from the summary step (#317): with the covered answer
+    # there is no bullet for the ordinary decomposer to answer about.
+    "_SummarySpans": WHOLE_SUMMARY_UNCOVERED,
     "_Mappings": {
         "mappings": [
             {

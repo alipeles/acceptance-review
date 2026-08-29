@@ -890,6 +890,15 @@ class ReviewProvenance(_Model):
     # EMPTY mapping is that claim, and a stage is absent when its own calls
     # disagreed.
     request_partition_sizes: dict[str, int] = Field(default_factory=dict)
+    # Which model each stage's calls ran on (#317). A stage may name its own
+    # model, so `model` above is the run's default rather than the whole answer,
+    # and a reader asking which judge produced a finding needs the stage's.
+    #
+    # Observed from the calls, like the partition sizes: a stage absent from this
+    # mapping issued no call, and a stage whose calls disagreed is omitted rather
+    # than reported at a model only some of them used. Empty on a run that made
+    # no model call at all.
+    stage_models: dict[str, str] = Field(default_factory=dict)
     # What obligation linking declined to ask about, and why (#259). `None` is
     # the positive claim that every admissible pair was asked — see
     # `LinkPrefilter` for why the zero case is not the same thing.
