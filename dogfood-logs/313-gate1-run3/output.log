@@ -1,0 +1,180 @@
+Requirements: 28   with obligations: 27   deliberately none: 1
+
+[task-01] Before any test is looked at, the review records — for each criterion it
+    derived from the mandate — the concrete ways the delivered code could plausibly fail
+    that criterion.
+    -> pre-test-failure-modes  [functional/explicit]
+       Before any test is looked at, record for each criterion derived from the mandate
+       the concrete ways the delivered code could plausibly fail that criterion.
+
+[constraint-01] Each recorded way of failing carries an identifier unique within the
+    review, the criterion it belongs to, a classification, a free-text description, and
+    the regions of changed source it implicates.
+    -> recorded-failure-fields  [functional/explicit]
+       Each recorded way of failing carries a unique identifier within the review, the
+       criterion it belongs to, a classification, a free-text description, and the
+       regions of changed source it implicates.
+
+[constraint-02] Every other part of the review that names a recorded way of failing
+    names it by that identifier, and does not restate its content.
+    -> use-recorded-way-identifiers  [invariant/explicit]
+       Every part of the review that refers to a recorded way of failing names it by its
+       identifier rather than restating its content.
+
+[constraint-03] A classification is either a value from a fixed vocabulary or a single
+    escape value meaning the vocabulary has no value for this way of failing.
+    -> classification-escape-value  [invariant/explicit]
+       A classification is either a value from the fixed vocabulary or a single escape
+       value meaning the vocabulary has no value for this way of failing.
+
+[constraint-04] The recorded ways of failing persist with the rest of the review's
+    state, and a review reloaded from storage carries them unchanged.
+    -> persist-recorded-failures  [invariant/explicit]
+       The recorded ways of failing persist with the rest of the review's state, and a
+       review reloaded from storage carries them unchanged.
+
+[constraint-05] The step that produces them is given the criterion and the changed
+    source, and is given no test.
+    -> no-test-for-recording-step  [functional/explicit]
+       The step that produces recorded ways of failing is given the criterion and the
+       changed source, and is not given a test.
+
+[constraint-06] That step is guided by a checklist of ways to fail chosen by the
+    criterion's type, and may still record a way of failing that no entry on that
+    checklist names.
+    -> checklist-guided-failure-recording  [functional/explicit]
+       The step that records ways of failing is guided by a checklist of ways to fail
+       chosen by the criterion's type, while still allowing it to record a way of
+       failing that no checklist entry names.
+
+[constraint-07] Recording no way of failing for a criterion is a valid result for that
+    criterion, and carries the reason the set is empty.
+    -> empty-failing-set-valid-with-reason  [invariant/explicit]
+       Recording no way of failing for a criterion is a valid result for that criterion,
+       and the review carries the reason the set is empty.
+
+[constraint-08] A criterion's set of records is reused rather than produced again
+    exactly while both that criterion's text and the contents of the source regions its
+    records implicate are unchanged.
+    -> reuse-recorded-set-when-criterion-and-source-unchanged  [regression/explicit]
+       A criterion's set of records is reused rather than produced again exactly while
+       both that criterion's text and the contents of the source regions its records
+       implicate are unchanged.
+
+[constraint-09] A criterion whose text changed has its entire set produced again, and
+    keeps no part of the set recorded for it before.
+    -> recompute-changed-criterion-records  [invariant/explicit]
+       A criterion whose text changed has its entire set of recorded ways of failing
+       produced again, with no part of the previously recorded set retained for that
+       criterion.
+
+[constraint-10] A run continuing an earlier run reuses every set it is entitled to
+    reuse, and produces again only the sets it is not.
+    -> reuse-entitled-sets-on-continued-run  [functional/explicit]
+       A continuing run reuses every set it is entitled to reuse.
+
+[constraint-11] Where a set was reused rather than produced again, the review says so.
+    -> reuse-says-so  [explanation_observability/explicit]
+       Where a set was reused rather than produced again, the review says so.
+
+[constraint-12] The review reports the recorded ways of failing.
+    -> report-recorded-ways-of-failing  [functional/explicit]
+       The review reports the recorded ways of failing.
+
+[constraint-13] Whether the review reports the work complete, and every rating it gives
+    a criterion, are what they would be if no way of failing had been recorded at all.
+    -> completion-and-ratings-unchanged  [invariant/explicit]
+       The review reports completion and every criterion rating exactly as it would if
+       no way of failing had been recorded.
+
+[exclusion-01] Judging whether any test would fail if the delivered code contained a
+    recorded way of failing.
+    -> no-test-judgment-about-recorded-failure  [functional/explicit]
+       The change does not add judging whether any test would fail if the delivered code
+       contained a recorded way of failing.
+
+[exclusion-02] Deriving any rating, classification or conclusion about a criterion from
+    its recorded ways of failing.
+    -> no-derive-ratings-from-recorded-failures  [invariant/explicit]
+       The change does not derive any rating, classification, or conclusion about a
+       criterion from its recorded ways of failing.
+
+[exclusion-03] Which criteria the review derives from the mandate, and how it derives
+    them.
+    -> derive-criteria-from-mandate-and-method  [compatibility/explicit]
+       The change does not alter which criteria the review derives from the mandate or
+       how it derives them.
+
+[exclusion-04] How the review gathers, judges or rates test evidence today.
+    -> no-test-evidence-gathering-judgment-rating  [docs_config/explicit]
+       The change does not alter how the review gathers, judges, or rates test evidence
+       today.
+
+[exclusion-05] Running the delivered code, and altering it to produce a failure.
+    -> no-runtime-failure-injection  [functional/explicit]
+       The change does not include running the delivered code or altering it to produce
+       a failure.
+
+[exclusion-06] Comparing a recorded set against an expected set supplied from outside
+    the review.
+    -> no-external-expected-set-comparison  [functional/explicit]
+       The change does not compare a recorded set against an expected set supplied from
+       outside the review.
+
+[completion-01] Implementation.
+    -- no obligation, deliberately
+       The requirement is only the section marker "Implementation." standing alone, with
+       no substantive requirement under it.
+
+[completion-02] A test fails when the step that records ways of failing is given a test.
+    -> test-fails-when-step-given-test  [test_demand/explicit]
+       A test asserts that the step that records ways of failing is given a test.
+
+[completion-03] A test fails when a criterion with no plausible way of failing is given
+    an invented one instead of an empty set carrying its reason.
+    -> test-empty-set-with-reason  [test_demand/explicit]
+       A test asserts that a criterion with no plausible way of failing is given an
+       empty set carrying its reason instead of an invented way of failing.
+
+[completion-04] A test fails when a set is produced again across two continued runs
+    although the criterion's text and the contents of its implicated source regions are
+    both unchanged.
+    -> reuse-unchanged-set-across-continued-runs  [test_demand/explicit]
+       A test asserts that a set is reused rather than produced again across two
+       continued runs when the criterion's text and the contents of its implicated
+       source regions are both unchanged.
+
+[completion-05] A test fails when a criterion whose text changed keeps any part of the
+    set recorded for it before.
+    -> changed-criterion-keeps-no-prior-records  [test_demand/explicit]
+       A test asserts that a criterion whose text changed keeps no part of the set
+       recorded for it before.
+
+[completion-06] A test fails when a criterion whose text is unchanged has its set
+    produced again because a different criterion's text changed.
+    -> test-fails-unchanged-criterion-reused-after-other-change  [test_demand/explicit]
+       A test asserts that a criterion whose text is unchanged has its set produced
+       again because a different criterion's text changed.
+
+[completion-07] A test fails when recording ways of failing changes the review's
+    completion conclusion or any criterion's rating.
+    -> completion-07-no-rating-or-conclusion-change  [regression/explicit]
+       Recording ways of failing does not change the review's completion conclusion or
+       any criterion's rating.
+
+[completion-08] Two recorded runs over the same input produce byte-identical review
+    state and byte-identical report output.
+    -> byte-identical-runs  [regression/explicit]
+       Two recorded runs over the same input produce byte-identical review state and
+       byte-identical report output.
+run 747d3c974fc7bc91
+  requirements: 28 derived, 0 carried, 0 revised; 29 decompose call(s)
+  continue this run with: --continue 747d3c974fc7bc91
+Model usage by stage:
+  stage               model                                                            calls   prompt  output  cached  this run  recorded
+  ------------------  -------------------------------------------  -------------------------  -------  ------  ------  --------  --------
+  decompose           openai/gpt-5.4-mini                          28 (28 live / 0 replayed)  175,994   4,611    0.0%   $0.1527   $0.1527
+  decompose-summary   openai/gpt-5.4                                 1 (1 live / 0 replayed)    1,968     346    0.0%   $0.0101   $0.0101
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)    1,978      89    0.0%   $0.0010   $0.0010
+  this run spent $0.1638 on 31 live call(s); the evidence cost $0.1638 to record (0 call(s) replayed at no cost to this run)
+

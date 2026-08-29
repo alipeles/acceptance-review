@@ -4572,3 +4572,236 @@ the record.
   `acceptance decompose`. File as a child of **#181**, labels `bug`,
   `track:checker`.
 - **Status:** open
+
+### [2026-08-29] A polarity inversion in a `test_demand` obligation survives rewording — #262 gains a third instance and a control
+
+- **Kind:** filing (comment on existing issue #262)
+- **Found during:** #313, Gate 1 runs 3 and 4
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** two of seven "A test fails when X" completion expectations
+  derived obligations reading "A test asserts that X" — the requirement's
+  polarity dropped, so the obligation demands the behaviour the mandate forbids.
+  The other five inverted correctly in the same run, so it is unstable rather
+  than a misreading of the form. Rewording both and re-running reproduced both
+  inversions, which is what separates this from the weak-wording cases #262's
+  earlier instances were confounded with.
+- **Why I didn't act:** `requirement/`, and "how the review derives criteria
+  from the mandate" is a Scope exclusion of #313's own mandate. Rewording was
+  tried, twice, and did not fix it.
+- **Drafted fix:** post as a **comment on #262** (the family of a paraphrase that
+  does not preserve entailment):
+
+  > **A third instance — and the first with a rewording control.**
+  >
+  > #262's second instance (#266's Gate 1) was confounded: the source sentence
+  > was genuinely badly worded, so an inserted negation could not be separated
+  > from the wording. #313's Gate 1 removes that confound by rewording and
+  > re-running.
+  >
+  > | requirement | run 3 text → obligation | run 4 text → obligation |
+  > |---|---|---|
+  > | `completion-02` | "A test fails when the step … **is given a test**" → "A test asserts that the step … **is given a test**" | "A test fails when the step … **can see any test**" → "A test asserts that the step … **can see any test**" |
+  > | `completion-06` | "A test fails when a criterion whose text is unchanged **has its set produced again** …" → "A test asserts that a criterion whose text is unchanged **has its set produced again** …" | "A test fails when changing one criterion's text **causes another criterion's set to be produced again**" → obligation text unchanged from run 3, still uninverted |
+  >
+  > Both were among run 4's three revised requirements and so were re-derived,
+  > not carried. `completion-03`, `-04` and `-05` share the identical form and
+  > inverted correctly in both runs: 5 of 7 right, twice.
+  >
+  > This also survives #317, which constrained `source_quote` to the answering
+  > requirement's own spans. Polarity is in the `description`, which that
+  > constraint does not reach — so the schema fix that made misattribution
+  > unrepresentable leaves entailment loss untouched, as expected.
+  >
+  > **A wording that avoids it.** Run 5 restated both requirements as "A test
+  > asserts that Y" instead of "A test fails when X", so no inversion is asked
+  > for. Both derived correctly first time. That is a workaround for whoever
+  > writes the next task file, not a fix — `completion-03`, `-04`, `-05` and
+  > `-07` still use the old form and still happen to come out right.
+  >
+  > Logs: `dogfood-logs/313-gate1-run{3,4,5}/`.
+- **Status:** open
+
+### [2026-08-29] The review pipeline calls into `benchmark/` for a model call that names no stage, and the test written to catch that misses it
+
+- **Kind:** filing — **withdrawn, fixed in #313's branch instead** on the human's
+  instruction at #313's Gate 1 ("if the new defect from 317 is an easy fix,
+  let's just roll it in"). `align_obligations` gained a `stage` parameter and
+  `requirement/carry.py:_STAGE` passes `"requirement carry alignment"`; the
+  scan in `tests/test_stage_attribution.py` now follows imports out of
+  `benchmark/`, and `tests/test_carry.py` drives the carry path itself. Both
+  tests verified to fail with the fix reverted. Kept below as the record of
+  what was found and why the existing test missed it.
+- **Found during:** #313, Gate 1 run 4
+- **Where:** `src/acceptance/requirement/carry.py:168` calling
+  `src/acceptance/benchmark/alignment.py:77`
+- **Severity:** should-fix
+- **What's wrong:** a continued run whose requirement text moved emits a usage
+  row headed `unknown`:
+
+  ```
+  unknown  openai/gpt-5.4-mini  1 (1 live / 0 replayed)  406  60  0.0%  $0.0006
+  ```
+
+  `carry.py` imports `align_obligations` from the benchmark harness to match
+  reworded requirements against prior ones; that function calls
+  `client.complete(messages, _Alignment)` with no `stage=`. `llm.py:46` states
+  the rule being broken: *"A review-pipeline call site that leaves this in place
+  is a defect, and `tests/test_stage_attribution.py` fails on one."* That test
+  passes — 8 passed — so it does not reach the carry path. It also breaks #317's
+  just-landed requirement that a completed run says which model each step used,
+  and it crosses CLAUDE.md's layering: *"`benchmark/` is the measurement
+  harness; it is not part of a review run."*
+- **Why I didn't act:** outside #313's area, and #313's mandate excludes how the
+  review derives criteria. Not a blocker for #313 — the misreported stage costs
+  a sixth of a cent and changes no obligation.
+- **Drafted fix:** a new issue, child of **#184** (the determinism and
+  reproducibility umbrella, which owns `llm.py`), labels `bug`, `track:checker`.
+  Alternative parent #181 if the layering half is judged the primary defect.
+
+  > **Title:** A continued run's requirement-alignment call reports its stage as
+  > `unknown`, and reaches into `benchmark/` to make it
+  >
+  > `requirement/carry.py:168` imports `align_obligations` from
+  > `acceptance.benchmark.alignment` to match reworded requirements against
+  > prior ones. `benchmark/alignment.py:77` calls `client.complete` with no
+  > `stage=`, so the call is attributed to `unknown` — the bucket `llm.py:46`
+  > documents as a defect for any review-pipeline call site.
+  >
+  > Observed at #313's Gate 1 run 4 (`dogfood-logs/313-gate1-run4/output.log`),
+  > a `decompose --continue` in which three requirements were reworded. It
+  > cannot appear on a first run, which is why it went unseen until now.
+  >
+  > Three defects in one:
+  > 1. #317 requires a completed run to say which model each step used. This
+  >    step says `unknown`.
+  > 2. `tests/test_stage_attribution.py` passes with it present, so the test
+  >    that exists to catch this does not cover the carry path. Widening it is
+  >    the acceptance check.
+  > 3. The review pipeline depends on the benchmark harness, against CLAUDE.md's
+  >    statement that `benchmark/` is not part of a review run. The fix is
+  >    either moving `align_obligations` into the pipeline or giving it a stage
+  >    parameter its callers must supply.
+- **Status:** **withdrawn — fixed in #313's branch, nothing to file.** The
+  layering half stands unfixed: `requirement/carry.py` still imports from
+  `benchmark/`. Moving `align_obligations` into the pipeline would touch
+  `benchmark/scoring.py`, `benchmark/instability.py` and their tests, which was
+  more than the instruction covered. The crossing is now pinned by a test, so it
+  cannot spread silently.
+
+### [2026-08-29] Splitting a conjunction yields an unmerged twin pair — the paraphrase residue #317 predicted, on a second mandate
+
+- **Kind:** filing (adds evidence to the unfiled draft above, dated 2026-08-29,
+  about the paraphrase residue now visible in the prompt corpus)
+- **Found during:** #313, Gate 1 run 4
+- **Where:** `src/acceptance/requirement/obligations.py`,
+  `src/acceptance/requirement/linking.py`
+- **Severity:** should-fix
+- **What's wrong:** `constraint-10` — "A run continuing an earlier run reuses
+  every set it is entitled to reuse." — yielded two obligations, the second of
+  which is about `constraint-11`, a requirement its call never saw:
+
+  | obligation | on requirement | text |
+  |---|---|---|
+  | `reuse-entitled-sets-on-continued-run` | `constraint-10` | A continuing run reuses every set it is entitled to reuse. |
+  | `regenerate-only-nonreusable-sets` | `constraint-10` | A continuing run produces again only the sets it is not entitled to reuse. |
+  | `continued-run-produces-only-uncached-sets` | `constraint-11` | A run continuing an earlier run produces again only the sets it is not entitled to reuse. |
+
+  The last two say the same thing and linking merged neither; neither carries an
+  "also serves" annotation. This is `findings.md` §9's prediction observed on a
+  mandate other than the prompt corpus: constraining `source_quote` makes an
+  obligation about another requirement unsourceable but not unwritable, so
+  misattribution degrades to duplication. It is also a fresh instance of the open
+  blocker about unmerged twin obligations starving each other of mapped tests.
+- **Why I didn't act:** `requirement/`, excluded by #313's mandate. The split
+  that produced it stays: run 3's single conjunction dropped half its
+  requirement, and stating both halves is the more faithful mandate.
+- **Drafted fix:** fold into the drafted issue above rather than filing
+  separately — add this pair as its second observed instance, noting that it
+  arises from an ordinary two-bullet split rather than from anything unusual in
+  the prompt corpus, and that the two texts differ only by "A continuing run"
+  against "A run continuing an earlier run".
+- **Status:** open
+
+### [2026-08-29] Two obligation-type slips, one of which loses the `test_demand` distinction DR-232 exists to carry
+
+- **Kind:** filing (comment on existing issue #181's umbrella, or a new child)
+- **Found during:** #313, Gate 1 runs 3 and 4 (carried unchanged between them)
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** two obligations are typed wrongly in the same run.
+  `exclusion-04` ("How the review gathers, judges or rates test evidence today")
+  is typed `docs_config`; `exclusion-03`, the same shape and the adjacent bullet,
+  is typed `compatibility`. And `completion-07` ("A test fails when recording
+  ways of failing changes the review's completion conclusion or any criterion's
+  rating") has the identical form to `completion-02` through `-06`, which are all
+  typed `test_demand`, but is typed `regression` and described as a behaviour
+  rather than as a demand for a test. That is exactly the loss
+  `ObligationType.TEST_DEMAND`'s own docstring says the type was added to stop:
+  *"derivation encoded the difference in the description or lost it — and it lost
+  it, repeatedly and unstably."*
+- **Why I didn't act:** excluded by #313's mandate, and no wording of mine fixes
+  a type.
+- **Drafted fix:** comment on **#181** with the two pairs above, and an
+  acceptance criterion shaped as *"two requirements of the same form in one
+  mandate receive the same obligation type"*. Type is not cosmetic for the
+  defect-first work: #313's enumerator walks a checklist chosen by obligation
+  type, so a mistyped obligation is walked against the wrong checklist.
+  Evidence: `dogfood-logs/313-gate1-run{3,4}/output.log`.
+- **Status:** open
+
+### [2026-08-29] Decision: the defect taxonomy's per-obligation-type contents, and what a `test_demand` obligation's enumerator may look at
+
+- **Kind:** decision
+- **Found during:** #313, Gate 1 — this is the decision DR-312 assigns to this gate
+- **Where:** the enumeration stage #313 builds
+- **Severity:** blocker for #315 (the benchmark sub-issue), whose labels type
+  against this vocabulary; not a blocker for #313's own implementation
+- **What's wrong:** DR-312's resolved question 4 settles the taxonomy's *shape*
+  — a per-obligation-type checklist walked in the enumerator's prompt, with a
+  free-text `other` escape — and explicitly leaves the contents to this gate,
+  ahead of any M-B5a.2 label being written.
+- **Drafted fix:** a shared core walked for every obligation type, plus a short
+  per-type list. Short on purpose: DR-312 names Procrustean fitting as a failure
+  mode, and a long checklist walked for every obligation dilutes the prompt.
+
+  Shared core, four entries: `qualifier_ignored` (behaviour implemented, a stated
+  qualifier not honoured); `condition_inverted` (guard or comparison runs the
+  wrong way); `scope_too_narrow` (holds for some covered inputs, not all);
+  `not_wired` (the logic exists but nothing on the delivered path calls it —
+  CLAUDE.md's own most-repeated finding).
+
+  Per type, two each: `functional` → `wrong_output_shape`, `missing_case`;
+  `boundary` → `boundary_wrong_side`, `boundary_unhandled`; `error_handling` →
+  `error_swallowed`, `wrong_error_surfaced`; `invariant` →
+  `established_not_maintained`, `unenforced_on_one_path`; `regression` →
+  `prior_behavior_altered`, `prior_behavior_removed`; `compatibility` →
+  `old_input_rejected`, `stored_form_unreadable`; `explanation_observability` →
+  `explanation_absent`, `explanation_states_wrong_cause`; `docs_config` →
+  `documented_not_implemented`, `default_disagrees_with_docs`.
+
+  Two types get no checklist. `human_review` exists because a machine cannot
+  settle the question, so a reasoned empty set is the expected result. And
+  `test_demand` raises a conflict I cannot resolve alone: DR-312 decision 2 says
+  the enumerator never sees the tests, which is the mitigation for #252, but a
+  `test_demand` obligation is *about* a test, so enumerating a defect for one
+  requires looking at the thing the design forbids. This is not hypothetical —
+  #313's own mandate produced six `test_demand` obligations. Three ways out:
+  exclude `test_demand` obligations from enumeration entirely; enumerate them
+  with the reasoned-empty-set outcome as the only permitted result; or narrow
+  test-blindness to mean "the tests mapped to this obligation" rather than all
+  tests. **I recommend the first** — it keeps decision 2 absolute and costs
+  nothing #313 claims — but it is a change to the design's reach and is the
+  human's call.
+
+  **Alternative rejected:** one flat vocabulary across all obligation types.
+  Simpler to score, and it removes the mistyping risk in the entry above.
+  Rejected because DR-312 decision 4 settled on per-type, and the checklist's
+  value is recall — a flat twenty-item list walked for every obligation is the
+  dilution the DR warns about.
+- **Status:** **resolved as recommended**, on the human's "go ahead with your
+  plan" at #313's Gate 1. Written up as `docs/DR-313-defect-taxonomy.md`,
+  including the `test_demand` exclusion and the consequence it leaves for #314
+  and #316: an absent defect set has to be distinct from an empty one. No issue
+  filed — a resolved decision belongs in a Decision Record.
+
