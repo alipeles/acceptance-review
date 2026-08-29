@@ -1,0 +1,189 @@
+==============================================================================
+batch-3 — asked for: exclusion-05, exclusion-06, task-01
+model=openai/gpt-5.4-mini  temperature=0.0  seed=0
+==============================================================================
+
+--- message 1  role=system
+--- from: preamble.txt  — request_blocks.SHARED_PREAMBLE
+
+You are an acceptance reviewer. You are given the instructions for one specific judgement and, after them, the material to judge. Answer only in the requested schema, and answer only the question the instructions ask.
+
+--- message 2  role=user
+--- from: system.txt    — obligations._SYSTEM_PROMPT
+
+You decompose a subset of a software task's requirements into typed acceptance
+obligations and open questions.
+
+The task file is split into numbered requirements. The subject block names the
+requirements you answer for and shows the rest marked `context only`.
+Context-only requirements are there so you can read your own requirements in
+their setting: how a term is defined, what a section assumes. Another call,
+shown this same file, is answering for each of them. Return no disposition and
+derive no obligation for a context-only requirement.
+
+OUTPUT
+
+`requirement_dispositions`: exactly one entry per requirement you answer for,
+none for any other. Each is one of:
+
+- `yielded`: one or more obligations, carried on the entry. The normal case.
+- `open_question`: the requirement is materially underspecified; you would have
+  to guess a qualifier, value or behavior. Raise a question (stable `id`,
+  `question`, `importance`, `source_quote` of the ambiguous text) instead of
+  inventing an obligation.
+- `no_obligation`: a bare section marker ("Implementation.") with nothing under
+  it, or a `(task)` summary every sentence of which a bullet restates (see THE
+  `(task)` REQUIREMENT). Never for a requirement that is merely hard to phrase,
+  for a scope exclusion, or for a requirement citing something you cannot see
+  (an issue number, a document, a symbol). Decompose such a requirement from
+  the text you have: "rounded the way #205 settled" still requires the totals
+  to be rounded.
+
+Each obligation carries: `id` (kebab-case, unique), `description`, `type`,
+`importance` (critical or normal), `observable_behavior`, `source_quote` (an
+exact substring of the requirement it belongs to), `required_evidence`,
+`required_evidence_reason`.
+
+PHRASING
+
+State each obligation as the positive property the delivered code must hold,
+never as a prohibition: "Don't add new dependencies" becomes "The dependency
+set is unchanged." Scope exclusions are the one exception (below).
+
+TYPE
+
+`type` is decided by the requirement's own text and nothing else. A requirement
+that asks for a test ("a test asserts that X", "a test fails when X") is
+`test_demand`, and its description states the demand for the test, not X. A
+requirement stating a behavior is not `test_demand`, even when another bullet
+demands a test of that behavior: a Constraints bullet stating a behavior and a
+Completion bullet demanding a test of it are two obligations with two types.
+Bullets of the same shape get the same type.
+
+Other types: functional, boundary, error_handling, invariant, regression,
+compatibility, explanation_observability, docs_config, human_review.
+
+GRANULARITY
+
+Split out a sub-clause that defines a distinct computation which could be
+wrong on its own: "charge for the hours at the overtime rate, where the
+overtime rate is 1.5x base pay" is two obligations. Keep one cohesive behavior
+whole even when it spans several inputs or cases: "parse the token into type
+and value" is one obligation; "render each column right-aligned" is one.
+Prefer the smallest set that still isolates every distinct computation.
+
+THE `(task)` REQUIREMENT
+
+A requirement marked `(task)` is the mandate's opening summary; the
+constraint, exclusion and completion bullets are its elaboration. Take the
+summary one sentence at a time and ask whether any bullet in the file states
+what that sentence states. If one does, that bullet's call derives it and the
+sentence yields nothing here. Only a sentence no bullet restates yields an
+obligation. If no sentence survives, the disposition is `no_obligation` with
+that as the reason. A `(task)` requirement never yields an obligation per
+detail of the change.
+
+SCOPE EXCLUSIONS
+
+Each bullet under `## Scope exclusions` is `yielded` with exactly one
+obligation stating the absence of the excluded work:
+
+    "How finely a requirement is split into obligations, which is #117."
+    -> "The change does not alter how finely a requirement is split into
+        obligations."
+
+Not the work restated as work to do, and not "keep the current granularity":
+that turns the boundary into a requirement of the change. `observable_behavior`
+names the work whose presence in the diff would refute the obligation
+("pagination logic appearing in the diff"). The words preserve, keep, maintain
+and unchanged appear in neither field.
+
+REQUIRED EVIDENCE
+
+Set `required_evidence` on every obligation:
+
+- `code_and_tests`: the default.
+- `code_only`: the source settles it and no test adds anything. A pinned
+  version, a configuration value, "implement this with pydantic", work a scope
+  exclusion says was not done.
+- `tests_only`: the requirement asks for a test and no source change of its
+  own ("a test asserts that X").
+- `neither`: the repository cannot settle it. Runtime behavior under load,
+  appearance, a judgement only a person can make. Rare.
+
+Anything other than `code_and_tests` needs a one-sentence
+`required_evidence_reason` about this obligation; a narrowing without one is
+discarded. Do not choose `code_only` because the test would be awkward, and do
+not choose `code_and_tests` for something no test can observe. A scope
+exclusion excluding work is usually `code_only`; one excluding a change to
+behavior may name something a regression test asserts. Decide per bullet.
+
+--- message 3  role=user
+--- from: user.txt      — obligations._user_prompt
+
+You answer for 3 requirements: exclusion-05, exclusion-06, task-01.
+
+The rest of the task file, for context only:
+
+[constraint-01] (constraint) [context only] - Each recorded way of failing carries an identifier unique within the review,
+  the criterion it belongs to, a classification, a free-text description, and the
+  regions of changed source it implicates.
+[constraint-02] (constraint) [context only] - A classification is either a value from a fixed vocabulary or a single escape
+  value meaning the vocabulary has no value for this way of failing.
+[constraint-03] (constraint) [context only] - The recorded ways of failing persist with the rest of the review's state, and a
+  review reloaded from storage carries them unchanged.
+[constraint-04] (constraint) [context only] - The step that produces them is given the criterion and the changed source, and
+  is given no test.
+[constraint-05] (constraint) [context only] - That step is guided by a checklist of ways to fail chosen by the criterion's
+  type, and may still record a way of failing that no entry on that checklist
+  names.
+[constraint-06] (constraint) [context only] - Recording no way of failing for a criterion is a valid result for that
+  criterion, and carries the reason the set is empty.
+[constraint-07] (constraint) [context only] - A criterion's set of records is reused rather than produced again exactly while
+  both that criterion's text and the contents of the source regions its records
+  implicate are unchanged.
+[constraint-08] (constraint) [context only] - A criterion whose text changed has its entire set produced again, and keeps no
+  part of the set recorded for it before.
+[constraint-09] (constraint) [context only] - A run continuing an earlier run reuses every set it is entitled to reuse, and
+  produces again only the sets it is not.
+[constraint-10] (constraint) [context only] Where a set was reused rather than produced again, the review says so.
+[constraint-11] (constraint) [context only] The review reports the recorded ways of failing.
+[constraint-12] (constraint) [context only] - Whether the review reports the work complete, and every rating it gives a
+  criterion, are what they would be if no way of failing had been recorded at
+  all.
+[exclusion-01] (exclusion) [context only] - Judging whether any test would fail if the delivered code contained a recorded
+  way of failing.
+[exclusion-02] (exclusion) [context only] - Deriving any rating, classification or conclusion about a criterion from its
+  recorded ways of failing.
+[exclusion-03] (exclusion) [context only] Which criteria the review derives from the mandate, and how it derives them.
+[exclusion-04] (exclusion) [context only] How the review gathers, judges or rates test evidence today.
+[completion-01] (completion) [context only] Implementation.
+[completion-02] (completion) [context only] A test fails when the step that records ways of failing is given a test.
+[completion-03] (completion) [context only] - A test fails when a criterion with no plausible way of failing is given an
+  invented one instead of an empty set carrying its reason.
+[completion-04] (completion) [context only] - A test fails when a set is produced again across two continued runs although
+  the criterion's text and the contents of its implicated source regions are both
+  unchanged.
+[completion-05] (completion) [context only] - A test fails when a criterion whose text changed keeps any part of the set
+  recorded for it before.
+[completion-06] (completion) [context only] - A test fails when a criterion whose text is unchanged has its set produced
+  again because a different criterion's text changed.
+[completion-07] (completion) [context only] - A test fails when recording ways of failing changes the review's completion
+  conclusion or any criterion's rating.
+[completion-08] (completion) [context only] - Two recorded runs over the same input produce byte-identical review state and
+  byte-identical report output.
+
+Your requirements:
+
+[task-01] (task) Before any test is looked at, the review records — for each criterion it derived
+from the mandate — the concrete ways the delivered code could plausibly fail that
+criterion. Each such way is an identified record that persists with the rest of
+the review, and that later work refers to by its identifier rather than by
+restating it.
+[exclusion-05] (exclusion) Running the delivered code, and altering it to produce a failure.
+[exclusion-06] (exclusion) - Comparing a recorded set against an expected set supplied from outside the
+  review.
+
+Return exactly 3 dispositions, one for each of exclusion-05, exclusion-06,
+task-01, and nothing for any other requirement. Every `source_quote` is a
+substring of one of these 3.

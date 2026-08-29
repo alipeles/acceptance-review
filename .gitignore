@@ -56,4 +56,4 @@ handoff*.md
 # scripts under docs/experiments/ are committed; a working directory is not.
 # A run worth keeping is copied out and committed deliberately, as
 # 265-cache-key-scope/result-2026-08-20.json was.
-docs/experiments/*/work/
+docs/experiments/*/work*/
