@@ -23,7 +23,6 @@ from pathlib import Path
 
 from acceptance.change.diff import extract_change_set, extract_working_tree_change_set
 from acceptance.config import (
-    DEFAULT_DECOMPOSE_BATCH_SIZE,
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_LINK_DISTANCE_THRESHOLD,
     DEFAULT_MAPPING_BATCH_SIZE,
@@ -197,7 +196,6 @@ def run_check(
         declaration_text=declaration_text,
         policy=config.scope_expansion_policy,
         mapping_batch_size=config.mapping_batch_size,
-        decompose_batch_size=config.decompose_batch_size,
         link_pair_batch_size=config.link_pair_batch_size,
         link_distance_threshold=config.link_distance_threshold,
         task_identifier=task,
@@ -277,12 +275,7 @@ def run_decompose(
     # would make a decompose silently report the former while the latter
     # happened — the exact silence this project exists to remove.
     unusable = UnusableAnswerLog()
-    derived = decompose(
-        parsed,
-        client,
-        batch_size=config.decompose_batch_size,
-        prior=prior,
-    )
+    derived = decompose(parsed, client, unusable, prior=prior)
     # De-duplication runs here too, not only in `check` (#144). Obligation
     # determination is two stages, and `decompose` reports the OUTPUT of that
     # determination — a decompose that skipped linking would show a different
@@ -612,7 +605,7 @@ def run_classify(
     parsed = parse_task_file(_read_task(task))
     client = config.build_client()
     decomposition = link_duplicate_obligations(
-        decompose(parsed, client, batch_size=config.decompose_batch_size),
+        decompose(parsed, client),
         client,
         pair_batch_size=config.link_pair_batch_size,
         distance_threshold=config.link_distance_threshold,
@@ -735,16 +728,6 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
             "Candidate tests per mapping call (determinism; default: "
             f"{DEFAULT_MAPPING_BATCH_SIZE}). Changing it invalidates recorded "
             "mapping transcripts."
-        ),
-    )
-    parser.add_argument(
-        "--decompose-batch-size",
-        type=int,
-        default=DEFAULT_DECOMPOSE_BATCH_SIZE,
-        help=(
-            "Requirements per obligation-derivation call (determinism; default: "
-            f"{DEFAULT_DECOMPOSE_BATCH_SIZE}). Changing it invalidates recorded "
-            "decompose transcripts."
         ),
     )
     parser.add_argument(
@@ -905,7 +888,6 @@ def main(argv: list[str] | None = None) -> int:
             seed=_seed_from(args),
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
-            decompose_batch_size=args.decompose_batch_size,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
@@ -980,7 +962,6 @@ def main(argv: list[str] | None = None) -> int:
             seed=_seed_from(args),
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
-            decompose_batch_size=args.decompose_batch_size,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
@@ -1031,7 +1012,6 @@ def main(argv: list[str] | None = None) -> int:
             seed=_seed_from(args),
             temperature=args.temperature,
             mapping_batch_size=args.mapping_batch_size,
-            decompose_batch_size=args.decompose_batch_size,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )

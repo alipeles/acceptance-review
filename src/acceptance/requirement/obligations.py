@@ -34,13 +34,10 @@ destroys the one thing the review exists to detect. Pinned by a test.
 
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import Field
 
-from acceptance.config import DEFAULT_DECOMPOSE_BATCH_SIZE
 from acceptance.llm import (
     ModelClient,
     SchemaValidationError,
@@ -60,6 +57,13 @@ from acceptance.requirement.ledger import (
     carry_key,
 )
 from acceptance.requirement.registry import build_registry
+from acceptance.requirement.spans import locate_within, normalise, quotable_spans
+from acceptance.requirement.summary import (
+    SUMMARY_STAGE,
+    SpanDecision,
+    coverage_reason,
+    decide_spans,
+)
 from acceptance.requirement.task_file import ParsedTaskFile
 from acceptance.review_state import (
     Disposition,
@@ -72,7 +76,7 @@ from acceptance.review_state import (
     RequirementRef,
     RequirementSection,
 )
-from acceptance.source_ref import TextSpan, find_span
+from acceptance.source_ref import find_span
 from acceptance.supplied_ids import (
     UnusableAnswer,
     UnusableAnswerLog,
@@ -81,6 +85,13 @@ from acceptance.supplied_ids import (
 )
 
 _STAGE = "decompose"
+
+# One requirement per call (#317). Not configurable: it is what makes
+# `source_quote` expressible as an enum of the answering requirement's own spans,
+# so raising it would not merely cost accuracy — it would remove the guarantee.
+# It is still routed through `partition`, so the request carries the descriptor
+# and a recording made under batching does not replay as though nothing moved.
+ONE_REQUIREMENT_PER_CALL = 1
 
 _SYSTEM_PROMPT = """\
 You decompose a software task into discrete, typed acceptance obligations and
@@ -92,8 +103,9 @@ error_handling, invariant, regression, compatibility,
 explanation_observability, docs_config, human_review, test_demand — see THE
 `test_demand` TYPE below); `importance` (critical
 or normal); `explicit` (true if directly stated in the task, false if
-reasonably inferred); an `observable_behavior`; and `source_quote`, an EXACT
-substring of the task text this obligation derives from.
+reasonably inferred); an `observable_behavior`; and `source_quote`, chosen from
+the quotations the schema offers for the requirement you were asked about. They
+are that requirement's own text, and they are the only quotations you may give.
 
 Emit an inferred obligation (explicit=false) only when the inference is
 reasonable and low-risk. When a requirement is materially underspecified — you
@@ -172,14 +184,18 @@ wrong, or one behavior applied across cases? Separate the former; keep the
 latter whole. Prefer the smallest set that still isolates every distinct
 computation.
 
-ACCOUNTING FOR EVERY REQUIREMENT
+ACCOUNTING FOR THE ONE REQUIREMENT YOU WERE ASKED ABOUT
 
-You are given the task file's requirements as an identified list. Return
-`requirement_dispositions` containing EXACTLY ONE entry for EVERY requirement id
-you were given — including the ones you find unremarkable. A requirement you
-omit is not treated as unimportant; it is recorded as one you failed to read.
+You are given the task file's requirements as an identified list, and you are
+asked about EXACTLY ONE of them. Return `requirement_disposition` — a single
+entry, for that one requirement, including when you find it unremarkable.
 
-Each disposition is one of:
+Every other requirement is shown so that you can read the mandate as a whole.
+Another call answers for each of those, so an obligation about one of them is
+not yours to give — and the quotations offered to you are this requirement's
+own, so you could not source one if it were.
+
+The disposition is one of:
 
 - `yielded` — the requirement produced one or more obligations. List their ids
   in `obligation_ids`. This is the normal case and should be the large majority.
@@ -309,21 +325,21 @@ evidence that cannot exist.
 Use `neither` rarely. It excuses the obligation from everything this review
 measures, so a mandate answered that way widely would be reviewed not at all.
 
-Each requirement's obligations are carried INSIDE its own disposition, so every
-obligation belongs to exactly one requirement. Account for each requirement on
-its own: split it into several obligations, or decline it with `no_obligation`.
+The obligations are carried INSIDE the disposition, so every obligation belongs
+to the one requirement you were asked about. Account for it on its own: split it
+into several obligations, or decline it with `no_obligation`.
 
-When two requirements state the same thing — commonly one bullet under
-Constraints and another under Completion expectations — give an obligation to
-EACH of them. Two obligations saying nearly the same thing is the correct
-output here; a later pass merges them. Write each one out in full under its own
-requirement rather than trying to avoid the duplication.
+When another requirement states the same thing as this one — commonly one bullet
+under Constraints and another under Completion expectations — still give this
+requirement its own obligation, written out in full. Two obligations saying
+nearly the same thing is the correct output here; a later pass merges them. Do
+not decline or narrow this requirement because another one covers it.
 
 A behavior and a demand for a TEST of that behavior are NOT the same thing,
 even when the Constraints bullet and the Completion bullet are worded almost
-identically. Give each its own obligation and keep the test framing on the one
-that has it, per A REQUIREMENT FOR A TEST above. The later pass is told these
-two do not merge, and it can only see that if you left the framing in."""
+identically. Keep the test framing on the requirement that has it, per THE
+`test_demand` TYPE above. The later pass is told these two do not merge, and it
+can only see that if you left the framing in."""
 
 
 # Empty arrays are returned explicitly (StrictResponseModel: no defaults).
@@ -435,6 +451,15 @@ class _Decomposition(StrictResponseModel):
     """No top-level `obligations` list: every obligation reaches us inside the
     disposition that owns it.
 
+    **One disposition, not a list of them** (#317). A call is asked about one
+    requirement, so "exactly one account of it" is a property of the shape rather
+    than a rule the prompt asks for and reconciliation checks afterwards. The
+    list form is what let a call answering for three requirements return
+    fourteen entries, eleven of them about the Constraints section it had merely
+    been shown; a single field makes that answer unsayable, and it also retires
+    the repeated-disposition abort that turned one such response into a failed
+    review.
+
     `open_questions` stays flat and referenced by id, deliberately. Two
     requirements really can be blocked by one ambiguity, and the question text
     is about the ambiguity rather than a restatement of either requirement's
@@ -444,7 +469,7 @@ class _Decomposition(StrictResponseModel):
     """
 
     open_questions: list[_OpenQuestion]
-    requirement_dispositions: list[_RequirementDisposition]
+    requirement_disposition: _RequirementDisposition
 
 
 class Decomposition(PersistableModel):
@@ -474,7 +499,7 @@ class Decomposition(PersistableModel):
 
 def _user_prompt(
     registry: list[RequirementRef],
-    answer_for: set[str],
+    answer_for: str,
     revisions: dict[str, RequirementDerivation] | None = None,
 ) -> str:
     """The identified requirements, as typed fields — all of them, every call.
@@ -490,28 +515,34 @@ def _user_prompt(
     per requirement" only means something if the code and the model agree on what
     the requirements ARE, and that agreement is this list.
 
-    **The batch scopes which requirements this call must answer for; it does not
-    scope what the call may read** (#204). The whole registry is the task file in
-    its structured form, so every call sees all of it. #178 is a failure to
-    reconcile across sections, and a call shown only its own bullets cannot
+    **`answer_for` scopes which requirement this call must answer for; it does
+    not scope what the call may read** (#204). The whole registry is the task
+    file in its structured form, so every call sees all of it. #178 is a failure
+    to reconcile across sections, and a call shown only its own bullet cannot
     notice that a later section settles a term an earlier one leaves open — it
     would trade one silent loss for another.
+
+    Showing a requirement is not asking about it, and the distinction is
+    measured rather than assumed: over the recorded corpus, 0 of 68 calls with no
+    `task-*` requirement in their ANSWERING set derived an obligation for a
+    requirement they had only been shown
+    (`docs/experiments/317-over-answering/findings.md` §2).
     """
     lines = [
         "The complete set of requirements in this task file, for context:",
         "",
     ]
     for requirement in registry:
-        marker = "ANSWER FOR THIS" if requirement.id in answer_for else "context only"
+        marker = "ANSWER FOR THIS" if requirement.id == answer_for else "context only"
         lines.append(
             f"[{requirement.id}] ({requirement.section.value}) [{marker}] {requirement.text}"
         )
     lines.extend(
         [
             "",
-            "Return exactly one disposition for each of these requirement ids, and for no others:",
+            "Return one disposition, for this requirement id and no other:",
             "",
-            ", ".join(sorted(answer_for)),
+            answer_for,
             "",
             (
                 "The rest are shown so you can read the mandate as a whole. Do not "
@@ -520,7 +551,7 @@ def _user_prompt(
             ),
         ]
     )
-    lines.extend(_revision_block(revisions or {}, answer_for))
+    lines.extend(_revision_block(revisions or {}, {answer_for}))
     return "\n".join(lines)
 
 
@@ -647,128 +678,100 @@ def _decode_obligations(
     return [entry.obligation, *entry.more_obligations[1:]]
 
 
-@dataclass(frozen=True)
-class _Attribution:
-    """One derived obligation, the requirement that carried it, and the
-    requirement its quotation actually lands in.
-
-    Attribution cannot be settled inside the batch loop: an obligation may quote
-    a requirement another batch answers for, and whether that requirement was
-    disposed `yielded` is not known until every batch has returned.
-    """
-
-    attributed_to: str
-    owner_id: str | None
-    obligation: Obligation
-
-
-def _resolve_attributions(
-    attributions: list[_Attribution],
-    dispositions: list[_RequirementDisposition],
+def _obligations_from(
+    entry: _Yielded,
+    requirement: RequirementRef,
+    seen_ids: set[str],
     unusable_answers: UnusableAnswerLog | None,
-) -> tuple[list[Obligation], dict[str, list[str]]]:
-    """File each obligation under the requirement its quotation lands in.
+    quote_override: str | None = None,
+) -> list[Obligation]:
+    """The obligations one `yielded` disposition produced, filed under its own
+    requirement and nowhere else.
 
-    - The quotation is inside the requirement that carried it — file it there,
-      which is every correctly attributed obligation and the overwhelming
-      majority.
-    - It is inside a different requirement that also yielded — re-file it there,
-      content untouched. The duplicate this creates when both requirements
-      derived the same obligation is an ordinary two-on-one case the linking
-      stage already merges, rather than the cross-requirement contradiction it
-      could not reconcile and reported as unreconciled (#244).
-    - Otherwise — keep it where it was attributed. See `emptied` below for why
-      moving is not always safe.
+    **There is no attribution step any more.** The retired `_resolve_attributions`
+    existed because a call answered for several requirements and could quote any
+    of them, so where an obligation belonged had to be worked out afterwards from
+    where its quotation landed — and an obligation quoting a requirement another
+    batch owned was re-filed onto it, manufacturing a duplicate of work that
+    batch had already done properly. A call now answers for one requirement and
+    can only quote that requirement's own spans, so the question is settled by
+    construction (`docs/experiments/317-over-answering/findings.md` §9).
 
-    **No obligation is ever discarded here.** Losing a requirement is the
-    failure this project treats as worst (#202, #214), and a decomposer that
-    quotes badly is not evidence that the obligation it derived is unreal. Every
-    disagreement between quotation and attribution is instead recorded on the
-    `UnusableAnswerLog`, whether it was acted on or not, so a re-filing is
-    visible and a discrepancy that could not be acted on does not become silent.
+    A quotation that is nonetheless not inside the requirement — a provider that
+    ignored the enum — is recorded and the obligation kept without a source span.
+    Dropping it would lose a requirement, which is the failure this project
+    treats as worst; moving it is what has just been retired.
+
+    `quote_override` is set by the caller for an obligation derived from a span
+    of the opening summary, where the quotation is the span itself and is taken
+    from the mandate rather than from the answer that named it.
     """
-    yielded = {entry.requirement_id for entry in dispositions if isinstance(entry, _Yielded)}
-
-    def _movable(attribution: _Attribution) -> bool:
-        owner_id = attribution.owner_id
-        if owner_id is None or owner_id == attribution.attributed_to:
-            return False
-        # Only onto a requirement that also yielded. Filing under one the
-        # response deliberately declined would contradict that decline, and
-        # `_requirement_map` never reads `derived_ids` for a declined
-        # requirement, so the obligation would end up linked to nothing.
-        return owner_id in yielded
-
-    carried: dict[str, list[_Attribution]] = {}
-    for attribution in attributions:
-        carried.setdefault(attribution.attributed_to, []).append(attribution)
-
-    # A requirement whose obligations would ALL move keeps them. Its disposition
-    # is an explicit claim that it yielded, and a `_Yielded` requirement left
-    # carrying nothing raises out of `_requirement_map` — so moving the last one
-    # would turn a mild quoting slip into a failed review. That slip is common,
-    # because requirements restate each other: a completion expectation quoting
-    # the constraint it demands a test for is the DR-204 shape, and is far more
-    # likely than a decomposer that read some other requirement entirely. Where
-    # quotation and disposition disagree and the disposition would otherwise be
-    # falsified, the disposition is the stronger evidence; the quotation only
-    # corroborates it.
-    emptied = {
-        requirement_id
-        for requirement_id, group in carried.items()
-        if all(_movable(attribution) for attribution in group)
-    }
-
-    obligations: list[Obligation] = []
-    derived_ids: dict[str, list[str]] = {}
-    discrepancies: list[UnusableAnswer] = []
-
-    for attribution in attributions:
-        obligation = attribution.obligation
-        filed_under = attribution.attributed_to
-
-        if _movable(attribution) and attribution.attributed_to not in emptied:
-            filed_under = attribution.owner_id or filed_under
-            discrepancies.append(
-                UnusableAnswer(
-                    stage=_STAGE,
-                    field="source_quote",
-                    returned_id=obligation.id,
-                    reason=(
-                        f"attributed to '{attribution.attributed_to}' but its quotation "
-                        f"is inside requirement '{filed_under}'; re-filed there"
-                    ),
-                )
+    produced: list[Obligation] = []
+    for item in _decode_obligations(entry, unusable_answers):
+        quote = quote_override if quote_override is not None else item.source_quote
+        span = locate_within(requirement, quote)
+        if span is None and unusable_answers is not None:
+            unusable_answers.record(
+                [
+                    UnusableAnswer(
+                        stage=_STAGE,
+                        field="source_quote",
+                        returned_id=item.id,
+                        reason=(
+                            f"quotation is not inside requirement '{requirement.id}', "
+                            f"which is the only text this call was offered: {quote!r}"
+                        ),
+                    )
+                ]
             )
-        elif attribution.owner_id != attribution.attributed_to:
-            discrepancies.append(
-                UnusableAnswer(
-                    stage=_STAGE,
-                    field="source_quote",
-                    returned_id=obligation.id,
-                    reason=(
-                        f"attributed to '{attribution.attributed_to}' but its quotation "
-                        f"is not inside it; kept there, having nowhere to be re-filed"
-                    ),
-                )
+        # A narrowing with no reason behind it is discarded. The reason is the
+        # only thing that makes "less evidence is owed here" auditable, so an
+        # unreasoned narrowing is indistinguishable from the question being
+        # skipped — and the safe reading of a skipped question is that every kind
+        # of evidence is still owed.
+        required = item.required_evidence
+        reason = item.required_evidence_reason.strip()
+        if required is not RequiredEvidence.CODE_AND_TESTS and not reason:
+            required = RequiredEvidence.CODE_AND_TESTS
+        if required is RequiredEvidence.CODE_AND_TESTS:
+            reason = ""
+        produced.append(
+            Obligation(
+                id=_unique(item.id, seen_ids),
+                description=item.description,
+                type=item.type,
+                importance=_importance(item.importance),
+                explicit=item.explicit,
+                observable_behavior=item.observable_behavior,
+                source_spans=[span] if span is not None else [],
+                # Whether an obligation is satisfied by work NOT done is decided
+                # from the parse, never from the model's answer — the same move
+                # #232 made for TEST_DEMAND and #219 for sibling dispositions,
+                # both of which failed while they depended on the model restating
+                # a distinction it had already been told. The section is now the
+                # answering requirement's own, with no re-filing to reconcile.
+                satisfied_by_absence=requirement.section is RequirementSection.EXCLUSION,
+                required_evidence=required,
+                required_evidence_reason=reason,
             )
-
-        obligations.append(obligation)
-        derived_ids.setdefault(filed_under, []).append(obligation.id)
-
-    if unusable_answers is not None:
-        unusable_answers.record(discrepancies)
-    return obligations, derived_ids
+        )
+    return produced
 
 
 def decompose_carry_keys(client: ModelClient, registry: list[RequirementRef]) -> dict[str, str]:
     """The key each requirement's derivation would be valid under, this run.
 
     The response schema here is the UNCONSTRAINED `_Decomposition`, deliberately.
-    The real request constrains `requirement_id` to the batch's ids, so the schema
-    inside a request key depends on how the run happened to be partitioned — and a
-    carry key that moved when the batch size changed would discard work for a
-    reason that has nothing to do with whether the answer is still right.
+    The real request constrains `requirement_id` and `source_quote` to the one
+    requirement being asked about, so the schema inside a request key depends on
+    which requirement it is — and a carry key that moved for that reason would
+    discard work on a difference that has nothing to do with whether the answer
+    is still right.
+
+    The model is the one the requirement's own step runs on, which for the
+    opening summary is the summary step's (#317). A requirement whose step moved
+    to a different model has an answer produced by a different judge, and that is
+    exactly what a carry key exists to notice.
     """
     schema = {
         "name": _Decomposition.__name__,
@@ -778,7 +781,7 @@ def decompose_carry_keys(client: ModelClient, registry: list[RequirementRef]) ->
         requirement.id: carry_key(
             system_prompt=_SYSTEM_PROMPT,
             response_schema=schema,
-            model=client.model,
+            model=client.model_for(_stage_for(requirement)),
             temperature=client.temperature,
             seed=client.seed,
             stage_logic_version=DECOMPOSE_STAGE_LOGIC_VERSION,
@@ -788,11 +791,182 @@ def decompose_carry_keys(client: ModelClient, registry: list[RequirementRef]) ->
     }
 
 
+def _stage_for(requirement: RequirementRef) -> str:
+    """Which step accounts for this requirement."""
+    return SUMMARY_STAGE if requirement.section is RequirementSection.TASK else _STAGE
+
+
+def _ask_about(
+    client: ModelClient,
+    shown: list[RequirementRef],
+    requirement: RequirementRef,
+    quotes: list[str],
+    revisions: dict[str, RequirementDerivation],
+    partition_descriptor: dict,
+    unusable_answers: UnusableAnswerLog | None,
+) -> _Decomposition:
+    """One call, about `requirement` alone, quoting only `quotes`.
+
+    `shown` is the whole registry — the batch scopes what a call answers for, not
+    what it may read (#178). `quotes` is the requirement's own span set, and it
+    is the constraint that carries the guarantee: an obligation about another
+    requirement has no quotation available to it, so it is unsayable rather than
+    detected afterwards.
+    """
+    messages = assemble(
+        [
+            Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+            Block(BlockKind.SUBJECT, _user_prompt(shown, requirement.id, revisions)),
+        ]
+    )
+    # Both id fields are constrained, and `source_quote` is the one that matters.
+    # `requirement_id` was already an enum when a call answering for three
+    # requirements returned eleven entries about the Constraints section: an enum
+    # restricts the LABEL, not what the entry is about. `source_quote` is what
+    # says which text an obligation came from, and it was the only unconstrained
+    # field (`findings.md` §8).
+    allowed = {"requirement_id": [requirement.id], "source_quote": quotes}
+    result = client.complete(
+        messages,
+        constrain(_Decomposition, allowed),
+        partition_descriptor,
+        parse_as=_Decomposition,
+        stage=_STAGE,
+    )
+    if unusable_answers is not None:
+        # `requirement_id` only, deliberately. A `source_quote` the call did not
+        # offer is reported by `_obligations_from`, which knows whether it landed
+        # inside the requirement anyway and says so in words; scanning it here as
+        # well would file a second, less informative record — with a whole
+        # sentence in the `returned_id` field — for the same event.
+        unusable_answers.record(scan(result, {"requirement_id": [requirement.id]}, _STAGE))
+    return result
+
+
+def _usable_disposition(
+    entry: _RequirementDisposition,
+    requirement_id: str,
+    unusable_answers: UnusableAnswerLog | None,
+) -> _RequirementDisposition | None:
+    """The disposition, unless it names a requirement this call was not asked about.
+
+    Unreachable under constrained decoding, where `requirement_id` is a
+    single-valued enum. It is kept because the harness deliberately runs against
+    providers whose structured-output support differs (`supplied_ids`), and a
+    provider that ignored the enum would otherwise have its answer filed under
+    the wrong requirement. Returning None leaves the requirement unaccounted for,
+    which `_requirement_map` refuses by name.
+    """
+    if entry.requirement_id == requirement_id:
+        return entry
+    if unusable_answers is not None:
+        unusable_answers.record(
+            [
+                UnusableAnswer(
+                    stage=_STAGE,
+                    field="requirement_id",
+                    returned_id=entry.requirement_id,
+                    reason=(
+                        f"disposed a requirement this call was not asked about; it was "
+                        f"asked about '{requirement_id}' alone"
+                    ),
+                )
+            ]
+        )
+    return None
+
+
+def _record_questions(
+    returned: list[_OpenQuestion],
+    requirement: RequirementRef,
+    source: str,
+    seen_ids: set[str],
+    into: list[OpenQuestion],
+) -> dict[str, str]:
+    """Add one call's open questions to the run's list; return its id remapping.
+
+    Called after the obligations of the same response, deliberately: ids are
+    uniqued across both, and an obligation and a question minting the same slug
+    must resolve the same way they did before this stage issued a call per
+    requirement.
+    """
+    remapped: dict[str, str] = {}
+    for item in returned:
+        final_id = _unique(item.id, seen_ids)
+        remapped.setdefault(item.id, final_id)
+        # Inside the requirement first, and only then anywhere in the file. A
+        # question quoting its own requirement is the ordinary case; one quoting
+        # elsewhere still gets a span so it can be traced, rather than none.
+        span = locate_within(requirement, item.source_quote) or find_span(source, item.source_quote)
+        into.append(
+            OpenQuestion(
+                id=final_id,
+                question=item.question,
+                importance=_importance(item.importance),
+                source_spans=[span] if span is not None else [],
+            )
+        )
+    return remapped
+
+
+def _span_requirement(summary: RequirementRef, decision: SpanDecision) -> RequirementRef:
+    """One uncovered span of the summary, as an ordinary requirement of its own.
+
+    `section` is `constraint` because that is what the span now is to the
+    decomposer — one short bullet-shaped statement. The point of authoring here
+    rather than inside the summary step is to hit the call shape that
+    over-answers 0 times in 68 (`findings.md` §2), and the section is what the
+    prompt renders. The id keeps the span's provenance visible, and the span
+    carries the real offsets into the mandate so the obligation's quotation is
+    honest.
+    """
+    located = locate_within(summary, decision.text)
+    return RequirementRef(
+        id=f"{summary.id}-span-{decision.index:02d}",
+        section=RequirementSection.CONSTRAINT,
+        ordinal=decision.index + 1,
+        # `decide_spans` has already rejected a span that is not a substring of
+        # the summary, so the fallback is unreachable; it is here so the function
+        # is total rather than conditionally correct.
+        span=located if located is not None else summary.span,
+    )
+
+
+def _already_derived(
+    registry: list[RequirementRef],
+    derived_ids: dict[str, list[str]],
+    obligations: list[Obligation],
+    plan: CarryPlan,
+) -> list[Obligation]:
+    """Every obligation the rest of the mandate produced, in registry order.
+
+    Carried obligations are included alongside freshly derived ones. The summary
+    step decides whether the obligations already derived require a property, and
+    a continued run in which most requirements were carried would otherwise show
+    it a nearly empty list and have it mark real coverage as absent — which
+    yields a duplicate obligation for something the mandate already requires.
+    """
+    by_id = {obligation.id: obligation for obligation in obligations}
+    for source in plan.carried.values():
+        for obligation in source.obligations:
+            by_id[obligation.id] = obligation
+
+    listed: list[Obligation] = []
+    for requirement in registry:
+        if requirement.section is RequirementSection.TASK:
+            continue
+        ids = derived_ids.get(requirement.id)
+        if ids is None:
+            carried = plan.carried.get(requirement.id)
+            ids = [obligation.id for obligation in carried.obligations] if carried else []
+        listed.extend(by_id[obligation_id] for obligation_id in ids if obligation_id in by_id)
+    return listed
+
+
 def decompose(
     parsed: ParsedTaskFile,
     client: ModelClient,
     unusable_answers: UnusableAnswerLog | None = None,
-    batch_size: int = DEFAULT_DECOMPOSE_BATCH_SIZE,
     prior: LedgerEntry | None = None,
 ) -> Decomposition:
     """Decompose a parsed task into typed obligations, open questions, and the
@@ -801,11 +975,19 @@ def decompose(
     Takes a parsed task file and a client, and nothing else — no `ChangeSet`, no
     repository, no head revision (DR-202 decision 8).
 
-    The requirements are partitioned across several calls (#204). One call over
-    the whole registry sheds work the way DR-164 measured a stage later: an
-    observed run over ~36 requirements produced no obligation for 9 of them,
-    with a schema-valid response that nothing downstream could question. Every
-    call still reads the whole task file; only the answering is split.
+    **One call per requirement** (#317). Batching several requirements into one
+    call was already a narrowing of the single-call shape DR-164 measured shedding
+    work; a batch of one narrows it the rest of the way, and it is what lets
+    `source_quote` be an enum of the answering requirement's own spans. The
+    measured cost is +1,506 bytes of schema per call, against the 93 KB a
+    per-requirement response field would have cost at a batch of eight.
+
+    **The opening summary is accounted for last, by its own step.** It is the
+    parent of every other requirement rather than a peer, so asked about
+    directly it answers for the whole mandate: 8 of 35 recorded calls with a
+    `task-*` requirement in their answering set derived obligations for
+    requirements they had only been shown, against 0 of 68 without one. See
+    `requirement/summary.py`.
     """
     registry = build_registry(parsed)
     # No requirements, no calls. `partition` returns no batches for an empty
@@ -826,19 +1008,14 @@ def decompose(
     seen_ids: set[str] = set()
     open_questions: list[OpenQuestion] = []
     dispositions: list[_RequirementDisposition] = []
-    # Every derived obligation with the requirement that carried it and the one
-    # its quotation lands in. Resolved into the obligation list and the
-    # requirement -> obligation-ids map by `_resolve_attributions` once all the
-    # batches are in, because re-filing an obligation onto another requirement
-    # depends on how THAT requirement was disposed, which a later batch may
-    # still be answering.
-    #
-    # `_unique` still runs as the obligations are built, because two
-    # requirements may independently mint the same slug — but a rename can no
-    # longer mis-resolve anyone else's disposition, since nobody else names it.
-    attributions: list[_Attribution] = []
+    obligations: list[Obligation] = []
+    # Which obligations each requirement produced. Filled in as the calls return,
+    # with no later attribution step: a call answers for one requirement and can
+    # only quote that requirement's spans, so nothing can arrive needing to be
+    # filed somewhere else.
+    derived_ids: dict[str, list[str]] = {}
     # Open questions stay flat and referenced by id (see `_Decomposition`), so
-    # they still need per-batch resolution: each response mints its own ids.
+    # they still need per-call resolution: each response mints its own ids.
     question_final: dict[str, dict[str, str]] = {}
 
     # What this run may take from the run it continues. With no prior it plans
@@ -846,160 +1023,158 @@ def decompose(
     # before carry-forward existed.
     plan = plan_carry(registry, prior, decompose_carry_keys(client, registry), client)
     to_ask = plan.issues_calls_for
-    asking = [requirement for requirement in registry if requirement.id in to_ask]
+    # The opening summary is deliberately not in this list. It is accounted for
+    # below, after every other requirement has produced its obligations, so that
+    # the question put about it is "does the rest of the mandate already require
+    # this?" rather than "what does this paragraph require?" — the second has no
+    # bounded answer.
+    asking = [
+        requirement
+        for requirement in registry
+        if requirement.id in to_ask and requirement.section is not RequirementSection.TASK
+    ]
     calls_issued = 0
 
-    for batch in partition(asking, batch_size, key=lambda requirement: requirement.id):
-        batch_ids = [requirement.id for requirement in batch.items]
-        messages = assemble(
-            [
-                Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
-                # The registry passed here is the WHOLE one, never `asking`: the
-                # batch scopes what a call answers for, not what it may read
-                # (#178). A call shown only the requirements that changed could
-                # not notice that an untouched section settles a term the
-                # changed one leaves open.
-                #
-                # It is one SUBJECT block rather than a shared registry block and
-                # a per-batch block, because `_user_prompt` marks each
-                # requirement `ANSWER FOR THIS` or `context only` **inline**, so
-                # the registry text genuinely differs between batches. Hoisting
-                # the marker out to the trailing id list — which already names
-                # the same ids — would make the registry invariant and shareable,
-                # but it would change what each call is shown, which this task
-                # excludes.
-                Block(BlockKind.SUBJECT, _user_prompt(registry, set(batch_ids), plan.revised)),
-            ]
-        )
+    # `partition` at one item per batch, rather than a bare loop, so the request
+    # still carries a partition descriptor and provenance still records what
+    # decompose partitioned at. `{"size": 1}` is a true statement about the run
+    # and keeps a recording made under batching from replaying as though nothing
+    # had moved.
+    for batch in partition(
+        asking, ONE_REQUIREMENT_PER_CALL, key=lambda requirement: requirement.id
+    ):
+        requirement = batch.items[0]
         calls_issued += 1
-        # Constrained to THIS batch's ids, not the whole registry: a disposition
-        # for a requirement another call owns is unrepresentable under
-        # constrained decoding, and caught locally otherwise (#163). Obligation
-        # and question ids are minted by the same response, so there is nothing
-        # to constrain them against; they are reconciled below.
-        allowed = {"requirement_id": batch_ids}
-        result = client.complete(
-            messages,
-            constrain(_Decomposition, allowed),
+        result = _ask_about(
+            client,
+            # The WHOLE registry, never `asking`: the answering set scopes what a
+            # call answers for, not what it may read (#178). A call shown only
+            # its own bullet could not notice that another section settles a term
+            # this one leaves open.
+            registry,
+            requirement,
+            quotable_spans(requirement.text),
+            plan.revised,
             batch.request_partition(),
-            parse_as=_Decomposition,
-            stage=_STAGE,
-        )
-        if unusable_answers is not None:
-            unusable_answers.record(scan(result, allowed, _STAGE))
-
-        kept = _batch_dispositions(
-            result.requirement_dispositions,
-            set(batch_ids),
-            {requirement.id for requirement in registry},
             unusable_answers,
         )
-        dispositions.extend(kept)
-
-        # Obligations are lifted out of their dispositions in registry order, so
-        # the flat list downstream reads in document order and two runs over the
-        # same input produce it identically.
-        # Whether an obligation is satisfied by work NOT done is decided from
-        # the parse, never from the model's answer. The section a requirement
-        # was parsed out of is already known here (`RequirementRef.section`), so
-        # an obligation derived from `## Scope exclusions` is marked
-        # structurally — the same move #232 made for TEST_DEMAND and #219 for
-        # sibling dispositions, both of which failed while they depended on the
-        # model restating a distinction it had already been told.
-        #
-        # Which KINDS OF EVIDENCE it requires is a different question and the
-        # model does answer it (#266). The two were one field until a scope
-        # exclusion excluding a change to BEHAVIOR turned out to want a
-        # regression test, which the structural rule could never express. What
-        # the heading still settles beyond argument is the absence, and that is
-        # all it now settles.
-        exclusion_ids = {
-            requirement.id
-            for requirement in registry
-            if requirement.section is RequirementSection.EXCLUSION
-        }
-
-        for entry in kept:
-            if not isinstance(entry, _Yielded):
-                continue
-            for item in _decode_obligations(entry, unusable_answers):
-                # Which requirement an obligation belongs to is decided by where
-                # its quotation lands, not by which disposition carried it. The
-                # section that decides `satisfied_by_absence` then comes from
-                # the OWNING requirement — an obligation re-attributed into a
-                # scope exclusion is satisfied by an absence, exactly as one
-                # derived there directly would be (#153).
-                span, owner = _locate_quotation(
-                    registry, parsed.source, item.source_quote, entry.requirement_id
+        entry = _usable_disposition(
+            result.requirement_disposition, requirement.id, unusable_answers
+        )
+        if entry is not None:
+            dispositions.append(entry)
+            if isinstance(entry, _Yielded):
+                produced = _obligations_from(entry, requirement, seen_ids, unusable_answers)
+                obligations.extend(produced)
+                derived_ids.setdefault(requirement.id, []).extend(
+                    obligation.id for obligation in produced
                 )
-                section_id = owner.id if owner is not None else entry.requirement_id
-                by_absence = section_id in exclusion_ids
-                # A narrowing with no reason behind it is discarded. The reason
-                # is the only thing that makes "less evidence is owed here"
-                # auditable, so an unreasoned narrowing is indistinguishable
-                # from the question being skipped — and the safe reading of a
-                # skipped question is that every kind of evidence is still owed.
-                required = item.required_evidence
-                reason = item.required_evidence_reason.strip()
-                if required is not RequiredEvidence.CODE_AND_TESTS and not reason:
-                    required = RequiredEvidence.CODE_AND_TESTS
-                if required is RequiredEvidence.CODE_AND_TESTS:
-                    reason = ""
-                # Ids are minted here, in the order they always were, so an
-                # obligation that was attributed correctly keeps the id it had
-                # before this check existed. Only which requirement claims it —
-                # settled below, once every disposition is known — can change.
-                final_id = _unique(item.id, seen_ids)
-                attributions.append(
-                    _Attribution(
-                        attributed_to=entry.requirement_id,
-                        owner_id=owner.id if owner is not None else None,
-                        obligation=Obligation(
-                            id=final_id,
-                            description=item.description,
-                            type=item.type,
-                            importance=_importance(item.importance),
-                            explicit=item.explicit,
-                            observable_behavior=item.observable_behavior,
-                            source_spans=[span] if span is not None else [],
-                            required_evidence=required,
-                            required_evidence_reason=reason,
-                            satisfied_by_absence=by_absence,
-                        ),
-                    )
-                )
+        question_final[requirement.id] = _record_questions(
+            result.open_questions, requirement, parsed.source, seen_ids, open_questions
+        )
 
-        # After the obligations, deliberately: ids are uniqued across both, and
-        # an obligation and a question minting the same slug must resolve the
-        # same way they did before this stage was partitioned.
-        batch_question_final: dict[str, str] = {}
-        for item in result.open_questions:
-            final_id = _unique(item.id, seen_ids)
-            batch_question_final.setdefault(item.id, final_id)
-            open_questions.append(
-                OpenQuestion(
-                    id=final_id,
-                    question=item.question,
-                    importance=_importance(item.importance),
-                    source_spans=_spans(parsed.source, item.source_quote),
-                )
-            )
-        for requirement_id in batch_ids:
-            question_final[requirement_id] = batch_question_final
-
-    obligations, derived_ids = _resolve_attributions(attributions, dispositions, unusable_answers)
-
-    carried_dispositions = {
+    # The summary, last, against everything the rest of the mandate produced.
+    accounted: dict[str, RequirementDisposition] = {
         requirement_id: _carried_disposition(requirement_id, source)
         for requirement_id, source in plan.carried.items()
     }
+    for summary in registry:
+        if summary.section is not RequirementSection.TASK or summary.id not in to_ask:
+            continue
+        calls_issued += 1
+        decisions = decide_spans(
+            summary,
+            _already_derived(registry, derived_ids, obligations, plan),
+            client,
+            unusable_answers,
+        )
+        span_obligations: list[Obligation] = []
+        span_question_ids: list[str] = []
+        for decision in decisions:
+            if decision.covered:
+                continue
+            # One call per uncovered span, asked about that span alone and shown
+            # the summary for context — the span's pronouns have no antecedent
+            # without it. Context only, never in the answering set, which is the
+            # measured-safe shape rather than a guess.
+            span = _span_requirement(summary, decision)
+            calls_issued += 1
+            authored = _ask_about(
+                client,
+                [summary, span],
+                span,
+                [normalise(decision.text)],
+                {},
+                {"size": ONE_REQUIREMENT_PER_CALL},
+                unusable_answers,
+            )
+            span_entry = _usable_disposition(
+                authored.requirement_disposition, span.id, unusable_answers
+            )
+            produced_here: list[Obligation] = []
+            if isinstance(span_entry, _Yielded):
+                # The quotation is the span, set from the mandate rather than
+                # taken from the answer that named it: the model repairs a task
+                # file's grammar when it quotes, and a repaired quotation stops
+                # matching the source it claims to come from.
+                produced_here = _obligations_from(
+                    span_entry,
+                    span,
+                    seen_ids,
+                    unusable_answers,
+                    quote_override=normalise(decision.text),
+                )
+                span_obligations.extend(produced_here)
+            span_questions = _record_questions(
+                authored.open_questions, span, parsed.source, seen_ids, open_questions
+            )
+            questions_here: list[str] = []
+            if isinstance(span_entry, _RaisedOpenQuestion):
+                questions_here = _resolve(span_entry.ids(), span_questions)
+                span_question_ids.extend(questions_here)
+            if not produced_here and not questions_here:
+                # An uncovered span must yield something. It was reached only
+                # because the step before it argued, with a counterexample, that
+                # the derived obligations do not require this property — so a
+                # step that then declines it has contradicted the one that sent
+                # it, and the property would be lost silently.
+                raise SchemaValidationError(
+                    f"span {decision.index} of requirement '{summary.id}' was found "
+                    f"uncovered by the obligations already derived, but the call asked "
+                    f"about it alone produced neither an obligation nor an open "
+                    f"question: {normalise(decision.text)!r}"
+                )
+        obligations.extend(span_obligations)
+        # A summary that yielded nothing is `no_obligation` carrying the coverage
+        # argument, not a silence. Every span it states was decided, and the
+        # reason names what each was held to be required by.
+        if span_obligations:
+            accounted[summary.id] = RequirementDisposition(
+                requirement_id=summary.id,
+                disposition=Disposition.YIELDED,
+                obligation_ids=[obligation.id for obligation in span_obligations],
+                open_question_ids=span_question_ids,
+            )
+        elif span_question_ids:
+            accounted[summary.id] = RequirementDisposition(
+                requirement_id=summary.id,
+                disposition=Disposition.OPEN_QUESTION,
+                open_question_ids=span_question_ids,
+            )
+        else:
+            accounted[summary.id] = RequirementDisposition(
+                requirement_id=summary.id,
+                disposition=Disposition.NO_OBLIGATION,
+                reason=coverage_reason(decisions),
+            )
+
     requirement_map = _requirement_map(
         registry,
         dispositions,
         derived_ids,
         question_final,
         parsed.unclaimed,
-        carried_dispositions,
+        accounted,
     )
     # A revised requirement's disposition is built by the ordinary path, because
     # it WAS asked of the model — so without this it would report itself as
@@ -1009,15 +1184,12 @@ def decompose(
     # an identifier could have been reused and was not.
     requirement_map = _stamp_revisions(requirement_map, plan)
 
-    if not plan.is_fresh():
-        # Rebuild both flat lists by walking the map, so a carried obligation
-        # sits where its requirement sits rather than after everything asked for
-        # in this run. Only on a carrying run: with nothing carried, the lists
-        # the call loop already built are returned untouched, which keeps a fresh
-        # decomposition byte-for-byte what it was before this existed.
-        obligations, open_questions = _in_registry_order(
-            requirement_map, obligations, open_questions, plan
-        )
+    # Always, not only on a carrying run. The summary's obligations are derived
+    # last and the summary sits first in the registry, so the list the loops
+    # build is no longer document order on any run.
+    obligations, open_questions = _in_registry_order(
+        requirement_map, obligations, open_questions, plan
+    )
 
     return Decomposition(
         obligations=obligations,
@@ -1083,7 +1255,14 @@ def _in_registry_order(
     open_questions: list[OpenQuestion],
     plan: CarryPlan,
 ) -> tuple[list[Obligation], list[OpenQuestion]]:
-    """The obligations and questions of every requirement, in registry order."""
+    """The obligations and questions of every requirement, in registry order.
+
+    **Nothing is dropped.** An output no disposition names is appended in the
+    order it arrived rather than left out: a `yielded` disposition and an open
+    question can reach us from the same response, and a question the disposition
+    did not name is still a question the reviewer raised. Silently discarding it
+    here would be the same silence this stage exists to remove.
+    """
     by_obligation = {obligation.id: obligation for obligation in obligations}
     by_question = {question.id: question for question in open_questions}
     for source in plan.carried.values():
@@ -1104,6 +1283,11 @@ def _in_registry_order(
             if question_id in by_question and question_id not in seen:
                 seen.add(question_id)
                 ordered_questions.append(by_question[question_id])
+
+    ordered_obligations.extend(
+        obligation for obligation in obligations if obligation.id not in seen
+    )
+    ordered_questions.extend(question for question in open_questions if question.id not in seen)
     return ordered_obligations, ordered_questions
 
 
@@ -1185,78 +1369,20 @@ def build_ledger_entry(
     )
 
 
-def _batch_dispositions(
-    returned: list[_RequirementDisposition],
-    batch_ids: set[str],
-    registry_ids: set[str],
-    unusable_answers: UnusableAnswerLog | None,
-) -> list[_RequirementDisposition]:
-    """One batch's usable dispositions.
-
-    **A batch may only answer for its own requirements.** A disposition naming a
-    requirement this call was not given is recorded and dropped rather than
-    silently filtered — the requirement belongs to another batch, which answers
-    for it, and letting this one through would make the merged result depend on
-    which batch returned last.
-
-    There is no no-linking check here, and deliberately none anywhere: since the
-    obligations are carried inside the disposition that derived them, one
-    obligation cannot be named by two requirements. The rule is a property of
-    the shape, not a rejection applied afterwards (DR-204, amended). An earlier
-    version validated it post-response and had to drop BOTH claimants, which
-    left the mandate unaccounted for and aborted the review — on an ordinary
-    task file that merely restated a requirement across two sections.
-    """
-    rejected: list[UnusableAnswer] = []
-    usable: list[_RequirementDisposition] = []
-    seen: dict[str, _RequirementDisposition] = {}
-
-    for entry in returned:
-        # An EXACT repeat of a disposition already returned in this response is
-        # dropped, not rejected. It carries no information the first copy did
-        # not, and a response that repeats itself verbatim is a degenerate
-        # generation rather than a contradiction — observed once the obligations
-        # moved inside the dispositions and responses grew: the model emitted
-        # its whole disposition list twice.
-        #
-        # A duplicate that DIFFERS is still a contradiction and still reaches
-        # `_requirement_map`, which refuses it: two different answers for one
-        # requirement is exactly the self-contradiction M1.2.r2 exists to catch.
-        previous = seen.get(entry.requirement_id)
-        if previous is not None and previous == entry:
-            continue
-        # An id outside the registry ENTIRELY is passed through, not filtered
-        # here: it is a malformed response rather than a batch overstepping, and
-        # `_requirement_map` already refuses it by name. Filtering it here would
-        # convert a loud, specific rejection into a vague "did not account for"
-        # about some other requirement.
-        if entry.requirement_id in registry_ids and entry.requirement_id not in batch_ids:
-            rejected.append(
-                UnusableAnswer(
-                    stage=_STAGE,
-                    field="requirement_id",
-                    returned_id=entry.requirement_id,
-                    reason="disposed a requirement this call was not asked to answer for",
-                )
-            )
-            continue
-        seen.setdefault(entry.requirement_id, entry)
-        usable.append(entry)
-
-    if rejected and unusable_answers is not None:
-        unusable_answers.record(rejected)
-    return usable
-
-
 def _requirement_map(
     registry: list[RequirementRef],
     returned: list[_RequirementDisposition],
     derived_ids: dict[str, list[str]],
     question_final: dict[str, dict[str, str]],
     unread: list,
-    carried: dict[str, RequirementDisposition] | None = None,
+    accounted: dict[str, RequirementDisposition] | None = None,
 ) -> RequirementMap:
     """Reconcile the returned dispositions against the registry.
+
+    `accounted` holds the dispositions that arrive already built rather than as a
+    model response: the ones carried from a prior run, and the ones the summary
+    step settled from its span verdicts. Both are checked against the registry
+    here rather than trusted, by the same rules as anything the model returned.
 
     The registry is derived deterministically from the parse and this loop walks
     it, so **dropping a requirement is not a reachable outcome** — the worst a
@@ -1284,29 +1410,29 @@ def _requirement_map(
         raise SchemaValidationError(
             f"response disposed requirement ids not in the registry: {', '.join(unknown)}"
         )
-    # A carried requirement was not asked about in this run, so no response
-    # accounts for it — and it must still be accounted for, because a registry
-    # requirement with no disposition is the malformed-response case this
-    # function exists to reject. Carrying is the one way a disposition arrives
-    # without a call behind it, and it is checked here rather than trusted: an
-    # id carried for a requirement the registry does not have is caught by the
-    # same rule as one the model invented.
-    carried = carried or {}
-    carried_unknown = sorted(set(carried) - known)
-    if carried_unknown:
+    # A carried or summary requirement produced no `_RequirementDisposition`, so
+    # no model response accounts for it — and it must still be accounted for,
+    # because a registry requirement with no disposition is the malformed-response
+    # case this function exists to reject. Checked here rather than trusted: an id
+    # supplied for a requirement the registry does not have is caught by the same
+    # rule as one the model invented.
+    accounted = accounted or {}
+    accounted_unknown = sorted(set(accounted) - known)
+    if accounted_unknown:
         raise SchemaValidationError(
-            f"carried dispositions for requirement ids not in the registry: "
-            f"{', '.join(carried_unknown)}"
+            f"dispositions supplied for requirement ids not in the registry: "
+            f"{', '.join(accounted_unknown)}"
         )
-    both = sorted(set(carried) & set(by_requirement))
+    both = sorted(set(accounted) & set(by_requirement))
     if both:
         raise SchemaValidationError(
-            f"requirement(s) both carried and disposed by a response: {', '.join(both)}"
+            f"requirement(s) both accounted for without a call and disposed by a "
+            f"response: {', '.join(both)}"
         )
     missing = [
         requirement.id
         for requirement in registry
-        if requirement.id not in by_requirement and requirement.id not in carried
+        if requirement.id not in by_requirement and requirement.id not in accounted
     ]
     if missing:
         raise SchemaValidationError(
@@ -1316,8 +1442,8 @@ def _requirement_map(
 
     dispositions: list[RequirementDisposition] = []
     for requirement in registry:
-        if requirement.id in carried:
-            dispositions.append(carried[requirement.id])
+        if requirement.id in accounted:
+            dispositions.append(accounted[requirement.id])
             continue
         entry = by_requirement[requirement.id]
 
@@ -1378,82 +1504,6 @@ def _resolve(ids: list[str], final: dict[str, str]) -> list[str]:
         if actual is not None:
             resolved.setdefault(actual, None)
     return list(resolved)
-
-
-def _spans(source: str, quote: str) -> list:
-    span = find_span(source, quote)
-    return [span] if span is not None else []
-
-
-def _locate_quotation(
-    registry: list[RequirementRef],
-    source: str,
-    quote: str,
-    attributed_to: str,
-) -> tuple[TextSpan | None, RequirementRef | None]:
-    """Locate `quote` and name the requirement it lands in.
-
-    The attribution check the prompt cannot make. `_user_prompt` shows every call
-    the whole registry and asks it not to derive obligations for the requirements
-    another call owns; nothing enforced that, and the quote was resolved against
-    `parsed.source` — the whole file — so an obligation filed under one
-    requirement while quoting another's text produced a valid span and was
-    accepted. Misattribution was undetectable by construction (#244).
-
-    **The requirement it was attributed to is searched first, and that is
-    load-bearing, not an optimisation.** `find_span` returns the FIRST occurrence
-    in the file, and requirements restate each other constantly — a completion
-    expectation is usually a rephrasing of the constraint it demands a test for.
-    Resolving globally would let an earlier identical string steal a quotation
-    from the requirement it truly belongs to, turning correct attribution into a
-    spurious re-filing. Searching the attributed requirement first means an
-    obligation is only ever re-filed when its quotation does not appear in its
-    own requirement at all.
-    """
-    if not quote:
-        return None, None
-
-    # Whitespace-insensitive, and that is load-bearing rather than lenient. Task
-    # prose is hard-wrapped and bullets usually are not, so the SAME sentence
-    # appears as "...naming every\ncolumn." in one requirement and "...naming
-    # every column." in another. An exact-substring test then reports the quote
-    # as belonging to whichever one happens not to be wrapped, and re-files a
-    # correctly attributed obligation on the strength of a line break. Observed
-    # on `tests/prompts/test_linking_prompt.py`'s corpus, where it moved the
-    # Task prose's obligation onto the constraint that restates it — deleting
-    # the cross-section duplicate that corpus exists to exercise.
-    words = quote.split()
-    if not words:
-        return None, None
-    pattern = re.compile(r"\s+".join(re.escape(word) for word in words))
-
-    def _within(requirement: RequirementRef) -> TextSpan | None:
-        found = pattern.search(requirement.span.text)
-        if found is None:
-            return None
-        start = requirement.span.start + found.start()
-        return TextSpan(
-            text=requirement.span.text[found.start() : found.end()],
-            start=start,
-            end=start + (found.end() - found.start()),
-        )
-
-    by_id = {requirement.id: requirement for requirement in registry}
-    attributed = by_id.get(attributed_to)
-    if attributed is not None:
-        span = _within(attributed)
-        if span is not None:
-            return span, attributed
-
-    for requirement in registry:
-        span = _within(requirement)
-        if span is not None:
-            return span, requirement
-
-    # Inside no requirement. The span is still reported when the quote exists
-    # somewhere in the file, so a rejected obligation can be traced back to the
-    # text that produced it.
-    return find_span(source, quote), None
 
 
 def _unique(candidate: str, seen: set[str]) -> str:

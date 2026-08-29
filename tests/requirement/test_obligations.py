@@ -15,6 +15,7 @@ from acceptance.requirement.obligations import Decomposition, decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import ObligationType
 from tests.support import client_returning as _client_returning
+from tests.support import uncovered_summary
 
 ARCHETYPES = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 
@@ -22,6 +23,18 @@ ARCHETYPES = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 FLOATING_RATE_TASK = """# Task
 Add floating-rate bonds using an index curve plus contractual spread. Accrual periods run the 26th through the 25th. Missing rate observations must produce an explicit error. Existing fixed-rate behavior must not change.
 """
+
+# This mandate is a Task paragraph and nothing else, so every obligation in it
+# comes from the summary step (#317): the paragraph is divided into spans, and a
+# span the bullets do not already require is handed to the ordinary decomposer.
+# One span here — the whole paragraph — because the fixture's five obligations
+# are the whole paragraph's, and each span gets a call of its own.
+_FLOATING_RATE_PARAGRAPH = (
+    "Add floating-rate bonds using an index curve plus contractual spread. "
+    "Accrual periods run the 26th through the 25th. Missing rate observations "
+    "must produce an explicit error. Existing fixed-rate behavior must not change."
+)
+FLOATING_RATE_SUMMARY = uncovered_summary([_FLOATING_RATE_PARAGRAPH])
 
 # Recorded model response for the §9.1 example: the five derived criteria (§9.1).
 FLOATING_RATE_RESPONSE = {
@@ -79,7 +92,9 @@ FLOATING_RATE_RESPONSE = {
 
 def test_floating_rate_example_yields_five_typed_criteria():
     parsed = parse_task_file(FLOATING_RATE_TASK)
-    obligations = decompose(parsed, _client_returning(FLOATING_RATE_RESPONSE)).obligations
+    obligations = decompose(
+        parsed, _client_returning(FLOATING_RATE_RESPONSE, summary=FLOATING_RATE_SUMMARY)
+    ).obligations
 
     assert len(obligations) == 5
     types = [o.type for o in obligations]
@@ -96,7 +111,9 @@ def test_floating_rate_example_yields_five_typed_criteria():
 
 def test_each_obligation_links_to_its_source_span():
     parsed = parse_task_file(FLOATING_RATE_TASK)
-    obligations = decompose(parsed, _client_returning(FLOATING_RATE_RESPONSE)).obligations
+    obligations = decompose(
+        parsed, _client_returning(FLOATING_RATE_RESPONSE, summary=FLOATING_RATE_SUMMARY)
+    ).obligations
 
     for obligation in obligations:
         assert obligation.source_spans, f"{obligation.id} has no source span"
@@ -172,7 +189,27 @@ def test_archetype_1_includes_the_omitted_obligation():
             },
         ],
         "open_questions": [],
-        "requirement_dispositions": [],
+        # One bullet, one obligation, each derived by the call asked about that
+        # bullet alone (#317) — which is also what makes each quotation land
+        # inside the requirement it claims to come from.
+        "requirement_dispositions": [
+            {
+                "requirement_id": f"constraint-{index:02d}",
+                "disposition": "yielded",
+                "obligation_id": obligation_id,
+                "more_obligation_ids": [],
+            }
+            for index, obligation_id in enumerate(
+                ["show-fields", "line-total", "money-format", "returns-in-parentheses"], start=1
+            )
+        ]
+        + [
+            {
+                "requirement_id": "completion-01",
+                "disposition": "no_obligation",
+                "reason": "A section marker, not a requirement.",
+            }
+        ],
     }
 
     obligations = decompose(parsed, _client_returning(response)).obligations
@@ -212,7 +249,9 @@ def test_duplicate_ids_are_made_unique():
         "open_questions": [],
         "requirement_dispositions": [],
     }
-    obligations = decompose(parsed, _client_returning(response)).obligations
+    obligations = decompose(
+        parsed, _client_returning(response, summary=FLOATING_RATE_SUMMARY)
+    ).obligations
     assert [o.id for o in obligations] == ["dup", "dup-2"]
 
 
@@ -267,7 +306,9 @@ def test_underspecified_qualifier_yields_an_open_question_not_an_obligation():
 
 def test_explicit_and_inferred_flags_are_carried_through():
     parsed = parse_task_file(FLOATING_RATE_TASK)
-    obligations = decompose(parsed, _client_returning(FLOATING_RATE_RESPONSE)).obligations
+    obligations = decompose(
+        parsed, _client_returning(FLOATING_RATE_RESPONSE, summary=FLOATING_RATE_SUMMARY)
+    ).obligations
     by_id = {o.id: o for o in obligations}
 
     assert by_id["coupons-use-index-plus-spread"].explicit is True  # directly stated

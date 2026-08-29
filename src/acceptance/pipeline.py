@@ -21,7 +21,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from acceptance.config import (
-    DEFAULT_DECOMPOSE_BATCH_SIZE,
     DEFAULT_LINK_DISTANCE_THRESHOLD,
     DEFAULT_LINK_PAIR_BATCH_SIZE,
     DEFAULT_MAPPING_BATCH_SIZE,
@@ -258,7 +257,6 @@ def run_review(
     declaration_text: str | None = None,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
     mapping_batch_size: int = DEFAULT_MAPPING_BATCH_SIZE,
-    decompose_batch_size: int = DEFAULT_DECOMPOSE_BATCH_SIZE,
     link_pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
     link_distance_threshold: float | None = DEFAULT_LINK_DISTANCE_THRESHOLD,
     task_identifier: str = "<inline>",
@@ -290,9 +288,7 @@ def run_review(
     # second was missing: a changed task invalidated the whole decomposition, so
     # judgements were being carried over a set that had been re-derived and
     # re-identified underneath them.
-    derived = decompose(
-        parsed, client, unusable, batch_size=decompose_batch_size, prior=ledger_prior
-    )
+    derived = decompose(parsed, client, unusable, prior=ledger_prior)
     # Obligation determination is two stages (#144). Derivation accounts for each
     # requirement alone and cannot link (#204), so a requirement stated twice
     # yields two obligations; linking resolves them into one obligation named by

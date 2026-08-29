@@ -1,42 +1,64 @@
 # Task
-Keep each stage's answer format the same across a review run, so that a provider
-able to reuse a repeated request is offered one.
+Every requirement of a mandate is accounted for on its own, and an obligation
+quotes the requirement it came from. The mandate's opening summary is accounted
+for last, against the obligations the rest of the mandate already produced, so
+that a property the rest of the mandate states does not become a second
+obligation and a property only the summary states is not lost.
 
 ## Constraints
-- Where a stage's repeated requests share an opening long enough for the provider
-  in use to reuse, every call that stage makes within one run declares the same
-  answer format, whatever items that particular call asks about.
-- An answer says which item it is about, naming that item by the identifier the
-  request gave it.
-- An item a call asked about, which its answer passes over, is recorded as an
-  answer not obtained.
-- An answer naming an item its call did not ask about is recorded as an answer not
-  obtained, and is never read as a judgement about any item.
-- A conclusion that holds only if every item was judged is withheld for a run in
-  which some answer was not obtained.
-- An identifier drawn from a set that is the same for every call of a run stays
-  restricted to that set.
+- A requirement other than the opening summary is accounted for by a step asked
+  about that requirement alone, and that step returns exactly one account of it.
+- The quotation an obligation carries is chosen from the text of the requirement
+  its step was asked about, so a quotation belonging to a different requirement
+  cannot be given.
+- No step that accounts for a requirement other than the opening summary is
+  asked to account for the opening summary.
+- The opening summary is accounted for by a step that first divides it into
+  stretches of its own words and then decides, for each stretch, whether the
+  obligations already derived from the rest of the mandate require the same
+  thing.
+- Every stretch is a substring of the opening summary, and every stretch is
+  decided exactly once.
+- A stretch the already-derived obligations require yields no obligation.
+- A stretch they do not require yields obligations, derived by a step asked
+  about that stretch alone.
+- The step that decides whether a stretch is already required yields no
+  obligations itself.
+- An obligation derived from a stretch carries that stretch as its quotation,
+  taken from the mandate rather than from the answer that named it.
+- A step may name the model it runs on; a step that names none uses the run's
+  own model.
+- A completed run says which model each step used.
+- Where a step tells the answering party what order its request presents its
+  parts in, that statement is true of the request as sent.
 
 ## Scope exclusions
-- What any stage is asked, and the judgement it is asked to make.
-- Which stages exist, how a stage divides its work across calls, and how large
-  those divisions are.
-- The order in which a request carries its content.
-- Stabilising the answer format of calls whose shared opening is shorter than the
-  shortest one the provider in use can reuse.
-- Reporting tokens, cost or reused-token share, which a run already reports.
-- Model calls issued by the measurement harness, which is not part of a review
-  run.
+- Which text in the mandate counts as a requirement, and how many requirements
+  are found.
+- Whether the obligations derived for a requirement are the right ones for it.
+- What the review does with an answer it cannot read at all.
+- Combining obligations that state the same thing as one another.
+- Which model is the right one for any step, and what any step costs.
+- Comparing figures recorded before this change with figures recorded after it.
 
 ## Completion expectations
-- Implementation
-- A test fails when two calls of one stage, whose shared opening the provider in
-  use could reuse, declare different answer formats.
-- A test fails when an answer naming an item its call did not ask about is read as
-  a judgement about an item.
-- A test fails when an item a call asked about is passed over by the answer and
-  read as a judgement about that item.
-- A test fails when a conclusion depending on every item having been judged is
-  stated for a run in which some answer was not obtained.
+- Implementation.
+- A test fails when a step accounting for a requirement other than the opening
+  summary is asked about more than that one requirement.
+- A test fails when an obligation carries a quotation belonging to a requirement
+  its step was not asked about.
+- A test fails when a step that accounts for a requirement other than the
+  opening summary is asked to account for the opening summary.
+- A test fails when a stretch of the opening summary is decided more than once,
+  or is left undecided, or is not a substring of the opening summary.
+- A test fails when a stretch the already-derived obligations require yields an
+  obligation.
+- A test fails when a stretch they do not require yields none.
+- A test fails when an obligation derived from a stretch carries a quotation
+  other than that stretch.
+- A test fails when a step naming its own model is run on the run's model
+  instead.
+- A test exercises the whole path from the mandate through to the obligations
+  produced, not any one step alone.
 - Two recorded runs over the same input produce byte-identical review state and
   byte-identical report output.

@@ -40,8 +40,24 @@ from acceptance.review_state import (
     RequirementMap,
     RequirementSection,
 )
+from acceptance.supplied_ids import UnusableAnswerLog
+from tests.support import _fake_response, covered_summary, make_obligation, uncovered_summary
 from tests.support import client_returning as _client_returning
-from tests.support import make_obligation
+from tests.support import model_client_with as _model_client_with
+
+
+def _client_answering_with(answer):
+    """A client whose raw response is built by `answer(**kwargs)`, unadapted."""
+    import json as _json
+
+    return _model_client_with(lambda **kw: _fake_response(_json.dumps(answer(**kw))))
+
+
+# The whole of this fixture's opening summary. A test that wants `task-01` to
+# yield says so through the summary pass, which is the only step that accounts
+# for it since #317 — the ordinary per-requirement calls are never asked about
+# it at all.
+SUMMARY = uncovered_summary(["Render each invoice line."])
 
 # Three requirements in three sections, deliberately: the section a requirement
 # sits in is part of its id, and a single-section file could not catch a scheme
@@ -165,7 +181,7 @@ def test_a_fully_accounted_response_disposes_every_requirement():
         ],
     }
 
-    result = decompose(parsed, _client_returning(response))
+    result = decompose(parsed, _client_returning(response, summary=SUMMARY))
 
     assert [entry.requirement_id for entry in result.requirement_map.dispositions] == [
         "task-01",
@@ -177,38 +193,50 @@ def test_a_fully_accounted_response_disposes_every_requirement():
     assert result.requirement_map.unyielding() == []
 
 
-def test_a_response_that_never_mentions_a_requirement_is_rejected():
-    """The load-bearing case, and the one M1.2.r1 got wrong. The response is
-    well-formed and internally consistent; it simply says nothing about two of
-    the five requirements.
+def test_a_requirement_no_response_accounts_for_is_rejected():
+    """The load-bearing case, and the one M1.2.r1 got wrong. Every call returns a
+    well-formed, internally consistent answer; it is simply an answer about a
+    requirement the call was not asked about, so four of the five are left with
+    nothing said about them.
 
-    M1.2.r1 recorded those two as a fourth disposition and carried on to a
-    verdict. They are not a gap in the review — they mean there is no review,
-    because the mandate was never read. The registry is derived from the parse
-    and the reconciliation walks it, so the code cannot drop a requirement; only
-    a malformed response can, and a malformed response is refused.
+    M1.2.r1 recorded those as a fourth disposition and carried on to a verdict.
+    They are not a gap in the review — they mean there is no review, because the
+    mandate was never read. The registry is derived from the parse and the
+    reconciliation walks it, so the code cannot drop a requirement; only a
+    malformed response can, and a malformed response is refused.
+
+    Since #317 a call answers for one requirement, and `requirement_id` is a
+    single-valued enum — so this is reachable only by a provider that ignores the
+    enum, which is precisely why the local check still has to exist (#163).
     """
     parsed = parse_task_file(TASK)
-    response = {
-        "obligations": [
-            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
-            _obligation("usd-format", "Format money as USD.", "Format money as USD"),
-            _obligation("usd-format-done", "Format money as USD.", "Format money as USD"),
-        ],
-        "open_questions": [],
-        "requirement_dispositions": [
-            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
-            _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
-            _disposition("completion-01", "yielded", obligation_ids=["usd-format-done"]),
-        ],
-    }
+
+    def always_constraint_01(**kwargs):
+        # Built by hand rather than through the fixture adapter, which routes a
+        # disposition to the call that asked for it — the whole point here is a
+        # response that does not.
+        if kwargs["response_format"]["json_schema"]["name"] == "_SummarySpans":
+            return covered_summary(**kwargs)
+        return {
+            "open_questions": [],
+            "requirement_disposition": {
+                "requirement_id": "constraint-01",
+                "disposition": "yielded",
+                "obligation": _obligation(
+                    "usd-format", "Format money as USD.", "Format money as USD"
+                ),
+                "more_obligations": [],
+            },
+        }
 
     with pytest.raises(SchemaValidationError) as raised:
-        decompose(parsed, _client_returning(response))
+        decompose(parsed, _client_answering_with(always_constraint_01))
 
     message = str(raised.value)
     assert "constraint-02" in message and "exclusion-01" in message
-    assert "2 of 5" in message
+    # `task-01` is accounted for by the summary step, which answered; the three
+    # ordinary requirements this response never spoke about are not.
+    assert "3 of 5" in message
 
 
 def test_a_requirement_deliberately_yielding_nothing_carries_its_reason():
@@ -229,7 +257,7 @@ def test_a_requirement_deliberately_yielding_nothing_carries_its_reason():
         ],
     }
 
-    result = decompose(parsed, _client_returning(response))
+    result = decompose(parsed, _client_returning(response, summary=SUMMARY))
 
     declined = result.requirement_map.disposition_for("constraint-01")
     assert declined.disposition is Disposition.NO_OBLIGATION
@@ -249,7 +277,7 @@ def test_a_disposition_cannot_reference_an_obligation_at_all():
     shape, which is where the same argument put "at least one" (#217).
     """
     schema = inline_schema_refs(_Decomposition.model_json_schema())
-    members = schema["properties"]["requirement_dispositions"]["items"]["anyOf"]
+    members = schema["properties"]["requirement_disposition"]["anyOf"]
     yielded = next(m for m in members if "obligation" in m.get("properties", {}))
 
     # No reference-shaped field survives anywhere on the disposition.
@@ -278,27 +306,25 @@ def test_the_schema_cannot_express_a_yielded_disposition_with_no_obligations():
         _Decomposition.model_validate(
             {
                 "open_questions": [],
-                "requirement_dispositions": [
-                    {
-                        "requirement_id": "task-01",
-                        "disposition": "yielded",
-                        "more_obligations": [],
-                    }
-                ],
+                "requirement_disposition": {
+                    "requirement_id": "task-01",
+                    "disposition": "yielded",
+                    "more_obligations": [],
+                },
             }
         )
 
     # The schema as it actually goes out, refs inlined the way `complete` sends
     # it — the wire form is what constrains the model, not the pydantic form.
     schema = inline_schema_refs(_Decomposition.model_json_schema())
-    members = schema["properties"]["requirement_dispositions"]["items"]["anyOf"]
+    members = schema["properties"]["requirement_disposition"]["anyOf"]
     yielded = next(member for member in members if "obligation" in member.get("properties", {}))
     assert "obligation" in yielded["required"]
     # And it carries the obligation itself, not a reference to one.
     assert yielded["properties"]["obligation"]["type"] == "object"
     # Strict mode rejects both, and a tagged union would emit them.
-    assert "oneOf" not in schema["properties"]["requirement_dispositions"]["items"]
-    assert "discriminator" not in schema["properties"]["requirement_dispositions"]["items"]
+    assert "oneOf" not in schema["properties"]["requirement_disposition"]
+    assert "discriminator" not in schema["properties"]["requirement_disposition"]
 
 
 def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
@@ -307,29 +333,31 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
     different shapes, or a `no_obligation` could be read as a `yielded` whose
     ids happened to be absent — the contradiction rebuilt inside the parser.
     """
-    parsed = _Decomposition.model_validate(
+    yielded = _Decomposition.model_validate(
         {
             "open_questions": [],
-            "requirement_dispositions": [
-                {
-                    "requirement_id": "task-01",
-                    "disposition": "yielded",
-                    "obligation": _obligation("ob-1", "A.", "Render each invoice line."),
-                    "more_obligations": [],
-                },
-                {
-                    "requirement_id": "constraint-01",
-                    "disposition": "no_obligation",
-                    "reason": "Declined.",
-                },
-            ],
+            "requirement_disposition": {
+                "requirement_id": "task-01",
+                "disposition": "yielded",
+                "obligation": _obligation("ob-1", "A.", "Render each invoice line."),
+                "more_obligations": [],
+            },
         }
-    )
+    ).requirement_disposition
+    declined = _Decomposition.model_validate(
+        {
+            "open_questions": [],
+            "requirement_disposition": {
+                "requirement_id": "constraint-01",
+                "disposition": "no_obligation",
+                "reason": "Declined.",
+            },
+        }
+    ).requirement_disposition
 
-    first, second = parsed.requirement_dispositions
-    assert type(first).__name__ != type(second).__name__
-    assert [o.id for o in first.derived()] == ["ob-1"]
-    assert second.reason == "Declined."
+    assert type(yielded).__name__ != type(declined).__name__
+    assert [o.id for o in yielded.derived()] == ["ob-1"]
+    assert declined.reason == "Declined."
 
     # An unknown tag matches no member at all, rather than falling back to one.
     with pytest.raises(ValidationError):
@@ -337,9 +365,11 @@ def test_the_literal_tag_alone_decides_which_shape_a_disposition_is():
             {
                 "obligations": [],
                 "open_questions": [],
-                "requirement_dispositions": [
-                    {"requirement_id": "task-01", "disposition": "undisposed", "reason": "x"}
-                ],
+                "requirement_disposition": {
+                    "requirement_id": "task-01",
+                    "disposition": "undisposed",
+                    "reason": "x",
+                },
             }
         )
 
@@ -361,7 +391,7 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
 
     def parse(entry: dict):
         return _Decomposition.model_validate(
-            {"open_questions": [], "requirement_dispositions": [entry]}
+            {"open_questions": [], "requirement_disposition": entry}
         )
 
     # Claims `yielded` and supplies a decline reason alongside it.
@@ -399,7 +429,7 @@ def test_a_disposition_cannot_carry_another_disposition_s_payload():
             "more_obligations": [],
         }
     )
-    assert [o.id for o in clean.requirement_dispositions[0].derived()] == ["ob-1"]
+    assert [o.id for o in clean.requirement_disposition.derived()] == ["ob-1"]
 
 
 def test_the_schema_cannot_express_an_open_question_disposition_with_no_questions():
@@ -411,18 +441,16 @@ def test_the_schema_cannot_express_an_open_question_disposition_with_no_question
             {
                 "obligations": [],
                 "open_questions": [],
-                "requirement_dispositions": [
-                    {
-                        "requirement_id": "task-01",
-                        "disposition": "open_question",
-                        "more_open_question_ids": [],
-                    }
-                ],
+                "requirement_disposition": {
+                    "requirement_id": "task-01",
+                    "disposition": "open_question",
+                    "more_open_question_ids": [],
+                },
             }
         )
 
     schema = inline_schema_refs(_Decomposition.model_json_schema())
-    members = schema["properties"]["requirement_dispositions"]["items"]["anyOf"]
+    members = schema["properties"]["requirement_disposition"]["anyOf"]
     questioned = next(
         member for member in members if "open_question_id" in member.get("properties", {})
     )
@@ -502,56 +530,78 @@ def test_an_open_question_disposition_naming_no_real_question_is_rejected():
     assert "constraint-01" in str(raised.value)
 
 
-def test_a_response_naming_a_requirement_outside_the_registry_is_rejected():
+def test_a_response_naming_a_requirement_outside_the_registry_is_recorded_and_refused():
     """Constrained decoding makes a foreign id unrepresentable, but the
     guarantee degrades when a provider ignores the constraint (#163), so the
-    local check has to exist and has to raise rather than drop."""
+    local check has to exist — and it has to be loud rather than silent.
+
+    Two things must happen, and only one of them is the exception. The foreign id
+    is recorded as an unusable answer, naming the id, so a reader can see what
+    the model actually said; and the requirement it displaced is then left
+    unaccounted for, which refuses the review.
+    """
     parsed = parse_task_file(TASK)
-    response = {
-        "obligations": [
-            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
-        ],
-        "open_questions": [],
-        "requirement_dispositions": [
-            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
-            _disposition("constraint-01", "no_obligation", reason="Not applicable."),
-            _disposition("constraint-02", "no_obligation", reason="Not applicable."),
-            _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
-            _disposition("completion-01", "no_obligation", reason="Not applicable."),
-            _disposition("constraint-99", "no_obligation", reason="No such requirement."),
-        ],
-    }
 
+    def foreign(**kwargs):
+        if kwargs["response_format"]["json_schema"]["name"] == "_SummarySpans":
+            return covered_summary(**kwargs)
+        return {
+            "open_questions": [],
+            "requirement_disposition": {
+                "requirement_id": "constraint-99",
+                "disposition": "no_obligation",
+                "reason": "No such requirement.",
+            },
+        }
+
+    unusable = UnusableAnswerLog()
     with pytest.raises(SchemaValidationError) as raised:
-        decompose(parsed, _client_returning(response))
+        decompose(parsed, _client_answering_with(foreign), unusable)
 
-    assert "constraint-99" in str(raised.value)
+    assert "did not account for" in str(raised.value)
+    assert any(answer.returned_id == "constraint-99" for answer in unusable.answers)
 
 
-def test_a_requirement_disposed_twice_is_rejected():
-    """Two dispositions for one requirement is a response contradicting itself,
-    and picking either one silently would be the reader's problem, not the
-    model's."""
-    parsed = parse_task_file(TASK)
-    response = {
-        "obligations": [
-            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
-        ],
-        "open_questions": [],
-        "requirement_dispositions": [
-            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
-            _disposition("task-01", "no_obligation", reason="Also declined."),
-            _disposition("constraint-01", "no_obligation", reason="Not applicable."),
-            _disposition("constraint-02", "no_obligation", reason="Not applicable."),
-            _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
-            _disposition("completion-01", "no_obligation", reason="Not applicable."),
-        ],
-    }
+def test_one_requirement_cannot_be_disposed_twice_in_one_response():
+    """Two dispositions for one requirement was a response contradicting itself,
+    and picking either one silently would have been the reader's problem rather
+    than the model's. Since #317 it is not a contradiction to catch — it is an
+    answer with no encoding.
 
-    with pytest.raises(SchemaValidationError) as raised:
-        decompose(parsed, _client_returning(response))
+    A call is asked about one requirement and returns `requirement_disposition`,
+    a single object. There is no list to put a second entry in, so the schema the
+    model is given cannot express the case at all. That is the same move #217
+    made for the empty `yielded` list: a rule the schema contradicts is not
+    enforceable by asking harder.
+    """
+    schema = inline_schema_refs(_Decomposition.model_json_schema())
+    disposition = schema["properties"]["requirement_disposition"]
 
-    assert "more than once" in str(raised.value)
+    assert disposition.get("type") != "array"
+    assert "items" not in disposition
+    assert "requirement_dispositions" not in schema["properties"]
+
+    # And the parser refuses a list where the object belongs, so a provider
+    # returning the old shape fails loudly rather than having its first entry
+    # taken.
+    with pytest.raises(ValidationError):
+        _Decomposition.model_validate(
+            {
+                "open_questions": [],
+                "requirement_disposition": [
+                    {
+                        "requirement_id": "task-01",
+                        "disposition": "no_obligation",
+                        "reason": "Declined.",
+                    },
+                    {
+                        "requirement_id": "task-01",
+                        "disposition": "no_obligation",
+                        "reason": "Also declined.",
+                    },
+                ],
+            }
+        )
 
 
 def test_a_supplied_reason_is_preserved_rather_than_replaced():
@@ -680,14 +730,13 @@ def test_two_requirements_minting_the_same_id_keep_separate_obligations():
     parsed = parse_task_file(TASK)
     response = {
         "obligations": [
-            _obligation("dup", "First.", "Render each invoice line."),
-            _obligation("dup", "Second.", "Format money as USD"),
+            _obligation("dup", "First.", "Format money as USD"),
+            _obligation("dup", "Second.", "two decimals"),
         ],
         "open_questions": [],
         "requirement_dispositions": [
             # One requirement, two obligations, both minting the same slug.
-            _disposition("task-01", "yielded", obligation_ids=["dup", "dup"]),
-            _disposition("constraint-01", "no_obligation", reason="Not applicable."),
+            _disposition("constraint-01", "yielded", obligation_ids=["dup", "dup"]),
             _disposition("constraint-02", "no_obligation", reason="Not applicable."),
             _disposition("exclusion-01", "no_obligation", reason="Not applicable."),
             _disposition("completion-01", "no_obligation", reason="Not applicable."),
@@ -699,7 +748,10 @@ def test_two_requirements_minting_the_same_id_keep_separate_obligations():
     # Both survive, the second renamed, and both belong to the requirement that
     # derived them.
     assert [o.id for o in result.obligations] == ["dup", "dup-2"]
-    assert result.requirement_map.disposition_for("task-01").obligation_ids == ["dup", "dup-2"]
+    assert result.requirement_map.disposition_for("constraint-01").obligation_ids == [
+        "dup",
+        "dup-2",
+    ]
 
 
 def test_decompose_cannot_reach_a_diff_or_a_head_revision():
@@ -719,7 +771,7 @@ def test_decompose_cannot_reach_a_diff_or_a_head_revision():
     # and no revision anywhere in it. The guarantee this test exists for is
     # unchanged: decomposition still cannot see the implementation it will later
     # be used to judge.
-    assert list(parameters) == ["parsed", "client", "unusable_answers", "batch_size", "prior"]
+    assert list(parameters) == ["parsed", "client", "unusable_answers", "prior"]
     annotations = {name: str(p.annotation) for name, p in parameters.items()}
     forbidden = ("ChangeSet", "Path", "revision", "repo", "head")
     for name, annotation in annotations.items():
@@ -768,7 +820,7 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
     asks the model to re-derive what the code knows."""
     parsed = parse_task_file(TASK)
     registry = build_registry(parsed)
-    prompt = _user_prompt(registry, {r.id for r in registry})
+    prompt = _user_prompt(registry, "constraint-01")
 
     assert "[constraint-01]" in prompt
     assert "[exclusion-01]" in prompt
@@ -777,17 +829,18 @@ def test_the_prompt_carries_identified_requirements_not_raw_markdown():
     assert "## Scope exclusions" not in prompt
 
 
-def test_every_batch_sees_the_whole_task_file_and_answers_for_its_own_share():
-    """#204 deliverable 2. The batch scopes what a call must ANSWER FOR; it does
-    not scope what the call may READ.
+def test_every_call_sees_the_whole_task_file_and_answers_for_one_requirement():
+    """#204 deliverable 2, narrowed to one requirement per call by #317. The
+    answering set scopes what a call must ANSWER FOR; it does not scope what the
+    call may READ.
 
     #178 is a failure to reconcile across sections, and a call shown only its own
-    bullets cannot notice that a later section settles a term an earlier one
+    bullet cannot notice that a later section settles a term an earlier one
     leaves open — it would trade one silent loss for another.
     """
     parsed = parse_task_file(TASK)
     registry = build_registry(parsed)
-    prompt = _user_prompt(registry, {"constraint-01"})
+    prompt = _user_prompt(registry, "constraint-01")
 
     # Every requirement is present, including the ones another call answers for.
     for requirement in registry:

@@ -44,6 +44,7 @@ from acceptance.llm import SERVED_FROM_PROVIDER
 # the pipeline can issue is missing from this tuple.
 _PIPELINE_ORDER = (
     "decompose",
+    "decompose-summary",
     "obligation linking",
     "open-question judgment",
     "test-to-obligation mapping",
@@ -72,6 +73,12 @@ class StageUsage(BaseModel):
     """What one pipeline stage cost, and where its answers came from."""
 
     stage: str
+    # Which model this stage's calls went to. A list because the aggregate must
+    # not hide a disagreement: a stage names one model, so two here says
+    # something moved mid-run and the reader should see both rather than one
+    # chosen arbitrarily. Empty when no call reported a model — a transcript
+    # replayed from before this was tracked.
+    models: list[str] = []
     provider_calls: int = 0
     replayed_calls: int = 0
     prompt_tokens: int = 0
@@ -167,6 +174,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
         usage = call.get("usage") or {}
         from_provider = call.get("served_from") == SERVED_FROM_PROVIDER
 
+        model = call.get("model")
+        if isinstance(model, str) and model not in stage.models:
+            stage.models.append(model)
+
         if from_provider:
             stage.provider_calls += 1
         else:
@@ -211,6 +222,10 @@ def render(usage: RunUsage) -> str:
     rows = [
         (
             stage.stage,
+            # Which model answered for this stage. A stage may name its own
+            # (#317), so a footer showing only the run's model would misreport
+            # what produced the stage's findings and what it was billed at.
+            ", ".join(stage.models) if stage.models else "—",
             f"{stage.calls} ({stage.provider_calls} live / {stage.replayed_calls} replayed)",
             f"{stage.prompt_tokens:,}",
             f"{stage.completion_tokens:,}",
@@ -220,11 +235,14 @@ def render(usage: RunUsage) -> str:
         )
         for stage in usage.stages
     ]
-    header = ("stage", "calls", "prompt", "output", "cached", "this run", "recorded")
+    header = ("stage", "model", "calls", "prompt", "output", "cached", "this run", "recorded")
     widths = [max(len(row[i]) for row in (header, *rows)) for i in range(len(header))]
 
     def line(row: tuple[str, ...]) -> str:
-        cells = [row[0].ljust(widths[0])] + [row[i].rjust(widths[i]) for i in range(1, len(row))]
+        # Stage and model read as labels, so they are left-aligned; every column
+        # after them is a figure, and figures line up on the right.
+        cells = [row[0].ljust(widths[0]), row[1].ljust(widths[1])]
+        cells += [row[i].rjust(widths[i]) for i in range(2, len(row))]
         return "  " + "  ".join(cells).rstrip()
 
     lines = ["Model usage by stage:", line(header), line(tuple("-" * w for w in widths))]

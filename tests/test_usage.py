@@ -212,9 +212,11 @@ def test_every_pipeline_stage_appears_in_the_reported_order():
     from acceptance.evidence.mapping import _STAGE as MAPPING
     from acceptance.requirement.linking import _STAGE as LINKING
     from acceptance.requirement.obligations import _STAGE as DECOMPOSE
+    from acceptance.requirement.summary import SUMMARY_STAGE
 
     declared = {
         DECOMPOSE,
+        SUMMARY_STAGE,
         LINKING,
         OPEN_QUESTIONS,
         MAPPING,
