@@ -1,30 +1,28 @@
 # Prefilter the pair set — findings
 
-**No candidate filter is worth adopting.** The best of them excludes 14.6% of
-the 12,450 pairs without skipping a recorded kill, which is worth about 50 cents
-on a $4.25 review, and that 14.6% is an upper bound measured on the same data
-that chose its thresholds. Backing off far enough to leave any margin drops it
-to single digits. The recommendation is to keep judging every pair and look
-elsewhere for the cost.
+**The best filter excludes 22.0% of the 12,450 pairs without skipping a recorded
+kill, using `voyage-code-4` on both sides.** That is not enough to adopt on its
+own, but it is enough to make a held-out check worth running — which the earlier
+`voyage-code-3` result, at 14.6%, was not. The model choice turned out to matter
+more than anything else tried here.
 
 Measured on #314's Gate 2 run: **12,450 pairs, 127 kills, a 1.0% kill rate**,
 75 defects against 166 tests, base `5554c79` head `2945551`, run
 `fc5fdcb24820a37e`. Method and traps are in `README.md`; raw numbers in
-`findings.json`.
+`findings.json`; the runs that produced them in `score-output.log` and
+`model-comparison.log`.
 
-## What each candidate does
+## The headline
 
-Every figure is the most the filter can exclude while keeping all 127 kills.
+Rejecting a pair only when every filter rejects it, keeping all 127 kills:
 
-| filter | encoding | excludes | at |
-|---|---|---|---|
-| discovery signal touches the defect's file | none needed | **0%** | binary |
-| defect description vs test source | query/document | 10.2% | 0.321 |
-| defect description vs test source | neither | 12.3% | 0.532 |
-| implicated code region vs test source | document/document | 10.6% | 0.475 |
-| implicated code region vs test source | neither | 3.2% | 0.617 |
-| all three together, rejecting only when all reject | query/document | **14.6%** | 0.369 / 0.512 |
-| all three together, rejecting only when all reject | neither | 14.2% | 0.542 / 0.873 |
+| configuration | excludes |
+|---|---|
+| `voyage-code-4` both sides | **22.0%** |
+| `voyage-4-large` defects, `voyage-code-4` code | 15.4% |
+| `voyage-code-3`, description as query and code as document | 14.6% |
+| `voyage-code-3`, no `input_type` | 14.2% |
+| `voyage-4-large` both sides | 2.1% |
 
 ## 1. The free baseline fails outright, and fails the way the code predicted
 
@@ -50,52 +48,75 @@ I verified this on the corpus: the 11 files named by defect code refs are all
 `source` or `other`, and none of the 4 test-category files in the change set is
 among them.
 
-## 2. The embedding filters work, and do not work well enough
+## 2. The embedding model dominates every other choice
 
-Both clear the free baseline easily — they lose no kill where it loses 80 — but
-neither reaches 13% alone and their union reaches 14.6%.
+`voyage-code-4` excludes 22.4% on the description filter alone against
+`voyage-code-3`'s 10.2% — more than double, on identical texts, identical
+thresholding, identical scoring. Nothing else moved the number that far.
 
-**There is no margin, because there is no plateau.** The curve climbs steeply
-straight through the point where kills start disappearing. Taking the asymmetric
-description filter: 6.7% one step below the lossless threshold, 10.2% at it,
-14.7% one step above — and that step costs a kill. A safety margin of one step
-costs a third of the benefit.
+The two `voyage-code-3` rows differ only in `input_type` and land 0.4 points
+apart. The union rule adds at most 4 points over the best single filter. The
+model swap adds 12.
 
-**The kills that set the ceiling are real, so the ceiling is not judge noise.** I
-read the six lowest-scoring kills under each filter. Every one is a
-carry-forward test judged against a carry-forward defect — for instance
-`test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries`
-against a defect about `Review` storing `pair_verdicts` without the ledger path
-populating them. Those are correct kills. They score low because the test's
-source and the defect's description are about the same mechanism in different
-words, and cosine distance over either encoding does not close that gap.
+**The code-region filter stays weak everywhere.** Its best is 10.6%
+(`voyage-code-3`) and `voyage-code-4` gets only 5.9% from it. Comparing a diff
+hunk with a test function is apparently a harder retrieval problem than
+comparing a prose description with one, which is the opposite of what the plan
+behind this experiment expected.
 
-This is DR-259's shape again — the decision record for the obligation-linking
-prefilter, whose held-out check found no threshold that separated genuine merges
-from spurious ones. I expected the difficulty not to transfer, on the grounds
-that "is this test even about this code" is a cruder question than "do these two
-obligations state the same requirement". **On this evidence it transfers.**
+## 3. Mixing two models costs, and Voyage's compatibility claim does not cover it
 
-## 3. What is worth keeping regardless of the decision
+The Voyage 4 announcement says "All four models produce compatible embeddings,
+meaning embeddings generated from different models can be used interchangeably",
+and names `voyage-4-large`, `voyage-4`, `voyage-4-lite`, `voyage-4-nano`. **It
+does not name `voyage-code-4`.**
 
-**`input_type` moves the code-to-code comparison a lot.** Marking both the code
-region and the test source as `document` excludes 10.6% where sending no
-`input_type` at all excludes 3.2% — more than triple, on identical texts and the
-same model. The description filter moves the other way and by less: 10.2% with
-`query`/`document` against 12.3% with neither.
+Measured against the live API on 2026-08-30, on identical text:
 
-This is a fact about `voyage-code-3` that outlives this experiment, and the
-product cannot currently use it: `ModelClient.build_embedding_request` sends
-`model` and `input` only. Adding `input_type` would move the embedding request
-key and orphan the recorded linking transcripts, so it should be done when
-something needs it, not speculatively.
+| pair | cosine on identical text |
+|---|---|
+| `voyage-4-large` vs `voyage-4` (both named) | 0.93 |
+| `voyage-4-large` vs `voyage-4-lite` (both named) | 0.90 |
+| `voyage-4-large` vs `voyage-code-4` (not named) | 0.72 prose, **0.56 code** |
+| `voyage-4-large` vs `voyage-code-3` (different series) | ~0.00 |
 
-**`voyage-code-3` exists and takes `input_type` of `query` or `document`.** I
-verified both against the live API on 2026-08-30; a third value returns a 400
-naming the two accepted ones. Both were unverified beliefs in the plan that
-produced this experiment.
+So "interchangeable" is worth about 0.9 in practice, `voyage-code-4` sits well
+outside that band, and it diverges worst on code — exactly the content the code
+side of the filter handles. The measured cost matches: using `voyage-4-large`
+for defect descriptions instead of `voyage-code-4` drops the union from 22.0% to
+15.4%.
 
-## 4. What this does not settle
+**Use one model for both sides.** The cross-model cosine carries the gap between
+the models as well as the gap between the texts.
+
+## 4. "Best lossless" is a minimum statistic, and it misleads on its own
+
+`voyage-4-large` scores 2.1% — apparently catastrophic. At **one** kill lost its
+description filter reaches 27.1%, the best in that column. Its lossless figure
+is one unlucky pair, not a bad model.
+
+This is why `compare_models.py` reports zero, one and three kills lost. The
+lossless figure is the right bar for *adopting* a filter, because one skipped
+kill is the failure #312 exists to remove. It is the wrong bar for *comparing*
+models, because it discards everything except the worst case.
+
+`voyage-code-4` leads on both readings — 22.4% at zero kills lost and 46.2% at
+three — which is why it is the recommendation rather than `voyage-4-large`.
+
+## 5. What is worth keeping regardless of the decision
+
+**`input_type` matters and the product cannot send it.** For `voyage-code-3`,
+marking both sides of the code-to-code comparison as `document` excludes 10.6%
+where sending no `input_type` excludes 3.2%. `ModelClient.build_embedding_request`
+sends `model` and `input` only, so adopting any of this means changing it —
+**which moves the embedding request key and orphans the recorded linking
+transcripts**. Worth doing when something needs it, not speculatively.
+
+**`voyage-code-4` and the 4-series models exist and take `input_type` of `query`
+or `document`.** I verified this against the live API; a third value returns a
+400 naming the two accepted ones.
+
+## 6. What this does not settle
 
 **One review, and the verdicts are our own judge's answers.** Every number here
 measures agreement with ourselves on a single Gate 2 run over this repo's own
@@ -103,26 +124,37 @@ code. That is the right target for a prefilter — its only job is to avoid
 skipping a pair the judge would have called a kill — but it is not evidence
 about whether the judge is right.
 
-**The thresholds are fitted to the data they are scored on.** Each best-lossless
-threshold sits immediately below the weakest kill in this run, so the exclusion
-shares are ceilings, not operating points. A held-out check against #315's
-archetype labels would be needed before trusting any of them, and given how
-tight the curves are I expect it to lower them rather than raise them. That
-check was not run, because a 14.6% ceiling does not justify it.
+**The thresholds are fitted to the data they are scored on**, so the exclusion
+shares are ceilings rather than operating points. One detail cuts the other way
+and is worth checking rather than trusting: `voyage-code-4`'s winning threshold
+is **0.018**, which is close to "exclude pairs whose vectors point away from each
+other". I believe a near-zero cut is likelier to survive a held-out check than
+`voyage-code-3`'s fitted 0.321, because it is a statement about the geometry
+rather than a constant tuned on 127 kills. **I have not verified that**, and a
+hold-out against #315's archetype labels is what would.
 
-**Cost is untouched by this.** The pair stage remains the expensive one: $3.51
-of the run's $4.25 across 332 calls, of which $2.46 is output. Removing 14.6% of
-pairs removes about 14.6% of the output, roughly 36 cents, plus a smaller share
-of the input — the shared prefix stays whatever happens. The call count barely
-moves, because exclusions are scattered across tests rather than emptying whole
-requests.
+**Cost.** The pair stage is $3.51 of the run's $4.25, of which $2.46 is output.
+Removing 22% of pairs removes about 22% of the output and a smaller share of the
+input, taking the review to roughly $3.50. That is real but modest next to the
+response-encoding change measured separately — see below.
 
 ## Recommendation
 
-Judge every pair. Do not adopt any of these filters.
+Do not adopt a prefilter yet, but stop treating it as closed. Specifically:
 
-If the pair stage's cost has to come down, the levers left are ones this
-experiment did not test: raising the judgements-per-request limit, which is what
-actually sets the call count, or narrowing the pair set at its source by
-enumerating fewer defects per obligation. Both change what the review asks
-rather than filtering the answers, so both need their own measurement.
+1. **If a filter is adopted, use `voyage-code-4` on both sides.** Not
+   `voyage-code-3`, not a mixed pairing.
+2. **Run the hold-out against #315's archetype labels before adopting
+   anything.** At 22% the check is now worth its cost; at 14.6% it was not.
+3. **Take the response-encoding change first.** Measured on the same 332
+   recorded transcripts, the defect id is 42.8% of the stage's output and the
+   reason on surviving verdicts is another 30.7%; replacing the id with a short
+   index and dropping the reason where `fails` is false cuts output by **72.4%**
+   — more than three times what the best filter saves, and it skips no
+   judgement at all. It needs its own pilot for accuracy, not for cost.
+4. **Deduplicate defects.** 75 defects collapse to 27 distinct kill vectors, and
+   seven of them are the same defect stated seven ways. Merging exact duplicates
+   alone gives 55 defects, 27% fewer pairs, with no coverage lost — and the
+   duplication traces upstream to obligations that state the same requirement,
+   which is #210, over-merging, and #242, where one wrong link stops a group of
+   duplicate obligations from merging.

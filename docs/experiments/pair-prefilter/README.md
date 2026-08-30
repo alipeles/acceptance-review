@@ -35,8 +35,12 @@ enough to use.
 - `locality.py` — the free baseline filter: does the test's discovery signal
   touch the defect's own file?
 - `embeddings.py` — recorded Voyage calls, with the free-tier rate limit paced.
-- `score.py` — the scoring sweep; writes `findings.json`.
-- `score-output.log` — the run that produced the findings, kept as its evidence.
+- `score.py` — the scoring sweep over every configuration in `CONFIGURATIONS`;
+  writes `findings.json`.
+- `compare_models.py` — reads `findings.json` and ranks the configurations,
+  reporting each at zero, one and three kills lost.
+- `score-output.log`, `model-comparison.log` — the runs that produced the
+  findings, kept as their evidence.
 - `verdicts.json.gz` — the 12,450 recorded verdicts, committed. The only part
   of the run that cannot be re-derived without paying for it again.
 
@@ -136,7 +140,23 @@ two — verified against the live API on 2026-08-30. `ModelClient.embed` sends
 the recorded linking transcripts**. `score.py` measures the symmetric form
 alongside the asymmetric one so that cost is only paid if it buys something.
 
-**9. DR-259 is a caution, not a precedent.** Its held-out check found no
+**9. One model on both sides, and never mix series.** Voyage's 4-series
+announcement claims compatibility for `voyage-4-large`, `voyage-4`,
+`voyage-4-lite` and `voyage-4-nano` — not for `voyage-code-4`. Measured on
+identical text, the named pairs sit at cosine 0.90–0.93 while `voyage-4-large`
+against `voyage-code-4` sits at 0.72 on prose and 0.56 on code. Mixing those two
+costs 6.6 points of exclusion. Across series it is worse than useless:
+`voyage-4-large` against `voyage-code-3` scores about 0.00 on identical text,
+so every such cosine is noise. `similarities()` raises if two models return
+different vector widths, but equal widths are not evidence of a shared space.
+
+**10. Report more than the lossless figure when comparing models.** It is a
+minimum statistic, set by the single weakest kill, and it ranked
+`voyage-4-large` last at 2.1% when at one kill lost that model leads its column
+at 27.1%. Adoption is decided on the lossless figure; comparison is not.
+`compare_models.py` prints zero, one and three kills lost for this reason.
+
+**11. DR-259 is a caution, not a precedent.** Its held-out check found no
 threshold that separated cleanly. But it answered a different and harder
 question — whether two obligations state the same requirement, a
 semantic-equivalence judgement — where this asks the much cruder "is this test

@@ -147,13 +147,29 @@ def locality_outcomes(corpus, worktree: Path) -> tuple[list[Outcome], dict]:
 # The embedding filters
 
 
-def similarities(corpus, model: str, left_type: str | None, right_type: str | None) -> dict:
+def similarities(
+    corpus,
+    defect_model: str,
+    left_type: str | None,
+    code_model: str,
+    right_type: str | None,
+) -> dict:
     """Cosine similarity for every pair, under two embedding views of a defect.
 
     `left_type` and `right_type` are Voyage's `input_type`. The asymmetric form
     — description as `query`, code as `document` — is the shape a code-retrieval
     model is trained for; passing `None` for both is the symmetric fallback that
     works on any provider.
+
+    **`defect_model` and `code_model` may differ**, which is what makes a mixed
+    configuration measurable — a general model on the prose side and a code
+    model on the code side. Voyage states that 4-series embeddings are
+    compatible with one another. `probe`-style checks in this experiment's
+    findings show identical text landing at cosine 0.53–0.80 across two 4-series
+    models rather than the ~0.99 a shared space implies, so **a mixed
+    configuration is measured, never assumed**. Comparing across two models from
+    different series is meaningless: `voyage-4-large` against `voyage-code-3` on
+    identical text scores about 0.00.
 
     **Each implicated region is embedded once and a defect scores as the best of
     its own regions**, rather than as one concatenation of them. Two reasons,
@@ -166,21 +182,28 @@ def similarities(corpus, model: str, left_type: str | None, right_type: str | No
     """
     tests = list(corpus.tests)
     test_vectors = embeddings.embed(
-        [test.source for test in tests], model, right_type, "test sources"
+        [test.source for test in tests], code_model, right_type, "test sources"
     )
     by_test = {test.test_id: vector for test, vector in zip(tests, test_vectors, strict=True)}
 
     defects = list(corpus.defects)
     description_vectors = embeddings.embed(
-        [defect.description for defect in defects], model, left_type, "defect descriptions"
+        [defect.description for defect in defects], defect_model, left_type, "defect descriptions"
     )
     by_description = {d.id: v for d, v in zip(defects, description_vectors, strict=True)}
 
     refs = sorted({ref for defect in defects for ref in defect.code_refs if ref in corpus.regions})
     ref_vectors = embeddings.embed(
-        [corpus.regions[ref] for ref in refs], model, right_type, "code regions"
+        [corpus.regions[ref] for ref in refs], code_model, right_type, "code regions"
     )
     by_ref = dict(zip(refs, ref_vectors, strict=True))
+
+    widths = {len(description_vectors[0]), len(test_vectors[0]), len(ref_vectors[0])}
+    if len(widths) > 1:
+        raise SystemExit(
+            f"{defect_model} and {code_model} return different vector widths {sorted(widths)}; "
+            "their cosines would be undefined, not merely unreliable."
+        )
 
     description_sim: dict[tuple[str, str], float] = {}
     region_sim: dict[tuple[str, str], float] = {}
@@ -311,11 +334,39 @@ def report_losses(corpus, outcome: Outcome, limit: int = 8) -> None:
         print(f"    ... and {len(outcome.lost) - limit} more")
 
 
+#: Each configuration is (label, defect model, defect input_type, code model,
+#: code input_type). The single-model rows are the controls that make the mixed
+#: row interpretable — without them a poor mixed score cannot be told apart from
+#: a poor model.
+#:
+#: **On mixing two models.** Voyage's 4-series announcement says "All four
+#: models produce compatible embeddings, meaning embeddings generated from
+#: different models can be used interchangeably", and names `voyage-4-large`,
+#: `voyage-4`, `voyage-4-lite` and `voyage-4-nano`. It does not name
+#: `voyage-code-4`. Measured on identical text: the two named models sit at
+#: cosine 0.89–0.93 of each other, while `voyage-code-4` against
+#: `voyage-4-large` sits at 0.72 on prose and 0.56 on code. So the mixed row is
+#: outside the band Voyage's own claim covers, and is measured on that basis
+#: rather than dropped — ordering, not absolute agreement, is what a filter
+#: needs.
+CONFIGURATIONS = [
+    ("code-3 asymmetric", "voyage-code-3", "query", "voyage-code-3", "document"),
+    ("code-3 symmetric", "voyage-code-3", None, "voyage-code-3", None),
+    ("4-large both sides", "voyage-4-large", "query", "voyage-4-large", "document"),
+    ("code-4 both sides", "voyage-code-4", "query", "voyage-code-4", "document"),
+    ("4-large defects, code-4 code", "voyage-4-large", "query", "voyage-code-4", "document"),
+]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--worktree", type=Path, required=True)
     parser.add_argument("--findings", type=Path, default=HERE / "findings.json")
-    parser.add_argument("--model", default="voyage-code-3")
+    parser.add_argument(
+        "--only",
+        action="append",
+        help="run just these configuration labels (repeatable); default runs all",
+    )
     parser.add_argument("--no-embeddings", action="store_true")
     args = parser.parse_args()
 
@@ -348,10 +399,27 @@ def main() -> None:
         _write(args.findings, findings)
         return
 
-    for left, right, label in (("query", "document", "asymmetric"), (None, None, "symmetric")):
-        print(f"\n== {args.model}, {label} ==")
-        scores = similarities(corpus, args.model, left, right)
-        block: dict = {}
+    # The standing instruction of 2026-08-30: reject a pair only when every
+    # filter rejects it. Solved jointly rather than by running each filter at
+    # its own best lossless threshold — see `best_lossless_union`.
+    def keeps_locally(pair):
+        defect = corpus.defects_by_id[pair[0]]
+        if not defect.files:
+            return True
+        return bool(touched[pair[1]].all & defect.files)
+
+    summary: list[tuple[str, float]] = []
+    for label, defect_model, left, code_model, right in CONFIGURATIONS:
+        if args.only and label not in args.only:
+            continue
+        print(f"\n== {label}: {defect_model}/{left or 'none'} -> {code_model}/{right or 'none'} ==")
+        scores = similarities(corpus, defect_model, left, code_model, right)
+        block: dict = {
+            "defect_model": defect_model,
+            "defect_input_type": left,
+            "code_model": code_model,
+            "code_input_type": right,
+        }
         curves = {}
         for kind in ("description", "region"):
             name = f"{kind} vs test source"
@@ -364,19 +432,15 @@ def main() -> None:
                 "curve": [o.as_dict() | {"lost": []} for o in curve],
             }
 
-        # The standing instruction of 2026-08-30: reject a pair only when every
-        # filter rejects it. Solved jointly rather than by running each filter
-        # at its own best lossless threshold — see `best_lossless_union`.
-        def keeps_locally(pair, touched=touched):
-            defect = corpus.defects_by_id[pair[0]]
-            if not defect.files:
-                return True
-            return bool(touched[pair[1]].all & defect.files)
-
         union = best_lossless_union(corpus, keeps_locally, curves["description"], curves["region"])
         print(union.line())
         block["union"] = union.as_dict()
         findings[label] = block
+        summary.append((label, union.excluded_share))
+
+    print("\n== union, every configuration, all 127 kills kept ==")
+    for label, share in sorted(summary, key=lambda row: -row[1]):
+        print(f"  {label:<32} excludes {share:6.1%}")
 
     _write(args.findings, findings)
 
