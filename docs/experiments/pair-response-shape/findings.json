@@ -1,0 +1,712 @@
+{
+  "arms": {
+    "listing/seed=0": {
+      "completion_tokens": 817,
+      "cost_usd": 0.0,
+      "kills_per_defect": 0.8421052631578947,
+      "labelled_kills": 32,
+      "matched": 28,
+      "precision": 0.875,
+      "predicted_kills": 32,
+      "predictions": {
+        "01-missed-obligation": {
+          "test_receipt.py::test_positive_line": [
+            "d-line-total-adds-instead-of-multiplies",
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-show-fields-drops-unit-price"
+          ],
+          "test_receipt.py::test_two_decimal_formatting": [
+            "d-line-total-adds-instead-of-multiplies",
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-show-fields-drops-unit-price"
+          ]
+        },
+        "02-qualifier-missed": {
+          "test_pricing.py::test_dollar_symbol": [],
+          "test_pricing.py::test_euro_symbol": []
+        },
+        "03-superficial-test": {
+          "test_loan.py::test_returns_a_payment_for_each_month": [
+            "d-one-entry-short"
+          ]
+        },
+        "04-non-discriminating-input": {
+          "test_billing.py::test_half_of_a_month": [
+            "d-days-used-ignored"
+          ]
+        },
+        "05-circular-expected-result": {
+          "test_orders.py::test_total_applies_tax": [
+            "d-total-not-rounded",
+            "d-total-skips-tax"
+          ]
+        },
+        "06-mocked-out-behavior": {
+          "test_coupon.py::test_coupon_uses_selected_rate": [
+            "d-coupon-adds-rate",
+            "d-coupon-not-rounded"
+          ]
+        },
+        "07-declaration-mismatch": {
+          "test_users.py::test_existing_id_returns_the_record": [
+            "d-lookup-ignores-user-id"
+          ]
+        },
+        "08-unrequested-change": {
+          "test_cart.py::test_apply_discount": [
+            "d-discount-increases-total",
+            "d-discount-not-rounded"
+          ],
+          "test_cart.py::test_checkout_default_unchanged": [
+            "d-checkout-default-moves"
+          ]
+        },
+        "08-unrequested-change-in-service": {
+          "test_cart.py::test_apply_discount_formats_as_money": [
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_apply_discount_supports_other_currency": [
+            "d-currency-argument-ignored",
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_checkout_still_works": [
+            "d-money-missing-decimals"
+          ]
+        },
+        "08-unrequested-change-risky-adjacent": {
+          "test_orders.py::test_cancel_order_marks_cancelled": [
+            "d-cancel-does-not-set-status",
+            "d-cancel-returns-none"
+          ],
+          "test_orders.py::test_ship_order_still_marks_shipped": []
+        },
+        "08-unrequested-change-separable": {
+          "test_inventory.py::test_restock_increases_quantity": [
+            "d-restock-does-not-update-item",
+            "d-restock-returns-previous-quantity"
+          ],
+          "test_report.py::test_low_stock_report_filters_by_threshold": []
+        },
+        "08-unrequested-change-test-support": {
+          "test_pricing.py::test_line_total_applies_the_item_discount": [
+            "d-discount-treated-as-fraction",
+            "d-item-discount-ignored"
+          ],
+          "test_pricing.py::test_line_total_multiplies_quantity_by_price": [],
+          "test_pricing.py::test_line_total_of_a_single_item": []
+        },
+        "09-revision-cycle": {
+          "test_rounding.py::test_rounds_to_nearest": [
+            "d-always-rounds-up"
+          ],
+          "test_rounding.py::test_ties_round_to_even": [
+            "d-ties-round-up"
+          ]
+        }
+      },
+      "prompt_tokens": 8137,
+      "recall": 0.875,
+      "shedding_detectable": false,
+      "unanswered_pairs": 0
+    },
+    "listing/seed=1": {
+      "completion_tokens": 838,
+      "cost_usd": 0.00987375,
+      "kills_per_defect": 0.9210526315789473,
+      "labelled_kills": 32,
+      "matched": 31,
+      "precision": 0.8857142857142857,
+      "predicted_kills": 35,
+      "predictions": {
+        "01-missed-obligation": {
+          "test_receipt.py::test_positive_line": [
+            "d-line-total-adds-instead-of-multiplies",
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-show-fields-drops-unit-price"
+          ],
+          "test_receipt.py::test_two_decimal_formatting": [
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-show-fields-drops-unit-price"
+          ]
+        },
+        "02-qualifier-missed": {
+          "test_pricing.py::test_dollar_symbol": [
+            "d-amount-parsed-with-symbol",
+            "d-symbol-maps-to-wrong-code"
+          ],
+          "test_pricing.py::test_euro_symbol": [
+            "d-amount-parsed-with-symbol",
+            "d-symbol-maps-to-wrong-code"
+          ]
+        },
+        "03-superficial-test": {
+          "test_loan.py::test_returns_a_payment_for_each_month": [
+            "d-one-entry-short"
+          ]
+        },
+        "04-non-discriminating-input": {
+          "test_billing.py::test_half_of_a_month": [
+            "d-days-used-ignored"
+          ]
+        },
+        "05-circular-expected-result": {
+          "test_orders.py::test_total_applies_tax": [
+            "d-total-not-rounded",
+            "d-total-skips-tax"
+          ]
+        },
+        "06-mocked-out-behavior": {
+          "test_coupon.py::test_coupon_uses_selected_rate": [
+            "d-coupon-adds-rate",
+            "d-coupon-not-rounded"
+          ]
+        },
+        "07-declaration-mismatch": {
+          "test_users.py::test_existing_id_returns_the_record": [
+            "d-lookup-ignores-user-id"
+          ]
+        },
+        "08-unrequested-change": {
+          "test_cart.py::test_apply_discount": [
+            "d-discount-increases-total",
+            "d-discount-not-rounded"
+          ],
+          "test_cart.py::test_checkout_default_unchanged": [
+            "d-checkout-default-moves"
+          ]
+        },
+        "08-unrequested-change-in-service": {
+          "test_cart.py::test_apply_discount_formats_as_money": [
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_apply_discount_supports_other_currency": [
+            "d-currency-argument-ignored",
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_checkout_still_works": []
+        },
+        "08-unrequested-change-risky-adjacent": {
+          "test_orders.py::test_cancel_order_marks_cancelled": [
+            "d-cancel-does-not-set-status",
+            "d-cancel-returns-none"
+          ],
+          "test_orders.py::test_ship_order_still_marks_shipped": []
+        },
+        "08-unrequested-change-separable": {
+          "test_inventory.py::test_restock_increases_quantity": [
+            "d-restock-does-not-update-item",
+            "d-restock-returns-previous-quantity"
+          ],
+          "test_report.py::test_low_stock_report_filters_by_threshold": []
+        },
+        "08-unrequested-change-test-support": {
+          "test_pricing.py::test_line_total_applies_the_item_discount": [
+            "d-discount-treated-as-fraction",
+            "d-item-discount-ignored"
+          ],
+          "test_pricing.py::test_line_total_multiplies_quantity_by_price": [],
+          "test_pricing.py::test_line_total_of_a_single_item": []
+        },
+        "09-revision-cycle": {
+          "test_rounding.py::test_rounds_to_nearest": [
+            "d-always-rounds-up"
+          ],
+          "test_rounding.py::test_ties_round_to_even": [
+            "d-always-rounds-up",
+            "d-ties-round-up"
+          ]
+        }
+      },
+      "prompt_tokens": 8137,
+      "recall": 0.96875,
+      "shedding_detectable": false,
+      "unanswered_pairs": 0
+    },
+    "listing/seed=2": {
+      "completion_tokens": 815,
+      "cost_usd": 0.00977025,
+      "kills_per_defect": 0.8421052631578947,
+      "labelled_kills": 32,
+      "matched": 27,
+      "precision": 0.84375,
+      "predicted_kills": 32,
+      "predictions": {
+        "01-missed-obligation": {
+          "test_receipt.py::test_positive_line": [
+            "d-line-total-adds-instead-of-multiplies",
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-returns-not-parenthesised",
+            "d-show-fields-drops-unit-price"
+          ],
+          "test_receipt.py::test_two_decimal_formatting": [
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal"
+          ]
+        },
+        "02-qualifier-missed": {
+          "test_pricing.py::test_dollar_symbol": [
+            "d-symbol-maps-to-wrong-code"
+          ],
+          "test_pricing.py::test_euro_symbol": [
+            "d-symbol-maps-to-wrong-code"
+          ]
+        },
+        "03-superficial-test": {
+          "test_loan.py::test_returns_a_payment_for_each_month": [
+            "d-one-entry-short"
+          ]
+        },
+        "04-non-discriminating-input": {
+          "test_billing.py::test_half_of_a_month": [
+            "d-days-used-ignored"
+          ]
+        },
+        "05-circular-expected-result": {
+          "test_orders.py::test_total_applies_tax": [
+            "d-total-not-rounded",
+            "d-total-skips-tax"
+          ]
+        },
+        "06-mocked-out-behavior": {
+          "test_coupon.py::test_coupon_uses_selected_rate": [
+            "d-coupon-adds-rate",
+            "d-coupon-not-rounded"
+          ]
+        },
+        "07-declaration-mismatch": {
+          "test_users.py::test_existing_id_returns_the_record": [
+            "d-lookup-ignores-user-id"
+          ]
+        },
+        "08-unrequested-change": {
+          "test_cart.py::test_apply_discount": [
+            "d-discount-increases-total",
+            "d-discount-not-rounded"
+          ],
+          "test_cart.py::test_checkout_default_unchanged": [
+            "d-checkout-default-moves"
+          ]
+        },
+        "08-unrequested-change-in-service": {
+          "test_cart.py::test_apply_discount_formats_as_money": [
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_apply_discount_supports_other_currency": [
+            "d-currency-argument-ignored",
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_checkout_still_works": []
+        },
+        "08-unrequested-change-risky-adjacent": {
+          "test_orders.py::test_cancel_order_marks_cancelled": [
+            "d-cancel-does-not-set-status",
+            "d-cancel-returns-none"
+          ],
+          "test_orders.py::test_ship_order_still_marks_shipped": []
+        },
+        "08-unrequested-change-separable": {
+          "test_inventory.py::test_restock_increases_quantity": [
+            "d-restock-does-not-update-item",
+            "d-restock-returns-previous-quantity"
+          ],
+          "test_report.py::test_low_stock_report_filters_by_threshold": []
+        },
+        "08-unrequested-change-test-support": {
+          "test_pricing.py::test_line_total_applies_the_item_discount": [
+            "d-discount-treated-as-fraction",
+            "d-item-discount-ignored"
+          ],
+          "test_pricing.py::test_line_total_multiplies_quantity_by_price": [],
+          "test_pricing.py::test_line_total_of_a_single_item": []
+        },
+        "09-revision-cycle": {
+          "test_rounding.py::test_rounds_to_nearest": [
+            "d-always-rounds-up"
+          ],
+          "test_rounding.py::test_ties_round_to_even": [
+            "d-ties-round-up"
+          ]
+        }
+      },
+      "prompt_tokens": 8137,
+      "recall": 0.84375,
+      "shedding_detectable": false,
+      "unanswered_pairs": 0
+    },
+    "verdict/seed=0": {
+      "completion_tokens": 1670,
+      "cost_usd": 0.0,
+      "kills_per_defect": 0.8421052631578947,
+      "labelled_kills": 32,
+      "matched": 30,
+      "precision": 0.9375,
+      "predicted_kills": 32,
+      "predictions": {
+        "01-missed-obligation": {
+          "test_receipt.py::test_positive_line": [
+            "d-line-total-adds-instead-of-multiplies",
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-show-fields-drops-unit-price"
+          ],
+          "test_receipt.py::test_two_decimal_formatting": [
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-show-fields-drops-unit-price"
+          ]
+        },
+        "02-qualifier-missed": {
+          "test_pricing.py::test_dollar_symbol": [
+            "d-amount-parsed-with-symbol",
+            "d-symbol-maps-to-wrong-code"
+          ],
+          "test_pricing.py::test_euro_symbol": [
+            "d-amount-parsed-with-symbol",
+            "d-symbol-maps-to-wrong-code"
+          ]
+        },
+        "03-superficial-test": {
+          "test_loan.py::test_returns_a_payment_for_each_month": [
+            "d-one-entry-short"
+          ]
+        },
+        "04-non-discriminating-input": {
+          "test_billing.py::test_half_of_a_month": [
+            "d-days-used-ignored"
+          ]
+        },
+        "05-circular-expected-result": {
+          "test_orders.py::test_total_applies_tax": [
+            "d-total-skips-tax"
+          ]
+        },
+        "06-mocked-out-behavior": {
+          "test_coupon.py::test_coupon_uses_selected_rate": [
+            "d-coupon-adds-rate"
+          ]
+        },
+        "07-declaration-mismatch": {
+          "test_users.py::test_existing_id_returns_the_record": []
+        },
+        "08-unrequested-change": {
+          "test_cart.py::test_apply_discount": [
+            "d-discount-increases-total"
+          ],
+          "test_cart.py::test_checkout_default_unchanged": [
+            "d-checkout-default-moves"
+          ]
+        },
+        "08-unrequested-change-in-service": {
+          "test_cart.py::test_apply_discount_formats_as_money": [
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_apply_discount_supports_other_currency": [
+            "d-currency-argument-ignored",
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_checkout_still_works": []
+        },
+        "08-unrequested-change-risky-adjacent": {
+          "test_orders.py::test_cancel_order_marks_cancelled": [
+            "d-cancel-does-not-set-status",
+            "d-cancel-returns-none"
+          ],
+          "test_orders.py::test_ship_order_still_marks_shipped": []
+        },
+        "08-unrequested-change-separable": {
+          "test_inventory.py::test_restock_increases_quantity": [
+            "d-restock-does-not-update-item",
+            "d-restock-returns-previous-quantity"
+          ],
+          "test_report.py::test_low_stock_report_filters_by_threshold": []
+        },
+        "08-unrequested-change-test-support": {
+          "test_pricing.py::test_line_total_applies_the_item_discount": [
+            "d-discount-treated-as-fraction",
+            "d-item-discount-ignored"
+          ],
+          "test_pricing.py::test_line_total_multiplies_quantity_by_price": [
+            "d-item-discount-ignored"
+          ],
+          "test_pricing.py::test_line_total_of_a_single_item": []
+        },
+        "09-revision-cycle": {
+          "test_rounding.py::test_rounds_to_nearest": [
+            "d-always-rounds-up"
+          ],
+          "test_rounding.py::test_ties_round_to_even": [
+            "d-always-rounds-up",
+            "d-ties-round-up"
+          ]
+        }
+      },
+      "prompt_tokens": 8800,
+      "recall": 0.9375,
+      "shedding_detectable": true,
+      "unanswered_pairs": 0
+    },
+    "verdict/seed=1": {
+      "completion_tokens": 1670,
+      "cost_usd": 0.014114999999999999,
+      "kills_per_defect": 0.8157894736842105,
+      "labelled_kills": 32,
+      "matched": 30,
+      "precision": 0.967741935483871,
+      "predicted_kills": 31,
+      "predictions": {
+        "01-missed-obligation": {
+          "test_receipt.py::test_positive_line": [
+            "d-line-total-adds-instead-of-multiplies",
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-show-fields-drops-unit-price"
+          ],
+          "test_receipt.py::test_two_decimal_formatting": [
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-show-fields-drops-unit-price"
+          ]
+        },
+        "02-qualifier-missed": {
+          "test_pricing.py::test_dollar_symbol": [
+            "d-amount-parsed-with-symbol",
+            "d-symbol-maps-to-wrong-code"
+          ],
+          "test_pricing.py::test_euro_symbol": [
+            "d-amount-parsed-with-symbol",
+            "d-symbol-maps-to-wrong-code"
+          ]
+        },
+        "03-superficial-test": {
+          "test_loan.py::test_returns_a_payment_for_each_month": [
+            "d-one-entry-short"
+          ]
+        },
+        "04-non-discriminating-input": {
+          "test_billing.py::test_half_of_a_month": [
+            "d-days-used-ignored"
+          ]
+        },
+        "05-circular-expected-result": {
+          "test_orders.py::test_total_applies_tax": [
+            "d-total-skips-tax"
+          ]
+        },
+        "06-mocked-out-behavior": {
+          "test_coupon.py::test_coupon_uses_selected_rate": [
+            "d-coupon-adds-rate"
+          ]
+        },
+        "07-declaration-mismatch": {
+          "test_users.py::test_existing_id_returns_the_record": [
+            "d-lookup-ignores-user-id"
+          ]
+        },
+        "08-unrequested-change": {
+          "test_cart.py::test_apply_discount": [
+            "d-discount-increases-total"
+          ],
+          "test_cart.py::test_checkout_default_unchanged": [
+            "d-checkout-default-moves"
+          ]
+        },
+        "08-unrequested-change-in-service": {
+          "test_cart.py::test_apply_discount_formats_as_money": [
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_apply_discount_supports_other_currency": [
+            "d-currency-argument-ignored",
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_checkout_still_works": []
+        },
+        "08-unrequested-change-risky-adjacent": {
+          "test_orders.py::test_cancel_order_marks_cancelled": [
+            "d-cancel-does-not-set-status",
+            "d-cancel-returns-none"
+          ],
+          "test_orders.py::test_ship_order_still_marks_shipped": []
+        },
+        "08-unrequested-change-separable": {
+          "test_inventory.py::test_restock_increases_quantity": [
+            "d-restock-does-not-update-item",
+            "d-restock-returns-previous-quantity"
+          ],
+          "test_report.py::test_low_stock_report_filters_by_threshold": []
+        },
+        "08-unrequested-change-test-support": {
+          "test_pricing.py::test_line_total_applies_the_item_discount": [
+            "d-discount-treated-as-fraction",
+            "d-item-discount-ignored"
+          ],
+          "test_pricing.py::test_line_total_multiplies_quantity_by_price": [],
+          "test_pricing.py::test_line_total_of_a_single_item": []
+        },
+        "09-revision-cycle": {
+          "test_rounding.py::test_rounds_to_nearest": [],
+          "test_rounding.py::test_ties_round_to_even": [
+            "d-always-rounds-up",
+            "d-ties-round-up"
+          ]
+        }
+      },
+      "prompt_tokens": 8800,
+      "recall": 0.9375,
+      "shedding_detectable": true,
+      "unanswered_pairs": 0
+    },
+    "verdict/seed=2": {
+      "completion_tokens": 1670,
+      "cost_usd": 0.014114999999999999,
+      "kills_per_defect": 0.8947368421052632,
+      "labelled_kills": 32,
+      "matched": 31,
+      "precision": 0.9117647058823529,
+      "predicted_kills": 34,
+      "predictions": {
+        "01-missed-obligation": {
+          "test_receipt.py::test_positive_line": [
+            "d-line-total-adds-instead-of-multiplies",
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-show-fields-drops-unit-price"
+          ],
+          "test_receipt.py::test_two_decimal_formatting": [
+            "d-money-format-no-symbol",
+            "d-money-format-one-decimal",
+            "d-show-fields-drops-unit-price"
+          ]
+        },
+        "02-qualifier-missed": {
+          "test_pricing.py::test_dollar_symbol": [
+            "d-amount-parsed-with-symbol",
+            "d-symbol-maps-to-wrong-code"
+          ],
+          "test_pricing.py::test_euro_symbol": [
+            "d-amount-parsed-with-symbol",
+            "d-symbol-maps-to-wrong-code"
+          ]
+        },
+        "03-superficial-test": {
+          "test_loan.py::test_returns_a_payment_for_each_month": [
+            "d-one-entry-short"
+          ]
+        },
+        "04-non-discriminating-input": {
+          "test_billing.py::test_half_of_a_month": [
+            "d-days-used-ignored"
+          ]
+        },
+        "05-circular-expected-result": {
+          "test_orders.py::test_total_applies_tax": [
+            "d-total-skips-tax"
+          ]
+        },
+        "06-mocked-out-behavior": {
+          "test_coupon.py::test_coupon_uses_selected_rate": [
+            "d-coupon-adds-rate"
+          ]
+        },
+        "07-declaration-mismatch": {
+          "test_users.py::test_existing_id_returns_the_record": [
+            "d-lookup-ignores-user-id"
+          ]
+        },
+        "08-unrequested-change": {
+          "test_cart.py::test_apply_discount": [
+            "d-discount-increases-total"
+          ],
+          "test_cart.py::test_checkout_default_unchanged": [
+            "d-checkout-default-moves"
+          ]
+        },
+        "08-unrequested-change-in-service": {
+          "test_cart.py::test_apply_discount_formats_as_money": [
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_apply_discount_supports_other_currency": [
+            "d-currency-argument-ignored",
+            "d-discount-not-applied",
+            "d-money-missing-decimals"
+          ],
+          "test_cart.py::test_checkout_still_works": []
+        },
+        "08-unrequested-change-risky-adjacent": {
+          "test_orders.py::test_cancel_order_marks_cancelled": [
+            "d-cancel-does-not-set-status",
+            "d-cancel-returns-none"
+          ],
+          "test_orders.py::test_ship_order_still_marks_shipped": []
+        },
+        "08-unrequested-change-separable": {
+          "test_inventory.py::test_restock_increases_quantity": [
+            "d-restock-does-not-update-item",
+            "d-restock-returns-previous-quantity"
+          ],
+          "test_report.py::test_low_stock_report_filters_by_threshold": []
+        },
+        "08-unrequested-change-test-support": {
+          "test_pricing.py::test_line_total_applies_the_item_discount": [
+            "d-discount-treated-as-fraction",
+            "d-item-discount-ignored"
+          ],
+          "test_pricing.py::test_line_total_multiplies_quantity_by_price": [
+            "d-item-discount-ignored"
+          ],
+          "test_pricing.py::test_line_total_of_a_single_item": [
+            "d-item-discount-ignored"
+          ]
+        },
+        "09-revision-cycle": {
+          "test_rounding.py::test_rounds_to_nearest": [
+            "d-always-rounds-up"
+          ],
+          "test_rounding.py::test_ties_round_to_even": [
+            "d-always-rounds-up",
+            "d-ties-round-up"
+          ]
+        }
+      },
+      "prompt_tokens": 8800,
+      "recall": 0.96875,
+      "shedding_detectable": true,
+      "unanswered_pairs": 0
+    }
+  },
+  "cases": [
+    "01-missed-obligation",
+    "02-qualifier-missed",
+    "03-superficial-test",
+    "04-non-discriminating-input",
+    "05-circular-expected-result",
+    "06-mocked-out-behavior",
+    "07-declaration-mismatch",
+    "08-unrequested-change",
+    "08-unrequested-change-in-service",
+    "08-unrequested-change-risky-adjacent",
+    "08-unrequested-change-separable",
+    "08-unrequested-change-test-support",
+    "09-revision-cycle"
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ]
+}
