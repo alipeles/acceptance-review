@@ -547,10 +547,14 @@ because everything after it is judged against a broken gate.
 .venv/bin/pip install -e ".[dev]"   # first-time setup; needs the sandbox off (TLS)
 .venv/bin/pytest -q                 # full suite. Replay mode, no API key needed
 .venv/bin/ruff check .              # lint as CI runs it. Only valid if .venv/bin/ruff --version prints 0.16.2
-.venv/bin/acceptance check --task current-task.md --base <rev> [--head <rev>]
+.venv/bin/acceptance check --task current-task.md --base <rev> [--head <rev>] --mode record
 ```
 
 Other subcommands: `decompose`, `diff`, `classify`, `recommendation`.
+
+`check` defaults to replay, so a task file it has never seen aborts on the first
+stage; `--mode record` is required at Gate 2. The error names the prompt tests,
+which is the wrong fix. `decompose` already defaults to record.
 
 **GitHub goes through the `mcp__github__*` tools, not `gh`.** They run
 in-process, so they avoid the sandbox, the keyring and TLS verification, and
