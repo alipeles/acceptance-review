@@ -1,0 +1,944 @@
+Task completion: INCOMPLETE
+
+3 obligation(s) not fully implemented (completion-report-complete-ratings-tests-as-if-no-pair-judged, no-change-to-test-evidence-workflow, request-shape-choice-excluded); 4 obligation(s) with non-discriminating test evidence (pair-question-matches-failure-test, judged-pair-response-minimality, test-covers-unsettled-path-pair-judgment, verdict-not-reproduced-when-unchanged).
+
+Obligations:
+
+  1. For each way of failing recorded against a criterion and each candidate test, record whether that test would fail if the delivered code contained that way of failing.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         1.2  src/acceptance/review_state.py#@@ -190,6 +190,72 @@ class DefectSet(_Model):
+       test evidence: strongly supported  [tier: static]
+         1.3  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         1.4  tests/defects/test_pair_mapping.py::test_the_pipeline_really_judges_pairs
+
+  2. A pair of one recorded way of failing and one candidate test is judged unless a path from that test to the source regions the way of failing implicates is proved absent.
+       requirements: constraint-01
+       code evidence: addressed
+         2.1  src/acceptance/defects/reachability.py#@@ -0,0 +1,310 @@
+         2.2  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+       test evidence: strongly supported  [tier: static]
+         2.3  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         2.4  tests/defects/test_pair_mapping.py::test_the_pipeline_really_judges_pairs
+         2.5  tests/defects/test_reachability.py::test_excludes_and_records_the_one_provable_shape
+         2.6  tests/defects/test_reachability.py::test_judges_a_test_that_names_something_the_defects_file_defines
+         2.7  tests/defects/test_reachability.py::test_judges_a_test_that_reaches_the_defect_through_a_helper_module
+         2.8  tests/defects/test_reachability.py::test_judges_a_test_that_takes_a_fixture
+         2.9  tests/defects/test_reachability.py::test_judges_when_the_defect_implicates_no_file
+         2.10  tests/defects/test_reachability.py::test_judges_when_the_module_imports_dynamically
+         2.11  tests/defects/test_reachability.py::test_judges_when_the_module_imports_relatively
+
+  3. A pair whose path cannot be settled either way is judged.
+       requirements: constraint-01, completion-02
+       code evidence: addressed
+         3.1  src/acceptance/defects/reachability.py#@@ -0,0 +1,310 @@
+       test evidence: strongly supported  [tier: static]
+         3.2  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         3.3  tests/defects/test_pair_mapping.py::test_the_pipeline_really_judges_pairs
+         3.4  tests/defects/test_reachability.py::test_judges_a_test_that_reaches_the_defect_through_a_helper_module
+         3.5  tests/defects/test_reachability.py::test_judges_when_the_defect_implicates_no_file
+         3.6  tests/defects/test_reachability.py::test_judges_when_the_module_imports_dynamically
+         3.7  tests/defects/test_reachability.py::test_judges_when_the_module_imports_relatively
+
+  4. Every pair left unjudged is recorded, naming the way of failing, the test, and why it was not judged.
+       requirements: constraint-02
+       code evidence: addressed
+         4.1  src/acceptance/review_state.py#@@ -190,6 +190,72 @@ class DefectSet(_Model):
+         4.2  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+       test evidence: strongly supported  [tier: static]
+         4.3  tests/defects/test_pair_mapping.py::test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving
+         4.4  tests/defects/test_pair_mapping.py::test_a_prefiltered_pair_is_named_in_the_report
+         4.5  tests/defects/test_reachability.py::test_excludes_and_records_the_one_provable_shape
+
+  5. The review reports the records for every pair left unjudged.
+       requirements: constraint-02
+       code evidence: addressed
+         5.1  src/acceptance/report.py#@@ -16,6 +16,7 @@ Status is stated in words, not symbols, and every evidence line carries its
+         5.2  src/acceptance/report.py#@@ -118,6 +119,10 @@ def render_report(review: Review) -> str:
+         5.3  src/acceptance/report.py#@@ -156,6 +161,61 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported  [tier: static]
+         5.4  tests/defects/test_pair_mapping.py::test_a_prefiltered_pair_is_named_in_the_report
+         5.5  tests/defects/test_reachability.py::test_excludes_and_records_the_one_provable_shape
+         5.6  tests/test_mandate_coverage.py::test_the_report_states_the_same_coverage_the_result_carries
+
+  6. For a judged pair, the question asks whether the candidate test would fail if the delivered code contained that way of failing.
+       requirements: constraint-03
+       code evidence: addressed
+         6.1  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         6.2  docs/experiments/pair-response-shape/pilot.py#@@ -0,0 +1,346 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The pair-question wording asks whether the candidate test would fail under the recorded way of failing.
+           inputs:  Use a pair where the defect changes a value the test actually asserts on, and a contrasting pair where the defect only touches exercised-but-unasserted behavior or stubbed behavior. The test should drive the pair-judgment prompt with the exact recorded defect description and the exact test source so the model must answer the concrete failure question, not a relevance question.
+           detects: The pair-question is answered as a relevance judgment or name-based heuristic instead of the concrete question: would this test fail if the delivered code contained this defect?
+           full detail: acceptance recommendation --criterion pair-question-matches-failure-test
+
+  7. Pairs are judged in groups, and each group requests no more judgements than the fixed limit allows.
+       requirements: constraint-04
+       code evidence: addressed
+         7.1  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         7.2  tests/defects/test_pair_mapping.py#@@ -0,0 +1,722 @@
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/defects/test_pair_mapping.py::test_no_request_carries_more_judgements_than_the_limit
+         7.4  tests/defects/test_pair_mapping.py::test_which_pairs_share_a_request_does_not_change_what_carries
+
+  8. What comes back about a judged pair includes only the pair identity, its verdict, and a short reason.
+       requirements: constraint-05
+       code evidence: addressed
+         8.1  src/acceptance/review_state.py#@@ -190,6 +190,72 @@ class DefectSet(_Model):
+         8.2  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The response for a judged pair contains the pair, the verdict, and a short reason, with no additional fields or content.
+           inputs:  Use a judged pair whose response is intentionally parsed from the schema and whose completion content can be inspected directly. Feed one defect and one test so the expected response shape is unambiguous and small enough to compare field-for-field.
+           detects: The model returns verbose prose, extra metadata, or a nested structure that is not the minimal judged-pair schema, causing downstream parsing or carry logic to depend on accidental content.
+           full detail: acceptance recommendation --criterion judged-pair-response-minimality
+
+  9. Reuse a verdict exactly when both the way of failing it concerns and the source of the test it concerns are unchanged.
+       requirements: constraint-06
+       code evidence: addressed
+         9.1  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         9.2  src/acceptance/review_state.py#@@ -190,6 +190,72 @@ class DefectSet(_Model):
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged
+         9.4  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+
+  10. A verdict is produced again when the way of failing it concerns has changed or when the source of the test it concerns has changed.
+       requirements: constraint-07
+       code evidence: addressed
+         10.1  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         10.2  tests/defects/test_pair_mapping.py#@@ -0,0 +1,722 @@
+       test evidence: strongly supported  [tier: static]
+         10.3  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_its_defect_changed
+         10.4  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_the_tests_source_changed
+         10.5  tests/test_rerun.py::test_a_stale_prior_verdict_is_replaced_rather_than_surviving
+         10.6  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  11. A continuing run reuses every verdict it is entitled to reuse.
+       requirements: constraint-08
+       code evidence: addressed
+         11.1  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         11.2  src/acceptance/pipeline.py#@@ -41,6 +41,7 @@ from acceptance.coverage.open_questions import (
+         11.3  src/acceptance/requirement/ledger.py#@@ -49,7 +49,13 @@ from pydantic import Field
+         11.4  src/acceptance/requirement/obligations.py#@@ -71,6 +71,7 @@ from acceptance.review_state import (
+       test evidence: strongly supported  [tier: static]
+         11.5  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+         11.6  tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged
+         11.7  tests/defects/test_pair_mapping.py::test_which_pairs_share_a_request_does_not_change_what_carries
+         11.8  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         11.9  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+
+  12. A continuing run produces again only verdicts that are not entitled to be reused.
+       requirements: constraint-08, constraint-09
+       code evidence: addressed
+         12.1  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         12.2  tests/defects/test_pair_mapping.py#@@ -0,0 +1,722 @@
+       test evidence: strongly supported  [tier: static]
+         12.3  tests/defects/test_pair_mapping.py::test_adding_one_test_judges_only_that_tests_pairs
+         12.4  tests/defects/test_pair_mapping.py::test_which_pairs_share_a_request_does_not_change_what_carries
+         12.5  tests/test_rerun.py::test_a_stale_prior_verdict_is_replaced_rather_than_surviving
+
+  13. Where a verdict is reused rather than produced again, the review says so.
+       requirements: constraint-10
+       code evidence: addressed
+         13.1  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         13.2  src/acceptance/review_state.py#@@ -190,6 +190,72 @@ class DefectSet(_Model):
+         13.3  tests/defects/test_pair_mapping.py#@@ -0,0 +1,722 @@
+       test evidence: strongly supported  [tier: static]
+         13.4  tests/defects/test_enumeration.py::test_the_report_says_when_a_set_was_reused_rather_than_produced_again
+         13.5  tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged
+         13.6  tests/defects/test_pair_mapping.py::test_which_pairs_share_a_request_does_not_change_what_carries
+         13.7  tests/evidence/test_rejudge.py::test_the_pipeline_carries_the_rating_and_leaves_the_criterion_out_of_the_request
+         13.8  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+
+  14. The review reports the work complete, every rating it gives a criterion, and every test it recommends as they would be if no pair had been judged at all.
+       requirements: constraint-11, completion-07
+       code evidence: not addressed
+         14.1  src/acceptance/pipeline.py#@@ -372,6 +363,41 @@ def run_review(
+         14.2  src/acceptance/report.py#@@ -118,6 +119,10 @@ def render_report(review: Review) -> str:
+         14.3  src/acceptance/report.py#@@ -156,6 +161,61 @@ def render_report(review: Review) -> str:
+         14.4  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+       test evidence: strongly supported  [tier: static]
+         14.5  tests/defects/test_pair_mapping.py::test_judging_pairs_changes_no_verdict_rating_or_recommendation
+         14.6  tests/defects/test_pair_mapping.py::test_the_report_shows_implied_support_beside_the_current_rating
+         14.7  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         14.8  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  15. For each criterion, report the support implied by its judged pairs beside the rating the review gives that criterion today.
+       requirements: constraint-12
+       code evidence: addressed
+         15.1  src/acceptance/report.py#@@ -16,6 +16,7 @@ Status is stated in words, not symbols, and every evidence line carries its
+         15.2  src/acceptance/report.py#@@ -118,6 +119,10 @@ def render_report(review: Review) -> str:
+         15.3  src/acceptance/report.py#@@ -156,6 +161,61 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported  [tier: static]
+         15.4  tests/defects/test_pair_mapping.py::test_the_report_shows_implied_support_beside_the_current_rating
+
+  16. Name the criteria where the support implied by judged pairs and the current rating disagree.
+       requirements: constraint-12
+       code evidence: addressed
+         16.1  src/acceptance/report.py#@@ -156,6 +161,61 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported  [tier: static]
+         16.2  tests/defects/test_pair_mapping.py::test_the_report_shows_implied_support_beside_the_current_rating
+
+  17. The change does not produce the ways of failing that pairs are judged against.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 28 changes across 16 files; none breaches this boundary
+       test evidence: not required — This exclusion is satisfied by the source change itself; no test can directly demonstrate that the excluded production work was not added.
+
+  18. The change does not derive a criterion's rating, the completion conclusion, or any recommended test from judged pairs.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 28 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, so it is checked by inspecting the source change rather than by a test.
+
+  19. The change does not resolve a name to its definition or follow references beyond a single step in order to decide whether a path is absent.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 28 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, and it is settled by inspecting the implementation rather than by running tests.
+
+  20. The change does not derive which criteria the review derives from the mandate, or how it derives them.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 28 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, and a reader can confirm it directly from the source without a test.
+
+  21. The change does not alter how the review gathers, maps, judges, or rates test evidence today, and it does not retire any part of that workflow.
+       requirements: exclusion-05
+       code evidence: partially addressed
+         21.1  src/acceptance/pipeline.py#@@ -372,6 +363,41 @@ def run_review(
+         21.2  src/acceptance/report.py#@@ -118,6 +119,10 @@ def render_report(review: Review) -> str:
+         21.3  src/acceptance/review_state.py#@@ -190,6 +190,72 @@ class DefectSet(_Model):
+         21.4  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+       test evidence: not required — This is a scope exclusion about work the change must not do, so a reader can confirm it directly from the source without a test.
+
+  22. The change does not include choosing between candidate shapes for the request that carries the pair question.
+       requirements: exclusion-06
+       code evidence: not addressed
+         22.1  docs/DR-314-pair-response-shape.md#@@ -0,0 +1,91 @@
+         22.2  docs/experiments/pair-response-shape/README.md#@@ -0,0 +1,63 @@
+         22.3  docs/experiments/pair-response-shape/pilot.py#@@ -0,0 +1,346 @@
+         22.4  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         22.5  tests/defects/test_pair_mapping.py#@@ -0,0 +1,722 @@
+       test evidence: not required — This is a scope exclusion about work not being done, which is settled by inspecting the change itself.
+
+  23. The change does not run the delivered code or any test.
+       requirements: exclusion-07
+       code evidence: addressed
+         examined 28 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, which is settled by inspecting the change rather than by a test.
+
+  24. A test asserts that a pair whose path cannot be settled either way is judged rather than left unjudged.
+       requirements: completion-02
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the demanded artifact.
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: The test fails if such a pair is left unjudged.
+           inputs:  Construct a pair that the prefilter cannot prove unreachable but that the judge can still answer, then force the judge double to omit that pair from its returned verdicts. Use a case where the pair is offered to the judge so the only reason it is missing is an unanswered/shredded response, not prefilter exclusion.
+           detects: A shed pair is defaulted to `survives` or dropped entirely, recreating the silent-filter trap and hiding an unjudged defect as if it had been answered.
+           full detail: acceptance recommendation --criterion test-covers-unsettled-path-pair-judgment
+
+  25. A test fails when a pair is left unjudged without a record naming the way of failing, the test, and the reason.
+       requirements: completion-03
+       code evidence: not required — The requirement itself asks for a test that fails under this condition, so the obligation is satisfied by the test alone.
+       test evidence: strongly supported  [tier: static]
+         25.1  tests/defects/test_pair_mapping.py::test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving
+         25.2  tests/defects/test_reachability.py::test_excludes_and_records_the_one_provable_shape
+
+  26. A test asserts that adding one candidate test between two continued runs produces new verdicts only for pairs concerning that test.
+       requirements: completion-04
+       code evidence: not required — The requirement itself asks for a test assertion, so the obligation is satisfied by the test alone.
+       test evidence: strongly supported  [tier: static]
+         26.1  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+         26.2  tests/defects/test_pair_mapping.py::test_adding_one_test_judges_only_that_tests_pairs
+
+  27. A test fails when a verdict is produced again across two continued runs although its way of failing and its test's source are both unchanged.
+       requirements: completion-05
+       code evidence: not required — The requirement itself demands a test that fails under this condition, so the obligation is satisfied by the test alone.
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: A continued run reproduces a verdict for the same pair even though the way of failing and the test source are unchanged.
+           inputs:  Run a continued review twice over the same repo state where the defect content and the test source are unchanged, but the second run is seeded from the first run’s persisted ledger entry. Use a pair that was judged in the first run so carry is eligible, and keep the pair identity stable across runs.
+           detects: Carry keys ignore the defect text or test digest, so a continued run fails to reproduce an unchanged verdict or incorrectly reuses a verdict after the defect/test changed.
+           full detail: acceptance recommendation --criterion verdict-not-reproduced-when-unchanged
+
+  28. A verdict is reused only when the test's source is unchanged.
+       requirements: completion-06
+       code evidence: addressed
+         28.1  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         28.2  src/acceptance/review_state.py#@@ -190,6 +190,72 @@ class DefectSet(_Model):
+       test evidence: strongly supported  [tier: static]
+         28.3  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_the_tests_source_changed
+         28.4  tests/defects/test_pair_mapping.py::test_the_digest_is_per_test_not_per_file
+
+  29. A test asserts that the report shows, for each criterion, the support its judged pairs imply beside the rating the review gives that criterion today.
+       requirements: completion-08
+       code evidence: not required — The requirement itself demands a test, so the obligation is satisfied by the test artifact rather than by source behavior.
+       test evidence: strongly supported  [tier: static]
+         29.1  tests/defects/test_pair_mapping.py::test_the_report_shows_implied_support_beside_the_current_rating
+
+  30. Two recorded runs over the same input produce byte-identical review state and byte-identical report output.
+       requirements: completion-09
+       code evidence: addressed
+         30.1  src/acceptance/defects/reachability.py#@@ -0,0 +1,310 @@
+         30.2  src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+         30.3  tests/defects/test_pair_mapping.py#@@ -0,0 +1,722 @@
+       test evidence: strongly supported  [tier: static]
+         30.4  tests/defects/test_enumeration.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+         30.5  tests/defects/test_pair_mapping.py::test_the_verdicts_survive_a_round_trip_through_persisted_state
+         30.6  tests/defects/test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+         30.7  tests/evidence/test_rejudge.py::test_two_runs_over_the_same_inputs_compute_the_same_key
+         30.8  tests/requirement/test_carry_forward.py::test_a_carried_disposition_records_the_digest_it_came_from_not_a_run_id
+         30.9  tests/requirement/test_carry_forward.py::test_two_runs_over_the_same_task_and_ledger_state_are_byte_identical
+         30.10  tests/test_determinism.py::test_canonical_json_is_sorted_and_stable
+         30.11  tests/test_llm.py::test_recorded_transcripts_are_byte_identical_for_the_same_call
+         30.12  tests/test_llm.py::test_transcripts_record_no_wall_clock_state
+         30.13  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         30.14  tests/test_recommendation_omission.py::test_two_runs_over_the_same_inputs_render_the_same_report
+         30.15  tests/test_stage_attribution.py::test_the_breakdown_never_reaches_review_state
+         30.16  tests/test_stage_attribution.py::test_the_breakdown_never_reaches_the_rendered_report
+         30.17  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+
+Mandate coverage: 28 of 29 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation.
+       reason: The requirement is a section marker standing alone: "Implementation."
+
+Unrequested changes:
+  1. [in_service] Adds a new pair-judgement stage to the review pipeline and ledger/report flow, but the obligations only require the pair-question behavior itself, recording/reporting unjudged pairs, reuse, and comparison output; they do not ask to wire a new stage into the main review pipeline or persist it in ledger entries.
+       src/acceptance/pipeline.py#@@ -41,6 +41,7 @@ from acceptance.coverage.open_questions import (
+       src/acceptance/pipeline.py#@@ -258,6 +259,7 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -333,17 +335,6 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -372,6 +363,41 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -535,6 +561,8 @@ def run_review(
+       src/acceptance/cli.py#@@ -205,7 +205,7 @@ def run_check(
+       src/acceptance/cli.py#@@ -214,6 +214,7 @@ def run_check(
+       src/acceptance/requirement/ledger.py#@@ -49,7 +49,13 @@ from pydantic import Field
+       src/acceptance/requirement/ledger.py#@@ -193,6 +199,16 @@ class LedgerEntry(PersistableModel):
+       src/acceptance/requirement/obligations.py#@@ -71,6 +71,7 @@ from acceptance.review_state import (
+       src/acceptance/requirement/obligations.py#@@ -1359,6 +1360,7 @@ def build_ledger_entry(
+       src/acceptance/requirement/obligations.py#@@ -1368,9 +1370,10 @@ def build_ledger_entry(
+       src/acceptance/requirement/obligations.py#@@ -1381,6 +1384,7 @@ def build_ledger_entry(
+       src/acceptance/review_state.py#@@ -190,6 +190,72 @@ class DefectSet(_Model):
+       src/acceptance/review_state.py#@@ -1106,6 +1172,18 @@ class Review(_Model):
+  2. [in_service] Introduces a new report section that derives and displays implied support beside current ratings, plus disagreement summaries and unjudged-pair listings. The obligations require reporting support beside ratings and naming disagreeing criteria, but they do not require the extra derived-support machinery or the detailed unjudged-pair block in the report implementation.
+       src/acceptance/report.py#@@ -16,6 +16,7 @@ Status is stated in words, not symbols, and every evidence line carries its
+       src/acceptance/report.py#@@ -118,6 +119,10 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -156,6 +161,61 @@ def render_report(review: Review) -> str:
+       src/acceptance/defects/pair_mapping.py#@@ -0,0 +1,462 @@
+  3. [in_service] Adds a new reachability prefilter that excludes pairs only when a path is provably absent. The obligations require judging pairs unless absence is proved and recording unjudged pairs, but they do not require this specific static-analysis filter or its conservative proof rules.
+       src/acceptance/defects/reachability.py#@@ -0,0 +1,310 @@
+       tests/defects/test_reachability.py#@@ -0,0 +1,213 @@
+  4. [in_service] Extends the ledger entry and build_ledger_entry API with pair_verdicts, and changes the run_check sink tuple shape. Those signature/shape changes are not explicitly required by the obligations, which only require continuation reuse and reporting behavior, not a new persisted field or altered sink contract.
+       src/acceptance/cli.py#@@ -205,7 +205,7 @@ def run_check(
+       src/acceptance/cli.py#@@ -214,6 +214,7 @@ def run_check(
+       src/acceptance/requirement/ledger.py#@@ -49,7 +49,13 @@ from pydantic import Field
+       src/acceptance/requirement/ledger.py#@@ -193,6 +199,16 @@ class LedgerEntry(PersistableModel):
+       src/acceptance/requirement/obligations.py#@@ -71,6 +71,7 @@ from acceptance.review_state import (
+       src/acceptance/requirement/obligations.py#@@ -1359,6 +1360,7 @@ def build_ledger_entry(
+       src/acceptance/requirement/obligations.py#@@ -1368,9 +1370,10 @@ def build_ledger_entry(
+       src/acceptance/requirement/obligations.py#@@ -1381,6 +1384,7 @@ def build_ledger_entry(
+       tests/requirement/test_carry_forward.py#@@ -1193,7 +1193,7 @@ def test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived(tmp_
+  5. [in_service] Adds a standalone pilot/documentation bundle for choosing the pair-response shape, including experiment README, findings JSON, and pilot script. The obligations ask for the functional behavior and tests, but not for this separate decision record or experiment artifact set.
+       docs/DR-314-pair-response-shape.md#@@ -0,0 +1,91 @@
+       docs/experiments/pair-response-shape/README.md#@@ -0,0 +1,63 @@
+       docs/experiments/pair-response-shape/findings.json#@@ -0,0 +1,712 @@
+       docs/experiments/pair-response-shape/pilot.py#@@ -0,0 +1,346 @@
+       tests/defects/test_pair_mapping.py#@@ -0,0 +1,722 @@
+
+Ways the change could fail a criterion (advisory — no verdict depends on these):
+
+  test-failure-matrix-recording
+    [not_wired] test-failure-matrix-recording/pair-verdicts-not-rendered
+      The pair verdicts are recorded on the review object, but the report path never includes them, so the review output does not show a fail/not-fail result for each failure-mode/test pairing.
+      src/acceptance/pipeline.py#4
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#1
+    [not_wired] test-failure-matrix-recording/pair-verdicts-dropped-from-ledger-entry
+      The pipeline appends pair verdicts to the ledger sink and build_ledger_entry accepts them, but if the ledger write path or stored entry shape does not actually persist that field, later review output cannot replay the matrix from prior runs.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+      src/acceptance/requirement/ledger.py#1
+    [missing_case] test-failure-matrix-recording/pair-judge-batches-can-shed-answers
+      The pair judge records unanswered pairs separately, but the request/response handling can still drop some offered defect entries or test entries from a batch, leaving no recorded fail/not-fail result for those pairings in the review output.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+    [wrong_output_shape] test-failure-matrix-recording/pair-verdicts-keyed-to-wrong-identity
+      Pair verdicts are keyed and carried using defect text and test digest, but the review output needs one recorded result per criterion failure mode and candidate test; if those identities do not line up with the criterion's recorded failure modes, the matrix can be emitted under the wrong pairing shape.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+
+  pair-judgement-unless-path-absent
+    [condition_inverted] pair-judgement-unless-path-absent/prefilter-excludes-pairs-without-proving-absence
+      The prefilter can drop a pair whenever its heuristic checks fail, but it does not actually prove that a path from the test to the implicated source regions is absent; a pair can be left unjudged for a merely unproven reason.
+      src/acceptance/defects/reachability.py#0
+      src/acceptance/defects/pair_mapping.py#0
+    [scope_too_narrow] pair-judgement-unless-path-absent/first-party-imports-over-exclude
+      The exclusion proof treats any first-party import in the test module as a second hop and immediately keeps the pair judged, but it does not distinguish imports that are irrelevant to the implicated defect regions from imports that really create a path, so some pairs that should be excluded by a proved-absent path are still judged.
+      src/acceptance/defects/reachability.py#0
+    [missing_case] pair-judgement-unless-path-absent/dynamic-name-heuristic-misses-real-paths
+      The reachability filter only looks for a fixed set of dynamic names and attributes; a test can reach the implicated code through other dynamic mechanisms and still be excluded or judged on the wrong basis because those paths are not handled.
+      src/acceptance/defects/reachability.py#0
+    [not_wired] pair-judgement-unless-path-absent/pair-verdicts-not-carried-through-ledger-entry
+      The review state and ledger entry now have pair-verdict fields, but if the pipeline path that writes or reloads ledger entries misses them, continued runs will re-judge pairs that were already recorded instead of carrying them forward.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#4
+      src/acceptance/requirement/ledger.py#0
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+    [not_wired] pair-judgement-unless-path-absent/pair-judgement-results-not-rendered-in-review
+      The pair-judgement stage can run and record verdicts, but if the review/report path does not include those verdicts in the rendered review, the observable behaviour of judging each pair is absent from the delivered output.
+      src/acceptance/pipeline.py#4
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#1
+
+  undecidable-path-pairs-are-judged
+    [scope_too_narrow] undecidable-path-pairs-are-judged/prefilter-excludes-too-much
+      The reachability prefilter can still drop a pair as unjudged when the test module imports no first-party module, takes no fixture, and references no name defined in the defect's files, even though the criterion covers pairs whose path cannot be settled either way and those pairs should still be judged.
+      src/acceptance/defects/reachability.py#0
+      src/acceptance/defects/pair_mapping.py#0
+    [missing_case] undecidable-path-pairs-are-judged/unanswered-pairs-left-unjudged
+      When the judge returns no verdict for an offered pair, the pair is recorded as an unjudged `UnjudgedPair` instead of being forced into the judged set, so an unsettled-path pair can still fall through as left unjudged.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#4
+
+  record-unjudged-pairs
+    [not_wired] record-unjudged-pairs/pair-unjudged-records-not-added-to-review
+      The pair stage builds `unjudged_pairs`, but the review path never carries them into the persisted review object or report, so unjudged pairs would not appear in the review output.
+      src/acceptance/pipeline.py#4
+      src/acceptance/review_state.py#1
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+    [missing_case] record-unjudged-pairs/prefiltered-pairs-not-recorded-as-unjudged
+      Pairs excluded by the reachability prefilter are dropped from the judged set, but if the caller does not preserve the returned `UnjudgedPair` entries they would vanish from the review output instead of being recorded with cause and reason.
+      src/acceptance/defects/reachability.py#0
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/pipeline.py#4
+      src/acceptance/review_state.py#1
+    [wrong_output_shape] record-unjudged-pairs/unjudged-pair-cause-loses-defect-or-test
+      The unjudged-pair record only stores `defect_id`, `test_id`, `cause`, and `reason`; if the review output needs the failing way and candidate test in a different shape, this structure could omit or misplace one of those fields when rendered.
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+      src/acceptance/report.py#2
+
+  report-unjudged-pair-records
+    [not_wired] report-unjudged-pair-records/report-does-not-include-unjudged-pairs
+      The report renderer never includes the review's recorded unjudged-pair entries, so the final review output can omit them even though they were stored on the review.
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#1
+    [not_wired] report-unjudged-pair-records/unjudged-pairs-not-populated-into-review
+      The pipeline can record pair verdicts but fail to carry the stage's unjudged-pair list into the Review object, so the report has nothing to surface.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#4
+      src/acceptance/review_state.py#1
+    [not_wired] report-unjudged-pair-records/ledger-entry-drops-unjudged-pairs-on-continue
+      The ledger path persists pair verdicts but not the unjudged-pair records, so a continued run can rebuild a review without the records the report is supposed to surface.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#3
+
+  pair-question-matches-failure-test
+    [other] pair-question-matches-failure-test/wrong-question-text
+      The pair prompt asks whether the test would fail if the code contained the defect, but the implementation could still render wording that talks about relevance, evidence, or some other relation instead of failure under the recorded defect.
+      src/acceptance/defects/pair_mapping.py#0
+      docs/experiments/pair-response-shape/pilot.py#0
+    [other] pair-question-matches-failure-test/listing-schema-not-failure-based
+      The listing arm could still be wired to collect catches by defect id without ensuring the rendered question is phrased as failure-under-defect for each judged pair, so the recorded answer shape could be correct while the question itself is not.
+      docs/experiments/pair-response-shape/pilot.py#0
+      src/acceptance/defects/pair_mapping.py#0
+    [other] pair-question-matches-failure-test/verdict-schema-not-failure-based
+      The verdict arm could still emit per-defect booleans while the underlying prompt or response model asks about some other relation, so the judged pair would be answered in the wrong terms even though every defect gets an entry.
+      docs/experiments/pair-response-shape/pilot.py#0
+      src/acceptance/defects/pair_mapping.py#0
+
+  grouped-judgement-limit
+    [other] grouped-judgement-limit/pair-batches-ignore-limit
+      The pair-judgement batching path can still send more pair verdicts in one request than the configured limit allows, because the new pair stage partitions by test but does not obviously cap the total judgements per request against the fixed limit.
+      src/acceptance/defects/pair_mapping.py#0
+    [not_wired] grouped-judgement-limit/pair-batch-size-not-threaded
+      The new pair-stage batch-size setting can be ignored on the delivered path, so requests are grouped but still use the stage's internal default size instead of the fixed limit passed from the pipeline.
+      src/acceptance/pipeline.py#1
+      src/acceptance/pipeline.py#3
+      src/acceptance/defects/pair_mapping.py#0
+
+  judged-pair-response-minimality
+    [wrong_output_shape] judged-pair-response-minimality/pair-verdict-extra-fields
+      The judged-pair response model includes extra fields beyond the pair identity, verdict, and short reason: `defect_text`, `test_digest`, `carry_key`, and `carried_from` are all part of `PairVerdict`, so a returned judged pair is not minimal.
+      src/acceptance/review_state.py#0
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/pipeline.py#4
+      src/acceptance/requirement/ledger.py#0
+      src/acceptance/requirement/obligations.py#1
+    [wrong_output_shape] judged-pair-response-minimality/report-leaks-extra-pair-fields
+      The report renders pair verdicts through `review.pair_verdicts`, which carry the extra stored fields, so the observable output about a judged pair can include more than the pair, verdict, and short reason.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#0
+
+  verdict-reuse-when-way-and-test-source-unchanged
+    [not_wired] verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-loaded-from-ledger
+      The new pair verdicts are written into the ledger entry, but the continue path may never read them back into `ledger_prior`, so later runs would re-judge pairs instead of reusing unchanged verdicts.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/pipeline.py#3
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#3
+    [scope_too_narrow] verdict-reuse-when-way-and-test-source-unchanged/carry-key-misses-test-source-change
+      The reuse key for pair verdicts is built from the defect text and the test source digest, but if the test source changes in a way that does not alter `source_digest` as computed here, the verdict would be reused when it should be re-judged.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+    [scope_too_narrow] verdict-reuse-when-way-and-test-source-unchanged/carry-key-misses-way-of-failing-change
+      The reuse key depends on `defect_text`, which omits the defect id and only hashes type, description, and code refs; if the way of failing changes without changing those fields, an old verdict could be reused even though it no longer concerns the same failure mode.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+    [not_wired] verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path
+      The pipeline now stores `pair_verdicts` on the review, but if the review construction or ledger replay path does not populate `review.pair_verdicts` on a later run, the reuse decision cannot be observed and unchanged verdicts will be re-judged.
+      src/acceptance/pipeline.py#4
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/review_state.py#1
+
+  reproduce-verdict-when-way-of-failing-or-test-source-changes
+    [other] reproduce-verdict-when-way-of-failing-or-test-source-changes/pair-verdict-carry-key-omits-response-shape
+      The carry key for pair verdicts does not include the response schema shape, so a verdict can be reused even after the verdict/listing shape changes and should have been regenerated.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+      src/acceptance/requirement/ledger.py#0
+    [other] reproduce-verdict-when-way-of-failing-or-test-source-changes/pair-verdict-carry-key-omits-test-source-digest
+      The carry key for pair verdicts does not include the test source digest, so editing the test body can still reuse an old verdict instead of regenerating it.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+      src/acceptance/requirement/ledger.py#0
+    [other] reproduce-verdict-when-way-of-failing-or-test-source-changes/pair-verdict-carry-key-omits-defect-content
+      The carry key for pair verdicts does not include the defect content text, so changing the way the defect fails can still hit the old carry entry and skip regeneration.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+      src/acceptance/requirement/ledger.py#0
+    [not_wired] reproduce-verdict-when-way-of-failing-or-test-source-changes/pair-verdicts-not-loaded-into-continue-path
+      The new pair verdicts are written to the ledger, but the continue/reuse path may still only consult the older carried fields and never read pair_verdicts, so previously reusable verdicts would not actually be regenerated from the new logic.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/pipeline.py#3
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#3
+
+  reuse-entitled-verdicts-on-continuation
+    [not_wired] reuse-entitled-verdicts-on-continuation/pair-verdicts-not-loaded-on-continue
+      Continuation writes pair verdicts into the ledger entry, but the continuation path does not appear to read them back into the prior state before judging the next run, so entitled verdicts would still be re-judged instead of reused.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/pipeline.py#3
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#3
+    [not_wired] reuse-entitled-verdicts-on-continuation/pair-verdicts-not-carried-into-review-prior
+      The pipeline passes `ledger_prior.pair_verdicts` into `judge_pairs`, but the surrounding continuation machinery may not populate `ledger_prior` from the previous run's stored pair verdicts, which would leave reuse logic with no entitled verdicts to carry forward.
+      src/acceptance/pipeline.py#3
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+    [scope_too_narrow] reuse-entitled-verdicts-on-continuation/carry-key-too-broad-for-entitled-verdicts
+      The carry key for pair verdicts includes the full response schema and seed, so a continuation can fail to reuse verdicts that are still entitled to carry forward whenever the schema or seed changes even though the underlying defect and test content are unchanged.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+      src/acceptance/requirement/ledger.py#1
+    [wrong_output_shape] reuse-entitled-verdicts-on-continuation/pair-verdicts-keyed-on-defect-text-only
+      Reuse is matched on `(defect_text, test_id)` rather than on the stored verdict's full identity, so a continuation can attach the wrong carried verdict when two distinct defects share the same rendered defect text.
+      src/acceptance/defects/pair_mapping.py#0
+
+  reproduce-only-nonreusable-verdicts-on-continuation
+    [not_wired] reproduce-only-nonreusable-verdicts-on-continuation/pair-verdicts-not-loaded-on-continue
+      The continuation path writes and reads `pair_verdicts` in the ledger entry, but the reuse logic can still ignore them if the prior run's verdicts are never threaded into the continuation state that `judge_pairs()` consults, so a continued run would re-judge everything instead of only nonreusable verdicts.
+      src/acceptance/pipeline.py#3
+      src/acceptance/cli.py#0
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/defects/pair_mapping.py#0
+    [scope_too_narrow] reproduce-only-nonreusable-verdicts-on-continuation/pair-verdict-carry-key-too-broad
+      The carry key for a pair verdict is built from the defect text and test digest, but if any other part of the verdict identity can change across runs and is not included, a continuation run could wrongly reuse verdicts that are actually reusable only for some cases and re-judge the rest.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+    [scope_too_narrow] reproduce-only-nonreusable-verdicts-on-continuation/pair-verdict-carry-key-too-narrow
+      The carry key for a pair verdict ignores the batch context and response schema shape, so if the same defect/test pair is presented under a different judge shape or stage logic version, the code could still treat the old verdict as reusable and fail to regenerate it when it should.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+    [missing_case] reproduce-only-nonreusable-verdicts-on-continuation/unjudged-pairs-not-carried-forward
+      The continuation path carries only `pair_verdicts`; if previously unjudged pairs also need to be reproduced on a continuation run to keep the run's pair accounting complete, they are not reused or regenerated here and would fall through silently.
+      src/acceptance/pipeline.py#3
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/review_state.py#1
+
+  reuse-says-so
+    [explanation_absent] reuse-says-so/reused-verdicts-not-annotated-in-report
+      Reused pair verdicts are carried forward in `judge_pairs`, but the report block only renders the implied support summary and the list of unjudged pairs; it never marks any individual verdict as reused, so the review output can silently show carried verdicts as if they were freshly produced.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+
+  completion-report-complete-ratings-tests-as-if-no-pair-judged
+    [other] completion-report-complete-ratings-tests-as-if-no-pair-judged/pair-verdicts-leak-into-report
+      The report now renders the pair-verdict block whenever pair verdicts or unjudged pairs exist, but the completion verdict, criterion ratings, or recommended tests could still be computed from the pair verdicts instead of the no-pair baseline somewhere in the pipeline, so the final review would differ from what it would produce with no judged pairs.
+      src/acceptance/pipeline.py#4
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+    [other] completion-report-complete-ratings-tests-as-if-no-pair-judged/pair-verdicts-fed-into-derivation
+      The new pair verdicts are threaded into the review state and ledger, and the report derives support from them; if any downstream completion or recommendation logic reads those new fields, the review could stop matching the values it would produce with no judged pairs.
+      src/acceptance/pipeline.py#4
+      src/acceptance/review_state.py#1
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+    [other] completion-report-complete-ratings-tests-as-if-no-pair-judged/ledger-continue-reuses-pair-verdicts
+      The ledger now persists pair verdicts for continuation, so a continued run could carry forward judged-pair state and change the completion report, ratings, or recommendations instead of behaving as if no pair had been judged.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+
+  report-support-beside-rating
+    [not_wired] report-support-beside-rating/pair-block-not-invoked
+      The report never appends the pair-support block, so the implied support is not shown beside each criterion's current rating.
+      src/acceptance/report.py#1
+    [scope_too_narrow] report-support-beside-rating/pair-block-uses-unjudged-instead-of-judged
+      The support block derives its figures from all pair verdicts plus unjudged pairs, so criteria with judged pairs are not reported strictly from the judged-pair support the criterion asks for.
+      src/acceptance/report.py#2
+      src/acceptance/report.py#0
+    [wrong_output_shape] report-support-beside-rating/pair-support-block-misplaced-from-rating
+      The pair-support section is rendered as a separate block after the defect section rather than adjacent to each criterion's rating line, so the support is not actually beside the rating it explains.
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+
+  name-disagreeing-criteria
+    [not_wired] name-disagreeing-criteria/pair-block-not-rendered
+      The report computes the pair-support comparison but never includes the pair block in the rendered report, so criteria where judged-pair support disagrees with today's rating are not named anywhere in the output.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+    [other] name-disagreeing-criteria/pair-block-uses-wrong-source
+      The report names disagreements from the derived pair-support classes, but if the review object is populated from the wrong field or stale data on the delivered path, the names shown would reflect an earlier run rather than today's rating.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#1
+    [condition_inverted] name-disagreeing-criteria/disagreement-check-compares-wrong-way
+      The disagreement test could be inverted so matching criteria are listed as disagreements and genuinely disagreeing criteria are omitted or treated as agreement.
+      src/acceptance/report.py#2
+    [scope_too_narrow] name-disagreeing-criteria/pair-derived-support-miscomputed
+      The derived support can be wrong for some criteria because it only counts defects with any killing verdict and ignores how many judged pairs or unjudged pairs there are, so the report may fail to name criteria whose judged-pair support and current rating disagree.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/report.py#2
+
+  no-way-of-failing-production
+    [not_wired] no-way-of-failing-production/pair-mapping-stage-not-used-to-derive-production-failures
+      The new pair-mapping stage is only recorded and reported as an advisory block, but nothing in the review flow uses its verdicts to generate or derive the production failure modes that pairs are judged against, so the change can still leave the judged ways of failing absent from the actual production path.
+      src/acceptance/pipeline.py#3
+      src/acceptance/report.py#1
+      src/acceptance/defects/pair_mapping.py#0
+    [not_wired] no-way-of-failing-production/pair-verdicts-not-fed-into-ledger-or-review-state-consumption
+      The code stores pair verdicts on the review and ledger, but the existing production decision path still derives its failure modes from the older mapping chain; if the new verdicts are never consumed by the stage that produces the judged failures, the change does not actually generate the ways of failing pairs are judged against.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/pipeline.py#4
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#2
+    [not_wired] no-way-of-failing-production/pair-judgement-logic-only-appears-in-experiment-not-production
+      The experiment pilot contains a separate pair-response implementation, but if the production pair-mapping logic is not the one that actually feeds the review pipeline, the change can still fail by leaving the real production derivation of failure modes untouched.
+      docs/experiments/pair-response-shape/pilot.py#0
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/pipeline.py#3
+
+  no-derive-rating-completion-or-recommendations-from-judged-pairs
+    [other] no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-block-derives-advisory-ratings
+      The report now computes `derive_support(review.defect_sets, review.pair_verdicts, review.unjudged_pairs)` and renders the implied evidence class beside the review's own rating, so judged pairs are being used to derive a criterion's rating in the delivered output path.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+    [other] no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+      The pipeline appends `pair_mapping.verdicts` into the ledger entry and `build_ledger_entry` persists `pair_verdicts`, so judged pairs are now carried into the stored review state where later logic can derive ratings, completion, or recommendations from them.
+      src/acceptance/pipeline.py#2
+      src/acceptance/pipeline.py#3
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/review_state.py#1
+    [other] no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+      `Review` now stores `pair_verdicts` and `unjudged_pairs`, which makes judged pairs part of the review object that downstream rating, completion, or recommendation code can read; the change does not keep them isolated from those conclusions.
+      src/acceptance/review_state.py#1
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+
+  no-name-resolution-or-deep-reference-following-for-path-absence
+    [other] no-name-resolution-or-deep-reference-following-for-path-absence/prefilter-resolves-defect-definitions
+      The path-absence filter resolves changed definitions from the repo and uses the names defined in those files to decide whether a pair can be excluded, so it is doing name resolution to definitions before deciding absence.
+      src/acceptance/defects/reachability.py#0
+    [other] no-name-resolution-or-deep-reference-following-for-path-absence/prefilter-follows-first-party-imports
+      The path-absence filter follows imports in the test module and treats any first-party import as a second hop that blocks exclusion, so it is following references beyond the test's own names to decide whether a path is absent.
+      src/acceptance/defects/reachability.py#0
+
+  do-not-derive-criteria-from-mandate
+    [other] do-not-derive-criteria-from-mandate/pair-criteria-derived-from-mandate
+      The new pair-mapping/reporting path derives pair verdicts from the mandate-derived defect sets and then renders them as implied support criteria, so the review now computes criteria from the mandate instead of merely recording pair judgments.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+      src/acceptance/pipeline.py#3
+
+  no-change-to-test-evidence-workflow
+    [other] no-change-to-test-evidence-workflow/pair-verdict-stage-is-wired-into-run-review
+      The review now calls the new pair-judging stage during `run_review`, so the test-evidence workflow is no longer unchanged; the diff adds a new judging pass before the existing mapping chain and threads its results into the ledger and review state.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#4
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+    [other] no-change-to-test-evidence-workflow/pair-verdicts-are-added-to-ledger-and-review-state
+      The review state and ledger now carry `pair_verdicts` and `unjudged_pairs`, which changes what the workflow records and reports about test evidence instead of leaving the existing workflow untouched.
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+      src/acceptance/requirement/ledger.py#0
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#0
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+    [wrong_output_shape] no-change-to-test-evidence-workflow/pair-mapping-replaces-listing-style-response-with-per-defect-verdicts
+      The new pair-mapping stage changes the evidence response shape from listing catches per test to an explicit verdict for every offered defect, so the workflow no longer uses the same mapping/judging output form as before.
+      src/acceptance/defects/pair_mapping.py#0
+      docs/DR-314-pair-response-shape.md#0
+      docs/experiments/pair-response-shape/pilot.py#0
+    [other] no-change-to-test-evidence-workflow/pair-mapping-stage-judges-every-test-defect-pair
+      A new judging pass now forms and scores defect/test pairs directly, which is a new test-evidence judging workflow rather than the existing one; it changes how evidence is gathered and judged even though it is currently shadowed.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/defects/reachability.py#0
+      src/acceptance/pipeline.py#3
+    [other] no-change-to-test-evidence-workflow/report-now-renders-pair-derived-support
+      The report now derives and renders support from pair verdicts beside the existing review ratings, so the change alters how test evidence is rated and presented today.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+
+  request-shape-choice-excluded
+    [other] request-shape-choice-excluded/pair-shape-choice-added
+      The change adds a new pilot and production pair-mapping path that explicitly chooses between listing and verdict response shapes for the pair question, so the change does include the candidate-shape choice the criterion says must be excluded.
+      docs/DR-314-pair-response-shape.md#0
+      docs/experiments/pair-response-shape/README.md#0
+      docs/experiments/pair-response-shape/pilot.py#0
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/report.py#0
+      src/acceptance/review_state.py#0
+
+  no-runtime-or-test-execution
+    [other] no-runtime-or-test-execution/runtime-call-in-pilot
+      The new pilot script makes live model calls and records them, so the change itself executes delivered code during the experiment run instead of only describing the shape.
+      docs/experiments/pair-response-shape/README.md#0
+      docs/experiments/pair-response-shape/pilot.py#0
+    [other] no-runtime-or-test-execution/pipeline-judges-pairs-at-runtime
+      The review pipeline now calls `judge_pairs(...)` as part of `run_review`, so the delivered review flow executes the new pair-mapping code rather than leaving it inert.
+      src/acceptance/pipeline.py#3
+    [other] no-runtime-or-test-execution/report-derives-support-during-render
+      The report renderer now calls `derive_support(...)` when pair verdicts are present, so review rendering executes the new pair-derived support logic instead of merely carrying data through.
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+
+  reuse-verdict-only-when-test-source-unchanged
+    [other] reuse-verdict-only-when-test-source-unchanged/carry-key-ignores-test-source
+      A carried pair verdict can be reused even after the test source changes because the reuse key is built from the defect text and the test digest, but the code path that decides carry may not actually consult the test digest when matching a prior verdict.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+    [not_wired] reuse-verdict-only-when-test-source-unchanged/prior-verdicts-not-loaded-into-pair-carry
+      The continued-run path may still fail to reuse verdicts because the pipeline passes prior pair verdicts into `judge_pairs`, but the carry decision can still be bypassed if the prior verdicts are not threaded through the matching logic that selects carried pairs.
+      src/acceptance/pipeline.py#3
+      src/acceptance/defects/pair_mapping.py#0
+    [scope_too_narrow] reuse-verdict-only-when-test-source-unchanged/source-digest-too-coarse
+      Verdicts may be reused when the test source changed in a way the digest does not distinguish, because the reuse key hashes only `test.source` and not any other source-affecting inputs that determine the test body actually executed.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/review_state.py#0
+
+  byte-identical-review-state-and-report-output
+    [not_wired] byte-identical-review-state-and-report-output/pair-verdicts-not-persisted-in-ledger-entry
+      The review state can differ between repeated runs because `run_check` now passes `pair_verdicts` into `build_ledger_entry`, but `LedgerEntry`/ledger serialization may still omit or ignore that field when writing the persisted state, so the new pair verdicts would not round-trip byte-identically.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/requirement/ledger.py#0
+      src/acceptance/requirement/ledger.py#1
+      src/acceptance/requirement/obligations.py#0
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+    [other] byte-identical-review-state-and-report-output/pair-verdict-order-not-stable
+      The persisted review state can vary byte-for-byte if `pair_verdicts` are emitted in a non-deterministic order, because `judge_pairs` sorts verdicts only by `(defect_id, test_id)` after combining carried and fresh results; if duplicate identities or unstable upstream ordering slip through, the written list could differ across runs.
+      src/acceptance/defects/pair_mapping.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+    [prior_behavior_altered] byte-identical-review-state-and-report-output/pair-report-block-introduces-run-variant-output
+      The generated report output can change across repeated runs because `render_report` now conditionally inserts the new pair-verdict block whenever `review.pair_verdicts` or `review.unjudged_pairs` is present, so any run-to-run difference in those recorded lists changes the report bytes even if the underlying review outcome is otherwise the same.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+
+Support implied by test-to-defect pairs (advisory — the review's own ratings are unchanged):
+
+  test-failure-matrix-recording
+    implied by pairs: partially_supported — kills 1 of 4 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  pair-judgement-unless-path-absent
+    implied by pairs: partially_supported — kills 4 of 5 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  undecidable-path-pairs-are-judged
+    implied by pairs: strongly_supported — kills 2 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  record-unjudged-pairs
+    implied by pairs: strongly_supported — kills 3 of 3 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  report-unjudged-pair-records
+    implied by pairs: partially_supported — kills 2 of 3 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  pair-question-matches-failure-test
+    implied by pairs: unsupported — kills 0 of 3 enumerated defects (static prediction)
+    this review says: unsupported
+
+  grouped-judgement-limit
+    implied by pairs: strongly_supported — kills 2 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  judged-pair-response-minimality
+    implied by pairs: unsupported — kills 0 of 2 enumerated defects (static prediction)
+    this review says: unsupported
+
+  verdict-reuse-when-way-and-test-source-unchanged
+    implied by pairs: strongly_supported — kills 4 of 4 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  reproduce-verdict-when-way-of-failing-or-test-source-changes
+    implied by pairs: strongly_supported — kills 4 of 4 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  reuse-entitled-verdicts-on-continuation
+    implied by pairs: partially_supported — kills 2 of 4 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  reproduce-only-nonreusable-verdicts-on-continuation
+    implied by pairs: partially_supported — kills 2 of 4 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  reuse-says-so
+    implied by pairs: strongly_supported — kills 1 of 1 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  completion-report-complete-ratings-tests-as-if-no-pair-judged
+    implied by pairs: partially_supported — kills 1 of 3 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  report-support-beside-rating
+    implied by pairs: partially_supported — kills 2 of 3 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  name-disagreeing-criteria
+    implied by pairs: partially_supported — kills 1 of 4 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  no-way-of-failing-production
+    implied by pairs: partially_supported — kills 1 of 3 enumerated defects (static prediction)
+    this review says: not rated
+
+  no-derive-rating-completion-or-recommendations-from-judged-pairs
+    implied by pairs: strongly_supported — kills 3 of 3 enumerated defects (static prediction)
+    this review says: not rated
+
+  no-name-resolution-or-deep-reference-following-for-path-absence
+    implied by pairs: partially_supported — kills 1 of 2 enumerated defects (static prediction)
+    this review says: not rated
+
+  do-not-derive-criteria-from-mandate
+    implied by pairs: unsupported — kills 0 of 1 enumerated defects (static prediction)
+    this review says: not rated
+
+  no-change-to-test-evidence-workflow
+    implied by pairs: partially_supported — kills 2 of 5 enumerated defects (static prediction)
+    this review says: not rated
+
+  request-shape-choice-excluded
+    implied by pairs: strongly_supported — kills 1 of 1 enumerated defects (static prediction)
+    this review says: not rated
+
+  no-runtime-or-test-execution
+    implied by pairs: partially_supported — kills 1 of 3 enumerated defects (static prediction)
+    this review says: not rated
+
+  reuse-verdict-only-when-test-source-unchanged
+    implied by pairs: strongly_supported — kills 3 of 3 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  byte-identical-review-state-and-report-output
+    implied by pairs: strongly_supported — kills 3 of 3 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  Criteria where the two disagree: test-failure-matrix-recording, pair-judgement-unless-path-absent, report-unjudged-pair-records, reuse-entitled-verdicts-on-continuation, reproduce-only-nonreusable-verdicts-on-continuation, completion-report-complete-ratings-tests-as-if-no-pair-judged, report-support-beside-rating, name-disagreeing-criteria
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run fc5fdcb24820a37e
+  continuing e48c34926a8370e2
+  continue this run with: --continue fc5fdcb24820a37e
+Model usage by stage:
+  stage                         model                                         calls     prompt   output  cached  this run  recorded
+  ----------------------------  ----------------------  ---------------------------  ---------  -------  ------  --------  --------
+  obligation linking            voyage/voyage-3.5-lite      1 (0 live / 1 replayed)      1,395        0       —   $0.0000   $0.0000
+  test-to-obligation mapping    openai/gpt-5.4-mini       14 (14 live / 0 replayed)     72,331   10,130   38.2%   $0.0812   $0.0812
+  discrimination judgment       openai/gpt-5.4-mini         1 (1 live / 0 replayed)     23,069    1,556    0.0%   $0.0243   $0.0243
+  coverage classification       openai/gpt-5.4-mini         1 (1 live / 0 replayed)     37,672    1,958    0.0%   $0.0371   $0.0371
+  unrequested-change detection  openai/gpt-5.4-mini         1 (1 live / 0 replayed)     37,122      828    0.0%   $0.0316   $0.0316
+  test recommendation           openai/gpt-5.4-mini         1 (1 live / 0 replayed)     35,805    1,487    0.0%   $0.0335   $0.0335
+  defect enumeration            openai/gpt-5.4-mini       25 (25 live / 0 replayed)    661,088    9,172    0.0%   $0.5371   $0.5371
+  defect-to-test pair mapping   openai/gpt-5.4-mini     332 (332 live / 0 replayed)  1,398,868  546,143    0.0%   $3.5068   $3.5068
+  this run spent $4.2515 on 375 live call(s); the evidence cost $4.2516 to record (1 call(s) replayed at no cost to this run)
+

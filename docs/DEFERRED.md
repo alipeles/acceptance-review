@@ -4920,3 +4920,47 @@ the record.
   retirement should not be expensive to calibrate.
 - **Status:** **FILED** as a comment on #171 on 2026-08-30. Approved at #314's
   Gate 1.
+
+
+### [2026-08-30] Measure whether a cheap prefilter can cut the pair set before the judge sees it
+
+- **Kind:** filing
+- **Found during:** #314, after Gate 2
+- **Where:** `src/acceptance/defects/reachability.py`, and the cost figures in
+  `dogfood-logs/314-gate2-run1/output.log`
+- **Severity:** should-fix
+- **What's wrong:** #314's pair stage judged **12,450 pairs and recorded 127
+  kills — a 1.0% kill rate** — costing **$3.51 of that run's $4.25**, of which
+  **$2.46 was output tokens**. The pairs are a full cross product of every
+  enumerated defect against every discovered test, so most of them pair a test
+  with a defect belonging to an unrelated criterion. #314's prefilter is sound
+  by design and therefore excludes almost nothing, which was the right call for
+  that issue but leaves the cost untouched. Neither caching nor batching can
+  help: caching discounts input only, and the call count is floored by the
+  judgements-per-request limit. **A prefilter is the only lever that reaches
+  output**, because removing a pair removes its verdict.
+- **Why I didn't act:** out of #314's scope — that issue's prefilter design is
+  settled, and its mandate excludes building reachability.
+- **Drafted fix:** an issue, child of #186 (the benchmark umbrella) or attached
+  to #316 (the cutover), titled *"Prefilter the pair set: measure a free
+  locality signal and embedding distance against 12,450 recorded verdicts"*.
+  Body: measure four candidate filters offline against the recorded verdicts —
+  (1) a free baseline, whether the test's discovery signal touches the defect's
+  own file; (2) defect description against test source; (3) implicated code
+  region against test source, code to code; (4) the union of those. Score each
+  by *how many of the 127 kills it excludes at a threshold excluding X% of
+  pairs*; a filter that loses a kill at any useful threshold is rejected,
+  because a wrong exclusion re-creates #250 and #287, a recommendation
+  prescribing a test that already exists. Acceptance: the free baseline is
+  reported first and every embedding filter is reported against it; no filter is
+  adopted without a hold-out against #315's archetype labels; and the write-up
+  states plainly that the verdicts are the judge's own answers rather than
+  ground truth.
+  Data is already extracted to `docs/experiments/pair-prefilter/verdicts.json.gz`;
+  the full review is archived outside the repo at
+  `~/acceptance-worktrees/_archived-reviews/314-gate2-run1-review.json`.
+  The human's standing instruction, 2026-08-30: run several filters and reject a
+  pair only when **all** of them reject it, and do not weigh embedding cost —
+  it is negligible next to a model call.
+- **Status:** open. **Approved to run the experiment** on 2026-08-30; the issue
+  itself still needs filing at a gate.

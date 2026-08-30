@@ -1,0 +1,6 @@
+base 5554c795030b66c288419e1e12d53518303baad8
+head 294555156a1bc3a7d71157276145a663737eb7a6
+branch 314-pair-mapping-shadow
+command .venv/bin/acceptance check --task current-task.md --base 5554c79 --mode record --continue e48c34926a8370e2
+note base is the merge-base with origin/main; head is the branch tip, and the
+     working tree was clean at that commit when the run was made.
