@@ -68,6 +68,24 @@ was accepted here on a 68-pair sample. A production review has far more pairs, s
 **the output-token multiple, not the recall, is what to watch as the pair count
 grows.** It is measured per run and does not amortize.
 
+## What it costs in production, measured
+
+#314's own Gate 2 run is the first figure on a real review rather than a
+fixture, and it is large. The pair stage issued **332 calls** and spent **$3.51
+of that run's $4.25** — 1,398,868 prompt tokens and **546,143 output tokens**,
+against 43 calls and $0.74 for the whole rest of the pipeline. Evidence:
+`dogfood-logs/314-gate2-run1/output.log`.
+
+Two deliberate decisions drive it, and both are recorded where they were made:
+a verdict per offered defect (this record), and one request per test
+(`defects/pair_mapping.py::_batches`, taken so the schema's cross product equals
+the offered set rather than inviting answers the stage would have to drop).
+
+**Output tokens are the number to watch, because they never amortize** — the
+caching discount is input-only. This is the figure DR-312's resolved question 2
+said would justify funding real reachability as its own issue if it came back
+unacceptable, and it is the figure #316 inherits.
+
 ## What this pilot does not establish
 
 - **The sample is small.** 32 labelled kills over 13 constructed fixtures. A
