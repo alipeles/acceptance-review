@@ -6,7 +6,9 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "The test asserts the exact record for an existing id; a wrong lookup would fail.",
-      "candidate_tests": ["test_users.py::test_existing_id_returns_the_record"]
+      "candidate_tests": [
+        "test_users.py::test_existing_id_returns_the_record"
+      ]
     }
   ],
   "gaps": [
@@ -15,6 +17,24 @@
       "description": "The declaration claims get_user raises KeyError with a clear message on a missing id, but the implementation returns None and no test exercises the missing-id path. This is a declaration-vs-code discrepancy, not a task obligation (the task never asked for missing-id handling), so it has no obligation_id",
       "obligation_id": null,
       "severity": "medium"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-missing-id-returns-none",
+      "obligation_id": "lookup",
+      "type": "other",
+      "description": "A user id absent from the mapping returns None rather than raising, so a caller cannot tell a missing record from a stored empty one.",
+      "killed_by": []
+    },
+    {
+      "id": "d-lookup-ignores-user-id",
+      "obligation_id": "lookup",
+      "type": "not_wired",
+      "description": "The lookup returns a fixed entry rather than the one matching user_id.",
+      "killed_by": [
+        "test_users.py::test_existing_id_returns_the_record"
+      ]
     }
   ]
 }

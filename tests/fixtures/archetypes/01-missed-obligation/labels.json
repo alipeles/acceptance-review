@@ -6,7 +6,10 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "Both tests assert the full formatted line exactly, so a missing or malformed field would fail.",
-      "candidate_tests": ["test_receipt.py::test_positive_line", "test_receipt.py::test_two_decimal_formatting"]
+      "candidate_tests": [
+        "test_receipt.py::test_positive_line",
+        "test_receipt.py::test_two_decimal_formatting"
+      ]
     },
     {
       "id": "line-total",
@@ -14,7 +17,10 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "Both tests assert the exact total (3x2.5=7.50, 1x4=4.00); a wrong total formula would fail.",
-      "candidate_tests": ["test_receipt.py::test_positive_line", "test_receipt.py::test_two_decimal_formatting"]
+      "candidate_tests": [
+        "test_receipt.py::test_positive_line",
+        "test_receipt.py::test_two_decimal_formatting"
+      ]
     },
     {
       "id": "money-format",
@@ -22,7 +28,10 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "Both tests assert exact $ formatting ($2.50, $7.50, $4.00); wrong formatting would fail.",
-      "candidate_tests": ["test_receipt.py::test_positive_line", "test_receipt.py::test_two_decimal_formatting"]
+      "candidate_tests": [
+        "test_receipt.py::test_positive_line",
+        "test_receipt.py::test_two_decimal_formatting"
+      ]
     },
     {
       "id": "returns-in-parens",
@@ -39,6 +48,55 @@
       "description": "Returns (negative quantity) are not shown in parentheses; the fourth stated rule is unimplemented and untested",
       "obligation_id": "returns-in-parens",
       "severity": "high"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-show-fields-drops-unit-price",
+      "obligation_id": "show-fields",
+      "type": "scope_too_narrow",
+      "description": "The formatted line shows the name and quantity but omits the unit price.",
+      "killed_by": [
+        "test_receipt.py::test_positive_line",
+        "test_receipt.py::test_two_decimal_formatting"
+      ]
+    },
+    {
+      "id": "d-line-total-adds-instead-of-multiplies",
+      "obligation_id": "line-total",
+      "type": "other",
+      "description": "The line total is quantity plus unit price rather than quantity times unit price.",
+      "killed_by": [
+        "test_receipt.py::test_positive_line",
+        "test_receipt.py::test_two_decimal_formatting"
+      ]
+    },
+    {
+      "id": "d-money-format-one-decimal",
+      "obligation_id": "money-format",
+      "type": "qualifier_ignored",
+      "description": "Money is formatted to one decimal place, so 2.5 renders as $2.5 rather than $2.50.",
+      "killed_by": [
+        "test_receipt.py::test_positive_line",
+        "test_receipt.py::test_two_decimal_formatting"
+      ]
+    },
+    {
+      "id": "d-money-format-no-symbol",
+      "obligation_id": "money-format",
+      "type": "qualifier_ignored",
+      "description": "The leading $ is omitted from formatted money.",
+      "killed_by": [
+        "test_receipt.py::test_positive_line",
+        "test_receipt.py::test_two_decimal_formatting"
+      ]
+    },
+    {
+      "id": "d-returns-not-parenthesised",
+      "obligation_id": "returns-in-parens",
+      "type": "not_wired",
+      "description": "A negative quantity is rendered with a minus sign rather than with the quantity and total in parentheses; the rule is not implemented at all.",
+      "killed_by": []
     }
   ]
 }

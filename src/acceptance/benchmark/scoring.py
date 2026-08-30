@@ -51,6 +51,12 @@ from pydantic import Field
 
 from acceptance.benchmark.alignment import align_obligations
 from acceptance.benchmark.case import BenchmarkCase, BenchmarkScore
+from acceptance.benchmark.defect_scoring import (
+    DefectScore,
+    PredictedKills,
+    align_defects,
+    score_defects,
+)
 from acceptance.llm import ModelClient
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import UNREQUESTED_CHANGE
@@ -290,10 +296,45 @@ def _score_from_counts(counts: dict[str, _MatchCounts]) -> BenchmarkScore:
     )
 
 
-def score_case(case: BenchmarkCase, client: ModelClient | None = None) -> BenchmarkScore:
+def _defect_score(
+    case: BenchmarkCase,
+    client: ModelClient | None,
+    predicted: PredictedKills | None,
+) -> DefectScore | None:
+    """Defect-set figures for this case, or `None` where there is nothing to
+    score (#315).
+
+    Guarded on both sides having content, and on a client being available,
+    because the alignment is a model call: a case with no defect labels, or a
+    review that recorded no defects, must not spend one to compute figures that
+    would all be absent anyway.
+
+    `predicted` is #314's output and does not exist yet. Absent, every figure
+    here still computes except `kill_agreement`, which reports absent rather
+    than zero.
+    """
+    labelled = case.ground_truth.defects
+    recorded = [d for s in case.reviewer_output.defect_sets for d in s.defects]
+    if not labelled or not recorded or client is None:
+        return None
+    alignment = align_defects(labelled, recorded, client)
+    return score_defects(labelled, recorded, alignment, predicted)
+
+
+def score_case(
+    case: BenchmarkCase,
+    client: ModelClient | None = None,
+    predicted_kills: PredictedKills | None = None,
+) -> BenchmarkScore:
     """Score one case. Pass a `client` for semantic obligation matching (#118);
-    with none, the obligation-keyed metrics fall back to exact-string match."""
-    return _score_from_counts(_all_counts(case, client))
+    with none, the obligation-keyed metrics fall back to exact-string match.
+
+    `predicted_kills` is #314's per-defect prediction of which tests would fail.
+    Until that stage exists nothing supplies it, and the kill figure inside
+    `defects` reports absent rather than zero."""
+    score = _score_from_counts(_all_counts(case, client))
+    score.defects = _defect_score(case, client, predicted_kills)
+    return score
 
 
 class BenchmarkReport(PersistableModel):
@@ -355,14 +396,26 @@ def score_case_set(
         counts = _all_counts(case, client)
         for family in _FAMILIES:
             totals[family] += counts[family]
-        per_case.append(_score_from_counts(counts))
+        score = _score_from_counts(counts)
+        score.defects = _defect_score(case, client, None)
+        per_case.append(score)
         modes.add(_case_determinism_mode(case))
 
     pooled = _score_from_counts(totals)
+    # `defects` is dropped from the pooled figures rather than aggregated, and
+    # this is a real limit, not an oversight: the other families pool by raw
+    # `_MatchCounts`, so a large case and a small one contribute in proportion.
+    # A DefectScore carries shares, not counts, and averaging shares across
+    # cases would weight a case with one labelled defect equally with one
+    # carrying twenty — the reading DR-312's disclosed-denominator rule exists
+    # to prevent. Per-case defect figures are in `per_case`; a pooled figure
+    # needs the counts threaded through `_MatchCounts`, which is its own change.
+    pooled_fields = pooled.model_dump()
+    pooled_fields.pop("defects", None)
     return BenchmarkReport(
         case_count=len(cases),
         determinism_mode=_reconcile_determinism_modes(modes),
-        **pooled.model_dump(),
+        **pooled_fields,
         per_case=per_case,
     )
 

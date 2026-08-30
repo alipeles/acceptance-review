@@ -6,7 +6,9 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "The test asserts cancel_order returns True and sets status to \"cancelled\"; a wrong status or return value would fail.",
-      "candidate_tests": ["test_orders.py::test_cancel_order_marks_cancelled"]
+      "candidate_tests": [
+        "test_orders.py::test_cancel_order_marks_cancelled"
+      ]
     }
   ],
   "gaps": [],
@@ -16,6 +18,26 @@
       "description": "ship_order gained shipped_count tracking though only cancel_order was requested. It edits existing, adjacent behavior (not a new file, not needed by cancel_order), and no test covers the new shipped_count field -- an untested behavior change that could hide a regression.",
       "file": "orders.py",
       "disposition": "risky"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-cancel-does-not-set-status",
+      "obligation_id": "cancel-order",
+      "type": "not_wired",
+      "description": "cancel_order returns True without setting the order's status to cancelled.",
+      "killed_by": [
+        "test_orders.py::test_cancel_order_marks_cancelled"
+      ]
+    },
+    {
+      "id": "d-cancel-returns-none",
+      "obligation_id": "cancel-order",
+      "type": "wrong_output_shape",
+      "description": "cancel_order sets the status but returns None rather than True.",
+      "killed_by": [
+        "test_orders.py::test_cancel_order_marks_cancelled"
+      ]
     }
   ]
 }

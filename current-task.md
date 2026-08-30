@@ -1,63 +1,58 @@
 # Task
-Before any test is looked at, the review records — for each criterion it derived
-from the mandate — the concrete ways the delivered code could plausibly fail that
-criterion.
+The measurement harness scores the ways of failing that a review recorded
+against a human-authored reference set. The figure for what the review failed to
+record and the figure for what it wrongly predicted about tests are never
+combined into a single figure.
 
 ## Constraints
-- Each recorded way of failing carries an identifier unique within the review,
-  the criterion it belongs to, a classification, a free-text description, and the
-  regions of changed source it implicates.
-- Every other part of the review that names a recorded way of failing names it by
-  that identifier, and does not restate its content.
-- A classification is either a value from a fixed vocabulary or a single escape
-  value meaning the vocabulary has no value for this way of failing.
-- The recorded ways of failing persist with the rest of the review's state, and a
-  review reloaded from storage carries them unchanged.
-- The step that produces them is given the criterion and the changed source, and
-  is given no test.
-- That step is guided by a checklist of ways to fail chosen by the criterion's
-  type, and may still record a way of failing that no entry on that checklist
-  names.
-- Recording no way of failing for a criterion is a valid result for that
-  criterion, and carries the reason the set is empty.
-- A criterion's set of records is reused rather than produced again exactly while
-  both that criterion's text and the contents of the source regions its records
-  implicate are unchanged.
-- A criterion whose text changed has its entire set produced again, and keeps no
-  part of the set recorded for it before.
-- A run continuing an earlier run reuses every set it is entitled to reuse.
-- A run continuing an earlier run produces again only the sets it is not
-  entitled to reuse.
-- Where a set was reused rather than produced again, the review says so.
-- The review reports the recorded ways of failing.
-- Whether the review reports the work complete, and every rating it gives a
-  criterion, are what they would be if no way of failing had been recorded at
-  all.
+- A reference set states, for each criterion of a labelled case, the ways of
+  failing a competent reviewer should record. Each carries an identifier, a
+  classification drawn from the same fixed vocabulary the review uses, a
+  free-text description, and the tests that would fail if the delivered code
+  contained it.
+- A criterion for which no way of failing is plausible carries that fact and the
+  reason, and stays distinguishable from a criterion the reference set says
+  nothing about.
+- A reference set naming a criterion its case does not define, or naming a test
+  its case does not supply, is rejected rather than loaded.
+- A recorded way of failing is matched to a labelled one by what the two
+  describe, not by their wording, and each side takes part in at most one match.
+- Whether a match was found and whether the two classifications agree are
+  reported as separate figures.
+- The share of recorded ways of failing carrying the vocabulary's escape value is
+  reported as a standing figure.
+- The share of labelled ways of failing that the review recorded is reported for
+  each classification separately.
+- How well the predicted catching tests agree with the labelled ones is reported
+  as its own figure, computed independently of the share above.
+- A figure with nothing to compute from is reported as absent, and never as zero.
+- The existing measure of whether two criteria stating the same demand receive
+  the same tests is also computed over the tests reached by way of the recorded
+  ways of failing.
+- Scoring runs from recorded material and issues no live call to a model.
+- Every reference set shipped with the harness loads and validates.
 
 ## Scope exclusions
-- Judging whether any test would fail if the delivered code contained a recorded
-  way of failing.
-- Deriving any rating, classification or conclusion about a criterion from its
-  recorded ways of failing.
-- Which criteria the review derives from the mandate, and how it derives them.
-- How the review gathers, judges or rates test evidence today.
-- Running the delivered code, and altering it to produce a failure.
-- Comparing a recorded set against an expected set supplied from outside the
-  review.
+- Producing the ways of failing that are scored, and predicting which tests
+  would catch one.
+- Any rating, conclusion, recommendation or report the review itself produces.
+- Which criteria the review derives from a mandate, and how it derives them.
+- Judging whether a labelled way of failing is itself the right one to expect.
+- Running any code under review.
 
 ## Completion expectations
 - Implementation.
-- A test asserts that the step that records ways of failing is given no test.
-- A test fails when a criterion with no plausible way of failing is given an
-  invented one instead of an empty set carrying its reason.
-- A test fails when a set is produced again across two continued runs although
-  the criterion's text and the contents of its implicated source regions are both
-  unchanged.
-- A test fails when a criterion whose text changed keeps any part of the set
-  recorded for it before.
-- A test asserts that changing one criterion's text leaves every other
-  criterion's set reused rather than produced again.
-- A test fails when recording ways of failing changes the review's completion
-  conclusion or any criterion's rating.
-- Two recorded runs over the same input produce byte-identical review state and
-  byte-identical report output.
+- A test fails when a reference set naming a criterion its case does not define
+  is loaded rather than rejected.
+- A test fails when a criterion with no plausible way of failing is stored so
+  that it cannot be told apart from one the reference set is silent about.
+- A test asserts that a recorded way of failing worded differently from its
+  labelled counterpart still matches it.
+- A test fails when a disagreement between two classifications is counted as a
+  way of failing the review never recorded.
+- A test asserts that the share of labelled ways of failing recorded, and the
+  agreement between predicted and labelled catching tests, are computed
+  independently of each other.
+- On a small set whose figures are known by hand, every computed figure equals
+  the hand-computed one.
+- A test fails when scoring issues a live call to a model.

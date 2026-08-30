@@ -6,7 +6,9 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "The test asserts apply_discount reduces a $100 subtotal by 10% to $90; a wrong discount computation would fail.",
-      "candidate_tests": ["test_cart.py::test_apply_discount_formats_as_money"]
+      "candidate_tests": [
+        "test_cart.py::test_apply_discount_formats_as_money"
+      ]
     },
     {
       "id": "format-as-money",
@@ -27,6 +29,37 @@
       "description": "format_total's signature was widened with a currency parameter so apply_discount could format its result consistently with checkout's existing formatting. Nothing in the task asked for format_total to change, but apply_discount cannot format its result without it -- removing the widening breaks the apply_discount obligation, not just tidiness. checkout is unaffected since the parameter defaults to USD.",
       "file": "cart.py",
       "disposition": "in_service"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-discount-not-applied",
+      "obligation_id": "apply-discount",
+      "type": "not_wired",
+      "description": "apply_discount returns the subtotal unchanged, applying no percentage.",
+      "killed_by": [
+        "test_cart.py::test_apply_discount_formats_as_money",
+        "test_cart.py::test_apply_discount_supports_other_currency"
+      ]
+    },
+    {
+      "id": "d-currency-argument-ignored",
+      "obligation_id": "format-as-money",
+      "type": "qualifier_ignored",
+      "description": "The currency argument is ignored and every amount is rendered with a $ prefix.",
+      "killed_by": [
+        "test_cart.py::test_apply_discount_supports_other_currency"
+      ]
+    },
+    {
+      "id": "d-money-missing-decimals",
+      "obligation_id": "format-as-money",
+      "type": "other",
+      "description": "The formatted amount omits the two decimal places, rendering $90 rather than $90.00.",
+      "killed_by": [
+        "test_cart.py::test_apply_discount_formats_as_money",
+        "test_cart.py::test_apply_discount_supports_other_currency"
+      ]
     }
   ]
 }

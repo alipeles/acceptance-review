@@ -45,6 +45,7 @@ from acceptance.model_base import PersistableModel
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import (
+    DefectType,
     EvidenceClassification,
     ObligationType,
     Review,
@@ -110,6 +111,43 @@ class GroundTruthObligation(PersistableModel):
     candidate_tests: list[str] = Field(default_factory=list)  # test ids (pytest nodeids)
     expected_type: ObligationType | None = None
     required_symbols: list[str] = Field(default_factory=list)
+    # Set when the ground truth's position is that this obligation admits no
+    # plausible static defect — #270's shape, an obligation true by construction.
+    # That is a *label*, distinct in both directions from `None`, which says the
+    # ground truth takes no position on this obligation's defects at all. The
+    # distinction is the whole of DefectSet's own "nothing found" versus "not
+    # looked at" rule, restated on the labelling side: without it a case with no
+    # defect labels scores an enumerator that invented three defects the same as
+    # one that correctly recorded none.
+    no_plausible_defect_reason: str | None = None
+
+
+class GroundTruthDefect(PersistableModel):
+    """One way of failing an obligation that a competent reviewer should record,
+    and the tests that would fail if the delivered code contained it (#315).
+
+    The label counterpart of `review_state.Defect`, and deliberately the same
+    shape: `type` is drawn from the same `DefectType` vocabulary the enumerator
+    spends, with `OTHER` allowed, so a labelled defect and a recorded one can be
+    compared on classification without a translation table.
+
+    `killed_by` is what separates the two failures this issue exists to tell
+    apart. Enumeration recall asks whether the review recorded this defect at
+    all; kill agreement asks whether it then got the tests right. An **empty**
+    `killed_by` is a real label, not a missing one: archetype #4 is the case
+    where a present, relevant test kills nothing, and a defect no test catches
+    is exactly the finding the review is supposed to produce.
+
+    `description` is free text and is never matched verbatim — see
+    `defect_scoring.align_defects`, which matches on what two descriptions
+    describe, for the same reason `align_obligations` exists.
+    """
+
+    id: str
+    obligation_id: str
+    type: DefectType
+    description: str
+    killed_by: list[str] = Field(default_factory=list)  # test ids (pytest nodeids)
 
 
 class GroundTruthGap(PersistableModel):
@@ -193,6 +231,7 @@ class GroundTruthLabels(PersistableModel):
     gaps: list[GroundTruthGap] = Field(default_factory=list)
     unrequested_changes: list[GroundTruthUnrequestedChange] = Field(default_factory=list)
     open_questions: list[GroundTruthOpenQuestion] = Field(default_factory=list)
+    defects: list[GroundTruthDefect] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _check_tree_integrity(self) -> GroundTruthLabels:
@@ -243,7 +282,88 @@ class GroundTruthLabels(PersistableModel):
             raise ValueError("unrequested-change ids must be unique")
         if any(not u.file.strip() for u in self.unrequested_changes):
             raise ValueError("every unrequested change must name a non-empty file")
+
+        self._check_defect_integrity(known)
         return self
+
+    def _check_defect_integrity(self, obligation_ids: set[str]) -> None:
+        """Defect labels resolve, and say nothing they cannot say (#315).
+
+        Rejecting rather than loading, for the reason the rest of this validator
+        does: ground truth that carries a dangling reference scores the checker
+        against something no reviewer could have produced, and the failure is
+        silent — a defect labelled against an obligation the case does not define
+        can never be matched, so it depresses enumeration recall forever while
+        looking like a real miss.
+
+        `killed_by` is checked against the tests the case actually supplies, that
+        being the union of every obligation's `candidate_tests`. A label naming a
+        test outside it is either a typo or a test the case does not have, and
+        both make kill agreement unscoreable in the same invisible way.
+        """
+        defect_ids = [d.id for d in self.defects]
+        if any(not did.strip() for did in defect_ids):
+            raise ValueError("every defect id must be a non-empty string")
+        if len(set(defect_ids)) != len(defect_ids):
+            raise ValueError("defect ids must be unique")
+
+        supplied_tests = {t for o in self.obligations for t in o.candidate_tests}
+        for defect in self.defects:
+            if defect.obligation_id not in obligation_ids:
+                raise ValueError(
+                    f"defect {defect.id!r} references unknown obligation {defect.obligation_id!r}"
+                )
+            if not defect.description.strip():
+                raise ValueError(f"defect {defect.id!r} must have a non-empty description")
+            for test_id in defect.killed_by:
+                if not test_id.strip():
+                    raise ValueError(f"defect {defect.id!r} has an empty test id in killed_by")
+                if test_id not in supplied_tests:
+                    raise ValueError(
+                        f"defect {defect.id!r} is killed_by {test_id!r}, which no "
+                        "obligation lists as a candidate test"
+                    )
+
+        # "No plausible defect" and a labelled defect are contradictory claims
+        # about the same obligation. Left to coexist, the pair would let a case
+        # score an enumerator both for recording the defect and for correctly
+        # recording none.
+        labelled = {d.obligation_id for d in self.defects}
+        for obligation in self.obligations:
+            if obligation.no_plausible_defect_reason is None:
+                continue
+            if not obligation.no_plausible_defect_reason.strip():
+                raise ValueError(
+                    f"obligation {obligation.id!r} has an empty "
+                    "no_plausible_defect_reason; omit the field to take no position"
+                )
+            if obligation.id in labelled:
+                raise ValueError(
+                    f"obligation {obligation.id!r} says no defect is plausible but "
+                    "also carries labelled defects"
+                )
+
+
+class DefectScore(PersistableModel):
+    """Every defect-set figure for one case (#315), each independently absent-able.
+
+    Lives here rather than in `defect_scoring.py` so that module can import it
+    without a cycle, and beside `BenchmarkScore` because it is one.
+
+    Counts travel with the shares because a share alone cannot be read: "recall
+    1.0" over one labelled defect and over twenty are different claims, and
+    DR-312 requires the denominator to be disclosed wherever the figure renders.
+    """
+
+    enumeration_recall: float | None = None
+    recall_by_type: dict[DefectType, float] = Field(default_factory=dict)
+    type_agreement: float | None = None
+    other_share: float | None = None
+    kill_agreement: float | None = None
+    labelled: int = 0
+    recorded: int = 0
+    matched: int = 0
+    predicted: int = 0
 
 
 class BenchmarkScore(PersistableModel):
@@ -268,6 +388,11 @@ class BenchmarkScore(PersistableModel):
     open_question_recall: float | None = None
     open_question_precision: float | None = None
     obligation_type_accuracy: float | None = None
+    # Defect-set figures (#315). A nested record rather than flat fields because
+    # every figure inside it shares one denominator disclosure, and because it
+    # is absent as a whole on a case with no defect labels — which is different
+    # from each figure being individually absent.
+    defects: DefectScore | None = None
 
 
 class BenchmarkCase(PersistableModel):

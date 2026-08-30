@@ -6,7 +6,9 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "test_line_total_applies_the_item_discount asserts a 10% discount turns 10.0 into 9.0; an implementation that ignored the discount would return 10.0 and fail.",
-      "candidate_tests": ["test_pricing.py::test_line_total_applies_the_item_discount"]
+      "candidate_tests": [
+        "test_pricing.py::test_line_total_applies_the_item_discount"
+      ]
     },
     {
       "id": "round-to-two-decimals",
@@ -14,7 +16,9 @@
       "explicit": true,
       "evidence_class": "nominally_supported",
       "evidence_rationale": "Every asserted result (10.0, 3.25, 9.0) is already exact at two decimals, so a mutant that dropped the rounding would still pass. A present, relevant test that kills zero mapped mutants for this rule.",
-      "candidate_tests": ["test_pricing.py::test_line_total_applies_the_item_discount"]
+      "candidate_tests": [
+        "test_pricing.py::test_line_total_applies_the_item_discount"
+      ]
     }
   ],
   "gaps": [
@@ -31,6 +35,33 @@
       "description": "The _item() test helper gained a discount key/parameter. The task never asked for the test helper to change, but line_total now reads item['discount'], so without it every pre-existing test raises KeyError. Removing this change breaks the suite, and 'split the fixture update into its own PR' is not coherent advice -- it is in service of the requested change, not separable work.",
       "file": "test_pricing.py",
       "disposition": "in_service"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-item-discount-ignored",
+      "obligation_id": "apply-item-discount",
+      "type": "not_wired",
+      "description": "The item's discount percentage is ignored and the line total is quantity times price.",
+      "killed_by": [
+        "test_pricing.py::test_line_total_applies_the_item_discount"
+      ]
+    },
+    {
+      "id": "d-discount-treated-as-fraction",
+      "obligation_id": "apply-item-discount",
+      "type": "other",
+      "description": "The discount is treated as a fraction rather than a percentage, so a discount of 10 is applied as 1000%.",
+      "killed_by": [
+        "test_pricing.py::test_line_total_applies_the_item_discount"
+      ]
+    },
+    {
+      "id": "d-line-total-not-rounded",
+      "obligation_id": "round-to-two-decimals",
+      "type": "qualifier_ignored",
+      "description": "The discounted line total is returned without rounding to two decimals.",
+      "killed_by": []
     }
   ]
 }

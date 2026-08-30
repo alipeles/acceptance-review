@@ -6,7 +6,9 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "The test asserts restock({'qty':5},3)==8 and that the item's qty is mutated to 8; a wrong increment or missing mutation would fail.",
-      "candidate_tests": ["test_inventory.py::test_restock_increases_quantity"]
+      "candidate_tests": [
+        "test_inventory.py::test_restock_increases_quantity"
+      ]
     }
   ],
   "gaps": [],
@@ -16,6 +18,26 @@
       "description": "low_stock_report was added in a new file (report.py) with its own test; nothing in the task asked for a reporting feature. It is self-contained -- restock's obligation is fully satisfied without it -- so it belongs in its own PR/backlog item.",
       "file": "report.py",
       "disposition": "separable"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-restock-returns-previous-quantity",
+      "obligation_id": "restock",
+      "type": "other",
+      "description": "restock returns the quantity as it was before the increase.",
+      "killed_by": [
+        "test_inventory.py::test_restock_increases_quantity"
+      ]
+    },
+    {
+      "id": "d-restock-does-not-update-item",
+      "obligation_id": "restock",
+      "type": "scope_too_narrow",
+      "description": "restock computes and returns the new quantity without updating the item.",
+      "killed_by": [
+        "test_inventory.py::test_restock_increases_quantity"
+      ]
     }
   ]
 }
