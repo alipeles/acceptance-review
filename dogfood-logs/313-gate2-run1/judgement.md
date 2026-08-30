@@ -19,23 +19,43 @@ recorded as not requiring code evidence. Twenty-seven of twenty-eight are
 
 The decomposition carried whole from Gate 1's run 5: zero decompose calls.
 
-## The one indeterminate, and why it is a known defect rather than a new one
+## The one indeterminate: the mapper gives a test to one obligation when it evidences two
 
 `pre-test-failure-modes` — task-01's obligation, *"Before any test is looked at,
 record for each criterion derived from the mandate the concrete ways the
 delivered code could plausibly fail that criterion"* — has no mapped test.
 
 The evidence exists. `tests/defects/test_enumeration.py::test_the_enumerator_is_given_no_test`
-asserts on the request as sent that no test file reaches the prompt, and
-`::test_the_pipeline_really_calls_the_enumerator` asserts a real `run_review`
-produces defect sets. Both were discovered, and both were mapped — to obligations
-23 and 15, the `test_demand` twins of this one, and not to this one.
+asserts on the request as sent that no test file reaches the prompt. It was
+discovered, and it was mapped — to obligation 23 alone, which is
+`completion-02`, *"A test asserts that the step that records ways of failing is
+given no test."* One test, two obligations it evidences, one mapping.
 
-That is the open blocker about unmerged twin obligations starving each other of
-mapped tests, already measured twice: task-01's behaviour obligation and
-`completion-02`'s test demand are about the same property, linking did not merge
-them, and the mapped test landed on the twin. Nothing new to file, nothing to
-work around.
+**These two obligations are not duplicates and linking was right not to merge
+them.** `ObligationType.TEST_DEMAND` exists to keep them apart: DR-232 records
+that a mandate demanding "a test asserts that X" asks for something different
+from one demanding "X", because code that does X with nobody having written the
+test satisfies the second and violates the first. Obligation 23 is the demand
+for the test; obligation 1 is the behaviour. Both are real, and one test is
+evidence for both.
+
+The mapper had the opportunity and did not take it. `map_tests_to_obligations`
+shows **every** obligation in **every** batch, and its response carries a list of
+obligation ids per test, so mapping this test to both was representable. It
+returned one.
+
+**Corrected after first writing.** This judgement originally called it an
+instance of the open blocker about unmerged twin obligations starving each other
+of mapped tests. That attribution is wrong — nothing here should have merged.
+What it is: a recall failure in the test-to-obligation mapping stage, the area
+#182 (the test discovery and mapping umbrella) covers. No specific issue for
+this exact shape was confirmed.
+
+**And it is in the machinery this very work replaces.** #316, the cutover
+sub-issue of #312's defect-first design, retires test-to-obligation mapping in
+favour of mapping tests to defects. That is why CLAUDE.md suspends the
+clean-or-stop rule for this stretch: iterating a task against an instrument
+whose reading is about to change spends real effort for nothing.
 
 Read the recommendation before judging it, per the gate's own rule. It asks for
 a test that *"the review output includes failure-mode notes for each derived
