@@ -1,0 +1,194 @@
+Requirements: 29   with obligations: 28   deliberately none: 1
+
+[task-01] For each way of failing that the review has recorded against a criterion, and
+    each candidate test, the review records whether that test would fail if the
+    delivered code contained that way of failing.
+    -> test-failure-matrix-recording  [functional/explicit]
+       For each way of failing recorded against a criterion and each candidate test,
+       record whether that test would fail if the delivered code contained that way of
+       failing.
+
+[constraint-01] A pair is one recorded way of failing and one candidate test. Every pair
+    is judged unless a path from that test to the source regions the way of failing
+    implicates is proved absent. A pair whose path cannot be settled either way is
+    judged.
+    -> pair-judgement-unless-path-absent  [functional/explicit]
+       A pair of one recorded way of failing and one candidate test is judged unless a
+       path from that test to the source regions the way of failing implicates is proved
+       absent.
+    -> undecidable-path-pairs-are-judged  [functional/explicit]   (also serves completion-02)
+       A pair whose path cannot be settled either way is judged.
+
+[constraint-02] Every pair left unjudged is recorded, naming the way of failing, the
+    test, and why it was not judged, and the review reports those records.
+    -> record-unjudged-pairs  [functional/explicit]
+       Every pair left unjudged is recorded, naming the way of failing, the test, and
+       why it was not judged.
+    -> report-unjudged-pair-records  [functional/explicit]
+       The review reports the records for every pair left unjudged.
+
+[constraint-03] The question put about a judged pair is whether that test would fail if
+    the delivered code contained that way of failing.
+    -> pair-question-matches-failure-test  [functional/explicit]
+       For a judged pair, the question asks whether the candidate test would fail if the
+       delivered code contained that way of failing.
+
+[constraint-04] Pairs are judged in groups, and no group asks for more judgements in one
+    request than a fixed limit allows.
+    -> grouped-judgement-limit  [functional/explicit]
+       Pairs are judged in groups, and each group requests no more judgements than the
+       fixed limit allows.
+
+[constraint-05] What comes back about a judged pair is which pair it is, its verdict,
+    and a short reason, and nothing further.
+    -> judged-pair-response-minimality  [functional/explicit]
+       What comes back about a judged pair includes only the pair identity, its verdict,
+       and a short reason.
+
+[constraint-06] A verdict is reused rather than produced again exactly while both the
+    way of failing it concerns and the source of the test it concerns are unchanged.
+    -> verdict-reuse-when-way-and-test-source-unchanged  [regression/explicit]   (also serves constraint-08)
+       Reuse a verdict exactly when both the way of failing it concerns and the source
+       of the test it concerns are unchanged.
+
+[constraint-07] A verdict whose way of failing changed, or whose test's source changed,
+    is produced again.
+    -> reproduce-verdict-when-way-of-failing-or-test-source-changes  [regression/explicit]
+       A verdict is produced again when the way of failing it concerns has changed or
+       when the source of the test it concerns has changed.
+
+[constraint-08] A verdict's reuse is decided from the way of failing and the test it
+    concerns alone. No other pair judged alongside it bears on that decision.
+    -> verdict-reuse-when-way-and-test-source-unchanged  [regression/explicit]   (also serves constraint-06)
+       Reuse a verdict exactly when both the way of failing it concerns and the source
+       of the test it concerns are unchanged.
+
+[constraint-09] A run continuing an earlier run reuses every verdict it is entitled to
+    reuse, and produces again only those it is not.
+    -> reuse-entitled-verdicts-on-continuation  [functional/explicit]
+       A continuing run reuses every verdict it is entitled to reuse.
+
+[constraint-10] Where a verdict was reused rather than produced again, the review says
+    so.
+    -> reuse-says-so  [explanation_observability/explicit]
+       Where a verdict is reused rather than produced again, the review says so.
+
+[constraint-11] Whether the review reports the work complete, every rating it gives a
+    criterion, and every test it recommends are what they would be if no pair had been
+    judged at all.
+    -> completion-report-complete-ratings-tests-as-if-no-pair-judged  [functional/explicit]   (also serves completion-07)
+       The review reports the work complete, every rating it gives a criterion, and
+       every test it recommends as they would be if no pair had been judged at all.
+
+[constraint-12] The review reports, for each criterion, the support its judged pairs
+    imply beside the rating the review gives that criterion today, and names the
+    criteria where the two disagree.
+    -> report-support-beside-rating  [functional/explicit]
+       For each criterion, report the support implied by its judged pairs beside the
+       rating the review gives that criterion today.
+    -> name-disagreeing-criteria  [functional/explicit]
+       Name the criteria where the support implied by judged pairs and the current
+       rating disagree.
+
+[exclusion-01] Producing the ways of failing that pairs are judged against.
+    -> no-way-of-failing-production  [functional/explicit]
+       The change does not produce the ways of failing that pairs are judged against.
+
+[exclusion-02] Deriving a criterion's rating, the completion conclusion, or any
+    recommended test from judged pairs.
+    -> no-derive-rating-completion-or-recommendations-from-judged-pairs  [functional/explicit]
+       The change does not derive a criterion's rating, the completion conclusion, or
+       any recommended test from judged pairs.
+
+[exclusion-03] Resolving a name to its definition, or following references beyond a
+    single step, in order to decide whether a path is absent.
+    -> no-name-resolution-or-deep-reference-following-for-path-absence  [compatibility/explicit]
+       The change does not resolve a name to its definition or follow references beyond
+       a single step in order to decide whether a path is absent.
+
+[exclusion-04] Which criteria the review derives from the mandate, and how it derives
+    them.
+    -> do-not-derive-criteria-from-mandate  [functional/explicit]
+       The change does not derive which criteria the review derives from the mandate, or
+       how it derives them.
+
+[exclusion-05] How the review gathers, maps, judges or rates test evidence today, and
+    retiring any part of it.
+    -> no-change-to-test-evidence-workflow  [functional/explicit]
+       The change does not alter how the review gathers, maps, judges, or rates test
+       evidence today, and it does not retire any part of that workflow.
+
+[exclusion-06] Choosing between candidate shapes for the request that carries the pair
+    question.
+    -> request-shape-choice-excluded  [functional/explicit]
+       The change does not include choosing between candidate shapes for the request
+       that carries the pair question.
+
+[exclusion-07] Running the delivered code or any test.
+    -> no-runtime-or-test-execution  [functional/explicit]
+       The change does not run the delivered code or any test.
+
+[completion-01] Implementation.
+    -- no obligation, deliberately
+       The requirement is a section marker standing alone: "Implementation."
+
+[completion-02] A test fails when a pair whose path cannot be settled either way is left
+    unjudged rather than judged.
+    -> undecidable-path-pairs-are-judged  [functional/explicit]   (also serves constraint-01)
+       A pair whose path cannot be settled either way is judged.
+    -> test-covers-unsettled-path-pair-judgment  [test_demand/explicit]
+       A test asserts that a pair whose path cannot be settled either way is judged
+       rather than left unjudged.
+
+[completion-03] A test fails when a pair is left unjudged without a record naming the
+    way of failing, the test and the reason.
+    -> record-unjudged-pair-reason  [test_demand/explicit]
+       A test fails when a pair is left unjudged without a record naming the way of
+       failing, the test, and the reason.
+
+[completion-04] A test asserts that adding one candidate test between two continued runs
+    produces new verdicts only for pairs concerning that test.
+    -> continued-run-new-verdicts-test  [test_demand/explicit]
+       A test asserts that adding one candidate test between two continued runs produces
+       new verdicts only for pairs concerning that test.
+
+[completion-05] A test fails when a verdict is produced again across two continued runs
+    although its way of failing and its test's source are both unchanged.
+    -> verdict-not-reproduced-when-unchanged  [test_demand/explicit]
+       A test fails when a verdict is produced again across two continued runs although
+       its way of failing and its test's source are both unchanged.
+
+[completion-06] A test fails when a verdict is reused although its test's source
+    changed.
+    -> reuse-verdict-only-when-test-source-unchanged  [functional/explicit]
+       A verdict is reused only when the test's source is unchanged.
+
+[completion-07] A test fails when judging pairs changes the review's completion
+    conclusion, any criterion's rating, or which tests it recommends.
+    -> completion-report-complete-ratings-tests-as-if-no-pair-judged  [functional/explicit]   (also serves constraint-11)
+       The review reports the work complete, every rating it gives a criterion, and
+       every test it recommends as they would be if no pair had been judged at all.
+
+[completion-08] A test asserts the report shows, for each criterion, the support its
+    judged pairs imply beside the rating the review gives that criterion today.
+    -> report-support-beside-rating-test  [test_demand/explicit]
+       A test asserts that the report shows, for each criterion, the support its judged
+       pairs imply beside the rating the review gives that criterion today.
+
+[completion-09] Two recorded runs over the same input produce byte-identical review
+    state and byte-identical report output.
+    -> byte-identical-review-state-and-report-output  [regression/explicit]
+       Two recorded runs over the same input produce byte-identical review state and
+       byte-identical report output.
+run 18008963f6b28faa
+  continuing 4b3035551e18fd72
+  requirements: 0 derived, 28 carried, 1 revised; 1 decompose call(s)
+  continue this run with: --continue 18008963f6b28faa
+Model usage by stage:
+  stage                        model                                                          calls  prompt  output  cached  this run  recorded
+  ---------------------------  -------------------------------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose                    openai/gpt-5.4-mini                          1 (1 live / 0 replayed)   6,672     182    0.0%   $0.0058   $0.0058
+  obligation linking           voyage/voyage-3.5-lite, openai/gpt-5.4-mini  2 (2 live / 0 replayed)   2,250      98    0.0%   $0.0011   $0.0011
+  requirement carry alignment  openai/gpt-5.4-mini                          1 (1 live / 0 replayed)     293      24    0.0%   $0.0003   $0.0003
+  this run spent $0.0072 on 4 live call(s); the evidence cost $0.0072 to record (0 call(s) replayed at no cost to this run)
+

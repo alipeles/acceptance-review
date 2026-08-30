@@ -4764,7 +4764,25 @@ the record.
   as the type feeding it.
   Evidence: `dogfood-logs/313-gate1-run{3,4}/output.log` and
   `dogfood-logs/315-gate1-run{1,2}/output.log`.
-- **Status:** open
+- **Fourth and fifth instances, on a third mandate, both losing the demand
+  (#314, Gate 1 runs 1–3, 2026-08-30, stable across all three):**
+  `completion-06` ("A test fails when a verdict is reused although its test's
+  source changed") is typed `functional` and described as a behaviour — "A
+  verdict is reused only when the test's source is unchanged" — where
+  `completion-03`, `-04`, `-05` and `-08`, all of identical form in the same
+  mandate, are `test_demand`. `completion-07` ("A test fails when judging pairs
+  changes the review's completion conclusion, any criterion's rating, or which
+  tests it recommends") is not given an obligation of its own at all: it merges
+  into `constraint-11`'s `functional` obligation, which states the property and
+  demands no test. That is the third-instance consequence again — the merge
+  guard did not fire because the type was wrong, so the requirement that a test
+  exist is gone from the obligation set rather than mislabelled.
+  The same mandate shows the guard working where the type is right:
+  `completion-02` is given both a shared `functional` obligation and its own
+  `test_demand` one. So the slip, not the merge rule, is what loses the demand.
+  Evidence: `dogfood-logs/314-gate1-run{1,2,3}/output.log`.
+- **Status:** **FILED** as a comment on #181 on 2026-08-30, carrying all five
+  instances across the three mandates. Approved at #314's Gate 1.
 
 ### [2026-08-29] Decision: the defect taxonomy's per-obligation-type contents, and what a `test_demand` obligation's enumerator may look at
 
@@ -4821,3 +4839,84 @@ the record.
   and #316: an absent defect set has to be distinct from an empty one. No issue
   filed — a resolved decision belongs in a Decision Record.
 
+
+### [2026-08-30] Decision: what counts as a *proved absent* path under one-hop machinery
+
+- **Kind:** decision
+- **Found during:** #314, Gate 1
+- **Where:** the prefilter #314 must build, over `src/acceptance/evidence/discovery.py`'s
+  existing helpers
+- **Severity:** should-fix
+- **What's wrong:** #314's rule is *include unless a static path is provably
+  absent*, and DR-312's resolved question 2 forbids building name resolution or
+  transitive edges inside #314. Those two together leave no stated rule for what
+  a *proof* of absence actually is. `discovery.py` intersects a test's called
+  names, referenced names and imported module stems with the changed symbols and
+  module stems. That reports a positive match; the absence of a match is not a
+  proof, because a test can reach code through a fixture, a helper or an
+  attribute lookup that none of those three sets sees. Left unstated, the
+  prefilter either excludes nothing at all — which is defensible but makes the
+  recorded-exclusion acceptance item unexerciseable on real input — or excludes
+  on the absence of a positive signal, which is unsound and is exactly the
+  wrong-exclusion failure DR-312 says silently un-covers a defect.
+- **Why I didn't act:** it is a design decision about the failure asymmetry
+  DR-312 reasons about, not a detail inside #314's own area, and picking it
+  quietly is what *Surface open decisions* forbids.
+- **Drafted fix:** **Recommended** — keep the prefilter sound and expect it to
+  exclude almost nothing. Exclude a pair only on a rule that cannot be wrong at
+  one hop: the way of failing implicates regions in files that are not the
+  test's own file, the test's module has no import statement naming any of those
+  files' module stems, and the test's source references none of the names
+  defined in those regions. Record every exclusion with both ids and the reason,
+  and exercise the acceptance item on a constructed fixture rather than on
+  incidental real input. This matches DR-312's stated expectation that
+  tractability rests on batching and the measured cost figure, not on the
+  prefilter.
+  **Rejected** — exclude wherever `discovery.py`'s positive signal is absent for
+  the defect's files. It would exclude a great deal and cut cost sharply, but it
+  converts a recall signal into a proof of absence, which is unsound in exactly
+  the direction that re-creates #250 and #287, where a recommendation prescribes
+  a test that already exists.
+- **Also considered and dropped:** an embedding-distance gate, as DR-259 built
+  for obligation pairs. Dropped on two grounds. DR-259's own held-out check
+  found **no threshold that separated cleanly** — a genuine merge sat at 0.2257,
+  outside the 0.094–0.115 band, and raising the default to clear it admitted 9
+  of 10 spurious merges — and DR-259 chose its 0.10 knowing it errs toward
+  filtering real pairs out, because in *that* stage that is the safe direction.
+  Here the asymmetry is reversed: a wrongly excluded pair silently un-covers a
+  defect. Second, cosine distance between a defect description and a test's
+  source measures topical similarity, not reachability, so it misses the same
+  fixture-and-helper paths one-hop name matching misses. Left as a possible
+  ordering or batching aid, where a wrong guess costs nothing because every pair
+  is still judged.
+- **Status:** **resolved as recommended**, on the human's "All approved" at
+  #314's Gate 1, 2026-08-30. Build the sound near-empty rule; exercise the
+  recorded-exclusion acceptance item on a constructed fixture. No issue filed —
+  a resolved decision belongs in a Decision Record, and this one folds into
+  #314's own.
+
+### [2026-08-30] The static pair judgement is a bridge to defect injection, and nothing said so
+
+- **Kind:** filing (comment on existing issue #171)
+- **Found during:** #314, Gate 1 — raised by the human in conversation
+- **Where:** DR-312's decision 3, and #314's stage
+- **Severity:** nice-to-have
+- **What's wrong:** DR-312 and #314 both assume that the static per-pair
+  prediction is eventually superseded by M8.4's defect injection, and neither
+  writes it down. Injection answers #314's question by construction — apply the
+  defect, run the suite, see what fails — at the `defect-killed` tier rather
+  than `static`. It is also **cheaper in the shape that matters**: one injection
+  plus one suite run gives a verdict for every test at once, so injection is
+  O(defects) runs where the static stage is O(defects × tests) judgements. The
+  static stage cannot be defended on cost against a runnable suite and should
+  not be built as though it could.
+- **Why I didn't act:** it changes nothing in #314's code; it is the reason to
+  keep that code modest.
+- **Drafted fix:** comment on #171 recording the comparison, the three jobs the
+  static tier keeps — a no-test-failed result is ambiguous between blind tests
+  and an inert edit; not every defect becomes a small mutation; execution is
+  optional and probe-gated per §8.3 and #170 — and the consequence accepted for
+  #314, that its prefilter takes the cheap sound rule because a filter due for
+  retirement should not be expensive to calibrate.
+- **Status:** **FILED** as a comment on #171 on 2026-08-30. Approved at #314's
+  Gate 1.
