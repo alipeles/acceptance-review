@@ -1,0 +1,180 @@
+Requirements: 26   with obligations: 25   deliberately none: 1
+
+[task-01] The measurement harness scores the ways of failing a review recorded against a
+    human-authored reference set, and reports two failures separately: a way of failing
+    the review never recorded, and a test the review wrongly predicted would catch one.
+    -> score-recorded-failure-modes-against-reference-set  [functional/explicit]
+       Score the ways of failing a review recorded against a human-authored reference
+       set.
+    -> missing-failure-mode-recording  [functional/explicit]
+       The measurement harness reports the failure mode of a review that was never
+       recorded as a separate failure.
+    -> wrongly-predicted-test-catch  [test_demand/explicit]
+       A test the review wrongly predicted would catch one.
+
+[constraint-01] A reference set states, for each criterion of a labelled case, the ways
+    of failing a competent reviewer should record. Each carries an identifier, a
+    classification drawn from the same fixed vocabulary the review uses, a free-text
+    description, and the tests that would fail if the delivered code contained it.
+    -> reference-set-records-failing-ways  [functional/explicit]
+       A reference set states, for each criterion of a labelled case, the ways of
+       failing a competent reviewer should record.
+    -> recorded-failing-way-entry-fields  [functional/explicit]
+       Each recorded way of failing carries an identifier, a classification drawn from
+       the same fixed vocabulary the review uses, a free-text description, and the tests
+       that would fail if the delivered code contained it.
+
+[constraint-02] A criterion for which no way of failing is plausible carries that fact
+    and the reason, and stays distinguishable from a criterion the reference set says
+    nothing about.
+    -> no-plausible-failure-criterion-distinct-from-silent-criterion  [invariant/explicit]   (also serves completion-03)
+       A criterion with no plausible way of failing is recorded with that fact and the
+       reason, and remains distinguishable from a criterion the reference set says
+       nothing about.
+
+[constraint-03] A reference set naming a criterion its case does not define, or naming a
+    test its case does not supply, is rejected rather than loaded.
+    -> reject-unmatched-reference-set-entries  [error_handling/explicit]
+       A reference set that names a criterion its case does not define, or names a test
+       its case does not supply, is rejected rather than loaded.
+
+[constraint-04] A recorded way of failing is matched to a labelled one by what the two
+    describe, not by their wording, and each side takes part in at most one match.
+    -> recorded-vs-labelled-match-by-described-content  [functional/explicit]
+       A recorded way of failing is matched to a labelled one by what the two describe,
+       not by their wording.
+    -> one-match-per-side  [invariant/explicit]
+       Each recorded way of failing and each labelled way of failing takes part in at
+       most one match.
+
+[constraint-05] Whether a match was found and whether the two classifications agree are
+    reported as separate figures.
+    -> separate-match-and-agreement-figures  [functional/explicit]
+       Report whether a match was found and whether the two classifications agree as
+       separate figures.
+
+[constraint-06] The share of recorded ways of failing carrying the vocabulary's escape
+    value is reported as a standing figure.
+    -> escape-value-share-standing-figure  [functional/explicit]
+       The share of recorded ways of failing carrying the vocabulary's escape value is
+       reported as a standing figure.
+
+[constraint-07] The share of labelled ways of failing that the review recorded is
+    reported for each classification separately.
+    -> labelled-share-by-classification  [functional/explicit]
+       Report the share of labelled ways of failing that the review recorded separately
+       for each classification.
+
+[constraint-08] How well the predicted catching tests agree with the labelled ones is
+    reported as its own figure, computed independently of the share above.
+    -> predicted-catching-tests-agreement-figure  [functional/explicit]
+       Report how well the predicted catching tests agree with the labelled ones as its
+       own figure, computed independently of the share of labelled ways of failing
+       recorded.
+
+[constraint-09] A figure with nothing to compute from is reported as absent, and never
+    as zero.
+    -> absent-not-zero-for-empty-figure  [invariant/explicit]
+       A figure with nothing to compute from is reported as absent, and never as zero.
+
+[constraint-10] The existing measure of whether two criteria stating the same demand
+    receive the same tests is also computed over the tests reached by way of the
+    recorded ways of failing.
+    -> same-demand-tests-over-recorded-failures  [functional/explicit]
+       The measure of whether two criteria stating the same demand receive the same
+       tests is computed over the tests reached by way of the recorded ways of failing.
+
+[constraint-11] Scoring runs from recorded material and issues no live call to a model.
+    -> no-live-model-call  [functional/explicit]
+       Scoring runs from recorded material and issues no live call to a model.
+
+[constraint-12] Every reference set shipped with the harness loads and validates.
+    -> reference-sets-load-and-validate  [functional/explicit]
+       Every reference set shipped with the harness loads and validates.
+
+[exclusion-01] Producing the ways of failing that are scored, and predicting which tests
+    would catch one.
+    -> no-recorded-failures-or-predicted-tests  [functional/explicit]
+       The change does not produce the ways of failing that are scored, or predict which
+       tests would catch one.
+
+[exclusion-02] Any rating, conclusion, recommendation or report the review itself
+    produces.
+    -> no-review-reporting  [functional/explicit]
+       The change does not produce any rating, conclusion, recommendation, or report
+       from the review itself.
+
+[exclusion-03] Which criteria the review derives from a mandate, and how it derives
+    them.
+    -> no-mandate-derivation  [functional/explicit]
+       The change does not alter which criteria the review derives from a mandate or how
+       it derives them.
+
+[exclusion-04] Judging whether a labelled way of failing is itself the right one to
+    expect.
+    -> no-judging-labelled-way-of-failing  [functional/explicit]
+       The change does not judge whether a labelled way of failing is itself the right
+       one to expect.
+
+[exclusion-05] Running any code under review.
+    -> no-runtime-code-under-review  [functional/explicit]
+       The change does not run any code under review.
+
+[completion-01] Implementation.
+    -- no obligation, deliberately
+       The requirement is only the section marker "Implementation." standing alone,
+       which imposes no checkable obligation.
+
+[completion-02] A test fails when a reference set naming a criterion its case does not
+    define is loaded rather than rejected.
+    -> reject-undefined-criterion-reference-set  [error_handling/explicit]
+       A reference set that names a criterion its case does not define is rejected
+       rather than loaded.
+
+[completion-03] A test fails when a criterion with no plausible way of failing is stored
+    so that it cannot be told apart from one the reference set is silent about.
+    -> no-plausible-failure-criterion-distinct-from-silent-criterion  [invariant/explicit]   (also serves constraint-02)
+       A criterion with no plausible way of failing is recorded with that fact and the
+       reason, and remains distinguishable from a criterion the reference set says
+       nothing about.
+
+[completion-04] A test asserts that a recorded way of failing worded differently from
+    its labelled counterpart still matches it.
+    -> recorded-failure-matches-by-description  [test_demand/explicit]
+       A test asserts that a recorded way of failing worded differently from its
+       labelled counterpart still matches it.
+
+[completion-05] A test fails when a disagreement between two classifications is counted
+    as a way of failing the review never recorded.
+    -> classification-disagreement-not-counted-as-recorded-failure  [test_demand/explicit]
+       A test fails when a disagreement between two classifications is counted as a way
+       of failing the review never recorded.
+
+[completion-06] A test asserts that the share of labelled ways of failing recorded, and
+    the agreement between predicted and labelled catching tests, are computed
+    independently of each other.
+    -> independent-computation-of-coverage-and-agreement  [test_demand/explicit]
+       A test asserts that the share of labelled ways of failing recorded and the
+       agreement between predicted and labelled catching tests are computed
+       independently of each other.
+
+[completion-07] On a small set whose figures are known by hand, every computed figure
+    equals the hand-computed one.
+    -> hand-computed-figures-match  [test_demand/explicit]
+       On a small set whose figures are known by hand, every computed figure equals the
+       hand-computed one.
+
+[completion-08] A test fails when scoring issues a live call to a model.
+    -> no-live-model-call-during-scoring  [test_demand/explicit]
+       A test fails when scoring issues a live call to a model.
+run b6c50be77e12866f
+  requirements: 26 derived, 0 carried, 0 revised; 29 decompose call(s)
+  continue this run with: --continue b6c50be77e12866f
+Model usage by stage:
+  stage               model                                                            calls   prompt  output  cached  this run  recorded
+  ------------------  -------------------------------------------  -------------------------  -------  ------  ------  --------  --------
+  decompose           openai/gpt-5.4-mini                          28 (28 live / 0 replayed)  172,298   4,727    0.0%   $0.1505   $0.1505
+  decompose-summary   openai/gpt-5.4                                 1 (1 live / 0 replayed)    1,944     526    0.0%   $0.0128   $0.0128
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)    2,601     266    0.0%   $0.0022   $0.0022
+  this run spent $0.1655 on 31 live call(s); the evidence cost $0.1655 to record (0 call(s) replayed at no cost to this run)
+

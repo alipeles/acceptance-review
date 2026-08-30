@@ -4740,14 +4740,30 @@ the record.
   `ObligationType.TEST_DEMAND`'s own docstring says the type was added to stop:
   *"derivation encoded the difference in the description or lost it — and it lost
   it, repeatedly and unstably."*
+- **Third instance, on a second mandate, and it shows the slip has a
+  consequence (#315, Gate 1 runs 1 and 2, 2026-08-29):** `completion-03` ("A
+  test fails when a criterion with no plausible way of failing is stored so that
+  it cannot be told apart from one the reference set is silent about") is typed
+  `invariant`, where its five siblings of identical form, `completion-04`
+  through `completion-08`, are all `test_demand`. Because it is not typed
+  `test_demand`, DR-232 decision 3's guard — linking never asks about a pair
+  where exactly one side is `test_demand` — does not fire, so the obligation
+  merged into `constraint-02`'s. The merged obligation states the property and
+  demands no test, so the requirement that a test exist is **gone from the
+  obligation set**, not merely mislabelled. That is the loss DR-232 added the
+  type to prevent, reached by bypassing the guard DR-232 built against it.
 - **Why I didn't act:** excluded by #313's mandate, and no wording of mine fixes
   a type.
-- **Drafted fix:** comment on **#181** with the two pairs above, and an
+- **Drafted fix:** comment on **#181** with the three pairs above, and an
   acceptance criterion shaped as *"two requirements of the same form in one
   mandate receive the same obligation type"*. Type is not cosmetic for the
   defect-first work: #313's enumerator walks a checklist chosen by obligation
-  type, so a mistyped obligation is walked against the wrong checklist.
-  Evidence: `dogfood-logs/313-gate1-run{3,4}/output.log`.
+  type, so a mistyped obligation is walked against the wrong checklist. Add a
+  second criterion from the third instance: *"a requirement asking for a test
+  never merges into one that does not"*, since the merge guard is only as good
+  as the type feeding it.
+  Evidence: `dogfood-logs/313-gate1-run{3,4}/output.log` and
+  `dogfood-logs/315-gate1-run{1,2}/output.log`.
 - **Status:** open
 
 ### [2026-08-29] Decision: the defect taxonomy's per-obligation-type contents, and what a `test_demand` obligation's enumerator may look at
