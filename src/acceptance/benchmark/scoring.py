@@ -304,10 +304,20 @@ def _defect_score(
     """Defect-set figures for this case, or `None` where there is nothing to
     score (#315).
 
-    Guarded on both sides having content, and on a client being available,
-    because the alignment is a model call: a case with no defect labels, or a
-    review that recorded no defects, must not spend one to compute figures that
-    would all be absent anyway.
+    The three cases are deliberately different, and conflating the middle one
+    with the others is the mistake this docstring exists to prevent:
+
+    - **No labelled defects** — the ground truth takes no position, so there is
+      nothing to score and every figure would be meaningless. `None`.
+    - **Labelled defects but the review recorded none** — a real, total
+      enumeration miss, and one of the more important results the corpus can
+      produce. It scores `enumeration_recall` **0.0**, not absent. Reporting it
+      as unmeasured would hide a failed enumerator behind the same blank an
+      unlabelled case shows. No model call is needed or made: with one side
+      empty there is nothing to align.
+    - **No client** — the alignment cannot run, so a recorded defect cannot be
+      matched to its label. Scoring anyway would report every match as a miss,
+      which is a measurement artefact, not a result. `None`.
 
     `predicted` is #314's output and does not exist yet. Absent, every figure
     here still computes except `kill_agreement`, which reports absent rather
@@ -315,7 +325,11 @@ def _defect_score(
     """
     labelled = case.ground_truth.defects
     recorded = [d for s in case.reviewer_output.defect_sets for d in s.defects]
-    if not labelled or not recorded or client is None:
+    if not labelled:
+        return None
+    if not recorded:
+        return score_defects(labelled, recorded, {}, predicted)
+    if client is None:
         return None
     alignment = align_defects(labelled, recorded, client)
     return score_defects(labelled, recorded, alignment, predicted)

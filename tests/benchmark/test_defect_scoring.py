@@ -456,6 +456,50 @@ def test_score_case_populates_the_defect_figures():
     assert score.defects.kill_agreement is None
 
 
+def test_an_enumerator_that_recorded_nothing_scores_zero_not_absent():
+    """A total enumeration miss is a result, not a blank.
+
+    Reported as absent it would look exactly like a case the ground truth takes
+    no position on, so the worst enumeration outcome the corpus can show would
+    be indistinguishable from having nothing to say. Found by the Gate 2 run on
+    this issue's own change.
+    """
+    from acceptance.benchmark.scoring import score_case
+
+    case = _scoreable_case(
+        labelled=[_labelled("d1", oid="o1", desc="The total is not rounded")],
+        defect_sets=[],
+    )
+    # No client at all: with one side empty there is nothing to align, so the
+    # figure is still computable and must still be computed.
+    score = score_case(case, None)
+
+    assert score.defects is not None
+    assert score.defects.enumeration_recall == 0.0
+    assert score.defects.labelled == 1
+    assert score.defects.recorded == 0
+    assert score.defects.matched == 0
+    # These genuinely have nothing to compute from and stay absent.
+    assert score.defects.type_agreement is None
+    assert score.defects.other_share is None
+
+
+def test_no_client_leaves_the_figures_absent_rather_than_scoring_every_match_a_miss():
+    from acceptance.benchmark.scoring import score_case
+    from acceptance.review_state import DefectSet
+
+    case = _scoreable_case(
+        labelled=[_labelled("d1", oid="o1", desc="The total is not rounded")],
+        defect_sets=[DefectSet(obligation_id="o1", defects=[_recorded("r1", oid="o1")])],
+    )
+
+    score = score_case(case, None)
+
+    # Both sides have content, but nothing can match them. A 0.0 here would be a
+    # measurement artefact reported as an enumerator failure.
+    assert score.defects is None
+
+
 def test_score_case_leaves_the_defect_figures_absent_with_no_labels():
     """And spends no model call doing it."""
     from acceptance.benchmark.scoring import score_case
