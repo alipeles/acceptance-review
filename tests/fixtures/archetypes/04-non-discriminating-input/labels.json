@@ -6,7 +6,9 @@
       "explicit": true,
       "evidence_class": "nominally_supported",
       "evidence_rationale": "The candidate test asserts prorate(30,15,30)==15.0, but the plausible defect (a hard-coded price/30) gives the same answer for a 30-day month, so that mapped mutant survives - a present, relevant test that kills zero mapped mutants for this rule.",
-      "candidate_tests": ["test_billing.py::test_half_of_a_month"]
+      "candidate_tests": [
+        "test_billing.py::test_half_of_a_month"
+      ]
     },
     {
       "id": "charge-days-used",
@@ -14,7 +16,9 @@
       "explicit": true,
       "evidence_class": "partially_supported",
       "evidence_rationale": "A mutant that ignores days_used gives 30 not 15, so the test kills it; but boundaries (0 days, a full month) are untested, so those mutants survive - kills some, misses some.",
-      "candidate_tests": ["test_billing.py::test_half_of_a_month"]
+      "candidate_tests": [
+        "test_billing.py::test_half_of_a_month"
+      ]
     },
     {
       "id": "round-2",
@@ -22,7 +26,9 @@
       "explicit": true,
       "evidence_class": "nominally_supported",
       "evidence_rationale": "The candidate test exercises prorate (covering the round() call) but its asserted result (15.0) is a whole number, so a mutant that changes the rounding survives it. A present, relevant test that kills zero mapped mutants.",
-      "candidate_tests": ["test_billing.py::test_half_of_a_month"]
+      "candidate_tests": [
+        "test_billing.py::test_half_of_a_month"
+      ]
     }
   ],
   "gaps": [
@@ -43,6 +49,31 @@
       "description": "Only one input (15 of 30 days) is exercised, with no boundaries (0 days, a full month), so a violation at those boundaries would pass - partial coverage, acceptance only with that caveat",
       "obligation_id": "charge-days-used",
       "severity": "low"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-hard-coded-thirty-day-month",
+      "obligation_id": "daily-rate",
+      "type": "other",
+      "description": "The daily rate divides the monthly price by a hard-coded 30 rather than by days_in_month.",
+      "killed_by": []
+    },
+    {
+      "id": "d-days-used-ignored",
+      "obligation_id": "charge-days-used",
+      "type": "scope_too_narrow",
+      "description": "The charge ignores days_used and returns the full monthly price.",
+      "killed_by": [
+        "test_billing.py::test_half_of_a_month"
+      ]
+    },
+    {
+      "id": "d-result-not-rounded",
+      "obligation_id": "round-2",
+      "type": "qualifier_ignored",
+      "description": "The result is returned without rounding to two decimals.",
+      "killed_by": []
     }
   ]
 }

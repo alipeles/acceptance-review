@@ -6,7 +6,9 @@
       "explicit": true,
       "evidence_class": "nominally_supported",
       "evidence_rationale": "The candidate test exercises amortize (in the changed code, lifts coverage) but asserts only the list length and that values are positive; it references nothing about equality, so a mutant that makes the payments unequal survives it. A present, relevant test that kills zero mapped mutants.",
-      "candidate_tests": ["test_loan.py::test_returns_a_payment_for_each_month"]
+      "candidate_tests": [
+        "test_loan.py::test_returns_a_payment_for_each_month"
+      ]
     },
     {
       "id": "one-per-month",
@@ -14,7 +16,9 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "The test asserts len(schedule)==12 for a 12-month loan, which kills any wrong-count mutant.",
-      "candidate_tests": ["test_loan.py::test_returns_a_payment_for_each_month"]
+      "candidate_tests": [
+        "test_loan.py::test_returns_a_payment_for_each_month"
+      ]
     },
     {
       "id": "fully-amortizing",
@@ -22,7 +26,9 @@
       "explicit": true,
       "evidence_class": "nominally_supported",
       "evidence_rationale": "The candidate test exercises amortize but never asserts the payment amounts or that they pay off the loan, so a wrong-payment-formula mutant survives it. A present, relevant test that kills zero mapped mutants.",
-      "candidate_tests": ["test_loan.py::test_returns_a_payment_for_each_month"]
+      "candidate_tests": [
+        "test_loan.py::test_returns_a_payment_for_each_month"
+      ]
     }
   ],
   "gaps": [
@@ -37,6 +43,31 @@
       "description": "The test never asserts the payment amounts or that they pay off the loan, so a wrong payment formula would pass",
       "obligation_id": "fully-amortizing",
       "severity": "medium"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-payments-not-equal",
+      "obligation_id": "equal-payments",
+      "type": "other",
+      "description": "The schedule varies the payment from month to month instead of returning a list of equal payments.",
+      "killed_by": []
+    },
+    {
+      "id": "d-one-entry-short",
+      "obligation_id": "one-per-month",
+      "type": "other",
+      "description": "The schedule has one entry fewer than the number of months requested.",
+      "killed_by": [
+        "test_loan.py::test_returns_a_payment_for_each_month"
+      ]
+    },
+    {
+      "id": "d-interest-ignored",
+      "obligation_id": "fully-amortizing",
+      "type": "other",
+      "description": "The payment is principal divided by months, ignoring interest entirely, so the schedule does not pay the loan off.",
+      "killed_by": []
     }
   ]
 }

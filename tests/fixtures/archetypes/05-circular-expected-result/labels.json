@@ -6,7 +6,9 @@
       "explicit": true,
       "evidence_class": "nominally_supported",
       "evidence_rationale": "The candidate test is present and targets order_total, but its expected value is derived from the same production helper (_apply_tax), so it can never fail - every mapped mutant survives (structurally unfailable / circular).",
-      "candidate_tests": ["test_orders.py::test_total_applies_tax"]
+      "candidate_tests": [
+        "test_orders.py::test_total_applies_tax"
+      ]
     },
     {
       "id": "round-2",
@@ -14,7 +16,9 @@
       "explicit": true,
       "evidence_class": "nominally_supported",
       "evidence_rationale": "The same circular test can never fail, so a rounding mutant survives it too. A present, relevant test that kills zero mapped mutants.",
-      "candidate_tests": ["test_orders.py::test_total_applies_tax"]
+      "candidate_tests": [
+        "test_orders.py::test_total_applies_tax"
+      ]
     }
   ],
   "gaps": [
@@ -29,6 +33,31 @@
       "description": "The same circular test can never fail, so it does not establish the two-decimal rounding either",
       "obligation_id": "round-2",
       "severity": "medium"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-tax-helper-wrong",
+      "obligation_id": "add-tax",
+      "type": "other",
+      "description": "The tax helper multiplies the subtotal by tax_rate instead of by (1 + tax_rate), so the total is the tax rather than the taxed subtotal.",
+      "killed_by": []
+    },
+    {
+      "id": "d-total-skips-tax",
+      "obligation_id": "add-tax",
+      "type": "not_wired",
+      "description": "The total returns the subtotal without applying tax at all.",
+      "killed_by": [
+        "test_orders.py::test_total_applies_tax"
+      ]
+    },
+    {
+      "id": "d-total-not-rounded",
+      "obligation_id": "round-2",
+      "type": "qualifier_ignored",
+      "description": "The total is returned without rounding to two decimals.",
+      "killed_by": []
     }
   ]
 }

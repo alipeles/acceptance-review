@@ -6,7 +6,9 @@
       "explicit": true,
       "evidence_class": "nominally_supported",
       "evidence_rationale": "The candidate test targets coupon but mocks rate_for to a constant, so a mutant that selects the wrong rate for the date survives it. A present, relevant test that kills zero mapped mutants (behavior mocked out).",
-      "candidate_tests": ["test_coupon.py::test_coupon_uses_selected_rate"]
+      "candidate_tests": [
+        "test_coupon.py::test_coupon_uses_selected_rate"
+      ]
     },
     {
       "id": "compute-coupon",
@@ -14,7 +16,9 @@
       "explicit": true,
       "evidence_class": "partially_supported",
       "evidence_rationale": "The test asserts nominal times rate (1000*0.05=50), so a wrong-multiply mutant is killed; but rounding to four decimals is not exercised, so those mutants survive - kills some, misses some.",
-      "candidate_tests": ["test_coupon.py::test_coupon_uses_selected_rate"]
+      "candidate_tests": [
+        "test_coupon.py::test_coupon_uses_selected_rate"
+      ]
     }
   ],
   "gaps": [
@@ -29,6 +33,31 @@
       "description": "The multiplication is checked (1000*0.05=50) but rounding to four decimals is never exercised, so a wrong rounding would pass - partial coverage, acceptance only with that caveat",
       "obligation_id": "compute-coupon",
       "severity": "low"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-rate-not-selected-by-date",
+      "obligation_id": "select-rate",
+      "type": "qualifier_ignored",
+      "description": "The rate is fetched for a fixed date rather than for the date given to the function, so the date-based selection never happens.",
+      "killed_by": []
+    },
+    {
+      "id": "d-coupon-adds-rate",
+      "obligation_id": "compute-coupon",
+      "type": "other",
+      "description": "The coupon adds the rate to the nominal instead of multiplying by it.",
+      "killed_by": [
+        "test_coupon.py::test_coupon_uses_selected_rate"
+      ]
+    },
+    {
+      "id": "d-coupon-not-rounded",
+      "obligation_id": "compute-coupon",
+      "type": "qualifier_ignored",
+      "description": "The coupon is returned without rounding to four decimals.",
+      "killed_by": []
     }
   ]
 }

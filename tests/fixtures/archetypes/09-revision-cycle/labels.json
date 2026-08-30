@@ -6,7 +6,10 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "Covered by both tests; 2.3->2 together with the tie cases pins nearest-integer rounding.",
-      "candidate_tests": ["test_rounding.py::test_rounds_to_nearest", "test_rounding.py::test_ties_round_to_even"]
+      "candidate_tests": [
+        "test_rounding.py::test_rounds_to_nearest",
+        "test_rounding.py::test_ties_round_to_even"
+      ]
     },
     {
       "id": "ties-to-even",
@@ -14,8 +17,31 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "test_ties_round_to_even asserts 2.5->2 and 3.5->4, which distinguishes banker's rounding from round-half-up.",
-      "candidate_tests": ["test_rounding.py::test_ties_round_to_even"]
+      "candidate_tests": [
+        "test_rounding.py::test_ties_round_to_even"
+      ]
     }
   ],
-  "gaps": []
+  "gaps": [],
+  "defects": [
+    {
+      "id": "d-always-rounds-up",
+      "obligation_id": "round-nearest",
+      "type": "other",
+      "description": "Every value is rounded up rather than to the nearest integer.",
+      "killed_by": [
+        "test_rounding.py::test_rounds_to_nearest",
+        "test_rounding.py::test_ties_round_to_even"
+      ]
+    },
+    {
+      "id": "d-ties-round-up",
+      "obligation_id": "ties-to-even",
+      "type": "boundary_wrong_side",
+      "description": "An exact tie rounds away from zero rather than to the even neighbour.",
+      "killed_by": [
+        "test_rounding.py::test_ties_round_to_even"
+      ]
+    }
+  ]
 }

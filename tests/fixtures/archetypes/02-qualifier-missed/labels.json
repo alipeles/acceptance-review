@@ -6,7 +6,10 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "Both tests assert the ISO code for a symbol prefix (USD, EUR); a wrong mapping would fail.",
-      "candidate_tests": ["test_pricing.py::test_dollar_symbol", "test_pricing.py::test_euro_symbol"]
+      "candidate_tests": [
+        "test_pricing.py::test_dollar_symbol",
+        "test_pricing.py::test_euro_symbol"
+      ]
     },
     {
       "id": "parse-amount",
@@ -14,7 +17,10 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "Both tests assert the exact parsed amount (12.50, 3.00); a wrong parse would fail.",
-      "candidate_tests": ["test_pricing.py::test_dollar_symbol", "test_pricing.py::test_euro_symbol"]
+      "candidate_tests": [
+        "test_pricing.py::test_dollar_symbol",
+        "test_pricing.py::test_euro_symbol"
+      ]
     },
     {
       "id": "backward-compat",
@@ -31,6 +37,41 @@
       "description": "Plain numeric strings without a symbol now raise (the first digit is stripped and used as a symbol lookup) instead of parsing and defaulting to USD; the backward-compatibility qualifier is unimplemented and untested",
       "obligation_id": "backward-compat",
       "severity": "high"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-symbol-maps-to-wrong-code",
+      "obligation_id": "parse-symbol",
+      "type": "other",
+      "description": "A recognised symbol maps to the wrong ISO code, for instance EUR returned as USD.",
+      "killed_by": [
+        "test_pricing.py::test_euro_symbol"
+      ]
+    },
+    {
+      "id": "d-amount-parsed-with-symbol",
+      "obligation_id": "parse-amount",
+      "type": "other",
+      "description": "The amount is parsed from the whole string including the leading symbol, so conversion to float raises ValueError.",
+      "killed_by": [
+        "test_pricing.py::test_dollar_symbol",
+        "test_pricing.py::test_euro_symbol"
+      ]
+    },
+    {
+      "id": "d-plain-numeric-string-rejected",
+      "obligation_id": "backward-compat",
+      "type": "not_wired",
+      "description": "A plain numeric string with no symbol has its first digit treated as a currency symbol, so the lookup raises KeyError and plain strings stop working.",
+      "killed_by": []
+    },
+    {
+      "id": "d-plain-numeric-defaults-wrong",
+      "obligation_id": "backward-compat",
+      "type": "qualifier_ignored",
+      "description": "A plain numeric string parses but is given a currency other than USD.",
+      "killed_by": []
     }
   ]
 }

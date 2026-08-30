@@ -6,7 +6,9 @@
       "explicit": true,
       "evidence_class": "strongly_supported",
       "evidence_rationale": "The test asserts apply_discount(100,10)==90.0; a wrong discount would fail.",
-      "candidate_tests": ["test_cart.py::test_apply_discount"]
+      "candidate_tests": [
+        "test_cart.py::test_apply_discount"
+      ]
     },
     {
       "id": "leave-existing",
@@ -14,7 +16,9 @@
       "explicit": true,
       "evidence_class": "partially_supported",
       "evidence_rationale": "The test asserts checkout's default still returns 5.0, so a mutant that changes the default output is killed; but the actual unrequested change (added tax_rate parameter and rounding) leaves the default path unchanged, so that mutant survives - kills some, misses some.",
-      "candidate_tests": ["test_cart.py::test_checkout_default_unchanged"]
+      "candidate_tests": [
+        "test_cart.py::test_checkout_default_unchanged"
+      ]
     }
   ],
   "gaps": [
@@ -31,6 +35,33 @@
       "description": "checkout gained a tax_rate parameter and rounding; no obligation asked for a checkout change, only apply_discount",
       "file": "cart.py",
       "disposition": "risky"
+    }
+  ],
+  "defects": [
+    {
+      "id": "d-discount-increases-total",
+      "obligation_id": "apply-discount",
+      "type": "condition_inverted",
+      "description": "The discount is added to the total rather than subtracted from it.",
+      "killed_by": [
+        "test_cart.py::test_apply_discount"
+      ]
+    },
+    {
+      "id": "d-discount-not-rounded",
+      "obligation_id": "apply-discount",
+      "type": "qualifier_ignored",
+      "description": "The discounted total is returned without rounding to two decimals.",
+      "killed_by": []
+    },
+    {
+      "id": "d-checkout-default-moves",
+      "obligation_id": "leave-existing",
+      "type": "prior_behavior_altered",
+      "description": "The existing checkout function returns a different value for a caller that passes no tax rate, so pre-existing behaviour changes.",
+      "killed_by": [
+        "test_cart.py::test_checkout_default_unchanged"
+      ]
     }
   ]
 }
