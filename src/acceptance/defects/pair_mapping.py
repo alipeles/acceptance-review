@@ -192,31 +192,50 @@ def _key(client: ModelClient, defect: Defect, test: DiscoveredTest) -> str:
     )
 
 
-def _subject(batch_pairs: list[Pair]) -> str:
-    """This batch's own content: each test, and the defects offered with it.
+def _defects_block(batch_pairs: list[Pair]) -> Block:
+    """The defects this call judges against — the part that does not move.
 
-    Rendered test-major because the response is test-major, so the model reads
-    the request in the order it has to answer in. Every defect is restated under
-    each test it is paired with rather than listed once and cross-referenced: the
-    duplication is input tokens, which the caching discount does cover, and it
-    removes the indirection that a shedding model is most likely to drop.
+    Its own block, ahead of the per-test subject, because a provider reuses a
+    PREFIX: it matches from the first byte and stops at the first difference.
+    This list is identical across every call carrying the same defect chunk —
+    166 of the 332 calls #314's Gate 2 run issued — while each call's test source
+    is unique to it. Written into the subject alongside the test, as it was
+    first, the shared list sat behind the unique source and could be reused by
+    nothing: that run recorded a 0.0% cached-prompt share against the mapping
+    stage's 38.2%.
+
+    `evidence/mapping.py::_obligations_block` is the same move for the same
+    reason, and `request_blocks.py` exists to make the ordering automatic.
+    """
+    lines = ["## Defects", ""]
+    for defect in sorted(
+        {pair.defect.id: pair.defect for pair in batch_pairs}.values(), key=lambda d: d.id
+    ):
+        lines.append(f"- id={defect.id} [{defect.type.value}]: {defect.description}")
+    return Block(BlockKind.DEFECTS, "\n".join(lines))
+
+
+def _subject(batch_pairs: list[Pair]) -> str:
+    """This call's own content: the test, and which defects are offered with it.
+
+    The defects are NAMED here and described above. That split is what lets the
+    description list be shared; the names still appear beside the test so the
+    model is told exactly which of the listed defects this test is being judged
+    against, rather than left to infer that it is all of them.
     """
     by_test: dict[str, list[Pair]] = {}
     for pair in batch_pairs:
         by_test.setdefault(pair.test.test_id, []).append(pair)
 
-    lines = ["## Pairs to judge", ""]
+    lines = ["## Tests to judge", ""]
     for test_id in sorted(by_test):
         pairs = by_test[test_id]
+        offered = ", ".join(sorted(pair.defect.id for pair in pairs))
         lines.append(f"### test {test_id}")
         lines.append("")
         lines.append(pairs[0].test.source or "(source unavailable)")
         lines.append("")
-        lines.append("Defects offered with this test:")
-        for pair in sorted(pairs, key=lambda p: p.defect.id):
-            lines.append(
-                f"- id={pair.defect.id} [{pair.defect.type.value}]: {pair.defect.description}"
-            )
+        lines.append(f"Judge this test against these defects: {offered}")
         lines.append("")
     return "\n".join(lines)
 
@@ -272,6 +291,7 @@ def _ask(
     """
     messages = assemble(
         [
+            _defects_block(batch_pairs),
             Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
             Block(BlockKind.SUBJECT, _subject(batch_pairs)),
         ]

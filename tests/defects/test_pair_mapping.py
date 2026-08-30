@@ -784,3 +784,40 @@ def test_the_answer_about_a_pair_carries_only_the_pair_the_verdict_and_a_reason(
     assert set(per_test) == {"test_id", "defects"}
     per_pair = per_test["defects"]["items"]["properties"]
     assert set(per_pair) == {"defect_id", "fails", "reason"}
+
+
+def test_the_defect_list_sits_in_the_shared_prefix_of_every_call(tmp_path):
+    """The repeated part must be reusable, not stranded behind the unique part.
+
+    A provider reuses a PREFIX — it matches from the first byte and stops at the
+    first difference. The defect descriptions are identical across every call of
+    a run; each call's test source is unique to it. Written into the subject
+    beside the test, as this stage did first, the shared list sat behind the
+    unique source and could be reused by nothing: #314's Gate 2 run recorded a
+    0.0% cached-prompt share against the mapping stage's 38.2%.
+
+    The pipeline-wide check for this (`test_no_request_places_content_unique_to_it
+    _ahead_of_content_it_shares`) did not catch it, because at fixture scale the
+    stage has one defect and one test and the misplaced block is a single line.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    judge = _Judge()
+
+    _judged(
+        judge,
+        [_defect_set("divides by 30", "ignores days")],
+        [_test("test_half_month"), _test("test_full_month")],
+        repo,
+    )
+
+    assert judge.calls == 2
+    first, second = (request["prompt"] for request in judge.requests)
+
+    shared = first[: next((i for i, (a, b) in enumerate(zip(first, second)) if a != b), len(first))]
+    # Both descriptions, and the instructions, land inside the common prefix.
+    assert "divides by 30" in shared
+    assert "ignores days" in shared
+    assert "would THIS TEST fail" in shared
+    # And the thing that differs — each call's own test — is outside it.
+    assert "test_half_month" not in shared
+    assert "test_full_month" not in shared

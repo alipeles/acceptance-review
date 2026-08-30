@@ -109,6 +109,19 @@ class BlockKind(Enum):
     #: request that does not also carry something above it.
     OBLIGATIONS = 20
 
+    #: The enumerated defects a pair-mapping call is judging tests against
+    #: (#314). Invariant across that stage's calls for as long as the open defect
+    #: set is — on a first run, every call carries the same list.
+    #:
+    #: By the counting rule above this belongs higher than `OBLIGATIONS`: pair
+    #: mapping issued 332 of one run's 375 requests, where the obligation list
+    #: rode on 14. It sits here instead because **no request carries both**, so
+    #: its rank relative to the kinds above changes nothing, and leaving them
+    #: undisturbed is worth more than a placement that is only notionally
+    #: correct. What the rank must do is put it ahead of `INSTRUCTIONS` and
+    #: `SUBJECT`, and it does.
+    DEFECTS = 25
+
     #: The stage's own instructions — what used to be its `system` message.
     #: Shared by every call *that stage* makes and by no other stage's.
     INSTRUCTIONS = 30
