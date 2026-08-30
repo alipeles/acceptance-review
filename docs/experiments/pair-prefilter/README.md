@@ -39,8 +39,11 @@ enough to use.
   writes `findings.json`.
 - `compare_models.py` — reads `findings.json` and ranks the configurations,
   reporting each at zero, one and three kills lost.
-- `score-output.log`, `model-comparison.log` — the runs that produced the
-  findings, kept as their evidence.
+- `normalize.py` — per-test score normalisation (z-score, percentile rank,
+  CSLS), scored the same way; writes `findings-normalized.json`. Rejected; see
+  the dated section in `FINDINGS.md`.
+- `score-output.log`, `model-comparison.log`, `normalize-output.log` — the runs
+  that produced the findings, kept as their evidence.
 - `verdicts.json.gz` — the 12,450 recorded verdicts, committed. The only part
   of the run that cannot be re-derived without paying for it again.
 
@@ -156,9 +159,19 @@ minimum statistic, set by the single weakest kill, and it ranked
 at 27.1%. Adoption is decided on the lossless figure; comparison is not.
 `compare_models.py` prints zero, one and three kills lost for this reason.
 
-**11. DR-259 is a caution, not a precedent.** Its held-out check found no
-threshold that separated cleanly. But it answered a different and harder
+**11. Evaluate a loss model on its own sweep, never at another model's
+threshold.** The weaker "a defect is lost only when every one of its kills goes"
+model was first read off the pair-level lossless threshold, where no kill is
+dropped at all, so no defect could have lost its last one and the answer was 0
+by construction. It says nothing. `normalize.py::defect_level` sweeps it in its
+own right.
+
+**12. DR-259 transferred further than expected.** It is the decision record for
+the obligation-linking prefilter, and it answered a different and harder
 question — whether two obligations state the same requirement, a
-semantic-equivalence judgement — where this asks the much cruder "is this test
-even about this code". The difficulty does not transfer directly. Read DR-259's
-*Held-out check* section before assuming either way.
+semantic-equivalence judgement — where this asks the cruder "is this test even
+about this code". So it was treated as a caution rather than a precedent, and
+both of its warnings were re-measured here rather than assumed. Both came back
+the same way: its trap 6, that z-score, CSLS and mutual rank all degrade,
+reproduced on the configuration this experiment recommends. Read DR-259's
+*Held-out check* section before assuming the remaining hold-out will be kinder.

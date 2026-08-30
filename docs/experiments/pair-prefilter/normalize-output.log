@@ -1,0 +1,205 @@
+corpus: 75 defects x 166 tests = 12450 pairs, 127 kills
+
+
+========================================================================
+== code-3 asymmetric ==
+
+per-test similarity baselines, description filter (raw cosine):
+  highest mean:
+    mean  0.557  sd 0.053  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+    mean  0.542  sd 0.061  tests/defects/test_pair_mapping.py::test_the_pipeline_really_judges_pairs
+    mean  0.531  sd 0.061  tests/defects/test_pair_mapping.py::test_judging_pairs_changes_no_verdict_rating_or_recommendation
+    mean  0.525  sd 0.080  tests/defects/test_pair_mapping.py::test_the_verdicts_survive_a_round_trip_through_persisted_state
+    mean  0.524  sd 0.094  tests/defects/test_pair_mapping.py::test_the_report_shows_implied_support_beside_the_current_rating
+  lowest mean:
+    mean  0.337  sd 0.063  tests/requirement/test_carry_forward.py::test_a_run_identifier_appears_in_no_rendered_report
+    mean  0.329  sd 0.062  tests/test_supplied_ids.py::test_the_schema_name_is_preserved_so_the_request_key_stays_meaningful
+    mean  0.316  sd 0.065  tests/requirement/test_carry_forward.py::test_a_ledger_file_is_never_rewritten
+    mean  0.315  sd 0.062  tests/requirement/test_carry_forward.py::test_the_ledger_is_not_written_under_the_cache
+    mean  0.311  sd 0.050  tests/fixtures/archetypes/08-unrequested-change-separable/head/test_report.py::test_low_stock_report_filters_by_threshold
+  spread of per-test means: 0.311 to 0.557
+
+-- raw --
+  description  description vs test source @ 0.321 excludes  10.2% ( 1264 of 12450), keeps 127/127 kills (100.0%)
+  region       region vs test source @ 0.475      excludes  10.6% ( 1325 of 12450), keeps 127/127 kills (100.0%)
+  union @ description 0.369, region 0.512 excludes  14.6% ( 1815 of 12450), keeps 127/127 kills (100.0%)
+  kills setting the ceiling (description filter), lowest first:
+      0.3208  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+      0.3417  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+      0.3530  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path
+      0.3694  tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_issues_no_decompose_call
+              vs reuse-verdict-only-when-test-source-unchanged/prior-verdicts-not-loaded-into-pair-carry
+      0.3697  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs pair-judgement-unless-path-absent/pair-verdicts-not-carried-through-ledger-entry
+      0.3714  tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_issues_no_decompose_call
+              vs reuse-entitled-verdicts-on-continuation/pair-verdicts-not-carried-into-review-prior
+  weaker loss model (a defect is lost only when every one of its kills goes): excludes 61.1% while dropping 22 of 127 kills, 46 defects all still covered
+
+-- z per test --
+  description  description vs test source @ -1.322 excludes   7.8% (  976 of 12450), keeps 127/127 kills (100.0%)
+  region       region vs test source @ -2.638     excludes   1.3% (  159 of 12450), keeps 127/127 kills (100.0%)
+  union @ description 0.410, region -0.941 excludes  11.1% ( 1376 of 12450), keeps 127/127 kills (100.0%)
+  kills setting the ceiling (description filter), lowest first:
+     -1.1852  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+     -0.8838  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+     -0.5872  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+     -0.5162  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path
+     -0.4309  tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry
+              vs verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path
+     -0.3682  tests/defects/test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+  weaker loss model (a defect is lost only when every one of its kills goes): excludes 72.8% while dropping 27 of 127 kills, 46 defects all still covered
+
+-- rank per test --
+  description  description vs test source @ 0.100 excludes  10.7% ( 1328 of 12450), keeps 127/127 kills (100.0%)
+  region       region vs test source @ 0.000      excludes   0.0% (    0 of 12450), keeps 127/127 kills (100.0%)
+  union @ description 0.135, region 1.000 excludes  11.2% ( 1395 of 12450), keeps 127/127 kills (100.0%)
+  kills setting the ceiling (description filter), lowest first:
+      0.1216  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+      0.1351  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+      0.2838  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path
+      0.3243  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+      0.3243  tests/defects/test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+      0.3514  tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry
+              vs verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path
+  weaker loss model (a defect is lost only when every one of its kills goes): excludes 69.3% while dropping 23 of 127 kills, 46 defects all still covered
+
+-- csls --
+  description  description vs test source @ -0.715 excludes  18.2% ( 2268 of 12450), keeps 127/127 kills (100.0%)
+  region       region vs test source @ -0.820     excludes   7.2% (  896 of 12450), keeps 127/127 kills (100.0%)
+  union @ description -0.708, region -0.614 excludes  18.0% ( 2247 of 12450), keeps 127/127 kills (100.0%)
+  kills setting the ceiling (description filter), lowest first:
+     -0.7077  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+     -0.6934  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+     -0.6927  tests/defects/test_pair_mapping.py::test_the_report_shows_implied_support_beside_the_current_rating
+              vs pair-judgement-unless-path-absent/pair-judgement-results-not-rendered-in-review
+     -0.6732  tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged
+              vs verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-loaded-from-ledger
+     -0.6724  tests/defects/test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+     -0.6693  tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged
+              vs reuse-entitled-verdicts-on-continuation/pair-verdicts-not-loaded-on-continue
+  weaker loss model (a defect is lost only when every one of its kills goes): excludes 28.0% while dropping 1 of 127 kills, 46 defects all still covered
+
+========================================================================
+== code-4 both sides ==
+
+per-test similarity baselines, description filter (raw cosine):
+  highest mean:
+    mean  0.229  sd 0.132  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    mean  0.219  sd 0.069  tests/defects/test_pair_mapping.py::test_judging_pairs_changes_no_verdict_rating_or_recommendation
+    mean  0.208  sd 0.077  tests/defects/test_pair_mapping.py::test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving
+    mean  0.183  sd 0.087  tests/defects/test_pair_mapping.py::test_adding_one_test_judges_only_that_tests_pairs
+    mean  0.180  sd 0.065  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+  lowest mean:
+    mean -0.004  sd 0.077  tests/test_llm.py::test_request_key_distinguishes_prompt_and_schema
+    mean -0.011  sd 0.078  tests/test_report.py::test_test_citations_name_the_test_not_just_the_file
+    mean -0.018  sd 0.070  tests/test_llm.py::test_request_key_distinguishes_call_parameters
+    mean -0.020  sd 0.061  tests/fixtures/archetypes/08-unrequested-change-separable/head/test_report.py::test_low_stock_report_filters_by_threshold
+    mean -0.023  sd 0.048  tests/test_cli.py::test_run_check_rejects_a_revision_missing_from_the_given_repo
+  spread of per-test means: -0.023 to 0.229
+
+-- raw --
+  description  description vs test source @ 0.018 excludes  22.4% ( 2785 of 12450), keeps 127/127 kills (100.0%)
+  region       region vs test source @ 0.246      excludes   5.9% (  735 of 12450), keeps 127/127 kills (100.0%)
+  union @ description 0.027, region 0.717 excludes  22.0% ( 2740 of 12450), keeps 127/127 kills (100.0%)
+  kills setting the ceiling (description filter), lowest first:
+      0.0273  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-change-to-test-evidence-workflow/pair-verdicts-are-added-to-ledger-and-review-state
+      0.0349  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+      0.0627  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+              vs no-way-of-failing-production/pair-verdicts-not-fed-into-ledger-or-review-state-consumption
+      0.0743  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-way-of-failing-production/pair-verdicts-not-fed-into-ledger-or-review-state-consumption
+      0.0834  tests/test_llm.py::test_request_key_distinguishes_call_parameters
+              vs request-shape-choice-excluded/pair-shape-choice-added
+      0.0861  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+  weaker loss model (a defect is lost only when every one of its kills goes): excludes 64.3% while dropping 6 of 127 kills, 46 defects all still covered
+
+-- z per test --
+  description  description vs test source @ -1.237 excludes   9.4% ( 1165 of 12450), keeps 127/127 kills (100.0%)
+  region       region vs test source @ -1.091     excludes  11.1% ( 1377 of 12450), keeps 127/127 kills (100.0%)
+  union @ description 2.817, region -0.931 excludes  11.2% ( 1398 of 12450), keeps 127/127 kills (100.0%)
+  kills setting the ceiling (description filter), lowest first:
+     -1.0939  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+     -0.8141  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+              vs no-way-of-failing-production/pair-verdicts-not-fed-into-ledger-or-review-state-consumption
+     -0.6037  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-change-to-test-evidence-workflow/pair-verdicts-are-added-to-ledger-and-review-state
+     -0.2507  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+     -0.2467  tests/defects/test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+              vs no-change-to-test-evidence-workflow/pair-verdicts-are-added-to-ledger-and-review-state
+     -0.0938  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-way-of-failing-production/pair-verdicts-not-fed-into-ledger-or-review-state-consumption
+  weaker loss model (a defect is lost only when every one of its kills goes): excludes 73.2% while dropping 13 of 127 kills, 46 defects all still covered
+
+-- rank per test --
+  description  description vs test source @ 0.150 excludes  16.0% ( 1992 of 12450), keeps 127/127 kills (100.0%)
+  region       region vs test source @ 0.075      excludes  12.0% ( 1497 of 12450), keeps 127/127 kills (100.0%)
+  union @ description 1.000, region 0.122 excludes  15.5% ( 1931 of 12450), keeps 127/127 kills (100.0%)
+  kills setting the ceiling (description filter), lowest first:
+      0.1622  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+      0.1892  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+              vs no-way-of-failing-production/pair-verdicts-not-fed-into-ledger-or-review-state-consumption
+      0.3514  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-change-to-test-evidence-workflow/pair-verdicts-are-added-to-ledger-and-review-state
+      0.4189  tests/defects/test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+              vs no-change-to-test-evidence-workflow/pair-verdicts-are-added-to-ledger-and-review-state
+      0.5000  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+      0.5270  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-way-of-failing-production/pair-verdicts-not-fed-into-ledger-or-review-state-consumption
+  weaker loss model (a defect is lost only when every one of its kills goes): excludes 69.3% while dropping 12 of 127 kills, 46 defects all still covered
+
+-- csls --
+  description  description vs test source @ -0.545 excludes   2.1% (  258 of 12450), keeps 127/127 kills (100.0%)
+  region       region vs test source @ -0.802     excludes   5.5% (  683 of 12450), keeps 127/127 kills (100.0%)
+  union @ description -0.277, region -0.801 excludes   4.9% (  616 of 12450), keeps 127/127 kills (100.0%)
+  kills setting the ceiling (description filter), lowest first:
+     -0.5433  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+     -0.4699  tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state
+     -0.4476  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-change-to-test-evidence-workflow/pair-verdicts-are-added-to-ledger-and-review-state
+     -0.4312  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-fed-into-ledger-entry
+     -0.4200  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+              vs verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path
+     -0.4142  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+              vs byte-identical-review-state-and-report-output/pair-verdicts-not-persisted-in-ledger-entry
+  weaker loss model (a defect is lost only when every one of its kills goes): excludes 71.0% while dropping 31 of 127 kills, 46 defects all still covered
+
+========================================================================
+union, every variant, all 127 kills kept:
+  code-3 asymmetric
+    raw               14.6%
+    z per test        11.1%
+    rank per test     11.2%
+    csls              18.0%
+  code-4 both sides
+    raw               22.0%
+    z per test        11.2%
+    rank per test     15.5%
+    csls               4.9%
+
+wrote /Users/alipeles1/GoogleDrive/code/AI_acceptance_tool/docs/experiments/pair-prefilter/findings-normalized.json

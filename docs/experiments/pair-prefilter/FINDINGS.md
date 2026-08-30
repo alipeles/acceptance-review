@@ -158,3 +158,110 @@ Do not adopt a prefilter yet, but stop treating it as closed. Specifically:
    duplication traces upstream to obligations that state the same requirement,
    which is #210, over-merging, and #242, where one wrong link stops a group of
    duplicate obligations from merging.
+
+---
+
+# 2026-08-30 — per-test score normalisation
+
+**Rejected.** Normalising each pair's score against its own test's distribution
+lowers the ceiling on the configuration this experiment recommends, from 22.0%
+to at best 15.5%. The premise behind the hypothesis is true — per-test baselines
+really do differ — but correcting for it does not help, and the diagnostic says
+why: the kills that set the ceiling are the same ones before and after, because
+they are low *relative to their own test's baseline* too.
+
+Run by `normalize.py`, output in `normalize-output.log`, raw numbers in
+`findings-normalized.json`. No new embedding calls: every vector came from the
+cache, and the pinned `DEFECT_TEXT` / `TEST_TEXT` / `REGION_TEXT` are untouched.
+
+## The comparison
+
+Union, rejecting a pair only when every filter rejects it, all 127 kills kept:
+
+| variant | `voyage-code-3` asymmetric | `voyage-code-4` both sides |
+|---|---|---|
+| raw cosine | 14.6% | **22.0%** |
+| z-score per test | 11.1% | 11.2% |
+| percentile rank per test | 11.2% | 15.5% |
+| CSLS, top-10 both sides | 18.0% | 4.9% |
+
+**CSLS is the only variant that ever beats raw, and it does so on one
+configuration while losing 17 points on the other.** A correction that helps by
+3.4 points here and hurts by 17.1 points there is not a real effect on 127
+kills; it is the fitted threshold landing differently in two distributions.
+
+This reproduces **DR-259's trap 6**, recorded in
+`docs/experiments/obligation-dedup/README.md`: z-score, CSLS and mutual rank were
+measured on the obligation-linking prefilter and all degraded. That was a
+different question, so it was worth re-measuring — but the answer came back the
+same for the configuration that matters.
+
+## The premise is true, and it is not the cause
+
+Per-test baselines vary substantially. On `voyage-code-3` the per-test mean
+similarity runs from **0.311 to 0.557** while the typical within-test standard
+deviation is about 0.06 — so the spread between tests is roughly four times the
+spread within one. On `voyage-code-4` the means run from −0.023 to 0.229. The
+hypothesis was right that one global cut sits at a different place in each
+test's distribution.
+
+It is wrong about the consequence. The hypothesis predicted that normalising
+would move the ceiling-setting kills to a new population. It does not. Before
+and after, the ceiling is set by the same tests — `test_carry_forward.py`'s
+carry-forward tests, `test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte`,
+and `test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte`.
+
+The z-scores say why. The lowest-scoring kill sits at **z = −1.19** on
+`voyage-code-3` and **z = −1.09** on `voyage-code-4`: more than a standard
+deviation below its *own test's* mean. These pairs are not low because their
+test has a low baseline. They are low against their own baseline as well. The
+judge says the test kills the defect, and the text similarity says the test
+resembles that defect *less* than it resembles the average defect.
+
+No monotone per-test transform can rescue that, which is what the measurement
+shows. It is the same wall the earlier sections hit from a different direction:
+a broad end-to-end test kills a defect through a mechanism the text does not
+carry.
+
+## Secondary readout — a different loss model, not a headline
+
+Under a weaker guarantee — a defect counts as lost only when **every** one of
+its killing tests is excluded — the numbers are far larger. `voyage-code-4` raw
+excludes **64.3%** of pairs while dropping 6 of 127 kills and leaving all 46
+covered defects still covered.
+
+**Do not read that as a 64% saving.** Two things about it:
+
+- **22 of the 46 covered defects have exactly one killing test.** For nearly
+  half of them the weaker model is identical to the strict one — drop that pair
+  and the defect is uncovered. The 64.3% works here because the six dropped
+  kills happened to belong to defects with spares, which is a property of this
+  run's kill distribution and not a property the filter enforces.
+- It is a different product guarantee, and which one is correct is a design
+  question for #316, the issue that flips the pair stage from shadow into the
+  verdict. If a rating only needs one killing test per defect, the weaker model
+  is the right target; if strength depends on *how many* tests kill a defect,
+  dropping kills moves ratings. That is not settled and this experiment does not
+  settle it.
+
+## What normalisation would cost even if it had worked
+
+The statistics are per test over one run's defects. In production the defect set
+changes every run, so `mean_t` and `std_t` would be recomputed each time from
+embeddings the filter already needs — no extra call, which is why the approach
+would have been cheap. But it also means **a fitted threshold does not transfer
+as a constant**: the units move when the defect set moves. That is strictly
+worse than a raw cosine cut, which at least has a fixed scale. Normalisation
+needed to win clearly to be worth that, and it does not win at all.
+
+## Recommendation
+
+Do not normalise. Keep the raw cosine on `voyage-code-4` at 22.0% as the
+standing figure, and leave the hold-out against #315's archetype labels as the
+measurement that is still missing.
+
+The one thing worth carrying forward from this is the diagnostic, not the
+transform: **the ceiling is set by kills the embedding cannot see at all**, not
+by a scaling artefact. Any further attempt to raise it by reweighting the same
+similarity scores should expect the same wall. Something that changes what is
+compared — not how it is normalised — is the only thing likely to move it.
