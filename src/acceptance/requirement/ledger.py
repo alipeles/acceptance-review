@@ -49,7 +49,7 @@ from pydantic import Field
 
 from acceptance.carry import carry_key as shared_carry_key
 from acceptance.model_base import PersistableModel
-from acceptance.review_state import Disposition, Obligation, OpenQuestion
+from acceptance.review_state import DefectSet, Disposition, Obligation, OpenQuestion
 from acceptance.serialization import canonical_json
 
 DEFAULT_LEDGER_ROOT = Path(".acceptance/ledger")
@@ -184,6 +184,15 @@ class LedgerEntry(PersistableModel):
     calls_issued: int = 0
     derivations: list[RequirementDerivation] = Field(default_factory=list)
     merge_decisions: list[MergeDecision] = Field(default_factory=list)
+    # The defect sets this run enumerated, so `--continue` carries them (#313).
+    # Empty on a `decompose` run, which has no change set and therefore nothing
+    # to enumerate against — and empty on every entry written before #313, which
+    # reads as "nothing to carry" and re-enumerates. That is the conservative
+    # direction, the same one an absent `evidence_carry_key` takes.
+    #
+    # Keyed on obligation TEXT inside each set rather than on its position here,
+    # so a run that renamed an obligation still finds its set.
+    defect_sets: list[DefectSet] = Field(default_factory=list)
 
     def decisions_by_pair(self) -> dict[tuple[str, str], bool]:
         """Every merge decision this run holds, keyed by fingerprint pair."""

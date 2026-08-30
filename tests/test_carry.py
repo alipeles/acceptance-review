@@ -17,6 +17,7 @@ import pytest
 
 from acceptance import carry as shared_carry
 from acceptance.carry import Decision, Refusal, carry_key, decide
+from acceptance.llm import UNKNOWN_STAGE
 from acceptance.requirement import carry as requirement_carry
 from acceptance.requirement.ledger import (
     DECOMPOSE_STAGE_LOGIC_VERSION,
@@ -32,6 +33,7 @@ from acceptance.review_state import (
     RequirementRef,
     TextSpan,
 )
+from tests.support import client_dispatching
 
 CONTROLS = {
     "system_prompt": "you decompose task files",
@@ -203,6 +205,44 @@ def test_decomposition_reaches_its_carry_verdict_through_the_shared_rule(monkeyp
 
     assert calls == ["constraint-01"]
     assert set(plan.carried) == {"constraint-01"}
+
+
+def test_matching_a_reworded_requirement_attributes_its_model_call_to_a_stage():
+    """The wiring, not the scan (#313's Gate 1).
+
+    `plan_carry` reaches into the benchmark harness for `align_obligations` to
+    tell a reworded requirement from a new one. That call named no stage, so
+    every continued run whose requirement text moved grew an `unknown` row in
+    its per-stage cost footer — the one bucket `llm.py` says a review-pipeline
+    call site may never land in (#264). `tests/test_stage_attribution.py` scans
+    for the omission statically; this drives the path that produced it, because
+    a call site can pass `stage=` to a client that never records it.
+    """
+    reworded = "A carried obligation keeps the identifier it was given."
+    registry = [
+        RequirementRef(
+            id="constraint-01",
+            section="constraint",
+            ordinal=1,
+            span=TextSpan(text=reworded, start=0, end=len(reworded)),
+        )
+    ]
+    prior = LedgerEntry(
+        run_id="abc123",
+        stage_logic_version=DECOMPOSE_STAGE_LOGIC_VERSION,
+        derivations=[_derivation(REQUIREMENT_TEXT, "any-key")],
+    )
+    client = client_dispatching(
+        {"_Alignment": {"matches": [{"ground_truth": "g0", "reviewer": "r0"}]}}
+    )
+
+    plan = requirement_carry.plan_carry(registry, prior, {"constraint-01": "todays-key"}, client)
+
+    # The alignment really did run and really did match, so the assertion below
+    # is about an attributed call rather than about a call that never happened.
+    assert set(plan.revised) == {"constraint-01"}
+    assert client.observed_calls
+    assert not [call for call in client.observed_calls if call["stage"] == UNKNOWN_STAGE]
 
 
 def test_a_requirement_whose_key_moved_is_derived_rather_than_carried():

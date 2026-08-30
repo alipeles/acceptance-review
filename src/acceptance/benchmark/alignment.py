@@ -16,6 +16,13 @@ unmatched and correctly costs precision.
 
 This is benchmark *measurement* infrastructure — it runs against known ground
 truth, not in the product's own review path.
+
+One exception, and it is why `stage` is a parameter rather than a constant here:
+`requirement/carry.py` reuses this function to match a reworded requirement to
+the prior run's wording. That call is part of a review, so its spend has to be
+attributed like any other (#264), and only the caller knows which stage it
+belongs to. A benchmark caller passes nothing and stays out of the review's
+per-stage footer, which is where it belongs.
 """
 
 from __future__ import annotations
@@ -61,6 +68,7 @@ def align_obligations(
     ground_truth_descriptions: list[str],
     reviewer_descriptions: list[str],
     client: ModelClient,
+    stage: str | None = None,
 ) -> dict[str, str]:
     """Return a `reviewer_description -> ground_truth_description` map for
     semantically-equivalent criteria (a bijection over the matched subset)."""
@@ -74,7 +82,7 @@ def align_obligations(
         {"role": "system", "content": _SYSTEM_PROMPT},
         {"role": "user", "content": _render_prompt(gt_labels, rv_labels)},
     ]
-    result = client.complete(messages, _Alignment)
+    result = client.complete(messages, _Alignment, stage=stage)
 
     alignment: dict[str, str] = {}
     used_gt: set[str] = set()

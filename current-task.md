@@ -1,64 +1,63 @@
 # Task
-Every requirement of a mandate is accounted for on its own, and an obligation
-quotes the requirement it came from. The mandate's opening summary is accounted
-for last, against the obligations the rest of the mandate already produced, so
-that a property the rest of the mandate states does not become a second
-obligation and a property only the summary states is not lost.
+Before any test is looked at, the review records — for each criterion it derived
+from the mandate — the concrete ways the delivered code could plausibly fail that
+criterion.
 
 ## Constraints
-- A requirement other than the opening summary is accounted for by a step asked
-  about that requirement alone, and that step returns exactly one account of it.
-- The quotation an obligation carries is chosen from the text of the requirement
-  its step was asked about, so a quotation belonging to a different requirement
-  cannot be given.
-- No step that accounts for a requirement other than the opening summary is
-  asked to account for the opening summary.
-- The opening summary is accounted for by a step that first divides it into
-  stretches of its own words and then decides, for each stretch, whether the
-  obligations already derived from the rest of the mandate require the same
-  thing.
-- Every stretch is a substring of the opening summary, and every stretch is
-  decided exactly once.
-- A stretch the already-derived obligations require yields no obligation.
-- A stretch they do not require yields obligations, derived by a step asked
-  about that stretch alone.
-- The step that decides whether a stretch is already required yields no
-  obligations itself.
-- An obligation derived from a stretch carries that stretch as its quotation,
-  taken from the mandate rather than from the answer that named it.
-- A step may name the model it runs on; a step that names none uses the run's
-  own model.
-- A completed run says which model each step used.
-- Where a step tells the answering party what order its request presents its
-  parts in, that statement is true of the request as sent.
+- Each recorded way of failing carries an identifier unique within the review,
+  the criterion it belongs to, a classification, a free-text description, and the
+  regions of changed source it implicates.
+- Every other part of the review that names a recorded way of failing names it by
+  that identifier, and does not restate its content.
+- A classification is either a value from a fixed vocabulary or a single escape
+  value meaning the vocabulary has no value for this way of failing.
+- The recorded ways of failing persist with the rest of the review's state, and a
+  review reloaded from storage carries them unchanged.
+- The step that produces them is given the criterion and the changed source, and
+  is given no test.
+- That step is guided by a checklist of ways to fail chosen by the criterion's
+  type, and may still record a way of failing that no entry on that checklist
+  names.
+- Recording no way of failing for a criterion is a valid result for that
+  criterion, and carries the reason the set is empty.
+- A criterion's set of records is reused rather than produced again exactly while
+  both that criterion's text and the contents of the source regions its records
+  implicate are unchanged.
+- A criterion whose text changed has its entire set produced again, and keeps no
+  part of the set recorded for it before.
+- A run continuing an earlier run reuses every set it is entitled to reuse.
+- A run continuing an earlier run produces again only the sets it is not
+  entitled to reuse.
+- Where a set was reused rather than produced again, the review says so.
+- The review reports the recorded ways of failing.
+- Whether the review reports the work complete, and every rating it gives a
+  criterion, are what they would be if no way of failing had been recorded at
+  all.
 
 ## Scope exclusions
-- Which text in the mandate counts as a requirement, and how many requirements
-  are found.
-- Whether the obligations derived for a requirement are the right ones for it.
-- What the review does with an answer it cannot read at all.
-- Combining obligations that state the same thing as one another.
-- Which model is the right one for any step, and what any step costs.
-- Comparing figures recorded before this change with figures recorded after it.
+- Judging whether any test would fail if the delivered code contained a recorded
+  way of failing.
+- Deriving any rating, classification or conclusion about a criterion from its
+  recorded ways of failing.
+- Which criteria the review derives from the mandate, and how it derives them.
+- How the review gathers, judges or rates test evidence today.
+- Running the delivered code, and altering it to produce a failure.
+- Comparing a recorded set against an expected set supplied from outside the
+  review.
 
 ## Completion expectations
 - Implementation.
-- A test fails when a step accounting for a requirement other than the opening
-  summary is asked about more than that one requirement.
-- A test fails when an obligation carries a quotation belonging to a requirement
-  its step was not asked about.
-- A test fails when a step that accounts for a requirement other than the
-  opening summary is asked to account for the opening summary.
-- A test fails when a stretch of the opening summary is decided more than once,
-  or is left undecided, or is not a substring of the opening summary.
-- A test fails when a stretch the already-derived obligations require yields an
-  obligation.
-- A test fails when a stretch they do not require yields none.
-- A test fails when an obligation derived from a stretch carries a quotation
-  other than that stretch.
-- A test fails when a step naming its own model is run on the run's model
-  instead.
-- A test exercises the whole path from the mandate through to the obligations
-  produced, not any one step alone.
+- A test asserts that the step that records ways of failing is given no test.
+- A test fails when a criterion with no plausible way of failing is given an
+  invented one instead of an empty set carrying its reason.
+- A test fails when a set is produced again across two continued runs although
+  the criterion's text and the contents of its implicated source regions are both
+  unchanged.
+- A test fails when a criterion whose text changed keeps any part of the set
+  recorded for it before.
+- A test asserts that changing one criterion's text leaves every other
+  criterion's set reused rather than produced again.
+- A test fails when recording ways of failing changes the review's completion
+  conclusion or any criterion's rating.
 - Two recorded runs over the same input produce byte-identical review state and
   byte-identical report output.
