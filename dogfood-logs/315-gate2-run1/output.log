@@ -1,0 +1,522 @@
+Task completion: INCOMPLETE
+
+3 obligation(s) with non-discriminating test evidence (reference-set-records-failing-ways, recorded-failing-way-entry-fields, reference-sets-load-and-validate).
+
+Obligations:
+
+  1. Score the ways of failing that a review recorded against a human-authored reference set.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/benchmark/case.py#@@ -243,8 +282,89 @@ class GroundTruthLabels(PersistableModel):
+         1.2  src/acceptance/benchmark/scoring.py#@@ -290,10 +296,45 @@ def _score_from_counts(counts: dict[str, _MatchCounts]) -> BenchmarkScore:
+         1.3  src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+       test evidence: strongly supported  [tier: static]
+         1.4  tests/benchmark/test_defect_scoring.py::test_every_figure_matches_the_hand_computed_value
+         1.5  tests/benchmark/test_defect_scoring.py::test_score_case_populates_the_defect_figures
+
+  2. A reference set states, for each criterion of a labelled case, the ways of failing a competent reviewer should record.
+       requirements: constraint-01
+       code evidence: addressed
+         2.1  src/acceptance/benchmark/case.py#@@ -110,6 +111,43 @@ class GroundTruthObligation(PersistableModel):
+         2.2  src/acceptance/benchmark/case.py#@@ -193,6 +231,7 @@ class GroundTruthLabels(PersistableModel):
+         2.3  tests/fixtures/archetypes/01-missed-obligation/labels.json#@@ -40,5 +49,54 @@
+         2.4  tests/fixtures/archetypes/02-qualifier-missed/labels.json#@@ -32,5 +38,40 @@
+         2.5  tests/fixtures/archetypes/03-superficial-test/labels.json#@@ -38,5 +44,30 @@
+         2.6  tests/fixtures/archetypes/04-non-discriminating-input/labels.json#@@ -44,5 +50,30 @@
+         2.7  tests/fixtures/archetypes/05-circular-expected-result/labels.json#@@ -30,5 +34,30 @@
+         2.8  tests/fixtures/archetypes/06-mocked-out-behavior/labels.json#@@ -30,5 +34,30 @@
+         2.9  tests/fixtures/archetypes/07-declaration-mismatch/labels.json#@@ -16,5 +18,23 @@
+         2.10  tests/fixtures/archetypes/08-unrequested-change-in-service/labels.json#@@ -28,5 +30,36 @@
+         2.11  tests/fixtures/archetypes/08-unrequested-change-risky-adjacent/labels.json#@@ -17,5 +19,25 @@
+         2.12  tests/fixtures/archetypes/08-unrequested-change-separable/labels.json#@@ -17,5 +19,25 @@
+         2.13  tests/fixtures/archetypes/08-unrequested-change-test-support/labels.json#@@ -32,5 +36,32 @@
+         2.14  tests/fixtures/archetypes/08-unrequested-change/labels.json#@@ -32,5 +36,32 @@
+         2.15  tests/fixtures/archetypes/09-revision-cycle/labels.json#@@ -14,8 +17,31 @@
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: Loading and validating a reference set includes recorded failing-way entries for each criterion of a labelled case.
+           inputs:  Load a shipped archetype reference set that already contains both obligations and defect labels, using the existing labels.json fixture format under tests/fixtures/archetypes. Use a case where at least one obligation has one or more recorded failing-way entries so the loader must materialize them into GroundTruthLabels.defects.
+           detects: The loader ignores or strips recorded failing-way entries from shipped reference sets, so labelled defects never reach the scoring path.
+           full detail: acceptance recommendation --criterion reference-set-records-failing-ways
+
+  3. Each recorded way of failing carries an identifier, a classification drawn from the same fixed vocabulary the review uses, a free-text description, and the tests that would fail if the delivered code contained it.
+       requirements: constraint-01
+       code evidence: addressed
+         3.1  src/acceptance/benchmark/case.py#@@ -110,6 +111,43 @@ class GroundTruthObligation(PersistableModel):
+       test evidence: unsupported  [tier: static]
+         (no mapped test)
+         recommended test: Each failing-way entry in a reference set includes an identifier, a vocabulary classification, a free-text description, and associated failing tests.
+           inputs:  Load a shipped reference set containing defect entries with all required fields: id, obligation_id, type, description, and killed_by. Use a fixture where at least one defect has an empty killed_by list and another has one or more test ids so both shapes are exercised.
+           detects: The loader or schema drops one of the defect fields, coerces killed_by incorrectly, or rejects empty killed_by even though it is a valid label.
+           full detail: acceptance recommendation --criterion recorded-failing-way-entry-fields
+
+  4. A criterion with no plausible way of failing is recorded with that fact and the reason, and remains distinguishable from a criterion the reference set says nothing about.
+       requirements: constraint-02, completion-03
+       code evidence: addressed
+         4.1  src/acceptance/benchmark/case.py#@@ -110,6 +111,43 @@ class GroundTruthObligation(PersistableModel):
+         4.2  src/acceptance/benchmark/case.py#@@ -243,8 +282,89 @@ class GroundTruthLabels(PersistableModel):
+         4.3  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         4.4  tests/benchmark/test_defect_scoring.py::test_archetype_four_labels_its_non_discriminating_defect_as_uncaught
+         4.5  tests/benchmark/test_defect_scoring.py::test_empty_no_plausible_defect_reason_is_rejected
+         4.6  tests/benchmark/test_defect_scoring.py::test_no_plausible_defect_cannot_coexist_with_a_labelled_defect
+         4.7  tests/benchmark/test_defect_scoring.py::test_no_plausible_defect_is_distinguishable_from_saying_nothing
+
+  5. A reference set that names a criterion its case does not define, or names a test its case does not supply, is rejected rather than loaded.
+       requirements: constraint-03
+       code evidence: addressed
+         5.1  src/acceptance/benchmark/case.py#@@ -243,8 +282,89 @@ class GroundTruthLabels(PersistableModel):
+         5.2  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         5.3  tests/benchmark/test_case.py::test_gap_referencing_unknown_obligation_fails_validation
+         5.4  tests/benchmark/test_defect_scoring.py::test_defect_killed_by_a_test_the_case_does_not_supply_is_rejected
+
+  6. A recorded way of failing is matched to a labelled one by what the two describe, not by their wording.
+       requirements: constraint-04
+       code evidence: addressed
+         6.1  src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+         6.2  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         6.3  tests/benchmark/test_alignment.py::test_semantic_match_scores_reworded_output_correctly
+         6.4  tests/benchmark/test_defect_scoring.py::test_a_reworded_defect_still_matches_its_label
+         6.5  tests/evidence/test_mapping.py::test_archetype_1_mapping_accuracy_reports_a_real_number
+
+  7. Each recorded way of failing and each labelled way of failing takes part in at most one match.
+       requirements: constraint-04
+       code evidence: addressed
+         7.1  src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+         7.2  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         7.3  tests/benchmark/test_defect_scoring.py::test_alignment_is_bijective_so_a_second_claim_on_one_label_is_dropped
+         7.4  tests/evidence/test_mapping.py::test_archetype_1_mapping_accuracy_reports_a_real_number
+
+  8. Report whether a match was found and whether the two classifications agree as separate figures.
+       requirements: constraint-05
+       code evidence: addressed
+         8.1  src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+         8.2  src/acceptance/benchmark/case.py#@@ -243,8 +282,89 @@ class GroundTruthLabels(PersistableModel):
+         8.3  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         8.4  tests/benchmark/test_defect_scoring.py::test_every_figure_matches_the_hand_computed_value
+         8.5  tests/benchmark/test_defect_scoring.py::test_wrong_classification_counts_as_matched_not_as_missed
+
+  9. The share of recorded ways of failing carrying the vocabulary's escape value is reported as a standing figure.
+       requirements: constraint-06
+       code evidence: addressed
+         9.1  src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+         9.2  src/acceptance/benchmark/case.py#@@ -243,8 +282,89 @@ class GroundTruthLabels(PersistableModel):
+         9.3  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         9.4  tests/benchmark/test_defect_scoring.py::test_every_figure_matches_the_hand_computed_value
+
+  10. Report the share of labelled ways of failing that the review recorded separately for each classification.
+       requirements: constraint-07
+       code evidence: addressed
+         10.1  src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+         10.2  src/acceptance/benchmark/case.py#@@ -243,8 +282,89 @@ class GroundTruthLabels(PersistableModel):
+         10.3  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         10.4  tests/benchmark/test_defect_scoring.py::test_every_figure_matches_the_hand_computed_value
+         10.5  tests/evidence/test_mapping.py::test_archetype_1_mapping_accuracy_reports_a_real_number
+
+  11. Report how well the predicted catching tests agree with the labelled ones as its own figure, computed independently of the share of labelled ways of failing recorded.
+       requirements: constraint-08
+       code evidence: addressed
+         11.1  src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+         11.2  src/acceptance/benchmark/case.py#@@ -243,8 +282,89 @@ class GroundTruthLabels(PersistableModel):
+         11.3  src/acceptance/benchmark/scoring.py#@@ -290,10 +296,45 @@ def _score_from_counts(counts: dict[str, _MatchCounts]) -> BenchmarkScore:
+         11.4  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         11.5  tests/benchmark/test_defect_scoring.py::test_every_figure_matches_the_hand_computed_value
+
+  12. A figure with nothing to compute from is reported as absent, and never as zero.
+       requirements: constraint-09
+       code evidence: addressed
+         12.1  src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+         12.2  src/acceptance/benchmark/scoring.py#@@ -290,10 +296,45 @@ def _score_from_counts(counts: dict[str, _MatchCounts]) -> BenchmarkScore:
+         12.3  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         12.4  tests/benchmark/test_defect_scoring.py::test_figures_with_nothing_to_compute_from_are_absent
+         12.5  tests/benchmark/test_defect_scoring.py::test_score_case_leaves_the_defect_figures_absent_with_no_labels
+         12.6  tests/benchmark/test_defect_scoring.py::test_score_case_populates_the_defect_figures
+         12.7  tests/benchmark/test_scoring_report.py::test_empty_case_set_yields_no_metrics
+
+  13. The measure of whether two criteria stating the same demand receive the same tests is computed over the tests reached by way of the recorded ways of failing.
+       requirements: constraint-10
+       code evidence: addressed
+         13.1  src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+         13.2  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         13.3  tests/benchmark/test_defect_scoring.py::test_an_obligation_with_no_prediction_reaches_no_test
+         13.4  tests/benchmark/test_defect_scoring.py::test_split_measure_runs_over_tests_reached_through_defects
+
+  14. Scoring runs from recorded material and issues no live call to a model.
+       requirements: constraint-11
+       code evidence: addressed
+         14.1  src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+         14.2  src/acceptance/benchmark/scoring.py#@@ -290,10 +296,45 @@ def _score_from_counts(counts: dict[str, _MatchCounts]) -> BenchmarkScore:
+         14.3  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+       test evidence: strongly supported  [tier: static]
+         14.4  tests/benchmark/test_decompose_regression.py::test_the_cases_issue_no_live_model_calls
+         14.5  tests/benchmark/test_defect_scoring.py::test_scoring_makes_no_model_call
+
+  15. Every reference set shipped with the harness loads and validates.
+       requirements: constraint-12
+       code evidence: addressed
+         15.1  src/acceptance/benchmark/case.py#@@ -193,6 +231,7 @@ class GroundTruthLabels(PersistableModel):
+         15.2  src/acceptance/benchmark/case.py#@@ -243,8 +282,89 @@ class GroundTruthLabels(PersistableModel):
+         15.3  tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+         15.4  tests/fixtures/archetypes/01-missed-obligation/labels.json#@@ -40,5 +49,54 @@
+         15.5  tests/fixtures/archetypes/02-qualifier-missed/labels.json#@@ -32,5 +38,40 @@
+         15.6  tests/fixtures/archetypes/03-superficial-test/labels.json#@@ -38,5 +44,30 @@
+         15.7  tests/fixtures/archetypes/04-non-discriminating-input/labels.json#@@ -44,5 +50,30 @@
+         15.8  tests/fixtures/archetypes/05-circular-expected-result/labels.json#@@ -30,5 +34,30 @@
+         15.9  tests/fixtures/archetypes/06-mocked-out-behavior/labels.json#@@ -30,5 +34,30 @@
+         15.10  tests/fixtures/archetypes/07-declaration-mismatch/labels.json#@@ -16,5 +18,23 @@
+         15.11  tests/fixtures/archetypes/08-unrequested-change-in-service/labels.json#@@ -28,5 +30,36 @@
+         15.12  tests/fixtures/archetypes/08-unrequested-change-risky-adjacent/labels.json#@@ -17,5 +19,25 @@
+         15.13  tests/fixtures/archetypes/08-unrequested-change-separable/labels.json#@@ -17,5 +19,25 @@
+         15.14  tests/fixtures/archetypes/08-unrequested-change-test-support/labels.json#@@ -32,5 +36,32 @@
+         15.15  tests/fixtures/archetypes/08-unrequested-change/labels.json#@@ -32,5 +36,32 @@
+         15.16  tests/fixtures/archetypes/09-revision-cycle/labels.json#@@ -14,8 +17,31 @@
+       test evidence: nominally supported  [tier: static]
+         15.17  tests/benchmark/test_defect_scoring.py::test_every_archetype_label_set_loads_and_validates
+         recommended test: A shipped reference set is accepted by the harness load/validation path without rejection.
+           inputs:  Load a shipped reference set through the same harness path used for archetype labels, specifically one of the modified fixtures that now includes defects (for example 04-non-discriminating-input or 05-circular-expected-result). The input must include at least one defect label with a non-empty description and at least one empty-killed_by defect so the validator exercises the new defect rules without rejecting valid data.
+           detects: The validation path incorrectly rejects shipped reference sets because defect labels exist at all, or because a valid defect description is non-empty text.
+           full detail: acceptance recommendation --criterion reference-sets-load-and-validate
+
+  16. The change does not produce the ways of failing that are scored, or predict which tests would catch one.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 47 changes across 17 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, so the source change itself is sufficient to verify it.
+
+  17. The change does not produce any rating, conclusion, recommendation, or report from the review itself.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 47 changes across 17 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, and it is checked by inspecting the source rather than by a test.
+
+  18. The change does not alter which criteria the review derives from a mandate or how it derives them.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 47 changes across 17 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, so it is checked by inspecting the source rather than by a test.
+
+  19. The change does not judge whether a labelled way of failing is itself the right one to expect.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 47 changes across 17 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not done, so a reader can confirm it directly from the source change without a test.
+
+  20. The change does not run any code under review.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 47 changes across 17 files; none breaches this boundary
+       test evidence: not required — This exclusion is satisfied by the absence of execution of reviewed code, which is established by inspecting the change rather than by a test.
+
+  21. A reference set that names a criterion its case does not define is rejected rather than loaded.
+       requirements: completion-02
+       code evidence: not required — The requirement itself is a test demand: it asks for a test that fails when the invalid reference set is loaded rather than rejected.
+       test evidence: strongly supported  [tier: static]
+         21.1  tests/benchmark/test_case.py::test_gap_referencing_unknown_obligation_fails_validation
+         21.2  tests/benchmark/test_defect_scoring.py::test_defect_naming_an_undefined_obligation_is_rejected
+
+  22. A test asserts that a recorded way of failing worded differently from its labelled counterpart still matches it.
+       requirements: completion-04
+       code evidence: not required — The requirement itself asks for a test assertion, so the test is the whole obligation.
+       test evidence: strongly supported  [tier: static]
+         22.1  tests/benchmark/test_alignment.py::test_semantic_match_scores_reworded_output_correctly
+         22.2  tests/benchmark/test_defect_scoring.py::test_a_reworded_defect_still_matches_its_label
+
+  23. A test fails when a disagreement between two classifications is counted as a way of failing the review never recorded.
+       requirements: completion-05
+       code evidence: not required — The requirement explicitly asks for a test failure condition, so the obligation is satisfied by the test itself.
+       test evidence: strongly supported  [tier: static]
+         23.1  tests/benchmark/test_defect_scoring.py::test_wrong_classification_counts_as_matched_not_as_missed
+
+  24. A test asserts that the share of labelled ways of failing recorded and the agreement between predicted and labelled catching tests are computed independently of each other.
+       requirements: completion-06
+       code evidence: not required — The requirement explicitly asks for a test assertion, so the obligation is satisfied by the test itself.
+       test evidence: strongly supported  [tier: static]
+         24.1  tests/benchmark/test_defect_scoring.py::test_every_figure_matches_the_hand_computed_value
+
+  25. On a small set whose figures are known by hand, every computed figure equals the hand-computed one.
+       requirements: completion-07
+       code evidence: not required — The requirement explicitly asks for a test on a small hand-computed set, so the test itself is the demanded evidence.
+       test evidence: strongly supported  [tier: static]
+         25.1  tests/benchmark/test_defect_scoring.py::test_every_figure_matches_the_hand_computed_value
+         25.2  tests/benchmark/test_scoring_report.py::test_pooled_report_matches_hand_calculated_values
+
+  26. A test fails when scoring issues a live call to a model.
+       requirements: completion-08
+       code evidence: not required — The requirement explicitly asks for a test failure condition, so the obligation is satisfied by a test and does not require a source change of its own.
+       test evidence: strongly supported  [tier: static]
+         26.1  tests/benchmark/test_decompose_regression.py::test_the_cases_issue_no_live_model_calls
+         26.2  tests/benchmark/test_defect_scoring.py::test_scoring_makes_no_model_call
+
+Mandate coverage: 25 of 26 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation.
+       reason: The requirement is only the section marker "Implementation." standing alone, which imposes no checkable obligation.
+
+Unrequested changes:
+  1. [in_service] `score_case` now accepts a new `predicted_kills` argument and `BenchmarkScore` gains a new `defects` field, changing the public scoring API and result shape beyond what the obligations require.
+       src/acceptance/benchmark/case.py#@@ -243,8 +282,89 @@ class GroundTruthLabels(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -290,10 +296,45 @@ def _score_from_counts(counts: dict[str, _MatchCounts]) -> BenchmarkScore:
+  2. [in_service] A new `GroundTruthDefect` model and `GroundTruthLabels.defects` tree-integrity validation are added, but the obligations only require reference-set records to exist and validate; the extra defect-specific schema and rejection rules go beyond the stated task.
+       src/acceptance/benchmark/case.py#@@ -110,6 +111,43 @@ class GroundTruthObligation(PersistableModel):
+       src/acceptance/benchmark/case.py#@@ -193,6 +231,7 @@ class GroundTruthLabels(PersistableModel):
+       src/acceptance/benchmark/case.py#@@ -243,8 +282,89 @@ class GroundTruthLabels(PersistableModel):
+  3. [in_service] The new defect-scoring module introduces alignment, recall, type-agreement, other-share, kill-agreement, and mapping logic, but the obligations only ask for scoring the recorded failures against the reference set and reporting the named figures; the additional module-level machinery and helper APIs are not explicitly required.
+       src/acceptance/benchmark/defect_scoring.py#@@ -0,0 +1,342 @@
+  4. [in_service] `score_case_set` now computes per-case defect figures and explicitly drops them from pooled reporting. The obligations mention scoring failures and per-case figures, but do not require changing pooled report behavior or adding this special-case omission.
+       src/acceptance/benchmark/scoring.py#@@ -290,10 +296,45 @@ def _score_from_counts(counts: dict[str, _MatchCounts]) -> BenchmarkScore:
+  5. [in_service] The archetype label fixtures were expanded with new `defects` entries and related edits to every shipped labels.json. While some defect labels are requested by the task, the broad fixture rewrites include additional structure and cases beyond the minimum needed by the listed obligations.
+       tests/fixtures/archetypes/01-missed-obligation/labels.json#@@ -6,7 +6,10 @@
+       tests/fixtures/archetypes/01-missed-obligation/labels.json#@@ -14,7 +17,10 @@
+       tests/fixtures/archetypes/01-missed-obligation/labels.json#@@ -22,7 +28,10 @@
+       tests/fixtures/archetypes/01-missed-obligation/labels.json#@@ -40,5 +49,54 @@
+       tests/fixtures/archetypes/02-qualifier-missed/labels.json#@@ -6,7 +6,10 @@
+       tests/fixtures/archetypes/02-qualifier-missed/labels.json#@@ -14,7 +17,10 @@
+       tests/fixtures/archetypes/02-qualifier-missed/labels.json#@@ -32,5 +38,40 @@
+       tests/fixtures/archetypes/03-superficial-test/labels.json#@@ -6,7 +6,9 @@
+       tests/fixtures/archetypes/03-superficial-test/labels.json#@@ -14,7 +16,9 @@
+       tests/fixtures/archetypes/03-superficial-test/labels.json#@@ -22,7 +26,9 @@
+       tests/fixtures/archetypes/03-superficial-test/labels.json#@@ -38,5 +44,30 @@
+       tests/fixtures/archetypes/04-non-discriminating-input/labels.json#@@ -6,7 +6,9 @@
+       tests/fixtures/archetypes/04-non-discriminating-input/labels.json#@@ -14,7 +16,9 @@
+       tests/fixtures/archetypes/04-non-discriminating-input/labels.json#@@ -22,7 +26,9 @@
+       tests/fixtures/archetypes/04-non-discriminating-input/labels.json#@@ -44,5 +50,30 @@
+       tests/fixtures/archetypes/05-circular-expected-result/labels.json#@@ -6,7 +6,9 @@
+       tests/fixtures/archetypes/05-circular-expected-result/labels.json#@@ -14,7 +16,9 @@
+       tests/fixtures/archetypes/05-circular-expected-result/labels.json#@@ -30,5 +34,30 @@
+       tests/fixtures/archetypes/06-mocked-out-behavior/labels.json#@@ -6,7 +6,9 @@
+       tests/fixtures/archetypes/06-mocked-out-behavior/labels.json#@@ -14,7 +16,9 @@
+       tests/fixtures/archetypes/06-mocked-out-behavior/labels.json#@@ -30,5 +34,30 @@
+       tests/fixtures/archetypes/07-declaration-mismatch/labels.json#@@ -6,7 +6,9 @@
+       tests/fixtures/archetypes/07-declaration-mismatch/labels.json#@@ -16,5 +18,23 @@
+       tests/fixtures/archetypes/08-unrequested-change-in-service/labels.json#@@ -6,7 +6,9 @@
+       tests/fixtures/archetypes/08-unrequested-change-in-service/labels.json#@@ -28,5 +30,36 @@
+       tests/fixtures/archetypes/08-unrequested-change-in-service/labels.json#@@ -6,7 +6,9 @@
+       tests/fixtures/archetypes/08-unrequested-change-in-service/labels.json#@@ -28,5 +30,36 @@
+       tests/fixtures/archetypes/08-unrequested-change-separable/labels.json#@@ -6,7 +6,9 @@
+       tests/fixtures/archetypes/08-unrequested-change-separable/labels.json#@@ -17,5 +19,25 @@
+       tests/fixtures/archetypes/08-unrequested-change-test-support/labels.json#@@ -6,7 +6,9 @@
+       tests/fixtures/archetypes/08-unrequested-change-test-support/labels.json#@@ -14,7 +16,9 @@
+       tests/fixtures/archetypes/08-unrequested-change-test-support/labels.json#@@ -32,5 +36,32 @@
+       tests/fixtures/archetypes/08-unrequested-change/labels.json#@@ -6,7 +6,9 @@
+       tests/fixtures/archetypes/08-unrequested-change/labels.json#@@ -14,7 +16,9 @@
+       tests/fixtures/archetypes/08-unrequested-change/labels.json#@@ -32,5 +36,32 @@
+       tests/fixtures/archetypes/09-revision-cycle/labels.json#@@ -6,7 +6,10 @@
+       tests/fixtures/archetypes/09-revision-cycle/labels.json#@@ -14,8 +17,31 @@
+  6. [in_service] The new defect-scoring tests add many fixture-specific assertions and wiring checks, including direct tests of the new defect schema and score_case integration. Several of these are beyond the explicit obligations, which only require the requested scoring behaviors and validation outcomes.
+       tests/benchmark/test_defect_scoring.py#@@ -0,0 +1,479 @@
+
+Ways the change could fail a criterion (advisory — no verdict depends on these):
+
+  scores-failures-against-reference-set
+    [other] scores-failures-against-reference-set/defect-scores-not-aggregated-in-pooled-report
+      The per-case defect scores are computed, but the pooled benchmark report drops the `defects` field entirely instead of aggregating or otherwise surfacing the reference-set failure scores for the overall report.
+      src/acceptance/benchmark/scoring.py#1
+    [scope_too_narrow] scores-failures-against-reference-set/defect-defect-score-never-reported-when-client-missing
+      `_defect_score` returns `None` whenever `client` is `None`, so cases scored without a model client never get defect-vs-reference-set scores even though the criterion covers scoring the review against the human-authored set.
+      src/acceptance/benchmark/scoring.py#1
+
+  reference-set-records-failing-ways
+    [not_wired] reference-set-records-failing-ways/defect-validation-not-invoked
+      The new defect-label integrity check is defined, but loading a reference set can still skip it because the validation path does not call `_check_defect_integrity` for `GroundTruthLabels` instances.
+      src/acceptance/benchmark/case.py#2
+      src/acceptance/benchmark/case.py#3
+    [missing_case] reference-set-records-failing-ways/defects-not-loaded-from-reference-set
+      Reference-set loading can still ignore recorded failing-way entries entirely because `GroundTruthLabels.defects` is added to the model, but the surrounding loading/parsing path may never populate it from the reference-set data.
+      src/acceptance/benchmark/case.py#2
+      src/acceptance/benchmark/scoring.py#1
+    [wrong_output_shape] reference-set-records-failing-ways/defect-entries-dropped-from-case-score
+      The case score now nests defect figures under `BenchmarkScore.defects`, but the pooled report explicitly removes that field, so a loaded reference set can lose the recorded failing-way entries in the output shape for case-set scoring.
+      src/acceptance/benchmark/case.py#4
+      src/acceptance/benchmark/scoring.py#1
+
+  recorded-failing-way-entry-fields
+    [other] recorded-failing-way-entry-fields/defect-entry-not-included-in-reference-set
+      The new defect labels are defined and scored, but they are never exposed as part of the reference set object that the criterion talks about, so a consumer of the reference set would still not see any failing-way entries at all.
+      src/acceptance/benchmark/case.py#2
+      src/acceptance/benchmark/scoring.py#1
+    [wrong_output_shape] recorded-failing-way-entry-fields/defect-killed-by-not-preserved-on-serialization
+      The failing-way entry shape is defined with a killed_by field, but if the case/score serialization path drops or renames that field, the observable entry would no longer include the associated failing tests.
+      src/acceptance/benchmark/case.py#1
+      src/acceptance/benchmark/case.py#2
+      src/acceptance/benchmark/scoring.py#1
+
+  no-plausible-failure-criterion-distinct-from-silent-criterion
+    none enumerated: No plausible static defect is visible in the changed code for this criterion: the new field `no_plausible_defect_reason` is explicitly added to the ground-truth obligation model, the validator rejects empty strings while allowing `None` to mean unspecified, and the distinction is preserved in the stored schema rather than conflated with absence. The diff does not show any path that would serialize this marker away or merge it with the unspecified case.
+
+  reject-unmatched-reference-set-entries
+    [not_wired] reject-unmatched-reference-set-entries/defect-reference-set-validation-not-called
+      The new defect-integrity check exists, but loading a reference set can still skip it because the case validator path does not call `_check_defect_integrity` before accepting the data.
+      src/acceptance/benchmark/case.py#2
+      src/acceptance/benchmark/case.py#3
+    [scope_too_narrow] reject-unmatched-reference-set-entries/defect-test-supply-check-uses-only-candidate-tests
+      The test-supply rejection only looks at the union of obligations' `candidate_tests`, so a reference set can still be loaded even when the case supplies tests through some other path that the validator does not include in `supplied_tests`.
+      src/acceptance/benchmark/case.py#3
+    [scope_too_narrow] reject-unmatched-reference-set-entries/defect-criterion-reference-not-validated
+      The new validation rejects defects that point at unknown obligations, but there is no corresponding check that a reference-set criterion entry names a criterion actually defined by the case, so an unmatched criterion reference could still be loaded.
+      src/acceptance/benchmark/case.py#3
+
+  recorded-vs-labelled-match-by-described-content
+    none enumerated: No plausible static defect is visible for this criterion in the changed code: `align_defects` explicitly matches recorded and labelled defects by described content rather than exact wording, and `score_defects`/`score_case` wire that matcher into the defect score path. The only exact-string logic in the diff is for ids and test ids, not for defect-to-defect matching.
+
+  one-match-per-side
+    [other] one-match-per-side/recorded-side-duplicates-not-rejected
+      `align_defects` only filters out duplicate matches after the model returns them; if the model emits two matches for the same recorded defect with different labelled defects, the later one is dropped and the recorded defect is still effectively matched more than once in the raw result the scorer consumes.
+      src/acceptance/benchmark/defect_scoring.py#0
+    [other] one-match-per-side/labelled-side-duplicates-not-rejected
+      `align_defects` only filters out duplicate matches after the model returns them; if the model emits two matches for the same labelled defect with different recorded defects, the later one is dropped and the labelled defect is still effectively matched more than once in the raw result the scorer consumes.
+      src/acceptance/benchmark/defect_scoring.py#0
+
+  separate-match-and-agreement-figures
+    none enumerated: The change adds a separate `DefectScore` nested under `BenchmarkScore.defects`, with distinct `enumeration_recall` and `type_agreement` fields, and `score_case` wires that nested score into the output. There is no plausible static path in the shown diff where the two figures are conflated or omitted from the scoring output.
+
+  escape-value-share-standing-figure
+    [not_wired] escape-value-share-standing-figure/not-wired-defect-share-not-added-to-report
+      The defect-share figure is computed in `score_case`, but the pooled report path drops it from `BenchmarkReport` by removing the `defects` field before constructing the report, so the standing figure never appears in the delivered report output.
+      src/acceptance/benchmark/scoring.py#1
+    [not_wired] escape-value-share-standing-figure/per-case-defect-figure-missing-from-set-report
+      `score_case_set` computes a per-case `DefectScore`, but the report assembly only keeps it inside `per_case`; if the observable report is expected to include the standing figure at the top level for the case set, that figure is not wired into the returned report object.
+      src/acceptance/benchmark/scoring.py#1
+
+  labelled-share-by-classification
+    [scope_too_narrow] labelled-share-by-classification/per-case-only-no-pooled-classification-share
+      The new defect figures are only attached to each per-case score; the pooled `BenchmarkReport` drops `defects` entirely, so the report does not include a classification-level share for the whole set.
+      src/acceptance/benchmark/scoring.py#1
+    [not_wired] labelled-share-by-classification/no-defect-score-when-client-missing
+      `_defect_score` returns `None` whenever `client` is `None`, so the report can omit the per-classification share even when labelled defects exist and the rest of the score is available.
+      src/acceptance/benchmark/scoring.py#1
+    [scope_too_narrow] labelled-share-by-classification/no-defect-score-when-no-recorded-defects
+      `_defect_score` returns `None` if the reviewer recorded no defects, which means a case with labelled ways of failing but zero recorded defects produces no per-classification share instead of a 0.0 figure.
+      src/acceptance/benchmark/scoring.py#1
+    [wrong_output_shape] labelled-share-by-classification/classification-share-not-in-pooled-report-shape
+      `DefectScore` is nested under `BenchmarkScore.defects` and is omitted from the pooled report, so the classification share is not exposed as a top-level report figure the way the criterion describes.
+      src/acceptance/benchmark/case.py#3
+      src/acceptance/benchmark/scoring.py#1
+
+  predicted-catching-tests-agreement-figure
+    [not_wired] predicted-catching-tests-agreement-figure/kill-figure-not-populated-in-case-score
+      The defect agreement figure is computed in `defect_scoring.py`, but `score_case_set` drops it from the pooled report and only attaches it to per-case scores; if the observable output is the top-level scoring output, the separate agreement figure never appears there.
+      src/acceptance/benchmark/scoring.py#1
+      src/acceptance/benchmark/scoring.py#2
+    [other] predicted-catching-tests-agreement-figure/kill-agreement-uses-recorded-defect-count-instead-of-predicted-tests
+      `kill_agreement` can still be coupled to the share of labelled ways of failing recorded if the implementation or caller treats the predicted-kills mapping as a proxy for recorded defect coverage; the figure would then move with how many defects were recorded rather than only with predicted-vs-labelled test agreement.
+      src/acceptance/benchmark/defect_scoring.py#0
+      src/acceptance/benchmark/scoring.py#1
+
+  absent-not-zero-for-empty-figure
+    [other] absent-not-zero-for-empty-figure/defect-figure-still-serialized-as-zero
+      The new defect figure can still be emitted as a numeric zero instead of being omitted or left absent when there is nothing to score, because `score_case` always attaches `score.defects = _defect_score(...)` and `_defect_score` only returns `None` when the case has no labelled defects, no recorded defects, or no client; if any other empty-input situation reaches `score_defects`, the nested `DefectScore` fields default to 0/empty values rather than absent.
+      src/acceptance/benchmark/scoring.py#1
+      src/acceptance/benchmark/case.py#3
+
+  same-demand-tests-over-recorded-failures
+    [other] same-demand-tests-over-recorded-failures/pooled-score-drops-defects
+      The case-set scoring path computes per-case defect figures, but the pooled BenchmarkReport drops the defects field entirely instead of aggregating or otherwise exposing the same-demand-tests measure for the set output.
+      src/acceptance/benchmark/scoring.py#1
+    [not_wired] same-demand-tests-over-recorded-failures/defect-score-not-threaded-into-report
+      The new defect scoring logic is only attached to BenchmarkScore in score_case and per-case entries in score_case_set; the existing same-demand-tests measure path still comes from _score_from_counts, so the report can omit the recorded-failure-based measure on the delivered scoring path.
+      src/acceptance/benchmark/scoring.py#1
+
+  no-live-model-call
+    [scope_too_narrow] no-live-model-call/live-model-call-in-defect-scoring
+      `score_case` still calls `align_defects`, which invokes `client.complete(...)`, whenever both labelled and recorded defects exist and a client is passed, so the defect-scoring path is not purely recorded-material scoring.
+      src/acceptance/benchmark/scoring.py#1
+      src/acceptance/benchmark/defect_scoring.py#0
+    [scope_too_narrow] no-live-model-call/case-set-defect-scoring-still-model-backed
+      `score_case_set` computes per-case defect scores by calling `_defect_score`, and that helper again calls `align_defects` when a client is available, so batch scoring can still make a live model call instead of staying on recorded material only.
+      src/acceptance/benchmark/scoring.py#1
+
+  reference-sets-load-and-validate
+    [not_wired] reference-sets-load-and-validate/reference-set-validation-not-invoked
+      The new defect-validation logic is added to the model, but the harness load/validation path never calls it for shipped reference sets, so a reference set with dangling defect labels or invalid killed_by tests can still be accepted.
+      src/acceptance/benchmark/case.py#2
+      src/acceptance/benchmark/case.py#3
+      src/acceptance/benchmark/scoring.py#1
+      src/acceptance/benchmark/scoring.py#2
+    [scope_too_narrow] reference-sets-load-and-validate/defect-validation-skipped-when-no-client
+      Reference-set validation only runs when a ModelClient is available; if the harness loads a shipped reference set in a no-client path, defect labels are never checked and invalid sets can pass.
+      src/acceptance/benchmark/scoring.py#1
+    [wrong_output_shape] reference-sets-load-and-validate/pooled-report-drops-defect-figures
+      The pooled benchmark report explicitly removes the defects field, so the load/validation path can no longer surface defect-set validation results in the aggregated output shape expected for shipped reference sets.
+      src/acceptance/benchmark/scoring.py#2
+
+  no-recorded-failures-or-predicted-tests
+    [other] no-recorded-failures-or-predicted-tests/defect-scoring-added
+      The change adds `GroundTruthDefect`/`DefectScore` models and a new `defect_scoring.py` module that computes defect alignment, enumeration recall, type agreement, other-share, and kill agreement, so the change does produce scored ways of failing.
+      src/acceptance/benchmark/case.py#1
+      src/acceptance/benchmark/case.py#2
+      src/acceptance/benchmark/case.py#3
+      src/acceptance/benchmark/scoring.py#1
+      src/acceptance/benchmark/defect_scoring.py#0
+    [other] no-recorded-failures-or-predicted-tests/predicted-kills-threaded-through-scoring
+      `score_case` now accepts `predicted_kills` and passes it into `_defect_score`, which in turn feeds it to `score_defects`, so the change also predicts which tests would catch a defect.
+      src/acceptance/benchmark/scoring.py#1
+      src/acceptance/benchmark/defect_scoring.py#0
+
+  no-review-reporting
+    [other] no-review-reporting/defect-score-added-to-case
+      `score_case` now attaches a `defects` rating block to every `BenchmarkScore`, so the review output includes a new review-generated report from the change.
+      src/acceptance/benchmark/scoring.py#1
+    [other] no-review-reporting/defect-score-added-to-per-case-report
+      `score_case_set` now populates `score.defects` for each case in `per_case`, so the generated report includes defect-set figures from the review itself.
+      src/acceptance/benchmark/scoring.py#2
+
+  no-mandate-derivation
+    none enumerated: The diff only adds defect-label data structures and defect scoring, then threads a new optional defects score into benchmark scoring. It does not touch mandate parsing, mandate-to-criteria derivation, or the review-path logic that derives criteria from a mandate, so there is no plausible static defect against this criterion in the shown changes.
+
+  no-judging-labelled-way-of-failing
+    [other] no-judging-labelled-way-of-failing/labelled-defect-integrity-judges-plausibility
+      The new ground-truth validation rejects a case when an obligation has both `no_plausible_defect_reason` and any labelled defects, so the change explicitly judges whether a labelled way of failing is the right one to expect instead of merely recording it.
+      src/acceptance/benchmark/case.py#3
+    [other] no-judging-labelled-way-of-failing/defect-alignment-compares-same-mistake
+      `align_defects` asks the model to match labelled and recorded defects by describing the same mistake, which is a judgement about whether the labelled way of failing is the right one to expect rather than a neutral recording of labels.
+      src/acceptance/benchmark/defect_scoring.py#0
+
+  no-runtime-code-under-review
+    [other] no-runtime-code-under-review/runtime-code-still-executed-in-scoring
+      The change adds calls into new defect-scoring logic from score_case and score_case_set, so running the reviewed code path still executes code under review instead of avoiding it.
+      src/acceptance/benchmark/scoring.py#1
+    [other] no-runtime-code-under-review/runtime-code-still-executed-in-defect-scoring
+      The new defect_scoring module contains executable alignment and scoring functions that are invoked from the benchmark scoring path, so the delivered change still runs code under review.
+      src/acceptance/benchmark/defect_scoring.py#0
+      src/acceptance/benchmark/scoring.py#1
+
+  reject-undefined-criterion-reference-set
+    [not_wired] reject-undefined-criterion-reference-set/validator-not-invoked-on-load
+      The new defect-integrity check exists, but loading a reference set can still bypass it because the load path never calls the validator that rejects unknown criterion references.
+      src/acceptance/benchmark/case.py#2
+      src/acceptance/benchmark/case.py#3
+      src/acceptance/benchmark/scoring.py#1
+    [scope_too_narrow] reject-undefined-criterion-reference-set/undefined-criterion-accepted-through-other-path
+      The rejection only happens when the case is scored through the new defect-scoring path; a reference set with an undefined criterion can still be loaded successfully through any path that constructs the case without exercising `_check_defect_integrity`.
+      src/acceptance/benchmark/case.py#2
+      src/acceptance/benchmark/case.py#3
+      src/acceptance/benchmark/scoring.py#1
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run b2f43c4c61e97237
+  continuing 3aa3bcb7cd13414e
+  continue this run with: --continue b2f43c4c61e97237
+Model usage by stage:
+  stage                         model                                       calls   prompt  output  cached  this run  recorded
+  ----------------------------  ----------------------  -------------------------  -------  ------  ------  --------  --------
+  obligation linking            voyage/voyage-3.5-lite    1 (0 live / 1 replayed)    1,189       0       —   $0.0000   $0.0000
+  test-to-obligation mapping    openai/gpt-5.4-mini       5 (5 live / 0 replayed)   20,949   3,449   34.2%   $0.0264   $0.0264
+  discrimination judgment       openai/gpt-5.4-mini       1 (1 live / 0 replayed)   10,707   1,978    0.0%   $0.0169   $0.0169
+  coverage classification       openai/gpt-5.4-mini       1 (1 live / 0 replayed)   22,505   2,047    0.0%   $0.0261   $0.0261
+  unrequested-change detection  openai/gpt-5.4-mini       1 (1 live / 0 replayed)   22,046   1,212    0.0%   $0.0220   $0.0220
+  test recommendation           openai/gpt-5.4-mini       1 (1 live / 0 replayed)   20,416     903    0.0%   $0.0194   $0.0194
+  defect enumeration            openai/gpt-5.4-mini     21 (21 live / 0 replayed)  160,466   4,338    0.0%   $0.1399   $0.1399
+  this run spent $0.2506 on 30 live call(s); the evidence cost $0.2507 to record (1 call(s) replayed at no cost to this run)
+
