@@ -71,6 +71,7 @@ from acceptance.review_state import (
     Obligation,
     ObligationType,
     OpenQuestion,
+    PairVerdict,
     RequiredEvidence,
     RequirementDisposition,
     RequirementMap,
@@ -1359,6 +1360,7 @@ def build_ledger_entry(
     task_digest: str,
     linked: Decomposition | None = None,
     defect_sets: list[DefectSet] | None = None,
+    pair_verdicts: list[PairVerdict] | None = None,
 ) -> LedgerEntry:
     """This run's ledger record, ready to write.
 
@@ -1368,9 +1370,10 @@ def build_ledger_entry(
     become the next run's premise (DR-204). The **merge decisions** come from
     `linked`, because that is the stage that made them.
 
-    `defect_sets` is absent on a `decompose` run and present on a `check` (#313).
-    Absent means no set carries forward, which is the conservative direction: a
-    `decompose` never enumerated any, so there is nothing to lose by saying so.
+    `defect_sets` is absent on a `decompose` run and present on a `check` (#313),
+    and `pair_verdicts` behaves identically (#314). Absent means nothing carries
+    forward, which is the conservative direction: a `decompose` enumerated no
+    defects and judged no pairs, so there is nothing to lose by saying so.
     """
     return LedgerEntry(
         run_id=run_id,
@@ -1381,6 +1384,7 @@ def build_ledger_entry(
         derivations=list(derived.derivations),
         merge_decisions=list((linked or derived).merge_decisions),
         defect_sets=list(defect_sets or []),
+        pair_verdicts=list(pair_verdicts or []),
     )
 
 

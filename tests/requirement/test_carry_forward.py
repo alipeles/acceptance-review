@@ -1193,7 +1193,7 @@ def test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived(tmp_
 
     assert counting.decompose_calls == 0
     assert len(sink) == 1
-    derived, _linked, _defect_sets = sink[0]
+    derived, _linked, _defect_sets, _pair_verdicts = sink[0]
     assert {d.derivation for d in derived.derivations} == {Derivation.CARRIED}
 
 

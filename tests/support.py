@@ -789,6 +789,13 @@ _EMPTY_BY_SCHEMA = {
         "defects": [],
         "reason": "No defects were enumerated by this test's model double.",
     },
+    # Pair judgement (#314). No tests answered about, which is the right default
+    # for a stage whose input is empty in most fixtures: with the enumeration
+    # default above producing no defects, no pair is ever formed, so a double
+    # that answered anything here would be answering about pairs that do not
+    # exist. Named `_PairVerdicts` rather than `_Verdicts` because linking
+    # already owns that name and this table is keyed by schema name.
+    "_PairVerdicts": {"tests": []},
     "_Mappings": {"mappings": []},
     "_Discrimination": {"discriminations": []},
     "_Coverage": {"classifications": []},

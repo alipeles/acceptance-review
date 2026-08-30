@@ -49,7 +49,13 @@ from pydantic import Field
 
 from acceptance.carry import carry_key as shared_carry_key
 from acceptance.model_base import PersistableModel
-from acceptance.review_state import DefectSet, Disposition, Obligation, OpenQuestion
+from acceptance.review_state import (
+    DefectSet,
+    Disposition,
+    Obligation,
+    OpenQuestion,
+    PairVerdict,
+)
 from acceptance.serialization import canonical_json
 
 DEFAULT_LEDGER_ROOT = Path(".acceptance/ledger")
@@ -193,6 +199,16 @@ class LedgerEntry(PersistableModel):
     # Keyed on obligation TEXT inside each set rather than on its position here,
     # so a run that renamed an obligation still finds its set.
     defect_sets: list[DefectSet] = Field(default_factory=list)
+    # The (defect, test) verdicts this run judged, so `--continue` carries them
+    # (#314). Empty on a `decompose` run and on every entry written before #314,
+    # both of which read as "nothing to carry" and re-judge — the same
+    # conservative direction `defect_sets` takes.
+    #
+    # Keyed inside each verdict on the defect's CONTENT and the test's id, not on
+    # position here and not on the defect id: defect ids are composed from the
+    # obligation id, so rewording a requirement moves every id beneath it and a
+    # position-keyed carry would hand a verdict to the wrong pair.
+    pair_verdicts: list[PairVerdict] = Field(default_factory=list)
 
     def decisions_by_pair(self) -> dict[tuple[str, str], bool]:
         """Every merge decision this run holds, keyed by fingerprint pair."""
