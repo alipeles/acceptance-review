@@ -34,6 +34,8 @@ from acceptance.evidence.discovery import DiscoveredTest
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.pipeline import run_review
 from acceptance.report import render_report
+from acceptance.requirement.ledger import LedgerEntry
+from acceptance.requirement.obligations import build_ledger_entry
 from acceptance.review_state import (
     ChangeSet,
     Defect,
@@ -42,6 +44,7 @@ from acceptance.review_state import (
     FileChange,
     Review,
     UnjudgedCause,
+    UnjudgedPair,
 )
 from tests.support import client_dispatching
 
@@ -538,11 +541,18 @@ def _review_over(built, enumeration: dict | None = None, pairs: dict | None = No
     )
 
 
-def _pairs_answer(kills: bool) -> dict:
+def _dispatching(pairs: dict, capture: list):
+    return client_dispatching(
+        {"_Decomposition": _DECOMPOSITION, "_Enumeration": _ENUMERATED, "_PairVerdicts": pairs},
+        capture=capture,
+    )
+
+
+def _pairs_answer(kills: bool, test_id: str = "test_billing.py::test_prorate") -> dict:
     return {
         "tests": [
             {
-                "test_id": "test_billing.py::test_prorate",
+                "test_id": test_id,
                 # Composed by the enumerator as `<obligation id>/<slug>`, not
                 # taken from its answer — `_defects_from` prefixes so uniqueness
                 # is structural across criteria.
@@ -613,3 +623,100 @@ def test_two_runs_over_the_same_input_agree_byte_for_byte(tmp_path):
 
     assert first.to_canonical_json() == second.to_canonical_json()
     assert render_report(first) == render_report(second)
+
+
+def test_a_continued_run_carries_verdicts_through_the_ledger(tmp_path):
+    """The ledger really carries this, end to end — not `prior=` handed in by a test.
+
+    #314's headline behaviour is that adding one test between two continued runs
+    costs that test's pairs and nothing else, and it is only true if the verdicts
+    survive the round trip through the ledger entry. Asserted on the calls the
+    second run issued, because a stage that re-judged everything and then threw
+    the answers away would satisfy a count of the verdicts.
+    """
+    repo, base, head = _built(tmp_path)
+
+    def git(*args):
+        return subprocess.run(
+            ["git", *args], cwd=repo, capture_output=True, text=True, check=True
+        ).stdout.strip()
+
+    first_capture: list = []
+    sink: list = []
+    run_review(
+        task_text=_TASK,
+        change_set=extract_change_set(repo, base, head),
+        repo=repo,
+        client=_dispatching(_pairs_answer(True), first_capture),
+        reviewed_revision=head,
+        ledger_sink=sink,
+    )
+    derived, linked, defect_sets, pair_verdicts = sink[0]
+    assert pair_verdicts, "the first run judged no pairs, so there is nothing to carry"
+
+    entry = build_ledger_entry(
+        derived,
+        run_id="first",
+        parent_run_id=None,
+        task_digest="digest",
+        linked=linked,
+        defect_sets=defect_sets,
+        pair_verdicts=pair_verdicts,
+    )
+    # The round trip that matters: through the persisted form, not the object.
+    entry = LedgerEntry.model_validate_json(entry.model_dump_json())
+
+    (repo / "test_extra.py").write_text(
+        "from billing import prorate\n\n\ndef test_extra():\n    assert prorate(300, 28) > 0\n"
+    )
+    git("add", "-A")
+    git("commit", "-qm", "add one test")
+    second_head = git("rev-parse", "HEAD")
+
+    second_capture: list = []
+    second = run_review(
+        task_text=_TASK,
+        change_set=extract_change_set(repo, base, second_head),
+        repo=repo,
+        client=_dispatching(_pairs_answer(True, test_id="test_extra.py::test_extra"), second_capture),
+        reviewed_revision=second_head,
+        ledger_prior=entry,
+    )
+
+    pair_calls = [call for call in second_capture if call["schema"] == "_PairVerdicts"]
+    assert len(pair_calls) == 1, "the second run judged more than the one added test"
+    assert "test_extra.py::test_extra" in pair_calls[0]["prompt"]
+    assert "test_billing.py::test_prorate" not in pair_calls[0]["prompt"]
+
+    carried = [verdict for verdict in second.pair_verdicts if verdict.carried_from]
+    assert len(carried) == 1
+    assert carried[0].test_id == "test_billing.py::test_prorate"
+
+
+def test_a_prefiltered_pair_is_named_in_the_report(tmp_path):
+    """The recorded exclusion is rendered, not merely stored.
+
+    Exercised on a constructed review rather than on a real run: the prefilter's
+    rule is sound and therefore fires almost never, so waiting for real input to
+    trigger it would be a test that passes by luck (see `reachability`).
+    """
+    review = _review_over(_built(tmp_path), pairs=_pairs_answer(True))
+    with_exclusion = review.model_copy(
+        update={
+            "unjudged_pairs": [
+                UnjudgedPair(
+                    defect_id="daily-rate/divides-by-thirty",
+                    test_id="test_far_away.py::test_unrelated",
+                    cause=UnjudgedCause.PREFILTERED,
+                    reason="no path to the defect exists",
+                )
+            ]
+        }
+    )
+
+    rendered = render_report(with_exclusion)
+
+    assert "Pairs left unjudged:" in rendered
+    assert "[prefiltered]" in rendered
+    assert "daily-rate/divides-by-thirty x test_far_away.py::test_unrelated" in rendered
+    assert "no path to the defect exists" in rendered
