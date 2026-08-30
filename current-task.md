@@ -40,8 +40,9 @@ delivered code contained that way of failing.
 - Which criteria the review derives from the mandate, and how it derives them.
 - How the review gathers, maps, judges or rates test evidence today, and
   retiring any part of it.
-- Choosing between candidate shapes for the request that carries the pair
-  question.
+- Selecting the shape of the request that carries the pair question at run
+  time. The shape is fixed in the software; nothing chooses between candidates
+  while a review runs.
 - Running the delivered code or any test.
 
 ## Completion expectations

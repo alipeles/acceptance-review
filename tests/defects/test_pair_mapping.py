@@ -111,7 +111,14 @@ class _Judge:
     def _completion_fn(self, **kwargs):
         tests = _offered("test_id", **kwargs)
         defects = _offered("defect_id", **kwargs)
-        self.requests.append({"test_id": tests, "defect_id": defects})
+        self.requests.append(
+            {
+                "test_id": tests,
+                "defect_id": defects,
+                "prompt": "\n".join(message["content"] for message in kwargs["messages"]),
+                "schema": kwargs["response_format"]["json_schema"]["schema"],
+            }
+        )
         answered = [
             {
                 "test_id": test_id,
@@ -678,7 +685,9 @@ def test_a_continued_run_carries_verdicts_through_the_ledger(tmp_path):
         task_text=_TASK,
         change_set=extract_change_set(repo, base, second_head),
         repo=repo,
-        client=_dispatching(_pairs_answer(True, test_id="test_extra.py::test_extra"), second_capture),
+        client=_dispatching(
+            _pairs_answer(True, test_id="test_extra.py::test_extra"), second_capture
+        ),
         reviewed_revision=second_head,
         ledger_prior=entry,
     )
@@ -720,3 +729,58 @@ def test_a_prefiltered_pair_is_named_in_the_report(tmp_path):
     assert "[prefiltered]" in rendered
     assert "daily-rate/divides-by-thirty x test_far_away.py::test_unrelated" in rendered
     assert "no path to the defect exists" in rendered
+
+
+# --- the question asked, and the answer's shape -------------------------------
+#
+# Both gaps were found by #314's own Gate 2 run, which rated `constraint-03` and
+# `constraint-05` unsupported with no mapped test. It was right: nothing pinned
+# either, and the double ignores the prompt, so every other test here would pass
+# against a stage that asked something else entirely.
+
+
+def test_the_question_put_about_a_pair_is_the_failure_question(tmp_path):
+    """The pair question is existential, not a relevance judgement.
+
+    This is the whole premise of #312: *would this test fail if the code
+    contained this defect?* has an answer, where *does this test purport to
+    evidence this obligation?* does not. A stage that drifted back to relevance
+    would still return well-formed verdicts, so the question itself needs pinning.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    judge = _Judge()
+
+    _judged(judge, [_defect_set("divides by 30")], [_test("test_half_month")], repo)
+
+    prompt = judge.requests[0]["prompt"]
+    assert "would THIS TEST fail" in prompt
+    assert "If the delivered code contained THIS DEFECT" in prompt
+    # The concrete pair, not a paraphrase: the defect's own description and the
+    # test's own source both reach the request.
+    assert "divides by 30" in prompt
+    assert "assert charge(300, 15) > 0" in prompt
+    # And it is not asking the retired question.
+    assert "purports to evidence" not in prompt
+
+
+def test_the_answer_about_a_pair_carries_only_the_pair_the_verdict_and_a_reason(tmp_path):
+    """DR-312 decision 3 holds the response to the minimum.
+
+    The caching discount is input-only, so output growth never amortizes — and
+    DR-314 measured this shape already costing about twice the output tokens of
+    the alternative. A richer per-pair payload belongs to a later per-finding
+    call, not to this sweep, and a field added here would be paid on every pair.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    judge = _Judge()
+
+    _judged(judge, [_defect_set("divides by 30")], [_test("test_half_month")], repo)
+
+    # Read off the schema AS SENT, refs already inlined, because that is what
+    # bounds the response. Asserting on the model class alone would pass against
+    # a stage that sent something else.
+    schema = judge.requests[0]["schema"]
+    per_test = schema["properties"]["tests"]["items"]["properties"]
+    assert set(per_test) == {"test_id", "defects"}
+    per_pair = per_test["defects"]["items"]["properties"]
+    assert set(per_pair) == {"defect_id", "fails", "reason"}
