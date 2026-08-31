@@ -14,8 +14,20 @@ delivered code contained that way of failing.
   delivered code contained that way of failing.
 - Pairs are judged in groups, and no group asks for more judgements in one
   request than a fixed limit allows.
-- What comes back about a judged pair is which pair it is, its verdict, and a
-  short reason, and nothing further.
+- What comes back about a pair where the test would fail is which pair it is,
+  that it would fail, and a short reason, and nothing further.
+- What comes back about a pair where the test would not fail is which pair it is
+  and that it would not fail, and nothing further.
+- Which of the two an answer is, is settled by the verdict the answer carries,
+  not by which fields happen to be present in it.
+- An answer reporting that the test would fail and carrying no reason is not a
+  verdict the review accepts, and neither is one reporting that the test would
+  not fail and carrying a reason.
+- An answer the review does not accept leaves its pair recorded as unjudged,
+  naming the way of failing, the test and why, exactly as a pair the judge never
+  answered about is, and leaves every other pair in its group judged.
+- A verdict kept about a pair where the test would not fail carries no reason
+  where it is stored.
 - A verdict is reused rather than produced again exactly while both the way of
   failing it concerns and the source of the test it concerns are unchanged.
 - A verdict whose way of failing changed, or whose test's source changed, is
@@ -40,9 +52,9 @@ delivered code contained that way of failing.
 - Which criteria the review derives from the mandate, and how it derives them.
 - How the review gathers, maps, judges or rates test evidence today, and
   retiring any part of it.
-- Selecting the shape of the request that carries the pair question at run
-  time. The shape is fixed in the software; nothing chooses between candidates
-  while a review runs.
+- Selecting the shape of the request that carries the pair question at run time.
+  The shape is fixed in the software; nothing chooses between candidates while a
+  review runs.
 - Running the delivered code or any test.
 
 ## Completion expectations
@@ -60,5 +72,15 @@ delivered code contained that way of failing.
   any criterion's rating, or which tests it recommends.
 - A test asserts the report shows, for each criterion, the support its judged
   pairs imply beside the rating the review gives that criterion today.
+- A test reads the shape of the request as it is sent and fails if that shape
+  permits a reason on a pair where the test would not fail.
+- A test fails when an answer reporting that the test would fail carries no
+  reason and is nonetheless kept as a verdict.
+- A test fails when an answer reporting that the test would not fail carries a
+  reason and is nonetheless kept as a verdict.
+- A test asserts that one answer the review does not accept costs only its own
+  pair, leaving the rest of its group judged.
+- A test asserts that a stored verdict about a pair where the test would not fail
+  carries no reason.
 - Two recorded runs over the same input produce byte-identical review state and
   byte-identical report output.
