@@ -10,9 +10,9 @@ and of whether a test discriminates, is removed.
 - A recorded way of failing is covered when some candidate test would fail if the
   delivered code failed that way. A criterion all of whose recorded ways of
   failing are covered is strongly supported; one where some are covered is
-  partially supported; one where none are, while candidate tests exist, is
-  nominally supported. Where no candidate test exists, or the judgement could not
-  be reached, the outcomes the review already has for those cases stand.
+  partially supported; one where none are is unsupported. Where the judgement
+  about a way of failing could not be reached, the criterion's rating says the
+  judgement could not be reached rather than claiming one.
 - Every rating the report shows names how many of that criterion's recorded ways
   of failing are covered, and how many were recorded.
 - A criterion for which the review recorded no plausible way of failing, and said
@@ -23,8 +23,7 @@ and of whether a test discriminates, is removed.
   text it comes from.
 - A recommendation asking for evidence the review already holds cannot be
   produced.
-- The ratings keep the names they have today, and what each of them means is
-  unchanged.
+- The ratings keep the names they have today.
 - Where the review's measured accuracy is reported, that report says the figures
   do not span this change.
 - Two recorded runs over the same input produce byte-identical review state and
