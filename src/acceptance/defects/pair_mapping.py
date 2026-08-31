@@ -193,8 +193,17 @@ class _LenientJudged(BaseModel):
     otherwise take the review down rather than lose one pair.
 
     `reason` is `None` when the entry carried no such key and `""` when it
-    carried an empty one. Those are different claims and `_ask` treats them
-    differently, so they may not be collapsed here.
+    carried an empty one. `_ask` treats both as *no reason given*, and the
+    distinction is kept here only so that the parse does not invent one.
+
+    **An empty reason on a surviving pair is accepted, not rejected**, and the
+    difference is not cosmetic. `""` is what the shape this union replaced
+    emitted on every surviving pair, and what a provider honouring the schema
+    only loosely would emit. Rejecting it would send every surviving pair of such
+    a run to `unjudged` — roughly 99 pairs in 100 on the corpus this was measured
+    against — turning a harmless deviation into a review with almost no verdicts.
+    A *non-empty* reason where the schema offered no field for one is a different
+    matter and is still refused.
     """
 
     defect_id: str
@@ -398,7 +407,7 @@ def _ask(
                     "answered as failing but carrying no reason; the answer does not "
                     "match either shape the request offered, so no verdict was produced"
                 )
-            elif not judged.fails and judged.reason is not None:
+            elif not judged.fails and reason:
                 unusable_shape[key] = (
                     "answered as not failing but carrying a reason; the answer does not "
                     "match either shape the request offered, so no verdict was produced"

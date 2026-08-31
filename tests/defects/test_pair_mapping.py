@@ -329,6 +329,27 @@ def test_a_surviving_answer_carrying_a_reason_is_not_kept_as_a_verdict(tmp_path)
     assert "carrying a reason" in result.unjudged[0].reason
 
 
+def test_a_surviving_answer_carrying_an_empty_reason_is_still_a_verdict(tmp_path):
+    """Leniency has to reach the shape the previous response used.
+
+    `"reason": ""` on a surviving pair is what this stage emitted before the
+    union, and what a provider honouring the schema only loosely would emit. An
+    empty string is not a reason, so refusing it would send every surviving pair
+    of such a run to `unjudged` — on the corpus this was measured against, about
+    99 pairs in 100 — and leave a review with almost no verdicts. Only a
+    non-empty reason is refused.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    judge = _MisshapenJudge({"fails": False, "reason": ""})
+
+    result = _judged(judge, [_defect_set("divides by 30")], [_test("test_half_month")], repo)
+
+    assert result.unjudged == []
+    assert len(result.verdicts) == 1
+    assert result.verdicts[0].kills is False
+    assert result.verdicts[0].reason == ""
+
+
 def test_one_misshapen_answer_does_not_discard_the_rest_of_its_batch(tmp_path):
     """`supplied_ids.py`'s rule, applied to shape rather than to ids.
 
