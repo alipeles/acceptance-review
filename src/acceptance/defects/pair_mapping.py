@@ -44,8 +44,9 @@ from __future__ import annotations
 
 import hashlib
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from acceptance.carry import carry_key, decide
 from acceptance.defects.reachability import Pair, form_pairs, prefilter
@@ -110,7 +111,11 @@ therefore uncaught.
 For each test you are given, return one entry per DEFECT OFFERED WITH IT — every
 one, not only the ones it catches — with `fails` true if that test would fail on
 that defect and false if it would not. A test offered five defects returns five
-entries. Keep `reason` to one short sentence."""
+entries.
+
+An entry whose `fails` is true also carries `reason`: one short sentence naming
+what the test asserts that the defect would change. An entry whose `fails` is
+false carries NO `reason` field at all — not an empty one."""
 
 
 class PairMappingResult(PersistableModel):
@@ -128,19 +133,82 @@ class PairMappingResult(PersistableModel):
     unusable_answers: list[UnusableAnswer] = Field(default_factory=list)
 
 
-class _Judged(StrictResponseModel):
+class _Survives(StrictResponseModel):
+    """A pair the test does not fail on. There is no `reason` field to pay for.
+
+    **Why a union rather than an empty string.** `StrictResponseModel` forbids
+    optional fields, because OpenAI strict mode has no notion of one, so an
+    instruction to leave a reason blank can only ever make it empty — and an
+    empty key is not free. Measured over the 68-pair pilot corpus, a written
+    reason costs 18.5 output tokens and `"reason":""` still costs 10.0, so
+    emptying recovers under half of what the field costs. Removing the field for
+    this disposition recovers the rest.
+
+    `fails` is `Literal[False]` rather than `bool` so the two members are told
+    apart by a value the answer must carry anyway, not by which keys happen to be
+    present. An answer claiming a test survives while carrying a reason fails
+    validation instead of being quietly accepted as one shape or the other.
+    """
+
     defect_id: str
-    fails: bool
+    fails: Literal[False]
+
+
+class _Kills(StrictResponseModel):
+    """A pair the test does fail on, and the one short sentence saying why.
+
+    Kept where `_Survives` drops it: a killing verdict is what becomes a coverage
+    claim, and #312's premise is that a claim needs a traceable basis. A
+    surviving verdict claims nothing, and the 12,323 surviving reasons #314's
+    Gate 2 run recorded are the low-information half — 65.9% of them say either
+    that the test does not assert on the defect or that it does not exercise it.
+    """
+
+    defect_id: str
+    fails: Literal[True]
     reason: str
 
 
 class _TestVerdicts(StrictResponseModel):
     test_id: str
-    defects: list[_Judged]
+    # `_Kills` first: pydantic resolves left to right, so the member with more
+    # required fields is tried before the one with fewer.
+    defects: list[_Kills | _Survives]
 
 
 class _PairVerdicts(StrictResponseModel):
     tests: list[_TestVerdicts]
+
+
+class _LenientJudged(BaseModel):
+    """One judgement as *parsed*, admitting shapes the sent schema forbids.
+
+    The union above is what the call ASKS for; this is what the reply is read
+    with, and the gap between them is recorded rather than dropped. Same seam and
+    same reason as `supplied_ids.py`: `ModelClient._validate` parses the whole
+    response object, so parsing with the strict union would turn one wrongly
+    shaped entry into an aborted review and discard the other thirty-nine usable
+    judgements in its batch. The harness also runs against providers whose
+    structured-output support differs, and one that ignores the schema would
+    otherwise take the review down rather than lose one pair.
+
+    `reason` is `None` when the entry carried no such key and `""` when it
+    carried an empty one. Those are different claims and `_ask` treats them
+    differently, so they may not be collapsed here.
+    """
+
+    defect_id: str
+    fails: bool
+    reason: str | None = None
+
+
+class _LenientTestVerdicts(BaseModel):
+    test_id: str
+    defects: list[_LenientJudged]
+
+
+class _LenientPairVerdicts(BaseModel):
+    tests: list[_LenientTestVerdicts]
 
 
 def defect_text(defect: Defect) -> str:
@@ -281,13 +349,18 @@ def _ask(
     batch,
     client: ModelClient,
     unusable: UnusableAnswerLog | None,
-) -> dict[tuple[str, str], tuple[bool, str]]:
-    """One request. Returns the verdicts it actually answered, by pair key.
+) -> tuple[dict[tuple[str, str], tuple[bool, str]], dict[tuple[str, str], str]]:
+    """One request. The verdicts it answered usably, and the ones it did not.
 
-    A pair missing from the return value was SHED — offered and not answered.
-    The caller records it rather than defaulting it, because defaulting a shed
-    judgement to *survives* is the silent un-covering this shape was chosen to
-    make visible.
+    A pair in neither map was SHED — offered and not answered. The caller records
+    it rather than defaulting it, because defaulting a shed judgement to
+    *survives* is the silent un-covering this shape was chosen to make visible.
+
+    A pair in the second map WAS answered, in a shape that cannot be honoured: a
+    failing verdict with no reason, or a surviving one carrying a reason the
+    schema does not offer it. Neither is a verdict, and neither is silence, so
+    both are handed back with the sentence saying which — the caller records them
+    as unjudged rather than guessing which half of the answer to believe.
     """
     messages = assemble(
         [
@@ -301,13 +374,14 @@ def _ask(
         messages,
         constrain(_PairVerdicts, allowed),
         batch.request_partition(),
-        parse_as=_PairVerdicts,
+        parse_as=_LenientPairVerdicts,
         stage=_STAGE,
     )
     if unusable is not None:
         unusable.record(scan(result, allowed, _STAGE))
 
     answered: dict[tuple[str, str], tuple[bool, str]] = {}
+    unusable_shape: dict[tuple[str, str], str] = {}
     offered = {pair.key for pair in batch_pairs}
     for entry in result.tests:
         for judged in entry.defects:
@@ -316,9 +390,22 @@ def _ask(
             # about anything: the ids are valid individually, so the schema
             # cannot reject the combination, and accepting it would attach a
             # judgement to a pair nobody asked about.
-            if key in offered:
-                answered[key] = (judged.fails, judged.reason.strip())
-    return answered
+            if key not in offered:
+                continue
+            reason = (judged.reason or "").strip()
+            if judged.fails and not reason:
+                unusable_shape[key] = (
+                    "answered as failing but carrying no reason; the answer does not "
+                    "match either shape the request offered, so no verdict was produced"
+                )
+            elif not judged.fails and judged.reason is not None:
+                unusable_shape[key] = (
+                    "answered as not failing but carrying a reason; the answer does not "
+                    "match either shape the request offered, so no verdict was produced"
+                )
+            else:
+                answered[key] = (judged.fails, reason)
+    return answered, unusable_shape
 
 
 class DerivedSupport(PersistableModel):
@@ -443,18 +530,30 @@ def judge_pairs(
     fresh: list[PairVerdict] = []
     for batch in _batches(to_ask, batch_size):
         batch_pairs = list(batch.items)
-        answered = _ask(batch_pairs, batch, client, unusable)
+        answered, unusable_shape = _ask(batch_pairs, batch, client, unusable)
         for pair in batch_pairs:
             if pair.key not in answered:
-                # Shed: offered and unanswered. Recorded so it stays visible,
-                # rather than defaulted to `survives` — the whole reason DR-314
-                # took the shape where this is detectable at all.
+                # Offered and no usable verdict came back — either nothing at all
+                # (shed) or something that is not a verdict. Recorded either way,
+                # rather than defaulted to `survives`, which is the whole reason
+                # DR-314 took the shape where this is detectable at all.
+                #
+                # Both carry `UNANSWERED`, because from the review's side no
+                # answer was obtained, and the sentence says which happened. They
+                # arguably want separate causes — the remedies differ, a shed
+                # judgement meaning the batch is too large and a misshapen one
+                # meaning the provider is not honouring the schema — but that is
+                # a third value in a persisted enum, which is not a change to
+                # make in passing.
                 unjudged.append(
                     UnjudgedPair(
                         defect_id=pair.defect.id,
                         test_id=pair.test.test_id,
                         cause=UnjudgedCause.UNANSWERED,
-                        reason="offered to the judge and not answered; no verdict was produced",
+                        reason=unusable_shape.get(
+                            pair.key,
+                            "offered to the judge and not answered; no verdict was produced",
+                        ),
                     )
                 )
                 continue

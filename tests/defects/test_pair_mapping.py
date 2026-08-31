@@ -108,6 +108,19 @@ class _Judge:
                     asked.add((defect_id, test_id))
         return asked
 
+    def _entry(self, defect_id: str, test_id: str) -> dict:
+        """One answer, in the shape its own verdict requires.
+
+        A killing entry carries a reason and a surviving one has no `reason` key
+        at all. The double builds the entry rather than a fixed dict so that a
+        test exercising the survives path cannot accidentally send a reason the
+        schema forbids, and so the double stays wrong-shaped-answer-free by
+        construction rather than by every caller remembering.
+        """
+        if self._kills(defect_id, test_id):
+            return {"defect_id": defect_id, "fails": True, "reason": "because"}
+        return {"defect_id": defect_id, "fails": False}
+
     def _completion_fn(self, **kwargs):
         tests = _offered("test_id", **kwargs)
         defects = _offered("defect_id", **kwargs)
@@ -122,14 +135,7 @@ class _Judge:
         answered = [
             {
                 "test_id": test_id,
-                "defects": [
-                    {
-                        "defect_id": defect_id,
-                        "fails": self._kills(defect_id, test_id),
-                        "reason": "because",
-                    }
-                    for defect_id in defects
-                ],
+                "defects": [self._entry(defect_id, test_id) for defect_id in defects],
             }
             for test_id in tests
         ]
@@ -264,6 +270,86 @@ def test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving(tmp_pa
     assert unanswered.reason.strip() != ""
     # Not silently a `survives` verdict: no verdict exists for it at all.
     assert unanswered.defect_id not in {verdict.defect_id for verdict in result.verdicts}
+
+
+class _MisshapenJudge(_Judge):
+    """A judge that ignores the response schema, in one named way.
+
+    Not reachable through constrained decoding, which is the point: the harness
+    routes through LiteLLM with `drop_params=True` so it can run against
+    providers whose structured-output support differs, and one that does not
+    honour the union is the case this exists to pin. Subclassed rather than
+    parameterised into `_Judge` so the ordinary double stays well-shaped by
+    construction.
+    """
+
+    def __init__(self, entry: dict):
+        super().__init__()
+        self._misshapen = entry
+
+    def _entry(self, defect_id: str, test_id: str) -> dict:
+        return {"defect_id": defect_id, **self._misshapen}
+
+
+def test_a_failing_answer_with_no_reason_is_not_kept_as_a_verdict(tmp_path):
+    """A killing verdict is what becomes a coverage claim, so it may not arrive
+    without the sentence that traces it.
+
+    Kept as an absence rather than as a verdict with an empty reason: the second
+    would credit a defect as covered on an answer the request never offered a
+    shape for.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    judge = _MisshapenJudge({"fails": True})
+
+    result = _judged(judge, [_defect_set("divides by 30")], [_test("test_half_month")], repo)
+
+    assert result.verdicts == []
+    assert len(result.unjudged) == 1
+    assert result.unjudged[0].cause is UnjudgedCause.UNANSWERED
+    assert "carrying no reason" in result.unjudged[0].reason
+
+
+def test_a_surviving_answer_carrying_a_reason_is_not_kept_as_a_verdict(tmp_path):
+    """The other half of the union's guarantee.
+
+    Accepting it and discarding the reason would be the quieter failure: the
+    verdict would look ordinary while the answer it came from matched neither
+    shape the request offered, so nothing would record that the provider ignored
+    the schema.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    judge = _MisshapenJudge({"fails": False, "reason": "because"})
+
+    result = _judged(judge, [_defect_set("divides by 30")], [_test("test_half_month")], repo)
+
+    assert result.verdicts == []
+    assert len(result.unjudged) == 1
+    assert result.unjudged[0].cause is UnjudgedCause.UNANSWERED
+    assert "carrying a reason" in result.unjudged[0].reason
+
+
+def test_one_misshapen_answer_does_not_discard_the_rest_of_its_batch(tmp_path):
+    """`supplied_ids.py`'s rule, applied to shape rather than to ids.
+
+    Parsing the reply with the strict union would raise on the bad entry and take
+    the whole review down, discarding every usable judgement beside it. The
+    request still ASKS with the union; only the parse is permissive.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+
+    class _OneBad(_Judge):
+        def _entry(self, defect_id: str, test_id: str) -> dict:
+            if defect_id.endswith("d1"):
+                return {"defect_id": defect_id, "fails": True}  # no reason
+            return {"defect_id": defect_id, "fails": False}
+
+    result = _judged(
+        _OneBad(), [_defect_set("divides by 30", "ignores days")], [_test("test_half_month")], repo
+    )
+
+    assert [verdict.defect_id for verdict in result.unjudged] == ["daily-rate-d1"]
+    assert [verdict.defect_id for verdict in result.verdicts] == ["daily-rate-d2"]
 
 
 # --- carry --------------------------------------------------------------------
@@ -563,8 +649,14 @@ def _pairs_answer(kills: bool, test_id: str = "test_billing.py::test_prorate") -
                 # Composed by the enumerator as `<obligation id>/<slug>`, not
                 # taken from its answer — `_defects_from` prefixes so uniqueness
                 # is structural across criteria.
+                # A killing entry carries a reason and a surviving one has no
+                # `reason` key at all — the response is a union of the two
+                # shapes, and sending the wrong one for the verdict is a
+                # validation error rather than a tolerated answer.
                 "defects": [
-                    {"defect_id": "daily-rate/divides-by-thirty", "fails": kills, "reason": "r"}
+                    {"defect_id": "daily-rate/divides-by-thirty", "fails": True, "reason": "r"}
+                    if kills
+                    else {"defect_id": "daily-rate/divides-by-thirty", "fails": False}
                 ],
             }
         ]
@@ -763,27 +855,73 @@ def test_the_question_put_about_a_pair_is_the_failure_question(tmp_path):
     assert "purports to evidence" not in prompt
 
 
-def test_the_answer_about_a_pair_carries_only_the_pair_the_verdict_and_a_reason(tmp_path):
-    """DR-312 decision 3 holds the response to the minimum.
+def test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail(tmp_path):
+    """DR-312 decision 3 holds the response to the minimum, and an empty field is
+    not the minimum.
 
-    The caching discount is input-only, so output growth never amortizes — and
-    DR-314 measured this shape already costing about twice the output tokens of
-    the alternative. A richer per-pair payload belongs to a later per-finding
-    call, not to this sweep, and a field added here would be paid on every pair.
+    The caching discount is input-only, so output growth never amortizes. This
+    stage first sent one entry shape carrying a reason on every pair; measured
+    over the pilot corpus a written reason costs 18.5 output tokens and an empty
+    `"reason":""` still costs 10.0, so instructing the judge to leave it blank
+    recovers under half. The union removes the field for the disposition that
+    does not need it. A richer per-pair payload still belongs to a later
+    per-finding call, not to this sweep.
+
+    Asserted off the schema AS SENT, refs inlined, because that is what bounds
+    the response; asserting on the model classes alone would pass against a stage
+    that sent something else.
     """
     repo = _repo(tmp_path, {"test_billing.py": "x"})
     judge = _Judge()
 
     _judged(judge, [_defect_set("divides by 30")], [_test("test_half_month")], repo)
 
-    # Read off the schema AS SENT, refs already inlined, because that is what
-    # bounds the response. Asserting on the model class alone would pass against
-    # a stage that sent something else.
     schema = judge.requests[0]["schema"]
     per_test = schema["properties"]["tests"]["items"]["properties"]
     assert set(per_test) == {"test_id", "defects"}
-    per_pair = per_test["defects"]["items"]["properties"]
-    assert set(per_pair) == {"defect_id", "fails", "reason"}
+
+    members = per_test["defects"]["items"]["anyOf"]
+    shapes = {frozenset(member["properties"]) for member in members}
+    assert shapes == {
+        frozenset({"defect_id", "fails", "reason"}),
+        frozenset({"defect_id", "fails"}),
+    }
+
+    # And the two are told apart by the verdict itself, not by which keys are
+    # present. Without this the shapes above would still be satisfiable by a
+    # schema that lets a surviving pair choose either member, which is the
+    # ambiguity the union exists to remove.
+    # `enum`, not `const`: `llm.py::_const_to_enum` rewrites a single-valued
+    # Literal on the way out because that is the form providers actually honour
+    # (#158). Reading `const` here would pass against the model class and say
+    # nothing about what binds the provider.
+    by_shape = {frozenset(member["properties"]): member for member in members}
+    kills = by_shape[frozenset({"defect_id", "fails", "reason"})]
+    survives = by_shape[frozenset({"defect_id", "fails"})]
+    assert kills["properties"]["fails"]["enum"] == [True]
+    assert survives["properties"]["fails"]["enum"] == [False]
+
+
+def test_a_surviving_pair_is_stored_without_a_reason(tmp_path):
+    """The saving has to reach the stored verdict, not just the wire.
+
+    `PairVerdict.reason` defaults to empty, so nothing would fail if the stage
+    invented a reason for a surviving pair on the way in. This pins that it does
+    not.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    judge = _Judge(kills=lambda defect_id, test_id: defect_id.endswith("d1"))
+
+    result = _judged(
+        judge,
+        [_defect_set("divides by 30", "rounds up")],
+        [_test("test_half_month")],
+        repo,
+    )
+
+    by_kills = {verdict.kills: verdict for verdict in result.verdicts}
+    assert by_kills[True].reason == "because"
+    assert by_kills[False].reason == ""
 
 
 def test_the_defect_list_sits_in_the_shared_prefix_of_every_call(tmp_path):
