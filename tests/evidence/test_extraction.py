@@ -13,7 +13,6 @@ from pathlib import Path
 from acceptance.change.diff import extract_change_set
 from acceptance.evidence.discovery import discover_tests
 from acceptance.evidence.extraction import extract_test_evidence
-from acceptance.evidence.mapping import MappingResult, TestMapping
 from acceptance.review_state import ChangeSet, DiffHunk, FileChange
 
 
@@ -38,11 +37,15 @@ def _change_set(path: str, new_lines: int) -> ChangeSet:
     )
 
 
-def _mapping(*pairs: tuple[str, list[str]]) -> MappingResult:
-    return MappingResult(
-        mappings=[TestMapping(test_id=t, obligation_ids=o, rationale=".") for t, o in pairs],
-        unmapped_obligation_ids=[],
-    )
+def _mapping(*pairs: tuple[str, list[str]]) -> dict[str, list[str]]:
+    """The criterion links a test carries into extraction.
+
+    A plain mapping since #316: extraction takes the derived test → defect →
+    obligation edge rather than the retired mapping stage's result, so these
+    tests state the edge directly instead of building a stage output to carry
+    it.
+    """
+    return {test_id: list(obligation_ids) for test_id, obligation_ids in pairs}
 
 
 def _extract(repo: Path, change_set: ChangeSet, *mapped: tuple[str, list[str]]):

@@ -9,18 +9,26 @@ gap the corpus records.
 These two clients are those judges. Neither is a stand-in for the real one: the
 corpus holds rendered reports, not transcripts, so the runs cannot be replayed
 (see `benchmark/corpus.py`). What they do exercise is everything downstream of
-the per-defect verdict — which is not nothing:
+the per-pair verdict — which is not nothing:
 
-    `evidence/strength.py` is a deterministic reduce, not a fresh judgement.
-    All named defects caught -> strongly_supported; some -> partially_supported;
-    none -> nominally_supported; no mapped test at all -> unsupported.
+    `defects/support.py` is a deterministic reduce, not a fresh judgement. All
+    enumerated defects killed by some test -> strongly_supported; some ->
+    partially_supported; none -> nominally_supported; no candidate test at all
+    -> unsupported.
 
-So a judge is steered by the `would_be_caught` booleans it returns, and the
-reduce, the mapping wiring, the coverage->finding derivation and the verdict all
-run for real. Run 5 of the corpus is the case in point: two runs one commit
-apart, byte-identical mapped tests, the same defect named in both and judged
+So a judge is steered by the `fails` booleans it returns, and the reduce, the
+prescription wiring, the coverage->finding derivation and the verdict all run for
+real. Run 5 of the corpus is the case in point: two runs one commit apart,
+byte-identical candidate tests, the same defect named in both and judged
 oppositely — and because the reduce is a pure function, that single flipped
 boolean produced the whole rating.
+
+**The steering moved from the criterion to the pair** (#316). It used to run
+through `_Mappings` (map every test to every criterion) and `_Discrimination`
+(one defect per criterion, caught or not); it now runs through `_Enumeration`
+(one defect per criterion) and `_PairVerdicts` (every pair, killed or not). The
+suite's shape is unchanged because both stages feed a pure reduce; what changed
+is which stage the boolean enters through.
 
 Ids are read out of the **request schema** rather than parsed from the prompt.
 #163 constrains every id-bearing response field to the ids that call supplied,
@@ -40,7 +48,6 @@ from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from tests.support import (
     _EMPTY_BY_SCHEMA,
-    _candidate_tests,
     _completed,
     _fake_response,
     constant_embedding_fn,
@@ -111,49 +118,59 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
             # would not reach the stage this suite is actually steering.
             return _fake_response(json.dumps(_completed(_decomposition(obligations), **kwargs)))
 
-        if name == "_Mappings":
-            # Map every test to every obligation the call allows. A permissive
-            # judge with no mapped tests would score `unsupported` and look
-            # pessimistic, so the mapping must be generous in BOTH judges for
-            # the difference between them to be the verdict and nothing else.
-            # From the PROMPT, not the schema. #302 dropped mapping's per-batch
-            # `test_id` enum — its ids differ per batch and the provider's
-            # cache key covers the schema — so the prompt is the only place the
-            # batch is named, and it is where the real model reads it. Answering
-            # for every test also matters in its own right: a test the response
-            # passes over is now recorded as a judgment not obtained, so a double
-            # that skipped one would drive the whole run indeterminate rather
-            # than steering the verdict this suite is about.
-            tests = _candidate_tests(messages=kwargs.get("messages") or [])
-            allowed = _enums(schema, "obligation_ids") or [o["id"] for o in obligations]
-            return _fake_response(
-                json.dumps(
-                    {
-                        "mappings": [
-                            {"test_id": t, "obligation_ids": allowed, "rationale": "."}
-                            for t in tests
-                        ]
-                    }
-                )
-            )
-
-        if name == "_Discrimination":
+        if name == "_Enumeration":
+            # One way to fail, per criterion. The enumerator answers for one
+            # criterion per call and constrains `obligation_id` to it, so the id
+            # comes off the schema rather than from a fixed fixture.
             ids = _enums(schema, "obligation_id") or [o["id"] for o in obligations]
             return _fake_response(
                 json.dumps(
                     {
-                        "obligations": [
+                        "obligation_id": ids[0] if ids else "",
+                        "defects": [
                             {
-                                "obligation_id": oid,
-                                "defects": [
-                                    {
-                                        "description": "the behaviour under review is wrong",
-                                        "would_be_caught": always_strong,
-                                        "reason": "fixed verdict from a degenerate judge",
-                                    }
-                                ],
+                                "slug": "behaviour-is-wrong",
+                                "type": "other",
+                                "description": "the behaviour under review is wrong",
+                                "code_refs": [],
                             }
-                            for oid in ids
+                        ],
+                        "reason": "",
+                    }
+                )
+            )
+
+        if name == "_PairVerdicts":
+            # The verdict that steers the whole suite (#316). Every defect
+            # offered with every test gets the same fixed answer, so the only
+            # thing separating the two judges is `always_strong`.
+            #
+            # Answering for EVERY offered pair matters in its own right: a pair
+            # the response passes over is recorded as a judgement not obtained,
+            # and my derivation refuses to classify a criterion whose defects are
+            # partly unknown — so a double that skipped one would drive the run
+            # `indeterminate` rather than steering the rating this suite is about.
+            # Both id sets come off the schema. The pair stage constrains
+            # `test_id` as well as `defect_id` (`_allowed`), unlike the mapping
+            # stage this replaced, whose per-batch test ids #302 dropped from the
+            # schema and left only in the prompt.
+            tests = _enums(schema, "test_id")
+            defect_ids = _enums(schema, "defect_id")
+            verdict: dict[str, Any] = {"fails": always_strong}
+            if always_strong:
+                # A killing answer carries a reason and a surviving one carries
+                # no `reason` key at all — the response is a union of the two
+                # shapes, and sending the wrong one is a validation error.
+                verdict["reason"] = "fixed verdict from a degenerate judge"
+            return _fake_response(
+                json.dumps(
+                    {
+                        "tests": [
+                            {
+                                "test_id": test_id,
+                                "defects": [{"defect_id": did, **verdict} for did in defect_ids],
+                            }
+                            for test_id in tests
                         ]
                     }
                 )

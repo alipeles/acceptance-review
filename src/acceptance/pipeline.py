@@ -23,7 +23,6 @@ from pathlib import Path
 from acceptance.config import (
     DEFAULT_LINK_DISTANCE_THRESHOLD,
     DEFAULT_LINK_PAIR_BATCH_SIZE,
-    DEFAULT_MAPPING_BATCH_SIZE,
     ScopeExpansionPolicy,
     provenance_for,
 )
@@ -42,24 +41,13 @@ from acceptance.coverage.recommendations import recommend_tests
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.defects.enumeration import enumerate_defects
 from acceptance.defects.pair_mapping import DEFAULT_PAIR_BATCH_SIZE, judge_pairs
-from acceptance.evidence.anchoring import build_anchors
+from acceptance.defects.support import (
+    apply_derived_support,
+    derive_support,
+    tests_to_obligations,
+)
 from acceptance.evidence.discovery import discover_tests
-from acceptance.evidence.discrimination import judge_discrimination
 from acceptance.evidence.extraction import extract_test_evidence
-from acceptance.evidence.mapping import apply_test_mapping, map_tests_to_obligations
-from acceptance.evidence.rejudge import (
-    apply_carry_keys,
-    carried_ids,
-    carried_strengths,
-    decide_rating_carry,
-    digests_by_test_id,
-    label_carried_ratings,
-)
-from acceptance.evidence.strength import (
-    apply_evidence_strength,
-    classify_strength,
-    hold_rejected_ratings,
-)
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
@@ -70,7 +58,6 @@ from acceptance.requirement.task_file import parse_task_file
 from acceptance.rerun import (
     carried_recommendations,
     compute_delta,
-    derivation_changed,
     task_source_for,
 )
 from acceptance.review_state import (
@@ -258,7 +245,6 @@ def run_review(
     reviewed_revision: str,
     declaration_text: str | None = None,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
-    mapping_batch_size: int = DEFAULT_MAPPING_BATCH_SIZE,
     pair_batch_size: int = DEFAULT_PAIR_BATCH_SIZE,
     link_pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
     link_distance_threshold: float | None = DEFAULT_LINK_DISTANCE_THRESHOLD,
@@ -338,18 +324,16 @@ def run_review(
     # Every obligation reaches every stage below (#293). There used to be a
     # narrowing here — `obligations_to_rederive`, which dropped any obligation
     # none of whose cited files the change touched, for BOTH review axes at once.
-    # That predicate is gone. Implementation coverage is now classified for every
-    # obligation on every run, and the test-evidence rating is carried per
-    # criterion, further down, by comparing what that criterion actually depends
-    # on. The two questions are decided separately because they fail
-    # independently.
+    # That predicate is gone, and so is the rating carry that replaced it: the
+    # test-evidence class is derived arithmetic over pair verdicts now (#316), so
+    # every criterion is classified on every run and there is nothing left here
+    # to decide about reuse. What carries is one level down — the defect set and
+    # the pair verdict, each on its own content digest (DR-312 decision 6).
     #
-    # The one thing that still forbids reusing anything: if stage 1's output
-    # moved, an unchanged id may now stand for a different set of merged
-    # requirements, so no stored judgement about it can be trusted (#144).
-    carry_prior = prior
-    if prior is not None and derivation_changed(prior, derived.obligations):
-        carry_prior = None
+    # The rule that governed this is not gone, only relocated: if stage 1's
+    # output moved, an unchanged id may now stand for a different set of merged
+    # requirements, so no stored judgement about it can be trusted (#144). The
+    # ledger enforces it for the parts that still carry.
 
     # Only obligations that REQUIRE test evidence reach the stages that gather
     # it (#266). Previously every obligation did, and the ones no test could
@@ -398,59 +382,38 @@ def run_review(
     if ledger_sink is not None:
         ledger_sink.append((derived, decomposition, defect_sets, pair_mapping.verdicts))
 
-    mapping = map_tests_to_obligations(
-        needs_tests, discovered.tests, client, mapping_batch_size, unusable
-    )
-    needs_tests = apply_test_mapping(needs_tests, mapping)
-
-    test_evidence = extract_test_evidence(repo, discovered.tests, change_set, mapping)
-
-    # A criterion whose requirement text, mapped test set and mapped test
-    # CONTENTS are all unchanged keeps the rating stored for it, and is not asked
-    # about at all (#293). This is the cost saving, and more importantly it is
-    # what stops a rating moving because the judge was asked a second time: at
-    # #291's Gate 2 two criteria fell a tier on nine lines appended to a module
-    # holding one of their tests, with all three of their own inputs identical.
-    rating_decisions = decide_rating_carry(carry_prior, needs_tests, discovered.tests, client)
-    keeping_rating = carried_ids(rating_decisions)
-    to_judge = [o for o in needs_tests if o.id not in keeping_rating]
-
-    # A criterion the prior review already rated is re-judged WITH that rating and
-    # the changes to its own dependencies, and a judgement that moves the rating
-    # must rest on one of them (#292). Without a prior review there are no
-    # anchors, the request is byte-identical to what a first review has always
-    # sent, and every existing transcript still replays.
+    # The rating, derived rather than judged (#316). Three stages used to stand
+    # here — map tests to criteria, judge whether they discriminate, classify the
+    # strength — and all three are gone. What replaces them is arithmetic over
+    # records this run already holds: the ways a change could fail each criterion
+    # (#313) and whether each candidate test would fail on each of them (#314).
     #
-    # Only `to_judge` is anchored: a criterion keeping its stored rating is not in
-    # the request, so an anchor for it would put change ids into the response enum
-    # that no part of the prompt explains.
-    anchors = (
-        build_anchors(carry_prior, to_judge, change_set, digests_by_test_id(discovered.tests))
-        if carry_prior is not None
-        else {}
+    # No model call, so no seed, no transcript and no draw. A rating that moves
+    # between two runs now has a moved input behind it, which is what makes a
+    # movement attributable at all (#150).
+    #
+    # The rating carry is gone with them, and that is DR-312 decision 6 rather
+    # than an omission: the parts that carry are the defect set and the pair
+    # verdict, and the class over them is "free arithmetic over carried parts",
+    # always recomputed. #292's anchored re-judgement is retired for the same
+    # reason — it existed to stop a re-asked judge moving a rating for no reason,
+    # and nothing is re-asked.
+    support = derive_support(needs_tests, defect_sets, pair_mapping.verdicts, pair_mapping.unjudged)
+    needs_tests = apply_derived_support(needs_tests, support)
+
+    # Still extracted, and still structural. The declaration comparison below
+    # reads it, so it outlives the two stages that used to (#316). Its criterion
+    # links are the derived edge now — test → defect → obligation — rather than
+    # the retired mapping stage's answer.
+    test_evidence = extract_test_evidence(
+        repo, discovered.tests, change_set, tests_to_obligations(support)
     )
-    discriminations = judge_discrimination(
-        to_judge, test_evidence, change_set, client, unusable, anchors
-    )
-    strengths = classify_strength(to_judge, test_evidence, discriminations)
-    # The rejection was decided as the judgement was read; this applies it. Held
-    # before `apply_evidence_strength`, so the obligation never carries the moved
-    # rating even momentarily.
-    strengths = hold_rejected_ratings(strengths, unusable.held_ratings)
-    # The carried ratings join here rather than being spliced onto the obligation
-    # separately, so every rating in this review — judged or kept — reaches the
-    # obligation through one write-back.
-    strengths = strengths + carried_strengths(rating_decisions, needs_tests)
-    needs_tests = apply_evidence_strength(needs_tests, strengths)
-    # Record what each rating rested on, for the next run to compare against, and
-    # disclose which ratings this run did not re-derive.
-    needs_tests = apply_carry_keys(needs_tests, discovered.tests, client)
-    needs_tests = label_carried_ratings(needs_tests, rating_decisions, carry_prior)
+
     obligations = _in_original_order(obligations, needs_tests + no_tests)
-    # After strength, deliberately: an obligation whose judgment was never
-    # obtained must not carry the strength the classifier inferred from its
-    # absence. A re-run cannot improve a judgment it did not re-examine, and
-    # neither can a first run claim one it never made.
+    # After the derivation, deliberately: an obligation whose judgment was never
+    # obtained must not carry a class inferred from its absence. A re-run cannot
+    # improve a judgment it did not re-examine, and neither can a first run claim
+    # one it never made.
     obligations = _apply_indeterminate(obligations, unusable)
 
     # A derived obligation is `addressed` by construction — its resolution had
@@ -476,7 +439,9 @@ def run_review(
     dispositioned = classify_dispositions(
         unrequested, obligations, coverages, change_set, policy, client
     )
-    prescribed = recommend_tests(obligations, discriminations, change_set, client, unusable)
+    prescribed = recommend_tests(
+        obligations, defect_sets, pair_mapping.verdicts, change_set, client, unusable
+    )
     recommendations = prescribed.recommendations
     # Re-applied after the recommendation stage, not only before it (#275). The
     # first call above runs at strength time, and an obligation this stage was
@@ -503,20 +468,20 @@ def run_review(
         # could be silently dropped. The wholesale `merge_carried_forward` that
         # used to do this had nothing left to carry once that narrowing went.
         #
-        # Recommendations are the exception, and they are carried on the
-        # test-evidence axis instead. A criterion keeping its stored rating is not
-        # asked about this run, so `recommend_tests` cannot prescribe for it, and
-        # without this the instruction for a gap that is still open would vanish
-        # the moment the criterion stopped being re-judged — the same silent loss,
-        # arriving through the new door instead of the old one.
-        carried_rating = [
-            obligation for obligation in obligations if obligation.id in keeping_rating
-        ]
-        prescribed_ids = {recommendation.obligation_id for recommendation in recommendations}
+        # Recommendations are the exception, and since #316 they are carried on
+        # the DEFECT axis. Every criterion is classified on every run now and
+        # every uncovered defect is prescribed for on every run, so the case this
+        # used to cover — a criterion keeping a stored rating and therefore never
+        # asked about — no longer exists. What is left is a defect the stage
+        # asked about and got no answer for (#275); the prior run's prescription
+        # for that same defect is still the right instruction, and without this
+        # one omitted answer would delete a still-open instruction from the
+        # report.
+        prescribed_ids = {recommendation.defect_id for recommendation in recommendations}
         recommendations = recommendations + [
             recommendation
-            for recommendation in carried_recommendations(prior, carried_rating)
-            if recommendation.obligation_id not in prescribed_ids
+            for recommendation in carried_recommendations(prior, prescribed.unobtained)
+            if recommendation.defect_id not in prescribed_ids
         ]
     findings.extend(
         finding

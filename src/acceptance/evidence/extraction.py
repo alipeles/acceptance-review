@@ -27,10 +27,10 @@ from __future__ import annotations
 
 import ast
 import textwrap
+from collections.abc import Mapping
 from pathlib import Path
 
 from acceptance.evidence.discovery import DiscoveredTest
-from acceptance.evidence.mapping import MappingResult
 from acceptance.review_state import ChangeSet, TestEvidence
 
 _MOCK_NAMES = {
@@ -49,16 +49,21 @@ def extract_test_evidence(
     repo: Path,
     discovered_tests: list[DiscoveredTest],
     change_set: ChangeSet,
-    mapping: MappingResult,
+    obligations_by_test: Mapping[str, list[str]],
 ) -> list[TestEvidence]:
-    """Extract a TestEvidence record for each discovered test (§15)."""
+    """Extract a TestEvidence record for each discovered test (§15).
+
+    `obligations_by_test` used to be read off the mapping stage's result. It is
+    now DR-312 decision 4's derived edge — test → defect → obligation, built by
+    `defects.support.tests_to_obligations` — and the parameter is a plain mapping
+    so this module depends on the shape rather than on whichever stage produced
+    it (#316).
+    """
     changed_modules = {
         Path(f.path).stem
         for f in change_set.files
         if f.category == "source" and f.status != "deleted" and f.path.endswith(".py")
     }
-    obligations_by_test = {m.test_id: m.obligation_ids for m in mapping.mappings}
-
     production_by_file: dict[str, set[str]] = {}
     evidence: list[TestEvidence] = []
     for test in discovered_tests:

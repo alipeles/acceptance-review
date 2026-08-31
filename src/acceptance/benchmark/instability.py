@@ -61,7 +61,6 @@ from acceptance.benchmark.case import BenchmarkCase
 from acceptance.benchmark.coverage import classify_case
 from acceptance.benchmark.scoring import MetricStats, metric_stats
 from acceptance.config import DEFAULT_MODEL, Mode, RunConfig
-from acceptance.evidence.discrimination import ObligationDiscrimination
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import Review
@@ -104,18 +103,26 @@ class RunKey(PersistableModel):
 
 
 class DefectVerdict(PersistableModel):
-    obligation_id: str
-    defect: str
-    would_be_caught: bool
+    """One (defect, test) verdict, the unit the judge's answers move in.
+
+    It used to be one discrimination verdict — a defect description and whether
+    the criterion's mapped tests would catch it. #316 retired that stage; the
+    per-defect judgement is now a pair verdict, and it IS persisted in review
+    state, so this reads it back off the `Review` instead of watching the client.
+    """
+
+    defect_id: str
+    test_id: str
+    kills: bool
 
 
 class RunSnapshot(PersistableModel):
     """One run reduced to the axes instability is measured over.
 
-    Defect verdicts are captured from the discrimination stage as it runs rather
-    than read back off the `Review`, because the per-defect judgment is not
-    persisted in review state — that is #149, and fixing it here would mean
-    changing the pipeline, which this task explicitly does not do.
+    Defect verdicts used to be captured from the discrimination stage as it ran,
+    because the per-defect judgment was not persisted in review state — #149.
+    #316 made the pair verdict a stored record, so they are read off the `Review`
+    like every other axis here and the harness no longer has to watch the client.
     """
 
     run: RunKey
@@ -264,29 +271,18 @@ class ObservingClient(ModelClient):
         return result
 
 
-def _defect_verdicts(discriminations: Sequence[ObligationDiscrimination]) -> list[DefectVerdict]:
-    return [
-        DefectVerdict(
-            obligation_id=judgement.obligation_id,
-            defect=defect.description,
-            would_be_caught=defect.would_be_caught,
-        )
-        for judgement in discriminations
-        for defect in judgement.defects
-    ]
-
-
-def snapshot_review(
-    review: Review,
-    run: RunKey,
-    discriminations: Sequence[ObligationDiscrimination] = (),
-) -> RunSnapshot:
+def snapshot_review(review: Review, run: RunKey) -> RunSnapshot:
     return RunSnapshot(
         run=run,
         obligations={o.id: o.description for o in review.obligation_map},
         evidence_classes={o.id: o.evidence_class for o in review.obligation_map},
         open_questions=[q.question for q in review.open_questions],
-        defect_verdicts=_defect_verdicts(discriminations),
+        defect_verdicts=[
+            DefectVerdict(
+                defect_id=verdict.defect_id, test_id=verdict.test_id, kills=verdict.kills
+            )
+            for verdict in review.pair_verdicts
+        ],
     )
 
 
@@ -439,18 +435,18 @@ def _judgement_differences(left: RunSnapshot, right: RunSnapshot) -> list[Differ
                 )
             )
 
-    left_verdicts = {(v.obligation_id, v.defect): v.would_be_caught for v in left.defect_verdicts}
-    right_verdicts = {(v.obligation_id, v.defect): v.would_be_caught for v in right.defect_verdicts}
+    left_verdicts = {(v.defect_id, v.test_id): v.kills for v in left.defect_verdicts}
+    right_verdicts = {(v.defect_id, v.test_id): v.kills for v in right.defect_verdicts}
     for key in sorted(set(left_verdicts) & set(right_verdicts)):
         if left_verdicts[key] != right_verdicts[key]:
             differences.append(
                 Difference(
                     kind=DifferenceKind.DEFECT_VERDICT,
                     classification=DifferenceClass.CONTENT,
-                    subject=f"{left.description_for(key[0])} :: {key[1]}",
+                    subject=f"{key[0]} x {key[1]}",
                     present_in=left.run.label(),
                     absent_from=right.run.label(),
-                    detail=f"would_be_caught {left_verdicts[key]} -> {right_verdicts[key]}",
+                    detail=f"kills {left_verdicts[key]} -> {right_verdicts[key]}",
                 )
             )
     return differences
@@ -509,8 +505,8 @@ def _defect_distributions(snapshots: Sequence[RunSnapshot]) -> list[ClassDistrib
     by_defect: dict[str, Counter[str]] = {}
     for snapshot in snapshots:
         for verdict in snapshot.defect_verdicts:
-            subject = f"{snapshot.description_for(verdict.obligation_id)} :: {verdict.defect}"
-            by_defect.setdefault(subject, Counter())[str(verdict.would_be_caught).lower()] += 1
+            subject = f"{verdict.defect_id} x {verdict.test_id}"
+            by_defect.setdefault(subject, Counter())[str(verdict.kills).lower()] += 1
     return [
         ClassDistribution(subject=subject, counts=dict(counts))
         for subject, counts in sorted(by_defect.items())
@@ -723,14 +719,7 @@ def run_once(
     if review is None:  # pragma: no cover - classify_case always attaches one
         raise RuntimeError("the pipeline returned no review")
 
-    discriminations = [
-        item
-        for observed in client.observed
-        if isinstance(observed, list)
-        for item in observed
-        if isinstance(item, ObligationDiscrimination)
-    ]
-    return snapshot_review(review, run, discriminations)
+    return snapshot_review(review, run)
 
 
 def _perturbation_result(

@@ -23,6 +23,7 @@ from acceptance.review_state import (
     ObligationType,
     Review,
     TestRecommendation,
+    UnobtainedRecommendation,
 )
 from acceptance.review_store import ReviewStore
 from tests.support import WHOLE_SUMMARY_UNCOVERED
@@ -111,10 +112,45 @@ def test_an_unmoved_obligation_set_permits_reuse():
 # --- carrying judgments forward --------------------------------------------
 
 
-def test_a_prior_recommendation_survives_for_a_carried_obligation():
-    """Otherwise the agent loses the instruction for a gap that is still open."""
+def test_a_prior_prescription_survives_for_a_defect_this_run_got_no_answer_for():
+    """Otherwise one omitted answer deletes a still-open instruction.
+
+    The axis moved from the criterion to the defect (#316). It used to carry for
+    a criterion keeping a stored rating, because such a criterion was never
+    re-judged and so produced no prescription; the rating is derived arithmetic
+    now, so every criterion is classified and every uncovered defect prescribed
+    for on every run. What remains is a defect the stage asked about and got
+    nothing back for (#275).
+    """
     recommendation = TestRecommendation(
         obligation_id="a",
+        defect_id="a/round-half-up",
+        criterion="ties go to even",
+        required_inputs="2.5, 3.5",
+        boundary_conditions="exact .5",
+        expected_output="2 and 4",
+        plausible_defect="round-half-up",
+        repo_conventions="pytest, tests/ mirrors src/",
+    )
+    prior = _review("old", [_obligation("a")], recommendations=[recommendation])
+    unobtained = [
+        UnobtainedRecommendation(
+            obligation_id="a",
+            defect_id="a/round-half-up",
+            criterion="ties go to even",
+            reason="no prescription was produced for this one",
+        )
+    ]
+
+    assert carried_recommendations(prior, unobtained) == [recommendation]
+
+
+def test_a_prior_prescription_is_not_carried_for_a_defect_this_run_answered():
+    """The other half. Carrying a stale prescription over a fresh one would
+    report an instruction the current run did not stand behind."""
+    recommendation = TestRecommendation(
+        obligation_id="a",
+        defect_id="a/round-half-up",
         criterion="ties go to even",
         required_inputs="2.5, 3.5",
         boundary_conditions="exact .5",
@@ -124,9 +160,7 @@ def test_a_prior_recommendation_survives_for_a_carried_obligation():
     )
     prior = _review("old", [_obligation("a")], recommendations=[recommendation])
 
-    assert carried_recommendations(prior, [_obligation("a", carried_forward_from="old")]) == [
-        recommendation
-    ]
+    assert carried_recommendations(prior, []) == []
 
 
 # --- the delta --------------------------------------------------------------
@@ -320,78 +354,46 @@ _HEAD_JUDGMENTS = {
     # obligation comes from the summary step (#317): with the covered answer
     # there is no bullet for the ordinary decomposer to answer about.
     "_SummarySpans": WHOLE_SUMMARY_UNCOVERED,
-    "_Mappings": {
-        "mappings": [
+    # One way to fail per criterion, and a verdict per pair. The steering that
+    # used to run through `_Mappings` (which tests bear on which criterion) and
+    # `_Discrimination` (would they catch this defect) runs through these two
+    # since #316; the archetype is unchanged, only the stage it enters through.
+    #
+    # `obligation_id` is filled per call by the double, because the enumerator
+    # answers for one criterion at a time.
+    "_Enumeration": {
+        "obligation_id": "",
+        "defects": [
+            {
+                "slug": "wrong-rounding",
+                "type": "other",
+                "description": "rounds the wrong way",
+                "code_refs": [],
+            }
+        ],
+        "reason": "",
+    },
+    "_PairVerdicts": {
+        "tests": [
             {
                 "test_id": "test_rounding.py::test_rounds_to_nearest",
-                "obligation_ids": ["round-nearest"],
-                "rationale": "Asserts 2.3 -> 2.",
+                "defects": [
+                    {
+                        "defect_id": "round-nearest/wrong-rounding",
+                        "fails": True,
+                        "reason": "2.3 would return 2 either way, but 2.5 pins it.",
+                    }
+                ],
             },
             {
                 "test_id": "test_rounding.py::test_ties_round_to_even",
-                "obligation_ids": ["ties-to-even"],
-                "rationale": "Asserts both tie directions.",
-            },
-        ]
-    },
-    "_Discrimination": {
-        "obligations": [
-            {
-                "obligation_id": "round-nearest",
                 "defects": [
                     {
-                        "description": "truncates instead of rounding",
-                        "would_be_caught": True,
-                        "reason": "2.3 would return 2 either way, but 2.5 pins it.",
-                    }
-                ],
-            },
-            {
-                "obligation_id": "ties-to-even",
-                "defects": [
-                    {
-                        "description": "rounds half up",
-                        "would_be_caught": True,
+                        "defect_id": "ties-to-even/wrong-rounding",
+                        "fails": True,
                         "reason": "2.5 -> 2 fails under round-half-up.",
                     }
                 ],
-            },
-        ]
-    },
-    # The re-run reaches the pipeline through the ANCHORED schema, because the
-    # prior review rated `ties-to-even` and its mapped test set gained a member
-    # (#292). The rating moves, so the judgement has to say what it rests on — and
-    # here it genuinely rests on something: the builder added the tie test this
-    # whole archetype is about. Same verdicts as `_Discrimination` above, plus the
-    # justification.
-    #
-    # The change it names is the TEST, not the file holding it (#293). Under the
-    # file-level anchors this said `mapped-test-file:test_rounding.py`, which was
-    # satisfied by any edit anywhere in that module — including one that left
-    # every test mapped to this criterion byte-identical.
-    "_AnchoredDiscrimination": {
-        "obligations": [
-            {
-                "obligation_id": "round-nearest",
-                "defects": [
-                    {
-                        "description": "truncates instead of rounding",
-                        "would_be_caught": True,
-                        "reason": "2.3 would return 2 either way, but 2.5 pins it.",
-                    }
-                ],
-                "rests_on": [],
-            },
-            {
-                "obligation_id": "ties-to-even",
-                "defects": [
-                    {
-                        "description": "rounds half up",
-                        "would_be_caught": True,
-                        "reason": "2.5 -> 2 fails under round-half-up.",
-                    }
-                ],
-                "rests_on": ["mapped-test-added:test_rounding.py::test_ties_round_to_even"],
             },
         ]
     },
@@ -529,8 +531,20 @@ _TWO_FILE_JUDGMENTS = {
         "open_questions": [],
         "requirement_dispositions": [],
     },
-    "_Mappings": {"mappings": []},
-    "_Discrimination": {"obligations": []},
+    # One uncovered way to fail per criterion, so both criteria are weak and
+    # both earn a prescription — which is what the carry assertions below read.
+    "_Enumeration": {
+        "obligation_id": "",
+        "defects": [
+            {
+                "slug": "returns-zero",
+                "type": "other",
+                "description": "returns 0",
+                "code_refs": [],
+            }
+        ],
+        "reason": "",
+    },
     # BOTH obligations are classified, because implementation coverage is now
     # re-derived for every obligation on every run (#293). Under the file-level
     # narrowing this held only `alpha` — `beta` was never asked about, so a
@@ -627,6 +641,7 @@ def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path
         recommendations=[
             TestRecommendation(
                 obligation_id="beta",
+                defect_id="beta/returns-zero",
                 criterion="beta() returns 2",
                 required_inputs="none",
                 boundary_conditions="n/a",

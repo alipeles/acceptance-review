@@ -197,6 +197,7 @@ def test_open_questions_and_recommendations_are_numbered():
         recommendations=[
             TestRecommendation(
                 obligation_id="a",
+                defect_id="a/hard-codes-thirty",
                 criterion="Daily rate uses days_in_month",
                 required_inputs="A non-30-day month",
                 boundary_conditions="0 days",
@@ -242,6 +243,7 @@ def test_a_recommendation_sits_under_its_own_obligation_and_no_other():
         recommendations=[
             TestRecommendation(
                 obligation_id="weak-one",
+                defect_id="weak-one/hard-codes-thirty",
                 criterion="Weak one",
                 required_inputs="A non-30-day month",
                 boundary_conditions="0 days",

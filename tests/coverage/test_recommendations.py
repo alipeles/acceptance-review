@@ -1,29 +1,40 @@
-"""M7.1 acceptance: for a criterion whose test evidence is weak, a §9.5
-structured recommendation is produced with every field populated — the
-non-discriminating contractual-accrual/daily-rate case (archetype #4).
+"""M7.1 acceptance: an uncovered defect earns a §9.5 structured recommendation
+with every field populated — the non-discriminating daily-rate case (archetype
+#4).
+
+**The unit is a defect, not a weak criterion** (#316, DR-312 decision 4). What
+the stage is given is every enumerated way the change could fail a criterion
+that no candidate test was judged to fail on; what it returns is one prescription
+per such defect. Two failures stop being possible rather than becoming checks:
+prescribing a test that already exists (#250, #287), because a covered defect is
+never in the input; and a prescription resting on nothing traceable (#283),
+because `TestRecommendation.defect_id` is required.
 
 Generation is a schema-constrained model call; per the replay-first invariant
 these tests inject the recorded response via completion_fn — no live calls.
-Recommendation *quality* against the real model is shown by the PR's record run."""
+Recommendation *quality* against the real model is shown by the PR's record run.
+"""
 
 import pytest
 
 from acceptance.coverage.recommendations import recommend_tests
-from acceptance.evidence.discrimination import ObligationDiscrimination, PlausibleDefect
 from acceptance.llm import SchemaValidationError
 from acceptance.review_state import (
     ChangeSet,
+    Defect,
+    DefectSet,
     DiffHunk,
     FileChange,
     Obligation,
     ObligationType,
+    PairVerdict,
     RequiredEvidence,
 )
 from acceptance.supplied_ids import UnusableAnswerLog
 from tests.support import client_returning as _client_returning
 
 
-def _obligation(obligation_id: str, description: str, evidence_class: str | None) -> Obligation:
+def _obligation(obligation_id: str, description: str) -> Obligation:
     return Obligation(
         id=obligation_id,
         description=description,
@@ -31,8 +42,25 @@ def _obligation(obligation_id: str, description: str, evidence_class: str | None
         importance="critical",
         explicit=True,
         observable_behavior=description,
-        evidence_class=evidence_class,
     )
+
+
+def _defect(obligation_id: str, slug: str, description: str) -> Defect:
+    return Defect(
+        id=f"{obligation_id}/{slug}",
+        obligation_id=obligation_id,
+        type="other",
+        description=description,
+        code_refs=["billing.py#0"],
+    )
+
+
+def _defect_set(obligation_id: str, *defects: Defect) -> DefectSet:
+    return DefectSet(obligation_id=obligation_id, defects=list(defects))
+
+
+def _kills(defect_id: str, test_id: str = "test_billing.py::test_half_month") -> PairVerdict:
+    return PairVerdict(defect_id=defect_id, test_id=test_id, kills=True, reason="it asserts on it")
 
 
 def _change_set() -> ChangeSet:
@@ -65,289 +93,361 @@ def _exploding_client():
     from acceptance.llm import Mode, ModelClient, TranscriptStore
 
     def boom(**kwargs):
-        raise AssertionError("a model call was issued with no weak obligations")
+        raise AssertionError("a model call was issued with no uncovered defects")
 
     return ModelClient(
         model="x", mode=Mode.RECORD, store=TranscriptStore(tempfile.mkdtemp()), completion_fn=boom
     )
 
 
-def test_weak_criterion_gets_a_fully_populated_recommendation():
-    # Archetype #4's daily-rate gap: the only test uses a 30-day month, where
-    # price/days_in_month and a hard-coded price/30 give the same answer.
-    obligations = [
-        _obligation(
-            "daily-rate",
-            "Daily rate is monthly_price divided by days_in_month",
-            "nominally_supported",
-        ),
-    ]
-    discriminations = [
-        ObligationDiscrimination(
-            obligation_id="daily-rate",
-            defects=[
-                PlausibleDefect(
-                    description="hard-codes price/30 instead of price/days_in_month",
-                    would_be_caught=False,
-                    reason="a 30-day month gives the same result either way",
-                )
-            ],
-            discriminating=False,
-        )
-    ]
+def _answer(defect_id: str) -> dict:
+    return {
+        "defect_id": defect_id,
+        "required_inputs": "a month whose length is not 30",
+        "boundary_conditions": "0 days and a full month",
+        "expected_output": "price/28*days",
+        "required_assertions": ["assert prorate(280, 14, 28) == 140.0"],
+        "repo_conventions": "test_billing.py",
+    }
+
+
+_HARD_CODED_30 = "hard-codes price/30 instead of price/days_in_month"
+
+
+def _archetype_4():
+    """Archetype #4's daily-rate gap: the only test uses a 30-day month, where
+    price/days_in_month and a hard-coded price/30 give the same answer."""
+    obligation = _obligation("daily-rate", "Daily rate is monthly_price divided by days_in_month")
+    defect = _defect("daily-rate", "divides-by-thirty", _HARD_CODED_30)
+    return [obligation], [_defect_set("daily-rate", defect)], defect
+
+
+def test_an_uncovered_defect_gets_a_fully_populated_recommendation():
+    obligations, defect_sets, defect = _archetype_4()
     response = {
         "recommendations": [
             {
-                "obligation_id": "daily-rate",
+                "defect_id": defect.id,
                 "required_inputs": "A month whose length is not 30, e.g. days_in_month=28.",
                 "boundary_conditions": "0 days used and a full month.",
-                "expected_output": "prorate(28*price, 14, 28) uses price/28, differing from price/30.",
+                "expected_output": "prorate(28*price, 14, 28) uses price/28, not price/30.",
                 "required_assertions": ["assert prorate(280, 14, 28) == 140.0"],
-                "plausible_defect": "implementation hard-codes /30 instead of /days_in_month",
                 "repo_conventions": "add to test_billing.py alongside test_half_of_a_month",
             }
         ]
     }
 
     recommendations = recommend_tests(
-        obligations, discriminations, _change_set(), _client_returning(response)
+        obligations, defect_sets, [], _change_set(), _client_returning(response)
     ).recommendations
 
     assert len(recommendations) == 1
     rec = recommendations[0]
     assert rec.obligation_id == "daily-rate"
+    assert rec.defect_id == defect.id
     assert rec.criterion == "Daily rate is monthly_price divided by days_in_month"
     # Every §9.5 field is populated.
     assert rec.required_inputs
     assert rec.boundary_conditions
     assert rec.expected_output
     assert rec.required_assertions
-    assert "30" in rec.plausible_defect
     assert rec.repo_conventions
 
 
-def test_strongly_supported_obligations_get_no_recommendation_and_no_model_call():
-    obligations = [
-        _obligation("solid", "Well-tested behavior", "strongly_supported"),
-    ]
-    # The exploding client proves no model call is issued when nothing is weak.
-    result = recommend_tests(obligations, [], _change_set(), _exploding_client())
+def test_the_plausible_defect_is_copied_from_the_record_not_restated_by_the_model():
+    """§9.5 field 6 is the enumerated defect itself, so a green run of the
+    prescribed test demonstrably closes *that* gap (§8.4).
+
+    The response carries no `plausible_defect` at all — asking for a
+    restatement bought a paraphrase that could drift from the record it was
+    meant to name, and cost output on every prescription.
+    """
+    obligations, defect_sets, defect = _archetype_4()
+    rec = recommend_tests(
+        obligations,
+        defect_sets,
+        [],
+        _change_set(),
+        _client_returning({"recommendations": [_answer(defect.id)]}),
+    ).recommendations[0]
+
+    assert rec.plausible_defect == _HARD_CODED_30
+
+
+def test_a_defect_a_test_would_fail_on_earns_no_recommendation_and_no_model_call():
+    """#250 and #287 made structural. The covered defect is not merely dropped
+    from the output — with nothing uncovered, no call is issued at all, so a
+    redundant prescription has nothing to be composed from."""
+    obligations, defect_sets, defect = _archetype_4()
+
+    result = recommend_tests(
+        obligations, defect_sets, [_kills(defect.id)], _change_set(), _exploding_client()
+    )
+
     assert result.recommendations == []
     assert result.unobtained == []
 
 
-def test_unclassified_obligations_are_not_recommended():
-    # evidence_class=None means "not yet classified", not "weak" — skip it.
-    obligations = [_obligation("pending", "Not yet classified", None)]
-    result = recommend_tests(obligations, [], _change_set(), _exploding_client())
+def test_a_criterion_with_no_enumerated_defects_earns_no_recommendation():
+    """A reasoned-empty enumeration says no plausible defect exists. There is
+    nothing to prescribe a test for, and prescribing one would demand evidence
+    of a failure nobody believes can happen."""
+    obligations = [_obligation("true-by-construction", "The type makes this unrepresentable")]
+    defect_sets = [
+        DefectSet(
+            obligation_id="true-by-construction",
+            defects=[],
+            reason="no change to this criterion can fail it",
+        )
+    ]
+
+    result = recommend_tests(obligations, defect_sets, [], _change_set(), _exploding_client())
+
     assert result.recommendations == []
     assert result.unobtained == []
 
 
 def test_recommendation_round_trips_through_persistence():
-    obligations = [_obligation("daily-rate", "Daily rate rule", "partially_supported")]
-    response = {
-        "recommendations": [
-            {
-                "obligation_id": "daily-rate",
-                "required_inputs": "i",
-                "boundary_conditions": "b",
-                "expected_output": "o",
-                "required_assertions": ["a"],
-                "plausible_defect": "d",
-                "repo_conventions": "c",
-            }
-        ]
-    }
+    obligations, defect_sets, defect = _archetype_4()
     from acceptance.review_state import TestRecommendation
 
     rec = recommend_tests(
-        obligations, [], _change_set(), _client_returning(response)
+        obligations,
+        defect_sets,
+        [],
+        _change_set(),
+        _client_returning({"recommendations": [_answer(defect.id)]}),
     ).recommendations[0]
     assert TestRecommendation.from_dict(rec.to_dict()) == rec
 
 
-def _two_weak() -> tuple[list[Obligation], list[ObligationDiscrimination]]:
+def _two_uncovered():
+    """Two criteria, one uncovered defect each."""
     obligations = [
-        _obligation("daily-rate", "Daily rate uses days_in_month", "nominally_supported"),
-        _obligation("proration", "Proration handles partial months", "unsupported"),
+        _obligation("daily-rate", "Daily rate uses days_in_month"),
+        _obligation("proration", "Proration handles partial months"),
     ]
-    discriminations = [
-        ObligationDiscrimination(
-            obligation_id=obligation.id,
-            defects=[
-                PlausibleDefect(
-                    description="the behaviour is wrong",
-                    would_be_caught=False,
-                    reason="no discriminating input",
-                )
-            ],
-            discriminating=False,
-        )
-        for obligation in obligations
+    defect_sets = [
+        _defect_set("daily-rate", _defect("daily-rate", "d1", "the daily rate is wrong")),
+        _defect_set("proration", _defect("proration", "d1", "proration is wrong")),
     ]
-    return obligations, discriminations
+    return obligations, defect_sets
 
 
-def _recommendation(obligation_id: str) -> dict:
-    return {
-        "obligation_id": obligation_id,
-        "required_inputs": "a month whose length is not 30",
-        "boundary_conditions": "0 days and a full month",
-        "expected_output": "price/28*days",
-        "required_assertions": ["assert prorate(280, 14, 28) == 140.0"],
-        "plausible_defect": "hard-codes /30",
-        "repo_conventions": "test_billing.py",
-    }
+def test_a_response_skipping_a_defect_records_it_as_not_obtained():
+    """The "always" half of the invariant, kept — but paid for with one defect
+    instead of the whole review (#275).
 
-
-def test_a_response_skipping_a_weak_obligation_records_it_as_not_obtained():
-    """The "always" half of the invariant, kept — but paid for with one
-    obligation instead of the whole review (#275).
-
-    #218 made a skipped obligation visible by raising, which was right about the
+    #218 made a skipped item visible by raising, which was right about the
     visibility and wrong about the price: on a real run one omission out of
     thirteen discarded twelve honoured prescriptions, the verdict, and every
     finding the earlier stages had produced. The omission is still refused a
     silent pass — it becomes an explicit not-obtained record — and the answers
     that did come back survive.
     """
-    obligations, discriminations = _two_weak()
-    response = {"recommendations": [_recommendation("daily-rate")]}
+    obligations, defect_sets = _two_uncovered()
+    response = {"recommendations": [_answer("daily-rate/d1")]}
     log = UnusableAnswerLog()
 
     result = recommend_tests(
-        obligations, discriminations, _change_set(), _client_returning(response), log
+        obligations, defect_sets, [], _change_set(), _client_returning(response), log
     )
 
-    assert [r.obligation_id for r in result.recommendations] == ["daily-rate"]
-    assert [u.obligation_id for u in result.unobtained] == ["proration"]
-    # Not merely present: it says which criterion went unanswered and that the
+    assert [r.defect_id for r in result.recommendations] == ["daily-rate/d1"]
+    assert [u.defect_id for u in result.unobtained] == ["proration/d1"]
+    # Not merely present: it names the defect and the criterion and says the
     # answer was never obtained, so a reader cannot mistake it for a complete one.
     unobtained = result.unobtained[0]
+    assert unobtained.obligation_id == "proration"
     assert unobtained.criterion == "Proration handles partial months"
     assert "no prescription was produced" in unobtained.reason
-    assert "1 of 2" in unobtained.reason or "2 criteria and returned 1" in unobtained.reason
     # And the evidence axis is told, which is what keeps the verdict honest.
     assert log.indeterminate_obligations == {"proration"}
 
 
-def test_several_answers_survive_an_omission_and_several_omissions_are_each_recorded():
-    """The two-criterion case above cannot separate "keeps the answers" from
-    "keeps the one answer", and it cannot show that a second omission is
-    recorded rather than the first one standing for both.
+def test_one_criterion_can_be_answered_for_twice_and_missed_once():
+    """The reason the omission record is keyed on the defect rather than the
+    criterion. Three uncovered defects under ONE criterion, two answered: a
+    record keyed on the criterion could not represent this at all, and would
+    either lose the omission or wrongly mark the whole criterion unanswered.
+    """
+    obligations = [_obligation("daily-rate", "Daily rate uses days_in_month")]
+    defect_sets = [
+        _defect_set(
+            "daily-rate",
+            _defect("daily-rate", "d1", "wrong divisor"),
+            _defect("daily-rate", "d2", "wrong rounding"),
+            _defect("daily-rate", "d3", "negative days accepted"),
+        )
+    ]
+    response = {"recommendations": [_answer("daily-rate/d1"), _answer("daily-rate/d3")]}
 
-    Four criteria: two answered, two skipped, and the two skipped ones are not
+    result = recommend_tests(
+        obligations, defect_sets, [], _change_set(), _client_returning(response)
+    )
+
+    assert [r.defect_id for r in result.recommendations] == ["daily-rate/d1", "daily-rate/d3"]
+    assert [u.defect_id for u in result.unobtained] == ["daily-rate/d2"]
+
+
+def test_several_answers_survive_an_omission_and_several_omissions_are_each_recorded():
+    """The two-defect case cannot separate "keeps the answers" from "keeps the
+    one answer", and cannot show that a second omission is recorded rather than
+    the first standing for both.
+
+    Four defects: two answered, two skipped, and the two skipped ones are not
     adjacent in the supplied order — so an implementation that stopped at the
-    first gap, or that recorded one entry per response rather than per criterion,
+    first gap, or that recorded one entry per response rather than per defect,
     fails here and passes the smaller case.
     """
     obligations = [
-        _obligation("daily-rate", "Daily rate uses days_in_month", "nominally_supported"),
-        _obligation("proration", "Proration handles partial months", "unsupported"),
-        _obligation("rounding", "Totals round half up", "nominally_supported"),
-        _obligation("credits", "Credits offset the next invoice", "unsupported"),
+        _obligation("daily-rate", "Daily rate uses days_in_month"),
+        _obligation("proration", "Proration handles partial months"),
+        _obligation("rounding", "Totals round half up"),
+        _obligation("credits", "Credits offset the next invoice"),
     ]
-    response = {"recommendations": [_recommendation("daily-rate"), _recommendation("rounding")]}
+    defect_sets = [
+        _defect_set(name, _defect(name, "d1", f"{name} is wrong"))
+        for name in ("daily-rate", "proration", "rounding", "credits")
+    ]
+    response = {"recommendations": [_answer("daily-rate/d1"), _answer("rounding/d1")]}
     log = UnusableAnswerLog()
 
-    result = recommend_tests(obligations, [], _change_set(), _client_returning(response), log)
+    result = recommend_tests(
+        obligations, defect_sets, [], _change_set(), _client_returning(response), log
+    )
 
-    assert [r.obligation_id for r in result.recommendations] == ["daily-rate", "rounding"]
+    assert [r.defect_id for r in result.recommendations] == ["daily-rate/d1", "rounding/d1"]
     # In supplied order, not response order and not "the first one we noticed".
-    assert [u.obligation_id for u in result.unobtained] == ["proration", "credits"]
-    assert [u.criterion for u in result.unobtained] == [
-        "Proration handles partial months",
-        "Credits offset the next invoice",
-    ]
+    assert [u.defect_id for u in result.unobtained] == ["credits/d1", "proration/d1"]
     assert log.indeterminate_obligations == {"proration", "credits"}
 
 
-def test_an_omission_does_not_mark_the_answered_obligations_indeterminate():
+def test_an_omission_does_not_mark_the_answered_criteria_indeterminate():
     """The other half of the same guarantee: a positive answer we could honour
     keeps its judgment. Marking the whole call indeterminate would discard
     twelve good prescriptions in a different way."""
-    obligations, discriminations = _two_weak()
-    response = {"recommendations": [_recommendation("daily-rate")]}
+    obligations, defect_sets = _two_uncovered()
+    response = {"recommendations": [_answer("daily-rate/d1")]}
     log = UnusableAnswerLog()
 
-    recommend_tests(obligations, discriminations, _change_set(), _client_returning(response), log)
+    recommend_tests(obligations, defect_sets, [], _change_set(), _client_returning(response), log)
 
     assert "daily-rate" not in log.indeterminate_obligations
 
 
-def test_a_response_naming_a_non_weak_obligation_is_rejected():
-    """The "only" half. It was enforced by dropping the entry, which is the same
-    silence in the other direction: a recommendation the call never asked for
-    means the model answered about something else, and that is worth knowing."""
-    obligations, discriminations = _two_weak()
+def test_a_response_naming_a_defect_the_call_did_not_supply_is_rejected():
+    """The "only" half. Enforcing it by dropping the entry is the same silence
+    in the other direction: a recommendation the call never asked for means the
+    model answered about something else, and that is worth knowing."""
+    obligations, defect_sets = _two_uncovered()
     response = {
         "recommendations": [
-            _recommendation("daily-rate"),
-            _recommendation("proration"),
-            _recommendation("some-other-obligation"),
+            _answer("daily-rate/d1"),
+            _answer("proration/d1"),
+            _answer("some-other-defect"),
         ]
     }
 
     with pytest.raises(SchemaValidationError) as raised:
-        recommend_tests(obligations, discriminations, _change_set(), _client_returning(response))
+        recommend_tests(obligations, defect_sets, [], _change_set(), _client_returning(response))
 
-    assert "some-other-obligation" in str(raised.value)
+    assert "some-other-defect" in str(raised.value)
 
 
 def test_a_duplicate_recommendation_is_rejected():
-    obligations, discriminations = _two_weak()
+    obligations, defect_sets = _two_uncovered()
     response = {
         "recommendations": [
-            _recommendation("daily-rate"),
-            _recommendation("daily-rate"),
-            _recommendation("proration"),
+            _answer("daily-rate/d1"),
+            _answer("daily-rate/d1"),
+            _answer("proration/d1"),
         ]
     }
 
     with pytest.raises(SchemaValidationError) as raised:
-        recommend_tests(obligations, discriminations, _change_set(), _client_returning(response))
+        recommend_tests(obligations, defect_sets, [], _change_set(), _client_returning(response))
 
     assert "more than once" in str(raised.value)
 
 
-def test_every_weak_obligation_gets_exactly_one_recommendation():
-    """The invariant stated positively, and in weak-obligation order rather than
+def test_every_uncovered_defect_gets_exactly_one_recommendation_in_a_fixed_order():
+    """The invariant stated positively, and in supplied order rather than
     response order — two recorded runs over one input must be byte-identical."""
-    obligations, discriminations = _two_weak()
-    response = {
-        "recommendations": [
-            _recommendation("proration"),
-            _recommendation("daily-rate"),
-        ]
-    }
+    obligations, defect_sets = _two_uncovered()
+    response = {"recommendations": [_answer("proration/d1"), _answer("daily-rate/d1")]}
 
     result = recommend_tests(
-        obligations, discriminations, _change_set(), _client_returning(response)
+        obligations, defect_sets, [], _change_set(), _client_returning(response)
     )
 
-    assert [r.obligation_id for r in result.recommendations] == ["daily-rate", "proration"]
+    assert [r.defect_id for r in result.recommendations] == ["daily-rate/d1", "proration/d1"]
     assert result.unobtained == []
 
 
 def test_two_runs_over_one_omitting_response_produce_identical_state():
-    """Determinism over the new path: the not-obtained record is derived from
-    the supplied set and the response, both of which are fixed, so nothing about
-    it may vary between runs (M0.5)."""
-    obligations, discriminations = _two_weak()
-    response = {"recommendations": [_recommendation("daily-rate")]}
+    """Determinism over this path: the not-obtained record is derived from the
+    supplied set and the response, both fixed, so nothing about it may vary
+    between runs (M0.5)."""
+    obligations, defect_sets = _two_uncovered()
+    response = {"recommendations": [_answer("daily-rate/d1")]}
 
     first = recommend_tests(
-        obligations, discriminations, _change_set(), _client_returning(response)
+        obligations, defect_sets, [], _change_set(), _client_returning(response)
     )
     second = recommend_tests(
-        obligations, discriminations, _change_set(), _client_returning(response)
+        obligations, defect_sets, [], _change_set(), _client_returning(response)
     )
 
     assert [u.to_dict() for u in first.unobtained] == [u.to_dict() for u in second.unobtained]
     assert [r.to_dict() for r in first.recommendations] == [
         r.to_dict() for r in second.recommendations
     ]
+
+
+def test_more_defects_than_the_batch_size_are_split_across_calls():
+    """The unit got smaller when it became a defect, so the count got larger —
+    #314's Gate 2 enumerated 75 defects for one review. A single call for all of
+    them is the shape DR-164 warns about, and the response here is six fields of
+    prose per item, which is output and never amortizes under the input-only
+    caching discount.
+    """
+    obligations = [_obligation("daily-rate", "Daily rate uses days_in_month")]
+    defect_sets = [
+        _defect_set(
+            "daily-rate",
+            *[_defect("daily-rate", f"d{index}", f"way {index}") for index in range(1, 6)],
+        )
+    ]
+    calls: list[list[str]] = []
+
+    def completion_fn(**kwargs):
+        import json
+
+        from tests.support import _fake_response, _supplied_enum
+
+        # The batch's work list, read off the constrained schema it sent, so the
+        # double answers each call completely without being told the split.
+        offered = _supplied_enum("defect_id", **kwargs)
+        calls.append(list(offered))
+        return _fake_response(
+            json.dumps({"recommendations": [_answer(defect_id) for defect_id in offered]})
+        )
+
+    from tests.support import model_client_with
+
+    result = recommend_tests(
+        obligations,
+        defect_sets,
+        [],
+        _change_set(),
+        model_client_with(completion_fn),
+        batch_size=2,
+    )
+
+    assert [len(offered) for offered in calls] == [2, 2, 1]
+    assert len(result.recommendations) == 5
+    assert result.unobtained == []
 
 
 # --- #153: no test is prescribed for a boundary obligation --------------------
@@ -360,10 +460,10 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
     behavioural test for "we didn't also do something else", so the prescription
     named evidence that cannot exist.
 
-    The exploding client is the assertion that matters: a boundary obligation
-    must not merely be dropped from the output, it must not reach the model at
-    all. A recommendation call that ran and returned nothing would pass a
-    check on the result alone while still costing a call and a transcript.
+    The exploding client is the assertion that matters: a boundary obligation's
+    defects must not merely be dropped from the output, they must not reach the
+    model at all. A call that ran and returned nothing would pass a check on the
+    result alone while still costing a call and a transcript.
     """
     boundary = Obligation(
         id="pagination",
@@ -372,13 +472,13 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
         importance="critical",
         explicit=True,
         observable_behavior="pagination code appearing in the diff",
-        evidence_class="unsupported",
         required_evidence=RequiredEvidence.CODE_ONLY,
         required_evidence_reason="no test can assert that excluded work was not done",
         satisfied_by_absence=True,
     )
+    defect_sets = [_defect_set("pagination", _defect("pagination", "d1", "pagination changed"))]
 
-    result = recommend_tests([boundary], [], _change_set(), _exploding_client())
+    result = recommend_tests([boundary], defect_sets, [], _change_set(), _exploding_client())
 
     assert result.recommendations == []
     # And it is not recorded as not-obtained either: nothing was asked about it,
@@ -389,12 +489,10 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
 
 def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
     """The boundary the test above cannot draw on its own: filtering must remove
-    the boundary obligation from the batch without suppressing the real gap
-    sitting next to it. Asserting the recommendation names the ordinary
-    obligation, not merely that something came back."""
-    ordinary = _obligation(
-        "daily-rate", "Daily rate is monthly_price divided by days_in_month", "nominally_supported"
-    )
+    the boundary obligation's defects from the batch without suppressing the
+    real gap sitting next to it. Asserting the recommendation names the ordinary
+    criterion, not merely that something came back."""
+    ordinary = _obligation("daily-rate", "Daily rate is monthly_price divided by days_in_month")
     boundary = Obligation(
         id="pagination",
         description="The change does not alter how the invoice list is paginated",
@@ -402,28 +500,22 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
         importance="critical",
         explicit=True,
         observable_behavior="pagination code appearing in the diff",
-        evidence_class="unsupported",
         required_evidence=RequiredEvidence.CODE_ONLY,
         required_evidence_reason="no test can assert that excluded work was not done",
         satisfied_by_absence=True,
     )
-    client = _client_returning(
-        {
-            "recommendations": [
-                {
-                    "obligation_id": "daily-rate",
-                    "required_inputs": "A month whose length is not 30, e.g. days_in_month=28.",
-                    "boundary_conditions": "0 days used and a full month.",
-                    "expected_output": "price/28 differs from price/30.",
-                    "required_assertions": ["assert prorate(280, 14, 28) == 140.0"],
-                    "plausible_defect": "hard-codes /30 instead of /days_in_month",
-                    "repo_conventions": "test_billing.py",
-                }
-            ]
-        }
-    )
+    defect_sets = [
+        _defect_set("daily-rate", _defect("daily-rate", "d1", "hard-codes /30")),
+        _defect_set("pagination", _defect("pagination", "d1", "pagination changed")),
+    ]
 
-    result = recommend_tests([ordinary, boundary], [], _change_set(), client)
+    result = recommend_tests(
+        [ordinary, boundary],
+        defect_sets,
+        [],
+        _change_set(),
+        _client_returning({"recommendations": [_answer("daily-rate/d1")]}),
+    )
 
     assert [r.obligation_id for r in result.recommendations] == ["daily-rate"]
     assert result.unobtained == []

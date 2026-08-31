@@ -23,6 +23,7 @@ from acceptance.benchmark.corpus import (
 )
 from acceptance.benchmark.coverage import classify_case
 from acceptance.benchmark.scoring import score_case_set
+from acceptance.defects.support import derive_support
 from tests.benchmark.degenerate_judges import degenerate_client
 
 REPO = Path(__file__).resolve().parents[2]
@@ -172,62 +173,55 @@ def test_a_judge_that_never_issues_strongly_supported_fails_the_suite(corpus_wor
     assert report.gap_precision < 1.0
 
 
-def test_the_corpus_findings_survive_the_anchored_rejudgement(corpus_worktrees, monkeypatch):
-    """#292 acceptance: the findings recorded here are still found.
+def test_every_scored_rating_is_the_arithmetic_over_that_case_s_own_verdicts(corpus_worktrees):
+    """No rating the corpus scores can have come from anywhere but its verdicts.
 
-    #292 added a re-judgement that can HOLD a rating — a judgement that moves a
-    criterion's rating without resting on a change to that criterion's inputs is
-    rejected, and the stored rating stands. A mechanism that can hold a rating
-    can in principle hold a wrong one, which is the failure `DR-180` calls the
-    dangerous direction, so this corpus needs to be scored with that mechanism
-    present rather than around it.
+    This replaces a test about #292's anchored re-judgement, which could HOLD a
+    rating: a judgement moving a criterion's rating without resting on a change
+    to that criterion's inputs was rejected, and the stored rating stood. A
+    mechanism that can hold a rating can in principle hold a wrong one — the
+    failure `DR-180` calls the dangerous direction — so the corpus had to be
+    scored with the mechanism present rather than around it, and the old test
+    asserted no anchor was built while scoring.
 
-    Two claims, and the second is what makes the first mean anything:
-
-    - the scoreboard still separates the two degenerate judges, so the ratings
-      it reads are still the judge's own;
-    - no anchor is built while scoring, so no rating was held. Every case here
-      is a FIRST review, which by construction has no stored rating to hold.
-
-    Without the second, a change that froze every rating would sail through the
-    first: the two judges would still differ on the cases scored before the
-    freeze took hold, and nobody would learn that the corpus had stopped
-    measuring the judge.
+    #316 retired the mechanism. The class is a pure reduce over pair verdicts,
+    so there is nothing left to hold a rating and nothing to assert the absence
+    of. What is worth asserting instead is the property that made the absence
+    matter: a rating the scoreboard reads must be recomputable from the case's
+    own records. A change that froze ratings, cached them, or let a rendering
+    drift from its denominator fails here, where the old shape of that guard no
+    longer has a target.
     """
-    import acceptance.pipeline as pipeline_module
+    case = build_corpus_case(CASE_DIRS[0], REPO, CORPUS_DIR, corpus_worktrees / "wt0")
+    obligations = [
+        {"id": o["id"], "description": o["description"]}
+        for o in _labels(CASE_DIRS[0])["obligations"]
+    ]
+    scored = classify_case(case, degenerate_client(obligations, always_strong=True))
+    review = scored.reviewer_output
 
-    anchored_calls = []
-    real_build_anchors = pipeline_module.build_anchors
+    rated = [
+        obligation
+        for obligation in review.obligation_map
+        if obligation.required_evidence.requires_tests
+    ]
+    assert rated, "no criterion required test evidence, so this asserts nothing"
 
-    def counting_build_anchors(*args, **kwargs):
-        result = real_build_anchors(*args, **kwargs)
-        anchored_calls.append(result)
-        return result
-
-    monkeypatch.setattr(pipeline_module, "build_anchors", counting_build_anchors)
-
-    # The counter must be able to move, or "no anchor was built" is a claim about
-    # a patch that missed its target rather than about the run. `run_review`
-    # resolves this name at call time, so patching it here is what it will see.
-    from acceptance.review_state import ChangeSet as _ChangeSet
-    from acceptance.review_state import Review as _Review
-
-    pipeline_module.build_anchors(
-        _Review(mode="local", reviewed_revision="x", obligation_map=[]),
-        [],
-        _ChangeSet(base_revision="b", head_revision="h", files=[]),
-    )
-    assert len(anchored_calls) == 1, "the patch is not on the name the pipeline calls"
-    anchored_calls.clear()
-
-    permissive = _score_with(always_strong=True, tmp_path=corpus_worktrees / "a")
-    pessimistic = _score_with(always_strong=False, tmp_path=corpus_worktrees / "b")
-
-    assert permissive.evidence_agreement != pessimistic.evidence_agreement
-    assert not any(anchored_calls), (
-        "a corpus case built an anchor, so a rating could have been held and "
-        "these scores no longer describe the judge alone"
-    )
+    recomputed = {
+        entry.obligation_id: entry
+        for entry in derive_support(
+            rated, review.defect_sets, review.pair_verdicts, review.unjudged_pairs
+        )
+    }
+    for obligation in rated:
+        entry = recomputed[obligation.id]
+        assert obligation.evidence_class == entry.evidence_class
+        # The denominator too: a stored count that disagreed with the class it
+        # was rendered beside would be worse than showing neither.
+        assert (obligation.covered_defects, obligation.enumerated_defects) == (
+            entry.covered,
+            entry.enumerated,
+        )
 
 
 def test_the_two_degenerate_judges_disagree_about_the_ratings(corpus_worktrees):
@@ -307,7 +301,7 @@ def test_no_case_issues_a_live_model_call(corpus_worktrees, monkeypatch):
     monkeypatch.setattr(client, "_completion_fn", counting)
     classify_case(case, client)
 
-    assert "_Decomposition" in seen and "_Mappings" in seen
+    assert "_Decomposition" in seen and "_PairVerdicts" in seen
     assert "_Discrimination" in seen or "_Coverage" in seen
 
 

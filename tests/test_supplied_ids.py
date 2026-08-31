@@ -18,12 +18,12 @@ from typing import Literal
 import pytest
 from pydantic import ValidationError
 
+from acceptance.defects.pair_mapping import judge_pairs
 from acceptance.evidence.discovery import DiscoveredTest, DiscoveryReason
-from acceptance.evidence.mapping import map_tests_to_obligations
 from acceptance.llm import StrictResponseModel, inline_schema_refs
-from acceptance.review_state import ObligationType
+from acceptance.review_state import ChangeSet, Defect, DefectSet, UnjudgedCause
 from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan, unsupplied
-from tests.support import client_capturing_schemas, client_returning, make_obligation
+from tests.support import client_returning
 
 
 class _Item(StrictResponseModel):
@@ -183,203 +183,125 @@ def test_unsupplied_preserves_first_seen_order_without_duplicates():
     assert unsupplied(["a", "b", "a", "c"], {"b"}) == ["a", "c"]
 
 
-# --- the mapping stage, where the defect was observed ---
+# --- the pair stage, where the defect is observed now ---
+#
+# The section this replaces exercised the test-to-criterion mapping stage, which
+# #316 deleted. The guarantees are the machinery's, not that stage's, so they
+# move to the partitioned stage that remains: the (defect, test) judge.
+#
+# Four of the old nine are not repeated here because
+# `tests/defects/test_pair_mapping.py` already owns them at that stage: a pair
+# the judge never answers is recorded rather than read as *survives*; one
+# misshapen answer costs only its own pair; no request carries more judgements
+# than the limit; and a criterion whose pairs went unanswered is
+# `indeterminate` rather than negatively answered.
+#
+# One is deliberately NOT ported: the mapping stage sent a byte-identical
+# response schema in every batch because #302 found a per-batch `test_id` enum
+# cost 461 of 464 calls their prompt cache. The pair stage constrains `test_id`
+# per batch, so the guarantee is false there by construction. That is a
+# difference worth measuring, not a test to rewrite into a passing shape.
 
 
-def test_a_foreign_obligation_id_is_recorded_not_silently_dropped():
-    """The original defect. `show-fields` belongs to a fixture the prompt
-    happened to contain; before #163 it was filtered at mapping.py and the
-    result read as 'no test evidences this'."""
-    obligations = [make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL)]
-    tests = [_test("test_cart.py::test_discount")]
-    response = {
-        "mappings": [
-            {
-                "test_id": "test_cart.py::test_discount",
-                "obligation_ids": ["show-fields"],
-                "rationale": "asserts total",
-            }
-        ]
-    }
-    log = UnusableAnswerLog()
-
-    result = map_tests_to_obligations(obligations, tests, client_returning(response), unusable=log)
-
-    assert [a.returned_id for a in log.answers] == ["show-fields"]
-    assert result.unusable_answers[0].returned_id == "show-fields"
-
-
-def test_an_obligation_is_indeterminate_not_unmapped_when_an_answer_was_unusable():
-    """The distinction the whole task turns on. 'No test evidences this' is a
-    substantive claim; we are not entitled to it when the answer that would have
-    mapped the obligation is the one we could not read."""
-    obligations = [make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL)]
-    tests = [_test("test_cart.py::test_discount")]
-    response = {
-        "mappings": [
-            {
-                "test_id": "test_cart.py::test_discount",
-                "obligation_ids": ["show-fields"],
-                "rationale": "r",
-            }
-        ]
-    }
-    log = UnusableAnswerLog()
-
-    result = map_tests_to_obligations(obligations, tests, client_returning(response), unusable=log)
-
-    assert result.indeterminate_obligation_ids == ["ob-1"]
-    assert result.unmapped_obligation_ids == []  # NOT a negative answer
-    assert log.indeterminate_obligations == {"ob-1"}
-
-
-def test_a_usable_judgment_survives_an_unusable_one_in_the_same_response():
-    """Per-item, not per-response. Parsing strictly would abort the batch and
-    discard every judgment that came back alongside the bad id."""
-    obligations = [
-        make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL),
-        make_obligation("ob-2", "Total is money-formatted", ObligationType.FUNCTIONAL),
-    ]
-    tests = [_test("t.py::test_a"), _test("t.py::test_b")]
-    response = {
-        "mappings": [
-            {"test_id": "t.py::test_a", "obligation_ids": ["ob-1"], "rationale": "good"},
-            {"test_id": "t.py::test_b", "obligation_ids": ["show-fields"], "rationale": "bad"},
-        ]
-    }
-    log = UnusableAnswerLog()
-
-    result = map_tests_to_obligations(obligations, tests, client_returning(response), unusable=log)
-
-    good = next(m for m in result.mappings if m.test_id == "t.py::test_a")
-    assert good.obligation_ids == ["ob-1"]  # retained
-    assert [a.returned_id for a in log.answers] == ["show-fields"]
-
-
-def test_a_clean_mapping_records_nothing_and_keeps_its_negative_answers():
-    """The guarantee must not fire spuriously: with every id honoured, an
-    unmapped obligation is still a real, reportable negative answer."""
-    obligations = [
-        make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL),
-        make_obligation("ob-2", "Total is money-formatted", ObligationType.FUNCTIONAL),
-    ]
-    tests = [_test("t.py::test_a")]
-    response = {
-        "mappings": [{"test_id": "t.py::test_a", "obligation_ids": ["ob-1"], "rationale": "r"}]
-    }
-    log = UnusableAnswerLog()
-
-    result = map_tests_to_obligations(obligations, tests, client_returning(response), unusable=log)
-
-    assert result.unmapped_obligation_ids == ["ob-2"]
-    assert result.indeterminate_obligation_ids == []
-    assert not log.answers
-
-
-def test_every_batch_of_a_stage_asks_for_the_identical_schema():
-    """Two batches of one partitioned stage send byte-identical `response_format`
-    (#302).
-
-    The provider's prompt-cache key covers the response schema, so a per-batch
-    `test_id` enum made every batch after the first a guaranteed miss — measured
-    at 461 of 464 recorded mapping calls caching nothing, over a 1,729-token
-    prefix that was eligible the whole time. The enum is what had to go, and
-    nothing else about the request moved.
-
-    `obligation_ids` stays constrained: that set is identical in every batch of a
-    run, so it splits no prefix, and it is the field #163's defect was actually
-    about — the model naming obligations it had read out of the pasted test
-    sources.
-    """
-    obligations = [make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL)]
-    tests = [_test("t.py::test_a"), _test("t.py::test_b")]
-    client, seen = client_capturing_schemas({"mappings": []})
-
-    map_tests_to_obligations(obligations, tests, client, batch_size=1)
-
-    assert len(seen) == 2
-    assert json.dumps(seen[0], sort_keys=True) == json.dumps(seen[1], sort_keys=True)
-
-    item = seen[0]["properties"]["mappings"]["items"]["properties"]
-    # The batch's own tests are NOT named in the schema — that is the change.
-    assert "enum" not in item["test_id"]
-    # Every batch still judges every obligation, and still may only name those.
-    for schema in seen:
-        obligation_field = schema["properties"]["mappings"]["items"]["properties"]["obligation_ids"]
-        assert obligation_field["items"]["enum"] == ["ob-1"]
-
-
-def test_a_test_the_response_passes_over_is_recorded_as_unanswered():
-    """A batch may come back short, and a skipped test must not read as a test
-    judged to evidence nothing (#302).
-
-    No schema ever prevented this — an enum restricts which values may appear,
-    never how many entries do — so before #302 an omission was silently
-    indistinguishable from a negative judgment, and any obligation resting on
-    the skipped test was reported as having no test at all. That is #163's defect
-    shape: the review calling a change untested when it went unreviewed.
-    """
-    obligations = [make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL)]
-    tests = [_test("t.py::test_a"), _test("t.py::test_b")]
-    # Answers for one of the two tests it was given, and says nothing about the other.
-    response = {
-        "mappings": [{"test_id": "t.py::test_a", "obligation_ids": [], "rationale": "incidental"}]
-    }
-    log = UnusableAnswerLog()
-
-    result = map_tests_to_obligations(
-        obligations, tests, client_returning(response), batch_size=2, unusable=log
+def _defect(defect_id: str, obligation_id: str = "ob-1") -> Defect:
+    return Defect(
+        id=defect_id,
+        obligation_id=obligation_id,
+        type="other",
+        description=f"{defect_id} goes wrong",
+        code_refs=[],
     )
 
-    unanswered = [a for a in log.answers if a.returned_id == "t.py::test_b"]
-    assert len(unanswered) == 1
-    assert unanswered[0].field == "test_id"
-    assert unanswered[0].reason == "no judgment returned for this test"
-    # And the obligation is INDETERMINATE, not reported as having no test:
-    # the answer that would have mapped it is the one we did not get.
-    assert result.indeterminate_obligation_ids == ["ob-1"]
-    assert result.unmapped_obligation_ids == []
+
+def _defect_set(*defect_ids: str) -> DefectSet:
+    return DefectSet(obligation_id="ob-1", defects=[_defect(d) for d in defect_ids])
 
 
-def test_a_test_judged_twice_is_recorded_rather_than_silently_deduplicated():
-    """Two judgments for one test either agree or they disagree, and keeping the
-    first without saying so is the tool choosing between answers it has no basis
-    to choose between (#302)."""
-    obligations = [make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL)]
-    tests = [_test("t.py::test_a")]
-    response = {
-        "mappings": [
-            {"test_id": "t.py::test_a", "obligation_ids": ["ob-1"], "rationale": "first"},
-            {"test_id": "t.py::test_a", "obligation_ids": [], "rationale": "second, disagreeing"},
-        ]
-    }
+def _judge(defect_sets, tests, client, unusable=None, batch_size=40):
+    return judge_pairs(
+        defect_sets,
+        tests,
+        ChangeSet(base_revision="a", head_revision="b", files=[]),
+        client,
+        batch_size=batch_size,
+        unusable=unusable,
+    )
+
+
+def _answer(test_id: str, entries: list[dict]) -> dict:
+    return {"tests": [{"test_id": test_id, "defects": entries}]}
+
+
+def test_a_foreign_defect_id_is_recorded_not_silently_dropped():
+    """The original defect, at the stage that inherits it. `show-fields` belongs
+    to a fixture the prompt happened to contain; filtering it out silently leaves
+    a result indistinguishable from "no test would fail on this defect"."""
     log = UnusableAnswerLog()
+    result = _judge(
+        [_defect_set("ob-1/d1")],
+        [_test("test_cart.py::test_discount")],
+        client_returning(
+            _answer(
+                "test_cart.py::test_discount",
+                [{"defect_id": "show-fields", "fails": True, "reason": "asserts total"}],
+            )
+        ),
+        unusable=log,
+    )
 
-    result = map_tests_to_obligations(obligations, tests, client_returning(response), unusable=log)
+    assert [a.returned_id for a in log.answers] == ["show-fields"]
+    # And the pair that WAS offered carries no verdict, rather than a false one.
+    assert [v.defect_id for v in result.verdicts] == []
+    assert [(u.defect_id, u.cause) for u in result.unjudged] == [
+        ("ob-1/d1", UnjudgedCause.UNANSWERED)
+    ]
 
-    repeats = [a for a in log.answers if a.reason and "more than once" in a.reason]
-    assert len(repeats) == 1
-    assert repeats[0].returned_id == "t.py::test_a"
-    # The first judgment stands, as the recorded reason says it does.
-    assert [(m.test_id, m.obligation_ids) for m in result.mappings] == [("t.py::test_a", ["ob-1"])]
+
+def test_a_clean_answer_records_nothing_and_keeps_its_negative_verdicts():
+    """The guarantee must not fire spuriously: with every id honoured, a pair the
+    test would not fail on is a real, reportable negative answer rather than an
+    absence of one."""
+    log = UnusableAnswerLog()
+    result = _judge(
+        [_defect_set("ob-1/d1", "ob-1/d2")],
+        [_test("t.py::test_a")],
+        client_returning(
+            _answer(
+                "t.py::test_a",
+                [
+                    {"defect_id": "ob-1/d1", "fails": True, "reason": "asserts on it"},
+                    {"defect_id": "ob-1/d2", "fails": False},
+                ],
+            )
+        ),
+        unusable=log,
+    )
+
+    assert sorted((v.defect_id, v.kills) for v in result.verdicts) == [
+        ("ob-1/d1", True),
+        ("ob-1/d2", False),
+    ]
+    assert result.unjudged == []
+    assert not log.answers
 
 
 def test_the_schema_asked_for_differs_from_the_shape_parsed():
     """The `parse_as` seam. Without it a provider that ignored the enum would
     raise `SchemaValidationError` and cost the whole batch — which is exactly the
     all-or-nothing failure the per-item recording exists to avoid."""
-    obligations = [make_obligation("ob-1", "Discount reduces total", ObligationType.FUNCTIONAL)]
-    tests = [_test("t.py::test_a")]
-    response = {
-        "mappings": [
-            {"test_id": "t.py::test_a", "obligation_ids": ["not-supplied"], "rationale": "r"}
-        ]
-    }
+    log = UnusableAnswerLog()
 
     # Does not raise: parsed permissively, then checked per item.
-    result = map_tests_to_obligations(obligations, tests, client_returning(response))
+    _judge(
+        [_defect_set("ob-1/d1")],
+        [_test("t.py::test_a")],
+        client_returning(
+            _answer("t.py::test_a", [{"defect_id": "not-supplied", "fails": False}])
+        ),
+        unusable=log,
+    )
 
-    assert result.unusable_answers[0].returned_id == "not-supplied"
+    assert [a.returned_id for a in log.answers] == ["not-supplied"]
 
 
 # --- the pipeline actually uses it (the wiring, not just the helper) ---
@@ -403,17 +325,33 @@ _JUDGMENTS = {
         "open_questions": [],
         "requirement_dispositions": [],
     },
-    # The defect, reproduced: a mapping naming an obligation nobody supplied.
-    "_Mappings": {
-        "mappings": [
+    "_Enumeration": {
+        "obligation_id": "",
+        "defects": [
+            {
+                "slug": "d1",
+                "type": "other",
+                "description": "alpha returns a constant",
+                "code_refs": [],
+            }
+        ],
+        "reason": "",
+    },
+    # The defect, reproduced: an answer naming an id nobody supplied. It used to
+    # be reproduced through the test-to-criterion mapping stage, which #316
+    # deleted; the pair judge is where the same shape lands now — a verdict about
+    # `show-fields`, which was never offered, and silence about `alpha/d1`, which
+    # was.
+    "_PairVerdicts": {
+        "tests": [
             {
                 "test_id": "test_alpha.py::test_alpha",
-                "obligation_ids": ["show-fields"],
-                "rationale": "from a fixture in the prompt",
+                "defects": [
+                    {"defect_id": "show-fields", "fails": True, "reason": "from a fixture"}
+                ],
             }
         ]
     },
-    "_Discrimination": {"obligations": []},
     "_Coverage": {
         "classifications": [
             {

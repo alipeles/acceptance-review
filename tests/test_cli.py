@@ -709,8 +709,21 @@ def _gap_client():
                 "open_questions": [],
                 "requirement_dispositions": [],
             },
-            "_Mappings": {"mappings": []},
-            "_Discrimination": {"discriminations": []},
+            # One enumerated way the change could fail the criterion, which no
+            # test kills — that is what makes this a review with a real gap and
+            # so a real prescription to pull (#316).
+            "_Enumeration": {
+                "obligation_id": "gap-ob",
+                "defects": [
+                    {
+                        "slug": "empty-raises",
+                        "type": "other",
+                        "description": "raises IndexError on an empty input",
+                        "code_refs": [],
+                    }
+                ],
+                "reason": "",
+            },
             "_Coverage": {
                 "classifications": [
                     {
@@ -726,12 +739,11 @@ def _gap_client():
             "_Recommendations": {
                 "recommendations": [
                     {
-                        "obligation_id": "gap-ob",
+                        "defect_id": "gap-ob/empty-raises",
                         "required_inputs": "an empty collection",
                         "boundary_conditions": "zero elements",
                         "expected_output": "an empty result, not an error",
                         "required_assertions": ["assert handle([]) == []"],
-                        "plausible_defect": "raises IndexError on an empty input",
                         "repo_conventions": "follow the fixtures in tests/test_thing.py",
                     }
                 ]
@@ -911,6 +923,10 @@ def _store_review_with(tmp_path, revision, criterion, defect):
         recommendations=[
             TestRecommendation(
                 obligation_id=criterion,
+                # Every prescription names the uncovered defect it was owed for
+                # (#316); the field is required so #283's untraceable shape does
+                # not typecheck.
+                defect_id=f"{criterion}/d1",
                 criterion="A criterion",
                 required_inputs="inputs",
                 boundary_conditions="edges",

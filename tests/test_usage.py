@@ -148,7 +148,7 @@ def test_stages_are_reported_in_the_order_the_pipeline_runs_them():
     """Not alphabetically: the table is read as the review proceeds.
 
     Alphabetical put `coverage classification` above `decompose` and split the
-    three `evidence/` stages apart, so a reader had to reassemble the sequence
+    evidence stages apart, so a reader had to reassemble the sequence
     themselves. The calls are fed in deliberately jumbled order here, because an
     incremental re-run issues its live calls in a different sequence from the run
     that recorded them and the table must not depend on that.
@@ -159,17 +159,17 @@ def test_stages_are_reported_in_the_order_the_pipeline_runs_them():
             _call("coverage classification", SERVED_FROM_PROVIDER),
             _call("decompose", SERVED_FROM_PROVIDER),
             _call("test recommendation", SERVED_FROM_PROVIDER),
-            _call("test-to-obligation mapping", SERVED_FROM_PROVIDER),
+            _call("defect-to-test pair mapping", SERVED_FROM_PROVIDER),
             _call("obligation linking", SERVED_FROM_PROVIDER),
-            _call("discrimination judgment", SERVED_FROM_PROVIDER),
+            _call("defect enumeration", SERVED_FROM_PROVIDER),
         ]
     )
 
     assert [stage.stage for stage in usage.stages] == [
         "decompose",
         "obligation linking",
-        "test-to-obligation mapping",
-        "discrimination judgment",
+        "defect enumeration",
+        "defect-to-test pair mapping",
         "coverage classification",
         "test recommendation",
         "declaration comparison",
@@ -208,8 +208,8 @@ def test_every_pipeline_stage_appears_in_the_reported_order():
     from acceptance.coverage.open_questions import _STAGE as OPEN_QUESTIONS
     from acceptance.coverage.recommendations import _STAGE as RECOMMENDATIONS
     from acceptance.coverage.unrequested import _STAGE as UNREQUESTED
-    from acceptance.evidence.discrimination import _STAGE as DISCRIMINATION
-    from acceptance.evidence.mapping import _STAGE as MAPPING
+    from acceptance.defects.enumeration import _STAGE as ENUMERATION
+    from acceptance.defects.pair_mapping import _STAGE as PAIRS
     from acceptance.requirement.linking import _STAGE as LINKING
     from acceptance.requirement.obligations import _STAGE as DECOMPOSE
     from acceptance.requirement.summary import SUMMARY_STAGE
@@ -219,8 +219,8 @@ def test_every_pipeline_stage_appears_in_the_reported_order():
         SUMMARY_STAGE,
         LINKING,
         OPEN_QUESTIONS,
-        MAPPING,
-        DISCRIMINATION,
+        ENUMERATION,
+        PAIRS,
         CLASSIFY,
         UNREQUESTED,
         DISPOSITION,

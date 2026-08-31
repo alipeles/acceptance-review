@@ -29,7 +29,7 @@ from acceptance.benchmark.coverage import classify_case
 from acceptance.benchmark.fixtures import build_benchmark_case
 from acceptance.change.diff import extract_change_set
 from acceptance.cli import run_check
-from acceptance.config import DEFAULT_MODEL, RunConfig
+from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL, RunConfig
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_store import ReviewStore
 from tests.support import (
@@ -37,11 +37,30 @@ from tests.support import (
     WHOLE_SUMMARY_UNCOVERED,
     _completed,
     _fake_response,
+    _supplied_enum,
     client_finding_nothing,
+    constant_embedding_fn,
 )
 from tests.support import client_dispatching as _client_dispatching
 
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
+
+# Archetype #1's criteria, for the tests that need the pipeline to reach its
+# later stages at all rather than to score a particular figure.
+_CRITERIA = [
+    {
+        "id": "show-fields",
+        "description": "Show the item name, quantity, and unit price",
+        "type": "functional",
+        "source_quote": "Show the item name, the quantity, and the unit price.",
+    },
+    {
+        "id": "line-total",
+        "description": "Include the line total (quantity times unit price)",
+        "type": "functional",
+        "source_quote": "Include the line total (quantity × unit price).",
+    },
+]
 
 
 def _decomposition_response(obligations: list[dict]) -> dict:
@@ -173,53 +192,33 @@ def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
     client = _client_dispatching(
         {
             "_Decomposition": _decomposition_response(obligations),
-            "_Mappings": {
-                "mappings": [
+            # One way to fail per criterion. `obligation_id` is filled per call
+            # by the double, since the enumerator answers for one at a time.
+            "_Enumeration": {
+                "obligation_id": "",
+                "defects": [
                     {
-                        "test_id": pos,
-                        "obligation_ids": ["show-fields", "line-total", "money-format"],
-                        "rationale": ".",
-                    },
-                    {
-                        "test_id": two,
-                        "obligation_ids": ["show-fields", "line-total", "money-format"],
-                        "rationale": ".",
-                    },
-                ]
+                        "slug": "is-wrong",
+                        "type": "other",
+                        "description": "the stated rule is not honoured",
+                        "code_refs": [],
+                    }
+                ],
+                "reason": "",
             },
-            "_Discrimination": {
-                "obligations": [
+            # The two real tests catch the three implemented rules and catch
+            # nothing about returns, which is the gap archetype #1 poses.
+            "_PairVerdicts": {
+                "tests": [
                     {
-                        "obligation_id": "show-fields",
+                        "test_id": test_id,
                         "defects": [
-                            {
-                                "description": "wrong/omitted field",
-                                "would_be_caught": True,
-                                "reason": "exact line string asserted",
-                            },
-                        ],
-                    },
-                    {
-                        "obligation_id": "line-total",
-                        "defects": [
-                            {
-                                "description": "wrong total formula",
-                                "would_be_caught": True,
-                                "reason": "exact total asserted",
-                            },
-                        ],
-                    },
-                    {
-                        "obligation_id": "money-format",
-                        "defects": [
-                            {
-                                "description": "wrong currency formatting",
-                                "would_be_caught": True,
-                                "reason": "exact $ format asserted",
-                            },
-                        ],
-                    },
-                    # returns-in-parens has no mapped test, so it's never sent here.
+                            {"defect_id": f"{oid}/is-wrong", "fails": True, "reason": "asserted"}
+                            for oid in ("show-fields", "line-total", "money-format")
+                        ]
+                        + [{"defect_id": "returns-in-parens/is-wrong", "fails": False}],
+                    }
+                    for test_id in (pos, two)
                 ]
             },
             "_Coverage": _classification_response(
@@ -649,23 +648,41 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
                     }
                 ]
             ),
-            "_Mappings": {
-                "mappings": [
-                    {"test_id": test_id, "obligation_ids": ["show-fields"], "rationale": "."},
-                ]
-            },
-            "_Discrimination": {
-                "obligations": [
+            # Two ways to fail, one killed by the discovered test and one not, so
+            # every downstream stage has something to do: the reduce sees a
+            # partial denominator, the derived edge gets a linked test, and the
+            # prescriber gets an uncovered defect to answer about.
+            "_Enumeration": {
+                "obligation_id": "show-fields",
+                "defects": [
                     {
-                        "obligation_id": "show-fields",
+                        "slug": "omits-a-field",
+                        "type": "other",
+                        "description": "omits a field",
+                        "code_refs": [],
+                    },
+                    {
+                        "slug": "wrong-order",
+                        "type": "other",
+                        "description": "prints the fields in the wrong order",
+                        "code_refs": [],
+                    },
+                ],
+                "reason": "",
+            },
+            "_PairVerdicts": {
+                "tests": [
+                    {
+                        "test_id": test_id,
                         "defects": [
                             {
-                                "description": "omits a field",
-                                "would_be_caught": False,
-                                "reason": ".",
+                                "defect_id": "show-fields/omits-a-field",
+                                "fails": True,
+                                "reason": "it asserts on the field the defect drops",
                             },
+                            {"defect_id": "show-fields/wrong-order", "fails": False},
                         ],
-                    },
+                    }
                 ]
             },
             "_Coverage": _classification_response(
@@ -682,12 +699,11 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
             "_Recommendations": {
                 "recommendations": [
                     {
-                        "obligation_id": "show-fields",
+                        "defect_id": "show-fields/wrong-order",
                         "required_inputs": "a receipt line",
                         "boundary_conditions": "none",
                         "expected_output": "all three fields",
                         "required_assertions": ["assert name in line"],
-                        "plausible_defect": "omits a field",
                         "repo_conventions": "test_receipt.py",
                     }
                 ]
@@ -700,52 +716,102 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
     obligation = review.obligation_map[0]
 
     assert obligation.description  # decomposition ran
-    assert obligation.test_evidence == [test_id]  # test discovery + mapping ran
-    assert obligation.evidence_class is not None  # discrimination + strength ran
-    assert obligation.achieved_evidence_tier is not None  # strength applied a tier
+    # Discovery, pair judgement and the derived edge all ran: the criterion's
+    # linked test is the one a verdict says would fail on its defect (#316).
+    assert obligation.test_evidence == [test_id]
+    assert obligation.evidence_class is not None  # enumeration + pairs + the reduce ran
+    assert (obligation.covered_defects, obligation.enumerated_defects) == (1, 2)
+    assert obligation.achieved_evidence_tier is not None  # the reduce applied a tier
     assert obligation.coverage_status == "addressed"  # coverage classification ran
     assert obligation.coverage_refs  # coverage refs were carried through
     assert review.recommendations  # recommendation generation ran
     assert review.completion is not None  # the verdict was derived
 
 
-def test_the_shared_pipeline_partitions_the_mapping_call(tmp_path):
+def test_the_shared_pipeline_partitions_the_pair_call(tmp_path):
     """The batching mechanism has its own unit tests; this pins that the
     pipeline actually *calls* it, and that the batch-size control reaches it
     rather than stopping at the signature. A partitioner nothing routes through
     is the exact shape of hole defect injection keeps finding here.
+
+    The control moved with the stage (#316). It used to size the
+    test-to-criterion mapping call and is now `pair_batch_size`, sizing the
+    (defect, test) judgement — the flag was repointed rather than left accepting
+    a value that reached nothing.
     """
     case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
-    mapping_prompts: list[str] = []
+    pair_calls: list[list[str]] = []
 
     def completion_fn(**kwargs):
-        schema_name = kwargs["response_format"]["json_schema"]["name"]
-        if schema_name == "_Mappings":
-            mapping_prompts.append(kwargs["messages"][-1]["content"])
-        return _fake_response(json.dumps(_completed(_EMPTY_BY_SCHEMA[schema_name], **kwargs)))
+        spec = kwargs["response_format"]["json_schema"]
+        if spec["name"] == "_PairVerdicts":
+            # Every pair the call is allowed to answer about, as (test, defect).
+            pair_calls.append(
+                [
+                    (test_id, defect_id)
+                    for test_id in _supplied_enum("test_id", **kwargs)
+                    for defect_id in _supplied_enum("defect_id", **kwargs)
+                ]
+            )
+        if spec["name"] == "_Decomposition":
+            # Real criteria, because pairs are (defect, test) and defects hang
+            # off criteria: the default double decomposes to nothing, so there
+            # would be nothing to partition and the test would pass on zero.
+            return _fake_response(
+                json.dumps(_completed(_decomposition_response(_CRITERIA), **kwargs))
+            )
+        if spec["name"] == "_Enumeration":
+            # Two defects per criterion, so a batch size of one has to split.
+            return _fake_response(
+                json.dumps(
+                    _completed(
+                        {
+                            "obligation_id": "",
+                            "defects": [
+                                {
+                                    "slug": slug,
+                                    "type": "other",
+                                    "description": f"the behaviour is wrong ({slug})",
+                                    "code_refs": [],
+                                }
+                                for slug in ("is-wrong", "is-also-wrong")
+                            ],
+                            "reason": "",
+                        },
+                        **kwargs,
+                    )
+                )
+            )
+        return _fake_response(json.dumps(_completed(_EMPTY_BY_SCHEMA[spec["name"]], **kwargs)))
 
     def run(batch_size):
-        mapping_prompts.clear()
+        pair_calls.clear()
         client = ModelClient(
             model=DEFAULT_MODEL,
             mode=Mode.RECORD,
             store=TranscriptStore(str(tmp_path / f"transcripts-{batch_size}")),
             completion_fn=completion_fn,
+            # Two criteria means the linking stage runs, and #259's prefilter
+            # embeds them before it asks anything.
+            embedding_model=DEFAULT_EMBEDDING_MODEL,
+            embedding_fn=constant_embedding_fn,
         )
-        classify_case(case, client, mapping_batch_size=batch_size)
-        return list(mapping_prompts)
+        classify_case(case, client, pair_batch_size=batch_size)
+        return [list(ids) for ids in pair_calls]
 
-    # This fixture discovers more than one candidate test, so a batch size of
-    # one must produce more than one mapping call.
     one_per_call = run(1)
-    all_at_once = run(50)
+    batched = run(500)
 
-    assert len(all_at_once) == 1
-    assert len(one_per_call) > 1
-    # Same tests judged either way — partitioning changes the asking, not the
-    # question. Each single-test call carries exactly one test.
-    assert all(prompt.count("\n### ") == 1 for prompt in one_per_call)
-    assert sum(prompt.count("\n### ") for prompt in one_per_call) == all_at_once[0].count("\n### ")
+    # The control reaches the stage: a smaller batch means more calls. Not "one
+    # call at 500" — the stage partitions each test's pairs separately, so the
+    # floor is one call per test however large the batch.
+    assert len(one_per_call) > len(batched) > 0
+    assert all(len(pairs) == 1 for pairs in one_per_call)
+    # The same pairs judged either way. Partitioning changes the asking, not the
+    # question, which is what makes the control safe to turn.
+    assert sorted(p for call in one_per_call for p in call) == sorted(
+        p for call in batched for p in call
+    )
 
 
 def test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo(tmp_path):

@@ -550,19 +550,22 @@ def _completed(response: dict, **kwargs) -> dict:
             ],
         }
     if response.get("recommendations") == []:
+        # Keyed on the DEFECT since #316: the recommendation stage's unit is one
+        # uncovered defect, and the response carries no `plausible_defect` — that
+        # field is copied from the defect record rather than restated, so a
+        # double supplying one would be answering a question no longer asked.
         return {
             **response,
             "recommendations": [
                 {
-                    "obligation_id": obligation_id,
+                    "defect_id": defect_id,
                     "required_inputs": "inputs where the defect changes the outcome",
                     "boundary_conditions": "none",
                     "expected_output": "the criterion holds",
                     "required_assertions": ["asserts the criterion"],
-                    "plausible_defect": "the criterion is not met",
                     "repo_conventions": "follow the existing test module",
                 }
-                for obligation_id in _supplied_enum("obligation_id", **kwargs)
+                for defect_id in _supplied_enum("defect_id", **kwargs)
             ],
         }
     return _one_disposition(_nest_obligations(response), **kwargs)
