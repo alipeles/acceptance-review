@@ -1,0 +1,901 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) not fully implemented (rating-by-coverage-completeness); 2 obligation(s) with non-discriminating test evidence (remove-older-test-judgement, no-plausible-failure-outcome).
+
+Obligations:
+
+  1. The rating a criterion gets for its test evidence is derived from the judgements the review has already recorded about the ways a change could fail that criterion and about whether each candidate test would fail on each of them.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/defects/support.py#@@ -0,0 +1,317 @@
+         1.2  src/acceptance/pipeline.py#@@ -398,59 +382,38 @@ def run_review(
+         1.3  src/acceptance/review_state.py#@@ -657,6 +672,20 @@ class Obligation(_Model):
+         1.4  src/acceptance/report.py#@@ -161,75 +163,82 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         1.5  tests/benchmark/test_coverage.py::test_archetype_1_evidence_agreement_reports_a_real_number
+         1.6  tests/benchmark/test_coverage.py::test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives
+         1.7  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         1.8  tests/benchmark/test_rating_regression.py::test_a_judge_that_always_issues_strongly_supported_fails_the_suite
+         1.9  tests/benchmark/test_rating_regression.py::test_a_judge_that_never_issues_strongly_supported_fails_the_suite
+         1.10  tests/benchmark/test_rating_regression.py::test_every_scored_rating_is_the_arithmetic_over_that_case_s_own_verdicts
+         1.11  tests/benchmark/test_rating_regression.py::test_every_unearned_rating_is_required_to_no_longer_be_issued
+         1.12  tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+         1.13  tests/defects/test_pair_mapping.py::test_a_surviving_pair_stops_the_criterion_reaching_strongly_supported
+         1.14  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         1.15  tests/defects/test_pair_mapping.py::test_the_question_put_about_a_pair_is_the_failure_question
+         1.16  tests/defects/test_support.py::test_a_criterion_nothing_enumerated_for_is_indeterminate
+         1.17  tests/defects/test_support.py::test_a_criterion_whose_only_evidence_is_unjudged_is_indeterminate_not_nominal
+         1.18  tests/defects/test_support.py::test_a_criterion_whose_pairs_were_offered_and_unanswered_is_indeterminate
+         1.19  tests/defects/test_support.py::test_a_prefilter_exclusion_counts_as_a_surviving_pair_not_an_unknown_one
+         1.20  tests/defects/test_support.py::test_an_unjudged_defect_is_offered_for_recommendation
+         1.21  tests/defects/test_support.py::test_an_unjudged_defect_never_reads_as_a_surviving_one
+         1.22  tests/defects/test_support.py::test_an_unjudged_defect_stops_a_criterion_reaching_strongly_supported
+         1.23  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         1.24  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         1.25  tests/test_supplied_ids.py::test_an_unusable_answer_leaves_the_obligation_indeterminate
+         1.26  tests/test_unevidenceable_obligations.py::test_it_survives_persistence
+
+  2. The tests the review prescribes are derived from the same judgements already recorded about how a change could fail the criterion and whether each candidate test would fail on each of them.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/coverage/recommendations.py#@@ -1,56 +1,72 @@
+         2.2  src/acceptance/coverage/recommendations.py#@@ -82,12 +97,11 @@ class RecommendationResult(PersistableModel):
+         2.3  src/acceptance/coverage/recommendations.py#@@ -95,167 +109,165 @@ class _Recommendations(StrictResponseModel):
+         2.4  src/acceptance/pipeline.py#@@ -503,20 +468,20 @@ def run_review(
+         2.5  src/acceptance/review_state.py#@@ -858,11 +887,26 @@ class TestRecommendation(_Model):
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         2.6  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         2.7  tests/coverage/test_recommendations.py::test_a_recommendation_citing_no_defect_record_is_unrepresentable
+         2.8  tests/coverage/test_recommendations.py::test_a_response_naming_a_defect_the_call_did_not_supply_is_rejected
+         2.9  tests/coverage/test_recommendations.py::test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends
+         2.10  tests/coverage/test_recommendations.py::test_every_recommendation_a_run_produces_names_a_defect_the_review_holds
+         2.11  tests/coverage/test_recommendations.py::test_every_uncovered_defect_gets_exactly_one_recommendation_in_a_fixed_order
+         2.12  tests/defects/test_pair_mapping.py::test_a_surviving_pair_earns_a_recommendation_and_a_killing_one_does_not
+         2.13  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_its_defect_changed
+         2.14  tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged
+         2.15  tests/defects/test_pair_mapping.py::test_which_pairs_share_a_request_does_not_change_what_carries
+         2.16  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+         2.17  tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+         2.18  tests/test_cli.py::test_recommendation_returns_the_stored_prescription_for_a_criterion
+         2.19  tests/test_cli.py::test_retrieval_reads_the_named_revision_and_not_a_recomputation
+         2.20  tests/test_cli.py::test_retrieval_without_a_revision_uses_the_newest_stored_review
+         2.21  tests/test_cli.py::test_the_removal_leaves_the_report_as_the_only_statement_of_status
+         2.22  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         2.23  tests/test_recommendation_omission.py::test_the_answered_criterion_keeps_its_prescription
+         2.24  tests/test_recommendation_omission.py::test_the_omitted_criterion_is_recorded_as_not_obtained
+         2.25  tests/test_recommendation_omission.py::test_two_runs_over_the_same_inputs_render_the_same_report
+         2.26  tests/test_rerun.py::test_a_prior_prescription_is_not_carried_for_a_defect_this_run_answered
+         2.27  tests/test_rerun.py::test_a_prior_prescription_survives_for_a_defect_this_run_got_no_answer_for
+         2.28  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_no_test_evidence_never_reaches_the_prescriber
+
+  3. The review conclusion is derived from the judgements the review has already recorded about how a change could fail the criterion and about whether each candidate test would fail on each of those failures.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/pipeline.py#@@ -398,59 +382,38 @@ def run_review(
+         3.2  src/acceptance/defects/support.py#@@ -0,0 +1,317 @@
+         3.3  src/acceptance/report.py#@@ -161,75 +163,82 @@ def render_report(review: Review) -> str:
+         3.4  src/acceptance/review_state.py#@@ -657,6 +672,20 @@ class Obligation(_Model):
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         3.5  tests/benchmark/test_rating_regression.py::test_every_scored_rating_is_the_arithmetic_over_that_case_s_own_verdicts
+         3.6  tests/defects/test_enumeration.py::test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review
+         3.7  tests/defects/test_pair_mapping.py::test_which_pairs_share_a_request_does_not_change_what_carries
+         3.8  tests/defects/test_support.py::test_a_criterion_whose_only_evidence_is_unjudged_is_indeterminate_not_nominal
+         3.9  tests/defects/test_support.py::test_a_criterion_whose_pairs_were_offered_and_unanswered_is_indeterminate
+         3.10  tests/defects/test_support.py::test_a_prefilter_exclusion_counts_as_a_surviving_pair_not_an_unknown_one
+         3.11  tests/defects/test_support.py::test_an_unjudged_defect_is_offered_for_recommendation
+         3.12  tests/defects/test_support.py::test_an_unjudged_defect_never_reads_as_a_surviving_one
+         3.13  tests/defects/test_support.py::test_an_unjudged_defect_stops_a_criterion_reaching_strongly_supported
+         3.14  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         3.15  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         3.16  tests/test_recommendation_omission.py::test_the_answered_criterion_keeps_its_prescription
+         3.17  tests/test_report.py::test_a_recommendation_sits_under_its_own_obligation_and_no_other
+         3.18  tests/test_rerun.py::test_a_prior_prescription_is_not_carried_for_a_defect_this_run_answered
+         3.19  tests/test_rerun.py::test_a_prior_prescription_survives_for_a_defect_this_run_got_no_answer_for
+         3.20  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         3.21  tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean
+
+  4. The review no longer records the older judgement of which tests bear on which criterion, or whether a test discriminates.
+       requirements: task-01
+       code evidence: addressed
+         4.1  src/acceptance/evidence/mapping.py#@@ -1,308 +0,0 @@
+         4.2  src/acceptance/evidence/discrimination.py#@@ -1,330 +0,0 @@
+         4.3  src/acceptance/evidence/strength.py#@@ -1,211 +0,0 @@
+         4.4  src/acceptance/pipeline.py#@@ -42,24 +41,13 @@ from acceptance.coverage.recommendations import recommend_tests
+         4.5  src/acceptance/request_blocks.py#@@ -97,14 +99,6 @@ class BlockKind(Enum):
+         4.6  src/acceptance/usage.py#@@ -47,8 +47,8 @@ _PIPELINE_ORDER = (
+       test evidence: partially supported — kills 2 of 3 enumerated defects (static prediction)  [tier: static]
+         4.7  tests/coverage/test_recommendations.py::test_the_plausible_defect_is_copied_from_the_record_not_restated_by_the_model
+         4.8  tests/defects/test_enumeration.py::test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review
+         4.9  tests/defects/test_pair_mapping.py::test_a_prefiltered_pair_is_named_in_the_report
+         4.10  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         4.11  tests/defects/test_pair_mapping.py::test_the_pipeline_really_judges_pairs
+         4.12  tests/defects/test_pair_mapping.py::test_the_report_shows_every_rating_with_its_denominator
+         4.13  tests/requirement/test_summary_pass.py::test_a_span_left_undecided_is_refused
+         4.14  tests/test_cli.py::test_the_removal_leaves_the_report_as_the_only_statement_of_status
+         4.15  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         4.16  tests/test_recommendation_omission.py::test_the_report_renders_that_differently_from_a_criterion_owed_no_test
+         4.17  tests/test_report.py::test_a_boundary_obligation_renders_as_not_applicable_not_as_a_missing_test
+         4.18  tests/test_report.py::test_a_fresh_obligation_carries_no_such_label
+         4.19  tests/test_report.py::test_a_review_with_gaps_closes_by_pointing_at_the_retrieval_command
+         4.20  tests/test_unevidenceable_obligations.py::test_a_config_only_change_produces_a_report
+         recommended test: The review output and data model do not include the older test-to-criterion judgement or the discrimination judgement.
+           inputs:  A review-state construction path that exercises the public data model and the benchmark/report serialization path, using an obligation plus defect sets and pair verdicts only. The test should instantiate or round-trip a Review/Obligation/TestRecommendation/UnobtainedRecommendation and verify that the older mapping/discrimination fields are absent from the model surface and from rendered/serialized output.
+           detects: The data model still exposes the older test-to-criterion judgement and discrimination judgement fields, so the review can still record them instead of omitting them.
+           full detail: acceptance recommendation --criterion remove-older-test-judgement
+
+  5. A recorded way of failing is covered when some candidate test would fail if the delivered code failed that way.
+       requirements: constraint-01
+       code evidence: addressed
+         5.1  src/acceptance/defects/support.py#@@ -0,0 +1,317 @@
+         5.2  src/acceptance/defects/pair_mapping.py#@@ -6,11 +6,13 @@ a test *purports to evidence* an obligation — a judgement with no fact of the
+         5.3  src/acceptance/review_state.py#@@ -452,6 +452,18 @@ class ChangeSet(_Model):
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         5.4  tests/benchmark/test_coverage.py::test_archetype_1_evidence_agreement_reports_a_real_number
+         5.5  tests/benchmark/test_coverage.py::test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives
+         5.6  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         5.7  tests/benchmark/test_rating_regression.py::test_a_judge_that_always_issues_strongly_supported_fails_the_suite
+         5.8  tests/benchmark/test_rating_regression.py::test_every_scored_rating_is_the_arithmetic_over_that_case_s_own_verdicts
+         5.9  tests/coverage/test_recommendations.py::test_more_defects_than_the_batch_size_are_split_across_calls
+         5.10  tests/coverage/test_recommendations.py::test_several_answers_survive_an_omission_and_several_omissions_are_each_recorded
+         5.11  tests/defects/test_enumeration.py::test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review
+         5.12  tests/defects/test_pair_mapping.py::test_a_surviving_pair_earns_a_recommendation_and_a_killing_one_does_not
+         5.13  tests/defects/test_pair_mapping.py::test_a_surviving_pair_stops_the_criterion_reaching_strongly_supported
+         5.14  tests/defects/test_support.py::test_a_defect_some_test_kills_produces_no_recommendation_input
+         5.15  tests/defects/test_support.py::test_an_unjudged_defect_is_offered_for_recommendation
+         5.16  tests/defects/test_support.py::test_one_killing_test_covers_a_defect_however_many_others_survive_it
+         5.17  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         5.18  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         5.19  tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean
+         5.20  tests/test_unevidenceable_obligations.py::test_a_config_only_change_produces_a_report
+
+  6. A criterion all of whose recorded ways of failing are covered is strongly supported; one where some are covered is partially supported; one where none are, while candidate tests exist, is nominally supported.
+       requirements: constraint-01
+       code evidence: partially addressed
+         6.1  src/acceptance/defects/support.py#@@ -0,0 +1,317 @@
+         6.2  src/acceptance/review_state.py#@@ -452,6 +452,18 @@ class ChangeSet(_Model):
+         6.3  src/acceptance/report.py#@@ -161,75 +163,82 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         6.4  tests/benchmark/test_coverage.py::test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives
+         6.5  tests/benchmark/test_rating_regression.py::test_a_judge_that_always_issues_strongly_supported_fails_the_suite
+         6.6  tests/benchmark/test_rating_regression.py::test_a_judge_that_never_issues_strongly_supported_fails_the_suite
+         6.7  tests/defects/test_pair_mapping.py::test_a_surviving_pair_stops_the_criterion_reaching_strongly_supported
+         6.8  tests/defects/test_support.py::test_a_fully_judged_criterion_takes_the_class_its_kill_count_implies
+
+  7. Where no candidate test exists, or the judgement could not be reached, the outcomes the review already has for those cases stand.
+       requirements: constraint-01
+       code evidence: addressed
+         7.1  src/acceptance/defects/support.py#@@ -0,0 +1,317 @@
+         7.2  src/acceptance/pipeline.py#@@ -398,59 +382,38 @@ def run_review(
+         7.3  src/acceptance/rerun.py#@@ -221,25 +222,37 @@ def derivation_changed(prior: Review, derived: list[Obligation]) -> bool:
+         7.4  src/acceptance/rerun.py#@@ -56,6 +56,7 @@ from acceptance.review_state import (
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         7.5  tests/coverage/test_recommendations.py::test_an_omission_does_not_mark_the_answered_criteria_indeterminate
+         7.6  tests/defects/test_pair_mapping.py::test_which_pairs_share_a_request_does_not_change_what_carries
+         7.7  tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue
+         7.8  tests/requirement/test_carry_forward.py::test_carrying_forward_does_not_freeze_a_superseded_obligation_in_place
+         7.9  tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+         7.10  tests/test_recommendation_omission.py::test_a_review_missing_a_prescription_does_not_come_back_clean
+         7.11  tests/test_recommendation_omission.py::test_the_answered_criterion_keeps_its_prescription
+         7.12  tests/test_recommendation_omission.py::test_the_not_obtained_record_survives_persistence
+         7.13  tests/test_recommendation_omission.py::test_the_omitted_criterion_is_left_indeterminate_on_the_evidence_axis
+         7.14  tests/test_report.py::test_a_carried_forward_obligation_says_so_and_names_the_revision
+         7.15  tests/test_report.py::test_a_fresh_obligation_carries_no_such_label
+         7.16  tests/test_rerun.py::test_a_prior_prescription_is_not_carried_for_a_defect_this_run_answered
+         7.17  tests/test_rerun.py::test_a_prior_prescription_survives_for_a_defect_this_run_got_no_answer_for
+         7.18  tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+         7.19  tests/test_supplied_ids.py::test_an_unusable_answer_leaves_the_obligation_indeterminate
+
+  8. Every report rating names how many of the criterion's recorded ways of failing are covered, and how many were recorded.
+       requirements: constraint-02
+       code evidence: addressed
+         8.1  src/acceptance/review_state.py#@@ -657,6 +672,20 @@ class Obligation(_Model):
+         8.2  src/acceptance/report.py#@@ -16,7 +16,6 @@ Status is stated in words, not symbols, and every evidence line carries its
+         8.3  src/acceptance/report.py#@@ -161,75 +163,82 @@ def render_report(review: Review) -> str:
+         8.4  src/acceptance/report.py#@@ -492,7 +501,9 @@ def _obligation_block(
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         8.5  tests/benchmark/test_coverage.py::test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives
+         8.6  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         8.7  tests/benchmark/test_rating_regression.py::test_every_scored_rating_is_the_arithmetic_over_that_case_s_own_verdicts
+         8.8  tests/defects/test_pair_mapping.py::test_the_report_shows_every_rating_with_its_denominator
+         8.9  tests/test_report.py::test_every_rating_the_report_shows_carries_a_denominator_or_says_why_not
+         8.10  tests/test_report.py::test_unclassified_obligation_renders_as_unclassified
+
+  9. A criterion with no recorded plausible way of failing, and with an explanation for that, receives its own outcome that is neither strongly supported nor unsupported, and the report states that test evidence cannot be obtained for it.
+       requirements: constraint-03
+       code evidence: addressed
+         9.1  src/acceptance/review_state.py#@@ -452,6 +452,18 @@ class ChangeSet(_Model):
+         9.2  src/acceptance/review_state.py#@@ -459,12 +471,15 @@ EvidenceClassification = Literal[
+         9.3  src/acceptance/defects/support.py#@@ -0,0 +1,317 @@
+         9.4  src/acceptance/report.py#@@ -161,75 +163,82 @@ def render_report(review: Review) -> str:
+         9.5  tests/defects/test_enumeration.py#@@ -529,13 +529,18 @@ def test_the_report_says_when_a_set_was_reused_rather_than_produced_again(tmp_pa
+       test evidence: partially supported — kills 2 of 3 enumerated defects (static prediction)  [tier: static]
+         9.6  tests/coverage/test_recommendations.py::test_a_criterion_with_no_enumerated_defects_earns_no_recommendation
+         9.7  tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+         9.8  tests/defects/test_support.py::test_a_criterion_whose_pairs_were_offered_and_unanswered_is_indeterminate
+         9.9  tests/defects/test_support.py::test_a_reasoned_empty_enumeration_gets_its_own_class_and_says_evidence_is_unobtainable
+         9.10  tests/defects/test_support.py::test_a_reasoned_empty_enumeration_is_never_either_extreme
+         9.11  tests/test_report.py::test_a_boundary_with_nothing_examined_does_not_claim_non_violation
+         9.12  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_neither_kind_needs_review_this_cannot_give
+         recommended test: The report shows a distinct outcome for such a criterion and states that test evidence cannot be obtained for it.
+           inputs:  A Review containing at least one obligation whose evidence_class is the new terminal state for an empty/reasoned-empty defect enumeration, with enumerated_defects=0 and covered_defects=0, rendered through report.render_report(). Use a minimal review with one ordinary obligation plus this terminal-state obligation so the report must choose between the new wording and the older unsupported/strongly_supported wording.
+           detects: The report renders the new terminal state with the wrong wording, so criteria with no plausible defect are shown as ordinary unsupported or strongly supported evidence instead of a distinct outcome that says test evidence cannot be obtained.
+           full detail: acceptance recommendation --criterion no-plausible-failure-outcome
+
+  10. Every recommended test names one recorded way of failing that no candidate test would fail on, and the recommendation includes a link to the criterion text it comes from.
+       requirements: constraint-04
+       code evidence: not required — This requirement asks for the test recommendation itself, so the test is the whole obligation and no source change is separately demanded.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  11. A recommendation that asks for evidence the review already holds is not produced.
+       requirements: constraint-05
+       code evidence: addressed
+         11.1  src/acceptance/coverage/recommendations.py#@@ -1,56 +1,72 @@
+         11.2  src/acceptance/coverage/recommendations.py#@@ -82,12 +97,11 @@ class RecommendationResult(PersistableModel):
+         11.3  src/acceptance/defects/support.py#@@ -0,0 +1,317 @@
+         11.4  tests/coverage/test_recommendations.py#@@ -65,283 +93,359 @@ def _exploding_client():
+         11.5  tests/defects/test_support.py#@@ -0,0 +1,287 @@
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         11.6  tests/coverage/test_recommendations.py::test_a_defect_a_test_would_fail_on_earns_no_recommendation_and_no_model_call
+         11.7  tests/coverage/test_recommendations.py::test_no_test_is_recommended_for_a_code_evidence_only_obligation
+         11.8  tests/defects/test_pair_mapping.py::test_a_surviving_pair_earns_a_recommendation_and_a_killing_one_does_not
+         11.9  tests/defects/test_support.py::test_a_defect_some_test_kills_produces_no_recommendation_input
+         11.10  tests/test_unevidenceable_obligations.py::test_an_obligation_requiring_no_test_evidence_never_reaches_the_prescriber
+
+  12. The ratings keep the names they have today, and what each of them means is unchanged.
+       requirements: constraint-06
+       code evidence: addressed
+         12.1  src/acceptance/review_state.py#@@ -452,6 +452,18 @@ class ChangeSet(_Model):
+         12.2  src/acceptance/defects/support.py#@@ -0,0 +1,317 @@
+         12.3  src/acceptance/report.py#@@ -161,75 +163,82 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         12.4  tests/benchmark/test_coverage.py::test_archetype_1_evidence_agreement_reports_a_real_number
+         12.5  tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+         12.6  tests/defects/test_support.py::test_a_criterion_no_test_would_fail_on_is_unsupported
+         12.7  tests/defects/test_support.py::test_a_reasoned_empty_enumeration_is_never_either_extreme
+         12.8  tests/defects/test_support.py::test_an_unjudged_defect_never_reads_as_a_surviving_one
+         12.9  tests/test_report.py::test_unclassified_obligation_renders_as_unclassified
+
+  13. Where the review's measured accuracy is reported, the report states that the figures do not span this change.
+       requirements: constraint-07
+       code evidence: addressed
+         13.1  src/acceptance/benchmark/case.py#@@ -378,8 +378,12 @@ class BenchmarkScore(PersistableModel):
+         13.2  src/acceptance/benchmark/scoring.py#@@ -368,13 +368,21 @@ class BenchmarkReport(PersistableModel):
+         13.3  src/acceptance/benchmark/scoring.py#@@ -471,10 +479,13 @@ class SampledBenchmarkReport(PersistableModel):
+         13.4  docs/DR-312-defect-first-evidence.md#@@ -429,6 +429,73 @@ recomputed over the derived test→obligation edges as the regression check.
+         13.5  tests/benchmark/test_scoring.py#@@ -140,6 +140,28 @@ def test_mapping_accuracy_is_marked_not_comparable_across_the_partitioning_chang
+         13.6  tests/benchmark/test_scoring.py#@@ -150,3 +172,17 @@ def test_the_decision_record_states_the_non_comparability_too():
+       test evidence: not required — This is a report wording requirement, so it is settled by the generated report text rather than by runtime behavior or a test.
+
+  14. Two recorded runs over the same input produce byte-identical review state and byte-identical report output.
+       requirements: constraint-08
+       code evidence: addressed
+         14.1  src/acceptance/concurrency.py#@@ -0,0 +1,95 @@
+         14.2  src/acceptance/defects/enumeration.py#@@ -310,7 +311,15 @@ def enumerate_defects(
+         14.3  src/acceptance/defects/pair_mapping.py#@@ -536,10 +478,23 @@ def judge_pairs(
+         14.4  src/acceptance/requirement/obligations.py#@@ -1042,24 +1045,32 @@ def decompose(
+         14.5  src/acceptance/requirement/linking.py#@@ -506,10 +507,9 @@ def link_duplicate_obligations(
+         14.6  tests/test_concurrency.py#@@ -0,0 +1,130 @@
+         14.7  tests/defects/test_pair_mapping.py#@@ -980,3 +979,46 @@ def test_the_defect_list_sits_in_the_shared_prefix_of_every_call(tmp_path):
+       test evidence: strongly supported — kills 5 of 5 enumerated defects (static prediction)  [tier: static]
+         14.8  tests/benchmark/test_rating_regression.py::test_every_scored_rating_is_the_arithmetic_over_that_case_s_own_verdicts
+         14.9  tests/coverage/test_recommendations.py::test_every_uncovered_defect_gets_exactly_one_recommendation_in_a_fixed_order
+         14.10  tests/coverage/test_recommendations.py::test_more_defects_than_the_batch_size_are_split_across_calls
+         14.11  tests/coverage/test_recommendations.py::test_several_answers_survive_an_omission_and_several_omissions_are_each_recorded
+         14.12  tests/coverage/test_recommendations.py::test_two_runs_over_one_omitting_response_produce_identical_state
+         14.13  tests/defects/test_enumeration.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+         14.14  tests/defects/test_pair_mapping.py::test_the_stage_is_byte_identical_when_its_calls_finish_out_of_order
+         14.15  tests/defects/test_pair_mapping.py::test_the_verdicts_survive_a_round_trip_through_persisted_state
+         14.16  tests/defects/test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+         14.17  tests/defects/test_support.py::test_test_links_carry_only_the_tests_judged_to_fail_on_a_defect
+         14.18  tests/test_cli.py::test_the_newest_review_wins_regardless_of_filename_order
+         14.19  tests/test_cli.py::test_two_retrievals_over_unchanged_state_are_byte_identical
+         14.20  tests/test_cli.py::test_two_runs_over_the_same_input_are_byte_identical
+         14.21  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         14.22  tests/test_determinism.py::test_two_recorded_runs_are_byte_identical
+         14.23  tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+         14.24  tests/test_recommendation_omission.py::test_two_runs_over_the_same_inputs_render_the_same_report
+         14.25  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+
+  15. The change does not include recording the ways a criterion could fail, or judging one of those ways against a candidate test.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 154 changes across 53 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work that must not appear in the change, so the source diff itself is the evidence.
+
+  16. The change does not alter which criteria the review derives from the mandate or how it derives them.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 154 changes across 53 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not done, which is settled by inspecting the source change rather than by tests.
+
+  17. The change does not involve running the delivered code or any test.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 154 changes across 53 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is settled by the absence of execution activity in the change process, not by a testable behavior.
+
+  18. Update the documentation.
+       requirements: completion-02
+       code evidence: addressed
+         18.1  docs/DR-312-defect-first-evidence.md#@@ -429,6 +429,73 @@ recomputed over the derived test→obligation edges as the regression check.
+       test evidence: not required — This requirement is satisfied by changing documentation, and the review can confirm it directly from the repository without running tests.
+
+Mandate coverage: 13 of 14 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation.
+       reason: The requirement is only the section marker "Implementation." standing alone, with no requirement under it.
+
+Unrequested changes:
+  1. [risky] `RunConfig` renames the batch-size control from `mapping_batch_size` to `pair_batch_size`, and the CLI flag changes from `--mapping-batch-size` to `--pair-batch-size`. The obligations require deriving ratings/prescriptions from recorded judgements, but they do not call for renaming the public run-control interface.
+       src/acceptance/config.py#@@ -52,12 +53,10 @@ DEFAULT_STAGE_MODELS = {
+       src/acceptance/config.py#@@ -146,9 +145,14 @@ class RunConfig(BaseModel):
+       src/acceptance/cli.py#@@ -195,7 +195,7 @@ def run_check(
+       src/acceptance/cli.py#@@ -723,13 +723,13 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
+       src/acceptance/cli.py#@@ -889,7 +889,7 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/cli.py#@@ -963,7 +963,7 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/cli.py#@@ -1013,7 +1013,7 @@ def main(argv: list[str] | None = None) -> int:
+       tests/test_config.py#@@ -4,7 +4,7 @@ import pytest
+       tests/test_config.py#@@ -131,11 +131,15 @@ def test_provenance_of_a_run_that_made_no_model_call_is_indeterminate():
+  2. [in_service] `TestRecommendation` and `UnobtainedRecommendation` gain a required `defect_id` field, and recommendation payloads/tests are rewritten around it. The task asks for recommendations derived from judgements, but it does not require changing the public recommendation schema shape.
+       src/acceptance/review_state.py#@@ -858,11 +887,26 @@ class TestRecommendation(_Model):
+       src/acceptance/review_state.py#@@ -897,6 +941,12 @@ class UnobtainedRecommendation(_Model):
+       src/acceptance/coverage/recommendations.py#@@ -59,14 +75,13 @@ recommendation with these discrete fields:
+       src/acceptance/coverage/recommendations.py#@@ -82,12 +97,11 @@ class RecommendationResult(PersistableModel):
+       src/acceptance/coverage/recommendations.py#@@ -1,56 +1,72 @@
+       src/acceptance/rerun.py#@@ -56,6 +56,7 @@ from acceptance.review_state import (
+       src/acceptance/rerun.py#@@ -221,25 +222,37 @@ def derivation_changed(prior: Review, derived: list[Obligation]) -> bool:
+       tests/coverage/test_recommendations.py#@@ -1,29 +1,40 @@
+       tests/coverage/test_recommendations.py#@@ -31,10 +42,27 @@ def _obligation(obligation_id: str, description: str, evidence_class: str | None
+       tests/coverage/test_recommendations.py#@@ -65,283 +93,359 @@ def _exploding_client():
+       tests/coverage/test_recommendations.py#@@ -350,6 +454,58 @@ def test_two_runs_over_one_omitting_response_produce_identical_state():
+       tests/coverage/test_recommendations.py#@@ -360,10 +516,10 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
+       tests/coverage/test_recommendations.py#@@ -372,13 +528,13 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
+       tests/coverage/test_recommendations.py#@@ -389,12 +545,10 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
+       tests/coverage/test_recommendations.py#@@ -402,28 +556,22 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+       tests/test_recommendation_omission.py#@@ -51,14 +51,23 @@ def _obligation(obligation_id: str, behavior: str, required: str, reason: str) -
+       tests/test_recommendation_omission.py#@@ -88,8 +97,23 @@ def _judgments(recommendations: list[dict]) -> dict:
+       tests/test_recommendation_omission.py#@@ -278,8 +302,9 @@ def test_two_runs_over_the_same_inputs_render_the_same_report(tmp_path, tmp_path
+       tests/test_rerun.py#@@ -23,6 +23,7 @@ from acceptance.review_state import (
+       tests/test_rerun.py#@@ -111,10 +112,19 @@ def test_an_unmoved_obligation_set_permits_reuse():
+       tests/test_rerun.py#@@ -123,11 +133,35 @@ def test_a_prior_recommendation_survives_for_a_carried_obligation():
+       tests/test_rerun.py#@@ -627,6 +641,7 @@ def test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched(tmp_path
+       tests/test_cli.py#@@ -726,12 +739,11 @@ def _gap_client():
+       tests/test_cli.py#@@ -911,6 +923,10 @@ def _store_review_with(tmp_path, revision, criterion, defect):
+       tests/test_report.py#@@ -197,6 +203,7 @@ def test_open_questions_and_recommendations_are_numbered():
+       tests/test_report.py#@@ -242,6 +249,7 @@ def test_a_recommendation_sits_under_its_own_obligation_and_no_other():
+  3. [in_service] `EvidenceClassification` adds a new public literal value, `no_plausible_defect`, and the report/config/tests are updated to surface it. The obligations require a separate no-plausible-failure outcome, but they do not require extending the existing rating vocabulary with a new named class.
+       src/acceptance/review_state.py#@@ -452,6 +452,18 @@ class ChangeSet(_Model):
+       src/acceptance/review_state.py#@@ -459,12 +471,15 @@ EvidenceClassification = Literal[
+       src/acceptance/benchmark/case.py#@@ -378,8 +378,12 @@ class BenchmarkScore(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -368,13 +368,21 @@ class BenchmarkReport(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -471,10 +479,13 @@ class SampledBenchmarkReport(PersistableModel):
+       src/acceptance/report.py#@@ -161,75 +163,82 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -492,7 +501,9 @@ def _obligation_block(
+       src/acceptance/report.py#@@ -16,7 +16,6 @@ Status is stated in words, not symbols, and every evidence line carries its
+       src/acceptance/report.py#@@ -119,7 +118,10 @@ def render_report(review: Review) -> str:
+       tests/defects/test_enumeration.py#@@ -529,13 +529,18 @@ def test_the_report_says_when_a_set_was_reused_rather_than_produced_again(tmp_pa
+       tests/defects/test_enumeration.py#@@ -544,10 +549,33 @@ def test_recording_ways_of_failing_changes_no_verdict_and_no_rating(tmp_path):
+       tests/defects/test_support.py#@@ -0,0 +1,287 @@
+       tests/test_report.py#@@ -98,7 +98,13 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
+       tests/test_report.py#@@ -561,3 +569,36 @@ def test_a_boundary_with_nothing_examined_does_not_claim_non_violation():
+  4. [in_service] The old evidence/mapping/discrimination/rejudge/strength/anchoring modules are deleted and replaced with new public modules and exported symbols (`acceptance.defects.support`, `acceptance.concurrency`, new stage names). The obligations require the new behavior, but not this wholesale public module/API reshaping.
+       src/acceptance/concurrency.py#@@ -0,0 +1,95 @@
+       src/acceptance/defects/support.py#@@ -0,0 +1,317 @@
+       src/acceptance/defects/pair_mapping.py#@@ -69,10 +71,8 @@ from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain
+       src/acceptance/defects/pair_mapping.py#@@ -414,80 +420,16 @@ def _ask(
+       src/acceptance/defects/enumeration.py#@@ -310,7 +311,15 @@ def enumerate_defects(
+       src/acceptance/defects/enumeration.py#@@ -342,9 +351,19 @@ def enumerate_defects(
+       src/acceptance/evidence/anchoring.py#@@ -1,179 +0,0 @@
+       src/acceptance/evidence/discrimination.py#@@ -1,330 +0,0 @@
+       src/acceptance/evidence/mapping.py#@@ -1,308 +0,0 @@
+       src/acceptance/evidence/rejudge.py#@@ -1,282 +0,0 @@
+       src/acceptance/evidence/strength.py#@@ -1,211 +0,0 @@
+       src/acceptance/evidence/weak_patterns.py#@@ -1,272 +0,0 @@
+       src/acceptance/request_blocks.py#@@ -97,14 +99,6 @@ class BlockKind(Enum):
+       src/acceptance/request_blocks.py#@@ -263,8 +257,8 @@ def authored_prompts() -> dict[str, str]:
+       src/acceptance/usage.py#@@ -47,8 +47,8 @@ _PIPELINE_ORDER = (
+       tests/test_usage.py#@@ -159,17 +159,17 @@ def test_stages_are_reported_in_the_order_the_pipeline_runs_them():
+       tests/test_usage.py#@@ -208,8 +208,8 @@ def test_every_pipeline_stage_appears_in_the_reported_order():
+       tests/benchmark/degenerate_judges.py#@@ -9,19 +9,27 @@ gap the corpus records.
+       tests/benchmark/degenerate_judges.py#@@ -40,7 +48,6 @@ from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
+       tests/benchmark/degenerate_judges.py#@@ -111,49 +118,59 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+       tests/benchmark/test_instability.py#@@ -240,23 +240,21 @@ def test_a_flipped_evidence_class_is_content_and_never_shape():
+       tests/benchmark/test_instability.py#@@ -264,7 +262,7 @@ def test_a_flipped_defect_verdict_is_reported_per_defect():
+       tests/benchmark/test_rating_regression.py#@@ -172,62 +173,55 @@ def test_a_judge_that_never_issues_strongly_supported_fails_the_suite(corpus_wor
+       tests/test_supplied_ids.py#@@ -18,12 +18,12 @@ from typing import Literal
+       tests/test_supplied_ids.py#@@ -183,203 +183,125 @@ def test_unsupplied_preserves_first_seen_order_without_duplicates():
+       tests/test_supplied_ids.py#@@ -403,17 +325,33 @@ _JUDGMENTS = {
+  5. [in_service] `map_calls` introduces concurrency and changes execution order/parallelism across multiple stages. The obligations require deterministic runs and byte-identical outputs, but they do not ask for parallel execution or a concurrency helper; this is an adjacent performance/implementation change.
+       src/acceptance/concurrency.py#@@ -0,0 +1,95 @@
+       src/acceptance/defects/enumeration.py#@@ -21,6 +21,7 @@ from __future__ import annotations
+       src/acceptance/defects/enumeration.py#@@ -310,7 +311,15 @@ def enumerate_defects(
+       src/acceptance/defects/enumeration.py#@@ -381,11 +400,15 @@ def _ask_about(
+       src/acceptance/defects/pair_mapping.py#@@ -49,6 +51,7 @@ from typing import Literal
+       src/acceptance/defects/pair_mapping.py#@@ -357,9 +357,18 @@ def _ask(
+       src/acceptance/defects/pair_mapping.py#@@ -536,10 +478,23 @@ def judge_pairs(
+       src/acceptance/coverage/recommendations.py#@@ -1,56 +1,72 @@
+       src/acceptance/coverage/recommendations.py#@@ -95,167 +109,165 @@ class _Recommendations(StrictResponseModel):
+       src/acceptance/requirement/linking.py#@@ -58,6 +58,7 @@ from __future__ import annotations
+       src/acceptance/requirement/linking.py#@@ -506,10 +507,9 @@ def link_duplicate_obligations(
+       src/acceptance/requirement/obligations.py#@@ -38,6 +38,7 @@ from typing import Literal
+       src/acceptance/requirement/obligations.py#@@ -805,10 +806,14 @@ def _ask_about(
+       src/acceptance/requirement/obligations.py#@@ -1042,24 +1045,32 @@ def decompose(
+  6. [in_service] `render_report` now suppresses the pair block whenever there are no unjudged pairs, and rewrites the displayed evidence line to include denominators and new wording. The obligations require observability of denominators and the no-plausible-failure outcome, but not this broader report restructuring or removal of the advisory pair comparison block.
+       src/acceptance/report.py#@@ -119,7 +118,10 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -161,75 +163,82 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -492,7 +501,9 @@ def _obligation_block(
+       tests/test_report.py#@@ -98,7 +98,13 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
+       tests/test_report.py#@@ -561,3 +569,36 @@ def test_a_boundary_with_nothing_examined_does_not_claim_non_violation():
+       tests/defects/test_pair_mapping.py#@@ -691,25 +664,33 @@ def test_the_pipeline_really_judges_pairs(tmp_path):
+       tests/defects/test_pair_mapping.py#@@ -838,7 +833,11 @@ def test_a_prefiltered_pair_is_named_in_the_report(tmp_path):
+  7. [in_service] `recommend_tests` is reworked to operate on uncovered defects rather than weak obligations, including new batching, omission handling, and carried-recommendation logic keyed by defect id. The obligations require recommendations derived from recorded judgements and no redundant recommendations, but they do not require this specific stage redesign or the new omission semantics.
+       src/acceptance/coverage/recommendations.py#@@ -1,56 +1,72 @@
+       src/acceptance/coverage/recommendations.py#@@ -59,14 +75,13 @@ recommendation with these discrete fields:
+       src/acceptance/coverage/recommendations.py#@@ -82,12 +97,11 @@ class RecommendationResult(PersistableModel):
+       src/acceptance/coverage/recommendations.py#@@ -95,167 +109,165 @@ class _Recommendations(StrictResponseModel):
+       src/acceptance/rerun.py#@@ -56,6 +56,7 @@ from acceptance.review_state import (
+       src/acceptance/rerun.py#@@ -221,25 +222,37 @@ def derivation_changed(prior: Review, derived: list[Obligation]) -> bool:
+       tests/coverage/test_recommendations.py#@@ -1,29 +1,40 @@
+       tests/coverage/test_recommendations.py#@@ -65,283 +93,359 @@ def _exploding_client():
+       tests/coverage/test_recommendations.py#@@ -350,6 +454,58 @@ def test_two_runs_over_one_omitting_response_produce_identical_state():
+       tests/coverage/test_recommendations.py#@@ -360,10 +516,10 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
+       tests/coverage/test_recommendations.py#@@ -372,13 +528,13 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
+       tests/coverage/test_recommendations.py#@@ -389,12 +545,10 @@ def test_no_test_is_recommended_for_a_code_evidence_only_obligation():
+       tests/coverage/test_recommendations.py#@@ -402,28 +556,22 @@ def test_a_weak_ordinary_obligation_alongside_a_boundary_one_still_recommends():
+       tests/test_recommendation_omission.py#@@ -51,14 +51,23 @@ def _obligation(obligation_id: str, behavior: str, required: str, reason: str) -
+       tests/test_recommendation_omission.py#@@ -88,8 +97,23 @@ def _judgments(recommendations: list[dict]) -> dict:
+       tests/test_recommendation_omission.py#@@ -278,8 +302,9 @@ def test_two_runs_over_the_same_inputs_render_the_same_report(tmp_path, tmp_path
+  8. [in_service] `derive_support` now computes a new `no_plausible_defect` terminal state and stores denominator counts on obligations. The obligations require a no-plausible-failure outcome and displayed counts, but not the broader internal classification/explanation model or the new stored fields on review state.
+       src/acceptance/defects/support.py#@@ -0,0 +1,317 @@
+       src/acceptance/review_state.py#@@ -452,6 +452,18 @@ class ChangeSet(_Model):
+       src/acceptance/review_state.py#@@ -657,6 +672,20 @@ class Obligation(_Model):
+       src/acceptance/benchmark/case.py#@@ -378,8 +378,12 @@ class BenchmarkScore(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -368,13 +368,21 @@ class BenchmarkReport(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -471,10 +479,13 @@ class SampledBenchmarkReport(PersistableModel):
+       tests/defects/test_support.py#@@ -0,0 +1,287 @@
+       tests/defects/test_enumeration.py#@@ -529,13 +529,18 @@ def test_the_report_says_when_a_set_was_reused_rather_than_produced_again(tmp_pa
+       tests/defects/test_enumeration.py#@@ -544,10 +549,33 @@ def test_recording_ways_of_failing_changes_no_verdict_and_no_rating(tmp_path):
+       tests/test_report.py#@@ -98,7 +98,13 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
+       tests/test_report.py#@@ -561,3 +569,36 @@ def test_a_boundary_with_nothing_examined_does_not_claim_non_violation():
+  9. [in_service] The benchmark and instability harnesses are rewritten to consume pair verdicts and derived support directly, including new snapshot fields and comparison text. The obligations cover the resulting ratings and reportability, but not these benchmark harness changes.
+       src/acceptance/benchmark/instability.py#@@ -61,7 +61,6 @@ from acceptance.benchmark.case import BenchmarkCase
+       src/acceptance/benchmark/instability.py#@@ -104,18 +103,26 @@ class RunKey(PersistableModel):
+       src/acceptance/benchmark/instability.py#@@ -264,29 +271,18 @@ class ObservingClient(ModelClient):
+       src/acceptance/benchmark/instability.py#@@ -439,18 +435,18 @@ def _judgement_differences(left: RunSnapshot, right: RunSnapshot) -> list[Differ
+       src/acceptance/benchmark/instability.py#@@ -509,8 +505,8 @@ def _defect_distributions(snapshots: Sequence[RunSnapshot]) -> list[ClassDistrib
+       src/acceptance/benchmark/instability.py#@@ -723,14 +719,7 @@ def run_once(
+       src/acceptance/benchmark/scoring.py#@@ -368,13 +368,21 @@ class BenchmarkReport(PersistableModel):
+       src/acceptance/benchmark/scoring.py#@@ -471,10 +479,13 @@ class SampledBenchmarkReport(PersistableModel):
+       tests/benchmark/degenerate_judges.py#@@ -9,19 +9,27 @@ gap the corpus records.
+       tests/benchmark/test_instability.py#@@ -240,23 +240,21 @@ def test_a_flipped_evidence_class_is_content_and_never_shape():
+       tests/benchmark/test_instability.py#@@ -264,7 +262,7 @@ def test_a_flipped_defect_verdict_is_reported_per_defect():
+       tests/benchmark/test_rating_regression.py#@@ -23,6 +23,7 @@ from acceptance.benchmark.corpus import (
+       tests/benchmark/test_rating_regression.py#@@ -172,62 +173,55 @@ def test_a_judge_that_never_issues_strongly_supported_fails_the_suite(corpus_wor
+       tests/benchmark/test_rating_regression.py#@@ -307,7 +301,7 @@ def test_no_case_issues_a_live_model_call(corpus_worktrees, monkeypatch):
+       tests/benchmark/test_scoring.py#@@ -140,6 +140,28 @@ def test_mapping_accuracy_is_marked_not_comparable_across_the_partitioning_chang
+       tests/benchmark/test_scoring.py#@@ -150,3 +172,17 @@ def test_the_decision_record_states_the_non_comparability_too():
+  10. [in_service] `request_blocks.BlockKind` drops `CHANGED_CODE` and the authored prompt list is updated to point at the new modules. This is an internal request-shaping refactor not explicitly required by the obligations.
+       src/acceptance/request_blocks.py#@@ -32,10 +32,12 @@ what keeps the claim honest.
+       src/acceptance/request_blocks.py#@@ -97,14 +99,6 @@ class BlockKind(Enum):
+       src/acceptance/request_blocks.py#@@ -263,8 +257,8 @@ def authored_prompts() -> dict[str, str]:
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  test-evidence-rating-derived-from-recorded-judgements
+    [not_wired] test-evidence-rating-derived-from-recorded-judgements/rating-still-reads-from-old-judgement-stage
+      The review still computes the test-evidence rating from the retired judgement stages instead of from the recorded defect and pair verdict records, so the new derived-support code is never on the path that sets `obligation.evidence_class`.
+      src/acceptance/pipeline.py#5
+      src/acceptance/report.py#0
+      src/acceptance/defects/support.py#0
+    [scope_too_narrow] test-evidence-rating-derived-from-recorded-judgements/missing-defect-set-or-pair-verdict-inputs
+      The derived rating only works when both a defect set and pair verdicts are present; if a criterion has recorded failure-mode judgements but no pair verdicts, or pair verdicts but no defect set, the code falls back to an indeterminate or empty result instead of deriving the rating from the recorded judgements it already has.
+      src/acceptance/defects/support.py#0
+      src/acceptance/pipeline.py#5
+      src/acceptance/review_state.py#2
+    [condition_inverted] test-evidence-rating-derived-from-recorded-judgements/unjudged-pairs-counted-as-uncovered
+      A defect with no candidate-test verdict is treated as uncovered and fed into the rating reduction, so the rating can be computed as if the review had recorded a negative judgement when it actually recorded no judgement at all.
+      src/acceptance/defects/support.py#0
+      src/acceptance/review_state.py#1
+    [established_not_maintained] test-evidence-rating-derived-from-recorded-judgements/derived-rating-not-written-back-to-review
+      The support class is computed, but later review-state updates do not preserve it on the obligation, so the review can render or carry an older test-evidence rating that is no longer the one derived from the recorded judgements.
+      src/acceptance/defects/support.py#0
+      src/acceptance/pipeline.py#5
+      src/acceptance/review_state.py#2
+
+  test-prescriptions-derived-from-judgements
+    [other] test-prescriptions-derived-from-judgements/recommendations-built-from-current-defect-sets
+      The prescription stage recomputes its input from the current `defect_sets` and `pair_verdicts` instead of reading the previously recorded failure-judgement data from the stored review, so the prescribed tests are not traceable to the earlier judgements.
+      src/acceptance/coverage/recommendations.py#0
+      src/acceptance/coverage/recommendations.py#1
+      src/acceptance/coverage/recommendations.py#2
+      src/acceptance/coverage/recommendations.py#3
+      src/acceptance/coverage/recommendations.py#0
+      src/acceptance/pipeline.py#6
+      src/acceptance/rerun.py#0
+    [wrong_output_shape] test-prescriptions-derived-from-judgements/carried-recommendations-keyed-by-defect-only
+      Carried recommendations are matched only by `defect_id`, so if the same defect id is reused or re-enumerated differently across runs the carried prescription can be attached without preserving the original judgement traceability the criterion requires.
+      src/acceptance/rerun.py#0
+      src/acceptance/review_state.py#3
+      src/acceptance/review_state.py#4
+    [wrong_output_shape] test-prescriptions-derived-from-judgements/recommendation-output-loses-judgement-linkage
+      The recommendation record now carries `defect_id` and omits the earlier judgement-side linkage fields, so the emitted prescription can no longer be checked against the exact recorded judgement set it came from in the same shape as before.
+      src/acceptance/review_state.py#3
+      src/acceptance/coverage/recommendations.py#2
+      src/acceptance/coverage/recommendations.py#0
+
+  conclusion-derived-from-recorded-judgements
+    [other] conclusion-derived-from-recorded-judgements/conclusion-still-reads-from-live-judgement-stage
+      The review conclusion can still be taken from a live judgement stage or other freshly computed result instead of only from the recorded defect and pair-verdict records, so the conclusion would not actually be derived from the judgements already stored in the review.
+      src/acceptance/pipeline.py#5
+      src/acceptance/defects/support.py#0
+      src/acceptance/report.py#0
+    [scope_too_narrow] conclusion-derived-from-recorded-judgements/derived-support-misses-unjudged-defects
+      The derived support calculation only counts defects that appear in the recorded pair verdicts, so a defect with no verdict at all can be dropped from the conclusion instead of being reflected as an indeterminate part of the recorded judgements.
+      src/acceptance/defects/support.py#0
+      src/acceptance/report.py#0
+      src/acceptance/review_state.py#0
+    [other] conclusion-derived-from-recorded-judgements/recommendation-carry-still-keyed-by-obligation
+      The carried recommendation path still matches prior recommendations by obligation id rather than by defect id, so a conclusion about uncovered defects can be rebuilt from the wrong recorded item or fail to follow the defect-level judgements consistently.
+      src/acceptance/rerun.py#0
+      src/acceptance/coverage/recommendations.py#0
+      src/acceptance/review_state.py#3
+
+  remove-older-test-judgement
+    [other] remove-older-test-judgement/legacy-judgement-fields-still-present
+      The data model still exposes the older test-to-criterion judgement and discrimination judgement fields, so the review can still record them instead of omitting them.
+      src/acceptance/review_state.py#3
+      src/acceptance/review_state.py#4
+      src/acceptance/benchmark/instability.py#1
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/benchmark/instability.py#4
+      src/acceptance/report.py#2
+      src/acceptance/report.py#3
+    [other] remove-older-test-judgement/report-still-renders-old-pair-judgement-block
+      The report still has a block for pair verdicts and unjudged pairs, so the output can continue to surface the older test-discrimination judgement instead of removing it entirely.
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+      src/acceptance/report.py#3
+    [other] remove-older-test-judgement/recommendation-stage-still-keys-off-defect-judgements
+      The recommendation pipeline still builds recommendations from uncovered defects and pair verdicts, so the older test-to-criterion judgement has not been fully removed from the review flow and is replaced by another judgement stage rather than eliminated.
+      src/acceptance/coverage/recommendations.py#0
+      src/acceptance/coverage/recommendations.py#1
+      src/acceptance/coverage/recommendations.py#2
+      src/acceptance/coverage/recommendations.py#3
+      src/acceptance/pipeline.py#6
+      src/acceptance/pipeline.py#7
+
+  coverage-from-failing-way
+    [scope_too_narrow] coverage-from-failing-way/uncovered-defects-include-all-failing-ways
+      `uncovered_defects` only filters out defects with a killing verdict, so a defect that has no verdict at all is still treated as uncovered and can be recommended for; that makes the coverage relation depend on missing judgments rather than only on recorded failing ways.
+      src/acceptance/defects/support.py#0
+      src/acceptance/coverage/recommendations.py#0
+      src/acceptance/coverage/recommendations.py#1
+    [missing_case] coverage-from-failing-way/recommendation-batch-drops-defects
+      `recommend_tests` partitions pending defects into batches and then only emits recommendations for defects that come back in each batch response; if a batch returns no answer for one of its defects, that defect is left as unobtained instead of being covered by some candidate test.
+      src/acceptance/coverage/recommendations.py#0
+      src/acceptance/coverage/recommendations.py#1
+    [not_wired] coverage-from-failing-way/pair-verdicts-not-propagated-to-coverage
+      The coverage path now depends on `pair_verdicts` flowing through `derive_support` and `tests_to_obligations`; if that wiring is wrong or omitted, recorded failing ways never reach `extract_test_evidence` or the recommendation stage, so a candidate test would not be marked as failing for them.
+      src/acceptance/pipeline.py#5
+      src/acceptance/pipeline.py#6
+      src/acceptance/evidence/extraction.py#1
+      src/acceptance/defects/support.py#0
+
+  rating-by-coverage-completeness
+    [other] rating-by-coverage-completeness/no-coverage-completeness-rating
+      The delivered code no longer appears to compute a support rating from the completeness of recorded coverage at all; the old strength-classification path was deleted, and the new support derivation in `src/acceptance/defects/support.py#0` classifies by pair-verdict counts and a new `no_plausible_defect` state instead of the criterion being strongly/partially/nominally supported based on how many recorded failing ways are covered.
+      src/acceptance/defects/support.py#0
+      src/acceptance/pipeline.py#5
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+      src/acceptance/review_state.py#2
+      src/acceptance/review_state.py#3
+
+  preserve-existing-outcomes-when-unevaluable
+    [condition_inverted] preserve-existing-outcomes-when-unevaluable/recommendation-carry-keys-on-obligation-instead-of-defect
+      `carried_recommendations` now filters prior recommendations by `defect_id`, but the prior recommendations were historically keyed by obligation. If the carried recommendation records still identify the old obligation-level unit, the rerun will fail to match the existing prescription and drop it instead of preserving it when the stage is unevaluable.
+      src/acceptance/rerun.py#0
+      src/acceptance/review_state.py#3
+      src/acceptance/coverage/recommendations.py#0
+    [unenforced_on_one_path] preserve-existing-outcomes-when-unevaluable/unjudged-defects-not-carried-forward
+      The new recommendation path only carries prior prescriptions for `unobtained` defects. If a defect was already covered by the previous review but the current run cannot reach the judgement for that same case, there is no carry path here that preserves the old outcome for that case, so the review can lose an existing result when the judgement is unevaluable.
+      src/acceptance/pipeline.py#7
+      src/acceptance/rerun.py#0
+      src/acceptance/coverage/recommendations.py#0
+    [established_not_maintained] preserve-existing-outcomes-when-unevaluable/indeterminate-marking-drops-existing-outcomes
+      The pipeline now marks obligations indeterminate from missing recommendation answers after the derived-support rewrite. If that indeterminate application overwrites an already-established outcome for a case whose judgement could not be reached, the invariant is broken because the old outcome is not preserved through the later pass.
+      src/acceptance/pipeline.py#5
+      src/acceptance/review_state.py#2
+      src/acceptance/coverage/recommendations.py#0
+
+  rating-shows-covered-and-total-failures
+    [scope_too_narrow] rating-shows-covered-and-total-failures/missing-denominator-for-no-plausible-defect
+      The report omits the covered/total count entirely for ratings whose evidence class is `no_plausible_defect`, so those ratings do not show how many recorded failure modes were covered or how many were recorded.
+      src/acceptance/report.py#2
+      src/acceptance/report.py#3
+      src/acceptance/review_state.py#2
+    [scope_too_narrow] rating-shows-covered-and-total-failures/missing-denominator-for-unclassified-ratings
+      The report prints no covered/total count when `evidence_class` is `None`, so any rating left unclassified is shown without the recorded-failure denominator the criterion requires.
+      src/acceptance/report.py#3
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#2
+    [other] rating-shows-covered-and-total-failures/wrong-count-source-for-covered-failures
+      The displayed numerator can be wrong because `_denominator` uses `covered_defects` from the obligation record, but the new support reduction is computed from pair verdicts; if those stored counts are not kept in sync with the derived support, the report can show a covered-failure count that does not match the recorded failures actually covered.
+      src/acceptance/report.py#3
+      src/acceptance/defects/support.py#0
+      src/acceptance/review_state.py#2
+
+  no-plausible-failure-outcome
+    [wrong_output_shape] no-plausible-failure-outcome/report-uses-wrong-terminal-label
+      The report renders the new terminal state with the wrong wording, so criteria with no plausible defect are shown as ordinary unsupported or strongly supported evidence instead of a distinct outcome that says test evidence cannot be obtained.
+      src/acceptance/report.py#2
+      src/acceptance/report.py#3
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#3
+    [condition_inverted] no-plausible-failure-outcome/empty-enumeration-treated-as-unsupported
+      The support reducer can fall through to the unsupported branch when a criterion has no enumerated defects, so a criterion that should get the no-plausible-defect outcome is reported as unsupported instead.
+      src/acceptance/defects/support.py#0
+      src/acceptance/defects/support.py#0
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#0
+    [not_wired] no-plausible-failure-outcome/no-plausible-defect-not-propagated-to-obligation
+      The new no-plausible-defect class is defined, but the pipeline may fail to write it back onto obligations before rendering, leaving the report with no distinct outcome even though the reducer computed one.
+      src/acceptance/pipeline.py#5
+      src/acceptance/defects/support.py#0
+      src/acceptance/review_state.py#2
+      src/acceptance/report.py#3
+
+  no-redundant-recommendation
+    [scope_too_narrow] no-redundant-recommendation/recommendation-uses-all-defects-instead-of-uncovered-only
+      The recommendation stage can still be fed every defect in the review state instead of only defects with no killing verdict, so it would emit a recommendation for evidence the review already holds.
+      src/acceptance/coverage/recommendations.py#0
+      src/acceptance/coverage/recommendations.py#1
+      src/acceptance/coverage/recommendations.py#2
+      src/acceptance/coverage/recommendations.py#3
+      src/acceptance/defects/support.py#0
+    [missing_case] no-redundant-recommendation/uncovered-defects-includes-killed-defects
+      The helper that selects uncovered defects could misclassify a defect as uncovered even when some pair verdict already says a test kills it, which would let a redundant recommendation through.
+      src/acceptance/defects/support.py#0
+    [not_wired] no-redundant-recommendation/recommendation-stage-does-not-filter-by-owed-evidence
+      The recommendation pipeline could build defect recommendations from the uncovered-defect list without actually checking whether the corresponding obligation requires test evidence, so a held piece of evidence could still be recommended for again.
+      src/acceptance/coverage/recommendations.py#0
+      src/acceptance/coverage/recommendations.py#1
+      src/acceptance/coverage/recommendations.py#2
+      src/acceptance/coverage/recommendations.py#3
+
+  keep-rating-names
+    [other] keep-rating-names/renamed-rating-vocabulary
+      The report and stored review state switch from the current rating names to new names such as `no_plausible_defect`, `strongly_supported`, `partially_supported`, `unsupported`, and `indeterminate`, so the names the report uses today are no longer the same names as before.
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+      src/acceptance/report.py#2
+      src/acceptance/report.py#3
+    [other] keep-rating-names/changed-meaning-of-unsupported
+      `unsupported` is redefined to mean that no candidate test would fail on any enumerated defect, instead of meaning there is no mapped, obligation-relevant test at all, so the same name now denotes a different condition.
+      src/acceptance/review_state.py#0
+      src/acceptance/defects/support.py#0
+      src/acceptance/report.py#2
+    [other] keep-rating-names/new-terminal-rating-added
+      A new rating name, `no_plausible_defect`, is introduced and rendered as a first-class evidence class, so the set of rating names is no longer unchanged.
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+      src/acceptance/report.py#2
+
+  accuracy-report-does-not-span-change
+    [documented_not_implemented] accuracy-report-does-not-span-change/accuracy-figures-still-render-without-cutover-warning
+      The accuracy report still renders the measured figures without wording that they do not span #316, so the report can show the numbers as if they were comparable across the cutover.
+      src/acceptance/benchmark/scoring.py#0
+      src/acceptance/benchmark/scoring.py#1
+      src/acceptance/benchmark/case.py#0
+    [not_wired] accuracy-report-does-not-span-change/report-path-omits-accuracy-warning
+      The warning text is added to the benchmark score/report models, but the report rendering path does not use those fields when producing the accuracy section, so the delivered report can still omit the cutover disclaimer.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+      src/acceptance/report.py#3
+
+  deterministic-runs-byte-identical
+    [established_not_maintained] deterministic-runs-byte-identical/concurrent-call-order-leaks-into-unusable-log
+      Concurrent stage calls record unusable answers only after the futures are joined, but the recorded unusable-answer content still depends on the order the batch results are zipped back together; if any batch-level scan or accumulation is order-sensitive, two runs can serialize different review-state bytes even with the same inputs.
+      src/acceptance/concurrency.py#0
+      src/acceptance/defects/enumeration.py#3
+      src/acceptance/defects/pair_mapping.py#7
+      src/acceptance/requirement/obligations.py#3
+      src/acceptance/requirement/linking.py#1
+    [established_not_maintained] deterministic-runs-byte-identical/pair-verdict-order-not-canonicalized
+      The pair-mapping stage now gathers batch answers concurrently and then appends verdicts in batch iteration order, but the final verdict list is not explicitly canonicalized after merging all batches; if batch completion or partition ordering differs across runs, the persisted review state can differ byte-for-byte.
+      src/acceptance/defects/pair_mapping.py#7
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/report.py#1
+    [established_not_maintained] deterministic-runs-byte-identical/recommendations-preserved-in-input-order-only
+      Test recommendations are accumulated from concurrent batch answers and then appended in the order the batches are zipped, not by a stable key such as defect id; if batch partitioning or completion order changes, the serialized recommendation list and report output can change even when the underlying inputs are the same.
+      src/acceptance/coverage/recommendations.py#0
+      src/acceptance/coverage/recommendations.py#1
+      src/acceptance/rerun.py#0
+    [established_not_maintained] deterministic-runs-byte-identical/derived-support-uses-unordered-set-derived-links
+      The derived-support reduction builds `test_links` from a set comprehension and sorts only the final unique test ids; if the same defect is reached through multiple paths or the underlying verdict collection order changes, the intermediate grouping can produce different serialized ordering or counts in the review state and report.
+      src/acceptance/defects/support.py#0
+      src/acceptance/report.py#2
+      src/acceptance/report.py#3
+    [other] deterministic-runs-byte-identical/report-denominator-rendering-can-diverge-from-state
+      The report now renders evidence classes with an inline denominator string computed from `Obligation.enumerated_defects` and `covered_defects`, but those fields are populated separately from the class; if any later write-back updates the class without updating the counts, the report bytes can diverge from the stored review state bytes for the same logical run.
+      src/acceptance/report.py#3
+      src/acceptance/review_state.py#2
+      src/acceptance/defects/support.py#0
+
+  no-recording-or-judging-failures
+    [other] no-recording-or-judging-failures/defect-enumeration-records-failure-modes
+      The delivered change adds `defects.enumeration` and `defects.support`, and `pipeline.py` now calls `enumerate_defects(...)` and `derive_support(...)`, so the code does record criterion failure modes and judges them against pair verdicts instead of avoiding that behavior.
+      src/acceptance/defects/enumeration.py#2
+      src/acceptance/defects/enumeration.py#4
+      src/acceptance/defects/support.py#0
+      src/acceptance/pipeline.py#5
+    [other] no-recording-or-judging-failures/pair-mapping-judges-defects-against-tests
+      The delivered change adds `defects.pair_mapping.judge_pairs(...)`, which issues model calls over defect/test pairs and persists `PairVerdict` results, so the code does judge recorded failure modes against candidate tests.
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#7
+      src/acceptance/pipeline.py#5
+
+  do-not-change-criterion-derivation
+    [other] do-not-change-criterion-derivation/pair-support-replaces-criterion-derivation
+      The pipeline no longer derives criteria from the mandate through the old mapping/discrimination/strength path; it now derives support from defect sets and pair verdicts, so the criterion derivation method itself has changed.
+      src/acceptance/pipeline.py#1
+      src/acceptance/pipeline.py#5
+      src/acceptance/defects/support.py#0
+      src/acceptance/evidence/extraction.py#1
+      src/acceptance/defects/enumeration.py#2
+      src/acceptance/defects/pair_mapping.py#6
+    [other] do-not-change-criterion-derivation/mandate-to-criteria-path-rewired
+      The code that used to map mandate text to criteria has been removed and replaced with a different decomposition flow, so the set of criteria derived from the mandate can change even if the later stages are correct.
+      src/acceptance/evidence/mapping.py#0
+      src/acceptance/evidence/rejudge.py#0
+      src/acceptance/evidence/strength.py#0
+      src/acceptance/evidence/discrimination.py#0
+      src/acceptance/pipeline.py#1
+      src/acceptance/requirement/obligations.py#3
+    [other] do-not-change-criterion-derivation/criterion-derivation-now-depends-on-defect-enumeration
+      Criterion-linked outputs are now built from enumerated defects and pair verdicts, so any change in defect enumeration or pair mapping changes which criteria are effectively derived and how they are derived.
+      src/acceptance/defects/enumeration.py#3
+      src/acceptance/defects/support.py#0
+      src/acceptance/coverage/recommendations.py#0
+      src/acceptance/report.py#2
+      src/acceptance/review_state.py#2
+
+  docs-update
+    [documented_not_implemented] docs-update/docs-still-describe-retired-stages
+      The docs still describe the retired mapping/discrimination/rejudge pipeline as if it were live, instead of reflecting the new defect enumeration, pair-judgement, and derived-support flow.
+      docs/DR-312-defect-first-evidence.md#0
+    [documented_not_implemented] docs-update/benchmark-warning-docs-miss-new-boundary
+      The benchmark comments and report text could still describe `mapping_accuracy` and `evidence_agreement` as if they were comparable across the old stage boundary only, missing the new #316 cutover warning and the fact that the stage/class they measured changed.
+      src/acceptance/benchmark/case.py#0
+      src/acceptance/benchmark/scoring.py#0
+      src/acceptance/benchmark/scoring.py#1
+      src/acceptance/report.py#2
+      src/acceptance/report.py#3
+    [documented_not_implemented] docs-update/cli-help-still-names-mapping-batch-size
+      The CLI help text could still advertise `--mapping-batch-size` and mapping transcripts instead of the new `--pair-batch-size` and pair-judgement transcripts, leaving the user-facing documentation out of sync with the code path.
+      src/acceptance/cli.py#2
+    [documented_not_implemented] docs-update/usage-order-still-lists-old-stage-names
+      The pipeline-order documentation could still list `test-to-obligation mapping` and `discrimination judgment` instead of the new defect-stage names, so the documented run sequence would not match the delivered pipeline.
+      src/acceptance/usage.py#0
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [prefiltered] accuracy-report-does-not-span-change/accuracy-figures-still-render-without-cutover-warning x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/benchmark/case.py, src/acceptance/benchmark/scoring.py — no path to the defect exists
+  [prefiltered] accuracy-report-does-not-span-change/report-path-omits-accuracy-warning x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py — no path to the defect exists
+  [prefiltered] conclusion-derived-from-recorded-judgements/conclusion-still-reads-from-live-judgement-stage x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/pipeline.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] conclusion-derived-from-recorded-judgements/derived-support-misses-unjudged-defects x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] conclusion-derived-from-recorded-judgements/recommendation-carry-still-keyed-by-obligation x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/rerun.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] coverage-from-failing-way/pair-verdicts-not-propagated-to-coverage x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/evidence/extraction.py, src/acceptance/pipeline.py — no path to the defect exists
+  [prefiltered] coverage-from-failing-way/recommendation-batch-drops-defects x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py — no path to the defect exists
+  [prefiltered] coverage-from-failing-way/uncovered-defects-include-all-failing-ways x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/defects/support.py — no path to the defect exists
+  [prefiltered] deterministic-runs-byte-identical/concurrent-call-order-leaks-into-unusable-log x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/concurrency.py, src/acceptance/defects/enumeration.py, src/acceptance/defects/pair_mapping.py, src/acceptance/requirement/linking.py, src/acceptance/requirement/obligations.py — no path to the defect exists
+  [prefiltered] deterministic-runs-byte-identical/derived-support-uses-unordered-set-derived-links x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] deterministic-runs-byte-identical/pair-verdict-order-not-canonicalized x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/benchmark/instability.py, src/acceptance/defects/pair_mapping.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] deterministic-runs-byte-identical/recommendations-preserved-in-input-order-only x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/rerun.py — no path to the defect exists
+  [prefiltered] deterministic-runs-byte-identical/report-denominator-rendering-can-diverge-from-state x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] do-not-change-criterion-derivation/criterion-derivation-now-depends-on-defect-enumeration x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/defects/enumeration.py, src/acceptance/defects/support.py, src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] do-not-change-criterion-derivation/mandate-to-criteria-path-rewired x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/evidence/discrimination.py, src/acceptance/evidence/mapping.py, src/acceptance/evidence/rejudge.py, src/acceptance/evidence/strength.py, src/acceptance/pipeline.py, src/acceptance/requirement/obligations.py — no path to the defect exists
+  [prefiltered] do-not-change-criterion-derivation/pair-support-replaces-criterion-derivation x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/enumeration.py, src/acceptance/defects/pair_mapping.py, src/acceptance/defects/support.py, src/acceptance/evidence/extraction.py, src/acceptance/pipeline.py — no path to the defect exists
+  [prefiltered] docs-update/benchmark-warning-docs-miss-new-boundary x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/benchmark/case.py, src/acceptance/benchmark/scoring.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] docs-update/cli-help-still-names-mapping-batch-size x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/cli.py — no path to the defect exists
+  [prefiltered] docs-update/docs-still-describe-retired-stages x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in docs/DR-312-defect-first-evidence.md — no path to the defect exists
+  [prefiltered] docs-update/usage-order-still-lists-old-stage-names x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/usage.py — no path to the defect exists
+  [prefiltered] keep-rating-names/changed-meaning-of-unsupported x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] keep-rating-names/new-terminal-rating-added x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] keep-rating-names/renamed-rating-vocabulary x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] no-plausible-failure-outcome/empty-enumeration-treated-as-unsupported x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] no-plausible-failure-outcome/no-plausible-defect-not-propagated-to-obligation x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/pipeline.py, src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] no-plausible-failure-outcome/report-uses-wrong-terminal-label x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] no-recording-or-judging-failures/defect-enumeration-records-failure-modes x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/enumeration.py, src/acceptance/defects/support.py, src/acceptance/pipeline.py — no path to the defect exists
+  [prefiltered] no-recording-or-judging-failures/pair-mapping-judges-defects-against-tests x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/pair_mapping.py, src/acceptance/pipeline.py — no path to the defect exists
+  [prefiltered] no-redundant-recommendation/recommendation-stage-does-not-filter-by-owed-evidence x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py — no path to the defect exists
+  [prefiltered] no-redundant-recommendation/recommendation-uses-all-defects-instead-of-uncovered-only x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/defects/support.py — no path to the defect exists
+  [prefiltered] no-redundant-recommendation/uncovered-defects-includes-killed-defects x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py — no path to the defect exists
+  [prefiltered] preserve-existing-outcomes-when-unevaluable/indeterminate-marking-drops-existing-outcomes x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/pipeline.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] preserve-existing-outcomes-when-unevaluable/recommendation-carry-keys-on-obligation-instead-of-defect x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/rerun.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] preserve-existing-outcomes-when-unevaluable/unjudged-defects-not-carried-forward x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/pipeline.py, src/acceptance/rerun.py — no path to the defect exists
+  [prefiltered] rating-by-coverage-completeness/no-coverage-completeness-rating x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/pipeline.py, src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] rating-shows-covered-and-total-failures/missing-denominator-for-no-plausible-defect x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] rating-shows-covered-and-total-failures/missing-denominator-for-unclassified-ratings x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] rating-shows-covered-and-total-failures/wrong-count-source-for-covered-failures x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] remove-older-test-judgement/legacy-judgement-fields-still-present x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/benchmark/instability.py, src/acceptance/report.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] remove-older-test-judgement/recommendation-stage-still-keys-off-defect-judgements x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/pipeline.py — no path to the defect exists
+  [prefiltered] remove-older-test-judgement/report-still-renders-old-pair-judgement-block x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py — no path to the defect exists
+  [prefiltered] test-evidence-rating-derived-from-recorded-judgements/derived-rating-not-written-back-to-review x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/pipeline.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] test-evidence-rating-derived-from-recorded-judgements/missing-defect-set-or-pair-verdict-inputs x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/pipeline.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] test-evidence-rating-derived-from-recorded-judgements/rating-still-reads-from-old-judgement-stage x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/pipeline.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] test-evidence-rating-derived-from-recorded-judgements/unjudged-pairs-counted-as-uncovered x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/defects/support.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] test-prescriptions-derived-from-judgements/carried-recommendations-keyed-by-defect-only x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/rerun.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] test-prescriptions-derived-from-judgements/recommendation-output-loses-judgement-linkage x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] test-prescriptions-derived-from-judgements/recommendations-built-from-current-defect-sets x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/coverage/recommendations.py, src/acceptance/pipeline.py, src/acceptance/rerun.py — no path to the defect exists
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run d359fc45a7a87ff8
+  continuing 24167c83efda44b4
+  continue this run with: --continue d359fc45a7a87ff8
+Model usage by stage:
+  stage                         model                                         calls     prompt   output  cached  this run  recorded
+  ----------------------------  ----------------------  ---------------------------  ---------  -------  ------  --------  --------
+  obligation linking            voyage/voyage-3.5-lite      1 (0 live / 1 replayed)        836        0       —   $0.0000   $0.0000
+  defect enumeration            openai/gpt-5.4-mini       16 (16 live / 0 replayed)    753,122    5,920    0.0%   $0.5915   $0.5915
+  defect-to-test pair mapping   openai/gpt-5.4-mini     992 (992 live / 0 replayed)  3,871,404  691,939    0.0%   $6.0173   $6.0173
+  coverage classification       openai/gpt-5.4-mini         1 (1 live / 0 replayed)    105,901    2,154    0.0%   $0.0891   $0.0891
+  unrequested-change detection  openai/gpt-5.4-mini         1 (1 live / 0 replayed)    105,296    2,340    0.0%   $0.0895   $0.0895
+  disposition judgment          openai/gpt-5.4-mini         1 (1 live / 0 replayed)      2,956      104    0.0%   $0.0027   $0.0027
+  test recommendation           openai/gpt-5.4-mini         1 (1 live / 0 replayed)    103,148      742    0.0%   $0.0807   $0.0807
+  this run spent $6.8708 on 1012 live call(s); the evidence cost $6.8708 to record (1 call(s) replayed at no cost to this run)
+

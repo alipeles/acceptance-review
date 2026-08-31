@@ -5097,3 +5097,156 @@ the record.
   > "reuse when X" and "re-judge when not X" are arguably worth testing
   > separately even when they are logically one rule.
 - **Status:** open — drafted, not posted
+
+### [2026-08-31] Nothing caches, in any stage, because every call sends a unique response schema
+- **Kind:** filing
+- **Found during:** #316, Gate 2
+- **Where:** `src/acceptance/defects/pair_mapping.py::_allowed`, and the same
+  pattern in `defects/enumeration.py`, `requirement/obligations.py`,
+  `requirement/linking.py`, `coverage/recommendations.py`
+- **Severity:** should-fix
+- **What's wrong:** #316's Gate 2 run reported **0.0% cached prompt tokens on
+  every stage**, over 1,012 calls and $6.87. The pair stage alone sent 3,871,404
+  prompt tokens — $2.90 at $0.75/M, most of which should be discountable.
+
+  **The message prefix is not the problem, and I verified that.** Messages 0 and
+  1 of a pair call are the shared preamble and the `## Defects` block, run about
+  1,544 tokens — clear of OpenAI's 1,024-token minimum — and take **6-7 distinct
+  values across all 1,762 recorded pair calls**. The block move that landed in
+  #314 (`8921b91`) did what it was meant to.
+
+  **What varies is the response schema.** I measured 1,762 distinct schemas
+  across 1,762 pair calls. Removing the `test_id` enum collapses that to **7**;
+  removing `defect_id` alone leaves 617. Every stage constrains at least one id
+  field to that call's own ids — enumeration pins `obligation_id` to one
+  criterion, pair judgement pins `test_id` to one test — which is why all seven
+  stages read 0.0% rather than just one.
+
+  I believe the schema is part of the provider's cached prefix. I have not
+  confirmed that from OpenAI's side. The in-repo evidence is #302, which removed
+  a per-batch `test_id` enum from the retired mapping stage after measuring 461
+  of 464 calls caching nothing over a 1,729-token eligible prefix.
+
+  **A correction to an earlier draft of this entry:** it cited #314's Gate 2
+  0.0% figure as evidence. That run's head predates the defect-block move, which
+  I verified with `git merge-base --is-ancestor`. The mechanism named was right;
+  the evidence was stale. The figures above are post-move.
+- **Why I didn't act:** **removing the constraint may cost recall, and this repo
+  has been surprised here before.** `test_id` sits at the top of the pair
+  response, and today its enum holds exactly one value, so the model cannot get
+  it wrong. Unconstrained, it must echo a long pytest node id exactly; a
+  paraphrase loses that whole call's 24-40 judgements at once. The
+  response-shape pilot already found that shortening the *defect* ids cut output
+  25% and lost a third of the labelled kills, returning nothing on 4 of 13
+  cases. DR-173, on mapping instability, exists to forbid settling this by
+  argument.
+- **Drafted fix:** file as a sub-issue of #184 (determinism and reproducibility).
+
+  > **Title:** Every stage sends a unique response schema, and nothing caches
+  >
+  > **Body:** #316's Gate 2 run reported 0.0% cached prompt tokens on all seven
+  > stages, 1,012 calls, $6.87. The pair stage sent 3.87M prompt tokens.
+  >
+  > The shared message prefix is fine: messages[:2] of a pair call is ~1,544
+  > tokens, clears OpenAI's 1,024 floor, and takes 6-7 distinct values across
+  > 1,762 calls. What varies is the response schema — 1,762 distinct across
+  > 1,762 calls, collapsing to 7 with the `test_id` enum removed. Every stage
+  > constrains at least one id to per-call values, which is why every stage is
+  > affected.
+  >
+  > **First task is the pilot arm, not the change.**
+  > `docs/experiments/pair-response-shape/pilot.py` scores candidate response
+  > shapes against #315's human-reviewed kill labels with request content held
+  > identical across arms. Add an arm that drops `test_id` from the response
+  > entirely — a batch holds exactly one test, so the caller already knows which
+  > it is, and removing the field is strictly safer than leaving it
+  > unconstrained: there is nothing left to get wrong, and it saves output too.
+  > Draw nine seeds; the pilot's own notes record that three gave a wrong answer
+  > where nine gave the right one.
+  >
+  > Only if recall holds, apply the same reasoning stage by stage. Each change
+  > moves that stage's request key and re-records its transcripts.
+  >
+  > Labels: `track:checker`. Parent: #184.
+- **Status:** open — drafted, not filed
+
+### [2026-08-31] Defects are enumerated for criteria that are owed no test, and nothing can ever use them
+- **Kind:** defect
+- **Found during:** #316, Gate 2
+- **Where:** `src/acceptance/pipeline.py`, the `enumerate_defects` call
+- **Severity:** nice-to-have
+- **What's wrong:** `enumerate_defects` is given every obligation, including the
+  ones `required_evidence` says no test is owed for (#266). Their defects reach
+  nothing: `derive_support` runs over `needs_tests` only, and `recommend_tests`
+  filters on the same predicate. So each such criterion costs one enumeration
+  call per run and produces records nothing reads.
+
+  It is one call per criterion, so the waste scales with how many scope
+  exclusions and code-only criteria a mandate has — #316's own task file has
+  three.
+- **Why I didn't act:** #316's task file excludes "recording the ways a
+  criterion could fail" from scope, and narrowing what the enumerator is given
+  changes its requests and orphans its transcripts. Both make it the wrong
+  change to slip into this issue.
+- **Drafted fix:** pass `needs_tests` rather than `obligations` to
+  `enumerate_defects`, and move the call below the `needs_tests` split. File as a
+  sub-issue of #181 (decomposition) or #183; #183 is the better home since the
+  stage is evidence-side. Note in the issue that it re-records the enumeration
+  corpus.
+- **Status:** open — drafted, not filed
+
+### [2026-08-31] Eleven ground-truth labels use a class the tool can no longer produce
+- **Kind:** decision
+- **Found during:** #316, Gate 2
+- **Where:** `tests/fixtures/archetypes/{03,04,05,06,08-unrequested-change-test-support}/labels.json`,
+  `tests/fixtures/rating-regression/167-gate2-run{1,2}/labels.json`
+- **Severity:** should-fix
+- **What's wrong:** #316 stopped producing `nominally_supported`, on the human's
+  ruling that it is not worth a third answer from the judge and that defect
+  injection could not identify it anyway. Eleven ground-truth entries still carry
+  it. No test in the suite scores them, so they are inert today — but the moment
+  the benchmark runs over those archetypes, `evidence_agreement` reports a
+  disagreement that is the vocabulary's, not the judge's.
+
+  **The labels are correct as written.** Archetype #4's `daily-rate` really is a
+  test that looks like it covers the rule and does not discriminate — that is
+  the human's own definition of the class. So this is not a label that is wrong;
+  it is a label naming something the tool has stopped being able to say.
+- **Why I didn't act:** changing a ground-truth label to match what the tool can
+  produce is the one thing the working agreement names as never mine to do
+  alone, and it is worse here than usual because the labels are right.
+- **Drafted fix:** three options, and I recommend the second.
+  1. Relabel the eleven to `unsupported`. Cheapest; loses a real distinction the
+     corpus recorded, and bakes a tool limitation into the ground truth.
+  2. **Keep the labels and score `nominally_supported` and `unsupported` as
+     agreeing.** The scorer already aligns free text; a two-member equivalence
+     class is a smaller change than eleven edits, keeps the human judgement
+     intact, and makes the collapse visible in one place instead of eleven.
+  3. Leave both alone and accept the disagreement as a standing cost. Rejected:
+     a metric that is wrong for a known reason still gets read as a metric.
+- **Status:** open — needs the human's call
+
+### [2026-08-31] The enumerator will not enumerate for a `test_demand` criterion, so its rating is unreachable
+- **Kind:** defect
+- **Found during:** #316, Gate 2
+- **Where:** `src/acceptance/defects/taxonomy.py::enumerable`
+- **Severity:** should-fix
+- **What's wrong:** #316's Gate 2 rated `recommended-test-names-failing-way`
+  `indeterminate` with no mapped test, because no way of failing was enumerated
+  for it. The criterion is typed `test_demand` and `enumerable` declines that
+  type, so the enumeration stage skips it.
+
+  That was harmless while the pair verdicts were advisory. Since #316 the
+  enumeration IS the denominator, so a criterion the enumerator skips can now
+  never be rated at all — it is `indeterminate` on every run, whatever its tests
+  do. `indeterminate` reaches the verdict as an escalation candidate, so such a
+  criterion also stops any review containing it coming back clean.
+- **Why I didn't act:** #316's task file excludes recording the ways a criterion
+  could fail, and changing which criteria the enumerator is given moves its
+  requests and orphans its transcripts.
+- **Drafted fix:** decide whether a `test_demand` criterion should be enumerated
+  for, or should be held out of the derivation the way `required_evidence`
+  already holds criteria out of the evidence stages (#266) — the second is
+  probably right, since the demand for a test is not itself a behaviour a change
+  can break. File as a sub-issue of #183 (evidence judgement).
+- **Status:** open — drafted, not filed
