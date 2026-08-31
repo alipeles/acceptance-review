@@ -16,6 +16,7 @@ Status is stated in words, not symbols, and every evidence line carries its
 
 from __future__ import annotations
 
+from acceptance.defects.pair_mapping import derive_support
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     CompletionVerdict,
@@ -118,6 +119,10 @@ def render_report(review: Review) -> str:
         lines.extend(_defect_block(review.defect_sets))
         lines.append("")
 
+    if review.pair_verdicts or review.unjudged_pairs:
+        lines.extend(_pair_block(review))
+        lines.append("")
+
     if review.delta is not None:
         lines.extend(_delta_block(review.delta))
         lines.append("")
@@ -154,6 +159,61 @@ def render_report(review: Review) -> str:
         lines.append("Recommended next instruction: (none)")
 
     return "\n".join(lines)
+
+
+def _pair_block(review: Review) -> list[str]:
+    """What the pair verdicts imply, beside what the review actually says (#314).
+
+    **Advisory, and the comparison is the point.** Nothing here moved a rating;
+    the block exists so a discrepancy between the two is visible while the
+    baseline is still stable. #316 flips the review onto the derived column, and
+    a difference it cannot explain now is a difference to explain before then.
+
+    Every derived class is rendered with its denominator and never alone, per
+    DR-312's resolved question 3: "strongly supported" over an enumeration of one
+    claims more than it has, and the number lets a reader weigh that themselves.
+    """
+    derived = derive_support(review.defect_sets, review.pair_verdicts, review.unjudged_pairs)
+    by_id = {obligation.id: obligation for obligation in review.obligation_map}
+
+    heading = (
+        "Support implied by test-to-defect pairs "
+        "(advisory — the review's own ratings are unchanged):"
+    )
+    lines = [heading]
+    disagreeing = []
+    for entry in derived:
+        obligation = by_id.get(entry.obligation_id)
+        current = obligation.evidence_class if obligation else None
+        pending = f", {entry.unjudged} pair(s) unjudged" if entry.unjudged else ""
+        lines.append("")
+        lines.append(f"  {entry.obligation_id}")
+        lines.append(
+            f"    implied by pairs: {entry.evidence_class} — kills "
+            f"{entry.killed} of {entry.total} enumerated defects "
+            f"(static prediction{pending})"
+        )
+        lines.append(f"    this review says: {current or 'not rated'}")
+        if current is not None and current != entry.evidence_class:
+            disagreeing.append(entry.obligation_id)
+
+    lines.append("")
+    if disagreeing:
+        lines.append(f"  Criteria where the two disagree: {', '.join(disagreeing)}")
+    else:
+        lines.append("  Criteria where the two disagree: (none)")
+
+    # Both causes are shown, and shown apart. A pair the filter proved unreachable
+    # and one the judge was asked about and never answered are different failures
+    # with opposite remedies, and DR-164's silent id filter is the precedent for
+    # why neither may be left invisible.
+    if review.unjudged_pairs:
+        lines.append("")
+        lines.append("  Pairs left unjudged:")
+        for entry in review.unjudged_pairs:
+            lines.append(f"    [{entry.cause.value}] {entry.defect_id} x {entry.test_id}")
+            lines.append(f"      {entry.reason}")
+    return lines
 
 
 def _defect_block(defect_sets: list[DefectSet]) -> list[str]:

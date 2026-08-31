@@ -190,6 +190,72 @@ class DefectSet(_Model):
     carried_from: str | None = None
 
 
+class PairVerdict(_Model):
+    """Whether one test would fail if the code contained one defect (#314).
+
+    The question #312 replaced *"does this test purport to evidence this
+    obligation?"* with. That one had no fact of the matter, so a miss was
+    unrecoverable and a rating could not be traced to it; this one is existential
+    and has an answer, which is why DR-314's pilot found the dense shape gaining
+    recall here where DR-173's lost it.
+
+    `kills` is the answer. `reason` is short by design: DR-312 decision 3 holds
+    the response to pair, verdict and a short reason, because the caching
+    discount is input-only and output growth never amortizes. Any richer
+    explanation belongs to a later per-finding call, not to this sweep.
+    """
+
+    defect_id: str
+    test_id: str
+    kills: bool
+    reason: str = ""
+    # The identity a later run matches this verdict on, and the reason it is not
+    # the defect id: ids are composed from the obligation id, so a reworded
+    # requirement moves every defect id under it and keying on one would
+    # re-judge a defect that did not change. Same reason `DefectSet` carries on
+    # obligation text rather than obligation id.
+    defect_text: str = ""
+    # The content digest of the test this verdict concerns. Per TEST, never per
+    # file (DR-293): a file-level digest re-judges every test in a module when
+    # any one of them is edited, which is the over-invalidation #293 removed.
+    test_digest: str = ""
+    carry_key: str = ""
+    carried_from: str | None = None
+
+
+class UnjudgedCause(str, Enum):
+    """Why a pair carries no verdict. Two causes, kept apart deliberately.
+
+    `MappingResult` draws the same distinction between `unmapped_obligation_ids`
+    and `indeterminate_obligation_ids`, for the same reason: one is a decision we
+    made and stand behind, the other is the absence of an answer. Collapsing them
+    would hide a judge that is shedding work behind a filter that is doing its
+    job, and the remedies are opposite — a wrong `PREFILTERED` means fixing the
+    filter, a rising `UNANSWERED` count means the batch is too large.
+    """
+
+    PREFILTERED = "prefiltered"
+    """Proved to have no path from the test to the defect, so never asked."""
+
+    UNANSWERED = "unanswered"
+    """Offered to the judge, which returned nothing about it."""
+
+
+class UnjudgedPair(_Model):
+    """One pair left without a verdict, and why (#314).
+
+    Recorded rather than dropped. DR-164's silent id filter is the precedent: a
+    pair nothing can see is indistinguishable from a verdict of *survives*, and a
+    defect wrongly un-covered that way produces a recommendation to write a test
+    that already exists — #250 and #287, the failure #312 exists to remove.
+    """
+
+    defect_id: str
+    test_id: str
+    cause: UnjudgedCause
+    reason: str
+
+
 class RequiredEvidence(str, Enum):
     """Which kinds of evidence an obligation REQUIRES (#153, restructured #266).
 
@@ -1106,6 +1172,18 @@ class Review(_Model):
     # see tests and such an obligation is about a test), while an obligation
     # with no plausible static defect gets an entry whose `reason` says so.
     defect_sets: list[DefectSet] = Field(default_factory=list)
+    # One entry per (defect, test) pair the stage judged, and one per pair the
+    # prefilter kept out of the judged set (#314). Advisory for the same reason
+    # `defect_sets` is: nothing here reaches `completion` or any obligation's
+    # rating until #316 flips the source, so a rating that moves while these are
+    # only being recorded has some other cause.
+    #
+    # Kept as two lists rather than one with a status, because a pair that was
+    # never formed must stay distinguishable from both — an obligation whose
+    # defect set is empty contributes no pairs at all, and that is not the same
+    # claim as "judged and survives" or "excluded unjudged".
+    pair_verdicts: list[PairVerdict] = Field(default_factory=list)
+    unjudged_pairs: list[UnjudgedPair] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[TestRecommendation] = Field(default_factory=list)
     # Criteria the recommendation stage was asked about and returned nothing for

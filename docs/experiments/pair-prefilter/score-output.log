@@ -1,0 +1,126 @@
+corpus: 75 defects x 166 tests = 12450 pairs, 127 kills (1.02%)
+
+== the free baseline ==
+locality (all signals)             excludes  77.0% ( 9591 of 12450), keeps  47/127 kills ( 37.0%)
+  own file                         excludes 100.0% (12450 of 12450), keeps   0/127 kills (  0.0%)
+  called names                     excludes  80.7% (10047 of 12450), keeps  42/127 kills ( 33.1%)
+  referenced names                 excludes  97.8% (12172 of 12450), keeps   5/127 kills (  3.9%)
+  imported modules                 excludes  99.8% (12424 of 12450), keeps   0/127 kills (  0.0%)
+  name match                       excludes  98.5% (12258 of 12450), keeps   0/127 kills (  0.0%)
+
+kills the full locality baseline would skip:
+  loses 80 kills across 32 defects:
+    tests/requirement/test_carry_forward.py::test_two_runs_over_the_same_task_and_ledger_state_are_byte_identical
+      vs byte-identical-review-state-and-report-output/pair-report-block-introduces-run-variant-output
+      defect files: ['src/acceptance/report.py', 'src/acceptance/review_state.py']
+    tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state
+      vs byte-identical-review-state-and-report-output/pair-report-block-introduces-run-variant-output
+      defect files: ['src/acceptance/report.py', 'src/acceptance/review_state.py']
+    tests/defects/test_enumeration.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+      vs byte-identical-review-state-and-report-output/pair-verdict-order-not-stable
+      defect files: ['src/acceptance/defects/pair_mapping.py', 'src/acceptance/pipeline.py', 'src/acceptance/review_state.py']
+    tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+      vs byte-identical-review-state-and-report-output/pair-verdict-order-not-stable
+      defect files: ['src/acceptance/defects/pair_mapping.py', 'src/acceptance/pipeline.py', 'src/acceptance/review_state.py']
+    tests/defects/test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+      vs byte-identical-review-state-and-report-output/pair-verdict-order-not-stable
+      defect files: ['src/acceptance/defects/pair_mapping.py', 'src/acceptance/pipeline.py', 'src/acceptance/review_state.py']
+    tests/requirement/test_carry_forward.py::test_two_runs_over_the_same_task_and_ledger_state_are_byte_identical
+      vs byte-identical-review-state-and-report-output/pair-verdict-order-not-stable
+      defect files: ['src/acceptance/defects/pair_mapping.py', 'src/acceptance/pipeline.py', 'src/acceptance/review_state.py']
+    tests/test_recommendation_omission.py::test_two_runs_over_the_same_inputs_render_the_same_report
+      vs byte-identical-review-state-and-report-output/pair-verdict-order-not-stable
+      defect files: ['src/acceptance/defects/pair_mapping.py', 'src/acceptance/pipeline.py', 'src/acceptance/review_state.py']
+    tests/defects/test_enumeration.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+      vs byte-identical-review-state-and-report-output/pair-verdicts-not-persisted-in-ledger-entry
+      defect files: ['src/acceptance/cli.py', 'src/acceptance/requirement/ledger.py', 'src/acceptance/requirement/obligations.py']
+    ... and 72 more
+
+== code-3 asymmetric: voyage-code-3/query -> voyage-code-3/document ==
+description vs test source best lossless: description vs test source @ 0.321 excludes  10.2% ( 1264 of 12450), keeps 127/127 kills (100.0%)
+region vs test source      best lossless: region vs test source @ 0.475      excludes  10.6% ( 1325 of 12450), keeps 127/127 kills (100.0%)
+union @ description 0.369, region 0.512 excludes  14.6% ( 1815 of 12450), keeps 127/127 kills (100.0%)
+
+== code-3 symmetric: voyage-code-3/none -> voyage-code-3/none ==
+description vs test source best lossless: description vs test source @ 0.532 excludes  12.3% ( 1537 of 12450), keeps 127/127 kills (100.0%)
+region vs test source      best lossless: region vs test source @ 0.617      excludes   3.2% (  394 of 12450), keeps 127/127 kills (100.0%)
+union @ description 0.542, region 0.873 excludes  14.2% ( 1764 of 12450), keeps 127/127 kills (100.0%)
+
+== 4-large both sides: voyage-4-large/query -> voyage-4-large/document ==
+  embedding 166/166 test sources in 9 requests
+    1/9 done
+    2/9 done
+    pacing: 2 requests / 8423 tokens in flight, waiting 59s
+    3/9 done
+    4/9 done
+    pacing: 2 requests / 8640 tokens in flight, waiting 59s
+    5/9 done
+    6/9 done
+    pacing: 2 requests / 8965 tokens in flight, waiting 59s
+    7/9 done
+    8/9 done
+    pacing: 2 requests / 8112 tokens in flight, waiting 58s
+    9/9 done
+  embedding 75/75 defect descriptions in 1 requests
+    1/1 done
+  embedding 23/23 code regions in 5 requests
+    1/5 done
+    pacing: 3 requests / 8740 tokens in flight, waiting 58s
+    pacing: 2 requests / 6382 tokens in flight, waiting 1s
+    2/5 done
+    3/5 done
+    pacing: 2 requests / 8882 tokens in flight, waiting 60s
+    4/5 done
+    5/5 done
+description vs test source best lossless: description vs test source @ 0.128 excludes   0.9% (  113 of 12450), keeps 127/127 kills (100.0%)
+region vs test source      best lossless: region vs test source @ 0.287      excludes   1.3% (  157 of 12450), keeps 127/127 kills (100.0%)
+union @ description 0.381, region 0.303 excludes   2.1% (  261 of 12450), keeps 127/127 kills (100.0%)
+
+== code-4 both sides: voyage-code-4/query -> voyage-code-4/document ==
+  embedding 166/166 test sources in 9 requests
+    pacing: 2 requests / 6932 tokens in flight, waiting 49s
+    1/9 done
+    2/9 done
+    pacing: 2 requests / 8423 tokens in flight, waiting 59s
+    3/9 done
+    4/9 done
+    pacing: 2 requests / 8640 tokens in flight, waiting 59s
+    5/9 done
+    6/9 done
+    pacing: 2 requests / 8965 tokens in flight, waiting 56s
+    7/9 done
+    pacing: 2 requests / 8106 tokens in flight, waiting 3s
+    8/9 done
+    pacing: 2 requests / 8112 tokens in flight, waiting 57s
+    9/9 done
+  embedding 75/75 defect descriptions in 1 requests
+    pacing: 2 requests / 6837 tokens in flight, waiting 2s
+    1/1 done
+  embedding 23/23 code regions in 5 requests
+    1/5 done
+    pacing: 3 requests / 8740 tokens in flight, waiting 56s
+    pacing: 2 requests / 6382 tokens in flight, waiting 3s
+    2/5 done
+    3/5 done
+    pacing: 2 requests / 8882 tokens in flight, waiting 59s
+    4/5 done
+    5/5 done
+description vs test source best lossless: description vs test source @ 0.018 excludes  22.4% ( 2785 of 12450), keeps 127/127 kills (100.0%)
+region vs test source      best lossless: region vs test source @ 0.246      excludes   5.9% (  735 of 12450), keeps 127/127 kills (100.0%)
+union @ description 0.027, region 0.717 excludes  22.0% ( 2740 of 12450), keeps 127/127 kills (100.0%)
+
+== 4-large defects, code-4 code: voyage-4-large/query -> voyage-code-4/document ==
+description vs test source best lossless: description vs test source @ 0.050 excludes  17.6% ( 2196 of 12450), keeps 127/127 kills (100.0%)
+region vs test source      best lossless: region vs test source @ 0.246      excludes   5.9% (  735 of 12450), keeps 127/127 kills (100.0%)
+union @ description 0.052, region 0.717 excludes  15.4% ( 1913 of 12450), keeps 127/127 kills (100.0%)
+
+== union, every configuration, all 127 kills kept ==
+  code-4 both sides                excludes  22.0%
+  4-large defects, code-4 code     excludes  15.4%
+  code-3 asymmetric                excludes  14.6%
+  code-3 symmetric                 excludes  14.2%
+  4-large both sides               excludes   2.1%
+
+wrote /Users/alipeles1/GoogleDrive/code/AI_acceptance_tool/docs/experiments/pair-prefilter/findings.json
+
+[exited with code 0]

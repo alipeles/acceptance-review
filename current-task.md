@@ -1,58 +1,86 @@
 # Task
-The measurement harness scores the ways of failing that a review recorded
-against a human-authored reference set. The figure for what the review failed to
-record and the figure for what it wrongly predicted about tests are never
-combined into a single figure.
+For each way of failing that the review has recorded against a criterion, and
+each candidate test, the review records whether that test would fail if the
+delivered code contained that way of failing.
 
 ## Constraints
-- A reference set states, for each criterion of a labelled case, the ways of
-  failing a competent reviewer should record. Each carries an identifier, a
-  classification drawn from the same fixed vocabulary the review uses, a
-  free-text description, and the tests that would fail if the delivered code
-  contained it.
-- A criterion for which no way of failing is plausible carries that fact and the
-  reason, and stays distinguishable from a criterion the reference set says
-  nothing about.
-- A reference set naming a criterion its case does not define, or naming a test
-  its case does not supply, is rejected rather than loaded.
-- A recorded way of failing is matched to a labelled one by what the two
-  describe, not by their wording, and each side takes part in at most one match.
-- Whether a match was found and whether the two classifications agree are
-  reported as separate figures.
-- The share of recorded ways of failing carrying the vocabulary's escape value is
-  reported as a standing figure.
-- The share of labelled ways of failing that the review recorded is reported for
-  each classification separately.
-- How well the predicted catching tests agree with the labelled ones is reported
-  as its own figure, computed independently of the share above.
-- A figure with nothing to compute from is reported as absent, and never as zero.
-- The existing measure of whether two criteria stating the same demand receive
-  the same tests is also computed over the tests reached by way of the recorded
-  ways of failing.
-- Scoring runs from recorded material and issues no live call to a model.
-- Every reference set shipped with the harness loads and validates.
+- A pair is one recorded way of failing and one candidate test. Every pair is
+  judged unless a path from that test to the source regions the way of failing
+  implicates is proved absent. A pair whose path cannot be settled either way is
+  judged.
+- Every pair left unjudged is recorded, naming the way of failing, the test, and
+  why it was not judged, and the review reports those records.
+- The question put about a judged pair is whether that test would fail if the
+  delivered code contained that way of failing.
+- Pairs are judged in groups, and no group asks for more judgements in one
+  request than a fixed limit allows.
+- What comes back about a pair where the test would fail is which pair it is,
+  that it would fail, and a short reason, and nothing further.
+- What comes back about a pair where the test would not fail is which pair it is
+  and that it would not fail, and nothing further.
+- Which of the two an answer is, is settled by the verdict the answer carries,
+  not by which fields happen to be present in it.
+- An answer reporting that the test would fail and carrying no reason is not a
+  verdict the review accepts, and neither is one reporting that the test would
+  not fail and carrying a reason.
+- An answer the review does not accept leaves its pair recorded as unjudged,
+  naming the way of failing, the test and why, exactly as a pair the judge never
+  answered about is, and leaves every other pair in its group judged.
+- A verdict kept about a pair where the test would not fail carries no reason
+  where it is stored.
+- A verdict is reused rather than produced again exactly while both the way of
+  failing it concerns and the source of the test it concerns are unchanged.
+- A verdict whose way of failing changed, or whose test's source changed, is
+  produced again.
+- A run continuing an earlier run reuses every verdict it is entitled to reuse.
+- A run continuing an earlier run produces again only the verdicts it is not
+  entitled to reuse.
+- Where a verdict was reused rather than produced again, the review says so.
+- Whether the review reports the work complete, every rating it gives a
+  criterion, and every test it recommends are what they would be if no pair had
+  been judged at all.
+- The review reports, for each criterion, the support its judged pairs imply
+  beside the rating the review gives that criterion today, and names the
+  criteria where the two disagree.
 
 ## Scope exclusions
-- Producing the ways of failing that are scored, and predicting which tests
-  would catch one.
-- Any rating, conclusion, recommendation or report the review itself produces.
-- Which criteria the review derives from a mandate, and how it derives them.
-- Judging whether a labelled way of failing is itself the right one to expect.
-- Running any code under review.
+- Producing the ways of failing that pairs are judged against.
+- Deriving a criterion's rating, the completion conclusion, or any recommended
+  test from judged pairs.
+- Resolving a name to its definition, or following references beyond a single
+  step, in order to decide whether a path is absent.
+- Which criteria the review derives from the mandate, and how it derives them.
+- How the review gathers, maps, judges or rates test evidence today, and
+  retiring any part of it.
+- Selecting the shape of the request that carries the pair question at run time.
+  The shape is fixed in the software; nothing chooses between candidates while a
+  review runs.
+- Running the delivered code or any test.
 
 ## Completion expectations
 - Implementation.
-- A test fails when a reference set naming a criterion its case does not define
-  is loaded rather than rejected.
-- A test fails when a criterion with no plausible way of failing is stored so
-  that it cannot be told apart from one the reference set is silent about.
-- A test asserts that a recorded way of failing worded differently from its
-  labelled counterpart still matches it.
-- A test fails when a disagreement between two classifications is counted as a
-  way of failing the review never recorded.
-- A test asserts that the share of labelled ways of failing recorded, and the
-  agreement between predicted and labelled catching tests, are computed
-  independently of each other.
-- On a small set whose figures are known by hand, every computed figure equals
-  the hand-computed one.
-- A test fails when scoring issues a live call to a model.
+- A test fails when a pair whose path cannot be settled either way is left
+  unjudged rather than judged.
+- A test fails when a pair is left unjudged without a record naming the way of
+  failing, the test and the reason.
+- A test asserts that adding one candidate test between two continued runs
+  produces new verdicts only for pairs concerning that test.
+- A test fails when a verdict is produced again across two continued runs
+  although its way of failing and its test's source are both unchanged.
+- A test fails when a verdict is reused although its test's source changed.
+- A test fails when judging pairs changes the review's completion conclusion,
+  any criterion's rating, or which tests it recommends.
+- A test asserts the report shows, for each criterion, the support its judged
+  pairs imply beside the rating the review gives that criterion today.
+- A test reads the shape of the request as it is sent and fails if that shape
+  permits a reason on a pair where the test would not fail.
+- A test fails when an answer reporting that the test would fail carries no
+  reason and is nonetheless kept as a verdict.
+- A test fails when an answer reporting that the test would not fail carries a
+  reason and is nonetheless kept as a verdict.
+- A test asserts that one answer the review does not accept costs only its own
+  pair, leaving the rest of its group judged.
+- A test asserts that a stored verdict about a pair where the test would not fail
+  carries no reason.
+- Two recorded runs over the same input produce byte-identical review state and
+  byte-identical report output.

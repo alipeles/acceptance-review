@@ -41,6 +41,7 @@ from acceptance.coverage.open_questions import (
 from acceptance.coverage.recommendations import recommend_tests
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.defects.enumeration import enumerate_defects
+from acceptance.defects.pair_mapping import DEFAULT_PAIR_BATCH_SIZE, judge_pairs
 from acceptance.evidence.anchoring import build_anchors
 from acceptance.evidence.discovery import discover_tests
 from acceptance.evidence.discrimination import judge_discrimination
@@ -258,6 +259,7 @@ def run_review(
     declaration_text: str | None = None,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
     mapping_batch_size: int = DEFAULT_MAPPING_BATCH_SIZE,
+    pair_batch_size: int = DEFAULT_PAIR_BATCH_SIZE,
     link_pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
     link_distance_threshold: float | None = DEFAULT_LINK_DISTANCE_THRESHOLD,
     task_identifier: str = "<inline>",
@@ -333,17 +335,6 @@ def run_review(
         prior=list(ledger_prior.defect_sets) if ledger_prior is not None else None,
     )
 
-    # Handed back rather than written here: the pipeline does not own the run id,
-    # the parent pointer or the file, and a stage that wrote to disk on the way
-    # past would make the benchmark's own runs leave ledger entries behind.
-    #
-    # Handed back HERE rather than straight after linking, which is where it used
-    # to sit, because the entry now carries the defect sets as well and they do
-    # not exist until the line above. One hand-back, so a caller cannot write an
-    # entry holding half of what the run produced.
-    if ledger_sink is not None:
-        ledger_sink.append((derived, decomposition, defect_sets))
-
     # Every obligation reaches every stage below (#293). There used to be a
     # narrowing here — `obligations_to_rederive`, which dropped any obligation
     # none of whose cited files the change touched, for BOTH review axes at once.
@@ -372,6 +363,41 @@ def run_review(
     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
 
     discovered = discover_tests(repo, change_set)
+
+    # Pair judgement runs HERE — after discovery, because it needs the tests, and
+    # before the mapping chain below only so a reader meets the two questions in
+    # the order #312 replaces them. It could sit anywhere after this line: nothing
+    # below reads `pair_mapping`, and nothing in it reads the mapping chain.
+    #
+    # SHADOW, and that is the whole point of this milestone (#314). The verdicts
+    # are recorded and reported; no rating, recommendation or completion verdict
+    # is derived from them until #316 flips the source. DR-312 decision 5's
+    # reasoning: land it beside the existing chain and a carry defect shows as a
+    # discrepancy against a stable baseline, land it in place of the chain and an
+    # unexpected rating has three candidate causes and nothing to attribute it to.
+    pair_mapping = judge_pairs(
+        defect_sets,
+        discovered.tests,
+        change_set,
+        client,
+        repo=repo,
+        batch_size=pair_batch_size,
+        unusable=unusable,
+        prior=list(ledger_prior.pair_verdicts) if ledger_prior is not None else None,
+    )
+
+    # Handed back rather than written here: the pipeline does not own the run id,
+    # the parent pointer or the file, and a stage that wrote to disk on the way
+    # past would make the benchmark's own runs leave ledger entries behind.
+    #
+    # Handed back HERE rather than after enumeration, which is where it used to
+    # sit, because the entry now carries the pair verdicts as well and they do
+    # not exist until the line above. One hand-back, so a caller cannot write an
+    # entry holding half of what the run produced — the same reason it moved off
+    # linking when #313 added the defect sets.
+    if ledger_sink is not None:
+        ledger_sink.append((derived, decomposition, defect_sets, pair_mapping.verdicts))
+
     mapping = map_tests_to_obligations(
         needs_tests, discovered.tests, client, mapping_batch_size, unusable
     )
@@ -535,6 +561,8 @@ def run_review(
         requirement_map=decomposition.requirement_map,
         open_questions=open_questions,
         defect_sets=defect_sets,
+        pair_verdicts=pair_mapping.verdicts,
+        unjudged_pairs=pair_mapping.unjudged,
         change_set=change_set,
         declaration=declaration,
         findings=findings,
