@@ -877,3 +877,77 @@ def test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo(tmp_path
     )
     assert snapshot() == before
     assert not (repo / ".acceptance" / "next-instruction.md").exists()
+
+
+def test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives(tmp_path):
+    """#316's acceptance, on the archetype it was written for.
+
+    Archetype #4's only test asserts `prorate(30.0, 15, 30) == 15.0`. A 30-day
+    month is exactly where a hard-coded `price / 30` and the correct
+    `price / days_in_month` agree, so that test cannot tell them apart. The
+    judge says so — the pair verdict is *survives* — and the criterion must not
+    be strongly supported while it does.
+
+    Asserted as a difference against the same run with the verdict flipped,
+    because "not strongly supported" alone would pass on a pipeline that never
+    reached the criterion at all.
+    """
+    case = build_benchmark_case(
+        ARCHETYPES_DIR / "04-non-discriminating-input", tmp_path / "repo"
+    )
+    test_id = "test_billing.py::test_half_of_a_month"
+    defect_id = "daily-rate/hard-codes-thirty"
+
+    def _client(fails: bool):
+        verdict = {"defect_id": defect_id, "fails": fails}
+        if fails:
+            verdict["reason"] = "a non-30-day month would differ"
+        return _client_dispatching(
+            {
+                "_Decomposition": _decomposition_response(
+                    [
+                        {
+                            "id": "daily-rate",
+                            "description": "Daily rate is monthly_price divided by days_in_month",
+                            "type": "functional",
+                            "source_quote": "the daily rate is",
+                        }
+                    ]
+                ),
+                # The task file is a Task paragraph and nothing else, so the
+                # criterion comes from the summary step (#317) rather than from
+                # a bullet the ordinary decomposer answers about.
+                "_SummarySpans": WHOLE_SUMMARY_UNCOVERED,
+                "_Enumeration": {
+                    "obligation_id": "daily-rate",
+                    "defects": [
+                        {
+                            "slug": "hard-codes-thirty",
+                            "type": "other",
+                            "description": "hard-codes price/30 instead of price/days_in_month",
+                            "code_refs": [],
+                        }
+                    ],
+                    "reason": "",
+                },
+                "_PairVerdicts": {"tests": [{"test_id": test_id, "defects": [verdict]}]},
+                "_Coverage": _classification_response(
+                    [{"obligation_id": "daily-rate", "status": "addressed"}]
+                ),
+                "_Detections": {"unrequested_changes": []},
+            }
+        )
+
+    def rating(fails: bool):
+        review = classify_case(case, _client(fails)).reviewer_output
+        return next(o for o in review.obligation_map if o.id == "daily-rate")
+
+    surviving = rating(fails=False)
+    killing = rating(fails=True)
+
+    assert surviving.evidence_class != "strongly_supported"
+    assert killing.evidence_class == "strongly_supported"
+    # And the denominator travels with both, so a reader can see what "strongly"
+    # was measured over — one defect, which is thin and says so.
+    assert (surviving.covered_defects, surviving.enumerated_defects) == (0, 1)
+    assert (killing.covered_defects, killing.enumerated_defects) == (1, 1)

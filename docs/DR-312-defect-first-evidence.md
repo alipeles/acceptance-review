@@ -429,6 +429,73 @@ recomputed over the derived test→obligation edges as the regression check.
 - Enumeration recall and pair-verdict accuracy report as separate figures —
   the separation is the point (#252).
 
+## Settled at the cutover, 2026-08-31 (#316)
+
+Four things this record left open or unmeasured, decided as C was built.
+
+**1. The shadow corpus survived the flip, so the re-record cost was not paid.**
+Resolved question 5 accepted staged migration's cost on the expectation that
+"if cutting over changes nothing in the new stages' own requests, their corpus
+replays and only the retired stages' recordings die with them", and made
+verifying it the cutover's first task. It holds, on two independent grounds.
+
+*Read:* `llm.py::request_key` content-addresses a request — model, messages,
+temperature, response schema, seed, partition, stage controls — with no call
+index or sequence counter, so deleting an upstream stage's calls cannot move a
+downstream stage's key. `request_blocks.assemble` orders blocks by a static
+enum and adds nothing, so it is stateless across the requests of one run.
+Neither defect stage imported any of the retired modules.
+
+*Measured:* `run_review` was run twice over one repo, once whole and once with
+`map_tests_to_obligations`, `judge_discrimination` and `classify_strength`
+replaced by a stand-in that raises, and the recorded request keys compared per
+response schema. `_Enumeration` and `_PairVerdicts` each issued one request in
+both runs, with identical keys.
+
+*What this does not license.* The check covers removing the retired stages. It
+does not cover applying the `needs_tests` filter to enumeration, editing
+`request_blocks.py` or the shared preamble, or changing either defect stage's
+response schema. Any of those moves the keys, and the first two move every
+stage's at once.
+
+**2. #292's anchored re-judgement is retired, not re-scoped.** It existed to
+stop a re-asked judge moving a rating for no reason, by making a movement rest
+on a change to that criterion's own inputs. Nothing is re-asked: the class is a
+pure reduce over pair verdicts, so two runs over the same verdicts produce the
+same class and there is no draw to anchor against. The rating carry
+(`evidence/rejudge.py`) went with it, which decision 6 already anticipated —
+the class sits in its "always recomputed, free arithmetic over carried parts"
+row, and what carries is one level down, the defect set and the pair verdict.
+
+**3. `nominally_supported` is no longer produced.** §9.3 defines it as a
+present, *relevant-looking* test that catches nothing, and separating that from
+"no test goes near this at all" needs the judge to say which of two things it
+meant by *no* — the test exercises the code but asserts nothing that would
+catch the defect, or it does not exercise it. The pair judge answers one yes/no
+question, so both come back identical.
+
+A third answer was considered and rejected. It changes the response shape,
+which re-judges every stored verdict once (~$3.50 at #314's measured rates) and
+reopens the shape DR-314 measured; and when M8.4's defect injection replaces the
+static prediction the distinction becomes unmeasurable in principle — an
+injected defect either fails a test or it does not, and a test that runs without
+noticing is indistinguishable from one that never ran. **A criterion no test
+would fail on is `unsupported`.** The name stays in the §9.3 vocabulary and
+nothing in the review emits it.
+
+This also resolves how `unsupported` is reached at all. It is not "the repo has
+no tests" — pairs are formed against every discovered test and the prefilter
+excludes almost nothing, so that condition would never fire. It is the plain
+reading: no candidate test would fail on any enumerated way the change could
+fail the criterion.
+
+**4. Benchmark figures do not span the cutover.** `mapping_accuracy` measures a
+stage that no longer exists; `evidence_agreement` measures a class that is no
+longer a model's answer, over a denominator that did not exist before #313. Both
+carry the DR-164-style warning where the field is declared, in
+`benchmark/scoring.py` and `benchmark/case.py`, and a test fails if either is
+deleted or softened.
+
 ## Related
 
 - `DR-173-mapping-twin-splitting.md` — the measurements this design answers;

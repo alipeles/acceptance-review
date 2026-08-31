@@ -174,6 +174,55 @@ def test_the_plausible_defect_is_copied_from_the_record_not_restated_by_the_mode
     assert rec.plausible_defect == _HARD_CODED_30
 
 
+def test_a_recommendation_citing_no_defect_record_is_unrepresentable():
+    """#283's shape, removed by the type rather than checked for.
+
+    That review prescribed a test on a basis nothing in the record supported, so
+    a reader could not follow the prescription back to the criterion text it was
+    meant to serve. `defect_id` is required, and the `Defect` it names carries
+    the `obligation_id` and the `code_refs`, so the trail from prescription to
+    criterion to exact lines exists by construction (§13.6).
+    """
+    from pydantic import ValidationError
+
+    from acceptance.review_state import TestRecommendation
+
+    with pytest.raises(ValidationError) as raised:
+        TestRecommendation(
+            obligation_id="daily-rate",
+            criterion="Daily rate is monthly_price divided by days_in_month",
+            required_inputs="a 28-day month",
+            boundary_conditions="none",
+            expected_output="price/28",
+            required_assertions=["assert prorate(280, 14, 28) == 140.0"],
+            plausible_defect="hard-codes /30",
+            repo_conventions="test_billing.py",
+        )
+
+    assert "defect_id" in str(raised.value)
+
+
+def test_every_recommendation_a_run_produces_names_a_defect_the_review_holds():
+    """The type stops a recommendation with no defect id. It cannot stop one
+    naming an id that belongs to no record, which would break the same trail one
+    step further along — so the stage is checked to emit only ids it was given.
+    """
+    obligations, defect_sets, defect = _archetype_4()
+    known = {d.id for s in defect_sets for d in s.defects}
+
+    result = recommend_tests(
+        obligations,
+        defect_sets,
+        [],
+        _change_set(),
+        _client_returning({"recommendations": [_answer(defect.id)]}),
+    )
+
+    assert result.recommendations
+    for rec in result.recommendations:
+        assert rec.defect_id in known
+
+
 def test_a_defect_a_test_would_fail_on_earns_no_recommendation_and_no_model_call():
     """#250 and #287 made structural. The covered defect is not merely dropped
     from the output — with nothing uncovered, no call is issued at all, so a
