@@ -494,8 +494,15 @@ def test_more_defects_than_the_batch_size_are_split_across_calls():
         batch_size=2,
     )
 
-    assert [len(offered) for offered in calls] == [2, 2, 1]
+    # Sizes as a multiset, not a sequence: batches are issued concurrently, so
+    # the order they REACH the double is the order they finished, which varies.
+    # The order that must not vary is the order their answers are consumed in,
+    # and that is asserted below on the result.
+    assert sorted(len(offered) for offered in calls) == [1, 2, 2]
     assert len(result.recommendations) == 5
+    assert [r.defect_id for r in result.recommendations] == [
+        f"daily-rate/d{index}" for index in range(1, 6)
+    ]
     assert result.unobtained == []
 
 

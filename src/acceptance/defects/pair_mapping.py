@@ -51,6 +51,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from acceptance.carry import carry_key, decide
+from acceptance.concurrency import map_calls
 from acceptance.defects.reachability import Pair, form_pairs, prefilter
 from acceptance.evidence.discovery import DiscoveredTest
 from acceptance.llm import ModelClient, StrictResponseModel
@@ -356,9 +357,18 @@ def _ask(
     batch_pairs: list[Pair],
     batch,
     client: ModelClient,
-    unusable: UnusableAnswerLog | None,
-) -> tuple[dict[tuple[str, str], tuple[bool, str]], dict[tuple[str, str], str]]:
-    """One request. The verdicts it answered usably, and the ones it did not.
+) -> tuple[
+    dict[tuple[str, str], tuple[bool, str]],
+    dict[tuple[str, str], str],
+    list[UnusableAnswer],
+]:
+    """One request. The verdicts it answered usably, the ones it did not, and
+    the ids it named that were never offered.
+
+    **Records nothing.** Batches are issued concurrently, so anything appended
+    to shared state in here would land in completion order and two runs over the
+    same input would differ — see `concurrency.py`, rule 2. The unusable answers
+    are handed back and recorded by the caller, in batch order.
 
     A pair in neither map was SHED — offered and not answered. The caller records
     it rather than defaulting it, because defaulting a shed judgement to
@@ -385,9 +395,6 @@ def _ask(
         parse_as=_LenientPairVerdicts,
         stage=_STAGE,
     )
-    if unusable is not None:
-        unusable.record(scan(result, allowed, _STAGE))
-
     answered: dict[tuple[str, str], tuple[bool, str]] = {}
     unusable_shape: dict[tuple[str, str], str] = {}
     offered = {pair.key for pair in batch_pairs}
@@ -413,7 +420,7 @@ def _ask(
                 )
             else:
                 answered[key] = (judged.fails, reason)
-    return answered, unusable_shape
+    return answered, unusable_shape, scan(result, allowed, _STAGE)
 
 
 # `DerivedSupport` and `derive_support` used to live here, deriving a support
@@ -471,10 +478,23 @@ def judge_pairs(
         else:
             to_ask.append(pair)
 
+    # Batches are issued CONCURRENTLY and their answers consumed in batch
+    # order. Each batch judges its own pairs and reads no other batch's answer,
+    # so there was never a reason to wait for one before sending the next — and
+    # this stage issues by far the most calls of any, 332 of one review's 375 at
+    # #314's Gate 2 and several thousand on a large diff.
+    #
+    # The request is untouched, so every recorded transcript still replays.
+    batches = _batches(to_ask, batch_size)
+    answers = map_calls(batches, lambda batch: _ask(list(batch.items), batch, client))
+
     fresh: list[PairVerdict] = []
-    for batch in _batches(to_ask, batch_size):
+    for batch, (answered, unusable_shape, scanned) in zip(batches, answers):
         batch_pairs = list(batch.items)
-        answered, unusable_shape = _ask(batch_pairs, batch, client, unusable)
+        # Recorded here rather than inside the call, so the log reads in batch
+        # order however the calls finished (`concurrency.py`, rule 2).
+        if unusable is not None:
+            unusable.record(scanned)
         for pair in batch_pairs:
             if pair.key not in answered:
                 # Offered and no usable verdict came back — either nothing at all

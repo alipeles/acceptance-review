@@ -58,6 +58,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 
+from acceptance.concurrency import map_calls
 from acceptance.config import DEFAULT_LINK_PAIR_BATCH_SIZE
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.partition import partition
@@ -506,10 +507,9 @@ def link_duplicate_obligations(
     if not askable and not carried_decisions:
         return decomposition
 
-    fresh_decisions: list[MergeDecision] = []
-    for batch in partition(askable, pair_batch_size, key=lambda pair: pair[0]):
-        by_pair_id = {pair_id: (left, right) for pair_id, left, right in batch.items}
-        allowed = {"pair_id": list(by_pair_id)}
+    def _ask(batch):
+        """One batch of pairs. Records nothing — see `concurrency.py`, rule 2."""
+        allowed = {"pair_id": [pair_id for pair_id, _, _ in batch.items]}
         result = client.complete(
             assemble(
                 [
@@ -523,8 +523,18 @@ def link_duplicate_obligations(
             stage=_STAGE,
             stage_controls=stage_controls,
         )
+        return result, scan(result, allowed, _STAGE)
+
+    # Batches are issued CONCURRENTLY and consumed in batch order. Each batch
+    # judges its own pairs and reads no other batch's answer.
+    batches = partition(askable, pair_batch_size, key=lambda pair: pair[0])
+    answers = map_calls(batches, _ask)
+
+    fresh_decisions: list[MergeDecision] = []
+    for batch, (result, scanned) in zip(batches, answers):
+        by_pair_id = {pair_id: (left, right) for pair_id, left, right in batch.items}
         if unusable_answers is not None:
-            unusable_answers.record(scan(result, allowed, _STAGE))
+            unusable_answers.record(scanned)
         answered: set[str] = set()
         for verdict in result.verdicts:
             if verdict.pair_id not in by_pair_id:

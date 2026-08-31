@@ -45,6 +45,7 @@ from acceptance.review_state import (
     UnjudgedCause,
     UnjudgedPair,
 )
+from acceptance.supplied_ids import UnusableAnswerLog
 from tests.support import client_dispatching
 
 _DEFAULT_MODEL = "openai/gpt-5.4-mini"
@@ -978,3 +979,46 @@ def test_the_defect_list_sits_in_the_shared_prefix_of_every_call(tmp_path):
     # And the thing that differs — each call's own test — is outside it.
     assert "test_half_month" not in shared
     assert "test_full_month" not in shared
+
+
+def test_the_stage_is_byte_identical_when_its_calls_finish_out_of_order(tmp_path):
+    """The wiring, not the helper (`tests/test_concurrency.py` owns that).
+
+    This stage issues the most calls of any — 332 of one review's 375 at #314's
+    Gate 2 — and since they are issued concurrently, the order they FINISH is
+    whatever the provider decides. Two runs over one input must still agree byte
+    for byte (M0.5).
+
+    The double delays later batches less than earlier ones, so completion order
+    is reliably the reverse of issue order. A stage that consumed answers as they
+    arrived, rather than in batch order, reorders its verdicts and its
+    unusable-answer log here and passes every test that only counts them.
+    """
+    import time
+
+    class _Reordering(_Judge):
+        def _completion_fn(self, **kwargs):
+            # Later calls return sooner, so completion order is reliably the
+            # reverse of issue order.
+            time.sleep(max(0.0, 0.06 - 0.01 * len(self.requests)))
+            return super()._completion_fn(**kwargs)
+
+    tests = [_test(f"test_{index}") for index in range(6)]
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    defects = _defect_set("divides by 30", "ignores days")
+
+    def run(judge_cls):
+        judge = judge_cls(kills=lambda defect_id, test_id: defect_id.endswith("d1"))
+        log = UnusableAnswerLog()
+        result = judge_pairs(
+            [defects],
+            tests,
+            _change_set(),
+            judge.client,
+            repo=repo,
+            batch_size=1,
+            unusable=log,
+        )
+        return result.model_dump_json(), [entry.returned_id for entry in log.answers]
+
+    assert run(_Reordering) == run(_Judge)

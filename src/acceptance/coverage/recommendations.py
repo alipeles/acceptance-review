@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from pydantic import Field
 
+from acceptance.concurrency import map_calls
 from acceptance.coverage.prompt import diff_block
 from acceptance.defects.support import uncovered_defects
 from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
@@ -48,7 +49,7 @@ from acceptance.review_state import (
     TestRecommendation,
     UnobtainedRecommendation,
 )
-from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
+from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
 
 _STAGE = "test recommendation"
 
@@ -165,11 +166,20 @@ def recommend_tests(
     if not pending:
         return RecommendationResult()
 
+    # Batches are issued CONCURRENTLY and consumed in batch order. Each batch
+    # prescribes for its own defects and reads no other batch's answer.
+    batches = partition(pending, batch_size, key=lambda defect: defect.id)
+    answers = map_calls(
+        batches, lambda batch: _ask(batch, criterion_by_obligation, change_set, client)
+    )
+
     recommendations: list[TestRecommendation] = []
     missing: list[Defect] = []
-    batches = partition(pending, batch_size, key=lambda defect: defect.id)
-    for batch in batches:
-        returned = _ask(batch, criterion_by_obligation, change_set, client, unusable)
+    for batch, (returned, scanned) in zip(batches, answers):
+        # Recorded here rather than inside the call, so the log reads in batch
+        # order however the calls finished (`concurrency.py`, rule 2).
+        if unusable is not None:
+            unusable.record(scanned)
         for defect in batch.items:
             answer = returned.get(defect.id)
             if answer is None:
@@ -221,9 +231,10 @@ def _ask(
     criterion_by_obligation: dict[str, str],
     change_set: ChangeSet,
     client: ModelClient,
-    unusable: UnusableAnswerLog | None,
-) -> dict[str, _Recommendation]:
-    """One batch's prescriptions, keyed by defect id.
+) -> tuple[dict[str, _Recommendation], list[UnusableAnswer]]:
+    """One batch's prescriptions keyed by defect id, and the ids it invented.
+
+    **Records nothing** — see `concurrency.py`, rule 2.
 
     #275: an omission is an INDETERMINATE result about the defect it concerns,
     not grounds for abandoning the review — rejecting it by raising discarded
@@ -247,9 +258,6 @@ def _ask(
         stage=_STAGE,
         partition=batch.request_partition(),
     )
-    if unusable is not None:
-        unusable.record(scan(result, allowed, _STAGE))
-
     offered = {defect.id for defect in batch.items}
     returned: dict[str, _Recommendation] = {}
     for rec in result.recommendations:
@@ -262,4 +270,4 @@ def _ask(
                 f"recommendation named defect '{rec.defect_id}', which the call did not supply"
             )
         returned[rec.defect_id] = rec
-    return returned
+    return returned, scan(result, allowed, _STAGE)

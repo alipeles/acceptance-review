@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 
 from acceptance.carry import carry_key, decide
+from acceptance.concurrency import map_calls
 from acceptance.coverage.prompt import diff_block, hunk_label, hunk_labels
 from acceptance.defects.taxonomy import DESCRIPTIONS, checklist_for, enumerable
 from acceptance.llm import ModelClient, StrictResponseModel
@@ -34,7 +35,7 @@ from acceptance.review_state import (
     Obligation,
 )
 from acceptance.serialization import canonical_json
-from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
+from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
 
 __all__ = [
     "DEFECT_STAGE_LOGIC_VERSION",
@@ -310,7 +311,15 @@ def enumerate_defects(
     asking = [o for o in obligations if enumerable(o.type)]
     order = {o.id: index for index, o in enumerate(asking)}
 
+    # Two passes, because the calls are issued CONCURRENTLY and the carry
+    # decision is not: this stage asks about one criterion per call, so a review
+    # with thirty criteria used to make thirty round trips end to end. Deciding
+    # first and asking second keeps the carry logic linear and readable while
+    # the part that waits on a provider runs at once.
+    #
+    # The request is untouched, so every recorded transcript still replays.
     sets: list[DefectSet] = []
+    to_ask: list[tuple[int, Obligation, type[_Enumeration], str]] = []
     for obligation in asking:
         text = obligation_text(obligation)
         candidate = prior_by_text.get(text)
@@ -342,9 +351,19 @@ def enumerate_defects(
             )
             sets.append(carried)
             continue
-        sets.append(
-            _ask_about(obligation, visible, label_to_ref, constrained, client, unusable, text)
-        )
+        to_ask.append((len(sets), obligation, constrained, text))
+        sets.append(None)  # placeholder, filled in below in criterion order
+
+    answers = map_calls(
+        to_ask,
+        lambda item: _ask_about(item[1], visible, label_to_ref, item[2], client, item[3]),
+    )
+    for (slot, _, _, _), (defect_set, scanned) in zip(to_ask, answers):
+        # Recorded here rather than inside the call, so the log reads in
+        # criterion order however the calls finished (`concurrency.py`, rule 2).
+        if unusable is not None:
+            unusable.record(scanned)
+        sets[slot] = defect_set
 
     return sorted(sets, key=lambda entry: order[entry.obligation_id])
 
@@ -381,10 +400,14 @@ def _ask_about(
     label_to_ref: dict,
     constrained: type[_Enumeration],
     client: ModelClient,
-    unusable: UnusableAnswerLog | None,
     text: str,
-) -> DefectSet:
+) -> tuple[DefectSet, list[UnusableAnswer]]:
     """One call, about `obligation` alone, over the test-free change set.
+
+    **Records nothing.** Calls are issued concurrently, so anything appended to
+    shared state in here would land in completion order and two runs over the
+    same input would differ — see `concurrency.py`, rule 2. The unusable answers
+    are handed back and recorded by the caller, in criterion order.
 
     `constrained` is passed in rather than rebuilt: the carry check above needs
     the same schema to compute the same key, and two constructions of it are two
@@ -406,9 +429,6 @@ def _ask_about(
         parse_as=_Enumeration,
         stage=_STAGE,
     )
-    if unusable is not None:
-        unusable.record(scan(result, allowed, _STAGE))
-
     defects = _defects_from(result, obligation, label_to_ref)
     # An answer with neither defects nor a reason is not an empty set, it is a
     # non-answer. Saying so keeps "no plausible static defect, and here is why"
@@ -418,11 +438,14 @@ def _ask_about(
         reason = "The enumeration returned no defects and gave no reason for the empty set."
     implicated = [ref for defect in defects for ref in defect.code_refs]
     digests = region_digests_for(visible, implicated)
-    return DefectSet(
-        obligation_id=obligation.id,
-        defects=defects,
-        reason="" if defects else reason,
-        obligation_text=text,
-        carry_key=_key(client, obligation, text, digests),
-        region_digests=digests,
+    return (
+        DefectSet(
+            obligation_id=obligation.id,
+            defects=defects,
+            reason="" if defects else reason,
+            obligation_text=text,
+            carry_key=_key(client, obligation, text, digests),
+            region_digests=digests,
+        ),
+        scan(result, allowed, _STAGE),
     )
