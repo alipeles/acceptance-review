@@ -98,7 +98,13 @@ def test_report_renders_each_obligation_with_both_axes_numbered():
     assert "  1. CSV generation implemented" in report
     assert "  2. Active filters applied" in report
     assert "       code evidence: addressed" in report
-    assert "       test evidence: strongly supported  [tier: static]" in report
+    # The class never reaches the reader bare: this criterion was rated with no
+    # defect set behind it, so the line says that rather than showing nothing
+    # (DR-312 resolved question 3).
+    assert (
+        "       test evidence: strongly supported — no way this change could fail "
+        "the criterion was enumerated for it  [tier: static]"
+    ) in report
     assert "       code evidence: not addressed" in report
     # Evidence items are numbered <obligation>.<item>, continuously across axes.
     assert "         1.1  export.py#@@ -1 +9 @@" in report
@@ -563,3 +569,36 @@ def test_a_boundary_with_nothing_examined_does_not_claim_non_violation():
 
     assert "non-violation is not established" in report
     assert "none breaches this boundary" not in report
+
+
+def test_every_rating_the_report_shows_carries_a_denominator_or_says_why_not():
+    """DR-312 resolved question 3, checked over the whole vocabulary rather than
+    on one example.
+
+    A class rendered bare is the thing the rule forbids: "strongly supported"
+    over an enumeration of one claims far more than it has. The two cases with no
+    number say so in words, and say *different* words, because "the enumeration
+    stood behind finding nothing" and "nothing was enumerated for this" are
+    different facts that a reader must be able to tell apart.
+    """
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[
+            _obligation("Counted", "addressed", "partially_supported"),
+            _obligation("Nothing plausible", "addressed", "no_plausible_defect"),
+            _obligation("Never enumerated", "addressed", "indeterminate"),
+        ],
+    )
+    review.obligation_map[0].enumerated_defects = 3
+    review.obligation_map[0].covered_defects = 2
+
+    lines = [ln for ln in render_report(review).splitlines() if "test evidence:" in ln]
+
+    assert len(lines) == 3
+    assert "kills 2 of 3 enumerated defects (static prediction)" in lines[0]
+    assert "not obtainable here" in lines[1]
+    assert "no way this change could fail the criterion was enumerated for it" in lines[2]
+    # No rating reaches the reader as a bare class.
+    for line in lines:
+        assert "—" in line

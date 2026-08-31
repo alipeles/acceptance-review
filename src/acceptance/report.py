@@ -172,13 +172,23 @@ def _denominator(obligation: Obligation) -> str:
     given the number can weigh a thin enumeration; a reader given only the class
     cannot.
 
-    The reasoned-empty case renders its own sentence rather than "0 of 0", which
-    is arithmetic a reader would have to interpret. It says what happened.
+    Two cases have no number and each says so in words rather than as "0 of 0",
+    which is arithmetic a reader would have to interpret. They are different
+    facts and must not render alike: the enumeration considered the criterion and
+    stood behind finding nothing, or nothing was enumerated for it at all. A
+    class rendered bare would leave a reader unable to tell either from a
+    denominator that simply was not shown.
+
+    A criterion with no class at all is a third thing and gets nothing: there is
+    no rating for a denominator to qualify, and appending one would dress an
+    absent judgement as a measured result.
     """
+    if obligation.evidence_class is None:
+        return ""
     if obligation.evidence_class == "no_plausible_defect":
         return " — no plausible static defect enumerated; test evidence is not obtainable here"
     if not obligation.enumerated_defects:
-        return ""
+        return " — no way this change could fail the criterion was enumerated for it"
     return (
         f" — kills {obligation.covered_defects} of {obligation.enumerated_defects} "
         "enumerated defects (static prediction)"
