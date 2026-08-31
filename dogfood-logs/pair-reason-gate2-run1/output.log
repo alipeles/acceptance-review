@@ -1,0 +1,548 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) not fully implemented (deterministic-recorded-runs).
+
+Obligations:
+
+  1. The review records, for each recorded way of failing and each candidate test, whether that test would fail if the delivered code contained that way of failing.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/defects/pair_mapping.py#@@ -110,7 +111,11 @@ therefore uncaught.
+         1.2  src/acceptance/defects/pair_mapping.py#@@ -128,21 +133,84 @@ class PairMappingResult(PersistableModel):
+         1.3  src/acceptance/defects/pair_mapping.py#@@ -281,13 +349,18 @@ def _ask(
+         1.4  src/acceptance/defects/pair_mapping.py#@@ -301,13 +374,14 @@ def _ask(
+         1.5  src/acceptance/defects/pair_mapping.py#@@ -316,9 +390,22 @@ def _ask(
+         1.6  src/acceptance/defects/pair_mapping.py#@@ -443,18 +530,30 @@ def judge_pairs(
+         1.7  tests/defects/test_pair_mapping.py#@@ -763,27 +855,73 @@ def test_the_question_put_about_a_pair_is_the_failure_question(tmp_path):
+       test evidence: strongly supported  [tier: static]
+         1.8  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         1.9  tests/defects/test_pair_mapping.py::test_the_pipeline_really_judges_pairs
+
+  2. For a pair where the test would fail, the review records which pair it is, that it would fail, and a short reason.
+       requirements: constraint-01
+       code evidence: addressed
+         2.1  src/acceptance/defects/pair_mapping.py#@@ -128,21 +133,84 @@ class PairMappingResult(PersistableModel):
+         2.2  src/acceptance/defects/pair_mapping.py#@@ -316,9 +390,22 @@ def _ask(
+       test evidence: strongly supported  [tier: static]
+         2.3  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         2.4  tests/defects/test_pair_mapping.py::test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail
+
+  3. For a pair where the test would not fail, the review records which pair it is and that it would not fail, with no reason.
+       requirements: constraint-02
+       code evidence: addressed
+         3.1  src/acceptance/defects/pair_mapping.py#@@ -128,21 +133,84 @@ class PairMappingResult(PersistableModel):
+       test evidence: strongly supported  [tier: static]
+         3.2  tests/defects/test_pair_mapping.py::test_a_surviving_pair_is_stored_without_a_reason
+         3.3  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         3.4  tests/defects/test_pair_mapping.py::test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail
+
+  4. A verdict kept about a pair where the test would not fail carries no reason where it is stored.
+       requirements: constraint-02, constraint-07
+       code evidence: addressed
+         4.1  src/acceptance/defects/pair_mapping.py#@@ -128,21 +133,84 @@ class PairMappingResult(PersistableModel):
+         4.2  src/acceptance/defects/pair_mapping.py#@@ -316,9 +390,22 @@ def _ask(
+         4.3  tests/defects/test_pair_mapping.py#@@ -763,27 +855,73 @@ def test_the_question_put_about_a_pair_is_the_failure_question(tmp_path):
+       test evidence: strongly supported  [tier: static]
+         4.4  tests/defects/test_pair_mapping.py::test_a_surviving_pair_is_stored_without_a_reason
+         4.5  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         4.6  tests/defects/test_pair_mapping.py::test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail
+
+  5. An answer's verdict determines whether it may carry a reason: an answer that reports the test would not fail must not include a reason, and an answer that reports the test would fail must include a reason.
+       requirements: constraint-03
+       code evidence: addressed
+         5.1  src/acceptance/defects/pair_mapping.py#@@ -128,21 +133,84 @@ class PairMappingResult(PersistableModel):
+         5.2  src/acceptance/defects/pair_mapping.py#@@ -301,13 +374,14 @@ def _ask(
+         5.3  src/acceptance/defects/pair_mapping.py#@@ -316,9 +390,22 @@ def _ask(
+         5.4  tests/defects/test_pair_mapping.py#@@ -266,6 +272,86 @@ def test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving(tmp_pa
+         5.5  tests/defects/test_pair_mapping.py#@@ -763,27 +855,73 @@ def test_the_question_put_about_a_pair_is_the_failure_question(tmp_path):
+       test evidence: strongly supported  [tier: static]
+         5.6  tests/defects/test_pair_mapping.py::test_a_surviving_pair_is_stored_without_a_reason
+         5.7  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         5.8  tests/defects/test_pair_mapping.py::test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail
+
+  6. An answer reporting that the test would fail includes a short reason.
+       requirements: constraint-04
+       code evidence: addressed
+         6.1  src/acceptance/defects/pair_mapping.py#@@ -128,21 +133,84 @@ class PairMappingResult(PersistableModel):
+         6.2  tests/defects/test_pair_mapping.py#@@ -108,6 +108,19 @@ class _Judge:
+         6.3  tests/defects/test_pair_mapping.py#@@ -122,14 +135,7 @@ class _Judge:
+       test evidence: strongly supported  [tier: static]
+         6.4  tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict
+         6.5  tests/defects/test_pair_mapping.py::test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail
+
+  7. A verdict that reports the test would fail and carries no reason is not accepted.
+       requirements: constraint-04
+       code evidence: addressed
+         7.1  src/acceptance/defects/pair_mapping.py#@@ -301,13 +374,14 @@ def _ask(
+         7.2  src/acceptance/defects/pair_mapping.py#@@ -316,9 +390,22 @@ def _ask(
+         7.3  tests/defects/test_pair_mapping.py#@@ -266,6 +272,86 @@ def test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving(tmp_pa
+       test evidence: strongly supported  [tier: static]
+         7.4  tests/defects/test_pair_mapping.py::test_a_failing_answer_with_no_reason_is_not_kept_as_a_verdict
+         7.5  tests/defects/test_pair_mapping.py::test_a_surviving_answer_carrying_a_reason_is_not_kept_as_a_verdict
+         7.6  tests/defects/test_pair_mapping.py::test_one_misshapen_answer_does_not_discard_the_rest_of_its_batch
+
+  8. A pair whose answer the review does not accept is recorded as unjudged, with the way of failing, the test, and the cause named.
+       requirements: constraint-05
+       code evidence: addressed
+         8.1  src/acceptance/defects/pair_mapping.py#@@ -281,13 +349,18 @@ def _ask(
+         8.2  src/acceptance/defects/pair_mapping.py#@@ -443,18 +530,30 @@ def judge_pairs(
+         8.3  tests/defects/test_pair_mapping.py#@@ -266,6 +272,86 @@ def test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving(tmp_pa
+       test evidence: strongly supported  [tier: static]
+         8.4  tests/defects/test_pair_mapping.py::test_a_failing_answer_with_no_reason_is_not_kept_as_a_verdict
+         8.5  tests/defects/test_pair_mapping.py::test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving
+         8.6  tests/defects/test_pair_mapping.py::test_a_surviving_answer_carrying_a_reason_is_not_kept_as_a_verdict
+         8.7  tests/defects/test_pair_mapping.py::test_one_misshapen_answer_does_not_discard_the_rest_of_its_batch
+         8.8  tests/requirement/test_decompose_partitioning.py::test_a_disposition_for_a_requirement_the_call_was_not_asked_about_is_recorded
+         8.9  tests/test_supplied_ids.py::test_the_schema_asked_for_differs_from_the_shape_parsed
+
+  9. Both kinds of answer are asked for in the same request as each other.
+       requirements: constraint-06
+       code evidence: addressed
+         9.1  src/acceptance/defects/pair_mapping.py#@@ -128,21 +133,84 @@ class PairMappingResult(PersistableModel):
+         9.2  tests/defects/test_pair_mapping.py#@@ -763,27 +855,73 @@ def test_the_question_put_about_a_pair_is_the_failure_question(tmp_path):
+       test evidence: strongly supported  [tier: static]
+         9.3  tests/defects/test_pair_mapping.py::test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail
+
+  10. The set of pairs the review judges is unchanged.
+       requirements: constraint-08
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         10.1  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+         10.2  tests/defects/test_pair_mapping.py::test_adding_one_test_judges_only_that_tests_pairs
+         10.3  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         10.4  tests/test_supplied_ids.py::test_every_batch_of_a_stage_asks_for_the_identical_schema
+
+  11. The conditions under which the review reuses a verdict rather than producing it again stay unchanged.
+       requirements: constraint-09
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         11.1  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+         11.2  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_its_defect_changed
+         11.3  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_the_tests_source_changed
+         11.4  tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged
+         11.5  tests/defects/test_pair_mapping.py::test_which_pairs_share_a_request_does_not_change_what_carries
+         11.6  tests/requirement/test_carry_forward.py::test_a_merge_decision_is_asked_again_when_either_obligation_changed
+         11.7  tests/requirement/test_carry_forward.py::test_a_merge_decision_over_two_unchanged_obligations_is_not_asked_again
+         11.8  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         11.9  tests/test_supplied_ids.py::test_every_batch_of_a_stage_asks_for_the_identical_schema
+
+  12. Preserve whether the review reports the work complete, every rating it gives a criterion, and every test it recommends.
+       requirements: constraint-10
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported  [tier: static]
+         12.1  tests/defects/test_pair_mapping.py::test_judging_pairs_changes_no_verdict_rating_or_recommendation
+         12.2  tests/defects/test_pair_mapping.py::test_the_report_shows_implied_support_beside_the_current_rating
+         12.3  tests/requirement/test_carry_forward.py::test_carry_forward_re_asks_every_requirement_the_corpus_actually_changed
+         12.4  tests/test_supplied_ids.py::test_every_batch_of_a_stage_asks_for_the_identical_schema
+
+  13. The change does not alter which ways of failing the review records or how it produces them.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 12 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, and the source diff alone can show whether that work was introduced.
+
+  14. The change does not derive a criterion's rating, the completion conclusion, or any recommended test from judged pairs.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 12 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, and it is checked by inspecting the source rather than by running tests.
+
+  15. The change does not alter what the review shows a reader about a pair it has judged.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 12 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, so a reader can confirm it directly from the change without running tests.
+
+  16. The change does not alter how pairs are grouped into requests or the maximum number of judgements a request asks for.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 12 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about request batching and request size, which is settled by the change itself rather than by runtime behavior.
+
+  17. The change does not involve running the delivered code or any test.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 12 changes across 2 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the absence of execution work in the delivered change, which is directly checkable from the source and does not require a test.
+
+  18. Implementation.
+       requirements: completion-01
+       code evidence: addressed
+         18.1  src/acceptance/defects/pair_mapping.py#@@ -44,8 +44,9 @@ from __future__ import annotations
+         18.2  src/acceptance/defects/pair_mapping.py#@@ -110,7 +111,11 @@ therefore uncaught.
+         18.3  src/acceptance/defects/pair_mapping.py#@@ -128,21 +133,84 @@ class PairMappingResult(PersistableModel):
+         18.4  src/acceptance/defects/pair_mapping.py#@@ -281,13 +349,18 @@ def _ask(
+         18.5  src/acceptance/defects/pair_mapping.py#@@ -301,13 +374,14 @@ def _ask(
+         18.6  src/acceptance/defects/pair_mapping.py#@@ -316,9 +390,22 @@ def _ask(
+         18.7  src/acceptance/defects/pair_mapping.py#@@ -443,18 +530,30 @@ def judge_pairs(
+         18.8  tests/defects/test_pair_mapping.py#@@ -108,6 +108,19 @@ class _Judge:
+         18.9  tests/defects/test_pair_mapping.py#@@ -122,14 +135,7 @@ class _Judge:
+         18.10  tests/defects/test_pair_mapping.py#@@ -266,6 +272,86 @@ def test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving(tmp_pa
+         18.11  tests/defects/test_pair_mapping.py#@@ -563,8 +649,14 @@ def _pairs_answer(kills: bool, test_id: str = "test_billing.py::test_prorate") -
+         18.12  tests/defects/test_pair_mapping.py#@@ -763,27 +855,73 @@ def test_the_question_put_about_a_pair_is_the_failure_question(tmp_path):
+       test evidence: not required — This requirement is only a section marker naming the implementation area and does not itself demand a testable behavior.
+
+  19. A test reads the shape of the request as it is sent and fails if that shape permits a reason on a pair where the test would not fail.
+       requirements: completion-02
+       code evidence: not required — The requirement itself asks for a test, so the test is the whole obligation and no source change is demanded by this bullet.
+       test evidence: strongly supported  [tier: static]
+         19.1  tests/defects/test_pair_mapping.py::test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail
+         19.2  tests/test_supplied_ids.py::test_every_batch_of_a_stage_asks_for_the_identical_schema
+
+  20. A test fails when an answer reporting that the test would fail carries no reason and is nonetheless kept as a verdict.
+       requirements: completion-03
+       code evidence: not required — This requirement explicitly demands a test, and the test itself is the deliverable evidence.
+       test evidence: strongly supported  [tier: static]
+         20.1  tests/defects/test_pair_mapping.py::test_a_failing_answer_with_no_reason_is_not_kept_as_a_verdict
+         20.2  tests/defects/test_pair_mapping.py::test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail
+
+  21. A test fails when an answer reporting that the test would not fail carries a reason and is nonetheless kept as a verdict.
+       requirements: completion-04
+       code evidence: not required — The requirement itself asks for a test that fails on this condition, so the obligation is satisfied by the test alone.
+       test evidence: strongly supported  [tier: static]
+         21.1  tests/defects/test_pair_mapping.py::test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail
+
+  22. A test asserts that a pair whose answer the review does not accept is recorded as unjudged, naming the way of failing, the test and the cause.
+       requirements: completion-05
+       code evidence: not required — The requirement itself asks for a test assertion, so the obligation is satisfied by the test alone.
+       test evidence: strongly supported  [tier: static]
+         22.1  tests/defects/test_pair_mapping.py::test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving
+         22.2  tests/defects/test_pair_mapping.py::test_one_misshapen_answer_does_not_discard_the_rest_of_its_batch
+         22.3  tests/requirement/test_decompose_partitioning.py::test_a_disposition_for_a_requirement_the_call_was_not_asked_about_is_recorded
+         22.4  tests/test_supplied_ids.py::test_the_schema_asked_for_differs_from_the_shape_parsed
+
+  23. A test asserts that a stored verdict about a pair where the test would not fail carries no reason.
+       requirements: completion-06
+       code evidence: not required — The requirement itself asks for a test assertion, so the obligation is satisfied by the test alone.
+       test evidence: strongly supported  [tier: static]
+         23.1  tests/defects/test_pair_mapping.py::test_a_surviving_pair_is_stored_without_a_reason
+         23.2  tests/defects/test_pair_mapping.py::test_the_answer_about_a_pair_carries_a_reason_only_where_the_test_would_fail
+
+  24. A test asserts that adding one candidate test between two continued runs produces new verdicts only for pairs concerning that test.
+       requirements: completion-07
+       code evidence: not required — The requirement itself asks for a test assertion, so the obligation is satisfied by the test alone.
+       test evidence: strongly supported  [tier: static]
+         24.1  tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+         24.2  tests/defects/test_pair_mapping.py::test_adding_one_test_judges_only_that_tests_pairs
+
+  25. Two recorded runs over the same input produce byte-identical review state and byte-identical report output.
+       requirements: completion-08
+       code evidence: unclear
+         25.1  src/acceptance/defects/pair_mapping.py#@@ -128,21 +133,84 @@ class PairMappingResult(PersistableModel):
+         25.2  src/acceptance/defects/pair_mapping.py#@@ -281,13 +349,18 @@ def _ask(
+         25.3  src/acceptance/defects/pair_mapping.py#@@ -301,13 +374,14 @@ def _ask(
+         25.4  src/acceptance/defects/pair_mapping.py#@@ -316,9 +390,22 @@ def _ask(
+         25.5  src/acceptance/defects/pair_mapping.py#@@ -443,18 +530,30 @@ def judge_pairs(
+       test evidence: strongly supported  [tier: static]
+         25.6  tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged
+         25.7  tests/defects/test_pair_mapping.py::test_the_verdicts_survive_a_round_trip_through_persisted_state
+         25.8  tests/defects/test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte
+
+Mandate coverage: 24 of 24 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] Introduces new strict/lenient Pydantic model classes and a lenient parse path to distinguish malformed answers from valid verdicts; the obligations require rejecting and recording bad answers, but do not require this specific schema-parsing refactor.
+       src/acceptance/defects/pair_mapping.py#@@ -44,8 +44,9 @@ from __future__ import annotations
+       src/acceptance/defects/pair_mapping.py#@@ -128,21 +133,84 @@ class PairMappingResult(PersistableModel):
+       src/acceptance/defects/pair_mapping.py#@@ -301,13 +374,14 @@ def _ask(
+       src/acceptance/defects/pair_mapping.py#@@ -316,9 +390,22 @@ def _ask(
+       src/acceptance/defects/pair_mapping.py#@@ -443,18 +530,30 @@ def judge_pairs(
+  2. [in_service] Changes `_ask` to return a second map of unusable shapes and alters `judge_pairs` to record those as unjudged with shape-specific reasons; the obligations ask for rejecting bad answers and recording them unjudged, but not for this new two-map API or the specific reason text plumbing.
+       src/acceptance/defects/pair_mapping.py#@@ -281,13 +349,18 @@ def _ask(
+       src/acceptance/defects/pair_mapping.py#@@ -301,13 +374,14 @@ def _ask(
+       src/acceptance/defects/pair_mapping.py#@@ -316,9 +390,22 @@ def _ask(
+       src/acceptance/defects/pair_mapping.py#@@ -443,18 +530,30 @@ def judge_pairs(
+  3. [in_service] Adds new tests for malformed-answer handling and batch survival after one bad entry; the task requires tests for missing/extra reasons and unjudged recording, but not this additional batch-resilience scenario.
+       tests/defects/test_pair_mapping.py#@@ -266,6 +272,86 @@ def test_a_pair_the_judge_never_answers_is_recorded_not_read_as_surviving(tmp_pa
+  4. [in_service] Updates the request-shape test to assert the union schema uses `anyOf` with `fails` literals, which goes beyond merely checking that a surviving pair cannot carry a reason.
+       tests/defects/test_pair_mapping.py#@@ -763,27 +855,73 @@ def test_the_question_put_about_a_pair_is_the_failure_question(tmp_path):
+  5. [in_service] Adds a stored-verdict test for surviving pairs having an empty reason, which is not explicitly demanded by the listed obligations about stored verdicts and rejection of malformed answers.
+       tests/defects/test_pair_mapping.py#@@ -763,27 +855,73 @@ def test_the_question_put_about_a_pair_is_the_failure_question(tmp_path):
+
+Ways the change could fail a criterion (advisory — no verdict depends on these):
+
+  record-failure-test-failure-matrix
+    [missing_case] record-failure-test-failure-matrix/missing-unusable-shape-entry
+      A pair answered in a non-verdict shape is still dropped from the returned matrix instead of being recorded as an unjudged result with its reason.
+      src/acceptance/defects/pair_mapping.py#3
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+    [wrong_output_shape] record-failure-test-failure-matrix/lenient-parser-misreads-strict-shapes
+      The lenient parse path can accept a strict verdict shape but then treat a missing reason as `None` or an empty string in a way that collapses distinct answer shapes, so the recorded yes/no matrix loses the failure-mode distinction the review is supposed to preserve.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+
+  pair-failure-reason-observable
+    [missing_case] pair-failure-reason-observable/failing-pair-without-reason-marked-unjudged
+      A pair that is actually failing but comes back with no reason is diverted into `unjudged` instead of being recorded as a failing verdict with its pair identity and reason.
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+    [wrong_output_shape] pair-failure-reason-observable/failing-pair-reason-lost-when-parsed-leniently
+      The lenient parse path stores `reason` as `None` or strips it away for a failing entry, so the recorded verdict no longer includes the short reason even though the pair is marked failing.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+
+  pair-not-fail-no-reason-and-nothing-else
+    [wrong_output_shape] pair-not-fail-no-reason-and-nothing-else/surviving-entry-still-carries-reason
+      A verdict for a non-failing pair can still be emitted with a reason field present, because the lenient parser accepts `reason=None` and `_ask` only strips it into `reason = (judged.reason or "").strip()` before deciding what to record.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+    [missing_case] pair-not-fail-no-reason-and-nothing-else/nonfailing-entry-dropped-as-unjudged
+      A pair that would not fail but is returned in the lenient shape with `fails=False` and no reason is not added to `answered`, so the caller records it as `UNANSWERED` instead of as a recorded non-failing verdict.
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+
+  no-reason-on-not-fail-verdict
+    [condition_inverted] no-reason-on-not-fail-verdict/surviving-reason-still-stored
+      
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+    [other] no-reason-on-not-fail-verdict/empty-string-reason-kept-for-survivals
+      
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+
+  verdict-controls-reason-presence
+    [scope_too_narrow] verdict-controls-reason-presence/failing-verdict-without-reason-accepted
+      A failing verdict with no reason can still be treated as usable if the lenient parser accepts it or if the later branch fails to reject it, so the code can emit a would-fail answer without any reason.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+    [scope_too_narrow] verdict-controls-reason-presence/surviving-verdict-with-reason-accepted
+      A would-not-fail verdict that still carries a reason can be accepted into the answered map if the lenient parse or the post-parse filtering does not exclude that shape, so the code can emit a would-not-fail answer with a reason attached.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+
+  fail-answer-needs-reason
+    [condition_inverted] fail-answer-needs-reason/failing-verdict-without-reason
+      
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+    [condition_inverted] fail-answer-needs-reason/surviving-verdict-with-reason
+      
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+
+  reject-fail-answer-without-reason
+    none enumerated: The changed code explicitly rejects failing verdicts with no reason by routing them into the unusable_shape path instead of the accepted answered map, so there is no plausible static defect in the diff that would accept such an answer as a verdict.
+
+  unjudged-on-rejection
+    [missing_case] unjudged-on-rejection/missing-cause-for-shed-answer
+      A rejected answer that is simply shed still gets recorded with the generic UNANSWERED reason, so the stored unjudged entry does not name the actual failing way for that pair.
+      src/acceptance/defects/pair_mapping.py#6
+    [wrong_output_shape] unjudged-on-rejection/wrong-cause-for-misshapen-answer
+      A rejected answer that is misshapen is recorded with a generic UNANSWERED reason unless it happens to be in the new unusable_shape map, so the stored unjudged entry can lose the cause the criterion asks to preserve.
+      src/acceptance/defects/pair_mapping.py#3
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+
+  both-kinds-of-answer-in-same-request
+    none enumerated: No defect is plausible from this diff for the stated criterion: the change only alters how paired verdicts are parsed and recorded, but it does not affect whether a single request asks for both answer kinds together.
+
+  pairing-unchanged
+    [other] pairing-unchanged/unjudged-shape-treated-as-omission
+      The new lenient parse path can classify a malformed answer as unjudged and then the caller records it with the same UNANSWERED cause as a shed pair, so a pair that was actually answered in a bad shape can be indistinguishable from a pair that was never judged.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#3
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+
+  verdict-reuse-conditions-unchanged
+    [other] verdict-reuse-conditions-unchanged/reuse-path-now-splits-on-unusable-shape
+      The reuse decision can now be bypassed for answers that were previously treated as ordinary misses, because _ask returns a second unusable_shape map and judge_pairs records those pairs as UNANSWERED instead of reusing the prior verdict path.
+      src/acceptance/defects/pair_mapping.py#3
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#6
+    [other] verdict-reuse-conditions-unchanged/lenient-parse-can-change-regeneration-trigger
+      The request now parses with _LenientPairVerdicts instead of the strict schema, so entries that would previously have failed parsing and been handled one way can now be accepted into unusable_shape and alter whether a verdict is regenerated.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+
+  preserve-completion-ratings-and-test-recommendations
+    [other] preserve-completion-ratings-and-test-recommendations/missing-reason-for-failing-verdicts
+      The new lenient parsing path can still drop a previously accepted failing verdict into the unusable bucket when it arrives with no reason, so the review may no longer preserve the same completion/rating outcome for that pair.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+    [other] preserve-completion-ratings-and-test-recommendations/reasonless-survives-treated-as-unjudged
+      A surviving verdict that carries a reason is now diverted to `unusable_shape` and later recorded as `UNANSWERED`, which can change the reported review outcome instead of preserving the original recommendation set.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+
+  no-recording-failure-ways-or-production-method
+    [other] no-recording-failure-ways-or-production-method/new-unusable-shape-recording
+      The change starts recording a new kind of unjudged pair for malformed answers, so the set of recorded failure ways is broadened beyond the previous shed-only behaviour.
+      src/acceptance/defects/pair_mapping.py#3
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+    [other] no-recording-failure-ways-or-production-method/reason-presence-split-changes-production
+      The request/parse path now distinguishes failing-without-reason and surviving-with-reason as separate unusable shapes, which changes the mechanism used to produce recorded failures from a single parsed verdict stream to a two-shape classification.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#3
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+
+  no-deriving-ratings-completion-or-tests-from-judged-pairs
+    [other] no-deriving-ratings-completion-or-tests-from-judged-pairs/judged-pairs-still-feed-unjudged-reasons
+      The new `_ask`/`judge_pairs` path still derives the persisted `UnjudgedPair.reason` from the judged-pair response, so judged pairs can influence the recorded completion outcome instead of being kept out of it.
+      src/acceptance/defects/pair_mapping.py#3
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+
+  show-reader-judged-pair
+    [wrong_output_shape] show-reader-judged-pair/judged-pair-reason-shape-changed
+      A judged pair that previously produced a single reader-facing reason string can now be surfaced through the lenient path as `reason=None` or as a missing reason key, so the review can show a different shape of information for the same judged pair.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+    [other] show-reader-judged-pair/unusable-shape-overrides-judged-pair-output
+      A judged pair that comes back in the new unusable-shape map is no longer treated as an ordinary judged pair, so the reader-facing review output can change from a verdict to an unjudged entry with a different reason text.
+      src/acceptance/defects/pair_mapping.py#3
+      src/acceptance/defects/pair_mapping.py#4
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+
+  request-grouping-and-judgement-limit-unchanged
+    [other] request-grouping-and-judgement-limit-unchanged/parse-schema-change-affects-request-shape
+      The request now parses and constrains a different response schema (`_LenientPairVerdicts` with `_Kills|_Survives`) instead of the previous strict `_PairVerdicts`, so the request shape sent to the client could change even though the batching code is unchanged.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#4
+    [other] request-grouping-and-judgement-limit-unchanged/lenient-parse-may-alter-batch-handling
+      The call to `client.ask` now uses `parse_as=_LenientPairVerdicts`, which can change how many judgements are accepted from a batch and therefore how the request is effectively handled per batch.
+      src/acceptance/defects/pair_mapping.py#4
+
+  no-running-delivered-code-or-tests
+    none enumerated: The diff only changes parsing, validation, and control flow in source; it adds no code that executes the delivered program or any test, and there is no static defect here that could make execution appear in the change.
+
+  implementation
+    none enumerated: The diff only changes the pair-mapping implementation itself: it adds the lenient parsing path, returns unusable-shape reasons, and wires the new return value into judge_pairs. There is no separate documented default or uncalled helper to inspect here, and the criterion is just that the implementation work is included, so no specific static defect is plausibly exposed by this change.
+
+  deterministic-recorded-runs
+    [other] deterministic-recorded-runs/lenient-unusable-reason-nondeterminism
+      The new unusable-shape path records different reason text for the same kind of bad answer depending on whether the model omitted the reason key or returned an empty string, so repeated runs can persist different review-state bytes for the same input.
+      src/acceptance/defects/pair_mapping.py#2
+      src/acceptance/defects/pair_mapping.py#3
+      src/acceptance/defects/pair_mapping.py#5
+      src/acceptance/defects/pair_mapping.py#6
+
+Support implied by test-to-defect pairs (advisory — the review's own ratings are unchanged):
+
+  record-failure-test-failure-matrix
+    implied by pairs: partially_supported — kills 1 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  pair-failure-reason-observable
+    implied by pairs: partially_supported — kills 1 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  pair-not-fail-no-reason-and-nothing-else
+    implied by pairs: partially_supported — kills 1 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  no-reason-on-not-fail-verdict
+    implied by pairs: partially_supported — kills 1 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  verdict-controls-reason-presence
+    implied by pairs: strongly_supported — kills 2 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  fail-answer-needs-reason
+    implied by pairs: strongly_supported — kills 2 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  reject-fail-answer-without-reason
+    implied by pairs: indeterminate — kills 0 of 0 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  unjudged-on-rejection
+    implied by pairs: partially_supported — kills 1 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  both-kinds-of-answer-in-same-request
+    implied by pairs: indeterminate — kills 0 of 0 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  pairing-unchanged
+    implied by pairs: strongly_supported — kills 1 of 1 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  verdict-reuse-conditions-unchanged
+    implied by pairs: strongly_supported — kills 2 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  preserve-completion-ratings-and-test-recommendations
+    implied by pairs: strongly_supported — kills 2 of 2 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  no-recording-failure-ways-or-production-method
+    implied by pairs: strongly_supported — kills 2 of 2 enumerated defects (static prediction)
+    this review says: not rated
+
+  no-deriving-ratings-completion-or-tests-from-judged-pairs
+    implied by pairs: strongly_supported — kills 1 of 1 enumerated defects (static prediction)
+    this review says: not rated
+
+  show-reader-judged-pair
+    implied by pairs: partially_supported — kills 1 of 2 enumerated defects (static prediction)
+    this review says: not rated
+
+  request-grouping-and-judgement-limit-unchanged
+    implied by pairs: strongly_supported — kills 2 of 2 enumerated defects (static prediction)
+    this review says: not rated
+
+  no-running-delivered-code-or-tests
+    implied by pairs: indeterminate — kills 0 of 0 enumerated defects (static prediction)
+    this review says: not rated
+
+  implementation
+    implied by pairs: indeterminate — kills 0 of 0 enumerated defects (static prediction)
+    this review says: not rated
+
+  deterministic-recorded-runs
+    implied by pairs: strongly_supported — kills 1 of 1 enumerated defects (static prediction)
+    this review says: strongly_supported
+
+  Criteria where the two disagree: record-failure-test-failure-matrix, pair-failure-reason-observable, pair-not-fail-no-reason-and-nothing-else, no-reason-on-not-fail-verdict, reject-fail-answer-without-reason, unjudged-on-rejection, both-kinds-of-answer-in-same-request
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 6e234f89dd0be6a8
+  continuing feb089a9c3e1ef4e
+  continue this run with: --continue 6e234f89dd0be6a8
+Model usage by stage:
+  stage                         model                                       calls   prompt  output  cached  this run  recorded
+  ----------------------------  ----------------------  -------------------------  -------  ------  ------  --------  --------
+  obligation linking            voyage/voyage-3.5-lite    1 (0 live / 1 replayed)    1,113       0       —   $0.0000   $0.0000
+  test-to-obligation mapping    openai/gpt-5.4-mini       4 (4 live / 0 replayed)   19,074   3,067   28.2%   $0.0245   $0.0245
+  discrimination judgment       openai/gpt-5.4-mini       1 (1 live / 0 replayed)    9,584   1,299    0.0%   $0.0130   $0.0130
+  coverage classification       openai/gpt-5.4-mini       1 (1 live / 0 replayed)    7,215   1,702    0.0%   $0.0131   $0.0131
+  unrequested-change detection  openai/gpt-5.4-mini       1 (1 live / 0 replayed)    6,785     488    0.0%   $0.0073   $0.0073
+  defect enumeration            openai/gpt-5.4-mini     19 (19 live / 0 replayed)   64,886   3,656    0.0%   $0.0651   $0.0651
+  defect-to-test pair mapping   openai/gpt-5.4-mini     39 (39 live / 0 replayed)  163,173  32,531    0.0%   $0.2688   $0.2688
+  this run spent $0.3918 on 65 live call(s); the evidence cost $0.3918 to record (1 call(s) replayed at no cost to this run)
+

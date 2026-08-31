@@ -1,0 +1,156 @@
+run feb089a9c3e1ef4e
+  continuing c3f1f15b4bdfa46c
+  requirements: 0 derived, 23 carried, 1 revised; 1 decompose call(s)
+  REMOVED constraint-10: When the review produces a verdict again rather than reusing it is unchanged. (1 obligation(s) dropped)
+  continue this run with: --continue feb089a9c3e1ef4e
+Model usage by stage:
+  stage                        model                                     calls  prompt  output  cached  this run  recorded
+  ---------------------------  ----------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose                    openai/gpt-5.4-mini     1 (1 live / 0 replayed)   6,354     148    0.0%   $0.0054   $0.0054
+  obligation linking           voyage/voyage-3.5-lite  1 (1 live / 0 replayed)   1,113       0       —   $0.0000   $0.0000
+  requirement carry alignment  openai/gpt-5.4-mini     1 (1 live / 0 replayed)     299      24    0.0%   $0.0003   $0.0003
+  this run spent $0.0058 on 3 live call(s); the evidence cost $0.0058 to record (0 call(s) replayed at no cost to this run)
+Requirements: 24   with obligations: 24
+
+[task-01] When the review records, for each recorded way of failing and each candidate
+    test, whether that test would fail if the delivered code contained that way of
+    failing, it obtains a short reason only where the test would fail.
+    -> record-failure-test-failure-matrix  [functional/explicit]
+       The review records, for each recorded way of failing and each candidate test,
+       whether that test would fail if the delivered code contained that way of failing.
+
+[constraint-01] What the review obtains about a pair where the test would fail is which
+    pair it is, that it would fail, and a short reason.
+    -> pair-failure-reason-observable  [functional/explicit]
+       For a pair where the test would fail, the review records which pair it is, that
+       it would fail, and a short reason.
+
+[constraint-02] What the review obtains about a pair where the test would not fail is
+    which pair it is and that it would not fail, and nothing else.
+    -> pair-not-fail-no-reason-and-nothing-else  [functional/explicit]
+       For a pair where the test would not fail, the review records which pair it is and
+       that it would not fail, with no reason.
+    -> no-reason-on-not-fail-verdict  [invariant/explicit]   (also serves constraint-07)
+       A verdict kept about a pair where the test would not fail carries no reason where
+       it is stored.
+
+[constraint-03] Which of the two an answer is, is settled by the verdict the answer
+    carries, not by which fields happen to be present in it. An answer that reports the
+    test would not fail and carries a reason anyway is not a verdict the review accepts.
+    -> verdict-controls-reason-presence  [invariant/explicit]
+       An answer's verdict determines whether it may carry a reason: an answer that
+       reports the test would not fail must not include a reason, and an answer that
+       reports the test would fail must include a reason.
+
+[constraint-04] An answer that reports the test would fail and carries no reason is not
+    a verdict the review accepts.
+    -> fail-answer-needs-reason  [functional/explicit]
+       An answer reporting that the test would fail includes a short reason.
+    -> reject-fail-answer-without-reason  [error_handling/explicit]
+       A verdict that reports the test would fail and carries no reason is not accepted.
+
+[constraint-05] An answer the review does not accept leaves its pair recorded as
+    unjudged, naming the way of failing, the test, and why, exactly as a pair the judge
+    never answered about is.
+    -> unjudged-on-rejection  [functional/explicit]
+       A pair whose answer the review does not accept is recorded as unjudged, with the
+       way of failing, the test, and the cause named.
+
+[constraint-06] Both kinds of answer are asked for in the same request as each other.
+    -> both-kinds-of-answer-in-same-request  [functional/explicit]
+       Both kinds of answer are asked for in the same request as each other.
+
+[constraint-07] A verdict the review keeps about a pair where the test would not fail
+    carries no reason where it is stored.
+    -> no-reason-on-not-fail-verdict  [invariant/explicit]   (also serves constraint-02)
+       A verdict kept about a pair where the test would not fail carries no reason where
+       it is stored.
+
+[constraint-08] Which pairs the review judges is unchanged.
+    -> pairing-unchanged  [invariant/explicit]
+       The set of pairs the review judges is unchanged.
+
+[constraint-09] The conditions under which the review reuses a verdict rather than
+    producing it again are unchanged.
+    -> verdict-reuse-conditions-unchanged  [invariant/explicit]
+       The conditions under which the review reuses a verdict rather than producing it
+       again stay unchanged.
+
+[constraint-10] Whether the review reports the work complete, every rating it gives a
+    criterion, and every test it recommends are unchanged.
+    -> preserve-completion-ratings-and-test-recommendations  [compatibility/explicit]
+       Preserve whether the review reports the work complete, every rating it gives a
+       criterion, and every test it recommends.
+
+[exclusion-01] Which ways of failing the review records, and how it produces them.
+    -> no-recording-failure-ways-or-production-method  [functional/explicit]
+       The change does not alter which ways of failing the review records or how it
+       produces them.
+
+[exclusion-02] Deriving a criterion's rating, the completion conclusion, or any
+    recommended test from judged pairs.
+    -> no-deriving-ratings-completion-or-tests-from-judged-pairs  [functional/explicit]
+       The change does not derive a criterion's rating, the completion conclusion, or
+       any recommended test from judged pairs.
+
+[exclusion-03] What the review shows a reader about a pair it has judged.
+    -> show-reader-judged-pair  [functional/explicit]
+       The change does not alter what the review shows a reader about a pair it has
+       judged.
+
+[exclusion-04] How pairs are grouped into requests, and the limit on how many judgements
+    one request asks for.
+    -> request-grouping-and-judgement-limit-unchanged  [compatibility/explicit]
+       The change does not alter how pairs are grouped into requests or the maximum
+       number of judgements a request asks for.
+
+[exclusion-05] Running the delivered code or any test.
+    -> no-running-delivered-code-or-tests  [docs_config/explicit]
+       The change does not involve running the delivered code or any test.
+
+[completion-01] Implementation.
+    -> implementation  [docs_config/explicit]
+       Implementation.
+
+[completion-02] A test reads the shape of the request as it is sent and fails if that
+    shape permits a reason on a pair where the test would not fail.
+    -> request-shape-rejects-spurious-reason  [test_demand/explicit]
+       A test reads the shape of the request as it is sent and fails if that shape
+       permits a reason on a pair where the test would not fail.
+
+[completion-03] A test fails when an answer reporting that the test would fail carries
+    no reason and is nonetheless kept as a verdict.
+    -> test-fails-on-missing-reason-for-failing-answer  [test_demand/explicit]
+       A test fails when an answer reporting that the test would fail carries no reason
+       and is nonetheless kept as a verdict.
+
+[completion-04] A test fails when an answer reporting that the test would not fail
+    carries a reason and is nonetheless kept as a verdict.
+    -> test-fails-on-reason-for-not-fail-verdict  [test_demand/explicit]
+       A test fails when an answer reporting that the test would not fail carries a
+       reason and is nonetheless kept as a verdict.
+
+[completion-05] A test asserts that a pair whose answer the review does not accept is
+    recorded as unjudged, naming the way of failing, the test and the cause.
+    -> unjudged-on-rejected-answer  [test_demand/explicit]
+       A test asserts that a pair whose answer the review does not accept is recorded as
+       unjudged, naming the way of failing, the test and the cause.
+
+[completion-06] A test asserts that a stored verdict about a pair where the test would
+    not fail carries no reason.
+    -> stored-verdict-no-reason  [test_demand/explicit]
+       A test asserts that a stored verdict about a pair where the test would not fail
+       carries no reason.
+
+[completion-07] A test asserts that adding one candidate test between two continued runs
+    produces new verdicts only for pairs concerning that test.
+    -> new-verdicts-only-for-new-test  [test_demand/explicit]
+       A test asserts that adding one candidate test between two continued runs produces
+       new verdicts only for pairs concerning that test.
+
+[completion-08] Two recorded runs over the same input produce byte-identical review
+    state and byte-identical report output.
+    -> deterministic-recorded-runs  [regression/explicit]
+       Two recorded runs over the same input produce byte-identical review state and
+       byte-identical report output.
+

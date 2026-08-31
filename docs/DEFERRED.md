@@ -4964,3 +4964,136 @@ the record.
   it is negligible next to a model call.
 - **Status:** open. **Approved to run the experiment** on 2026-08-30; the issue
   itself still needs filing at a gate.
+
+
+### [2026-08-30] Ask for a pair's reason only where the test would fail
+- **Kind:** filing
+- **Found during:** #314, the pair-mapping-in-shadow issue — post-Gate-2 cost measurement
+- **Where:** `src/acceptance/defects/pair_mapping.py` (`_SYSTEM_PROMPT`, `_Judged`, `_ask`)
+- **Severity:** should-fix
+- **What's wrong:** the pair stage asks for a short reason on every judged pair.
+  It spent 546,143 output tokens ($2.46 of a $4.25 review) at #314's Gate 2, and
+  a reason costs 18.5 output tokens where it is written. On surviving pairs that
+  reason is persisted and **never rendered** — `report.py::_pair_block` shows
+  reasons only for *unjudged* pairs — so on 12,323 of #314's 12,450 pairs the
+  stage is paying for text no reader ever sees.
+- **Why I didn't act:** it revises a constraint #314's own mandate states and a
+  delivered test pins, so it is a superseding issue rather than an edit in place,
+  and filing needs your approval.
+- **Drafted fix / issue body:**
+
+  > **Title:** Ask for a pair's reason only where the test would fail
+  >
+  > Supersedes the response-shape half of #314 (pair mapping in shadow). Design:
+  > `docs/DR-314-pair-response-shape.md` and the 2026-08-30 section of
+  > `docs/experiments/pair-response-shape/README.md`.
+  >
+  > #314 chose a response carrying pair, verdict and a short reason, and DR-314
+  > recorded that the output-token multiple, not the recall, was the figure to
+  > watch as the pair count grew. On a real review it grew: 546,143 output tokens
+  > and $3.51 of a $4.25 run. Measured across eight response shapes on #315's
+  > human-reviewed labels, nine draws each for the four still in contention, a
+  > union of per-disposition entries — a surviving pair returning the pair and the
+  > verdict, a killing pair returning those plus a reason — beats the shipped
+  > shape on every recall figure and costs 18% less.
+  >
+  > **Deliverable**
+  > - The per-pair response becomes a union of two entry shapes, discriminated by
+  >   the verdict itself rather than by which keys are present, so an entry that
+  >   carried a reason where the test survives fails validation rather than being
+  >   quietly accepted.
+  > - `_ask` reads both shapes; `PairVerdict.reason` arrives empty on surviving
+  >   pairs, which its existing default already permits.
+  > - Reasons on killing pairs are kept. They are the verdicts that create a
+  >   coverage claim, and a claim with no traceable basis is what this tool exists
+  >   to refuse.
+  >
+  > **Acceptance**
+  > - The response schema as sent permits no reason on a surviving pair, asserted
+  >   off the schema rather than off the model class — replacing
+  >   `test_the_answer_about_a_pair_carries_only_the_pair_the_verdict_and_a_reason`,
+  >   which pins the shape this issue changes.
+  > - A killing pair without a reason is an unusable answer, not a verdict.
+  > - A pair the judge answers about neither way is still recorded as unjudged,
+  >   naming the defect, the test and the cause.
+  > - Carry, reuse and re-judging are untouched, asserted by the existing tests.
+  > - Two recorded runs are byte-identical, and the review's verdict is unmoved.
+  >
+  > **Parent:** #312 (defect-first evidence). **Blocked by:** #314 merging.
+- **Status:** **resolved — folded into #314 rather than filed.** The human's call:
+  "I see this as part of 314. It's just optimization." So no superseding issue;
+  #314's mandate and the test pinning the old shape are amended in place, and
+  `dogfood-logs/314-gate2-run1/judgement.md` gets a note that its run predates
+  the change.
+
+### [2026-08-30] Should a judged pair carry a reason at all?
+- **Kind:** decision
+- **Found during:** #314, the pair-mapping-in-shadow issue — post-Gate-2 cost measurement
+- **Where:** `src/acceptance/report.py::_pair_block`, `src/acceptance/review_state.py::PairVerdict`
+- **Severity:** should-fix
+- **What's wrong:** `PairVerdict.reason` is persisted and never rendered. That
+  makes a third option live that I had discounted: drop the reason on *every*
+  pair, not just surviving ones. Measured, that shape has the best stability of
+  any arm tried (recall spread 0.0312 over nine draws against the shipped
+  0.0312 at a higher mean) and saves $1.05 of the pair stage's $2.46 — more than
+  twice the union shape's $0.44.
+- **Why I didn't act:** it decides what evidence the tool keeps about its own
+  judgements, which is a design question, not a cost one.
+- **Drafted fix:** **I recommend keeping the reason on killing pairs and dropping
+  it on surviving ones** — the union shape in the filing above. A killing verdict
+  is what turns into a coverage claim, and #312's whole thesis is that a claim
+  needs a traceable basis; a surviving verdict claims nothing. The 12,323
+  recorded survives reasons are also the low-information half — 65.9% of them say
+  either "does not assert on it" or "does not exercise it".
+  **Alternative rejected:** drop the reason everywhere and take the $1.05. It
+  makes every verdict unauditable, and it would have made this experiment
+  impossible — `docs/experiments/pair-prefilter/survives-reasons.tsv`, the corpus
+  the relation enum was derived from, exists only because reasons were recorded.
+- **Status:** **resolved as recommended.** The human chose the union shape —
+  reason kept on killing pairs, absent on surviving ones, $0.44 of the pair
+  stage's $2.46 — over dropping it everywhere for $1.05. Belongs in a Decision
+  Record once implemented, as an amendment to `docs/DR-314-pair-response-shape.md`.
+
+### [2026-08-30] Five obligations restating one carry rule were left unmerged
+- **Kind:** filing — a comment on #304, which is the existing issue for this
+- **Found during:** #314, measuring defect redundancy in the Gate 2 review state
+- **Where:** the obligation linking stage; evidence in
+  `~/acceptance-worktrees/_archived-reviews/314-gate2-run1-review.json`
+- **Severity:** should-fix
+- **What's wrong:** #314's own run produced five obligations that are
+  contrapositives and restatements of one carry rule —
+  `verdict-reuse-when-way-and-test-source-unchanged`,
+  `reproduce-verdict-when-way-of-failing-or-test-source-changes`,
+  `reuse-entitled-verdicts-on-continuation`,
+  `reproduce-only-nonreusable-verdicts-on-continuation`, and
+  `reuse-verdict-only-when-test-source-unchanged`. None were merged. They then
+  enumerated **seven defects sharing one identical kill vector**, the largest
+  redundant cluster in the review.
+- **Why I didn't act:** #304 already covers twin obligations left unmerged, so
+  this is new evidence for an existing issue, not a new issue. Posting a comment
+  that asserts a new finding needs review first.
+- **Drafted comment:**
+
+  > New evidence from #314's Gate 2 run, and it is a different shape from the
+  > twin Constraint/Completion pairs this issue was filed about.
+  >
+  > Five obligations there state one carry rule from four directions —
+  > "reuse exactly when both unchanged", "produce again when either changed",
+  > "a continuing run reuses every verdict it is entitled to", "a continuing run
+  > produces again only what it is not entitled to reuse", plus a weaker
+  > restatement. The first two are logical contrapositives of each other, as are
+  > the next two. None were merged.
+  >
+  > The downstream cost here is measurable and larger than a duplicated rating:
+  > those five obligations enumerated **seven defects that share one identical
+  > kill vector**, the largest redundant cluster in a 75-defect set. At 166
+  > candidate tests that is roughly 1,000 pair judgements spent re-answering one
+  > question. Method and figures are in #321.
+  >
+  > This differs from the twin case in that the duplication is *semantic* rather
+  > than structural — no id collision, no numeric suffix, nothing for the
+  > suffix-based signal in this issue's acceptance to catch. A contrapositive is
+  > the same rule; whether the linker should merge one is a real question, since
+  > "reuse when X" and "re-judge when not X" are arguably worth testing
+  > separately even when they are logically one rule.
+- **Status:** open — drafted, not posted
