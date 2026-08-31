@@ -356,6 +356,26 @@ and task files are already committed under `tests/fixtures/rating-stability/`.
 
 ### Gate 1 — before writing any code
 
+**Task-file style: ticket grade.** Write `current-task.md` the way a good issue
+is written, not the way a contract is written: a narrative Task section saying
+what must be true when the work is done, Constraints only where they add content
+the narrative does not carry, and Scope exclusions. Say each requirement once —
+a constraint restated in a completion list is a duplicate obligation we authored
+ourselves. Do not pre-enumerate the obligation set: a Completion expectations
+section that re-lists every behavior does Gate 1's decomposition at authoring
+time; if the section appears, keep it at the spec §7.1 example's grain
+("Implementation", "Documentation update"), never restated behaviors. Tests are
+evidence, not obligations: never pair "do X" with "add a test that X" — judging
+test evidence is the product's core function — except when a test is itself the
+deliverable (a regression test reproducing a reported defect, a measurement
+harness), which is a genuine obligation and goes in the file. Leave honest
+ambiguity in: an underspecified issue yields an underspecified task file, and
+the open question it produces at Gate 1 is the tool working, not a defect in the
+file. A fully-specified file (restated constraints, an enumerated expectation
+list) is written only deliberately, to stress duplicate detection, and that
+choice is recorded in the dogfood log's judgement — never in the task file,
+which must not know it is being dogfooded.
+
 **1.** Write `current-task.md` for the issue (its Deliverable and Acceptance),
 then decompose it:
 
