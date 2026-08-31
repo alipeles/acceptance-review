@@ -5168,7 +5168,8 @@ the record.
   > moves that stage's request key and re-records its transcripts.
   >
   > Labels: `track:checker`. Parent: #184.
-- **Status:** open — drafted, not filed
+- **Status:** **FILED as #324**, sub-issue of #184, on 2026-08-31. Approved at
+  #316's Gate 2.
 
 ### [2026-08-31] Defects are enumerated for criteria that are owed no test, and nothing can ever use them
 - **Kind:** defect
@@ -5193,7 +5194,8 @@ the record.
   sub-issue of #181 (decomposition) or #183; #183 is the better home since the
   stage is evidence-side. Note in the issue that it re-records the enumeration
   corpus.
-- **Status:** open — drafted, not filed
+- **Status:** **FILED as #327**, sub-issue of #183, on 2026-08-31. Approved at
+  #316's Gate 2.
 
 ### [2026-08-31] Eleven ground-truth labels use a class the tool can no longer produce
 - **Kind:** decision
@@ -5224,7 +5226,9 @@ the record.
      intact, and makes the collapse visible in one place instead of eleven.
   3. Leave both alone and accept the disagreement as a standing cost. Rejected:
      a metric that is wrong for a known reason still gets read as a metric.
-- **Status:** open — needs the human's call
+- **Status:** **FILED as #326**, sub-issue of #186, on 2026-08-31, carrying the
+  three options and the recommendation. Approved at #316's Gate 2; the choice
+  between the options is still the human's.
 
 ### [2026-08-31] The enumerator will not enumerate for a `test_demand` criterion, so its rating is unreachable
 - **Kind:** defect
@@ -5249,4 +5253,5 @@ the record.
   already holds criteria out of the evidence stages (#266) — the second is
   probably right, since the demand for a test is not itself a behaviour a change
   can break. File as a sub-issue of #183 (evidence judgement).
-- **Status:** open — drafted, not filed
+- **Status:** **FILED as #325**, sub-issue of #183, on 2026-08-31. Approved at
+  #316's Gate 2.
