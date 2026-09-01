@@ -56,6 +56,7 @@ from acceptance.review_state import (
     ReviewDelta,
     TaskSource,
     TestRecommendation,
+    UnobtainedRecommendation,
 )
 from acceptance.review_store import ReviewStore
 
@@ -221,25 +222,37 @@ def derivation_changed(prior: Review, derived: list[Obligation]) -> bool:
     return _linking_inputs(prior.derived_obligation_map) != _linking_inputs(derived)
 
 
-def carried_recommendations(prior: Review, carried: list[Obligation]) -> list[TestRecommendation]:
-    """Prior test recommendations for obligations this run did not re-judge.
+def carried_recommendations(
+    prior: Review, unobtained: list[UnobtainedRecommendation]
+) -> list[TestRecommendation]:
+    """Prior prescriptions for defects this run was owed one for and did not get.
 
-    `carried` is now the criteria keeping a stored test-evidence rating (#293),
-    where it used to be the obligations a file-level staleness rule skipped
-    entirely. The reason is unchanged and is the important part: a criterion that
-    is not asked about produces no prescription, so without this the instruction
-    for a gap that is still open would disappear on the very run that decided the
-    gap had not moved.
+    **The axis moved from the criterion to the defect** (#316). It used to carry
+    for criteria keeping a stored test-evidence rating, because a criterion that
+    was not re-judged produced no prescription. That case is gone: the rating is
+    now derived arithmetic over pair verdicts, so every criterion is classified
+    on every run and every uncovered defect is prescribed for on every run.
 
-    There is no matching `carried_findings` any more. Findings here are coverage
-    findings, and coverage is re-derived for every obligation on every run, so no
-    gap can be dropped by not looking.
+    What is left is the one way a prescription can still be owed and missing —
+    the stage asked and the model returned nothing for that defect (#275). The
+    prior run's prescription for the same defect is still the right instruction,
+    because a defect that changed would carry a different id: ids are composed
+    from the obligation id and the defect's slug, so a reworded criterion or a
+    re-enumerated set produces new ids rather than reusing stale ones.
+
+    Without this, a single omitted answer would delete a still-open instruction
+    from the report — the silent loss this function has always existed to stop,
+    arriving through a new door.
+
+    There is no matching `carried_findings`. Findings here are coverage findings,
+    and coverage is re-derived for every obligation on every run, so no gap can
+    be dropped by not looking.
     """
-    carried_ids = {obligation.id for obligation in carried}
+    owed = {entry.defect_id for entry in unobtained}
     return [
         recommendation
         for recommendation in prior.recommendations
-        if recommendation.obligation_id in carried_ids
+        if recommendation.defect_id in owed
     ]
 
 

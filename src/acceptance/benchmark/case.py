@@ -378,8 +378,12 @@ class BenchmarkScore(PersistableModel):
     # or cited as a regression.
     decomposition_accuracy: float | None = None
     decomposition_precision: float | None = None
-    # Not comparable across #164 — see BenchmarkReport.mapping_accuracy.
+    # Not comparable across #164 or #316 — see BenchmarkReport.mapping_accuracy.
+    # The stage it measured no longer exists.
     mapping_accuracy: float | None = None
+    # Not comparable across #316 — see BenchmarkReport.evidence_agreement. The
+    # class is derived from pair verdicts now rather than judged, over a
+    # denominator that did not exist before.
     evidence_agreement: float | None = None
     unrequested_precision: float | None = None
     unrequested_recall: float | None = None

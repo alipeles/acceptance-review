@@ -368,13 +368,21 @@ class BenchmarkReport(PersistableModel):
     open_question_recall: float | None = None
     open_question_precision: float | None = None
     obligation_type_accuracy: float | None = None
-    # NOT COMPARABLE ACROSS #164. The mapping stage now partitions its request
-    # across several calls instead of asking one call for every test-obligation
-    # judgment (DR-164), which changes the prompts and forced the whole mapping
-    # transcript corpus to be re-recorded. A mapping-accuracy figure from before
-    # that change and one from after measure different questions being asked, so
-    # they must not be plotted as a trend or cited as a regression/improvement.
+    # NOT COMPARABLE ACROSS #164 OR #316, and the second boundary is the larger.
+    # #164 partitioned the mapping request across several calls, changing the
+    # prompts and forcing the whole mapping corpus to be re-recorded. #316
+    # DELETED the stage: linkage is derived now, so there is no mapping call to
+    # be accurate about. Figures either side of either boundary measure
+    # different questions being asked, so they must not be plotted as a trend or
+    # cited as a regression/improvement.
     mapping_accuracy: float | None = None
+    # NOT COMPARABLE ACROSS #316. The class is no longer a judge's answer: it is
+    # arithmetic over pair verdicts, reduced over an enumeration of defects that
+    # did not exist before #313, so the denominator changed as well as the
+    # question. `nominally_supported` also stopped being produced — a criterion
+    # no test would fail on is `unsupported`, where before it might have been
+    # either. Figures from either side must not be plotted as a trend or cited
+    # as a regression/improvement.
     evidence_agreement: float | None = None
     unrequested_precision: float | None = None
     unrequested_recall: float | None = None
@@ -471,10 +479,13 @@ class SampledBenchmarkReport(PersistableModel):
     # mapping_accuracy carries for #164 — do not plot across the boundary.
     decomposition_accuracy: MetricStats
     decomposition_precision: MetricStats
-    # Not comparable across #164 — see BenchmarkReport.mapping_accuracy. Spread
-    # pooled across that boundary would read as model variance when it is the
-    # partitioning change.
+    # Not comparable across #164 or #316 — see BenchmarkReport.mapping_accuracy.
+    # Spread pooled across either boundary would read as model variance when it
+    # is the partitioning change, or the stage's deletion.
     mapping_accuracy: MetricStats
+    # Not comparable across #316 — see BenchmarkReport.evidence_agreement.
+    # Spread pooled across it would read as model variance when the class stopped
+    # being a model's answer at all.
     evidence_agreement: MetricStats
     unrequested_precision: MetricStats
     unrequested_recall: MetricStats

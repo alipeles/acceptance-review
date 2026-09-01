@@ -51,14 +51,23 @@ def _obligation(obligation_id: str, behavior: str, required: str, reason: str) -
     }
 
 
+def _defect_id(obligation_id: str) -> str:
+    """The one enumerated defect each criterion gets below.
+
+    Composed the way `enumeration.py` composes it — `<obligation id>/<slug>` —
+    so a test can name the prescription it expects without reading it back off
+    the review.
+    """
+    return f"{obligation_id}/returns-a-constant"
+
+
 def _prescription(obligation_id: str) -> dict:
     return {
-        "obligation_id": obligation_id,
+        "defect_id": _defect_id(obligation_id),
         "required_inputs": "an input where a correct and a defective implementation differ",
         "boundary_conditions": "the empty case and the maximum",
         "expected_output": "the discriminating result",
         "required_assertions": ["assert beta() == 1"],
-        "plausible_defect": "returns a constant regardless of input",
         "repo_conventions": "test_alpha.py",
     }
 
@@ -88,8 +97,23 @@ def _judgments(recommendations: list[dict]) -> dict:
             "open_questions": [],
             "requirement_dispositions": [],
         },
-        "_Mappings": {"mappings": []},
-        "_Discrimination": {"discriminations": []},
+        # One enumerated way to fail per criterion, and no pair verdict killing
+        # it, so every criterion that requires tests carries one uncovered
+        # defect — which is what reaches the recommendation stage since #316.
+        # `obligation_id` is filled per call by the double, because the
+        # enumerator answers for one criterion at a time.
+        "_Enumeration": {
+            "obligation_id": "",
+            "defects": [
+                {
+                    "slug": "returns-a-constant",
+                    "type": "other",
+                    "description": "returns a constant regardless of input",
+                    "code_refs": [],
+                }
+            ],
+            "reason": "",
+        },
         "_Coverage": {
             "classifications": [
                 {
@@ -278,8 +302,9 @@ def test_two_runs_over_the_same_inputs_render_the_same_report(tmp_path, tmp_path
 def _unobtained() -> UnobtainedRecommendation:
     return UnobtainedRecommendation(
         obligation_id="alpha",
+        defect_id=_defect_id("alpha"),
         criterion="alpha() returns 1",
-        reason="the recommendation stage was given 2 criteria and returned 1",
+        reason="the recommendation stage was given 2 uncovered defect(s) and returned 1",
     )
 
 

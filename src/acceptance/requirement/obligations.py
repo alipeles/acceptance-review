@@ -38,6 +38,7 @@ from typing import Literal
 
 from pydantic import Field
 
+from acceptance.concurrency import map_calls
 from acceptance.llm import (
     ModelClient,
     SchemaValidationError,
@@ -805,9 +806,13 @@ def _ask_about(
     quotes: list[str],
     revisions: dict[str, RequirementDerivation],
     partition_descriptor: dict,
-    unusable_answers: UnusableAnswerLog | None,
-) -> _Decomposition:
+) -> tuple[_Decomposition, list[UnusableAnswer]]:
     """One call, about `requirement` alone, quoting only `quotes`.
+
+    **Records nothing.** Calls are issued concurrently, so anything appended to
+    shared state in here would land in completion order and two runs over the
+    same input would differ — see `concurrency.py`, rule 2. The unusable answers
+    are handed back and recorded by the caller, in requirement order.
 
     `shown` is the whole registry — the batch scopes what a call answers for, not
     what it may read (#178). `quotes` is the requirement's own span set, and it
@@ -835,14 +840,12 @@ def _ask_about(
         parse_as=_Decomposition,
         stage=_STAGE,
     )
-    if unusable_answers is not None:
-        # `requirement_id` only, deliberately. A `source_quote` the call did not
-        # offer is reported by `_obligations_from`, which knows whether it landed
-        # inside the requirement anyway and says so in words; scanning it here as
-        # well would file a second, less informative record — with a whole
-        # sentence in the `returned_id` field — for the same event.
-        unusable_answers.record(scan(result, {"requirement_id": [requirement.id]}, _STAGE))
-    return result
+    # `requirement_id` only, deliberately. A `source_quote` the call did not
+    # offer is reported by `_obligations_from`, which knows whether it landed
+    # inside the requirement anyway and says so in words; scanning it here as
+    # well would file a second, less informative record — with a whole sentence
+    # in the `returned_id` field — for the same event.
+    return result, scan(result, {"requirement_id": [requirement.id]}, _STAGE)
 
 
 def _usable_disposition(
@@ -1042,24 +1045,32 @@ def decompose(
     # decompose partitioned at. `{"size": 1}` is a true statement about the run
     # and keeps a recording made under batching from replaying as though nothing
     # had moved.
-    for batch in partition(
-        asking, ONE_REQUIREMENT_PER_CALL, key=lambda requirement: requirement.id
-    ):
-        requirement = batch.items[0]
-        calls_issued += 1
-        result = _ask_about(
+    batches = partition(asking, ONE_REQUIREMENT_PER_CALL, key=lambda requirement: requirement.id)
+    # Issued CONCURRENTLY; consumed below in requirement order. The consuming
+    # loop stays serial and must: it mints obligation ids against a running
+    # `seen_ids` set, so what an id ends up being depends on what came before it.
+    # Only the waiting is parallel.
+    answers = map_calls(
+        batches,
+        lambda batch: _ask_about(
             client,
             # The WHOLE registry, never `asking`: the answering set scopes what a
             # call answers for, not what it may read (#178). A call shown only
             # its own bullet could not notice that another section settles a term
             # this one leaves open.
             registry,
-            requirement,
-            quotable_spans(requirement.text),
+            batch.items[0],
+            quotable_spans(batch.items[0].text),
             plan.revised,
             batch.request_partition(),
-            unusable_answers,
-        )
+        ),
+    )
+
+    for batch, (result, scanned) in zip(batches, answers):
+        requirement = batch.items[0]
+        calls_issued += 1
+        if unusable_answers is not None:
+            unusable_answers.record(scanned)
         entry = _usable_disposition(
             result.requirement_disposition, requirement.id, unusable_answers
         )
@@ -1092,24 +1103,31 @@ def decompose(
         )
         span_obligations: list[Obligation] = []
         span_question_ids: list[str] = []
-        for decision in decisions:
-            if decision.covered:
-                continue
-            # One call per uncovered span, asked about that span alone and shown
-            # the summary for context — the span's pronouns have no antecedent
-            # without it. Context only, never in the answering set, which is the
-            # measured-safe shape rather than a guess.
-            span = _span_requirement(summary, decision)
-            calls_issued += 1
-            authored = _ask_about(
+        # One call per uncovered span, asked about that span alone and shown the
+        # summary for context — the span's pronouns have no antecedent without
+        # it. Context only, never in the answering set, which is the
+        # measured-safe shape rather than a guess.
+        #
+        # Issued concurrently, consumed in span order for the same reason the
+        # loop above is serial: `seen_ids` mints ids against what came before.
+        uncovered = [(_span_requirement(summary, d), d) for d in decisions if not d.covered]
+
+        def _ask_span(item, _summary=summary):
+            span, decision = item
+            return _ask_about(
                 client,
-                [summary, span],
+                [_summary, span],
                 span,
                 [normalise(decision.text)],
                 {},
                 {"size": ONE_REQUIREMENT_PER_CALL},
-                unusable_answers,
             )
+
+        span_answers = map_calls(uncovered, _ask_span)
+        for (span, decision), (authored, scanned) in zip(uncovered, span_answers):
+            calls_issued += 1
+            if unusable_answers is not None:
+                unusable_answers.record(scanned)
             span_entry = _usable_disposition(
                 authored.requirement_disposition, span.id, unusable_answers
             )

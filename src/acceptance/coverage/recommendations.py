@@ -1,56 +1,72 @@
 """Structured test recommendations (M7.1, §9.5).
 
-For each criterion whose evidence is missing or weak — anything the §9.3
-strength classifier (M5.3) rates below `strongly_supported` — prescribe the
-test that would strengthen it, as machine-readable data a coding agent can
-pick up and implement in a single iteration. "Add more tests" is insufficient
-(§9.5, principle 9): every recommendation ties to a specific obligation, the
-plausible defect it must detect, a discriminating setup, and required
-assertions.
+**A recommendation is an uncovered defect** (DR-312 decision 4, #316). The unit
+is one `Defect` record that no candidate test was judged to fail on, and the
+§9.5 payload is composed around it. What this stage still asks a model for is
+the prescription — inputs, boundaries, assertions — because *what test catches
+this defect* is a semantic judgement. What it no longer asks for is which
+criterion is weak, or what the defect is: both are already recorded, typed and
+linked, and re-deriving them was where a prescription could come loose from its
+evidence.
 
-The plausible defect (§9.5 field 6) is not re-derived here — it is the
-SURVIVING defect the M5.2 discrimination judge already named (the one the
-current tests fail to catch). Reusing it keeps the recommendation pointed at
-the exact weakness §8.2 found, so a green run of the added test demonstrably
-closes the gap (§8.4) rather than nominally addressing it.
+Two named failures stop being possible rather than becoming things to check for:
 
-A semantic judgment (what test, with what inputs/assertions, catches this
-defect), so a schema-constrained model call through the M0.4 harness —
-recorded for replay, never a live call in tests. The product recommends; it
-never modifies code (§9.5).
+- **#250 and #287 — prescribing a test that already exists.** The input is
+  `defects.support.uncovered_defects`, which never yields a defect some verdict
+  says a test would fail on. A redundant prescription has nothing to be composed
+  from.
+- **#283 — a prescription resting on nothing traceable.** `TestRecommendation`
+  requires `defect_id`, and the `Defect` it names carries the `obligation_id`
+  and the `code_refs` that reach the criterion's text and the exact lines
+  (§13.6). A recommendation citing no way of failing does not typecheck.
+
+`plausible_defect` (§9.5 field 6) is copied from the defect record rather than
+restated by the model. Copying is what keeps the prescription pointed at the
+exact enumerated weakness, so a green run of the added test demonstrably closes
+that gap (§8.4); asking for a restatement bought a paraphrase that could drift
+from the record it was supposed to name, and cost output on every prescription.
+
+The product recommends; it never modifies code (§9.5).
 """
 
 from __future__ import annotations
 
 from pydantic import Field
 
+from acceptance.concurrency import map_calls
 from acceptance.coverage.prompt import diff_block
-from acceptance.evidence.discrimination import ObligationDiscrimination
+from acceptance.defects.support import uncovered_defects
 from acceptance.llm import ModelClient, SchemaValidationError, StrictResponseModel
 from acceptance.model_base import PersistableModel
+from acceptance.partition import partition
 from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import (
     ChangeSet,
+    Defect,
+    DefectSet,
     Obligation,
+    PairVerdict,
     TestRecommendation,
     UnobtainedRecommendation,
 )
-from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan
-
-# §9.3 classes that represent a real evidence gap — anything short of
-# strongly_supported earns a recommendation (the M7.1 trigger). An obligation
-# with no evidence_class set yet (not classified) is not recommended for here.
-_STRONG = "strongly_supported"
+from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
 
 _STAGE = "test recommendation"
 
-_SYSTEM_PROMPT = """\
-You prescribe ADDITIONAL TESTS for criteria whose current test evidence is
-missing or weak. For each criterion you are given the plausible DEFECT that its
-current tests fail to catch — the test you prescribe must catch exactly that
-defect.
+# Uncovered defects per call. Held well under DR-164's shedding limit because a
+# prescription's response is large — six fields of prose each — and it is output
+# that never amortizes under the input-only caching discount. The old stage sent
+# one call for the whole review; that was safe when the unit was a weak
+# criterion and is not when it is a defect, since #314's Gate 2 enumerated 75 of
+# them for one review.
+DEFAULT_RECOMMENDATION_BATCH_SIZE = 10
 
-"Add more tests" is not acceptable. For each criterion return a structured
+_SYSTEM_PROMPT = """\
+You prescribe ADDITIONAL TESTS. Each item you are given is one DEFECT — a
+concrete way the delivered code could fail a criterion — that no existing test
+was judged to catch. Prescribe the test that would catch exactly that defect.
+
+"Add more tests" is not acceptable. For each defect return a structured
 recommendation with these discrete fields:
 - required_inputs: the input characteristics the test must use — chosen so a
   CORRECT and an INCORRECT (defective) implementation produce DIFFERENT
@@ -59,14 +75,13 @@ recommendation with these discrete fields:
   zero, max, the error path), if any.
 - expected_output: the expected output or relationship the test asserts.
 - required_assertions: the specific assertions the test must make (a list).
-- plausible_defect: restate the defect this test is designed to detect — the
-  test must fail if that defect is present.
 - repo_conventions: relevant conventions or fixtures from the diff to follow
   (test file, naming, existing fixtures) so the added test fits the repo.
 
-Every criterion you are given requires test evidence — that was settled before
-this call and is not yours to revisit. Return one recommendation per criterion,
-keyed by its `obligation_id`. If given no criteria, return an empty list."""
+Do not restate the defect; it is already recorded and will be attached to your
+answer. Every defect you are given needs a test — that was settled before this
+call and is not yours to revisit. Return one recommendation per defect, keyed by
+its `defect_id`. If given no defects, return an empty list."""
 
 
 class RecommendationResult(PersistableModel):
@@ -82,12 +97,11 @@ class RecommendationResult(PersistableModel):
 
 
 class _Recommendation(StrictResponseModel):
-    obligation_id: str
+    defect_id: str
     required_inputs: str
     boundary_conditions: str
     expected_output: str
     required_assertions: list[str]
-    plausible_defect: str
     repo_conventions: str
 
 
@@ -95,167 +109,165 @@ class _Recommendations(StrictResponseModel):
     recommendations: list[_Recommendation]
 
 
-def _weak_obligations(obligations: list[Obligation]) -> list[Obligation]:
-    """Obligations with a real evidence gap — evidence_class set and below
-    strongly_supported (the M7.1 trigger).
+def _subject_block(defects: tuple[Defect, ...], criterion_by_obligation: dict[str, str]) -> Block:
+    """The uncovered defects this call must prescribe for.
 
-    Obligations that do not require test evidence never reach here (#266): the
-    pipeline holds them out of mapping and strength, so they carry no
-    `evidence_class` to be weak. The check below is the belt to that braces —
-    prescribing a test for a criterion no test is owed for demands evidence that
-    cannot exist, which is worse than prescribing nothing (#146's review asked
-    for a test proving "we didn't also do something else").
-
-    This used to be a judgement the model made HERE, per obligation, in a second
-    list beside the recommendations. That let two stages disagree about the same
-    obligation, and on a real run one response put three obligations in both
-    lists at once. The question has one answer and is now asked once, at
-    decomposition.
+    Grouped under their criterion so the criterion text is written once per
+    group rather than once per defect — several defects of one criterion in one
+    batch is the common case, since `uncovered_defects` walks defect sets in
+    order.
     """
-    return [
-        obligation
-        for obligation in obligations
-        if obligation.required_evidence.requires_tests
-        and obligation.evidence_class is not None
-        and obligation.evidence_class != _STRONG
-    ]
-
-
-def _surviving_defects(discrimination: ObligationDiscrimination | None) -> list[str]:
-    if discrimination is None:
-        return []
-    return [d.description for d in discrimination.defects if not d.would_be_caught]
-
-
-def _subject_block(
-    weak: list[Obligation],
-    discriminations_by_obligation: dict[str, ObligationDiscrimination],
-) -> Block:
-    """The weak criteria this call must prescribe for.
-
-    The diff used to be appended *after* this list, which put the largest and
-    most widely shared thing in the request behind the part unique to this call.
-    It is now a block of its own that `assemble` places first.
-    """
-    lines = ["## Criteria needing stronger test evidence", ""]
-    for obligation in weak:
-        lines.append(f"### id={obligation.id}")
-        lines.append(f"criterion: {obligation.observable_behavior or obligation.description}")
-        lines.append(f"evidence class: {obligation.evidence_class}")
-        defects = _surviving_defects(discriminations_by_obligation.get(obligation.id))
-        if defects:
-            lines.append("plausible defects the current tests do NOT catch:")
-            lines.extend(f"  - {d}" for d in defects)
-        lines.append("")
+    lines = ["## Uncovered defects needing a test", ""]
+    current: str | None = None
+    for defect in defects:
+        if defect.obligation_id != current:
+            current = defect.obligation_id
+            lines.append(f"### criterion {current}")
+            lines.append(criterion_by_obligation.get(current, ""))
+            lines.append("")
+        lines.append(f"- defect_id={defect.id}")
+        lines.append(f"  {defect.description}")
+        if defect.code_refs:
+            lines.append(f"  implicated code: {', '.join(defect.code_refs)}")
     return Block(BlockKind.SUBJECT, "\n".join(lines).rstrip())
 
 
 def recommend_tests(
     obligations: list[Obligation],
-    discriminations: list[ObligationDiscrimination],
+    defect_sets: list[DefectSet],
+    verdicts: list[PairVerdict],
     change_set: ChangeSet,
     client: ModelClient,
     unusable: UnusableAnswerLog | None = None,
+    batch_size: int = DEFAULT_RECOMMENDATION_BATCH_SIZE,
 ) -> RecommendationResult:
-    """Prescribe a §9.5 test recommendation for each not-strongly-supported
-    obligation that requires test evidence. No weak obligations -> no model
-    call."""
-    weak = _weak_obligations(obligations)
-    if not weak:
+    """Prescribe a §9.5 test for every enumerated defect no test would fail on.
+
+    No uncovered defects -> no model call, which is the shape a fully covered
+    review takes and the reason a clean run costs nothing here.
+    """
+    defects_by_id = {
+        defect.id: defect for defect_set in defect_sets for defect in defect_set.defects
+    }
+    # Obligations that do not require test evidence never reach here (#266), and
+    # the guard is kept rather than trusted: prescribing a test for a criterion
+    # no test is owed for demands evidence that cannot exist, which is worse than
+    # prescribing nothing (#146's review asked for a test proving "we didn't also
+    # do something else"). The question has one answer and was settled at
+    # decomposition; this only declines to act against it.
+    owed = {o.id for o in obligations if o.required_evidence.requires_tests}
+    criterion_by_obligation = {o.id: (o.observable_behavior or o.description) for o in obligations}
+
+    pending = [
+        defects_by_id[defect_id]
+        for obligation_id, defect_id in uncovered_defects(defect_sets, verdicts)
+        if obligation_id in owed and defect_id in defects_by_id
+    ]
+    if not pending:
         return RecommendationResult()
 
-    discriminations_by_obligation = {d.obligation_id: d for d in discriminations}
-    messages = assemble(
-        [
-            diff_block(change_set),
-            Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
-            _subject_block(weak, discriminations_by_obligation),
-        ]
+    # Batches are issued CONCURRENTLY and consumed in batch order. Each batch
+    # prescribes for its own defects and reads no other batch's answer.
+    batches = partition(pending, batch_size, key=lambda defect: defect.id)
+    answers = map_calls(
+        batches, lambda batch: _ask(batch, criterion_by_obligation, change_set, client)
     )
-    # Only the WEAK obligations are supplied — those are the ones the call is
-    # about, so a recommendation for any other obligation is unusable by
-    # construction, not merely unmatched.
-    allowed = {"obligation_id": [obligation.id for obligation in weak]}
-    result = client.complete(
-        messages, constrain(_Recommendations, allowed), parse_as=_Recommendations, stage=_STAGE
-    )
-    if unusable is not None:
-        unusable.record(scan(result, allowed, _STAGE))
 
-    criterion_by_id = {
-        obligation.id: (obligation.observable_behavior or obligation.description)
-        for obligation in weak
-    }
-
-    # A recommendation exists for a weak obligation, and only for a weak one.
-    # The "only" half was already enforced — `weak` is what the call supplies,
-    # and a foreign id is unrepresentable under constrained decoding. The
-    # "always" half was not: this loop used to iterate the response and skip
-    # what it could not place, so a response answering 3 of 5 weak obligations
-    # produced a report where two carried no recommendation and nothing
-    # distinguished it from a complete answer. That is M1.2.r1's missing
-    # disposition, one stage downstream, and it is rejected the same way.
-    #
-    # Every obligation reaching here requires test evidence, decided at
-    # decomposition. So silence is once again the only thing this has to
-    # reject — there is no correct reason for the model to skip one, and no
-    # second list in which it might have answered instead (#266).
-    #
-    # #275: silence is still rejected, but as a result about the ONE obligation
-    # it concerns rather than as grounds for abandoning the review. Rejecting it
-    # by raising discarded twelve honoured prescriptions, the verdict, and every
-    # finding the earlier stages had already produced, to report that one was
-    # missing — and a model that skips one of thirteen is not a contract
-    # violation, it is an indeterminate result (§9.3). The duplicate and foreign
-    # id cases below still raise: those are answers we cannot place at all, not
-    # answers we did not receive.
-    returned: dict[str, _Recommendation] = {}
-    for rec in result.recommendations:
-        if rec.obligation_id in returned:
-            raise SchemaValidationError(
-                f"obligation '{rec.obligation_id}' was recommended for more than once"
+    recommendations: list[TestRecommendation] = []
+    missing: list[Defect] = []
+    for batch, (returned, scanned) in zip(batches, answers):
+        # Recorded here rather than inside the call, so the log reads in batch
+        # order however the calls finished (`concurrency.py`, rule 2).
+        if unusable is not None:
+            unusable.record(scanned)
+        for defect in batch.items:
+            answer = returned.get(defect.id)
+            if answer is None:
+                missing.append(defect)
+                continue
+            recommendations.append(
+                TestRecommendation(
+                    obligation_id=defect.obligation_id,
+                    defect_id=defect.id,
+                    criterion=criterion_by_obligation.get(defect.obligation_id, ""),
+                    required_inputs=answer.required_inputs,
+                    boundary_conditions=answer.boundary_conditions,
+                    expected_output=answer.expected_output,
+                    required_assertions=answer.required_assertions,
+                    # From the record, not the response. See the module docstring.
+                    plausible_defect=defect.description,
+                    repo_conventions=answer.repo_conventions,
+                )
             )
-        if rec.obligation_id not in criterion_by_id:
-            raise SchemaValidationError(
-                f"recommendation named obligation '{rec.obligation_id}', which the call "
-                "did not supply as weak"
-            )
-        returned[rec.obligation_id] = rec
 
-    missing = [obligation.id for obligation in weak if obligation.id not in returned]
     if missing and unusable is not None:
         # The evidence axis is where this has to land. `indeterminate` says "we
         # did not obtain this judgment", `pipeline._apply_indeterminate` writes
         # it onto the obligation, and `verdict.py` routes it to
         # `unable_to_determine` and lists it as an escalation candidate — so a
-        # review missing a prescription cannot come back clean. Mapping and
-        # discrimination already report their own omissions this way.
-        unusable.mark_indeterminate(missing)
+        # review missing a prescription cannot come back clean.
+        unusable.mark_indeterminate(sorted({defect.obligation_id for defect in missing}))
 
     return RecommendationResult(
-        recommendations=[
-            TestRecommendation(
-                obligation_id=obligation.id,
-                criterion=criterion_by_id[obligation.id],
-                required_inputs=returned[obligation.id].required_inputs,
-                boundary_conditions=returned[obligation.id].boundary_conditions,
-                expected_output=returned[obligation.id].expected_output,
-                required_assertions=returned[obligation.id].required_assertions,
-                plausible_defect=returned[obligation.id].plausible_defect,
-                repo_conventions=returned[obligation.id].repo_conventions,
-            )
-            for obligation in weak
-            if obligation.id in returned
-        ],
+        recommendations=recommendations,
         unobtained=[
             UnobtainedRecommendation(
-                obligation_id=obligation_id,
-                criterion=criterion_by_id[obligation_id],
+                obligation_id=defect.obligation_id,
+                defect_id=defect.id,
+                criterion=criterion_by_obligation.get(defect.obligation_id, ""),
                 reason=(
-                    f"the recommendation stage was given {len(weak)} criteria and "
-                    f"returned {len(returned)}; no prescription was produced for this one"
+                    f"the recommendation stage was given {len(pending)} uncovered defect(s) "
+                    f"and returned {len(recommendations)}; no prescription was produced for "
+                    "this one"
                 ),
             )
-            for obligation_id in missing
+            for defect in missing
         ],
     )
+
+
+def _ask(
+    batch,
+    criterion_by_obligation: dict[str, str],
+    change_set: ChangeSet,
+    client: ModelClient,
+) -> tuple[dict[str, _Recommendation], list[UnusableAnswer]]:
+    """One batch's prescriptions keyed by defect id, and the ids it invented.
+
+    **Records nothing** — see `concurrency.py`, rule 2.
+
+    #275: an omission is an INDETERMINATE result about the defect it concerns,
+    not grounds for abandoning the review — rejecting it by raising discarded
+    every honoured prescription, the verdict, and every finding the earlier
+    stages had produced, to report that one was missing. The duplicate and
+    foreign id cases below still raise: those are answers we cannot place at
+    all, not answers we did not receive.
+    """
+    messages = assemble(
+        [
+            diff_block(change_set),
+            Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+            _subject_block(batch.items, criterion_by_obligation),
+        ]
+    )
+    allowed = {"defect_id": [defect.id for defect in batch.items]}
+    result = client.complete(
+        messages,
+        constrain(_Recommendations, allowed),
+        parse_as=_Recommendations,
+        stage=_STAGE,
+        partition=batch.request_partition(),
+    )
+    offered = {defect.id for defect in batch.items}
+    returned: dict[str, _Recommendation] = {}
+    for rec in result.recommendations:
+        if rec.defect_id in returned:
+            raise SchemaValidationError(
+                f"defect '{rec.defect_id}' was recommended for more than once"
+            )
+        if rec.defect_id not in offered:
+            raise SchemaValidationError(
+                f"recommendation named defect '{rec.defect_id}', which the call did not supply"
+            )
+        returned[rec.defect_id] = rec
+    return returned, scan(result, allowed, _STAGE)

@@ -240,23 +240,21 @@ def test_a_flipped_evidence_class_is_content_and_never_shape():
     assert flips[0].detail == "strongly_supported -> partially_supported"
 
 
-def test_a_flipped_defect_verdict_is_reported_per_defect():
-    """DR-180's localized instance: identical mapped tests, same defect, opposite
-    `would_be_caught`. The obligation's final class can hide this, so the
-    per-defect verdict is measured in its own right."""
+def test_a_flipped_pair_verdict_is_reported_per_pair():
+    """DR-180's localized instance: the same defect judged against the same test,
+    answered oppositely. The criterion's final class can hide this — a criterion
+    with three defects loses nothing visible when one verdict flips — so the pair
+    verdict is measured in its own right.
+
+    The unit moved with the stage (#316): it used to be one discrimination
+    answer, a defect description and whether the criterion's mapped tests would
+    catch it, and it is now one (defect, test) pair.
+    """
     from acceptance.benchmark.instability import DefectVerdict
 
-    defect = "the writer still emits the file"
-    left = _snapshot(
-        0,
-        {"a": "x"},
-        defects=[DefectVerdict(obligation_id="a", defect=defect, would_be_caught=True)],
-    )
-    right = _snapshot(
-        1,
-        {"a": "x"},
-        defects=[DefectVerdict(obligation_id="a", defect=defect, would_be_caught=False)],
-    )
+    pair = {"defect_id": "a/still-emits-the-file", "test_id": "test_writer.py::test_writes"}
+    left = _snapshot(0, {"a": "x"}, defects=[DefectVerdict(**pair, kills=True)])
+    right = _snapshot(1, {"a": "x"}, defects=[DefectVerdict(**pair, kills=False)])
     client = _coverage_client({}, alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}])
 
     differences = compare_runs(left, right, client)
@@ -264,7 +262,7 @@ def test_a_flipped_defect_verdict_is_reported_per_defect():
     verdicts = [d for d in differences if d.kind is DifferenceKind.DEFECT_VERDICT]
     assert len(verdicts) == 1
     assert verdicts[0].classification is DifferenceClass.CONTENT
-    assert "would_be_caught True -> False" in verdicts[0].detail
+    assert "kills True -> False" in verdicts[0].detail
 
 
 # --------------------------------------------------------------------------

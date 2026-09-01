@@ -32,10 +32,12 @@ what keeps the claim honest.
 
 **It does not decide what a stage carries.** Blocks are handed in; nothing here
 adds material to a request or takes any away. A stage that shows the model a
-filtered view of the diff keeps its filtered view — `evidence/discrimination.py`
-does exactly that, and its `## Changed production code` is different *content*
-from the shared `## Diff` rather than a different rendering of it. Making the two
-match would mean feeding one stage something it does not receive today.
+filtered view of the diff keeps its filtered view. The example used to be
+`evidence/discrimination.py`, whose `## Changed production code` was different
+*content* from the shared `## Diff` rather than a different rendering of it;
+#316 retired that stage and `BlockKind.CHANGED_CODE` went with it. The rule
+stands for the next stage that wants a narrowed view: unifying it with the
+shared block would change what that stage is shown.
 
 **It does not mark where the reusable opening ends.** Anthropic-family models
 need an explicit `cache_control` breakpoint and OpenAI-family models need none,
@@ -96,14 +98,6 @@ class BlockKind(Enum):
     #: detection, test recommendation, open-question resolution and declaration
     #: comparison — and it is by far the largest thing any of them carries.
     DIFF = 10
-
-    #: The changed *production* code, source files only and without hunk labels
-    #: — `evidence/discrimination.py`'s narrower view of the change. It is a
-    #: kind of its own rather than a `DIFF` because it is different content, not
-    #: a different rendering: unifying the two would change what that stage is
-    #: shown. Ranked here because it is invariant across that stage's calls and
-    #: is the largest thing they carry.
-    CHANGED_CODE = 15
 
     #: The obligation list. Carried by fewer requests than the diff, and by no
     #: request that does not also carry something above it.
@@ -263,8 +257,8 @@ def authored_prompts() -> dict[str, str]:
     modules = [
         "acceptance.requirement.obligations",
         "acceptance.requirement.linking",
-        "acceptance.evidence.mapping",
-        "acceptance.evidence.discrimination",
+        "acceptance.defects.enumeration",
+        "acceptance.defects.pair_mapping",
         "acceptance.coverage.classify",
         "acceptance.coverage.open_questions",
         "acceptance.coverage.unrequested",

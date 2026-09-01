@@ -22,6 +22,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from acceptance.defects.pair_mapping import DEFAULT_PAIR_BATCH_SIZE
 from acceptance.llm import DEFAULT_TRANSCRIPT_ROOT, Mode, ModelClient, TranscriptStore
 from acceptance.review_state import DeterminismControls, LinkPrefilter, ReviewProvenance
 
@@ -52,12 +53,10 @@ DEFAULT_STAGE_MODELS = {
 # correct: a determinism control changed, so recordings must be re-verified.
 DEFAULT_SEED = 0
 
-# Candidate tests per mapping call (DR-164). A determinism control in the same
-# sense as the seed: it changes what is asked of the model, so changing it
-# invalidates every recorded mapping transcript. 12 puts ~200 relevance
-# judgments in a call, an order of magnitude under the ~1,000 at which the
-# stage was measured shedding work, at ~1.5x the total input tokens.
-DEFAULT_MAPPING_BATCH_SIZE = 12
+# The pair stage's batch size lives with that stage
+# (`defects/pair_mapping.py::DEFAULT_PAIR_BATCH_SIZE`) and is re-exported
+# through `RunConfig` below. `DEFAULT_MAPPING_BATCH_SIZE` used to sit here and
+# size the test-to-criterion mapping call (DR-164); #316 deleted that stage.
 
 # There is no decompose batch size any more (#317). Derivation issues one call
 # per requirement, and that is not a knob: it is what lets `source_quote` be an
@@ -146,9 +145,14 @@ class RunConfig(BaseModel):
     seed: int | None = DEFAULT_SEED
     transcript_root: Path = Field(default=DEFAULT_TRANSCRIPT_ROOT)
     # A determinism control, but a stage-level one: it partitions the request
-    # rather than parameterising the provider call, so it reaches the mapping
+    # rather than parameterising the provider call, so it reaches the pair
     # stage through the pipeline instead of through build_client().
-    mapping_batch_size: int = Field(default=DEFAULT_MAPPING_BATCH_SIZE, ge=1)
+    #
+    # It used to be `mapping_batch_size` and steer the test-to-criterion
+    # mapper. #316 deleted that stage, and a control that reaches no stage is
+    # worse than no control: it accepts a value, records nothing, and reads
+    # as a knob that was turned.
+    pair_batch_size: int = Field(default=DEFAULT_PAIR_BATCH_SIZE, ge=1)
     # And for obligation linking (#144), whose unit is a PAIR of obligations
     # rather than an obligation — see the constant's note.
     link_pair_batch_size: int = Field(default=DEFAULT_LINK_PAIR_BATCH_SIZE, ge=1)

@@ -6,11 +6,13 @@ a test *purports to evidence* an obligation — a judgement with no fact of the
 matter, so a miss was unrecoverable and no rating could be traced back to it.
 This asks something existential with an answer, per pair.
 
-**Shadow, in this milestone.** The stage runs, records and reports; nothing reads
-its verdicts. No rating moves, no recommendation changes, the completion verdict
-is untouched. That is DR-312 decision 5's staged migration: with the surrounding
-pipeline fixed, a carry defect shows up as a discrepancy against a stable
-baseline instead of being one of three candidate causes for a rating that moved.
+**These verdicts are the review's test-evidence rating** (#316). The stage ran in
+shadow for one milestone — recording and reporting while the old mapping chain
+still produced the rating — which is DR-312 decision 5's staged migration: with
+the surrounding pipeline fixed, a carry defect showed up as a discrepancy against
+a stable baseline instead of being one of three candidate causes for a rating
+that moved. `defects/support.py` now reduces these verdicts to the class itself,
+and the chain they were compared against is deleted.
 
 ## The response shape, and why this one
 
@@ -49,6 +51,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from acceptance.carry import carry_key, decide
+from acceptance.concurrency import map_calls
 from acceptance.defects.reachability import Pair, form_pairs, prefilter
 from acceptance.evidence.discovery import DiscoveredTest
 from acceptance.llm import ModelClient, StrictResponseModel
@@ -59,7 +62,6 @@ from acceptance.review_state import (
     ChangeSet,
     Defect,
     DefectSet,
-    EvidenceClassification,
     PairVerdict,
     UnjudgedCause,
     UnjudgedPair,
@@ -69,10 +71,8 @@ from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain
 
 __all__ = [
     "PAIR_STAGE_LOGIC_VERSION",
-    "DerivedSupport",
     "PairMappingResult",
     "defect_text",
-    "derive_support",
     "judge_pairs",
     "source_digest",
 ]
@@ -357,9 +357,18 @@ def _ask(
     batch_pairs: list[Pair],
     batch,
     client: ModelClient,
-    unusable: UnusableAnswerLog | None,
-) -> tuple[dict[tuple[str, str], tuple[bool, str]], dict[tuple[str, str], str]]:
-    """One request. The verdicts it answered usably, and the ones it did not.
+) -> tuple[
+    dict[tuple[str, str], tuple[bool, str]],
+    dict[tuple[str, str], str],
+    list[UnusableAnswer],
+]:
+    """One request. The verdicts it answered usably, the ones it did not, and
+    the ids it named that were never offered.
+
+    **Records nothing.** Batches are issued concurrently, so anything appended
+    to shared state in here would land in completion order and two runs over the
+    same input would differ — see `concurrency.py`, rule 2. The unusable answers
+    are handed back and recorded by the caller, in batch order.
 
     A pair in neither map was SHED — offered and not answered. The caller records
     it rather than defaulting it, because defaulting a shed judgement to
@@ -386,9 +395,6 @@ def _ask(
         parse_as=_LenientPairVerdicts,
         stage=_STAGE,
     )
-    if unusable is not None:
-        unusable.record(scan(result, allowed, _STAGE))
-
     answered: dict[tuple[str, str], tuple[bool, str]] = {}
     unusable_shape: dict[tuple[str, str], str] = {}
     offered = {pair.key for pair in batch_pairs}
@@ -414,80 +420,16 @@ def _ask(
                 )
             else:
                 answered[key] = (judged.fails, reason)
-    return answered, unusable_shape
+    return answered, unusable_shape, scan(result, allowed, _STAGE)
 
 
-class DerivedSupport(PersistableModel):
-    """What one criterion's pair verdicts imply about its support, and on what base.
-
-    **Derived for comparison only in this milestone.** #316 flips the review's
-    ratings onto this join; here it exists so the report can put it beside the
-    rating the review actually gives, and so a discrepancy is visible while the
-    baseline is still stable (DR-312 decision 5).
-
-    `killed` and `total` are always rendered with the class, never the class
-    alone. That is DR-312's resolved question 3: a bare "strongly supported" over
-    an enumeration of one claims far more than it has, and disclosing the
-    denominator lets a reader weigh a thin enumeration instead of trusting a
-    threshold nobody can justify.
-    """
-
-    obligation_id: str
-    evidence_class: EvidenceClassification
-    killed: int
-    total: int
-    unjudged: int = 0
-
-
-def derive_support(
-    defect_sets: list[DefectSet],
-    verdicts: list[PairVerdict],
-    unjudged: list[UnjudgedPair],
-) -> list[DerivedSupport]:
-    """Reduce pair verdicts to one support class per criterion.
-
-    Deterministic arithmetic over the carried parts, recomputed every run rather
-    than stored — DR-312 decision 6 puts it in the "always recomputed" row for
-    exactly that reason: it is free, and a stored copy is one more thing that can
-    disagree with its inputs.
-
-    A criterion whose enumeration is a reasoned empty set is `indeterminate`
-    rather than `strongly_supported`: vacuously killing all zero of its defects
-    is arithmetic, not evidence, and #316 gives that case a terminal state of its
-    own. Calling it strongly supported here would flatter the comparison in
-    precisely the direction #252 warns about.
-    """
-    killers: dict[str, set[str]] = {}
-    for verdict in verdicts:
-        if verdict.kills:
-            killers.setdefault(verdict.defect_id, set()).add(verdict.test_id)
-    unjudged_by_defect: dict[str, int] = {}
-    for entry in unjudged:
-        unjudged_by_defect[entry.defect_id] = unjudged_by_defect.get(entry.defect_id, 0) + 1
-
-    derived: list[DerivedSupport] = []
-    for entry in defect_sets:
-        total = len(entry.defects)
-        killed = sum(1 for defect in entry.defects if killers.get(defect.id))
-        pending = sum(unjudged_by_defect.get(defect.id, 0) for defect in entry.defects)
-        if total == 0:
-            evidence_class: EvidenceClassification = "indeterminate"
-        elif killed == total:
-            evidence_class = "strongly_supported"
-        elif killed:
-            evidence_class = "partially_supported"
-        else:
-            evidence_class = "unsupported"
-        derived.append(
-            DerivedSupport(
-                obligation_id=entry.obligation_id,
-                evidence_class=evidence_class,
-                killed=killed,
-                total=total,
-                unjudged=pending,
-            )
-        )
-    return derived
+# `DerivedSupport` and `derive_support` used to live here, deriving a support
+# class for the report to show BESIDE the rating the review actually gave — the
+# shadow comparison that made #314's landing attributable. #316 flipped the
+# review onto that derivation, so it moved to `defects/support.py` and became
+# the rating rather than a column next to it. Two functions of one name doing
+# different things is the drift this file exists to avoid, so the shadow copy
+# was deleted rather than left for a caller to pick the wrong one.
 
 
 def judge_pairs(
@@ -536,10 +478,23 @@ def judge_pairs(
         else:
             to_ask.append(pair)
 
+    # Batches are issued CONCURRENTLY and their answers consumed in batch
+    # order. Each batch judges its own pairs and reads no other batch's answer,
+    # so there was never a reason to wait for one before sending the next — and
+    # this stage issues by far the most calls of any, 332 of one review's 375 at
+    # #314's Gate 2 and several thousand on a large diff.
+    #
+    # The request is untouched, so every recorded transcript still replays.
+    batches = _batches(to_ask, batch_size)
+    answers = map_calls(batches, lambda batch: _ask(list(batch.items), batch, client))
+
     fresh: list[PairVerdict] = []
-    for batch in _batches(to_ask, batch_size):
+    for batch, (answered, unusable_shape, scanned) in zip(batches, answers):
         batch_pairs = list(batch.items)
-        answered, unusable_shape = _ask(batch_pairs, batch, client, unusable)
+        # Recorded here rather than inside the call, so the log reads in batch
+        # order however the calls finished (`concurrency.py`, rule 2).
+        if unusable is not None:
+            unusable.record(scanned)
         for pair in batch_pairs:
             if pair.key not in answered:
                 # Offered and no usable verdict came back — either nothing at all

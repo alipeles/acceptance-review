@@ -69,8 +69,21 @@ def _judgments(*, checkout: str = "code_only", alpha: str = "code_and_tests") ->
             "open_questions": [],
             "requirement_dispositions": [],
         },
-        "_Mappings": {"mappings": []},
-        "_Discrimination": {"discriminations": []},
+        # One enumerated way to fail per criterion, uncovered, so the
+        # recommendation stage has something to be called about at all — which is
+        # what the filtering test below reads its request from.
+        "_Enumeration": {
+            "obligation_id": "",
+            "defects": [
+                {
+                    "slug": "returns-a-constant",
+                    "type": "other",
+                    "description": "returns a constant regardless of input",
+                    "code_refs": [],
+                }
+            ],
+            "reason": "",
+        },
         "_Coverage": {
             "classifications": [
                 {
@@ -183,14 +196,20 @@ def test_an_obligation_requiring_no_test_evidence_is_left_unrated(mixed_review):
     assert by_id["checkout-action"].test_evidence == []
 
 
-def test_an_obligation_requiring_no_test_evidence_never_reaches_the_mapper(tmp_path):
+def test_an_obligation_requiring_no_test_evidence_never_reaches_the_prescriber(tmp_path):
     """The ordering change, asserted against what the stage was GIVEN.
 
     Every stage used to receive every obligation, and the ones no test could
     bear on were filtered out three stages later. Two costs, both observed on
-    real runs: the mapper chose between obligations that were never candidates,
+    real runs: the stage chose between obligations that were never candidates,
     and ratings were produced for obligations whose ratings the report discards
     — surfacing as rating movement nobody could account for.
+
+    **The stage this holds for is now the prescriber.** It used to be the
+    test-to-criterion mapper, which #316 deleted; the remaining model call on
+    the test-evidence axis that is keyed on criteria is the recommendation
+    stage, and prescribing a test for a criterion no test is owed for demands
+    evidence that cannot exist (#146, #153).
 
     Asserting the absence in the *request* is the only form of this that holds.
     A test on the output would pass just as well if the obligation were offered
@@ -198,12 +217,12 @@ def test_an_obligation_requiring_no_test_evidence_never_reaches_the_mapper(tmp_p
     capture = []
     _review(tmp_path, _judgments(), capture=capture, touch_source=True)
 
-    mapping_calls = [c for c in capture if c["schema"] == "_Mappings"]
-    assert mapping_calls, "the mapping stage was never called"
-    for call in mapping_calls:
+    calls = [c for c in capture if c["schema"] == "_Recommendations"]
+    assert calls, "the recommendation stage was never called"
+    for call in calls:
         assert "checkout-action" not in call["prompt"]
         # The control: the obligation that DOES require test evidence is there,
-        # so this is not passing because the mapper was given nothing at all.
+        # so this is not passing because the stage was given nothing at all.
         assert "alpha" in call["prompt"]
 
 

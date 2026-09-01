@@ -26,7 +26,6 @@ from acceptance.change.diff import extract_change_set
 from acceptance.defects.pair_mapping import (
     DEFAULT_PAIR_BATCH_SIZE,
     defect_text,
-    derive_support,
     judge_pairs,
     source_digest,
 )
@@ -46,6 +45,7 @@ from acceptance.review_state import (
     UnjudgedCause,
     UnjudgedPair,
 )
+from acceptance.supplied_ids import UnusableAnswerLog
 from tests.support import client_dispatching
 
 _DEFAULT_MODEL = "openai/gpt-5.4-mini"
@@ -496,38 +496,11 @@ def test_no_request_carries_more_judgements_than_the_limit(tmp_path):
         assert len(request["test_id"]) * len(request["defect_id"]) <= 3
 
 
-# --- the derived comparison ---------------------------------------------------
-
-
-def test_support_is_derived_with_its_denominator(tmp_path):
-    defects = _defect_set("divides by 30", "ignores days")
-    verdicts = _judged(
-        _Judge(kills=lambda defect_id, test_id: defect_id.endswith("d1")),
-        [defects],
-        [_test("test_half_month")],
-        _repo(tmp_path, {"test_billing.py": "x"}),
-    ).verdicts
-
-    derived = derive_support([defects], verdicts, [])
-
-    assert len(derived) == 1
-    assert derived[0].evidence_class == "partially_supported"
-    assert (derived[0].killed, derived[0].total) == (1, 2)
-
-
-def test_a_reasoned_empty_enumeration_is_not_strongly_supported():
-    """Vacuously killing all zero defects is arithmetic, not evidence.
-
-    Calling it `strongly_supported` would flatter a thin enumeration in exactly
-    the direction #252 warns about, so it is `indeterminate` here and gets a
-    terminal state of its own in #316.
-    """
-    empty = DefectSet(obligation_id="true-by-construction", defects=[], reason="cannot fail")
-
-    derived = derive_support([empty], [], [])
-
-    assert derived[0].evidence_class == "indeterminate"
-    assert (derived[0].killed, derived[0].total) == (0, 0)
+# The two tests that used to sit here exercised this module's own shadow
+# derivation, which #316 replaced. Deriving a criterion's class from these
+# verdicts is now `defects/support.py`'s job and is tested in
+# `tests/defects/test_support.py`; what this file still owns is producing the
+# verdicts, not reducing them.
 
 
 def test_defect_text_ignores_the_defect_id(tmp_path):
@@ -691,25 +664,33 @@ def test_the_pipeline_really_judges_pairs(tmp_path):
     assert any(verdict.kills for verdict in review.pair_verdicts)
 
 
-def test_the_report_shows_implied_support_beside_the_current_rating(tmp_path):
+def test_the_report_shows_every_rating_with_its_denominator(tmp_path):
+    """DR-312 resolved question 3: never the class alone.
+
+    This used to assert a second, advisory column headed "Support implied by
+    test-to-defect pairs", printed beside the rating the review actually gave.
+    #316 made the derived column the only column, so the denominator renders
+    where the criterion does — including the honest thin case, "1 of 1".
+    """
     review = _review_over(_built(tmp_path), pairs=_pairs_answer(True))
 
     rendered = render_report(review)
 
-    assert "Support implied by test-to-defect pairs" in rendered
-    assert "implied by pairs:" in rendered
-    assert "this review says:" in rendered
-    # The denominator, never the class alone (DR-312 resolved question 3).
-    assert "kills 1 of 1 enumerated defects" in rendered
-    assert "Criteria where the two disagree:" in rendered
+    assert "kills 1 of 1 enumerated defects (static prediction)" in rendered
+    # The shadow comparison is gone, not merely relabelled.
+    assert "Support implied by test-to-defect pairs" not in rendered
+    assert "this review says:" not in rendered
 
 
-def test_judging_pairs_changes_no_verdict_rating_or_recommendation(tmp_path):
-    """The advisory guarantee, checked by difference.
+def test_a_surviving_pair_stops_the_criterion_reaching_strongly_supported(tmp_path):
+    """#316's headline behaviour, and archetype #4's acceptance.
 
-    Two reviews over the same input whose pair verdicts are opposite. Everything
-    except the pair records must be identical — that is what shadow means, and it
-    is what makes a later rating movement attributable (DR-312 decision 5).
+    The mirror of the shadow test this replaces. That one asserted two reviews
+    with opposite pair verdicts were identical everywhere but the pair records —
+    which is what made #314's landing attributable, and is exactly what the
+    cutover ends. Now the verdict has to reach the rating, so the same two
+    reviews must differ, and differ in the stated direction: a criterion whose
+    on-point defect no test would fail on cannot be strongly supported.
     """
     built = _built(tmp_path)
     killing = _review_over(built, pairs=_pairs_answer(True))
@@ -718,12 +699,26 @@ def test_judging_pairs_changes_no_verdict_rating_or_recommendation(tmp_path):
     assert any(verdict.kills for verdict in killing.pair_verdicts)
     assert not any(verdict.kills for verdict in surviving.pair_verdicts)
 
-    def apart(review):
-        return review.model_copy(
-            update={"pair_verdicts": [], "unjudged_pairs": []}
-        ).to_canonical_json()
+    def rating(review):
+        return next(o.evidence_class for o in review.obligation_map if o.id == "daily-rate")
 
-    assert apart(killing) == apart(surviving)
+    assert rating(killing) == "strongly_supported"
+    assert rating(surviving) == "unsupported"
+
+
+def test_a_surviving_pair_earns_a_recommendation_and_a_killing_one_does_not(tmp_path):
+    """The other half of the flip, on the recommendation axis (#250, #287).
+
+    A defect some test would fail on is evidence the review already holds, so
+    prescribing a test for it is the failure #312 exists to remove. A defect no
+    test would fail on is a real gap and must be prescribed for.
+    """
+    built = _built(tmp_path)
+    killing = _review_over(built, pairs=_pairs_answer(True))
+    surviving = _review_over(built, pairs=_pairs_answer(False))
+
+    assert killing.recommendations == []
+    assert [r.defect_id for r in surviving.recommendations] == ["daily-rate/divides-by-thirty"]
 
 
 def test_the_verdicts_survive_a_round_trip_through_persisted_state(tmp_path):
@@ -838,7 +833,11 @@ def test_a_prefiltered_pair_is_named_in_the_report(tmp_path):
 
     rendered = render_report(with_exclusion)
 
-    assert "Pairs left unjudged:" in rendered
+    assert "Pairs left unjudged" in rendered
+    # The heading says what the omission costs, which it did not have to while
+    # the verdicts were advisory: since #316 an unjudged pair is a hole in the
+    # denominator a rating was reduced over.
+    assert "a criterion's rating cannot account for these" in rendered
     assert "[prefiltered]" in rendered
     assert "daily-rate/divides-by-thirty x test_far_away.py::test_unrelated" in rendered
     assert "no path to the defect exists" in rendered
@@ -980,3 +979,46 @@ def test_the_defect_list_sits_in_the_shared_prefix_of_every_call(tmp_path):
     # And the thing that differs — each call's own test — is outside it.
     assert "test_half_month" not in shared
     assert "test_full_month" not in shared
+
+
+def test_the_stage_is_byte_identical_when_its_calls_finish_out_of_order(tmp_path):
+    """The wiring, not the helper (`tests/test_concurrency.py` owns that).
+
+    This stage issues the most calls of any — 332 of one review's 375 at #314's
+    Gate 2 — and since they are issued concurrently, the order they FINISH is
+    whatever the provider decides. Two runs over one input must still agree byte
+    for byte (M0.5).
+
+    The double delays later batches less than earlier ones, so completion order
+    is reliably the reverse of issue order. A stage that consumed answers as they
+    arrived, rather than in batch order, reorders its verdicts and its
+    unusable-answer log here and passes every test that only counts them.
+    """
+    import time
+
+    class _Reordering(_Judge):
+        def _completion_fn(self, **kwargs):
+            # Later calls return sooner, so completion order is reliably the
+            # reverse of issue order.
+            time.sleep(max(0.0, 0.06 - 0.01 * len(self.requests)))
+            return super()._completion_fn(**kwargs)
+
+    tests = [_test(f"test_{index}") for index in range(6)]
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    defects = _defect_set("divides by 30", "ignores days")
+
+    def run(judge_cls):
+        judge = judge_cls(kills=lambda defect_id, test_id: defect_id.endswith("d1"))
+        log = UnusableAnswerLog()
+        result = judge_pairs(
+            [defects],
+            tests,
+            _change_set(),
+            judge.client,
+            repo=repo,
+            batch_size=1,
+            unusable=log,
+        )
+        return result.model_dump_json(), [entry.returned_id for entry in log.answers]
+
+    assert run(_Reordering) == run(_Judge)

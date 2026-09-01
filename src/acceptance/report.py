@@ -16,7 +16,6 @@ Status is stated in words, not symbols, and every evidence line carries its
 
 from __future__ import annotations
 
-from acceptance.defects.pair_mapping import derive_support
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     CompletionVerdict,
@@ -119,7 +118,10 @@ def render_report(review: Review) -> str:
         lines.extend(_defect_block(review.defect_sets))
         lines.append("")
 
-    if review.pair_verdicts or review.unjudged_pairs:
+    # Only when there is something unjudged to disclose. The block used to run
+    # whenever any pair existed, because it carried the shadow comparison for
+    # every criterion; all it carries now is the exceptions (#316).
+    if review.unjudged_pairs:
         lines.extend(_pair_block(review))
         lines.append("")
 
@@ -161,75 +163,82 @@ def render_report(review: Review) -> str:
     return "\n".join(lines)
 
 
-def _pair_block(review: Review) -> list[str]:
-    """What the pair verdicts imply, beside what the review actually says (#314).
+def _denominator(obligation: Obligation) -> str:
+    """The count the criterion's rating was reduced over, never the class alone.
 
-    **Advisory, and the comparison is the point.** Nothing here moved a rating;
-    the block exists so a discrepancy between the two is visible while the
-    baseline is still stable. #316 flips the review onto the derived column, and
-    a difference it cannot explain now is a difference to explain before then.
+    DR-312 resolved question 3: a bare "strongly supported" over an enumeration
+    of one claims far more than it has, so every rendering of a class carries
+    the base it came from — including the honest thin case, "1 of 1". A reader
+    given the number can weigh a thin enumeration; a reader given only the class
+    cannot.
 
-    Every derived class is rendered with its denominator and never alone, per
-    DR-312's resolved question 3: "strongly supported" over an enumeration of one
-    claims more than it has, and the number lets a reader weigh that themselves.
+    Two cases have no number and each says so in words rather than as "0 of 0",
+    which is arithmetic a reader would have to interpret. They are different
+    facts and must not render alike: the enumeration considered the criterion and
+    stood behind finding nothing, or nothing was enumerated for it at all. A
+    class rendered bare would leave a reader unable to tell either from a
+    denominator that simply was not shown.
+
+    A criterion with no class at all is a third thing and gets nothing: there is
+    no rating for a denominator to qualify, and appending one would dress an
+    absent judgement as a measured result.
     """
-    derived = derive_support(review.defect_sets, review.pair_verdicts, review.unjudged_pairs)
-    by_id = {obligation.id: obligation for obligation in review.obligation_map}
-
-    heading = (
-        "Support implied by test-to-defect pairs "
-        "(advisory — the review's own ratings are unchanged):"
+    if obligation.evidence_class is None:
+        return ""
+    if obligation.evidence_class == "no_plausible_defect":
+        return " — no plausible static defect enumerated; test evidence is not obtainable here"
+    if not obligation.enumerated_defects:
+        return " — no way this change could fail the criterion was enumerated for it"
+    return (
+        f" — kills {obligation.covered_defects} of {obligation.enumerated_defects} "
+        "enumerated defects (static prediction)"
     )
-    lines = [heading]
-    disagreeing = []
-    for entry in derived:
-        obligation = by_id.get(entry.obligation_id)
-        current = obligation.evidence_class if obligation else None
-        pending = f", {entry.unjudged} pair(s) unjudged" if entry.unjudged else ""
-        lines.append("")
-        lines.append(f"  {entry.obligation_id}")
-        lines.append(
-            f"    implied by pairs: {entry.evidence_class} — kills "
-            f"{entry.killed} of {entry.total} enumerated defects "
-            f"(static prediction{pending})"
-        )
-        lines.append(f"    this review says: {current or 'not rated'}")
-        if current is not None and current != entry.evidence_class:
-            disagreeing.append(entry.obligation_id)
 
-    lines.append("")
-    if disagreeing:
-        lines.append(f"  Criteria where the two disagree: {', '.join(disagreeing)}")
-    else:
-        lines.append("  Criteria where the two disagree: (none)")
 
+def _pair_block(review: Review) -> list[str]:
+    """The pairs left unjudged, and why (#314).
+
+    **This used to be a comparison and is now a disclosure.** While pair mapping
+    ran in shadow, the block put the class the verdicts implied beside the class
+    the review actually gave, so a discrepancy was visible against a stable
+    baseline (DR-312 decision 5). #316 flipped the review onto that derivation,
+    so the two columns are one column: every criterion's rating renders with its
+    denominator where the criterion itself renders, and there is no second
+    opinion left to disagree with it.
+
+    What survives is the part that was never a comparison. A pair nothing judged
+    is indistinguishable from a verdict of *survives* unless it is stated, and a
+    defect wrongly un-covered that way produces a prescription for a test that
+    already exists — DR-164's silent id filter, and #250 and #287's shape.
+    """
     # Both causes are shown, and shown apart. A pair the filter proved unreachable
     # and one the judge was asked about and never answered are different failures
     # with opposite remedies, and DR-164's silent id filter is the precedent for
     # why neither may be left invisible.
-    if review.unjudged_pairs:
-        lines.append("")
-        lines.append("  Pairs left unjudged:")
-        for entry in review.unjudged_pairs:
-            lines.append(f"    [{entry.cause.value}] {entry.defect_id} x {entry.test_id}")
-            lines.append(f"      {entry.reason}")
+    lines = [
+        "Pairs left unjudged (a criterion's rating cannot account for these):",
+    ]
+    for entry in review.unjudged_pairs:
+        lines.append(f"  [{entry.cause.value}] {entry.defect_id} x {entry.test_id}")
+        lines.append(f"    {entry.reason}")
     return lines
 
 
 def _defect_block(defect_sets: list[DefectSet]) -> list[str]:
     """The enumerated ways the change could fail each criterion (#313).
 
-    **Advisory.** Labelled so in the heading, because nothing here moved the
-    verdict or any criterion's rating and a reader would otherwise reasonably
-    assume it had. It is deliberately placed after the criteria and the mandate
-    coverage: it is context for those judgements, not one of them.
+    **No longer advisory** (#316). While enumeration ran beside the old chain,
+    the heading said so, because nothing here moved a rating and a reader would
+    otherwise reasonably assume it had. These sets are now the denominator every
+    rating is reduced over, so the heading says that instead — a reader weighing
+    "kills 2 of 3" needs to be able to read the three.
 
     A set that was reused rather than produced again says so, per the mandate.
     A reader has to be able to tell which parts of a review are fresh — a
     carried set is a statement about an earlier head, and presenting it as
     current would overstate what this run examined.
     """
-    lines = ["Ways the change could fail a criterion (advisory — no verdict depends on these):"]
+    lines = ["Ways the change could fail a criterion (what each rating is measured against):"]
     for entry in defect_sets:
         reused = "  (reused from an earlier run)" if entry.carried_from else ""
         lines.append("")
@@ -492,7 +501,9 @@ def _obligation_block(
         evidence = (obligation.evidence_class or "unclassified").replace("_", " ")
         tier = obligation.achieved_evidence_tier
         tier_name = tier.name.lower().replace("_", "-") if tier is not None else "none"
-        lines.append(f"       test evidence: {evidence}  [tier: {tier_name}]")
+        lines.append(
+            f"       test evidence: {evidence}{_denominator(obligation)}  [tier: {tier_name}]"
+        )
         if obligation.test_evidence:
             for test_id in obligation.test_evidence:
                 item += 1

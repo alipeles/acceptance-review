@@ -25,8 +25,8 @@ from acceptance.change.diff import extract_change_set, extract_working_tree_chan
 from acceptance.config import (
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_LINK_DISTANCE_THRESHOLD,
-    DEFAULT_MAPPING_BATCH_SIZE,
     DEFAULT_MODEL,
+    DEFAULT_PAIR_BATCH_SIZE,
     DEFAULT_SEED,
     RunConfig,
 )
@@ -195,7 +195,7 @@ def run_check(
         reviewed_revision=reviewed_revision,
         declaration_text=declaration_text,
         policy=config.scope_expansion_policy,
-        mapping_batch_size=config.mapping_batch_size,
+        pair_batch_size=config.pair_batch_size,
         link_pair_batch_size=config.link_pair_batch_size,
         link_distance_threshold=config.link_distance_threshold,
         task_identifier=task,
@@ -723,13 +723,13 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
         "--temperature", type=float, default=0.0, help="Model temperature (default: 0.0)."
     )
     parser.add_argument(
-        "--mapping-batch-size",
+        "--pair-batch-size",
         type=int,
-        default=DEFAULT_MAPPING_BATCH_SIZE,
+        default=DEFAULT_PAIR_BATCH_SIZE,
         help=(
-            "Candidate tests per mapping call (determinism; default: "
-            f"{DEFAULT_MAPPING_BATCH_SIZE}). Changing it invalidates recorded "
-            "mapping transcripts."
+            "(defect, test) pairs judged per call (determinism; default: "
+            f"{DEFAULT_PAIR_BATCH_SIZE}). Changing it invalidates recorded "
+            "pair-judgement transcripts."
         ),
     )
     parser.add_argument(
@@ -889,7 +889,7 @@ def main(argv: list[str] | None = None) -> int:
             mode=Mode(args.mode),
             seed=_seed_from(args),
             temperature=args.temperature,
-            mapping_batch_size=args.mapping_batch_size,
+            pair_batch_size=args.pair_batch_size,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
@@ -963,7 +963,7 @@ def main(argv: list[str] | None = None) -> int:
             mode=Mode(args.mode),
             seed=_seed_from(args),
             temperature=args.temperature,
-            mapping_batch_size=args.mapping_batch_size,
+            pair_batch_size=args.pair_batch_size,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
@@ -1013,7 +1013,7 @@ def main(argv: list[str] | None = None) -> int:
             mode=Mode(args.mode),
             seed=_seed_from(args),
             temperature=args.temperature,
-            mapping_batch_size=args.mapping_batch_size,
+            pair_batch_size=args.pair_batch_size,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )

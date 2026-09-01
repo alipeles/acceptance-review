@@ -529,13 +529,18 @@ def test_the_report_says_when_a_set_was_reused_rather_than_produced_again(tmp_pa
     assert "reused from an earlier run" not in render_report(review)
 
 
-def test_recording_ways_of_failing_changes_no_verdict_and_no_rating(tmp_path):
-    """The advisory guarantee, checked by difference.
+def test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme(tmp_path):
+    """What the enumeration reaches, now that it reaches the rating (#316).
 
-    Two reviews over the same input, one whose enumerator found defects and one
-    whose found none. Every part of the review except `defect_sets` must be
-    identical — that is what "advisory" means, and it is what makes a later
-    rating movement attributable to the stage that caused it (DR-312 decision 5).
+    This used to assert the opposite: that two reviews differing only in whether
+    the enumerator found anything were identical everywhere but `defect_sets`.
+    That advisory guarantee is what the cutover ends, and the interesting case is
+    the one DR-312 resolved question 3 names — a criterion nobody could think of
+    a way to break is neither strongly supported nor unsupported.
+
+    Both extremes are wrong for opposite reasons. `strongly_supported` would let
+    looking least earn the strongest rating, which is #252. `unsupported` would
+    prescribe a test for a failure nobody believes can happen.
     """
     built = _repo(tmp_path)
     with_defects = _review_over(built, _answer([_defect(code_refs=[])]))
@@ -544,10 +549,33 @@ def test_recording_ways_of_failing_changes_no_verdict_and_no_rating(tmp_path):
     assert any(entry.defects for entry in with_defects.defect_sets)
     assert not any(entry.defects for entry in without.defect_sets)
 
+    def classes(review):
+        return {
+            obligation.evidence_class
+            for obligation in review.obligation_map
+            if obligation.required_evidence.requires_tests
+        }
+
+    assert classes(without) == {"no_plausible_defect"}
+    assert "no_plausible_defect" not in classes(with_defects)
+
+
+def test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review(tmp_path):
+    """The difference the cutover creates, stated as a difference.
+
+    The guarantee this replaces was that the two reviews agreed byte for byte
+    outside `defect_sets`. Asserting only the classes above would still pass if
+    the enumeration reached the rating and nothing else; this fails unless the
+    enumeration genuinely propagates.
+    """
+    built = _repo(tmp_path)
+    with_defects = _review_over(built, _answer([_defect(code_refs=[])]))
+    without = _review_over(built, _answer([], reason="Nothing plausible."))
+
     def apart(review):
         return review.model_copy(update={"defect_sets": []}).to_canonical_json()
 
-    assert apart(with_defects) == apart(without)
+    assert apart(with_defects) != apart(without)
 
 
 def test_the_enumerated_sets_survive_a_round_trip_through_persisted_state(tmp_path):

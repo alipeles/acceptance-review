@@ -452,6 +452,18 @@ class ChangeSet(_Model):
 #   unsupported             - no mapped, obligation-relevant test at all
 #   requires_other_evidence - needs non-test evidence (docs, visual, deploy)
 #   indeterminate           - cannot run / cannot decide statically
+#   no_plausible_defect     - the enumeration considered the criterion and found
+#                             no plausible way for the change to fail it, and
+#                             said why (DefectSet with no defects and a reason)
+#
+# `no_plausible_defect` is its own terminal state rather than either extreme,
+# and DR-312 resolved question 3 is explicit that it must be neither. It is not
+# `strongly_supported`: nothing was demonstrated, and an empty denominator would
+# otherwise earn the strongest rating in the vocabulary for having looked least
+# — #252's failure exactly. It is not `unsupported` either: that means tests are
+# owed and missing, and here none can exist, so it would prescribe a test nobody
+# can write. The disclosed denominator is what makes the distinction legible to
+# a reader; the class is what stops the verdict acting on the wrong one.
 EvidenceClassification = Literal[
     "strongly_supported",
     "partially_supported",
@@ -459,12 +471,15 @@ EvidenceClassification = Literal[
     "unsupported",
     "requires_other_evidence",
     "indeterminate",
+    "no_plausible_defect",
 ]
 
 # Evidence states a re-run can meaningfully *improve on* — used by M7.5 to decide
 # whether an obligation's movement counts as a gap closing. `requires_other_evidence`
 # is excluded deliberately: code tests are the wrong instrument for it, so tests
-# appearing is not the gap closing.
+# appearing is not the gap closing. `no_plausible_defect` is excluded for the
+# same reason from the other direction: there is no gap to close, so a test
+# appearing over it is not an improvement either.
 _WEAK_OR_MISSING_EVIDENCE = frozenset(
     {"partially_supported", "nominally_supported", "unsupported", "indeterminate", None}
 )
@@ -657,6 +672,20 @@ class Obligation(_Model):
     achieved_evidence_tier: EvidenceTier | None = None
     test_evidence: list[str] = Field(default_factory=list)
     evidence_class: EvidenceClassification | None = None
+    # The denominator `evidence_class` was reduced over (#316, DR-312 resolved
+    # question 3). `enumerated_defects` is how many ways this change could fail
+    # the criterion were recorded; `covered_defects` is how many of those some
+    # candidate test would fail on.
+    #
+    # Stored beside the class rather than recomputed where the report renders,
+    # so the two cannot disagree. A bare "strongly supported" over an
+    # enumeration of one claims far more than it has, and the rule is that no
+    # rendering shows the class without these — including the honest thin case,
+    # "1 of 1". There is deliberately no minimum-enumeration floor: any
+    # threshold is arbitrary and invites gaming from the other side, and a
+    # disclosed denominator lets a reader weigh a thin enumeration themselves.
+    enumerated_defects: int = 0
+    covered_defects: int = 0
     # #153's third axis: which kinds of evidence this obligation requires, as
     # opposed to how strong the evidence is (`evidence_class`) or whether the
     # code responds (`coverage_status`). Defaults to requiring both, so silence
@@ -858,11 +887,26 @@ class TestRecommendation(_Model):
     iteration. The product recommends — it never modifies code (§9.5). Each
     field is one of §9.5's discrete prescriptions; `plausible_defect` is the
     surviving §8.2 defect the recommended test must catch, so a green run
-    demonstrably closes the gap rather than nominally addressing it (§8.4)."""
+    demonstrably closes the gap rather than nominally addressing it (§8.4).
+
+    **A recommendation is an uncovered defect** (DR-312 decision 4). `defect_id`
+    names the `Defect` record no candidate test was judged to fail on, and it is
+    required, so a recommendation that cites no way of failing is unrepresentable
+    rather than merely discouraged — #283's shape, where a prescription rested on
+    nothing traceable. The `Defect` carries its own `obligation_id` and
+    `code_refs`, which is how the recommendation reaches the criterion text and
+    the exact lines (§13.6).
+
+    It is also what makes #250 and #287 — prescribing a test that already exists
+    — structurally impossible rather than a thing to check for: a defect some
+    test is judged to kill produces no recommendation, because the emitter only
+    ever walks the defects with no killing verdict.
+    """
 
     __test__ = False  # not a pytest test class; name matches §9.5's "recommendation"
 
     obligation_id: str
+    defect_id: str
     criterion: str  # the obligation's observable behavior, restated
     required_inputs: str
     boundary_conditions: str
@@ -897,6 +941,12 @@ class UnobtainedRecommendation(_Model):
     """
 
     obligation_id: str
+    # The defect the prescription was owed for. Required for the same reason
+    # `TestRecommendation.defect_id` is (#316): the unit of this stage is an
+    # uncovered defect, so an omission is about one defect rather than about a
+    # criterion, and a criterion with three uncovered defects can be answered
+    # for twice and missed once.
+    defect_id: str
     criterion: str  # the obligation's observable behavior, restated
     reason: str
 

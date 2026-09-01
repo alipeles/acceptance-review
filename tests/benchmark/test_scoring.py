@@ -140,6 +140,28 @@ def test_mapping_accuracy_is_marked_not_comparable_across_the_partitioning_chang
     assert "regression" in report
 
 
+def test_evidence_agreement_is_marked_not_comparable_across_the_cutover():
+    """#316 replaced the judge behind this number with arithmetic over pair
+    verdicts, and changed the denominator it reduces over. A figure from before
+    the cutover and one from after measure different things, so the same warning
+    the mapping metric carries has to sit where THIS number is met. Separate from
+    the test above because the two metrics crossed different boundaries and one
+    warning does not stand in for the other."""
+    import acceptance.benchmark.case as case_module
+    import acceptance.benchmark.scoring as scoring_module
+
+    report = _text_around(scoring_module.__file__, "    evidence_agreement: float | None = None")
+    score = _text_around(case_module.__file__, "    evidence_agreement: float | None = None")
+    sampled = _text_around(scoring_module.__file__, "    evidence_agreement: MetricStats")
+
+    for text in (report, score, sampled):
+        assert "not comparable" in text.lower()
+        assert "#316" in text
+
+    assert "must not be plotted as a trend" in report
+    assert "regression" in report
+
+
 def test_the_decision_record_states_the_non_comparability_too():
     """The DR is where someone reading the *change* lands, as opposed to
     someone reading the *number*. Both entry points have to carry it."""
@@ -150,3 +172,17 @@ def test_the_decision_record_states_the_non_comparability_too():
 
     assert "not comparable" in text.lower()
     assert "mapping-accuracy" in text.lower()
+
+
+def test_the_cutovers_decision_record_states_the_non_comparability_too():
+    """Same rule for #316's boundary. Someone reading the change lands in
+    DR-312, not in `scoring.py`, and a warning that lives only beside the field
+    is invisible to them."""
+    import pathlib
+
+    docs = pathlib.Path(__file__).resolve().parents[2] / "docs"
+    text = (docs / "DR-312-defect-first-evidence.md").read_text()
+
+    assert "do not span the cutover" in text.lower() or "not span the cutover" in text.lower()
+    assert "evidence_agreement" in text
+    assert "mapping_accuracy" in text
