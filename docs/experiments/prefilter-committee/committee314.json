@@ -1,0 +1,188 @@
+{
+  "corpus": {
+    "pairs": 12450,
+    "kills": 127,
+    "defects": 75,
+    "tests": 166,
+    "head": "294555156a1bc3a7d71157276145a663737eb7a6"
+  },
+  "coverage_alone": {
+    "name": "coverage reachability (binary)",
+    "threshold": null,
+    "kept": 3682,
+    "excluded_share": 0.7042570281124498,
+    "kills_kept": 90,
+    "kill_recall": 0.7086614173228346,
+    "lost": [
+      [
+        "byte-identical-review-state-and-report-output/pair-report-block-introduces-run-variant-output",
+        "tests/requirement/test_carry_forward.py::test_two_runs_over_the_same_task_and_ledger_state_are_byte_identical"
+      ],
+      [
+        "byte-identical-review-state-and-report-output/pair-report-block-introduces-run-variant-output",
+        "tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state"
+      ],
+      [
+        "byte-identical-review-state-and-report-output/pair-verdict-order-not-stable",
+        "tests/requirement/test_carry_forward.py::test_two_runs_over_the_same_task_and_ledger_state_are_byte_identical"
+      ],
+      [
+        "byte-identical-review-state-and-report-output/pair-verdicts-not-persisted-in-ledger-entry",
+        "tests/defects/test_enumeration.py::test_two_runs_over_the_same_input_agree_byte_for_byte"
+      ],
+      [
+        "byte-identical-review-state-and-report-output/pair-verdicts-not-persisted-in-ledger-entry",
+        "tests/defects/test_pair_mapping.py::test_the_verdicts_survive_a_round_trip_through_persisted_state"
+      ],
+      [
+        "byte-identical-review-state-and-report-output/pair-verdicts-not-persisted-in-ledger-entry",
+        "tests/defects/test_pair_mapping.py::test_two_runs_over_the_same_input_agree_byte_for_byte"
+      ],
+      [
+        "byte-identical-review-state-and-report-output/pair-verdicts-not-persisted-in-ledger-entry",
+        "tests/test_mandate_coverage_wiring.py::test_two_runs_over_identical_task_text_produce_byte_identical_review_state"
+      ],
+      [
+        "byte-identical-review-state-and-report-output/pair-verdicts-not-persisted-in-ledger-entry",
+        "tests/test_recommendation_omission.py::test_two_runs_over_the_same_inputs_render_the_same_report"
+      ],
+      [
+        "byte-identical-review-state-and-report-output/pair-verdicts-not-persisted-in-ledger-entry",
+        "tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte"
+      ],
+      [
+        "grouped-judgement-limit/pair-batch-size-not-threaded",
+        "tests/evidence/test_mapping.py::test_changing_the_batch_size_changes_every_request_key"
+      ],
+      [
+        "no-change-to-test-evidence-workflow/pair-verdicts-are-added-to-ledger-and-review-state",
+        "tests/defects/test_pair_mapping.py::test_the_verdicts_survive_a_round_trip_through_persisted_state"
+      ],
+      [
+        "no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state",
+        "tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger"
+      ],
+      [
+        "no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state",
+        "tests/defects/test_pair_mapping.py::test_the_verdicts_survive_a_round_trip_through_persisted_state"
+      ],
+      [
+        "no-derive-rating-completion-or-recommendations-from-judged-pairs/pair-verdicts-added-to-review-state",
+        "tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries"
+      ],
+      [
+        "reproduce-only-nonreusable-verdicts-on-continuation/pair-verdict-carry-key-too-narrow",
+        "tests/requirement/test_carry_forward.py::test_a_changed_response_schema_invalidates_the_entries_derived_under_it"
+      ],
+      [
+        "reproduce-only-nonreusable-verdicts-on-continuation/pair-verdict-carry-key-too-narrow",
+        "tests/requirement/test_carry_forward.py::test_the_carry_key_reads_the_live_response_schema"
+      ],
+      [
+        "reproduce-only-nonreusable-verdicts-on-continuation/pair-verdicts-not-loaded-on-continue",
+        "tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry"
+      ],
+      [
+        "reproduce-only-nonreusable-verdicts-on-continuation/pair-verdicts-not-loaded-on-continue",
+        "tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_issues_no_decompose_call"
+      ],
+      [
+        "reproduce-only-nonreusable-verdicts-on-continuation/pair-verdicts-not-loaded-on-continue",
+        "tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries"
+      ],
+      [
+        "reproduce-verdict-when-way-of-failing-or-test-source-changes/pair-verdict-carry-key-omits-response-shape",
+        "tests/requirement/test_carry_forward.py::test_a_changed_response_schema_invalidates_the_entries_derived_under_it"
+      ],
+      [
+        "reproduce-verdict-when-way-of-failing-or-test-source-changes/pair-verdict-carry-key-omits-response-shape",
+        "tests/requirement/test_carry_forward.py::test_the_carry_key_reads_the_live_response_schema"
+      ],
+      [
+        "reproduce-verdict-when-way-of-failing-or-test-source-changes/pair-verdicts-not-loaded-into-continue-path",
+        "tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged"
+      ],
+      [
+        "request-shape-choice-excluded/pair-shape-choice-added",
+        "tests/test_llm.py::test_request_key_distinguishes_call_parameters"
+      ],
+      [
+        "request-shape-choice-excluded/pair-shape-choice-added",
+        "tests/test_llm.py::test_request_key_distinguishes_prompt_and_schema"
+      ],
+      [
+        "reuse-entitled-verdicts-on-continuation/pair-verdicts-not-carried-into-review-prior",
+        "tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged"
+      ],
+      [
+        "reuse-entitled-verdicts-on-continuation/pair-verdicts-not-carried-into-review-prior",
+        "tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry"
+      ],
+      [
+        "reuse-entitled-verdicts-on-continuation/pair-verdicts-not-carried-into-review-prior",
+        "tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_issues_no_decompose_call"
+      ],
+      [
+        "reuse-entitled-verdicts-on-continuation/pair-verdicts-not-carried-into-review-prior",
+        "tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries"
+      ],
+      [
+        "reuse-entitled-verdicts-on-continuation/pair-verdicts-not-loaded-on-continue",
+        "tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged"
+      ],
+      [
+        "reuse-verdict-only-when-test-source-unchanged/prior-verdicts-not-loaded-into-pair-carry",
+        "tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry"
+      ],
+      [
+        "reuse-verdict-only-when-test-source-unchanged/prior-verdicts-not-loaded-into-pair-carry",
+        "tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_issues_no_decompose_call"
+      ],
+      [
+        "reuse-verdict-only-when-test-source-unchanged/prior-verdicts-not-loaded-into-pair-carry",
+        "tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries"
+      ],
+      [
+        "verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path",
+        "tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged"
+      ],
+      [
+        "verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path",
+        "tests/requirement/test_carry_forward.py::test_a_changed_model_invalidates_every_carried_entry"
+      ],
+      [
+        "verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path",
+        "tests/requirement/test_carry_forward.py::test_a_rerun_over_an_unchanged_task_file_issues_no_decompose_call"
+      ],
+      [
+        "verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-carried-through-reporting-path",
+        "tests/requirement/test_carry_forward.py::test_the_decompose_command_writes_a_ledger_entry_and_a_second_run_carries"
+      ],
+      [
+        "verdict-reuse-when-way-and-test-source-unchanged/pair-verdicts-not-loaded-from-ledger",
+        "tests/defects/test_pair_mapping.py::test_a_verdict_is_reused_when_its_defect_and_its_test_are_both_unchanged"
+      ]
+    ]
+  },
+  "coverage_fallback_defects": [
+    "no-runtime-or-test-execution/runtime-call-in-pilot"
+  ],
+  "union_replication": {
+    "name": "union @ description 0.027, region 0.717",
+    "threshold": null,
+    "kept": 9710,
+    "excluded_share": 0.22008032128514055,
+    "kills_kept": 127,
+    "kill_recall": 1.0,
+    "lost": []
+  },
+  "committee": {
+    "name": "committee @ description 0.035, region 0.717",
+    "threshold": null,
+    "kept": 9791,
+    "excluded_share": 0.21357429718875498,
+    "kills_kept": 127,
+    "kill_recall": 1.0,
+    "lost": []
+  }
+}

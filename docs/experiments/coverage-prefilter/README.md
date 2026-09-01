@@ -1,5 +1,18 @@
 # Coverage-context prefilter — experiment notes
 
+> **Parked until M8.4, deliberately.** `FINDINGS.md` answers the question it
+> asked — no, not as a silent prefilter at 84% kill recall — and what is left is
+> the 43 pairs where coverage and the judge disagree. Nothing static separates
+> an absence defect from a wrong verdict; injection does. See
+> `docs/experiments/README.md`, and `prefilter-committee/`, which reaches the
+> same wall on the same families of pair.
+>
+> **To re-run:** `score.py` takes `--coverage-file` and `--repo-root`, so it
+> needs a worktree at the reviewed revision and a `.coverage` file from an
+> instrumented suite run there (about 5m15s at `3e1d3a9`). It also needs
+> `pip install coverage`, which is not a project dependency because the tool
+> does not use it.
+
 Working notes for an offline experiment on whether **recorded per-test coverage**
 can cut the (defect, test) pair set before the judge in `defects/pair_mapping.py`
 sees it. Written in the shape of `docs/experiments/pair-prefilter/README.md`,

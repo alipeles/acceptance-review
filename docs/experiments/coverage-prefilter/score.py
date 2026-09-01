@@ -23,6 +23,7 @@ predictions, not ground truth, so every figure here is agreement with a noisy
 oracle: a "lost kill" is a disagreement to adjudicate (M8.4 injection is the
 adjudicator), not a proven filter error.
 """
+
 from __future__ import annotations
 
 import ast
@@ -54,7 +55,7 @@ def per_test_lines(cov_file: Path, repo_root: Path):
     root = str(repo_root.resolve()) + "/"
     out = {}
     for f in cov.measured_files():
-        rel = f[len(root):] if f.startswith(root) else f
+        rel = f.removeprefix(root)
         out[rel] = {
             ln: {c.split("|", 1)[0] for c in ctxs if c}
             for ln, ctxs in cov.contexts_by_lineno(f).items()
@@ -68,10 +69,14 @@ def function_spans(repo_root: Path, path: str, cache: dict):
         try:
             tree = ast.parse((repo_root / path).read_text())
             for node in ast.walk(tree):
-                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
                     spans.append((node.lineno, node.end_lineno + 1))
-        except Exception:
-            pass
+        except (OSError, SyntaxError, UnicodeDecodeError):
+            # A file the diff names that is not readable Python — a non-Python
+            # ref, or one deleted since. No function spans means the defect
+            # falls back to judging every test, which `FINDINGS.md` counts
+            # separately (9 of 48 defects), so swallowing this does not hide it.
+            spans = []
         cache[path] = spans
     return cache[path]
 
@@ -102,8 +107,10 @@ def candidates_for(defect, hunks, lines_by_file, mode, repo_root, ast_cache, jud
         fallback = "import_time_line_in_region"
     elif not cand:
         fallback = (
-            "no_python_ref" if not touches_py
-            else "import_time_lines_only" if saw_line and import_only
+            "no_python_ref"
+            if not touches_py
+            else "import_time_lines_only"
+            if saw_line and import_only
             else "implicated_lines_never_executed"
         )
     if fallback:
@@ -126,9 +133,7 @@ def score(mode, d, hunks, defects, lines_by_file, repo_root):
     kills = [v for v in verdicts if v["kills"]]
     surviving = sum(1 for v in verdicts if v["test_id"] in cands[v["defect_id"]])
     lost = [v for v in kills if v["test_id"] not in cands[v["defect_id"]]]
-    sizes = sorted(
-        len(cands[d_] & judged_tests) for d_ in cands if d_ not in fallbacks
-    )
+    sizes = sorted(len(cands[d_] & judged_tests) for d_ in cands if d_ not in fallbacks)
     return {
         "mode": mode,
         "pairs": len(verdicts),
@@ -154,22 +159,30 @@ def score(mode, d, hunks, defects, lines_by_file, repo_root):
 def main():
     args = sys.argv[1:]
     review = Path(args[0])
-    cov_file = Path(args[args.index("--coverage-file") + 1]) if "--coverage-file" in args else Path(".coverage")
+    cov_file = (
+        Path(args[args.index("--coverage-file") + 1])
+        if "--coverage-file" in args
+        else Path(".coverage")
+    )
     repo_root = Path(args[args.index("--repo-root") + 1]) if "--repo-root" in args else Path(".")
     d, hunks, defects = load(review, repo_root)
     lines_by_file = per_test_lines(cov_file, repo_root)
     results = {
         "reviewed_revision": d["reviewed_revision"],
-        "modes": [score(m, d, hunks, defects, lines_by_file, repo_root)
-                  for m in ("conservative", "default", "function-expanded")],
+        "modes": [
+            score(m, d, hunks, defects, lines_by_file, repo_root)
+            for m in ("conservative", "default", "function-expanded")
+        ],
     }
     out = Path(__file__).parent / "findings.json"
     out.write_text(json.dumps(results, indent=2) + "\n")
     for r in results["modes"]:
-        print(f"{r['mode']:20s} surviving {r['surviving_share']:.1%}  "
-              f"kill recall {r['kill_recall']:.1%}  "
-              f"({r['kills_retained']}/{r['kills']} kills, "
-              f"{r['pairs_surviving']}/{r['pairs']} pairs)")
+        print(
+            f"{r['mode']:20s} surviving {r['surviving_share']:.1%}  "
+            f"kill recall {r['kill_recall']:.1%}  "
+            f"({r['kills_retained']}/{r['kills']} kills, "
+            f"{r['pairs_surviving']}/{r['pairs']} pairs)"
+        )
     print(f"wrote {out}")
 
 

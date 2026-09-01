@@ -5255,3 +5255,161 @@ the record.
   can break. File as a sub-issue of #183 (evidence judgement).
 - **Status:** **FILED as #325**, sub-issue of #183, on 2026-08-31. Approved at
   #316's Gate 2.
+
+### [2026-09-01] One test per pair call costs about 11 points of recall against putting a case's tests in one call
+- **Kind:** filing
+- **Found during:** #324, measuring the pilot arm the issue asks for
+- **Where:** `src/acceptance/defects/pair_mapping.py::_batches`
+- **Severity:** should-fix
+- **What's wrong:** the pair-response-shape pilot gained two arms that batch the
+  way the shipped stage batches — one test per call — so that #324's candidate
+  had a like-for-like control. Both land at 0.8785 and 0.8889 mean recall over
+  nine draws, against 0.9688 for the case-batched `union` arm that ships the same
+  response schema. Both fall below the pilot's bar on 9 draws of 9, where `union`
+  falls below on 1.
+
+  The pilot can attribute the gap without a further call. Five of its thirteen
+  cases hold exactly one test, so on those a per-test arm and `union` send the
+  same tests and differ only in the instruction's wording — and there they score
+  **identically, 1.0000 against 1.0000, over 45 edge-draws**. The whole drop sits
+  in the eight multi-test cases: 0.9630 for `union` against 0.8560 for
+  `per-test`, over 243 edge-draws. The instruction rewrite costs nothing;
+  splitting one call into several costs the recall.
+- **Why I didn't act:** it is not what #324 asked for, it is a change to a
+  deliberate design choice, and the evidence is too thin to act on — 27 labelled
+  edges over 8 constructed cases holding 2–3 tests each, where a real review
+  holds 496 candidate tests. Case-level batching does not scale to a real review
+  anyway, so the actionable question is a different one.
+- **Drafted fix:** file as a sub-issue of #183, the evidence-judgement umbrella,
+  titled *"One test per pair call may be costing recall, and the batching
+  rationale never priced that"*. Body: the figures above; the note that
+  `_batches`'s own docstring gives the reason for one test per request — a batch
+  spanning several tests offers a schema in which every test x every defect is
+  expressible, so the prompt asks for fewer answers than the schema invites and
+  the extras are dropped on the way back, the silent filter DR-164 forbids — and
+  that this reasoning priced the choice in **requests**, not in recall. Acceptance:
+  a measurement of recall against `DEFAULT_PAIR_BATCH_SIZE` and against grouping
+  more than one test per call, on a corpus with more tests per case than the
+  archetypes have, with the DR-164 over-invitation cost measured rather than
+  assumed. Not a proposal to switch to case batching.
+- **Status:** open
+
+### [2026-09-01] #324's caching acceptance cannot be met by the pilot, and the run should say so on the issue
+- **Kind:** filing
+- **Found during:** #324, measuring the pilot arm the issue asks for
+- **Where:** `docs/experiments/pair-response-shape/pilot.py`
+- **Severity:** nice-to-have
+- **What's wrong:** #324 has two acceptance items. The first — the pilot reports
+  recall for the no-`test_id` arm against #315's labels on nine seeds, beside a
+  control — is met, and the arm passes: better on 4 draws of 9, worse on 3, equal
+  on 2, mean 0.8889 against the control's 0.8785, narrower spread, and a higher
+  kills-per-defect floor (0.763 against 0.711), so DR-173's failure mode is
+  absent. The second — a run reporting a non-zero cached share on the pair stage
+  — **cannot be met by this script at all**, and the issue does not say so.
+
+  The pilot now records `cached_tokens` per arm, and both new arms read 0.0%.
+  That is not evidence about the schema: the per-call prompt on the archetype
+  fixtures is **725 tokens** for the candidate and **775** for the control,
+  against OpenAI's **1,024-token minimum** for any caching. Nothing on this
+  corpus could cache whatever the schema did.
+
+  One caching-adjacent fact IS established, and directly rather than by
+  inference: the two arms send byte-identical request content and the candidate
+  sends **6.5% fewer prompt tokens**, which is the response schema being billed
+  as prompt. #324 asserts that as a belief ("I have not confirmed that from
+  OpenAI's side"); this measures it.
+- **Why I didn't act:** writing to the backlog needs human review first.
+- **Drafted fix:** an `add_issue_comment` on #324 carrying: the recall table for
+  `per-test` and `no-test-id`; the head-to-head; the 6.5% prompt-token result and
+  what it confirms; and the statement that the second acceptance item needs a
+  real review run because the fixture prompts are under the caching floor. It
+  should also say that the recall precondition is satisfied, so the change is
+  clear to ship on those grounds, and point at the separate batching finding
+  queued above as the reason the absolute recall figures are low.
+
+  **Amended the same day, and it changes the recommendation.** Two further arms
+  test the human's proposal: keep `test_id` in the response and simply stop
+  enumerating it, leaving the judge to write the node id and `scan` to catch a
+  wrong one. Nine draws each. The judge writes real ids — 100% exact under
+  one-test batching with nothing lost, and 95.65–100% under multi-test batching,
+  where the only id ever written that had not been offered was
+  `test_cart.py::test_checkout_default-unchanged`, a mangling of a real one,
+  costing 3 pair judgements on 1 draw of 9. Under multi-test batching a free id
+  costs no recall: 0.9653 against the enumerated `union` arm's 0.9688, same
+  median, same spread, same 1-of-9 sub-bar count. Under one-test batching it
+  costs 7.6 points (0.8021 against 0.8785) with zero bad ids, which is DR-173's
+  failure mode and is unexplained.
+
+  So the comment should recommend **a free-text `test_id` under multi-test
+  batching**, not removing the field: it is the only measured shape that gets a
+  cacheable schema without foreclosing the larger batches the finding above
+  points to, and the only one that does not cost recall against its own control.
+- **Status:** open
+
+### [2026-09-01] `main` is red: the coverage-prefilter experiment landed with three lint errors
+- **Kind:** defect
+- **Found during:** #324, running the repo lint before reporting
+- **Where:** `docs/experiments/coverage-prefilter/score.py:57` and `:73`
+- **Severity:** blocker
+- **What's wrong:** `4a149a5`, the current tip of `main`, fails CI. I verified it
+  two ways: `.venv/bin/ruff check .` with the pinned ruff 0.16.2 reports three
+  errors in that file, and `ci.yml` runs exactly `ruff check .`; and
+  `gh run list --branch main` reports `conclusion: failure` for that commit,
+  where the two before it succeeded. The errors are FURB188 (a slice that should
+  be `str.removeprefix`), S110 (`try`/`except`/`pass`) and BLE001 (a bare
+  `except Exception`), the last two on the same three lines.
+
+  The file arrived from another session — `4a149a5`'s own message says the
+  experiment was untracked and committed as written — so it was never linted.
+- **Why I didn't act:** it is not this task's area, another session owns that
+  experiment, and the S110/BLE001 pair is a judgement about what that code should
+  do when an AST parse fails rather than a mechanical fix. Fixing it under
+  someone else's feet is how #261's queue edits got reverted.
+- **Drafted fix:** three lines. `rel = f.removeprefix(root)` for FURB188; for the
+  other two, narrow `except Exception` to `except SyntaxError` — the block parses
+  Python source with `ast.parse`, so that is the failure it is actually guarding
+  against, and `_test_ids` in the pair-response-shape pilot already catches
+  exactly that — leaving `pass` legitimate and both warnings gone. If the owning
+  session wants the broad catch kept, a `# noqa: S110, BLE001` with a reason is
+  the alternative. Either way it needs pushing to `main` promptly, since every
+  branch that merges inherits a red baseline.
+- **Status:** **FIXED in the working tree, 2026-09-01**, at the human's request,
+  along with a second untracked experiment directory
+  (`docs/experiments/prefilter-committee/`) that had the same problem and was
+  never linted either. `ruff check .` and `ruff format --check .` are both clean
+  over the whole repo. Narrowed `except Exception` to
+  `(OSError, SyntaxError, UnicodeDecodeError)` rather than adding a `noqa`,
+  since `ast.parse` and `read_text` are what the block guards. **Still unpushed**
+  — `main` stays red until it is.
+
+### [2026-09-01] The committed task-file corpus grows by two tests per dogfood run, forever
+- **Kind:** decision
+- **Found during:** #324, tracing why a local run collected ten fewer tests than CI
+- **Where:** `tests/requirement/test_task_file.py::test_parses_every_committed_task_file`
+  and `tests/requirement/test_region_coverage.py::test_the_repositorys_own_task_files_are_fully_covered`
+- **Severity:** nice-to-have
+- **What's wrong:** both tests are parametrised over `dogfood-logs/*/current-task.md`,
+  so every dogfood run permanently adds two tests. The corpus is at 169 files and
+  **338 tests, 20.7% of the suite's 1,635**, and it grows with process history
+  rather than with the software.
+
+  Runtime is not the problem: I timed the two at **2.8 seconds** of a 343-second
+  suite. Three other things are. The marginal file buys almost nothing — both
+  tests only assert that the markdown parser handled the file, and file 170
+  exercises the same shapes as file 169. The suite's *size* becomes a function of
+  which process artifacts are committed, which is what made the ten-test gap
+  above take a worktree and a diff to explain. And a fifth of the suite being one
+  parse corpus distorts any reading of test counts as coverage.
+- **Why I didn't act:** it is a judgement about what the regression corpus is
+  for, not a defect, and #258 deliberately moved these tests onto this corpus.
+- **Drafted fix:** keep both tests and stop the corpus growing automatically.
+  Two ways, and I recommend the second: (1) pin an explicit list of files, added
+  to deliberately when a run exercises a markdown shape not already covered;
+  (2) filter `committed_task_files` to structurally distinct files — group by a
+  normalised signature of the parsed structure (which sections, nesting depth,
+  wrapped bullets, nested blocks) and keep the first file in each group, with a
+  small named allowlist for files kept as named regressions such as #216's.
+  (2) is self-limiting without anyone having to remember to prune, and it keeps
+  the property the corpus is actually for, which is shape coverage rather than
+  file count. Either way the count stops moving with process history.
+- **Status:** open

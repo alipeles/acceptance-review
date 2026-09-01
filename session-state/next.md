@@ -21,36 +21,38 @@ Two follow-ups, in this order. **CLAUDE.md exempts both from Gate 1 and Gate 2 �
 no `current-task.md`, no `decompose`, no `check`.** That exemption covers these
 two and nothing else; anything they turn up takes both gates in full.
 
-## 1. A local pytest run collects ten fewer tests than CI does
+## 1. The ten-test gap between local and CI — SETTLED, not a defect
 
-**Do this first.** Until it is settled, "the suite passes" from this machine is a
-weaker claim than it sounds, and everything after it rests on that claim.
+**Resolved 2026-08-31. Nothing to fix. Do not reopen this.**
 
-On `c177a1b`, CI reported **1633 passed, 2 xfailed**. The same commit on this
-machine reported **1623 passed, 2 xfailed**, and `pytest --collect-only -q`
-counted 1625 where CI's total implies 1635.
+The suite has two tests parametrised over every committed task file under
+`dogfood-logs/`: `tests/requirement/test_region_coverage.py::
+test_the_repositorys_own_task_files_are_fully_covered` and
+`tests/requirement/test_task_file.py::test_parses_every_committed_task_file`.
+So **each committed dogfood run directory adds exactly two tests** to the suite.
 
-What I ruled out, and verified:
+`e5e5ec7`, which added the five `dogfood-logs/316-*` run directories, was
+committed to `main` and is **not an ancestor of `c177a1b`** (verified with
+`git merge-base --is-ancestor`). CI's `ci.yml` triggers on `pull_request`, so
+GitHub checks out the **branch merged into `main`** — five extra run
+directories, ten extra tests. The local checkout of the bare branch has neither.
 
-- Nothing was lost between HEAD and the working tree. Identical test-file lists,
-  identical count of `def test_` (1052 either side), and the only uncommitted
-  diff was four formatting line-joins with nothing semantic in them.
-- Every test added during #316 is present in HEAD — checked by name for five of
-  them, including the whole of `tests/test_concurrency.py`.
-- Nothing skipped: `pytest -rs` reported no skips.
-- No test parametrises over `dogfood-logs/`, and the fixture directories that
-  are parametrised over (`tests/fixtures/archetypes`, `rating-regression`,
-  `rating-stability`) did not change.
+Verified by collecting both: a detached worktree at `c177a1b` collects **1625**;
+this repo at `4a149a5`, which contains `e5e5ec7`, collects **1635** — the same
+number CI's 1633 passed + 2 xfailed implies. Diffing the two collected lists
+with the repo path normalised leaves exactly those ten ids and nothing else.
+The earlier "1623 passed, 2 xfailed" is 1625 collected, so it was consistent all
+along.
 
-**What I did not check, and would start with:** whether a `conftest.py`,
-`pytest.ini`/`pyproject` setting, or a stale `__pycache__` is excluding a
-directory locally; whether `.venv`'s pytest version differs from CI's; and what
-`pytest --collect-only -q` produces on a clean clone of the same commit, diffed
-against the same command here. That diff names the missing ten directly and is
-the cheapest first move.
+The prior note here that "no test parametrises over `dogfood-logs/`" was wrong;
+that is what sent the search in the wrong direction.
 
-Earlier in the session I reported 1633 locally and later 1623, and CI says 1633
-is right — so the local run is the anomaly, not the earlier report.
+**The general rule, which will recur:** a branch collects fewer tests than CI
+whenever `main` gained a dogfood-log directory after the branch point, and
+CLAUDE.md's convention of committing process artifacts to `main` makes that the
+normal case. **Comparing a local test count against a CI test count across a
+branch is meaningless.** Compare a local count only against a local count at the
+same commit.
 
 ## 2. #324 — nothing caches, because every call sends a unique response schema
 
@@ -72,23 +74,132 @@ prompt tokens on all seven stages**, 1,012 calls.
   which removed a per-batch `test_id` enum from the retired mapping stage after
   measuring 461 of 464 calls caching nothing.
 
-**The first task is the pilot arm, not the change.** Removing the constraint can
-cost recall: `test_id` sits at the top of the pair response and its enum holds
-exactly one value today, so the model cannot get it wrong; unconstrained it must
-echo a long pytest node id exactly, and a paraphrase loses that call's 24-40
-judgements at once. The response-shape pilot already found that shortening the
-*defect* ids cut output 25% and lost a third of the labelled kills, returning
-nothing on 4 of 13 cases.
+### SHIPPED in the working tree, uncommitted — 2026-09-01
 
-`docs/experiments/pair-response-shape/pilot.py` scores shapes against #315's
-labels with request content held identical across arms. Add an arm that **drops
-`test_id` from the response entirely** — a batch holds one test, so the caller
-already knows which; removing the field is safer than leaving it unconstrained
-and saves output too. **Nine seeds**: the pilot's notes record three giving a
-wrong answer where nine gave the right one.
+**The human waived the split into separate issues and asked for the change
+directly.** Two things landed together in `defects/pair_mapping.py`, and they
+have to stay together — see below.
 
-Changing `_allowed` moves every pair request key and re-records that stage's
-corpus.
+1. **`_batches` builds rectangles instead of one test per request.** Tests owed
+   an identical defect set are grouped and share a call, up to
+   `DEFAULT_TESTS_PER_BATCH = 4`. `DEFAULT_PAIR_BATCH_SIZE = 40` still caps
+   judgements per response, so four tests in a call are offered a quarter as
+   many defects each — the response does not get bigger.
+2. **`test_id` is no longer enumerated in the pair schema.** `_allowed` split
+   into `_constrained_ids` (defect ids, into the schema) and `_scanned_ids`
+   (both, into `scan`), so a test id the call never offered is still recorded as
+   an `UnusableAnswer` rather than believed.
+
+**Why together.** A free-text `test_id` with ONE test per call measured 0.8021
+against the enumerated control's 0.8785. With several tests it measured 0.9653
+against 0.9688 — indistinguishable. Ship one without the other and the measured
+result is a regression.
+
+Also: `tests_per_batch` is a new `RunConfig` field and `--tests-per-batch` flag,
+folded into the pair request key beside `size` so changing it invalidates
+transcripts.
+
+**Suite: 1636 passed, 2 xfailed.** `ruff check` and `ruff format --check` clean
+over `src` and `tests`. Two test doubles had to change and the change is not
+cosmetic: they read the offered test ids off the *schema enum*, which no longer
+exists, so `tests/support.py::_tests_offered` reads them off the `### test <id>`
+headings in the prompt — where the model reads them.
+
+**Not yet measured: whether anything actually caches.** That needs one real
+`acceptance check --mode record`. Nothing in the pilot can show it; every pilot
+prompt is under the 1,024-token floor.
+
+### The two prefilter experiments, cleaned up and parked
+
+**`ruff check .` and `ruff format --check .` are now clean over the whole repo.**
+They were red because of `docs/experiments/coverage-prefilter/` (committed
+unlinted in `4a149a5`, which is why `main`'s CI is failing) and
+`docs/experiments/prefilter-committee/` (untracked, never linted). **`main` stays
+red until this is pushed.**
+
+Both were run by an agent somewhere else and arrived carrying absolute paths into
+a container — `/root/exp`, `/root/head314` — so as committed they could not run
+here and their figures could not be checked. `prefilter-committee/paths.py` now
+names the three external inputs as environment variables and every script stops
+with a sentence when one is missing. **No computation changed**, only paths and
+lint. One real fragility fixed on the way: `transfer314.py` built predicates
+closing over loop variables, which is correct only because the scorer consumes
+them before the next iteration; they are bound as arguments now.
+
+Inputs a future session needs, none of which are or should be in the repo: a
+worktree at each corpus head carrying a `.coverage` file from an instrumented
+suite run, and the #316 review's own JSON. Plus `pip install coverage`, which is
+deliberately not a project dependency.
+
+**`docs/experiments/README.md` is new** and is the thing that makes them
+revisitable: an index saying which experiments are settled and which two are
+parked on M8.4, with what M8.4 decides for each. Both stop at the same wall — a
+small set of pairs where a static signal and the pair judge disagree, which
+nothing static can adjudicate — so injection over those pairs settles both at
+once and gives the first measurement of pair-verdict accuracy against ground
+truth.
+
+### The pilot arms behind it
+
+Uncommitted in the working tree: two new arms in
+`docs/experiments/pair-response-shape/pilot.py`, their figures in
+`findings.json`, and a *Dropping `test_id`* section in that directory's
+`README.md`. Cost $0.42, nine draws each, recorded so a re-run replays free.
+
+- **`per-test`** — the control. One call per test, which is what
+  `pair_mapping.py::_batches` already does, with the shipped `_Unions` schema
+  unchanged so `test_id` is present and pinned to that call's one test.
+- **`no-test-id`** — the candidate. The same, with `test_id` and its
+  one-element `tests` wrapper removed from the schema.
+
+They send byte-identical request content — a probe asserts it before any call —
+so the only difference is the response schema.
+
+**Recall does not drop.** Candidate better on 4 draws of 9, worse on 3, equal on
+2; mean 0.8889 against 0.8785; narrower spread (0.0625 against 0.0938);
+kills-per-defect floor 0.763 against 0.711, so DR-173's failure mode — an arm
+buying a smaller response by answering *no* more often — is absent. It also
+sends 6.5% fewer prompt and 14% fewer output tokens.
+
+**The caching half of #324's acceptance cannot be answered by this pilot.** Both
+arms read a 0.0% cached share, and that is meaningless here: the per-call prompt
+on the archetype fixtures is **725 tokens** (candidate) and **775** (control),
+under OpenAI's **1,024-token floor**. Nothing could cache whatever the schema
+did. It needs a real review run. `cached_tokens` is now recorded per arm in
+`findings.json`, so that run's figure has somewhere to go.
+
+**One thing the pilot did confirm that #324 only believed:** the two arms' request
+content is byte-identical and the candidate still sends 6.5% fewer prompt
+tokens, which is the response schema being billed as prompt.
+
+**Not yet done:** the change itself. Removing `test_id` from
+`pair_mapping.py::_TestVerdicts` and `_allowed` moves every pair request key and
+re-records that stage's corpus. The recall precondition is now satisfied, so
+this is clear to do on those grounds.
+
+**Two drafted filings are in `docs/DEFERRED.md`, unfiled, awaiting approval** —
+the batching finding below, and a comment reporting all of this on #324.
+
+### The surprise: one test per call costs about 11 points of recall
+
+Both per-test arms fall below the pilot's bar on **9 draws of 9**, where the
+case-batched `union` arm — same response schema — falls below on 1. Mean 0.8785
+and 0.8889 against 0.9688.
+
+It is the batching, not the schema and not the reworded instruction. Five of the
+thirteen cases hold one test, so there a per-test arm and `union` send the same
+tests; they score **identically, 1.0000 to 1.0000, over 45 edge-draws**. The
+whole drop is in the eight multi-test cases: 0.9630 against 0.8560 over 243
+edge-draws.
+
+`_batches` chose one test per request deliberately, and its docstring gives the
+reason — a multi-test batch offers a schema inviting every test x every defect,
+so answers would be dropped on the way back, the silent filter DR-164 forbids.
+That priced the choice in **requests**. It never priced it in **recall**.
+
+**Do not act on it from these numbers.** 27 labelled edges over 8 constructed
+cases holding 2-3 tests each, where a real review holds 496 candidate tests, and
+case batching does not scale to a real review anyway. Queued as a filing.
 
 ## Also open, not scheduled
 
