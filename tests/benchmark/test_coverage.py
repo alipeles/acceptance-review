@@ -38,6 +38,7 @@ from tests.support import (
     _completed,
     _fake_response,
     _supplied_enum,
+    _tests_offered,
     client_finding_nothing,
     constant_embedding_fn,
 )
@@ -749,7 +750,7 @@ def test_the_shared_pipeline_partitions_the_pair_call(tmp_path):
             pair_calls.append(
                 [
                     (test_id, defect_id)
-                    for test_id in _supplied_enum("test_id", **kwargs)
+                    for test_id in _tests_offered(**kwargs)
                     for defect_id in _supplied_enum("defect_id", **kwargs)
                 ]
             )
@@ -802,9 +803,9 @@ def test_the_shared_pipeline_partitions_the_pair_call(tmp_path):
     one_per_call = run(1)
     batched = run(500)
 
-    # The control reaches the stage: a smaller batch means more calls. Not "one
-    # call at 500" — the stage partitions each test's pairs separately, so the
-    # floor is one call per test however large the batch.
+    # The control reaches the stage: a smaller batch means more calls. Since
+    # #324 a request may span several tests, so the floor is no longer one call
+    # per test — but a batch size of one still forces one judgement per call.
     assert len(one_per_call) > len(batched) > 0
     assert all(len(pairs) == 1 for pairs in one_per_call)
     # The same pairs judged either way. Partitioning changes the asking, not the

@@ -40,7 +40,11 @@ from acceptance.coverage.open_questions import (
 from acceptance.coverage.recommendations import recommend_tests
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.defects.enumeration import enumerate_defects
-from acceptance.defects.pair_mapping import DEFAULT_PAIR_BATCH_SIZE, judge_pairs
+from acceptance.defects.pair_mapping import (
+    DEFAULT_PAIR_BATCH_SIZE,
+    DEFAULT_TESTS_PER_BATCH,
+    judge_pairs,
+)
 from acceptance.defects.support import (
     apply_derived_support,
     derive_support,
@@ -246,6 +250,7 @@ def run_review(
     declaration_text: str | None = None,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
     pair_batch_size: int = DEFAULT_PAIR_BATCH_SIZE,
+    tests_per_batch: int = DEFAULT_TESTS_PER_BATCH,
     link_pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
     link_distance_threshold: float | None = DEFAULT_LINK_DISTANCE_THRESHOLD,
     task_identifier: str = "<inline>",
@@ -366,6 +371,7 @@ def run_review(
         client,
         repo=repo,
         batch_size=pair_batch_size,
+        tests_per_batch=tests_per_batch,
         unusable=unusable,
         prior=list(ledger_prior.pair_verdicts) if ledger_prior is not None else None,
     )

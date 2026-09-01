@@ -56,7 +56,7 @@ from acceptance.defects.reachability import Pair, form_pairs, prefilter
 from acceptance.evidence.discovery import DiscoveredTest
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel
-from acceptance.partition import partition
+from acceptance.partition import Batch
 from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import (
     ChangeSet,
@@ -89,6 +89,23 @@ PAIR_STAGE_LOGIC_VERSION = 1
 # rather than a list per test, so the same number of judgements produces more
 # output than the mapping stage's did.
 DEFAULT_PAIR_BATCH_SIZE = 40
+
+# How many tests may share one request. This used to be fixed at 1 — see
+# `_batches` for why that was chosen and why it changed.
+#
+# **The judgement budget is unchanged.** `DEFAULT_PAIR_BATCH_SIZE` still caps
+# judgements per response, so four tests share a call by being offered a quarter
+# as many defects each, not by making the response four times larger. That keeps
+# DR-164's shedding argument intact: what binds is how many independent
+# judgements one response carries, and that number has not moved.
+#
+# 4 rather than some larger number because the evidence supports the DIRECTION
+# and not the magnitude. `docs/experiments/pair-response-shape/` measured 2-3
+# tests per call against 1 and found 0.9688 recall against 0.8785 over nine draws
+# each, but its calls carried at most 15 judgements where these carry 40, and it
+# never varied the shape of the rectangle at a fixed budget. Treat 4 as the
+# smallest step that gets the measured effect, not as a tuned value.
+DEFAULT_TESTS_PER_BATCH = 4
 
 _SYSTEM_PROMPT = """\
 You are given concrete DEFECTS — specific ways the delivered code could be wrong
@@ -317,46 +334,127 @@ def _subject(batch_pairs: list[Pair]) -> str:
     return "\n".join(lines)
 
 
-def _batches(pairs: list[Pair], size: int):
-    """Partition `pairs` into requests, one test per request.
+def _batches(pairs: list[Pair], size: int, tests_per_batch: int = DEFAULT_TESTS_PER_BATCH):
+    """Partition `pairs` into requests, each one a full rectangle.
 
-    **Per test rather than across tests, and the reason is the limit's meaning.**
-    `constrain` narrows each id field independently, so a batch spanning several
-    tests offers a schema in which every test x every defect is expressible — a
-    batch of 3 pairs over 2 tests and 3 defects permits 6 answers. The prompt
-    would ask for 3 and the schema would invite 6, and the extras would have to
-    be dropped on the way back in, which is a silent filter of exactly the kind
-    DR-164 exists to forbid.
+    **A batch is a rectangle: every test in it is offered every defect in it.**
+    That invariant is the whole design, and it is what the original one-test-per-
+    request rule was really protecting. `constrain` narrows each id field
+    independently, so a batch spanning several tests offers a schema in which
+    every test x every defect is expressible. If the offered pairs are a ragged
+    subset of that cross product, the prompt asks for fewer answers than the
+    schema invites and the extras have to be dropped on the way back — a silent
+    filter of exactly the kind DR-164 forbids. When the batch IS the cross
+    product, there is nothing to drop, and the number of tests stops mattering.
 
-    With one test per request the schema's cross product IS the offered set, so
-    the limit counts the judgements the response is actually asked to carry.
-    A test with more open defects than `size` is split across several requests.
+    One test per request was the simplest way to guarantee a rectangle, not a
+    finding that one test was better. Measurement says it is worse:
+    `docs/experiments/pair-response-shape/` scored 2-3 tests per call at 0.9688
+    mean recall against 0.8785 for one, over nine draws each against #315's
+    human-reviewed kill labels, with the gap falling entirely on the cases where
+    the two batched differently. Read its *Dropping `test_id`* section before
+    changing this; in particular the shape of the rectangle at a fixed judgement
+    budget is NOT measured, so `tests_per_batch` is a deliberate knob.
 
-    The cost is more requests than a test-major batch would issue. It is smaller
-    than it looks — the system prompt and the shared prefix are what caching
-    discounts, and the alternative restates every defect under every test in the
-    prompt anyway — but it is a real figure for #316 to watch as pair counts grow.
+    Tests owed the SAME set of defects can share a call while keeping the
+    rectangle; tests owed different sets cannot, so they are grouped by the
+    defects they are still owed. That set is ragged in practice — `judge_pairs`
+    drops pairs the prefilter proves unreachable and pairs carried from a prior
+    run — which is why this groups rather than simply slicing the test list.
+
+    `size` still caps judgements per response, so more tests in a call means
+    fewer defects with each. A group whose tests are owed more defects than fit
+    is split across several requests, as before.
     """
     by_test: dict[str, list[Pair]] = {}
     for pair in pairs:
         by_test.setdefault(pair.test.test_id, []).append(pair)
-    batches = []
-    for test_id in sorted(by_test):
-        batches.extend(partition(by_test[test_id], size, key=lambda pair: pair.key))
-    return batches
+
+    # Tests owed an identical defect set, keyed by that set so the grouping is a
+    # pure function of the input — batch composition must not depend on
+    # iteration order or replay misses (see `partition.partition`).
+    groups: dict[tuple[str, ...], list[str]] = {}
+    for test_id, test_pairs in by_test.items():
+        groups.setdefault(tuple(sorted({p.defect.id for p in test_pairs})), []).append(test_id)
+
+    width = max(1, min(tests_per_batch, size))
+    grouped: list[list[Pair]] = []
+    for defect_ids in sorted(groups):
+        test_ids = sorted(groups[defect_ids])
+        for start in range(0, len(test_ids), width):
+            tests_here = test_ids[start : start + width]
+            # Whole defect set where it fits, otherwise as many as the judgement
+            # budget allows once it is shared between this call's tests.
+            depth = max(1, size // len(tests_here))
+            for first in range(0, len(defect_ids), depth):
+                wanted = set(defect_ids[first : first + depth])
+                grouped.append(
+                    sorted(
+                        (
+                            pair
+                            for test_id in tests_here
+                            for pair in by_test[test_id]
+                            if pair.defect.id in wanted
+                        ),
+                        key=lambda pair: pair.key,
+                    )
+                )
+
+    return [
+        Batch(items=tuple(items), index=index, count=len(grouped), size=size)
+        for index, items in enumerate(grouped)
+    ]
 
 
-def _allowed(batch_pairs: list[Pair]) -> dict[str, list[str]]:
+def _scanned_ids(batch_pairs: list[Pair]) -> dict[str, list[str]]:
+    """What this call supplied — the set `scan` checks the answer against.
+
+    Both id fields, including `test_id`, which `_constrained_ids` deliberately
+    leaves out of the schema. The two halves of the supplied-id guarantee are
+    separable and this is the seam: `constrain` makes a wrong id unrepresentable,
+    `scan` makes one detectable, and `supplied_ids.py::scan` says in its own
+    docstring that it runs even where `constrain` already bound the field.
+    """
     return {
         "test_id": sorted({pair.test.test_id for pair in batch_pairs}),
         "defect_id": sorted({pair.defect.id for pair in batch_pairs}),
     }
 
 
+def _constrained_ids(batch_pairs: list[Pair]) -> dict[str, list[str]]:
+    """What goes into the SCHEMA — the defect ids, and no longer the test ids.
+
+    **Why `test_id` came out.** It was the only part of a pair request that
+    changed from one call to the next, and a provider's prompt cache keys on a
+    prefix that includes the response schema: #316's Gate 2 run measured a 0.0%
+    cached share across all seven stages and 1,012 calls, with 1,762 distinct
+    schemas across 1,762 pair calls, collapsing to 7 with this enum removed
+    (#324). Leaving the field a plain `str` is what makes a call's schema
+    identical to its neighbour's.
+
+    **The judge is not thereby trusted.** `_scanned_ids` still supplies the test
+    ids and `scan` still checks every answer against them, so an id that was
+    never offered is recorded as an `UnusableAnswer` rather than believed, and
+    `_ask` drops any pair the batch did not offer. `docs/experiments/
+    pair-response-shape/` measured the risk over nine draws of each arm: with
+    several tests in a call the judge wrote a real node id on 95.65-100% of
+    entries, the single exception being one mangling of a real id that cost 3
+    pair judgements on 1 draw, and recall was 0.9653 against the enumerated
+    arm's 0.9688 — indistinguishable at that sample size.
+
+    **This is why the two changes shipped together.** Leaving the field free
+    while a call still carried ONE test measured 0.8021 against 0.8785, with no
+    bad ids at all. Dropping the enum is safe with several tests in a call and
+    was measured to be unsafe with one.
+    """
+    return {"defect_id": sorted({pair.defect.id for pair in batch_pairs})}
+
+
 def _ask(
     batch_pairs: list[Pair],
     batch,
     client: ModelClient,
+    tests_per_batch: int = DEFAULT_TESTS_PER_BATCH,
 ) -> tuple[
     dict[tuple[str, str], tuple[bool, str]],
     dict[tuple[str, str], str],
@@ -387,11 +485,15 @@ def _ask(
             Block(BlockKind.SUBJECT, _subject(batch_pairs)),
         ]
     )
-    allowed = _allowed(batch_pairs)
     result = client.complete(
         messages,
-        constrain(_PairVerdicts, allowed),
-        batch.request_partition(),
+        constrain(_PairVerdicts, _constrained_ids(batch_pairs)),
+        # `tests_per_batch` folded in beside `size` for the reason
+        # `Batch.request_partition` gives about `size`: it is a run control, so
+        # changing it must invalidate every recorded transcript, and it would not
+        # otherwise — two values produce identical batches whenever a group holds
+        # fewer tests than either.
+        {**batch.request_partition(), "tests_per_batch": tests_per_batch},
         parse_as=_LenientPairVerdicts,
         stage=_STAGE,
     )
@@ -420,7 +522,7 @@ def _ask(
                 )
             else:
                 answered[key] = (judged.fails, reason)
-    return answered, unusable_shape, scan(result, allowed, _STAGE)
+    return answered, unusable_shape, scan(result, _scanned_ids(batch_pairs), _STAGE)
 
 
 # `DerivedSupport` and `derive_support` used to live here, deriving a support
@@ -441,6 +543,7 @@ def judge_pairs(
     batch_size: int = DEFAULT_PAIR_BATCH_SIZE,
     unusable: UnusableAnswerLog | None = None,
     prior: list[PairVerdict] | None = None,
+    tests_per_batch: int = DEFAULT_TESTS_PER_BATCH,
 ) -> PairMappingResult:
     """Judge every pair the prefilter does not prove unreachable.
 
@@ -485,8 +588,10 @@ def judge_pairs(
     # #314's Gate 2 and several thousand on a large diff.
     #
     # The request is untouched, so every recorded transcript still replays.
-    batches = _batches(to_ask, batch_size)
-    answers = map_calls(batches, lambda batch: _ask(list(batch.items), batch, client))
+    batches = _batches(to_ask, batch_size, tests_per_batch)
+    answers = map_calls(
+        batches, lambda batch: _ask(list(batch.items), batch, client, tests_per_batch)
+    )
 
     fresh: list[PairVerdict] = []
     for batch, (answered, unusable_shape, scanned) in zip(batches, answers):

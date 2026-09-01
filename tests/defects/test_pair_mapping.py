@@ -20,11 +20,13 @@ from __future__ import annotations
 
 import json
 import subprocess
+from pathlib import Path
 from types import SimpleNamespace
 
 from acceptance.change.diff import extract_change_set
 from acceptance.defects.pair_mapping import (
     DEFAULT_PAIR_BATCH_SIZE,
+    DEFAULT_TESTS_PER_BATCH,
     defect_text,
     judge_pairs,
     source_digest,
@@ -76,6 +78,27 @@ def _offered(field: str, **kwargs) -> list[str]:
     return found
 
 
+_TEST_HEADING = "### test "
+
+
+def _offered_tests(**kwargs) -> list[str]:
+    """The tests this call offered, read off the PROMPT rather than the schema.
+
+    `test_id` stopped being an enum in #324, so the schema no longer carries the
+    work list for tests. The prompt does: `_subject` writes a `### test <id>`
+    heading per test. Reading it from there keeps the double answering exactly
+    what it was asked, and keeps the reading honest — a request that named a
+    test nowhere the model could see would now answer nothing, where reading the
+    schema would have hidden that.
+    """
+    text = "\n".join(message["content"] for message in kwargs["messages"])
+    return [
+        line[len(_TEST_HEADING) :].strip()
+        for line in text.splitlines()
+        if line.startswith(_TEST_HEADING)
+    ]
+
+
 class _Judge:
     """A double that answers every pair a call offers, and records what it was asked.
 
@@ -122,7 +145,7 @@ class _Judge:
         return {"defect_id": defect_id, "fails": False}
 
     def _completion_fn(self, **kwargs):
-        tests = _offered("test_id", **kwargs)
+        tests = _offered_tests(**kwargs)
         defects = _offered("defect_id", **kwargs)
         self.requests.append(
             {
@@ -376,7 +399,15 @@ def test_one_misshapen_answer_does_not_discard_the_rest_of_its_batch(tmp_path):
 # --- carry --------------------------------------------------------------------
 
 
-def _judged(judge, defect_sets, tests, repo, prior=None, batch_size=DEFAULT_PAIR_BATCH_SIZE):
+def _judged(
+    judge,
+    defect_sets,
+    tests,
+    repo,
+    prior=None,
+    batch_size=DEFAULT_PAIR_BATCH_SIZE,
+    tests_per_batch=DEFAULT_TESTS_PER_BATCH,
+):
     return judge_pairs(
         defect_sets,
         tests,
@@ -384,6 +415,7 @@ def _judged(judge, defect_sets, tests, repo, prior=None, batch_size=DEFAULT_PAIR
         judge.client,
         repo=repo,
         batch_size=batch_size,
+        tests_per_batch=tests_per_batch,
         prior=prior,
     )
 
@@ -479,6 +511,9 @@ def test_which_pairs_share_a_request_does_not_change_what_carries(tmp_path):
 
 
 def test_no_request_carries_more_judgements_than_the_limit(tmp_path):
+    """The limit counts judgements, and still does now that a request may span
+    several tests: four tests sharing a call are offered a quarter as many
+    defects each, not four times as many judgements."""
     repo = _repo(tmp_path, {"test_billing.py": "x"})
     defects = [_defect_set(*[f"defect {index}" for index in range(5)])]
     tests = [_test(f"test_case_{index}") for index in range(4)]
@@ -486,14 +521,93 @@ def test_no_request_carries_more_judgements_than_the_limit(tmp_path):
 
     _judged(judge, defects, tests, repo, batch_size=3)
 
-    # One request per test, so each test's 5 defects split 3 + 2: 8 requests.
-    assert judge.calls == 8
+    assert judge.calls > 0
     for request in judge.requests:
-        # The schema's cross product IS the offered set, because a request never
-        # spans two tests. That equality is what makes the limit mean the number
-        # of judgements the response is actually asked to carry.
-        assert len(request["test_id"]) == 1
         assert len(request["test_id"]) * len(request["defect_id"]) <= 3
+
+
+def test_every_request_is_a_full_rectangle(tmp_path):
+    """Every test in a request is offered every defect in it, and nothing else.
+
+    This replaces the one-test-per-request rule, which was only ever the
+    simplest way of guaranteeing it. `constrain` narrows each id field
+    independently, so a request's schema permits its tests x its defects. If the
+    pairs it was built from are a ragged subset of that cross product, the schema
+    invites answers the prompt never asked for and they are dropped on the way
+    back in — the silent filter DR-164 forbids.
+
+    `pairs_asked` is exactly that cross product, summed over every request, so
+    asserting it equals the real pair set says both things at once: no pair was
+    missed, and no request invited one that does not exist.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    defects = [_defect_set(*[f"defect {index}" for index in range(5)])]
+    tests = [_test(f"test_case_{index}") for index in range(4)]
+    judge = _Judge()
+
+    _judged(judge, defects, tests, repo, batch_size=3)
+
+    every_pair = {(defect.id, test.test_id) for defect in defects[0].defects for test in tests}
+    assert judge.pairs_asked() == every_pair
+
+
+def test_a_ragged_pair_set_is_still_split_into_rectangles(tmp_path):
+    """The case the rectangle rule actually has to survive.
+
+    `judge_pairs` drops pairs carried from a prior run, so what is left to ask is
+    routinely ragged — one test still owed three defects beside another owed two.
+    Tests owed different sets cannot share a call without inviting a pair that
+    was never offered, so they must be grouped by what they are owed.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    defects = [_defect_set("divides by 30", "ignores days", "rounds down")]
+    tests = [_test("test_half_month"), _test("test_full_month")]
+
+    first = _judged(_Judge(), defects, tests, repo)
+    # Carry all but one pair, so the two tests are left owed different defect
+    # sets and cannot share a call.
+    ordered = sorted(first.verdicts, key=lambda verdict: (verdict.test_id, verdict.defect_id))
+    kept = ordered[1:]
+    assert len(kept) == len(ordered) - 1
+
+    judge = _Judge()
+    _judged(judge, defects, tests, repo, prior=kept)
+
+    still_owed = {(defect.id, test.test_id) for defect in defects[0].defects for test in tests} - {
+        (verdict.defect_id, verdict.test_id) for verdict in kept
+    }
+    assert still_owed
+    assert judge.pairs_asked() == still_owed
+
+
+def test_changing_how_many_tests_share_a_call_invalidates_the_transcripts(tmp_path):
+    """`tests_per_batch` is a determinism control, so it belongs in the request
+    key exactly as the batch size does — otherwise a run at a new value replays
+    answers produced under the old one.
+
+    Checked where it cannot be faked: one test and one defect, so both values
+    produce the identical single batch and the only thing that can separate the
+    two requests is the descriptor.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    defects = [_defect_set("divides by 30")]
+    tests = [_test("test_half_month")]
+
+    store = TranscriptStore(_tmp())
+    keys = []
+    for width in (1, 4):
+        judge = _Judge()
+        judge.client = ModelClient(
+            model=_DEFAULT_MODEL,
+            mode=Mode.RECORD,
+            store=store,
+            completion_fn=judge._completion_fn,
+        )
+        _judged(judge, defects, tests, repo, tests_per_batch=width)
+        keys.append(sorted(path.name for path in Path(store.root).glob("*.json")))
+
+    assert len(keys[0]) == 1
+    assert len(keys[1]) == 2, "the second run replayed the first's transcript"
 
 
 # The two tests that used to sit here exercised this module's own shadow
@@ -961,11 +1075,16 @@ def test_the_defect_list_sits_in_the_shared_prefix_of_every_call(tmp_path):
     repo = _repo(tmp_path, {"test_billing.py": "x"})
     judge = _Judge()
 
+    # One test per call, so the two requests differ in their test and in nothing
+    # else. The property is about where the shared block sits, not about how the
+    # pairs were grouped, and pinning the grouping here would make this test fail
+    # for reasons that belong to `_batches`.
     _judged(
         judge,
         [_defect_set("divides by 30", "ignores days")],
         [_test("test_half_month"), _test("test_full_month")],
         repo,
+        tests_per_batch=1,
     )
 
     assert judge.calls == 2

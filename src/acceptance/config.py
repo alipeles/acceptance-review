@@ -22,7 +22,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from acceptance.defects.pair_mapping import DEFAULT_PAIR_BATCH_SIZE
+from acceptance.defects.pair_mapping import DEFAULT_PAIR_BATCH_SIZE, DEFAULT_TESTS_PER_BATCH
 from acceptance.llm import DEFAULT_TRANSCRIPT_ROOT, Mode, ModelClient, TranscriptStore
 from acceptance.review_state import DeterminismControls, LinkPrefilter, ReviewProvenance
 
@@ -153,6 +153,12 @@ class RunConfig(BaseModel):
     # worse than no control: it accepts a value, records nothing, and reads
     # as a knob that was turned.
     pair_batch_size: int = Field(default=DEFAULT_PAIR_BATCH_SIZE, ge=1)
+    # How many tests share one pair request. A determinism control like the batch
+    # size beside it, hashed into the pair request for the same reason, and
+    # separate from it because the two do different things: `pair_batch_size`
+    # caps judgements per response, this one shapes the rectangle those
+    # judgements are drawn from. See `pair_mapping.py::_batches`.
+    tests_per_batch: int = Field(default=DEFAULT_TESTS_PER_BATCH, ge=1)
     # And for obligation linking (#144), whose unit is a PAIR of obligations
     # rather than an obligation — see the constant's note.
     link_pair_batch_size: int = Field(default=DEFAULT_LINK_PAIR_BATCH_SIZE, ge=1)

@@ -50,6 +50,7 @@ from tests.support import (
     _EMPTY_BY_SCHEMA,
     _completed,
     _fake_response,
+    _tests_offered,
     constant_embedding_fn,
 )
 
@@ -150,11 +151,13 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
             # and my derivation refuses to classify a criterion whose defects are
             # partly unknown — so a double that skipped one would drive the run
             # `indeterminate` rather than steering the rating this suite is about.
-            # Both id sets come off the schema. The pair stage constrains
-            # `test_id` as well as `defect_id` (`_allowed`), unlike the mapping
-            # stage this replaced, whose per-batch test ids #302 dropped from the
-            # schema and left only in the prompt.
-            tests = _enums(schema, "test_id")
+            # The defect ids come off the schema; the TEST ids come off the
+            # prompt. #324 dropped the `test_id` enum for the same reason #302
+            # dropped the mapping stage's — a per-call enum is the one part of
+            # the request that changes between calls, so nothing caches — and
+            # left the test ids where the model reads them. Reading them from
+            # the schema here would silently answer for no tests at all.
+            tests = _tests_offered(**kwargs)
             defect_ids = _enums(schema, "defect_id")
             verdict: dict[str, Any] = {"fails": always_strong}
             if always_strong:
