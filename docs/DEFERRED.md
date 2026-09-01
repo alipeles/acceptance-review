@@ -5292,7 +5292,17 @@ the record.
   more than one test per call, on a corpus with more tests per case than the
   archetypes have, with the DR-164 over-invitation cost measured rather than
   assumed. Not a proposal to switch to case batching.
-- **Status:** open
+- **Status:** **PARTLY OVERTAKEN, 2026-09-01.** The human waived the split into
+  separate issues, so grouping tests shipped in PR #328 as `_batches` building
+  rectangles, `DEFAULT_TESTS_PER_BATCH = 4`. What is left of this item is the
+  half that was never measured and is the reason 4 is not a tuned number: **at a
+  fixed judgement budget, how tests trade against defects.** The pilot compared
+  1 test per call against 2-3, on calls carrying at most 15 judgements, where
+  production carries 40. File the remainder under #183, the evidence-judgement
+  umbrella, as a measurement of rectangle shape rather than of batching in
+  general — one test x 40 defects, four x ten, ten x four — on a corpus with more
+  tests per case than the archetypes have, with the DR-164 over-invitation cost
+  on ragged batches measured rather than assumed.
 
 ### [2026-09-01] #324's caching acceptance cannot be met by the pilot, and the run should say so on the issue
 - **Kind:** filing
@@ -5344,7 +5354,24 @@ the record.
   batching**, not removing the field: it is the only measured shape that gets a
   cacheable schema without foreclosing the larger batches the finding above
   points to, and the only one that does not cost recall against its own control.
-- **Status:** open
+- **Status:** **CHANGED SHAPE, and now urgent, 2026-09-01.** The recommendation
+  shipped in PR #328, whose body carries the figures this comment was going to
+  carry, so the comment itself is redundant. **What replaced it is a mistake I
+  made:** the PR body said "Closes #324", so merging closed #324 with its
+  **second acceptance item unmet** — "if it ships: a run reports a non-zero
+  cached share on the pair stage, and the figure is recorded". No run has
+  measured that, and none can until someone spends about $7 on
+  `acceptance check --mode record`; every prompt in the pilot is under the
+  provider's 1,024-token floor. Closing it that way loses the only record that
+  the change is unverified where it counts.
+
+  Two ways to fix it, and I recommend the first: **reopen #324** with a comment
+  saying the recall half is done and the caching half is not, so the issue keeps
+  the acceptance item that is still owed. The alternative is to leave it closed
+  and file a successor under #184, the determinism umbrella, titled something
+  like "Measure the pair stage's cached share after #328" — cleaner history, but
+  it splits one acceptance across two issues for no reason other than tidiness.
+  Either way this needs doing before the caching claim gets treated as settled.
 
 ### [2026-09-01] `main` is red: the coverage-prefilter experiment landed with three lint errors
 - **Kind:** defect
