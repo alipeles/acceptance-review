@@ -278,9 +278,7 @@ def snapshot_review(review: Review, run: RunKey) -> RunSnapshot:
         evidence_classes={o.id: o.evidence_class for o in review.obligation_map},
         open_questions=[q.question for q in review.open_questions],
         defect_verdicts=[
-            DefectVerdict(
-                defect_id=verdict.defect_id, test_id=verdict.test_id, kills=verdict.kills
-            )
+            DefectVerdict(defect_id=verdict.defect_id, test_id=verdict.test_id, kills=verdict.kills)
             for verdict in review.pair_verdicts
         ],
     )

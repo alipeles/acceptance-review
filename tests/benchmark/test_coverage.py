@@ -892,9 +892,7 @@ def test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives(t
     because "not strongly supported" alone would pass on a pipeline that never
     reached the criterion at all.
     """
-    case = build_benchmark_case(
-        ARCHETYPES_DIR / "04-non-discriminating-input", tmp_path / "repo"
-    )
+    case = build_benchmark_case(ARCHETYPES_DIR / "04-non-discriminating-input", tmp_path / "repo")
     test_id = "test_billing.py::test_half_of_a_month"
     defect_id = "daily-rate/hard-codes-thirty"
 

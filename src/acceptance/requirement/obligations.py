@@ -1110,9 +1110,7 @@ def decompose(
         #
         # Issued concurrently, consumed in span order for the same reason the
         # loop above is serial: `seen_ids` mints ids against what came before.
-        uncovered = [
-            (_span_requirement(summary, d), d) for d in decisions if not d.covered
-        ]
+        uncovered = [(_span_requirement(summary, d), d) for d in decisions if not d.covered]
 
         def _ask_span(item, _summary=summary):
             span, decision = item

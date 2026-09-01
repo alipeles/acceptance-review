@@ -295,9 +295,7 @@ def test_the_schema_asked_for_differs_from_the_shape_parsed():
     _judge(
         [_defect_set("ob-1/d1")],
         [_test("t.py::test_a")],
-        client_returning(
-            _answer("t.py::test_a", [{"defect_id": "not-supplied", "fails": False}])
-        ),
+        client_returning(_answer("t.py::test_a", [{"defect_id": "not-supplied", "fails": False}])),
         unusable=log,
     )
 
