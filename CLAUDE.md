@@ -444,36 +444,23 @@ Anything short of that is a stop. It is not a judgement call and not a threshold
 to negotiate down. Record the result in `session-state/<issue>.md` — clean or not, and at
 which SHA.
 
-#### Suspended while the defect-first evidence work is in flight
+#### Both gates are skipped for two follow-ups, and only those two
 
-**From 2026-08-21, until #312's sub-issues have landed — #313, #314, #315 and
-#316 — the "clean or stop" rule above does not apply.** Gate 2's machinery is
-the very thing that work is replacing: the mapping question is unanswerable as
-posed, a mapping miss is unrecoverable downstream, and the strength denominator
-is self-serving (`docs/DR-312-defect-first-evidence.md`, Context). Iterating a
-task to a clean check against an instrument we already know to be broken spends
-real effort on a reading that is about to change. For tasks in this stretch:
+**#316 has landed, so the defect-first suspension is over and both gates apply
+again by default.** The human then exempted two specific pieces of work,
+2026-09-01: **finding why a local `pytest` run collects ten fewer tests than CI
+does on the same commit**, and **#324, where every stage sends a unique response
+schema and nothing caches.** Skip Gate 1 and Gate 2 on those two — no
+`current-task.md`, no `decompose`, no `check`.
 
-- **Run `check` once.** Do not re-run it to chase a clean result. This also
-  suspends, for Gate 2 only, the re-arm rule below — a correction made in
-  response to a finding does not oblige another run.
-- **Fix what the run genuinely identifies** — a real defect in the work under
-  review, or genuinely weak wording in `current-task.md`.
-- **File what is genuinely new**, as a drafted queue item reviewed at the gate
-  (*Working agreement* §4).
-- **A finding that is only evidence of an already-known defect needs nothing.**
-  Do not re-file it, do not re-record it against its issue, do not work around
-  it. Note it in a line and move on.
-- **Then move forward.** A less-than-clean check is not a stop here.
+The reason is that both are about the instrument rather than the product, and
+#324 is worth roughly $2.90 of a $6.87 review. Gating a cost fix behind a review
+that costs the thing being fixed is circular, and a suite that is a weaker check
+locally than on CI should be trusted again before it gates anything.
 
-What does not change: **Gate 1 is untouched** and still needs a decomposition
-you would defend. The check is still *run*, and its result still recorded in
-`session-state/<issue>.md` with the SHA, clean or not. A finding attributed to a
-tool defect still may not be silently dropped — this stops the *iterating*, not
-the *looking*. Anything flagged as needing non-code evidence or human review is
-still a pause.
-
-**Delete this block when #316 lands.**
+**This exemption does not generalise.** Every other task takes both gates in
+full, including anything else those two turn up. Delete this block when both are
+done.
 
 ### Rules that apply at both gates
 
@@ -566,7 +553,8 @@ because everything after it is judged against a broken gate.
 ```bash
 .venv/bin/pip install -e ".[dev]"   # first-time setup; needs the sandbox off (TLS)
 .venv/bin/pytest -q                 # full suite. Replay mode, no API key needed
-.venv/bin/ruff check .              # lint as CI runs it. Only valid if .venv/bin/ruff --version prints 0.16.2
+.venv/bin/ruff check .              # lint. Only valid if .venv/bin/ruff --version prints 0.16.2
+.venv/bin/ruff format --check .     # CI runs BOTH. `check` alone passes on unformatted code
 .venv/bin/acceptance check --task current-task.md --base <rev> [--head <rev>] --mode record
 ```
 
