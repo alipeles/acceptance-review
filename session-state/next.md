@@ -111,18 +111,28 @@ corpus.
   missing measurement is a hold-out against #315's archetype labels; embeddings
   are cached, so re-runs make no calls.
 
-## Two untracked leftovers I did not touch
+## A committed experiment that bears on both items
 
-Neither is mine and neither is from this session, so I left both alone rather
-than delete another session's work.
+`docs/experiments/coverage-prefilter/` was untracked and is now committed. It is
+not mine — another session scored it against **this** session's #316 Gate 2 run
+at head `3e1d3a9` — and I committed it as written. Read `FINDINGS.md` before
+touching the pair stage; its headline is that coverage reachability is **not**
+shippable as a silent prefilter for the static judge.
 
-- **`session-state/313.md` is untracked and stale.** #313 landed and its file was
-  deleted on `main` in `dc9a22a`. The orient procedure reads `session-state/`
-  first and treats a file there as a task in flight, so this one will mislead
-  the next session into thinking #313 is open. It is not.
-- **`docs/experiments/coverage-prefilter/` is untracked** — a complete
-  experiment write-up (README, FINDINGS.md, findings.json, score.py) that has
-  never been committed. Someone's work is sitting outside version control.
+Two things in it change what the items below are worth:
+
+- It measures the #316 Gate 2 run independently: 23,808 pairs, 268 kills, a
+  **1.1% kill rate**, 48 defects against 496 tests. That corroborates the pair
+  counts in this file from a second source.
+- It argues the coverage map is the right **test selection for M8.4's defect
+  injection** — a test that never executes a line cannot fail on a mutation of
+  it — at roughly 20 CPU-minutes and zero tokens against $6.02 of static
+  judging per run. If that holds, it is a larger lever than #324's caching fix,
+  and the two are independent.
+
+It also names 43 pairs where coverage and the judge disagree, and says several
+look like judge error rather than filter blind spots. Those are a ready-made
+case list for the first real measurement of pair-verdict accuracy.
 
 ## Numbers worth not re-deriving
 

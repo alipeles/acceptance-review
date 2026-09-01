@@ -1,0 +1,506 @@
+{
+  "reviewed_revision": "3e1d3a9eaa7e7610dcda30fa42654ebb9e21ebf4",
+  "modes": [
+    {
+      "mode": "conservative",
+      "pairs": 23808,
+      "pairs_surviving": 22982,
+      "surviving_share": 0.9653,
+      "kills": 268,
+      "kills_retained": 267,
+      "kill_recall": 0.9963,
+      "defects_judged": 48,
+      "defects_on_fallback": {
+        "import_time_line_in_region": 44,
+        "implicated_lines_never_executed": 1,
+        "no_python_ref": 1
+      },
+      "candidate_tests_per_filtered_defect": {
+        "median": 126,
+        "min": 40,
+        "max": 126
+      },
+      "lost_kills": [
+        {
+          "defect_id": "no-recording-or-judging-failures/pair-mapping-judges-defects-against-tests",
+          "test_id": "tests/requirement/test_summary_pass.py::test_a_span_decided_twice_is_refused",
+          "reason": "The test asserts duplicate span dispositions are rejected with a schema validation error, which would fail if pair mapping no longer validates the recorded span judgments."
+        }
+      ]
+    },
+    {
+      "mode": "default",
+      "pairs": 23808,
+      "pairs_surviving": 9203,
+      "surviving_share": 0.3866,
+      "kills": 268,
+      "kills_retained": 225,
+      "kill_recall": 0.8396,
+      "defects_judged": 48,
+      "defects_on_fallback": {
+        "import_time_lines_only": 7,
+        "implicated_lines_never_executed": 1,
+        "no_python_ref": 1
+      },
+      "candidate_tests_per_filtered_defect": {
+        "median": 137,
+        "min": 40,
+        "max": 231
+      },
+      "lost_kills": [
+        {
+          "defect_id": "accuracy-report-does-not-span-change/report-path-omits-accuracy-warning",
+          "test_id": "tests/benchmark/test_scoring.py::test_evidence_agreement_is_marked_not_comparable_across_the_cutover",
+          "reason": "The test checks the rendered report text for the cutover warning wording and #316."
+        },
+        {
+          "defect_id": "accuracy-report-does-not-span-change/report-path-omits-accuracy-warning",
+          "test_id": "tests/benchmark/test_scoring.py::test_mapping_accuracy_is_marked_not_comparable_across_the_partitioning_change",
+          "reason": "The test checks the report text itself for the cutover warning wording."
+        },
+        {
+          "defect_id": "conclusion-derived-from-recorded-judgements/conclusion-still-reads-from-live-judgement-stage",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test compares replayed findings to recorded findings, so a live-judgement-derived conclusion would change the asserted equality."
+        },
+        {
+          "defect_id": "conclusion-derived-from-recorded-judgements/derived-support-misses-unjudged-defects",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test asserts replay reproduces the recorded findings, and dropping unjudged defects would alter those findings."
+        },
+        {
+          "defect_id": "coverage-from-failing-way/pair-verdicts-not-propagated-to-coverage",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test checks that replayed findings match recorded findings, so broken propagation of pair verdicts into coverage would change the result."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/concurrent-call-order-leaks-into-unusable-log",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test requires replay to reproduce the recorded findings, so order-sensitive unusable-log content would break the comparison."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/concurrent-call-order-leaks-into-unusable-log",
+          "test_id": "tests/test_determinism.py::test_two_recorded_runs_are_byte_identical",
+          "reason": "It asserts the two canonical JSON reviews are byte-identical, which this order-sensitive logging could break."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/derived-support-uses-unordered-set-derived-links",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test asserts the replayed findings equal the recorded findings, and nondeterministic derived-support ordering would change them."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/derived-support-uses-unordered-set-derived-links",
+          "test_id": "tests/test_determinism.py::test_two_recorded_runs_are_byte_identical",
+          "reason": "It asserts the serialized review is identical across runs, which unstable derived-support ordering could change."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/pair-verdict-order-not-canonicalized",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test compares recorded and replayed findings, so non-canonical pair-verdict ordering would make them differ."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/pair-verdict-order-not-canonicalized",
+          "test_id": "tests/test_determinism.py::test_two_recorded_runs_are_byte_identical",
+          "reason": "It asserts the persisted review bytes match exactly, which non-canonical pair-verdict ordering would violate."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/report-denominator-rendering-can-diverge-from-state",
+          "test_id": "tests/test_determinism.py::test_two_recorded_runs_are_byte_identical",
+          "reason": "It compares full canonical review JSON, so a report denominator that diverges from stored state would change the bytes."
+        },
+        {
+          "defect_id": "do-not-change-criterion-derivation/mandate-to-criteria-path-rewired",
+          "test_id": "tests/defects/test_enumeration.py::test_a_criterion_whose_text_changed_keeps_no_part_of_its_earlier_set",
+          "reason": "The test asserts the criterion is re-enumerated after its text changes, which a rewired derivation path could prevent."
+        },
+        {
+          "defect_id": "do-not-change-criterion-derivation/mandate-to-criteria-path-rewired",
+          "test_id": "tests/defects/test_enumeration.py::test_changing_one_criterion_leaves_every_other_criterion_s_set_reused",
+          "reason": "It asserts per-criterion carry reuse across a reworded criterion, which would break if the mandate-to-criteria derivation path changed."
+        },
+        {
+          "defect_id": "docs-update/benchmark-warning-docs-miss-new-boundary",
+          "test_id": "tests/benchmark/test_rating_regression.py::test_the_readme_states_what_is_and_is_not_read",
+          "reason": "The test asserts the README mentions the benchmark regression test and the hand-transcribed judgement docs, which this documentation defect would change."
+        },
+        {
+          "defect_id": "docs-update/benchmark-warning-docs-miss-new-boundary",
+          "test_id": "tests/benchmark/test_scoring.py::test_evidence_agreement_is_marked_not_comparable_across_the_cutover",
+          "reason": "The test asserts the benchmark text says the metric is \"not comparable\" and mentions \"#316\"."
+        },
+        {
+          "defect_id": "docs-update/benchmark-warning-docs-miss-new-boundary",
+          "test_id": "tests/benchmark/test_scoring.py::test_mapping_accuracy_is_marked_not_comparable_across_the_partitioning_change",
+          "reason": "The test explicitly checks the benchmark text for the '#164' boundary warning and 'not comparable' wording."
+        },
+        {
+          "defect_id": "docs-update/benchmark-warning-docs-miss-new-boundary",
+          "test_id": "tests/benchmark/test_scoring.py::test_the_cutovers_decision_record_states_the_non_comparability_too",
+          "reason": "The test asserts the docs mention the cutover warning and both evidence_agreement and mapping_accuracy."
+        },
+        {
+          "defect_id": "docs-update/benchmark-warning-docs-miss-new-boundary",
+          "test_id": "tests/benchmark/test_scoring.py::test_the_decision_record_states_the_non_comparability_too",
+          "reason": "It asserts the DR text contains \"not comparable\" and \"mapping-accuracy\"."
+        },
+        {
+          "defect_id": "keep-rating-names/changed-meaning-of-unsupported",
+          "test_id": "tests/defects/test_support.py::test_a_reasoned_empty_enumeration_is_never_either_extreme",
+          "reason": "The test asserts that `_derive(...).evidence_class` is not `unsupported` for an empty enumeration."
+        },
+        {
+          "defect_id": "keep-rating-names/new-terminal-rating-added",
+          "test_id": "tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme",
+          "reason": "The test asserts the new terminal class `no_plausible_defect` exists for empty enumeration."
+        },
+        {
+          "defect_id": "keep-rating-names/renamed-rating-vocabulary",
+          "test_id": "tests/benchmark/test_coverage.py::test_archetype_1_evidence_agreement_reports_a_real_number",
+          "reason": "The test checks the exact evidence_class strings, including unsupported and strongly_supported."
+        },
+        {
+          "defect_id": "keep-rating-names/renamed-rating-vocabulary",
+          "test_id": "tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme",
+          "reason": "The test asserts the evidence class name is `no_plausible_defect`, so a renamed vocabulary would break it."
+        },
+        {
+          "defect_id": "keep-rating-names/renamed-rating-vocabulary",
+          "test_id": "tests/defects/test_support.py::test_an_unjudged_defect_never_reads_as_a_surviving_one",
+          "reason": "The test asserts the exact evidence-class names `indeterminate` and `unsupported`."
+        },
+        {
+          "defect_id": "no-plausible-failure-outcome/empty-enumeration-treated-as-unsupported",
+          "test_id": "tests/defects/test_support.py::test_a_reasoned_empty_enumeration_is_never_either_extreme",
+          "reason": "The test asserts that an empty enumeration must not derive `unsupported`."
+        },
+        {
+          "defect_id": "no-recording-or-judging-failures/defect-enumeration-records-failure-modes",
+          "test_id": "tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict",
+          "reason": "It asserts judge_pairs returns a verdict for every offered defect/test pair and no unjudged pairs."
+        },
+        {
+          "defect_id": "no-recording-or-judging-failures/pair-mapping-judges-defects-against-tests",
+          "test_id": "tests/requirement/test_summary_pass.py::test_a_span_decided_twice_is_refused",
+          "reason": "The test asserts duplicate span dispositions are rejected with a schema validation error, which would fail if pair mapping no longer validates the recorded span judgments."
+        },
+        {
+          "defect_id": "preserve-existing-outcomes-when-unevaluable/indeterminate-marking-drops-existing-outcomes",
+          "test_id": "tests/coverage/test_recommendations.py::test_an_omission_does_not_mark_the_answered_criteria_indeterminate",
+          "reason": "The test asserts that a successful recommendation does not mark the obligation indeterminate."
+        },
+        {
+          "defect_id": "preserve-existing-outcomes-when-unevaluable/unjudged-defects-not-carried-forward",
+          "test_id": "tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue",
+          "reason": "It asserts the continued run carries only when explicitly named and otherwise records zero carried items and no parent run."
+        },
+        {
+          "defect_id": "preserve-existing-outcomes-when-unevaluable/unjudged-defects-not-carried-forward",
+          "test_id": "tests/requirement/test_carry_forward.py::test_carrying_forward_does_not_freeze_a_superseded_obligation_in_place",
+          "reason": "It asserts a superseded obligation is not present after carry-forward, so freezing the old obligation would fail it."
+        },
+        {
+          "defect_id": "preserve-existing-outcomes-when-unevaluable/unjudged-defects-not-carried-forward",
+          "test_id": "tests/test_report.py::test_a_carried_forward_obligation_says_so_and_names_the_revision",
+          "reason": "The test asserts carried-forward obligations are labeled as such and name the prior revision."
+        },
+        {
+          "defect_id": "preserve-existing-outcomes-when-unevaluable/unjudged-defects-not-carried-forward",
+          "test_id": "tests/test_report.py::test_a_fresh_obligation_carries_no_such_label",
+          "reason": "It asserts the rendered report does not contain the phrase \"carried forward,\" which would appear if prior outcomes were incorrectly carried into a fresh obligation."
+        },
+        {
+          "defect_id": "rating-by-coverage-completeness/no-coverage-completeness-rating",
+          "test_id": "tests/defects/test_support.py::test_a_fully_judged_criterion_takes_the_class_its_kill_count_implies",
+          "reason": "The test asserts the derived evidence class matches the kill count implied by the verdicts."
+        },
+        {
+          "defect_id": "remove-older-test-judgement/report-still-renders-old-pair-judgement-block",
+          "test_id": "tests/defects/test_enumeration.py::test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review",
+          "reason": "The test compares canonical reviews after stripping defect_sets, so an old pair-judgement block still present in one review would make the outputs differ."
+        },
+        {
+          "defect_id": "remove-older-test-judgement/report-still-renders-old-pair-judgement-block",
+          "test_id": "tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict",
+          "reason": "The test asserts every offered defect-test pair is returned as a verdict and that there are no unjudged pairs."
+        },
+        {
+          "defect_id": "remove-older-test-judgement/report-still-renders-old-pair-judgement-block",
+          "test_id": "tests/defects/test_pair_mapping.py::test_the_pipeline_really_judges_pairs",
+          "reason": "It asserts that review.pair_verdicts is populated and contains a killing verdict, which would be affected if the pair-judgement block were still rendered instead of the judged pairs pipeline."
+        },
+        {
+          "defect_id": "remove-older-test-judgement/report-still-renders-old-pair-judgement-block",
+          "test_id": "tests/requirement/test_summary_pass.py::test_a_span_left_undecided_is_refused",
+          "reason": "The test asserts the summary rejects an undecided span count, which would be affected if old pair-judgement blocks still render."
+        },
+        {
+          "defect_id": "test-evidence-rating-derived-from-recorded-judgements/rating-still-reads-from-old-judgement-stage",
+          "test_id": "tests/benchmark/test_rating_regression.py::test_every_unearned_rating_is_required_to_no_longer_be_issued",
+          "reason": "The test asserts the computed class for each unearned rating, which would change if evidence_class were still derived from the retired judgement stage."
+        },
+        {
+          "defect_id": "test-evidence-rating-derived-from-recorded-judgements/rating-still-reads-from-old-judgement-stage",
+          "test_id": "tests/defects/test_pair_mapping.py::test_the_question_put_about_a_pair_is_the_failure_question",
+          "reason": "The test asserts the prompt asks the failure question, which this defect would replace with the retired judgement-stage framing."
+        },
+        {
+          "defect_id": "test-evidence-rating-derived-from-recorded-judgements/unjudged-pairs-counted-as-uncovered",
+          "test_id": "tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict",
+          "reason": "The test asserts result.unjudged is empty, so misclassifying unjudged pairs would break it."
+        },
+        {
+          "defect_id": "test-prescriptions-derived-from-judgements/recommendations-built-from-current-defect-sets",
+          "test_id": "tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_its_defect_changed",
+          "reason": "The test checks that changing the defect set causes a fresh verdict instead of reusing the prior carried recommendation."
+        },
+        {
+          "defect_id": "test-prescriptions-derived-from-judgements/recommendations-built-from-current-defect-sets",
+          "test_id": "tests/test_cli.py::test_retrieval_reads_the_named_revision_and_not_a_recomputation",
+          "reason": "The test asserts the CLI reads the stored review for the named revision, so recomputing from current defect sets instead would change the emitted plausible_defect."
+        },
+        {
+          "defect_id": "test-prescriptions-derived-from-judgements/recommendations-built-from-current-defect-sets",
+          "test_id": "tests/test_cli.py::test_retrieval_without_a_revision_uses_the_newest_stored_review",
+          "reason": "The test asserts the recommendation output comes from the newest stored review, so recomputing from current defect sets instead of stored review data would change the returned plausible_defect."
+        }
+      ]
+    },
+    {
+      "mode": "function-expanded",
+      "pairs": 23808,
+      "pairs_surviving": 9210,
+      "surviving_share": 0.3868,
+      "kills": 268,
+      "kills_retained": 225,
+      "kill_recall": 0.8396,
+      "defects_judged": 48,
+      "defects_on_fallback": {
+        "import_time_lines_only": 7,
+        "implicated_lines_never_executed": 1,
+        "no_python_ref": 1
+      },
+      "candidate_tests_per_filtered_defect": {
+        "median": 137,
+        "min": 40,
+        "max": 232
+      },
+      "lost_kills": [
+        {
+          "defect_id": "accuracy-report-does-not-span-change/report-path-omits-accuracy-warning",
+          "test_id": "tests/benchmark/test_scoring.py::test_evidence_agreement_is_marked_not_comparable_across_the_cutover",
+          "reason": "The test checks the rendered report text for the cutover warning wording and #316."
+        },
+        {
+          "defect_id": "accuracy-report-does-not-span-change/report-path-omits-accuracy-warning",
+          "test_id": "tests/benchmark/test_scoring.py::test_mapping_accuracy_is_marked_not_comparable_across_the_partitioning_change",
+          "reason": "The test checks the report text itself for the cutover warning wording."
+        },
+        {
+          "defect_id": "conclusion-derived-from-recorded-judgements/conclusion-still-reads-from-live-judgement-stage",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test compares replayed findings to recorded findings, so a live-judgement-derived conclusion would change the asserted equality."
+        },
+        {
+          "defect_id": "conclusion-derived-from-recorded-judgements/derived-support-misses-unjudged-defects",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test asserts replay reproduces the recorded findings, and dropping unjudged defects would alter those findings."
+        },
+        {
+          "defect_id": "coverage-from-failing-way/pair-verdicts-not-propagated-to-coverage",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test checks that replayed findings match recorded findings, so broken propagation of pair verdicts into coverage would change the result."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/concurrent-call-order-leaks-into-unusable-log",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test requires replay to reproduce the recorded findings, so order-sensitive unusable-log content would break the comparison."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/concurrent-call-order-leaks-into-unusable-log",
+          "test_id": "tests/test_determinism.py::test_two_recorded_runs_are_byte_identical",
+          "reason": "It asserts the two canonical JSON reviews are byte-identical, which this order-sensitive logging could break."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/derived-support-uses-unordered-set-derived-links",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test asserts the replayed findings equal the recorded findings, and nondeterministic derived-support ordering would change them."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/derived-support-uses-unordered-set-derived-links",
+          "test_id": "tests/test_determinism.py::test_two_recorded_runs_are_byte_identical",
+          "reason": "It asserts the serialized review is identical across runs, which unstable derived-support ordering could change."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/pair-verdict-order-not-canonicalized",
+          "test_id": "tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call",
+          "reason": "The test compares recorded and replayed findings, so non-canonical pair-verdict ordering would make them differ."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/pair-verdict-order-not-canonicalized",
+          "test_id": "tests/test_determinism.py::test_two_recorded_runs_are_byte_identical",
+          "reason": "It asserts the persisted review bytes match exactly, which non-canonical pair-verdict ordering would violate."
+        },
+        {
+          "defect_id": "deterministic-runs-byte-identical/report-denominator-rendering-can-diverge-from-state",
+          "test_id": "tests/test_determinism.py::test_two_recorded_runs_are_byte_identical",
+          "reason": "It compares full canonical review JSON, so a report denominator that diverges from stored state would change the bytes."
+        },
+        {
+          "defect_id": "do-not-change-criterion-derivation/mandate-to-criteria-path-rewired",
+          "test_id": "tests/defects/test_enumeration.py::test_a_criterion_whose_text_changed_keeps_no_part_of_its_earlier_set",
+          "reason": "The test asserts the criterion is re-enumerated after its text changes, which a rewired derivation path could prevent."
+        },
+        {
+          "defect_id": "do-not-change-criterion-derivation/mandate-to-criteria-path-rewired",
+          "test_id": "tests/defects/test_enumeration.py::test_changing_one_criterion_leaves_every_other_criterion_s_set_reused",
+          "reason": "It asserts per-criterion carry reuse across a reworded criterion, which would break if the mandate-to-criteria derivation path changed."
+        },
+        {
+          "defect_id": "docs-update/benchmark-warning-docs-miss-new-boundary",
+          "test_id": "tests/benchmark/test_rating_regression.py::test_the_readme_states_what_is_and_is_not_read",
+          "reason": "The test asserts the README mentions the benchmark regression test and the hand-transcribed judgement docs, which this documentation defect would change."
+        },
+        {
+          "defect_id": "docs-update/benchmark-warning-docs-miss-new-boundary",
+          "test_id": "tests/benchmark/test_scoring.py::test_evidence_agreement_is_marked_not_comparable_across_the_cutover",
+          "reason": "The test asserts the benchmark text says the metric is \"not comparable\" and mentions \"#316\"."
+        },
+        {
+          "defect_id": "docs-update/benchmark-warning-docs-miss-new-boundary",
+          "test_id": "tests/benchmark/test_scoring.py::test_mapping_accuracy_is_marked_not_comparable_across_the_partitioning_change",
+          "reason": "The test explicitly checks the benchmark text for the '#164' boundary warning and 'not comparable' wording."
+        },
+        {
+          "defect_id": "docs-update/benchmark-warning-docs-miss-new-boundary",
+          "test_id": "tests/benchmark/test_scoring.py::test_the_cutovers_decision_record_states_the_non_comparability_too",
+          "reason": "The test asserts the docs mention the cutover warning and both evidence_agreement and mapping_accuracy."
+        },
+        {
+          "defect_id": "docs-update/benchmark-warning-docs-miss-new-boundary",
+          "test_id": "tests/benchmark/test_scoring.py::test_the_decision_record_states_the_non_comparability_too",
+          "reason": "It asserts the DR text contains \"not comparable\" and \"mapping-accuracy\"."
+        },
+        {
+          "defect_id": "keep-rating-names/changed-meaning-of-unsupported",
+          "test_id": "tests/defects/test_support.py::test_a_reasoned_empty_enumeration_is_never_either_extreme",
+          "reason": "The test asserts that `_derive(...).evidence_class` is not `unsupported` for an empty enumeration."
+        },
+        {
+          "defect_id": "keep-rating-names/new-terminal-rating-added",
+          "test_id": "tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme",
+          "reason": "The test asserts the new terminal class `no_plausible_defect` exists for empty enumeration."
+        },
+        {
+          "defect_id": "keep-rating-names/renamed-rating-vocabulary",
+          "test_id": "tests/benchmark/test_coverage.py::test_archetype_1_evidence_agreement_reports_a_real_number",
+          "reason": "The test checks the exact evidence_class strings, including unsupported and strongly_supported."
+        },
+        {
+          "defect_id": "keep-rating-names/renamed-rating-vocabulary",
+          "test_id": "tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme",
+          "reason": "The test asserts the evidence class name is `no_plausible_defect`, so a renamed vocabulary would break it."
+        },
+        {
+          "defect_id": "keep-rating-names/renamed-rating-vocabulary",
+          "test_id": "tests/defects/test_support.py::test_an_unjudged_defect_never_reads_as_a_surviving_one",
+          "reason": "The test asserts the exact evidence-class names `indeterminate` and `unsupported`."
+        },
+        {
+          "defect_id": "no-plausible-failure-outcome/empty-enumeration-treated-as-unsupported",
+          "test_id": "tests/defects/test_support.py::test_a_reasoned_empty_enumeration_is_never_either_extreme",
+          "reason": "The test asserts that an empty enumeration must not derive `unsupported`."
+        },
+        {
+          "defect_id": "no-recording-or-judging-failures/defect-enumeration-records-failure-modes",
+          "test_id": "tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict",
+          "reason": "It asserts judge_pairs returns a verdict for every offered defect/test pair and no unjudged pairs."
+        },
+        {
+          "defect_id": "no-recording-or-judging-failures/pair-mapping-judges-defects-against-tests",
+          "test_id": "tests/requirement/test_summary_pass.py::test_a_span_decided_twice_is_refused",
+          "reason": "The test asserts duplicate span dispositions are rejected with a schema validation error, which would fail if pair mapping no longer validates the recorded span judgments."
+        },
+        {
+          "defect_id": "preserve-existing-outcomes-when-unevaluable/indeterminate-marking-drops-existing-outcomes",
+          "test_id": "tests/coverage/test_recommendations.py::test_an_omission_does_not_mark_the_answered_criteria_indeterminate",
+          "reason": "The test asserts that a successful recommendation does not mark the obligation indeterminate."
+        },
+        {
+          "defect_id": "preserve-existing-outcomes-when-unevaluable/unjudged-defects-not-carried-forward",
+          "test_id": "tests/requirement/test_carry_forward.py::test_carry_forward_reads_only_the_run_it_was_told_to_continue",
+          "reason": "It asserts the continued run carries only when explicitly named and otherwise records zero carried items and no parent run."
+        },
+        {
+          "defect_id": "preserve-existing-outcomes-when-unevaluable/unjudged-defects-not-carried-forward",
+          "test_id": "tests/requirement/test_carry_forward.py::test_carrying_forward_does_not_freeze_a_superseded_obligation_in_place",
+          "reason": "It asserts a superseded obligation is not present after carry-forward, so freezing the old obligation would fail it."
+        },
+        {
+          "defect_id": "preserve-existing-outcomes-when-unevaluable/unjudged-defects-not-carried-forward",
+          "test_id": "tests/test_report.py::test_a_carried_forward_obligation_says_so_and_names_the_revision",
+          "reason": "The test asserts carried-forward obligations are labeled as such and name the prior revision."
+        },
+        {
+          "defect_id": "preserve-existing-outcomes-when-unevaluable/unjudged-defects-not-carried-forward",
+          "test_id": "tests/test_report.py::test_a_fresh_obligation_carries_no_such_label",
+          "reason": "It asserts the rendered report does not contain the phrase \"carried forward,\" which would appear if prior outcomes were incorrectly carried into a fresh obligation."
+        },
+        {
+          "defect_id": "rating-by-coverage-completeness/no-coverage-completeness-rating",
+          "test_id": "tests/defects/test_support.py::test_a_fully_judged_criterion_takes_the_class_its_kill_count_implies",
+          "reason": "The test asserts the derived evidence class matches the kill count implied by the verdicts."
+        },
+        {
+          "defect_id": "remove-older-test-judgement/report-still-renders-old-pair-judgement-block",
+          "test_id": "tests/defects/test_enumeration.py::test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review",
+          "reason": "The test compares canonical reviews after stripping defect_sets, so an old pair-judgement block still present in one review would make the outputs differ."
+        },
+        {
+          "defect_id": "remove-older-test-judgement/report-still-renders-old-pair-judgement-block",
+          "test_id": "tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict",
+          "reason": "The test asserts every offered defect-test pair is returned as a verdict and that there are no unjudged pairs."
+        },
+        {
+          "defect_id": "remove-older-test-judgement/report-still-renders-old-pair-judgement-block",
+          "test_id": "tests/defects/test_pair_mapping.py::test_the_pipeline_really_judges_pairs",
+          "reason": "It asserts that review.pair_verdicts is populated and contains a killing verdict, which would be affected if the pair-judgement block were still rendered instead of the judged pairs pipeline."
+        },
+        {
+          "defect_id": "remove-older-test-judgement/report-still-renders-old-pair-judgement-block",
+          "test_id": "tests/requirement/test_summary_pass.py::test_a_span_left_undecided_is_refused",
+          "reason": "The test asserts the summary rejects an undecided span count, which would be affected if old pair-judgement blocks still render."
+        },
+        {
+          "defect_id": "test-evidence-rating-derived-from-recorded-judgements/rating-still-reads-from-old-judgement-stage",
+          "test_id": "tests/benchmark/test_rating_regression.py::test_every_unearned_rating_is_required_to_no_longer_be_issued",
+          "reason": "The test asserts the computed class for each unearned rating, which would change if evidence_class were still derived from the retired judgement stage."
+        },
+        {
+          "defect_id": "test-evidence-rating-derived-from-recorded-judgements/rating-still-reads-from-old-judgement-stage",
+          "test_id": "tests/defects/test_pair_mapping.py::test_the_question_put_about_a_pair_is_the_failure_question",
+          "reason": "The test asserts the prompt asks the failure question, which this defect would replace with the retired judgement-stage framing."
+        },
+        {
+          "defect_id": "test-evidence-rating-derived-from-recorded-judgements/unjudged-pairs-counted-as-uncovered",
+          "test_id": "tests/defects/test_pair_mapping.py::test_every_offered_pair_comes_back_with_a_verdict",
+          "reason": "The test asserts result.unjudged is empty, so misclassifying unjudged pairs would break it."
+        },
+        {
+          "defect_id": "test-prescriptions-derived-from-judgements/recommendations-built-from-current-defect-sets",
+          "test_id": "tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_its_defect_changed",
+          "reason": "The test checks that changing the defect set causes a fresh verdict instead of reusing the prior carried recommendation."
+        },
+        {
+          "defect_id": "test-prescriptions-derived-from-judgements/recommendations-built-from-current-defect-sets",
+          "test_id": "tests/test_cli.py::test_retrieval_reads_the_named_revision_and_not_a_recomputation",
+          "reason": "The test asserts the CLI reads the stored review for the named revision, so recomputing from current defect sets instead would change the emitted plausible_defect."
+        },
+        {
+          "defect_id": "test-prescriptions-derived-from-judgements/recommendations-built-from-current-defect-sets",
+          "test_id": "tests/test_cli.py::test_retrieval_without_a_revision_uses_the_newest_stored_review",
+          "reason": "The test asserts the recommendation output comes from the newest stored review, so recomputing from current defect sets instead of stored review data would change the returned plausible_defect."
+        }
+      ]
+    }
+  ]
+}
