@@ -8,14 +8,21 @@ repeat the measurement and the traps in it.
 
 ```bash
 .venv/bin/python docs/experiments/pair-response-shape/pilot.py
+.venv/bin/python docs/experiments/pair-response-shape/pilot.py --arms per-test,no-test-id
 ```
 
-Makes live calls — 624 of them, and records them, so a second run replays and
-costs nothing. Roughly $0.86 from cold. Four arms are drawn nine times and four
-three; `DEEP_SEED_ARMS` says which and why. Writes
-`findings.json` beside the script, holding every per-case prediction as well as
-the aggregate figures, so a disagreement with the write-up can be traced to the
-case that caused it.
+Makes live calls — 1,038 across all ten arms, and records them, so a second run
+replays and costs nothing. Six arms are drawn nine times and four three;
+`DEEP_SEED_ARMS` says which and why. Writes `findings.json` beside the script,
+holding every per-case prediction as well as the aggregate figures, so a
+disagreement with the write-up can be traced to the case that caused it.
+
+**`--arms` calls only the arms named and keeps every other arm's row exactly as
+`findings.json` already holds it.** Use it when adding an arm. The recordings
+behind the eight arms written up before 2026-09-01 are **no longer in the live
+cache**, so a bare run re-draws them live: about $0.86, and figures that could
+move for reasons having nothing to do with the arm being added. The two per-test
+arms cost $0.42 to draw nine times each.
 
 ## What it measures against
 
@@ -72,7 +79,221 @@ side.
 by about 3 points. Enough to separate the arms; not enough for a confidence
 interval on either.
 
+**23 tests across the 13 cases**, and 5 of the 13 hold exactly one test. That
+split is what makes the batching question below answerable: on a single-test
+case, a per-test arm and a case-batched arm send the same tests, so anything
+that separates them there is not batching.
+
 ---
+
+## Dropping `test_id`, and what per-test batching costs — 2026-09-01
+
+**Dropping `test_id` from the response costs no recall, and the pilot cannot
+measure whether it buys any caching.** Those are two separate answers to #324,
+which is the issue saying that every stage sends a unique response schema and
+nothing caches. The first is what the issue asked for and it comes back clean.
+The second is unanswerable on this corpus, for a reason that is about fixture
+size and is stated below rather than glossed.
+
+**A third thing turned up that nobody asked about: one test per call is worth
+about 11 points of recall against putting a case's tests in one call.** That is
+a finding about the *shipped* stage, not about either new arm.
+
+### Why two new arms rather than one
+
+Every arm written up above puts a whole case in one call. The shipped stage does
+not: `defects/pair_mapping.py::_batches` groups pairs by test id and partitions
+within each group, so **a batch always holds exactly one test**. That is the
+only setting in which #324's question arises at all — the response can drop the
+`test_id` echo precisely because the request offered one test and the caller
+already knows which.
+
+So the candidate needed a control that batches the same way:
+
+- **`per-test`** — one call per test, the shipped `_Unions` schema unchanged, so
+  `test_id` is present and pinned by `constrain` to that call's single test.
+- **`no-test-id`** — the same, with `test_id` and its one-element `tests`
+  wrapper removed from the response schema entirely.
+
+The two send **byte-identical request content**: same shared prompt, same
+single-test instruction, same source, defect and test blocks, and the same
+`allowed` mapping (`constrain` ignores a key naming a field the model does not
+have). Only the response schema differs, which is the variable #324 is about.
+A probe asserts the byte-identity and the resulting schemas before any call.
+
+**Removing the field is deliberately not the same experiment as leaving it
+unconstrained.** Unconstrained, the judge would have to echo a long pytest node
+id exactly and a paraphrase would lose the whole call's judgements — the failure
+`tagged-alias` reproduced above. Absent, there is nothing left to get wrong.
+
+### The figures
+
+Nine draws each, nothing varied but the seed. The bar is still `verdict`'s worst
+of nine, 0.9375.
+
+| arm | n | recall min–max | mean | median | spread | kills/defect | prompt | out tokens |
+|---|---|---|---|---|---|---|---|---|
+| union (case-batched) | 9 | 0.9062–1.0000 | 0.9688 | 0.9688 | 0.0938 | 0.789–0.868 | 10,600 | 2404 |
+| per-test | 9 | 0.8125–0.9062 | 0.8785 | 0.8750 | 0.0938 | 0.711–0.842 | 17,831 | 2456 |
+| **no-test-id** | 9 | 0.8438–0.9062 | **0.8889** | **0.9062** | **0.0625** | 0.763–0.842 | **16,672** | **2110** |
+
+Head to head against its own control, `no-test-id` is **better on 4 draws, worse
+on 3, equal on 2**. Its mean is 0.0104 higher, its median a draw higher, its
+spread narrower, and its kills-per-defect floor higher — 0.763 against 0.711 —
+so DR-173's failure mode, an arm that buys a smaller response by answering *no*
+more often, is not present. It also sends **6.5% fewer prompt tokens** and
+**14% fewer output tokens** than the control, both of which are the schema
+shrinking rather than the answers doing so.
+
+**On this corpus the field is not doing any work.** That was expected: `constrain`
+pins it to a one-element enum, so in the control it is a value the model cannot
+get wrong and cannot learn anything from.
+
+### The caching half is unanswerable here, and the 0.0% must not be read as an answer
+
+Both new arms report a **0.0% cached prompt share** — measured, not assumed;
+`cached_tokens` is now recorded per arm in `findings.json`.
+
+**That figure says nothing about the schema.** The per-call prompt on this
+corpus is **725 tokens for `no-test-id` and 775 for `per-test`**, against
+OpenAI's **1,024-token minimum** for any prompt caching at all. Nothing on these
+fixtures could cache whatever the schema did. The archetype cases are small
+constructed programs; a real review's pair call carries a preamble and defect
+block measured at about 1,544 tokens, which is why #324 could see the question at
+all and why this pilot cannot.
+
+**So #324's second acceptance item — a run reporting a non-zero cached share on
+the pair stage — cannot be met by this script.** It needs a real review run.
+What this round establishes is only that the recall precondition is satisfied.
+
+The one caching-adjacent thing it does establish is direct rather than inferred:
+the 6.5% prompt-token drop between two arms whose request content is
+byte-identical is **the response schema being billed as prompt**, which is the
+premise the whole issue rests on and was previously believed rather than
+measured.
+
+### One test per call costs about 11 points of recall
+
+`per-test` and `no-test-id` fall below the bar on **9 draws of 9**, where the
+case-batched `union` falls below on 1. The gap is large — 0.9688 against 0.8785
+— and it is not the schema, because the two per-test arms are within a point of
+each other.
+
+**It is the batching, and the pilot can attribute that without another call.**
+Five of the thirteen cases hold exactly one test, so for those a per-test arm and
+`union` send the same tests and differ only in the instruction's wording.
+Splitting pooled recall by case size, over all nine draws:
+
+| arm | single-test cases (45 edge-draws) | multi-test cases (243) |
+|---|---|---|
+| union | 1.0000 | 0.9630 |
+| per-test | 1.0000 | 0.8560 |
+| no-test-id | 0.9556 | 0.8765 |
+
+`per-test` and `union` are **identical on every single-test case**, so the
+instruction rewrite costs nothing. The entire drop sits in the multi-test cases,
+where the only difference is that one call became several.
+
+**This is about the shipped stage, not about either new arm.** `_batches` chose
+one test per request deliberately, and its docstring gives the reason — a batch
+spanning several tests offers a schema in which every test × every defect is
+expressible, so the prompt would ask for fewer answers than the schema invites
+and the extras would be dropped on the way back, which is the silent filter
+DR-164 forbids. That reasoning anticipated a cost in **requests**. It did not
+anticipate a cost in **recall**, and this is the first measurement of one.
+
+**Do not act on it from this table.** 27 labelled edges over 8 cases is a small
+base, the corpus's cases hold 2–3 tests where a real review holds 496, and case
+batching does not scale to a real review anyway — the useful question is whether
+`DEFAULT_PAIR_BATCH_SIZE` and test-major grouping are the right operating point,
+which is a separate measurement. Filed rather than fixed.
+
+---
+
+## A free-text `test_id` — 2026-09-01
+
+**Leaving `test_id` in the response but not enumerating it costs nothing when
+the call carries several tests, and the judge does not invent node ids.** That
+matters because it is the only shape measured here that gets #324's cacheable
+schema *and* keeps a multi-test batch expressible; removing the field entirely
+gets the first and forecloses the second.
+
+### Why the field does not have to be an enum
+
+`constrain` puts the offered ids in the schema so a wrong one is unrepresentable.
+That is a stance, not a requirement. The detection half already exists and
+already runs: `supplied_ids.py::scan` walks every response and records any id
+the call never supplied as an `UnusableAnswer`, and its docstring says it runs
+*even when* `constrain` has pinned the ids, because the harness targets providers
+whose structured-output support differs. `pair_mapping.py::_ask` calls it on
+every batch. So an unenumerated id is caught, not believed.
+
+### The two arms
+
+Both send the **shipped `_Unions` schema unchanged**, with `test_id` simply left
+out of the `allowed` mapping so `constrain` leaves it a plain `str`.
+
+- **`free-test-id`** — one call per test. Request byte-identical to `per-test`.
+- **`union-free-id`** — one call per case, 2–3 tests. Request byte-identical to
+  `union`.
+
+An entry naming a test the call never offered is **dropped and counted**, never
+matched charitably — no nearest-match, no trimming, no case folding — because a
+generous match would hide the failure mode being measured.
+
+### The judge writes real node ids
+
+| arm | tests per call | ids written exactly | pairs lost | distinct invented ids |
+|---|---|---|---|---|
+| free-test-id | 1 | 100% on all 9 draws | 0 | none |
+| union-free-id | 2–3 | 95.65%–100% | 3 of 23,808 · see below | one |
+
+Over nine draws each, the only id the judge ever wrote that had not been offered
+was `test_cart.py::test_checkout_default-unchanged`, on one draw, which is a
+mangling of a real node id rather than an invention. It cost 3 pair judgements
+on that one seed and nothing on the other eight. **Hallucinated ids are not the
+risk here.**
+
+### Recall
+
+| arm | n | recall min–max | mean | median | spread | kills/defect | below the 0.9375 bar |
+|---|---|---|---|---|---|---|---|
+| union (enumerated) | 9 | 0.9062–1.0000 | 0.9688 | 0.9688 | 0.0938 | 0.789–0.868 | 1 of 9 |
+| **union-free-id** | 9 | 0.9062–1.0000 | **0.9653** | 0.9688 | 0.0938 | 0.789–0.895 | **1 of 9** |
+| per-test (enumerated) | 9 | 0.8125–0.9062 | 0.8785 | 0.8750 | 0.0938 | 0.711–0.842 | 9 of 9 |
+| free-test-id | 9 | 0.7188–0.8750 | 0.8021 | 0.8125 | 0.1562 | 0.632–0.789 | 9 of 9 |
+
+**Multi-test: free costs nothing.** `union-free-id` is 0.0035 under `union` on
+the mean — a tenth of one labelled edge — with the same median, the same spread,
+the same 1-of-9 sub-bar count, the same kills-per-defect floor and a higher
+ceiling. The two are indistinguishable at this sample size.
+
+**Single-test: free costs 7.6 points, and not through bad ids.** `free-test-id`
+lands 0.8021 against `per-test`'s 0.8785 with **zero** unanswerable ids and zero
+unanswered pairs on all nine draws, and precision holding at 0.897–1.000. It is
+not answering *wrong*; it is finding fewer kills — kills per defect drops to
+0.632–0.789, beneath the control's floor. Its spread, 0.1562, is the widest of
+any arm drawn nine times.
+
+That is DR-173's failure mode: a response-schema change moving the judgement for
+no reason connected to the mechanism. The one thing that separates the two arms
+is that `per-test`'s enum holds exactly one value, so the schema *tells* the
+judge which test the answer is about, where `free-test-id` makes it write that
+out first. Why removing that costs recall is not explained by anything measured
+here, and it does not reproduce when the call carries several tests.
+
+### What this leaves
+
+Three shapes now have a nine-draw recall figure against a matched control:
+removing `test_id`, leaving it free under one-test batching, and leaving it free
+under multi-test batching. Only the last is both cacheable and compatible with
+larger batches, and it is the only one of the three that does not cost recall
+against its own control. **It is also the only one whose control is not itself
+9-of-9 below the bar**, which is the batching finding above and is the larger
+effect in this table.
+
+Still not established: that any of it caches. Every prompt here is under the
+1,024-token floor — see the section above — so that needs a real review run.
 
 ## Tagged-reason and alias arms — 2026-08-30
 

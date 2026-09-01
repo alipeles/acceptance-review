@@ -122,6 +122,27 @@ def _pairs_asked_about(**kwargs) -> list[str]:
     return found
 
 
+def _tests_offered(**kwargs) -> list[str]:
+    """The tests a pair-judgement call offered, read off its prompt.
+
+    `test_id` stopped being enumerated in the pair schema (#324), so
+    `_supplied_enum("test_id", ...)` now finds nothing there. The work list lives
+    where the model reads it instead: `pair_mapping.py::_subject` writes a
+    `### test <id>` heading per test. Reading it here rather than from the schema
+    also keeps a double honest — a request naming a test nowhere the model could
+    see would answer nothing, where the schema would have hidden that.
+    """
+    heading = "### test "
+    found: list[str] = []
+    for message in kwargs.get("messages") or []:
+        for line in message.get("content", "").splitlines():
+            if line.startswith(heading):
+                test_id = line[len(heading) :].strip()
+                if test_id and test_id not in found:
+                    found.append(test_id)
+    return found
+
+
 def _supplied_enum(field: str, **kwargs) -> list[str]:
     """The ids a call supplied for `field`, read back off the schema it sent.
 

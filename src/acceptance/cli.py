@@ -28,6 +28,7 @@ from acceptance.config import (
     DEFAULT_MODEL,
     DEFAULT_PAIR_BATCH_SIZE,
     DEFAULT_SEED,
+    DEFAULT_TESTS_PER_BATCH,
     RunConfig,
 )
 from acceptance.coverage.classify import ImplementationCoverage, classify_coverage
@@ -196,6 +197,7 @@ def run_check(
         declaration_text=declaration_text,
         policy=config.scope_expansion_policy,
         pair_batch_size=config.pair_batch_size,
+        tests_per_batch=config.tests_per_batch,
         link_pair_batch_size=config.link_pair_batch_size,
         link_distance_threshold=config.link_distance_threshold,
         task_identifier=task,
@@ -733,6 +735,18 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
         ),
     )
     parser.add_argument(
+        "--tests-per-batch",
+        type=int,
+        default=DEFAULT_TESTS_PER_BATCH,
+        help=(
+            "Tests sharing one pair-judgement call (determinism; default: "
+            f"{DEFAULT_TESTS_PER_BATCH}). Does NOT change how many judgements a "
+            "response carries — --pair-batch-size still caps that, so more tests "
+            "per call means fewer defects offered with each. Changing it "
+            "invalidates recorded pair-judgement transcripts."
+        ),
+    )
+    parser.add_argument(
         "--embedding-model",
         default=DEFAULT_EMBEDDING_MODEL,
         help=(
@@ -890,6 +904,7 @@ def main(argv: list[str] | None = None) -> int:
             seed=_seed_from(args),
             temperature=args.temperature,
             pair_batch_size=args.pair_batch_size,
+            tests_per_batch=args.tests_per_batch,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
@@ -964,6 +979,7 @@ def main(argv: list[str] | None = None) -> int:
             seed=_seed_from(args),
             temperature=args.temperature,
             pair_batch_size=args.pair_batch_size,
+            tests_per_batch=args.tests_per_batch,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
@@ -1014,6 +1030,7 @@ def main(argv: list[str] | None = None) -> int:
             seed=_seed_from(args),
             temperature=args.temperature,
             pair_batch_size=args.pair_batch_size,
+            tests_per_batch=args.tests_per_batch,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )

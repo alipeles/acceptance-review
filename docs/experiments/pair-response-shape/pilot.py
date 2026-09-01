@@ -129,6 +129,7 @@ model host is allowed. Writes findings.json beside this file.
 
 from __future__ import annotations
 
+import argparse
 import ast
 import json
 import sys
@@ -157,6 +158,10 @@ UNION_STAGE = "pair mapping pilot (union)"
 TAGGED_STAGE = "pair mapping pilot (tagged)"
 TAGGED_SINGLE_STAGE = "pair mapping pilot (tagged-single)"
 ALIAS_STAGE = "pair mapping pilot (tagged-alias)"
+PER_TEST_STAGE = "pair mapping pilot (per-test)"
+NO_TEST_ID_STAGE = "pair mapping pilot (no-test-id)"
+FREE_TEST_ID_STAGE = "pair mapping pilot (free-test-id)"
+UNION_FREE_ID_STAGE = "pair mapping pilot (union-free-id)"
 
 ARMS = (
     "listing",
@@ -167,8 +172,47 @@ ARMS = (
     "tagged",
     "tagged-single",
     "tagged-alias",
+    "per-test",
+    "no-test-id",
+    "free-test-id",
+    "union-free-id",
 )
 TAGGED_ARMS = ("tagged", "tagged-single", "tagged-alias")
+
+# Arms that keep `test_id` in the response but do NOT enumerate it: the shipped
+# `_Unions` schema, sent with `test_id` left out of the `allowed` mapping so
+# `constrain` leaves it a plain `str` and the judge writes the node id itself.
+#
+# **Why this is not merely a third way of asking #324's question.** Removing the
+# field works only while a batch holds one test. Leaving the field free keeps the
+# schema identical from call to call — which is what #324 needs — AND keeps a
+# multi-test batch expressible, which the batching finding above wants. The two
+# results were otherwise pulling against each other.
+#
+# The cost moves from the schema to the answer: an invented or paraphrased node
+# id is now possible. It is not silent. `supplied_ids.py::scan` already runs on
+# every shipped call alongside `constrain`, precisely because the harness targets
+# providers whose structured-output support differs, so an unsupplied id is
+# recorded as an `UnusableAnswer` rather than believed. These arms count the same
+# thing locally: an entry naming a test the call never offered is DROPPED and
+# counted, never guessed at, which is the #163 rule the alias arm is scored under.
+FREE_ID_ARMS = ("free-test-id", "union-free-id")
+
+# Arms that issue ONE CALL PER TEST rather than one per case, which is what
+# `defects/pair_mapping.py::_batches` does in the shipped stage: it groups pairs
+# by test id and partitions within each group, so a batch always holds exactly
+# one test. Every other arm here batches a whole case, which is why none of them
+# can answer #324 — the question is whether the response still needs a `test_id`
+# when the request only ever offers one test, and that only arises under
+# test-major batching.
+#
+# `per-test`, `no-test-id` and `free-test-id` send BYTE-IDENTICAL request
+# content: same shared prompt, same single-test instruction, same source, defect
+# and test blocks. Only the response schema differs — enumerated `test_id`,
+# no `test_id`, and free-text `test_id` respectively — which is the variable
+# under test. `union-free-id` batches by case instead, so it is NOT in this
+# tuple; its comparison is against `union`, whose request it matches exactly.
+PER_TEST_ARMS = ("per-test", "no-test-id", "free-test-id")
 
 # Arms drawn nine times instead of three. The two candidates left standing —
 # `kills-only` and `union` — separated by a single labelled edge on one draw,
@@ -182,11 +226,11 @@ TAGGED_ARMS = ("tagged", "tagged-single", "tagged-alias")
 # That error is not hypothetical: on three seeds `kills-only` averaged 0.9688 and
 # looked like the best arm here; on nine it averages 0.9410 and is the worst of
 # these four. Everything else stays at three; those arms are already decided.
-DEEP_SEED_ARMS = ("verdict", "reasoned", "kills-only", "union")
+DEEP_SEED_ARMS = ("verdict", "reasoned", "kills-only", "union", *PER_TEST_ARMS, *FREE_ID_ARMS)
 # Arms whose entries carry a `reason` field at all, so that whether it was filled
 # is a question with an answer. `listing` and `verdict` have no such field and are
 # left out, which also keeps their recorded entries in `findings.json` unchanged.
-REASON_ARMS = ("reasoned", "kills-only", "union", *TAGGED_ARMS)
+REASON_ARMS = ("reasoned", "kills-only", "union", *TAGGED_ARMS, *PER_TEST_ARMS, *FREE_ID_ARMS)
 
 # The pair stage's share of #314's Gate 2 run, from
 # `dogfood-logs/314-gate2-run1/output.log` and that run's ledger entry. Used only
@@ -244,6 +288,20 @@ _UNION_INSTRUCTION = """\
 For each test, return one entry per OFFERED DEFECT — every defect id, not only
 the ones it catches — with `fails` true if the test would fail on that defect and
 false if it would not. A test with five defects offered returns five entries.
+
+An entry whose `fails` is true also carries `reason`: one short sentence naming
+what the test asserts that the defect would change. An entry whose `fails` is
+false carries NO `reason` field at all — not an empty one."""
+
+# Used UNCHANGED by both per-test arms, so that the only thing separating them is
+# the response schema. It therefore says nothing about a `test_id` field: one arm
+# has one and the other does not, and an instruction mentioning it would make the
+# arms differ in the request as well as in the schema.
+_SINGLE_TEST_INSTRUCTION = """\
+You are given exactly ONE test. Return one entry per OFFERED DEFECT — every
+defect id, not only the ones the test catches — with `fails` true if the test
+would fail on that defect and false if it would not. Five defects offered means
+five entries.
 
 An entry whose `fails` is true also carries `reason`: one short sentence naming
 what the test asserts that the defect would change. An entry whose `fails` is
@@ -393,6 +451,32 @@ class _Unions(StrictResponseModel):
     tests: list[_UnionTest]
 
 
+class _NoTestId(StrictResponseModel):
+    """The shipped union with the `test_id` echo removed, and the wrapper with it.
+
+    #324's thesis is that the per-call `test_id` enum is what stops any call
+    caching: it is the only part of the schema that changes between one pair call
+    and the next, and removing it collapses 1,762 distinct schemas to 7. The
+    field can go because `_batches` in the shipped stage puts exactly one test in
+    a batch, so the caller already knows which test the answer is about and does
+    not need to be told.
+
+    **Removing the field is not the same experiment as leaving it unconstrained,
+    and is deliberately the safer of the two.** Unconstrained, the judge would
+    have to echo a long pytest node id exactly, and a paraphrase would cost the
+    whole call's judgements — the failure `tagged-alias` reproduced. Absent,
+    there is nothing left to get wrong.
+
+    The `tests` wrapper goes too rather than being kept with one member: a
+    one-element list whose element carries no identity is pure scaffolding, and
+    keeping it would leave a second thing changed for no measured reason.
+    """
+
+    # `_Kills` first, for the same left-to-right union resolution reason as
+    # `_UnionTest`.
+    defects: list[_Kills | _Survives]
+
+
 class _Tagged(StrictResponseModel):
     defect_id: str
     fails: bool
@@ -518,6 +602,8 @@ def _decode(
     arm: str,
     defect_alias: dict[str, str] | None,
     test_alias: dict[str, str] | None,
+    node: str | None = None,
+    offered_tests: set[str] | None = None,
 ) -> tuple[list[tuple[str, list]], int]:
     """The response as (test id, judgements), with aliases resolved to full ids.
 
@@ -527,7 +613,30 @@ def _decode(
     obtained, which is a different claim from the model having considered the
     pair and answered no. Dropping it silently would let the alias arm buy
     coverage it never earned.
+
+    The free-id arms are held to the same rule and for the same reason: their
+    `test_id` is a plain string the judge wrote, so an id the call never offered
+    is exactly what `supplied_ids.py::scan` would record as an `UnusableAnswer`
+    on a real run. Matching is EXACT — no nearest-match, no case folding, no
+    trimming — because a charitable match here would hide the failure mode the
+    arm exists to measure.
     """
+    if arm == "no-test-id":
+        # The test the answer is about comes from the caller, which is the whole
+        # claim being tested: under test-major batching the request offered one
+        # test, so the response never had to name it. `node` is that test.
+        assert node is not None
+        return [(node, list(raw.defects))], 0
+    if arm in FREE_ID_ARMS:
+        assert offered_tests is not None
+        decoded: list[tuple[str, list]] = []
+        undecodable = 0
+        for entry in raw.tests:
+            if entry.test_id in offered_tests:
+                decoded.append((entry.test_id, list(entry.defects)))
+            else:
+                undecodable += len(entry.defects)
+        return decoded, undecodable
     if defect_alias is None:
         return [(entry.test_id, list(entry.defects)) for entry in raw.tests], 0
 
@@ -621,10 +730,55 @@ def _score(cases: list[dict], predictions: dict[str, dict[str, set[str]]]) -> di
     }
 
 
+def _call_units(arm: str, case: dict) -> list[tuple[dict, str | None]]:
+    """The calls one case becomes, as (case-shaped payload, the single test id).
+
+    Every arm but the two per-test ones sends the whole case in one call and gets
+    `(case, None)`. A per-test arm sends one call per test, each carrying a case
+    narrowed to that one test — which makes `_blocks` render a `## Tests` block
+    holding exactly that test, with no other change to the request.
+    """
+    if arm not in PER_TEST_ARMS:
+        return [(case, None)]
+    return [({**case, "tests": {node: body}}, node) for node, body in sorted(case["tests"].items())]
+
+
 def _arm_setup(arm: str, case: dict):
     """Schema, stage, instruction, allowed ids and alias maps for one call."""
     defect_ids = [defect["id"] for defect in case["defects"]]
     test_ids = sorted(case["tests"])
+    if arm in FREE_ID_ARMS:
+        # The SHIPPED schema, unchanged — `test_id` is simply left out of
+        # `allowed`, so `constrain` leaves it a plain `str`. That is the whole
+        # arm: same response shape, no per-call enum on the test.
+        #
+        # `free-test-id` matches `per-test`'s request byte for byte and
+        # `union-free-id` matches `union`'s, so each has a control differing in
+        # the schema alone.
+        return (
+            _Unions,
+            FREE_TEST_ID_STAGE if arm == "free-test-id" else UNION_FREE_ID_STAGE,
+            _SINGLE_TEST_INSTRUCTION if arm == "free-test-id" else _UNION_INSTRUCTION,
+            {"defect_id": defect_ids},
+            None,
+            None,
+        )
+    if arm in PER_TEST_ARMS:
+        # One `allowed` mapping for both arms. `constrain` walks the model's own
+        # fields and ignores a key naming a field it does not have, so the
+        # `test_id` entry constrains `per-test` and is silently unused by
+        # `no-test-id` — which is what keeps the two requests identical.
+        return (
+            _Unions if arm == "per-test" else _NoTestId,
+            PER_TEST_STAGE if arm == "per-test" else NO_TEST_ID_STAGE,
+            _SINGLE_TEST_INSTRUCTION,
+            {
+                "test_id": test_ids,
+                "defect_id": defect_ids,
+            },
+            None,
+            None,
+        )
     if arm == "listing":
         return (
             _Listing,
@@ -763,6 +917,26 @@ def _projection(reasoned_tokens: float, arm_tokens: float) -> dict:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--arms",
+        default="",
+        help=(
+            "comma-separated arms to CALL this run; every other arm keeps the row "
+            "findings.json already holds. Default: all of them. Use this to add an "
+            "arm without re-issuing the calls behind figures already written up — "
+            "the recordings for the earlier arms are no longer in the live cache, "
+            "so a full run would re-draw them live and could move a published table "
+            "for reasons that have nothing to do with the new arm."
+        ),
+    )
+    options = parser.parse_args()
+    selected = tuple(name.strip() for name in options.arms.split(",") if name.strip()) or ARMS
+    unknown = [name for name in selected if name not in ARMS]
+    if unknown:
+        print(f"unknown arm(s): {', '.join(unknown)}", file=sys.stderr)
+        return 1
+
     cases = _cases()
     if not cases:
         print("no archetype cases carry defect labels", file=sys.stderr)
@@ -796,7 +970,9 @@ def main() -> int:
         "seeds_by_arm": by_arm,
         "arms": {},
     }
-    schedule = [(name, seed) for name in ARMS for seed in by_arm[name]]
+    schedule = [(name, seed) for name in ARMS if name in selected for seed in by_arm[name]]
+    if set(selected) != set(ARMS):
+        print(f"calling only: {', '.join(selected)}; every other arm is carried from findings.json")
     for arm, seed in schedule:
         config = RunConfig(mode=Mode.RECORD, seed=seed)
         client = config.build_client()
@@ -805,6 +981,8 @@ def main() -> int:
         undecodable = 0
         tags: Counter[str] = Counter()
         survives = {"tag_only": 0, "tag_and_reason": 0, "freeform": 0}
+        written_ids = {"exact": 0, "invented": 0}
+        invented: list[str] = []
         # Where a `reason` field exists, whether it was actually filled. For the
         # kills-only arm this is the whole measurement: the instruction to leave
         # a surviving pair's reason empty is stated in prose and enforced by
@@ -819,23 +997,44 @@ def main() -> int:
             "survives_absent": 0,
         }
         for case in cases:
-            model, stage, instruction, allowed, defect_alias, test_alias = _arm_setup(arm, case)
-            batch = partition([case["name"]], 1, key=lambda name: name)[0]
-            raw = client.complete(
-                assemble(_blocks(case, instruction, defect_alias, test_alias)),
-                constrain(model, allowed),
-                batch.request_partition(),
-                parse_as=model,
-                stage=stage,
-            )
             predicted: dict[str, set[str]] = {}
-            if arm == "listing":
-                decoded: list = []
-                for entry in raw.tests:
-                    predicted[entry.test_id] = set(entry.catches)
-            else:
-                decoded, missed = _decode(raw, arm, defect_alias, test_alias)
+            decoded: list = []
+            # One iteration for every arm but the two per-test ones, and one per
+            # test for those. The accounting below runs over the accumulated
+            # `decoded`, so it does not care which of the two happened.
+            for unit, node_id in _call_units(arm, case):
+                model, stage, instruction, allowed, defect_alias, test_alias = _arm_setup(arm, unit)
+                key = case["name"] if node_id is None else f"{case['name']}::{node_id}"
+                batch = partition([key], 1, key=lambda name: name)[0]
+                raw = client.complete(
+                    assemble(_blocks(unit, instruction, defect_alias, test_alias)),
+                    constrain(model, allowed),
+                    batch.request_partition(),
+                    parse_as=model,
+                    stage=stage,
+                )
+                if arm == "listing":
+                    for entry in raw.tests:
+                        predicted[entry.test_id] = set(entry.catches)
+                    continue
+                offered_tests = set(unit["tests"])
+                if arm in FREE_ID_ARMS:
+                    # The measurement the free-id arms exist for: how often a
+                    # judge writing the node id itself writes one that was
+                    # offered. Kept as the ids themselves, not just a count, so
+                    # a miss can be read as a paraphrase or as an invention.
+                    for entry in raw.tests:
+                        if entry.test_id in offered_tests:
+                            written_ids["exact"] += 1
+                        else:
+                            written_ids["invented"] += 1
+                            invented.append(entry.test_id)
+                unit_decoded, missed = _decode(
+                    raw, arm, defect_alias, test_alias, node_id, offered_tests
+                )
                 undecodable += missed
+                decoded.extend(unit_decoded)
+            if arm != "listing":
                 for node, judgements in decoded:
                     predicted[node] = {judged.defect_id for judged in judgements if judged.fails}
                     for judged in judgements:
@@ -863,6 +1062,16 @@ def main() -> int:
             shedding.append(_unanswered(case, predicted, arm, decoded))
 
         usage = summarize(client.observed_calls)
+        # The figure #324 turns on, and the one no earlier round of this pilot
+        # recorded. `cached_tokens` is None where no call reported one, which is
+        # not the same claim as zero — `StageUsage.cached_prompt_share` keeps that
+        # distinction and so does this. The denominator is the prompt tokens of
+        # the calls that DID report, not every call's.
+        measured = sum(stage.measured_prompt_tokens for stage in usage.stages)
+        reported = [
+            stage.cached_tokens for stage in usage.stages if stage.cached_tokens is not None
+        ]
+        cached = sum(reported) if reported else None
         label = f"{arm}/seed={seed}"
         carried = previous.get(label) or {}
         entry = {
@@ -875,6 +1084,9 @@ def main() -> int:
             "cost_usd": usage.run_spend_usd or carried.get("cost_usd", 0.0),
             "evidence_cost_usd": usage.evidence_cost_usd,
             "prompt_tokens": sum(stage.prompt_tokens for stage in usage.stages),
+            "cached_tokens": cached,
+            "measured_prompt_tokens": measured,
+            "cached_prompt_share": (cached / measured) if cached is not None and measured else None,
             "completion_tokens": sum(stage.completion_tokens for stage in usage.stages),
             "completion_tokens_per_case": sum(stage.completion_tokens for stage in usage.stages)
             / len(cases),
@@ -901,6 +1113,16 @@ def main() -> int:
                     else None
                 ),
             }
+        if arm in FREE_ID_ARMS:
+            total_ids = written_ids["exact"] + written_ids["invented"]
+            entry["written_test_ids"] = {
+                **written_ids,
+                "exact_share": (written_ids["exact"] / total_ids) if total_ids else None,
+                # Every distinct id the judge wrote that the call never offered.
+                # Sorted rather than in arrival order so two runs over the same
+                # input write the same file (M0.5, byte-identical reruns).
+                "invented_ids": sorted(set(invented)),
+            }
         if arm in TAGGED_ARMS:
             answered_survives = sum(survives.values())
             entry["tag_usage"] = {
@@ -913,18 +1135,33 @@ def main() -> int:
             }
         findings["arms"][label] = entry
 
+    # Every arm not called this run keeps the row it already had, so a partial run
+    # extends the record rather than truncating it. Rebuilt in ARMS order so the
+    # file and the printed table read the same however the run was invoked.
+    ordered: dict = {}
+    for name in ARMS:
+        for seed in by_arm[name]:
+            label = f"{name}/seed={seed}"
+            row = findings["arms"].get(label) or previous.get(label)
+            if row is not None:
+                ordered[label] = row
+    findings["arms"] = ordered
+
     per_arm = {arm: [row for row in findings["arms"].values() if row["arm"] == arm] for arm in ARMS}
+    # An arm with no rows at all — never called, nothing carried — is left out of
+    # the aggregates rather than dividing by zero.
+    scored = [arm for arm in ARMS if per_arm[arm]]
     means = {
-        arm: sum(row["completion_tokens"] for row in rows) / len(rows)
-        for arm, rows in per_arm.items()
+        arm: sum(row["completion_tokens"] for row in per_arm[arm]) / len(per_arm[arm])
+        for arm in scored
     }
     findings["output_token_ratios"] = {
         arm: {
             "mean_completion_tokens": means[arm],
-            "ratio_to_verdict": means[arm] / means["verdict"] if means["verdict"] else None,
-            **_projection(means["reasoned"], means[arm]),
+            "ratio_to_verdict": (means[arm] / means["verdict"] if means.get("verdict") else None),
+            **_projection(means.get("reasoned") or 0.0, means[arm]),
         }
-        for arm in ARMS
+        for arm in scored
     }
     findings["gate2_reference"] = {
         "pair_stage_output_tokens": GATE2_PAIR_OUTPUT_TOKENS,
@@ -934,10 +1171,21 @@ def main() -> int:
     }
 
     OUT.write_text(json.dumps(findings, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    def _fmt(value, places: int) -> str:
+        """`None` printed as such rather than crashing the summary.
+
+        `precision` is None when an arm predicted no kills at all. That is a
+        catastrophic result and the one most worth seeing printed, so it must not
+        be the case that takes the report down before the row is written.
+        """
+        return "n/a" if value is None else f"{value:.{places}f}"
+
     for label, figures in findings["arms"].items():
         print(
-            f"{label:28s} recall={figures['recall']:.4f} precision={figures['precision']:.4f} "
-            f"kills/defect={figures['kills_per_defect']:.3f} "
+            f"{label:28s} recall={_fmt(figures['recall'], 4)} "
+            f"precision={_fmt(figures['precision'], 4)} "
+            f"kills/defect={_fmt(figures['kills_per_defect'], 3)} "
             f"unanswered={figures['unanswered_pairs']} "
             f"undecodable={figures['undecodable_ids']} "
             f"detectable={figures['shedding_detectable']} "
@@ -948,7 +1196,7 @@ def main() -> int:
     # whose recall moves more between seeds than the arms differ from each other
     # has not been separated by this experiment.
     print()
-    for arm in ARMS:
+    for arm in scored:
         rows = per_arm[arm]
         recalls = [row["recall"] for row in rows]
         guards = [row["kills_per_defect"] for row in rows]
@@ -957,6 +1205,11 @@ def main() -> int:
             f"{arm:13s} n={len(rows)} recall min={min(recalls):.4f} max={max(recalls):.4f} "
             f"mean={sum(recalls) / len(recalls):.4f}  "
             f"kills/defect {min(guards):.3f}-{max(guards):.3f}  "
+            # Prompt tokens are in this line because #324 is a PROMPT-cost issue,
+            # not an output-cost one: the per-test arms issue one call per test
+            # and repeat the delivered source in each, so they buy a cacheable
+            # schema by sending more prompt. Both halves have to be visible.
+            f"prompt mean={sum(row['prompt_tokens'] for row in rows) / len(rows):.0f} "
             f"out mean={means[arm]:.0f} "
             f"(x{ratios['ratio_to_verdict']:.2f} verdict, "
             f"x{ratios['ratio_to_reasoned']:.2f} reasoned)"
@@ -968,10 +1221,15 @@ def main() -> int:
     # of draws at or below the bar. Read those when comparing `verdict`,
     # `kills-only` and `union`, which is why all three were drawn nine times.
     print()
+    if not per_arm["verdict"]:
+        print("no verdict rows, so no bar to compare against")
+        return 0
     bar = min(row["recall"] for row in per_arm["verdict"])
     print(f"bar = verdict's worst of {len(per_arm['verdict'])} draws = {bar:.4f}")
     for arm in DEEP_SEED_ARMS:
         rows = per_arm[arm]
+        if not rows:
+            continue
         recalls = sorted(row["recall"] for row in rows)
         below = [value for value in recalls if value < bar]
         spread = max(recalls) - min(recalls)
@@ -994,8 +1252,52 @@ def main() -> int:
             f"(field absent on {absent})  kills carrying a reason={killed}"
         )
 
+    # #324's question, asked head to head. Every other comparison in this script
+    # crosses a batching boundary as well as a schema one; these two arms differ
+    # in the response schema alone, so the gap between them is what dropping
+    # `test_id` costs and nothing else. Reported seed by seed as well as pooled,
+    # because a mean over nine draws hides a single draw that collapsed.
+    if per_arm["per-test"] and per_arm["no-test-id"]:
+        print()
+        control = {row["seed"]: row for row in per_arm["per-test"]}
+        candidate = {row["seed"]: row for row in per_arm["no-test-id"]}
+        print("#324 head to head — per-test (keeps test_id) vs no-test-id (drops it)")
+        for seed in sorted(set(control) & set(candidate)):
+            left, right = control[seed], candidate[seed]
+            print(
+                f"  seed={seed}  recall {left['recall']:.4f} -> {right['recall']:.4f}  "
+                f"kills/defect {left['kills_per_defect']:.3f} -> {right['kills_per_defect']:.3f}  "
+                f"out {left['completion_tokens']} -> {right['completion_tokens']}  "
+                f"prompt {left['prompt_tokens']} -> {right['prompt_tokens']}  "
+                f"cached {_fmt(left.get('cached_prompt_share'), 4)} -> "
+                f"{_fmt(right.get('cached_prompt_share'), 4)}"
+            )
+
+    # Whether a judge asked to write the node id itself writes one that exists.
+    # An id the call never offered costs that whole entry's judgements, so the
+    # exact-match share and the lost-pair count are the two figures that decide
+    # whether a free-text `test_id` is usable.
+    printed = False
+    for arm in FREE_ID_ARMS:
+        rows = [row for row in per_arm[arm] if "written_test_ids" in row]
+        if not rows:
+            continue
+        if not printed:
+            print()
+            printed = True
+        shares = [row["written_test_ids"]["exact_share"] for row in rows]
+        lost = sum(row["undecodable_ids"] for row in rows)
+        invented_ids = sorted({i for row in rows for i in row["written_test_ids"]["invented_ids"]})
+        print(
+            f"{arm:14s} test ids written exactly: min={min(shares):.4f} max={max(shares):.4f}  "
+            f"pairs lost to an id never offered={lost}  "
+            f"distinct invented ids={invented_ids or 'none'}"
+        )
+
     print()
     for arm in TAGGED_ARMS:
+        if not per_arm[arm]:
+            continue
         shares = [row["tag_usage"]["tag_share"] for row in per_arm[arm]]
         pooled: Counter[str] = Counter()
         for row in per_arm[arm]:
