@@ -229,7 +229,17 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > ~95%. Neither ordering nor the schema explains that, and it is now the open
   > question this issue should carry — it is the same residue the original
   > comment flagged as "3 of 464".
-- **Status:** open
+- **Status:** **REHOMED, not filed, 2026-09-01.** Verified at triage: **#265 is
+  closed**, merged by PR #309 on 2026-08-21, so the drafted comment has no live
+  home. Half of it is also stale — the "still unexplained" paragraph is about
+  the mapping stage's 4.5% cached share, and #316 retired that stage;
+  `src/acceptance/evidence/mapping.py` no longer exists.
+
+  What survives is the six-call experiment showing that a response schema's
+  NAME alone drops reuse to 0.0%, which is now the premise of #324 rather than
+  a loose finding. Retargeted at #324; the human's triage disposition on
+  2026-09-01 was to file only the #256 and #262 comments, so this is **not
+  posted**. Whoever picks up #324's caching measurement should carry it.
 
 ### [2026-08-20] #245 with the correct answer in the corpus: the mapper returned the twin id on one call and not on the one that counted
 - **Kind:** filing (comment on existing issue #245)
@@ -3280,7 +3290,14 @@ the record.
   28 cached requests that contain scope exclusions, re-issued under variant
   schemas, about 84 calls, roughly $0.75 — but it is powered only to show an
   effect go to zero, not to measure a halving.
-- **Status:** open (approved for filing 2026-08-20)
+- **Status:** **FILED** as a comment on #256 on 2026-09-01. Approved for
+  filing 2026-08-20 and again at triage. Verified before posting that the
+  mechanism is live: `_Yielded` still carries a required singular `obligation`
+  beside a `more_obligations` list. **One verified fact was added to the drafted
+  text**: the echo is no longer silent — `obligations.py` now detects
+  `more_obligations[0]` repeating `obligation` and records an `UnusableAnswer`
+  for it. That lowers severity without touching the cause, and the comment says
+  so.
 
 ### [2026-08-20] Decision: derive dispositions and obligations in two passes, instead of encoding "at least one" as head-plus-rest
 - **Kind:** decision
@@ -4017,6 +4034,17 @@ the record.
   `dogfood-logs/*/output.log` reports — **76 distinct decompositions**, versus
   4 in the transcript corpus — gives both=200, exactly-one=228, **split 53%**,
   against 56% from the transcripts. Two corpora, two parsers, same answer.
+
+  **Triage, 2026-09-01: still open, and half of it is now stale.** The *effect*
+  was measured on `evidence/mapping.py`, which #316 retired and which no longer
+  exists, so the 56% and 53% split rates describe a stage that does not run. The
+  *cause* is untouched: #304 is open and the decomposer still leaves twins
+  unmerged. The effect must now reappear in the pair stage — five obligations
+  restating one rule enumerate defects that share a kill vector, which is the
+  2026-08-30 entry below — and nobody has measured it there. The human's triage
+  disposition was to file only the #256 and #262 comments, so this stays
+  drafted. **Whoever files it must say the numbers are from the retired
+  stage**, or it reads as current evidence.
   Restricted to pairs whose obligation text is **byte-identical**, splitting is
   3 of 16 — undeniable errors, but thin. Split rate by similarity band rises as
   pairs get *less* identical (45% at 0.80–0.89, 60% at 0.60–0.64), but that
@@ -4167,10 +4195,18 @@ the record.
   stage; if it is still near zero, file against #265's umbrella (#184,
   determinism & reproducibility, which owns `llm.py`). Cheap to check and worth
   roughly half the model spend of a run.
-- **Status:** **open, and independent of #173** — this is a filing against #184
+- **Status:** **closed 2026-09-01 — see the triage note below.** Was recorded as
+  "open, and independent of #173", a filing against #184
   and survives #173's closure on 2026-08-21. Detail in
   `docs/DR-173-mapping-twin-splitting.md` §4, including the constraint that the
   discount is input-only, which bounds the cost of any future stage redesign.
+- **Triage, 2026-09-01: OVERTAKEN — closed, no action.** The drafted action was
+  "run one live review post-#265 and report `cached_tokens` per stage; if it is
+  still near zero, file against #184". Both halves happened: #316's Gate 2
+  measured **0.0% on all seven stages** over 1,012 calls, and **#324** was filed
+  against #184 carrying exactly that. The input-only constraint this entry
+  states is recorded in `docs/DR-173-mapping-twin-splitting.md` §4 and is
+  unaffected.
 
 ### [2026-08-21] `discovery.py`'s docstring claims a call graph the module does not have
 
@@ -4202,7 +4238,13 @@ the record.
   the symbols and modules the change touched". Optionally add the limitation
   the amendment turns on: this reports positive overlap and cannot prove a path
   absent. No behavior change, no transcript impact.
-- **Status:** open
+- **Status:** **FIXED, 2026-09-01**, approved at triage. The docstring now names
+  `_names_called`, `_names_referenced` and `_imported_module_stems` and states
+  outright that there is no call graph, that nothing resolves a name to a
+  definition or follows an edge transitively, and that the module cannot
+  establish a path is absent. It also records that the claim was believed once,
+  in DR-312, so the next reader knows the trap was real. Suite: 1311 passed, 2
+  xfailed; ruff check and format clean.
 
 ### [2026-08-21] One requirement split across twelve `yielded` dispositions aborts the whole review — a second cause for #298's crash
 
@@ -4500,7 +4542,12 @@ the record.
   > The committed corpus also grew from 7 transcripts to 25, because derivation
   > went from batches of eight to one call per requirement. A future shared
   > change re-records all 25, not 7.
-- **Status:** open
+- **Status:** **REHOMED, not filed, 2026-09-01.** Same problem as the 2026-08-20
+  entry above: **#265 is closed**, so the drafted comment has no live home. The
+  measurement is unaffected and still worth keeping — it is the only figure this
+  repo has for what a shared request-assembly edit costs. Retargeted at #324,
+  the live prompt-caching issue. Not posted; the human's triage disposition was
+  to file only #256 and #262.
 
 ### [2026-08-29] Two decomposition-prompt quality assertions now fail and are held as strict xfails
 
@@ -4548,7 +4595,12 @@ the record.
   > A second, unrelated slip in the same corpus: `exclusion-01`'s
   > `observable_behavior` says the supported-currency behaviour is "unchanged",
   > which the prompt forbids in that field by name. Also held as a strict xfail.
-- **Status:** open
+- **Status:** open — **verified still live at triage, 2026-09-01.** Both strict
+  xfails are still in `tests/prompts/test_decomposition_prompt.py` and the suite
+  still reports exactly 2 xfailed, so neither has been fixed underneath the
+  queue. Held rather than filed: the human's triage disposition was to file only
+  the #256 and #262 comments. File this together with the 2026-08-29 conjunction
+  entry below, which is its second observed instance.
 
 ### [2026-08-29] The `decompose` command still does not pass its unusable-answer log to `decompose`
 
@@ -4571,7 +4623,17 @@ the record.
   that a decomposition recording an unusable answer has it rendered by
   `acceptance decompose`. File as a child of **#181**, labels `bug`,
   `track:checker`.
-- **Status:** open
+- **Status:** **ALREADY FIXED — no action, 2026-09-01.** Verified at triage:
+  `cli.py::run_decompose` now reads
+  `decompose(parsed, client, unusable, prior=prior)`. Traced to `fd66a20`
+  ("Account for one requirement per call, and the opening summary last", #318),
+  so it was fixed by later work rather than by this entry.
+
+  **One related thing is NOT fixed and is smaller than this entry claimed:**
+  `run_classify` calls `decompose(parsed, client)` and builds no
+  `UnusableAnswerLog` at all, so that command still reports nothing. Not filed —
+  it is a different call site from the one this entry is about, and it was never
+  drafted or approved.
 
 ### [2026-08-29] A polarity inversion in a `test_demand` obligation survives rewording — #262 gains a third instance and a control
 
@@ -4620,7 +4682,8 @@ the record.
   > `-07` still use the old form and still happen to come out right.
   >
   > Logs: `dogfood-logs/313-gate1-run{3,4,5}/`.
-- **Status:** open
+- **Status:** **FILED** as a comment on #262 on 2026-09-01, posted as drafted
+  and approved at triage.
 
 ### [2026-08-29] The review pipeline calls into `benchmark/` for a model call that names no stage, and the test written to catch that misses it
 
@@ -4721,7 +4784,10 @@ the record.
   arises from an ordinary two-bullet split rather than from anything unusual in
   the prompt corpus, and that the two texts differ only by "A continuing run"
   against "A run continuing an earlier run".
-- **Status:** open
+- **Status:** open — held with the 2026-08-29 strict-xfail entry it folds into.
+  The human's triage disposition on 2026-09-01 was to file only the #256 and
+  #262 comments. Nothing about this entry has been overtaken; it is still the
+  second observed instance and should be filed in the same issue.
 
 ### [2026-08-29] Two obligation-type slips, one of which loses the `test_demand` distinction DR-232 exists to carry
 
@@ -4962,8 +5028,19 @@ the record.
   The human's standing instruction, 2026-08-30: run several filters and reject a
   pair only when **all** of them reject it, and do not weigh embedding cost —
   it is negligible next to a model call.
-- **Status:** open. **Approved to run the experiment** on 2026-08-30; the issue
-  itself still needs filing at a gate.
+- **Status:** **OVERTAKEN — closed, no action, 2026-09-01.** The experiment was
+  approved, run, and written up three times over:
+  `docs/experiments/pair-prefilter/` (the embedding union, 22.0% of pairs
+  excluded with no recorded kill lost, in-sample),
+  `docs/experiments/coverage-prefilter/` (coverage reachability, 61.3% excluded
+  at 84.0% kill recall — not shippable as a silent prefilter), and
+  `docs/experiments/prefilter-committee/` (three voters, and the finding that
+  the zero-loss property does **not** survive transfer between corpora).
+  `docs/experiments/README.md` indexes the last two as parked on M8.4.
+
+  The drafted issue is therefore moot. The one piece still owed — a hold-out
+  against #315's archetype labels — is carried in `session-state/171.md` rather
+  than here.
 
 
 ### [2026-08-30] Ask for a pair's reason only where the test would fail
@@ -5096,7 +5173,13 @@ the record.
   > the same rule; whether the linker should merge one is a real question, since
   > "reuse when X" and "re-judge when not X" are arguably worth testing
   > separately even when they are logically one rule.
-- **Status:** open — drafted, not posted
+- **Status:** open — drafted, not posted. **Verified still live at triage,
+  2026-09-01:** #304 is open, and the evidence file is still at
+  `~/acceptance-worktrees/_archived-reviews/314-gate2-run1-review.json`. The
+  human's triage disposition was to file only the #256 and #262 comments, so
+  this stays drafted. It has gained relevance rather than lost it — it is now
+  the live form of the twin-starvation entry above, whose own numbers came from
+  the retired mapping stage.
 
 ### [2026-08-31] Nothing caches, in any stage, because every call sends a unique response schema
 - **Kind:** filing
@@ -5439,4 +5522,40 @@ the record.
   (2) is self-limiting without anyone having to remember to prune, and it keeps
   the property the corpus is actually for, which is shape coverage rather than
   file count. Either way the count stops moving with process history.
-- **Status:** open
+- **Status:** **RESOLVED as option (2) and implemented, 2026-09-01**, on the
+  human's triage disposition.
+
+  **The cut is far larger than "keep the first of each group" sounds, and the
+  number is the finding.** 169 files hold **five** distinct shapes, so the two
+  parametrised tests go from **338 cases to 10**. 97 files are the same shape as
+  each other and 65 more differ only by containing inline code; the remaining
+  seven are the two #190/#195 variants that carry tables and bespoke headings.
+  The repo's task-file convention is what makes them uniform, and it is why the
+  163rd copy was re-running assertions rather than covering anything.
+
+  **The signature is built from markdown-it, not from `parse_task_file`.** These
+  are tests *of* `requirement/task_file.py`, so deriving the case list from that
+  parser would let a parser regression shrink its own test set. markdown-it sits
+  a level below — `task_file.py` reads its tree and so does this, neither reads
+  the other — which is the same reach `test_region_coverage.py::_has_nested_blocks`
+  already makes. A first attempt used hand-rolled regexes and was abandoned: it
+  has to enumerate constructs in advance and therefore misses the one nobody
+  thought of, which is exactly the failure the region-coverage test exists to
+  catch. It also found only four shapes, having missed inline code entirely.
+
+  Three new tests pin the behaviour, and the second is the one that matters: a
+  filter that simply returned the first file would pass the deduplication test
+  and destroy the corpus, so `test_a_file_bringing_a_new_construct_is_kept`
+  supplies the other direction. `ALWAYS_KEEP` is tested too, though it is empty
+  today — an untested escape hatch would be found broken by whoever first needs
+  it.
+
+  Two existing tests had to change because their fixtures wrote **identical**
+  text to two files and now collapse to one. Both were given structurally
+  distinct fixtures so they keep testing what they are named for, and
+  `test_each_committed_file_yields_exactly_one_case` lost its assertion that the
+  corpus equals the glob — that equality is precisely what this change removes,
+  and re-asserting it would forbid the filter. It now asserts the corpus is a
+  duplicate-free subset of the glob.
+
+  Suite: **1311 passed, 2 xfailed**; ruff check and format clean.

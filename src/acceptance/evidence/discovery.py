@@ -1,11 +1,22 @@
 """Test discovery (M4.1, §9.1 "candidate tests").
 
 Collects the tests relevant to a change set: every added/modified test, plus
-existing (untouched) tests connected to a changed symbol — by call graph,
-non-call reference, import, or naming — via Python AST, no LLM call (this is
-structural, like M2's diff/context extraction). This produces the *candidate*
-set M4.2 maps to obligations and M5 analyzes test-by-test; it does not judge
-test strength or relevance beyond "this test touches changed code."
+existing (untouched) tests whose NAMES OVERLAP what the change touched — the
+names a test calls (`_names_called`), every identifier it mentions
+(`_names_referenced`), and the modules it imports (`_imported_module_stems`),
+intersected with `_changed_symbol_names` and `_changed_module_stems` — via
+Python AST, no LLM call (this is structural, like M2's diff/context
+extraction). This produces the *candidate* set the later stages judge; it does
+not judge test strength or relevance beyond "this test touches changed code."
+
+**There is no call graph here, and the distinction is load-bearing.** Nothing
+resolves a called name to its definition and nothing follows an edge
+transitively. So this module reports *positive* name overlap and **cannot
+establish that a static path is absent** — a test that reaches changed code
+through a helper it never names is not found. This docstring claimed a call
+graph until 2026-09-01, and the claim was believed: DR-312's resolved question 2
+originally scoped the reachability prefilter against "M4.1 discovery's call
+graph", and a code check caught it only just before #314 was filed.
 
 Changed-symbol names come from `change/context.py`'s `changed_definitions` —
 the same enclosing-definition extraction M2.2 uses for surrounding-code

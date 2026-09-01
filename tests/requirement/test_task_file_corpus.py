@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tests.requirement import corpus
 from tests.requirement.corpus import REPO_ROOT, committed_task_files
 
 
@@ -39,9 +40,15 @@ def test_a_path_outside_dogfood_logs_is_not_a_case(tmp_path: Path):
     logs = tmp_path / "dogfood-logs"
     first = logs / "996-gate1-run1" / "current-task.md"
     second = logs / "997-gate1-run1" / "current-task.md"
-    for committed in (first, second):
-        committed.parent.mkdir(parents=True)
-        committed.write_text("# Task\na committed run\n")
+    # Deliberately different SHAPES, so that both survive the corpus's
+    # distinct-shape filter and this test keeps testing what it is named for.
+    # Two identical files would collapse to one and the ordered comparison below
+    # would fail for a reason that has nothing to do with paths outside the
+    # corpus directory.
+    first.parent.mkdir(parents=True)
+    first.write_text("# Task\na committed run\n")
+    second.parent.mkdir(parents=True)
+    second.write_text("# Task\na committed run\n\n## Constraints\n- a constraint\n")
 
     (tmp_path / "current-task.md").write_text("# Task\nthe task in flight\n")
     (logs / "current-task.md").write_text("# Task\nloose in the corpus directory\n")
@@ -84,18 +91,28 @@ def test_each_committed_file_yields_exactly_one_case(tmp_path: Path):
     logs = tmp_path / "dogfood-logs"
     first = logs / "996-gate1-run1" / "current-task.md"
     second = logs / "997-gate1-run1" / "current-task.md"
-    for path in (first, second):
-        path.parent.mkdir(parents=True)
-        path.write_text("# Task\na committed run\n")
+    # Different shapes, so the distinct-shape filter keeps both — see the note
+    # in `test_a_path_outside_dogfood_logs_is_not_a_case`.
+    first.parent.mkdir(parents=True)
+    first.write_text("# Task\na committed run\n")
+    second.parent.mkdir(parents=True)
+    second.write_text("# Task\na committed run\n\n## Constraints\n- a constraint\n")
 
     found = committed_task_files(tmp_path)
 
     assert found == [first, second]
     assert len(found) == len(set(found))
 
+    # On the real corpus the list is a SUBSET of the glob, not equal to it: one
+    # file per distinct shape. The properties that survive the filter are that
+    # every case is a real committed path and no path appears twice — the
+    # cardinality equality this used to assert is exactly what the filter
+    # removed, and asserting it again would forbid the filter.
     real = committed_task_files()
+    every = set(REPO_ROOT.glob("dogfood-logs/*/current-task.md"))
     assert len(real) == len(set(real))
-    assert len(real) == len(list(REPO_ROOT.glob("dogfood-logs/*/current-task.md")))
+    assert set(real) <= every
+    assert real, "the real corpus is empty, so this asserts nothing"
 
 
 def test_the_parse_test_enumerates_the_corpus_and_nothing_else():
@@ -151,3 +168,66 @@ def test_an_entry_whose_target_is_missing_is_omitted(tmp_path: Path):
 
     assert dangling.is_symlink()
     assert committed_task_files(tmp_path) == [real]
+
+
+def _run(logs: Path, name: str, text: str) -> Path:
+    path = logs / name / "current-task.md"
+    path.parent.mkdir(parents=True)
+    path.write_text(text)
+    return path
+
+
+def test_two_files_of_the_same_shape_yield_one_case(tmp_path: Path):
+    """The corpus keeps one file per distinct markdown shape, not every file.
+
+    Two tests are parametrised over this corpus, so before the filter every
+    dogfood run added two tests permanently — 169 files and 338 tests, 20.7% of
+    the suite, growing with process history rather than with the software. The
+    marginal file bought nothing: 162 of those 169 parse to the identical shape,
+    so the 163rd copy ran the same assertions again.
+
+    Earliest path wins, which is what keeps the selection stable as the
+    directory grows: a later run can add a case but never displace one.
+    """
+    logs = tmp_path / "dogfood-logs"
+    first = _run(logs, "001-gate1-run1", "# Task\ndo the thing\n")
+    _run(logs, "002-gate1-run1", "# Task\ndo a different thing entirely\n")
+
+    assert committed_task_files(tmp_path) == [first]
+
+
+def test_a_file_bringing_a_new_construct_is_kept(tmp_path: Path):
+    """The other half: the filter must not collapse genuinely different parses.
+
+    Without this, a filter that returned only the first file would pass the test
+    above and destroy the corpus. The second file differs by one construct — a
+    table — which is exactly the kind of region `test_region_coverage` exists to
+    notice going unread.
+    """
+    logs = tmp_path / "dogfood-logs"
+    plain = _run(logs, "001-gate1-run1", "# Task\ndo the thing\n")
+    with_table = _run(
+        logs,
+        "002-gate1-run1",
+        "# Task\ndo the thing\n\n| a | b |\n|---|---|\n| 1 | 2 |\n",
+    )
+
+    assert committed_task_files(tmp_path) == [plain, with_table]
+
+
+def test_a_named_regression_survives_a_shape_it_shares(tmp_path: Path, monkeypatch):
+    """`ALWAYS_KEEP` is the escape hatch, and it has to actually reach the filter.
+
+    A file kept as the reproduction for a specific defect must survive even when
+    an earlier file happens to parse to the same shape. Empty in the repository
+    today, so without this test the mechanism could rot unnoticed and be
+    discovered broken by whoever first needs it.
+    """
+    logs = tmp_path / "dogfood-logs"
+    first = _run(logs, "001-gate1-run1", "# Task\ndo the thing\n")
+    twin = _run(logs, "002-gate1-run1", "# Task\ndo a different thing entirely\n")
+
+    assert committed_task_files(tmp_path) == [first]
+
+    monkeypatch.setattr(corpus, "ALWAYS_KEEP", frozenset({"002-gate1-run1"}))
+    assert committed_task_files(tmp_path) == [first, twin]
