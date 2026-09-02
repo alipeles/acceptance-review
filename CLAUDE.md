@@ -312,6 +312,12 @@ We run the tool against our own work in progress. It is the only place the tool'
 own failures become visible, so it is a hard constraint on shipping. Two gates,
 both mandatory, neither skippable because the change looks small.
 
+**Both gates apply only to a task that changes code.** A task whose whole
+deliverable is a document — a Decision Record, a spec edit — takes neither: Gate
+1 is *before writing any code* and Gate 2 is *after coding*, so on a
+documentation-only task there is nothing for either to run against. Everything
+else takes both in full. Decided 2026-09-02, at #171.
+
 **The tool must never be aware that it is being dogfooded.** The whole premise is
 that we use it exactly as a client would, so `current-task.md` is an ordinary
 mandate and nothing more. It never mentions dogfooding, gates, runs, or this
