@@ -276,6 +276,116 @@ def test_an_empty_request_runs_nothing(tmp_path):
     assert not result.aborted
 
 
+def test_the_launch_machine_s_user_site_packages_are_switched_off(tmp_path):
+    """Dropping PYTHONPATH is not enough: user site-packages is on the path anyway.
+
+    It is launch-side code the project under review never asked for, and no
+    inherited environment variable is needed for it to be reachable.
+
+    **What this shows and what it does not.** It asserts the switch is set, not
+    that the switch works. Asserting `site.ENABLE_USER_SITE` is false would be
+    the stronger claim and it is not available here: this suite runs under a
+    virtualenv, where user site is already disabled, so that assertion passes
+    with the fix removed. Defect injection caught exactly that. This is the
+    honest weaker test rather than one that looks stronger and proves less.
+    """
+    root = _project(
+        tmp_path,
+        """
+        import os
+
+        def test_user_site_is_disabled():
+            assert os.environ.get("PYTHONNOUSERSITE") == "1"
+        """,
+    )
+    result = run_tests(["test_subject.py::test_user_site_is_disabled"], root, _fast())
+
+    assert (
+        result.outcome_for("test_subject.py::test_user_site_is_disabled").kind
+        is TestOutcomeKind.PASSED
+    )
+
+
+def test_a_test_that_skips_itself_is_not_reported_as_never_started(tmp_path):
+    """A runtime skip means the test ran. The reason has to say so.
+
+    Both a runtime skip and a collection-time skip are `not_started`, because
+    neither observed a verdict — but recording a test that reached its own body
+    as "never started" erases the distinction the outcome exists to carry.
+    """
+    root = _project(
+        tmp_path,
+        """
+        import pytest
+
+        def test_skips_itself():
+            pytest.skip("decided at runtime")
+
+        @pytest.mark.skip(reason="decided before running")
+        def test_skipped_before_running():
+            raise AssertionError("never reached")
+        """,
+    )
+    result = run_tests(
+        [
+            "test_subject.py::test_skips_itself",
+            "test_subject.py::test_skipped_before_running",
+        ],
+        root,
+        _fast(),
+    )
+
+    ran = result.outcome_for("test_subject.py::test_skips_itself")
+    assert ran.kind is TestOutcomeKind.NOT_STARTED
+    assert "ran and skipped itself" in ran.reason
+
+    never_ran = result.outcome_for("test_subject.py::test_skipped_before_running")
+    assert never_ran.kind is TestOutcomeKind.NOT_STARTED
+    assert "before it ran" in never_ran.reason
+    assert ran.reason != never_ran.reason
+
+
+def test_the_per_test_budget_still_applies_without_a_report_path(tmp_path, monkeypatch):
+    """Loaded with no report path, the plugin must still arm the clock.
+
+    Reporting having nowhere to go is not a reason to leave the run
+    unprotected — a half-sandboxed run that looks sandboxed is the state this
+    package exists to rule out.
+    """
+    from acceptance.execution import netblock
+
+    monkeypatch.delenv(netblock.REPORT_PATH_VAR, raising=False)
+    monkeypatch.setenv(netblock.PER_TEST_BUDGET_VAR, "5")
+
+    registered = {}
+
+    class _Config:
+        class pluginmanager:  # mimics pytest's attribute shape
+            @staticmethod
+            def register(plugin, name):
+                registered[name] = plugin
+
+    netblock.pytest_configure(_Config())
+
+    plugin = registered["acceptance-sandbox"]
+    assert plugin._can_time_out(), "the per-test budget was left unarmed"
+
+
+def test_a_run_that_reports_nothing_says_so_rather_than_looking_untried(tmp_path):
+    """Three things become `not_started`, and the reason must tell them apart."""
+    root = _project(tmp_path, "def test_anything():\n    assert True\n")
+
+    result = run_tests(
+        ["test_subject.py::test_anything"],
+        root,
+        _fast(interpreter=str(tmp_path / "no-such-interpreter")),
+    )
+
+    reason = result.outcome_for("test_subject.py::test_anything").reason
+    assert "no report" in reason or "could not run" in reason
+    assert "reached this one" not in reason
+
+
 # --- the contract that it returns rather than raises -------------------------
 
 

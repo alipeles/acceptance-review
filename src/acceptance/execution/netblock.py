@@ -100,7 +100,9 @@ class _Reporter:
     finished have already been written down.
     """
 
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str | None) -> None:
+        # `None` when the plugin was loaded without a report path. It still
+        # accumulates, so nothing else has to care whether reporting is on.
         self._path = path
         self._pending: dict[str, tuple[str, str | None]] = {}
 
@@ -115,7 +117,7 @@ class _Reporter:
 
     def flush(self, node_id: str) -> None:
         entry = self._pending.pop(node_id, None)
-        if entry is None:
+        if entry is None or self._path is None:
             return
         kind, reason = entry
         line = json.dumps(
@@ -178,10 +180,20 @@ class SandboxPlugin:
 
     def pytest_runtest_logreport(self, report) -> None:  # type: ignore[no-untyped-def]
         if report.skipped:
+            # A skip is `not_started` either way — no verdict about the test was
+            # observed — but the reason has to say which kind it was. A test
+            # that reached its own body and called `pytest.skip()` *did* run,
+            # and recording that as "never started" erases the distinction this
+            # outcome exists to keep.
+            ran_first = report.when == "call"
             self._reporter.note(
                 report.nodeid,
                 "not_started",
-                "the project's own suite skipped this test",
+                (
+                    "the test ran and skipped itself, so no verdict was observed"
+                    if ran_first
+                    else "the project's own suite skipped this test before it ran"
+                ),
             )
             return
         if report.failed:
@@ -198,11 +210,11 @@ class SandboxPlugin:
 def pytest_configure(config) -> None:  # type: ignore[no-untyped-def]
     install_network_block()
 
-    report_path = os.environ.get(REPORT_PATH_VAR)
-    if not report_path:
-        # Loaded outside the sandbox runner. Blocking the network is still the
-        # safe half to do; reporting has nowhere to go.
-        return
+    # A missing report path means reporting has nowhere to go. It must NOT mean
+    # the rest of the plugin is skipped: an early return here would leave the
+    # per-test time budget unarmed while the run still looked sandboxed, which
+    # is the half-protected state this package exists to rule out.
+    report_path = os.environ.get(REPORT_PATH_VAR) or None
 
     raw_budget = os.environ.get(PER_TEST_BUDGET_VAR, "")
     try:

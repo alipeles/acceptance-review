@@ -148,7 +148,7 @@ def _run_in_workspace(
         *requested,
     ]
 
-    aborted, abort_reason = _spawn_and_wait(
+    aborted, abort_reason, exit_code = _spawn_and_wait(
         command,
         cwd=project_root,
         env=_sandbox_env(plugin_dir, report_path, config),
@@ -156,10 +156,8 @@ def _run_in_workspace(
     )
 
     observed = _read_report(report_path)
-    outcomes = [
-        observed.get(test_id) or _not_started(test_id, abort_reason or _NOT_REACHED)
-        for test_id in requested
-    ]
+    unreached = _why_unreached(aborted, abort_reason, exit_code, observed)
+    outcomes = [observed.get(test_id) or _not_started(test_id, unreached) for test_id in requested]
     return SandboxRunResult(
         outcomes=outcomes,
         aborted=aborted,
@@ -167,7 +165,28 @@ def _run_in_workspace(
     )
 
 
-_NOT_REACHED = "the run ended before this test reported an outcome"
+def _why_unreached(
+    aborted: bool,
+    abort_reason: str | None,
+    exit_code: int | None,
+    observed: dict[str, TestOutcome],
+) -> str:
+    """The reason a requested test ended with no outcome of its own.
+
+    Three different things arrive here, and saying which is the whole point of
+    the reason: the run was stopped by the whole-run budget, the run produced no
+    report at all, or the run reported on other tests and never reached this
+    one. Collapsing them into one sentence would make "tried and could not"
+    indistinguishable from "did not try".
+    """
+    if aborted and abort_reason:
+        return abort_reason
+    if not observed:
+        return (
+            "the run produced no report at all (the test process exited with "
+            f"{exit_code}), so nothing was observed about any requested test"
+        )
+    return "the run reported on other tests and ended without reaching this one"
 
 
 def _sandbox_env(plugin_dir: Path, report_path: Path, config: SandboxConfig) -> dict[str, str]:
@@ -180,6 +199,11 @@ def _sandbox_env(plugin_dir: Path, report_path: Path, config: SandboxConfig) -> 
     env = {name: os.environ[name] for name in _INHERITED_ENV if name in os.environ}
     env["PYTHONPATH"] = str(plugin_dir)
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    # The launching machine's per-user site-packages directory is on the
+    # interpreter's path by default, and dropping `PYTHONPATH` from the
+    # allowlist does not remove it. It is launch-side code the project under
+    # review never asked for, so it is switched off explicitly.
+    env["PYTHONNOUSERSITE"] = "1"
     env[netblock.REPORT_PATH_VAR] = str(report_path)
     env[netblock.PER_TEST_BUDGET_VAR] = repr(config.per_test_seconds)
     return env
@@ -190,8 +214,12 @@ def _spawn_and_wait(
     cwd: Path,
     env: dict[str, str],
     total_seconds: float,
-) -> tuple[bool, str | None]:
-    """Run the command under the whole-run budget. Returns (aborted, reason)."""
+) -> tuple[bool, str | None, int | None]:
+    """Run the command under the whole-run budget.
+
+    Returns (aborted, abort reason, exit code). The exit code is `None` when the
+    run was stopped rather than allowed to finish.
+    """
     process = subprocess.Popen(
         command,
         cwd=str(cwd),
@@ -201,13 +229,15 @@ def _spawn_and_wait(
         start_new_session=True,
     )
     try:
-        process.wait(timeout=total_seconds)
+        exit_code = process.wait(timeout=total_seconds)
     except subprocess.TimeoutExpired:
         _terminate_group(process)
-        return True, (
-            f"the run exceeded its whole-run time budget of {total_seconds:g}s and was stopped"
+        return (
+            True,
+            f"the run exceeded its whole-run time budget of {total_seconds:g}s and was stopped",
+            None,
         )
-    return False, None
+    return False, None, exit_code
 
 
 def _terminate_group(process: subprocess.Popen) -> None:
