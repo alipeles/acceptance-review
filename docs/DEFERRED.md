@@ -5559,3 +5559,119 @@ the record.
   duplicate-free subset of the glob.
 
   Suite: **1311 passed, 2 xfailed**; ruff check and format clean.
+
+### [2026-09-02] An obligation whose description opens with a demonstrative that has no antecedent
+- **Kind:** filing — a new issue, child of #181 (the decomposition umbrella)
+- **Found during:** #43, Gate 1, run 1 (`dogfood-logs/43-gate1-run1/`)
+- **Where:** the decomposition stage, `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** the decomposer emitted the obligation
+  `ordinary-result-not-failure-2` with the description "Treat this as an ordinary
+  result rather than a failure." Nothing inside the obligation says what "this"
+  is. Every downstream stage reads the obligation rather than the requirement it
+  came from, so an obligation that does not say what it is about cannot be
+  mapped, cannot have plausible ways of failing enumerated for it, and cannot be
+  rated — and none of those stages will report that they could not; they will
+  just answer badly.
+
+  This is **not** #304 (obligations whose ids collide and are left unmerged). I
+  first recorded it as an instance of #304, on the grounds that
+  `ordinary-result-not-failure` and `ordinary-result-not-failure-2` were
+  duplicates left unmerged. That claim is not supportable: with the referent
+  missing, a reader cannot decide whether the two obligations say the same thing.
+  The relationship runs the other way — a dangling description makes duplicate
+  detection undecidable, so this defect sits underneath #304 rather than beside
+  it.
+- **Prior instances, verified in the committed logs:** three more, on two other
+  tasks, all with the same shape and all silent.
+
+  | log | obligation id | description |
+  |---|---|---|
+  | `251-gate1-run{1,2,4}` | `unchanged-criterion-no-model-call` | "Such a criterion costs no evidence-judgement model call." |
+  | `261-gate1-run1` | `partition-test-not-fixed-by-lint-suppression` | "That test is not made to pass by suppressing the lint rule that flagged it." |
+  | `261-gate1-run2` | `partition-test-is-not-ignored` | "That test is narrowed to the specific exception rather than annotated to be ignored." |
+
+  Two variants, and the second is worse. In #251 and #261 the **source requirement
+  text already opened with the demonstrative**, and the decomposer copied it
+  through unresolved. In #43 the source sentence carried its own antecedent —
+  "Evidence with no completed run behind it stays at the static tier, and that is
+  an ordinary result rather than a failure" — and the decomposer **stripped it**
+  while splitting the sentence, creating a dangling reference the input did not
+  have.
+
+  In all four cases the generated **id** names the referent correctly
+  (`unchanged-criterion-…`, `partition-test-…`, `ordinary-result-…`), which is
+  evidence that the model resolved the reference and simply did not write it into
+  the description.
+- **Why I didn't act:** fixing the decomposition prompt is out of scope for #43,
+  which is the sandbox runner, and it would invalidate that stage's recorded
+  transcripts.
+- **Drafted issue:**
+
+  > **Title:** An obligation description that refers outside itself is emitted with no diagnostic
+  >
+  > Child of #181.
+  >
+  > ## The defect
+  >
+  > `dogfood-logs/43-gate1-run1/output.log` contains the obligation
+  > `ordinary-result-not-failure-2`, whose whole description is:
+  >
+  > > Treat this as an ordinary result rather than a failure.
+  >
+  > Nothing in the obligation says what "this" is. The requirement it came from,
+  > `task-03`, reads "Evidence with no completed run behind it stays at the static
+  > tier, and that is an ordinary result rather than a failure" — so the
+  > antecedent existed in the input and was dropped when the sentence was split.
+  >
+  > ## Why it matters more than a wording blemish
+  >
+  > The obligation, not the requirement, is what every later stage is given.
+  > Mapping asks which tests bear on it. Enumeration asks how a change could fail
+  > it. The rating, the recommended tests and the report all quote it. An
+  > obligation whose subject is unknown gets answered anyway, at whatever the
+  > model guesses, and nothing marks the answer as resting on a guess. The
+  > project's own rule is that uncertainty is first-class (§9.3); this is
+  > uncertainty that never reaches the surface.
+  >
+  > It also makes duplicate detection undecidable, which is the connection to
+  > #304. In this run the decomposer generated the name `ordinary-result-not-
+  > failure` twice and suffixed the second to disambiguate, then merged nothing.
+  > Whether that pair *is* a duplicate cannot be determined by reading it,
+  > because one member does not say what it is about. So this should be fixed
+  > before #304, not as part of it.
+  >
+  > ## It is not one run
+  >
+  > Three earlier instances are in the committed logs, on two unrelated tasks:
+  >
+  > | log | obligation id | description |
+  > |---|---|---|
+  > | `dogfood-logs/251-gate1-run{1,2,4}` | `unchanged-criterion-no-model-call` | "Such a criterion costs no evidence-judgement model call." |
+  > | `dogfood-logs/261-gate1-run1` | `partition-test-not-fixed-by-lint-suppression` | "That test is not made to pass by suppressing the lint rule that flagged it." |
+  > | `dogfood-logs/261-gate1-run2` | `partition-test-is-not-ignored` | "That test is narrowed to the specific exception rather than annotated to be ignored." |
+  >
+  > Two variants. In #251 and #261 the source requirement text itself began with
+  > the demonstrative and was copied through. In #43 the source carried the
+  > antecedent and the decomposer removed it. The second is the worse failure:
+  > information the tool held was destroyed.
+  >
+  > In every case the generated id names the referent correctly — `unchanged-
+  > criterion-…`, `partition-test-…`, `ordinary-result-…`. The model resolved the
+  > reference well enough to name the obligation and then did not put it in the
+  > description. That suggests the fix is a constraint on the description rather
+  > than a comprehension problem.
+  >
+  > ## Acceptance
+  >
+  > - An obligation description states its own subject. A description whose
+  >   subject is only recoverable from the requirement text, a sibling obligation,
+  >   or the obligation's own id, is either resolved at decomposition or reported.
+  > - No run emits such a description silently. If the decomposer cannot resolve
+  >   the reference, that is an open question or an unusable answer, not a
+  >   confident obligation.
+  > - The four instances above are all resolved the same way as each other.
+  >
+  > Related: #304 (ids colliding and left unmerged — undecidable while this
+  > stands), #181 (umbrella).
+- **Status:** open — drafted, not filed.
