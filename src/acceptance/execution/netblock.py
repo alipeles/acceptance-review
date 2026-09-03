@@ -168,8 +168,7 @@ class SandboxPlugin:
         return (
             self._per_test_seconds is not None
             and self._per_test_seconds > 0
-            and hasattr(signal, "SIGALRM")
-            and hasattr(signal, "setitimer")
+            and _can_arm_an_alarm()
         )
 
     @staticmethod
@@ -222,7 +221,23 @@ def pytest_configure(config) -> None:  # type: ignore[no-untyped-def]
     except ValueError:
         per_test_seconds = None
 
+    # A budget that was asked for and cannot be enforced is refused, not
+    # ignored. The alarm needs `signal.setitimer`, which not every platform
+    # has; running anyway would produce a result that looks time-bounded and is
+    # not. DR-170 Decision 1's cost asymmetry applies — a declined run is
+    # recorded and arguable, an unbounded one is an execution-safety incident.
+    if per_test_seconds and per_test_seconds > 0 and not _can_arm_an_alarm():
+        raise pytest.UsageError(
+            "a per-test time budget was requested but this platform has no "
+            "signal.setitimer, so the budget cannot be enforced; the sandbox "
+            "declines to run rather than run unbounded"
+        )
+
     config.pluginmanager.register(
         SandboxPlugin(_Reporter(report_path), per_test_seconds),
         name="acceptance-sandbox",
     )
+
+
+def _can_arm_an_alarm() -> bool:
+    return hasattr(signal, "SIGALRM") and hasattr(signal, "setitimer")

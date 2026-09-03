@@ -32,6 +32,30 @@ def _project(tmp_path: Path, body: str) -> Path:
     return root
 
 
+def _unix_sockets_are_available() -> bool:
+    """Whether this machine lets a process open an AF_UNIX socket at all.
+
+    Some sandboxes — including the one these tests are often developed under —
+    refuse it with `PermissionError: Operation not permitted`. That is the
+    environment's answer, not the sandbox runner's, and a test that cannot tell
+    the two apart would report a false defect.
+    """
+    import socket
+    import tempfile
+
+    # Creating the socket is not the operation that gets refused — binding it
+    # is — so the probe has to go as far as bind or it answers the wrong
+    # question and the test runs where it cannot pass.
+    with tempfile.TemporaryDirectory() as directory:
+        try:
+            probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            probe.bind(str(Path(directory) / "s"))
+            probe.close()
+        except OSError:
+            return False
+    return True
+
+
 def _fast(**overrides) -> SandboxConfig:
     defaults = {"interpreter": sys.executable, "per_test_seconds": 10.0}
     defaults.update(overrides)
@@ -73,6 +97,99 @@ def test_a_test_that_resolves_a_hostname_is_reported_as_blocked(tmp_path):
     assert (
         result.outcome_for("test_subject.py::test_resolves").kind is TestOutcomeKind.NETWORK_BLOCKED
     )
+
+
+@pytest.mark.parametrize("call", ["connect", "connect_ex"])
+def test_a_direct_socket_connect_is_blocked(tmp_path, call):
+    """`create_connection` is the convenient path, not the only one.
+
+    Gate 2's review pointed at `socket.socket.connect` and `connect_ex` as
+    unexercised, and it was right: the earlier tests only went through
+    `create_connection` and `getaddrinfo`, so half the block had no evidence
+    behind it. An IPv4 socket is refused because it is not `AF_UNIX`.
+    """
+    root = _project(
+        tmp_path,
+        f"""
+        import socket
+
+        def test_connects_directly():
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.{call}(("192.0.2.1", 80))
+        """,
+    )
+    result = run_tests(["test_subject.py::test_connects_directly"], root, _fast())
+
+    assert (
+        result.outcome_for("test_subject.py::test_connects_directly").kind
+        is TestOutcomeKind.NETWORK_BLOCKED
+    )
+
+
+@pytest.mark.skipif(
+    not _unix_sockets_are_available(),
+    reason="this machine forbids AF_UNIX sockets outright, so the allowance "
+    "cannot be observed here",
+)
+def test_a_local_unix_socket_is_still_allowed(tmp_path):
+    """The one deliberate exception, and it needs evidence too.
+
+    A local socket is not network egress, and refusing it would break unrelated
+    machinery. Without this test, tightening the block to refuse everything
+    would look like an improvement.
+    """
+    root = _project(
+        tmp_path,
+        """
+        import socket
+
+        def test_unix_socket_round_trip():
+            # A bare relative name: the run's working directory is the project
+            # root, and AF_UNIX paths are capped near 104 bytes on macOS.
+            path = "s"
+            server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            server.bind(path)
+            server.listen(1)
+            client = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            client.connect(path)
+            client.close()
+            server.close()
+        """,
+    )
+    result = run_tests(["test_subject.py::test_unix_socket_round_trip"], root, _fast())
+
+    assert (
+        result.outcome_for("test_subject.py::test_unix_socket_round_trip").kind
+        is TestOutcomeKind.PASSED
+    )
+
+
+def test_the_per_test_budget_is_refused_rather_than_ignored_when_unenforceable(
+    monkeypatch,
+):
+    """A budget that cannot be enforced must decline the run, not run unbounded.
+
+    On a platform without `signal.setitimer` the alarm cannot be armed. Running
+    anyway would produce a result that looks time-bounded and is not, which is
+    the wrong direction of DR-170 Decision 1's cost asymmetry: a declined run is
+    recorded and arguable, an unbounded one is an execution-safety incident.
+    """
+    import signal as signal_module
+
+    from acceptance.execution import netblock
+
+    monkeypatch.delenv(netblock.REPORT_PATH_VAR, raising=False)
+    monkeypatch.setenv(netblock.PER_TEST_BUDGET_VAR, "5")
+    monkeypatch.delattr(signal_module, "setitimer", raising=False)
+
+    class _Config:
+        class pluginmanager:  # mimics pytest's attribute shape
+            @staticmethod
+            def register(plugin, name):
+                raise AssertionError("the run should have been declined")
+
+    with pytest.raises(pytest.UsageError, match="declines to run"):
+        netblock.pytest_configure(_Config())
 
 
 def test_the_block_is_distinguished_from_an_ordinary_failure(tmp_path):
