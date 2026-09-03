@@ -109,8 +109,25 @@ def test_parses_every_committed_task_file(path: Path):
 
     assert parsed.behavior
     assert parsed.constraints  # every committed task file lists constraints
-    assert parsed.completion_expectations
-    for span in [*parsed.behavior, *parsed.constraints, *parsed.completion_expectations]:
+
+    # Completion expectations are deliberately NOT asserted to be present.
+    # CLAUDE.md's task-file style makes the section optional — "if the section
+    # appears, keep it at the spec §7.1 example's grain" — because re-listing
+    # every behavior there does Gate 1's decomposition at authoring time. The
+    # section happened to appear in every earlier file, so asserting it looked
+    # free; #43's task file omits it on purpose and the assertion was testing
+    # our writing habits rather than the parser.
+    #
+    # The span-exactness check below is the guard that matters, and it now
+    # covers all four section kinds rather than three. Findings cite requirement
+    # text by position, so a span whose offsets do not reproduce its own text is
+    # a wrong citation.
+    for span in [
+        *parsed.behavior,
+        *parsed.constraints,
+        *parsed.scope_exclusions,
+        *parsed.completion_expectations,
+    ]:
         assert parsed.source[span.start : span.end] == span.text
 
 
