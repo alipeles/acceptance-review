@@ -9,7 +9,8 @@
 ## Result
 
 9 requirements, all with obligations, 19 obligations in total. No open questions
-were raised.
+were raised — including none about the obligation that had no subject, which is
+the point of finding 1.
 
 An earlier attempt at the identical command failed before reaching the model:
 the OpenAI account had no credits (`credit_balance_exhausted`, HTTP 429). The
@@ -19,36 +20,37 @@ decomposition.
 
 ## Findings
 
-### 1. One requirement produced a duplicate obligation pair — tool defect
+### 1. An obligation description with no subject — tool defect
 
-`task-03` produced both:
+`task-03` produced `ordinary-result-not-failure-2`, whose entire description is:
 
-- `ordinary-result-not-failure` — "Treat the static-tier result for evidence
-  with no completed run behind it as an ordinary result rather than a failure."
-- `ordinary-result-not-failure-2` — "Treat this as an ordinary result rather
-  than a failure."
+> Treat this as an ordinary result rather than a failure.
 
-The second is a strictly weaker restatement of the first, from the same
-sentence, and its text begins with a bare "this" that has no antecedent once the
-obligation is read on its own.
+Nothing inside the obligation says what "this" is. That is the defect. Every
+later stage is handed the obligation rather than the requirement it came from,
+so an obligation that does not state its own subject cannot be mapped, cannot
+have ways of failing enumerated for it, and cannot be rated — and no stage will
+report that it could not.
 
-**Attributed to a tool defect.** This is #304 ("Twin Constraint/Completion
-obligations are left unmerged with no diagnostic", a child of #181, the
-decomposition umbrella). Its first Acceptance item is: "Two obligations whose
-generated ids differ only by a numeric suffix are either merged, or reported as
-an unmerged pair with a stated reason. No run leaves such a pair unmerged
-silently." That is exactly what happened here — the decomposer generated the
-same name twice, resolved the collision with a `-2` suffix, and merged nothing,
-with no diagnostic in the output.
+The antecedent existed in the input. `task-03` read "Evidence with no completed
+run behind it stays at the static tier, and that is an ordinary result rather
+than a failure." The decomposer dropped the antecedent while splitting the
+sentence, so it destroyed information it held.
 
-**Why this is new evidence rather than a repeat.** Every instance recorded on
-#304 came from a Constraint mirrored by a Completion expectation — two separate
-requirements in the task file, which #304's body attributes to this repo's
-task-file convention. This instance came from **one sentence inside one
-requirement**, and `current-task.md` for #43 has no Completion expectations
-section at all. So the collision does not need two requirements to arise, and
-#304's stated cause is not the only route to it. A drafted comment carrying this
-is queued in `docs/DEFERRED.md`.
+**This is not #304**, the issue on obligations whose ids collide and are left
+unmerged. I first recorded it as an instance of #304, calling
+`ordinary-result-not-failure` and `ordinary-result-not-failure-2` duplicates
+left unmerged. That claim is not supportable, and the human said so: with the
+referent missing, nobody can decide whether the two obligations say the same
+thing. The dependency runs the other way — a description with no subject makes
+duplicate detection undecidable. A new issue under #181, the decomposition
+umbrella, is drafted in `docs/DEFERRED.md`, with three prior instances found in
+the committed logs of #251 and #261.
+
+What is still observable about the ids, and worth no more than this: the
+decomposer generated the same name twice and suffixed the second, which shows it
+treated them as the same thing while naming them. That is the tool's own
+behaviour, not my reading of the text.
 
 ### 2. The wording was also weak, and was rewritten
 

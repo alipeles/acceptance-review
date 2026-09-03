@@ -22,18 +22,27 @@ same file.
 
 ## What the rewrite fixed
 
-Run 1's `task-03` yielded four obligations, two of which said the same thing
-under ids differing only by a numeric suffix. Run 2's `task-03` yields three,
-all distinct:
+Run 1's `task-03` yielded four obligations, one of which — "Treat this as an
+ordinary result rather than a failure" — did not say what it was about. Run 2's
+`task-03` yields three, each of which states its own subject:
 
 - `conclusions-unchanged-on-incomplete-run`
 - `static-tier-for-unrun-evidence`
 - `review-finishes-normally`
 
-This does not clear the tool defect recorded in run 1's judgement. The duplicate
-was produced by the decomposer, not by the wording alone, and the drafted comment
-for #304 (the issue on obligations whose ids collide being left unmerged with no
-diagnostic) stays queued in `docs/DEFERRED.md`.
+**This does not clear the tool defect, and it is worth being blunt about what the
+rewrite cost.** The defect is that the decomposer dropped an antecedent its input
+carried and emitted an obligation with no subject, silently. Rewording the input
+removed the trigger, not the defect, and it means the only surviving evidence is
+run 1's committed log. The drafted issue in `docs/DEFERRED.md` — a new child of
+#181, the decomposition umbrella — carries it, together with three earlier
+instances found in the committed logs of #251 and #261 that no rewrite of this
+task file touches.
+
+An earlier version of this judgement called the run-1 pair a duplicate left
+unmerged and attributed it to #304, the issue on colliding ids. That was wrong:
+with the referent missing, whether the two obligations say the same thing cannot
+be determined by reading them.
 
 ## Accuracy of the breakdown
 
