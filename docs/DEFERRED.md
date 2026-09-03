@@ -4045,6 +4045,10 @@ the record.
   disposition was to file only the #256 and #262 comments, so this stays
   drafted. **Whoever files it must say the numbers are from the retired
   stage**, or it reads as current evidence.
+  **FILED 2026-09-03**, as instance 5 in a combined comment on #304, approved at
+  #43's Gate 2. The comment carries the stale-numbers caveat in full: the 56% and
+  53% split rates describe `evidence/mapping.py`, which #316 retired.
+
   Restricted to pairs whose obligation text is **byte-identical**, splitting is
   3 of 16 — undeniable errors, but thin. Split rate by similarity band rises as
   pairs get *less* identical (45% at 0.80–0.89, 60% at 0.60–0.64), but that
@@ -4598,9 +4602,13 @@ the record.
 - **Status:** open — **verified still live at triage, 2026-09-01.** Both strict
   xfails are still in `tests/prompts/test_decomposition_prompt.py` and the suite
   still reports exactly 2 xfailed, so neither has been fixed underneath the
-  queue. Held rather than filed: the human's triage disposition was to file only
-  the #256 and #262 comments. File this together with the 2026-08-29 conjunction
-  entry below, which is its second observed instance.
+  queue.
+
+  **2026-09-03: the conjunction entry below no longer folds into this one.** It
+  was filed as instance 2 of the combined comment on #304, because what it shows
+  is an unmerged obligation pair rather than a prompt-quality assertion. This
+  entry's own subject — the two strict xfails — is still unfiled and still needs
+  a home.
 
 ### [2026-08-29] The `decompose` command still does not pass its unusable-answer log to `decompose`
 
@@ -4784,10 +4792,11 @@ the record.
   arises from an ordinary two-bullet split rather than from anything unusual in
   the prompt corpus, and that the two texts differ only by "A continuing run"
   against "A run continuing an earlier run".
-- **Status:** open — held with the 2026-08-29 strict-xfail entry it folds into.
-  The human's triage disposition on 2026-09-01 was to file only the #256 and
-  #262 comments. Nothing about this entry has been overtaken; it is still the
-  second observed instance and should be filed in the same issue.
+- **Status:** **FILED 2026-09-03**, as instance 2 in a combined comment on #304,
+  approved at #43's Gate 2. It went to #304 rather than to the strict-xfail entry
+  it was drafted against, because what it demonstrates — an ordinary two-bullet
+  split producing an unmerged pair — belongs with the other unmerged-obligation
+  instances. The strict-xfail entry's own subject stays open and unfiled.
 
 ### [2026-08-29] Two obligation-type slips, one of which loses the `test_demand` distinction DR-232 exists to carry
 
@@ -5173,7 +5182,11 @@ the record.
   > the same rule; whether the linker should merge one is a real question, since
   > "reuse when X" and "re-judge when not X" are arguably worth testing
   > separately even when they are logically one rule.
-- **Status:** open — drafted, not posted. **Verified still live at triage,
+- **Status:** **FILED 2026-09-03**, as instance 4 in a combined comment on #304,
+  approved at #43's Gate 2. It is the instance with no id collision at all, which
+  is the argument that a suffix-based signal is necessary but not sufficient.
+
+  Earlier note, kept: **verified still live at triage,
   2026-09-01:** #304 is open, and the evidence file is still at
   `~/acceptance-worktrees/_archived-reviews/314-gate2-run1-review.json`. The
   human's triage disposition was to file only the #256 and #262 comments, so
@@ -5756,4 +5769,5 @@ the record.
   > the record on partitioning a stage's requests), #184 (the determinism and
   > reproducibility umbrella) if the cause turns out to be a determinism control
   > rather than the judgement itself.
-- **Status:** open — drafted, not filed.
+- **Status:** **filed 2026-09-03 as #331**, approved at #43's Gate 2 and attached
+  as a sub-issue of #183, the evidence-judgement umbrella. Closed here.
