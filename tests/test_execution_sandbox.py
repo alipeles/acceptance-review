@@ -372,18 +372,30 @@ def test_the_per_test_budget_still_applies_without_a_report_path(tmp_path, monke
 
 
 def test_a_run_that_reports_nothing_says_so_rather_than_looking_untried(tmp_path):
-    """Three things become `not_started`, and the reason must tell them apart."""
-    root = _project(tmp_path, "def test_anything():\n    assert True\n")
+    """Three things become `not_started`, and the reason must tell them apart.
 
-    result = run_tests(
-        ["test_subject.py::test_anything"],
-        root,
-        _fast(interpreter=str(tmp_path / "no-such-interpreter")),
+    The case here is a run that started and then produced no report at all. A
+    conftest that raises gets it: pytest exits before any test reports, so the
+    report file stays empty while the run itself was genuinely attempted.
+
+    An unusable interpreter does not exercise this — it raises out of the spawn
+    and is caught one level up, which is a different reason and a different
+    path. Defect injection is what showed that, by leaving this test green with
+    the distinction removed.
+    """
+    root = _project(tmp_path, "def test_anything():\n    assert True\n")
+    (root / "conftest.py").write_text(
+        "raise ImportError('the project cannot be imported')\n", encoding="utf-8"
     )
 
+    result = run_tests(["test_subject.py::test_anything"], root, _fast())
+
     reason = result.outcome_for("test_subject.py::test_anything").reason
-    assert "no report" in reason or "could not run" in reason
-    assert "reached this one" not in reason
+    assert "produced no report at all" in reason
+    assert "exited with" in reason, "the reason must say the run was attempted"
+    assert "reached this one" not in reason, (
+        "a run that reported nothing is not a run that reported on other tests"
+    )
 
 
 # --- the contract that it returns rather than raises -------------------------
