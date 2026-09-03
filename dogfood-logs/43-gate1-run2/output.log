@@ -1,0 +1,91 @@
+run e1a0e28ecd9479c7
+  continuing 9a43f4a351b5c204
+  requirements: 0 derived, 8 carried, 1 revised; 4 decompose call(s)
+  continue this run with: --continue e1a0e28ecd9479c7
+Model usage by stage:
+  stage                        model                                     calls  prompt  output  cached  this run  recorded
+  ---------------------------  ----------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose                    openai/gpt-5.4-mini     3 (3 live / 0 replayed)  16,032     378   60.7%   $0.0072   $0.0072
+  decompose-summary            openai/gpt-5.4          1 (1 live / 0 replayed)     986     391    0.0%   $0.0083   $0.0083
+  obligation linking           voyage/voyage-3.5-lite  1 (1 live / 0 replayed)     606       0       —   $0.0000   $0.0000
+  requirement carry alignment  openai/gpt-5.4-mini     1 (1 live / 0 replayed)     325      24    0.0%   $0.0004   $0.0004
+  this run spent $0.0159 on 6 live call(s); the evidence cost $0.0159 to record (0 call(s) replayed at no cost to this run)
+Requirements: 9   with obligations: 9
+
+[task-01] The review can run a named set of a project's tests and observe what each one
+    does, rather than only reading them. The run happens in an isolated sandbox. A test
+    that reaches for the network does not reach it. No credential held by the machine
+    that launched the run is visible to the code under test. The run is bounded by a
+    time budget, and when that budget is exhausted the run stops cleanly, leaving
+    nothing still executing behind it.
+    -> observe-test-behavior  [functional/explicit]
+       The review can run a named set of a project's tests and observe what each one
+       does, rather than only reading them.
+    -> isolated-sandbox  [invariant/explicit]
+       The run happens in an isolated sandbox.
+    -> network-access-blocked-for-tests  [functional/explicit]
+       A test that reaches for the network is prevented from reaching it.
+    -> no-launch-credentials-visible  [invariant/explicit]
+       No credential held by the machine that launched the run is visible to the code
+       under test.
+    -> clean-timeout-stop  [functional/explicit]
+       The run stops cleanly when the time budget is exhausted.
+
+[task-02] Every test the run was asked about ends with a recorded outcome: it completed
+    and passed, it completed and failed, it was blocked reaching the network, it
+    exhausted its time, or it was never started. An outcome that is not a completed run
+    carries the reason it is not, so that a test the runner tried and could not complete
+    stays distinguishable from one it never tried.
+    -> test-outcome-recorded  [invariant/explicit]
+       Every test the run was asked about ends with a recorded outcome.
+    -> noncompleted-outcome-carries-reason  [invariant/explicit]
+       Every outcome that is not a completed run carries the reason it is not.
+    -> distinguish-tried-from-never-started  [invariant/explicit]
+       A test the runner tried and could not complete stays distinguishable from one it
+       never tried.
+
+[task-03] A run that does not complete leaves the review's conclusions where they were.
+    Evidence with no completed run behind it stays at the static tier, and the review
+    finishes normally rather than reporting an error.
+    -> conclusions-unchanged-on-incomplete-run  [invariant/explicit]
+       Preserve the review's conclusions where they were when a run does not complete.
+    -> static-tier-for-unrun-evidence  [invariant/explicit]
+       Evidence with no completed run behind it stays at the static tier.
+    -> review-finishes-normally  [functional/explicit]
+       The review finishes normally rather than reporting an error.
+
+[constraint-01] Only the named tests are run. There is no path through which the whole
+    suite runs.
+    -> only-named-tests-run  [functional/explicit]
+       Only the named tests are run; the review does not execute the project's full
+       suite through any alternate path.
+
+[constraint-02] A time budget applies both to a single test and to the run as a whole.
+    -> single-test-time-budget  [boundary/explicit]
+       A single test is subject to a time budget.
+    -> run-wide-time-budget  [boundary/explicit]
+       The run as a whole is subject to a time budget.
+
+[constraint-03] The time budgets and the interpreter the tests run under are
+    configuration with conservative defaults, and neither is read from the project under
+    review.
+    -> time-budget-and-interpreter-defaults  [docs_config/explicit]
+       The time budgets and the interpreter the tests run under use conservative
+       configuration defaults, and neither setting is read from the project under
+       review.
+
+[exclusion-01] Choosing which tests to run, and deciding whether a project's tests can
+    be run at all.
+    -> do-not-decide-test-selection-or-runnability  [functional/explicit]
+       The change does not alter choosing which tests to run or deciding whether a
+       project's tests can be run at all.
+
+[exclusion-02] Altering the code under test in order to observe what a test does.
+    -> no-code-alteration-for-observation  [functional/explicit]
+       The change does not alter the code under test in order to observe what a test
+       does.
+
+[exclusion-03] Recording which lines a test executed.
+    -> no-line-execution-recording  [functional/explicit]
+       The change does not record which lines a test executed.
+

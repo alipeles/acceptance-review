@@ -1,0 +1,415 @@
+Task completion: INCOMPLETE
+
+8 obligation(s) with non-discriminating test evidence (observe-test-behavior, isolated-sandbox, network-access-blocked-for-tests, no-launch-credentials-visible, test-outcome-recorded, conclusions-unchanged-on-incomplete-run, only-named-tests-run, single-test-time-budget).
+
+Obligations:
+
+  1. The review can run a named set of a project's tests and observe what each one does, rather than only reading them.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+         1.2  src/acceptance/execution/netblock.py#@@ -0,0 +1,243 @@
+         1.3  src/acceptance/execution/outcome.py#@@ -0,0 +1,116 @@
+       test evidence: partially supported — kills 2 of 4 enumerated defects (static prediction)  [tier: static]
+         1.4  tests/test_execution_sandbox.py::test_a_test_that_skips_itself_is_not_reported_as_never_started
+         1.5  tests/test_execution_sandbox.py::test_an_empty_request_runs_nothing
+         recommended test: A review run executes the selected tests and captures their actual behavior/output.
+           inputs:  A sandboxed test that produces a clear pass/fail outcome and a project setup that would expose whether the plugin actually wrote the report file from inside the subprocess. The test should be sensitive to the report path being absent or miswired.
+           detects: The plugin reads `ACCEPTANCE_SANDBOX_REPORT`, but the subprocess environment only sets `PYTHONPATH` to the plugin directory and never wires the copied plugin module path into pytest's import path in a way that guarantees the plugin is loaded from the sandboxed copy; if pytest imports a different module or fails to load the copied one, no actual test behavior is observed through this path.
+           full detail: acceptance recommendation --criterion observe-test-behavior
+
+  2. The run happens in an isolated sandbox.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+       test evidence: unsupported — kills 0 of 3 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: The test run executes inside an isolated sandbox environment.
+           inputs:  A project test that imports a module name that exists only in the launch machine's user site-packages, while the throwaway project itself does not provide that module. The module should expose a sentinel value or side effect proving it came from user site-packages.
+           detects: The subprocess environment disables `PYTHONNOUSERSITE`, but it still inherits the interpreter's default site configuration and any already-installed user/site packages reachable through the chosen interpreter, so the run can execute with launch-side code outside the intended sandbox boundary.
+           full detail: acceptance recommendation --criterion isolated-sandbox
+
+  3. A test that reaches for the network is prevented from reaching it.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/execution/netblock.py#@@ -0,0 +1,243 @@
+       test evidence: partially supported — kills 1 of 2 enumerated defects (static prediction)  [tier: static]
+         3.2  tests/test_execution_sandbox.py::test_a_direct_socket_connect_is_blocked
+         recommended test: A test attempting network access is blocked from making network connections during the run.
+           inputs:  A test that attempts to connect to a loopback address such as 127.0.0.1 or ::1, ideally to a temporary local server started inside the test process. The connection should succeed only if loopback is allowed.
+           detects: The sandbox only blocks socket families outside `_ALLOWED_FAMILIES`, and `_ALLOWED_FAMILIES` includes `AF_UNIX`; a test that reaches a network service over loopback or another allowed family can still make a connection instead of being blocked.
+           full detail: acceptance recommendation --criterion network-access-blocked-for-tests
+
+  4. No credential held by the machine that launched the run is visible to the code under test.
+       requirements: task-01
+       code evidence: addressed
+         4.1  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+       test evidence: partially supported — kills 1 of 2 enumerated defects (static prediction)  [tier: static]
+         4.2  tests/test_execution_sandbox.py::test_the_launching_environment_s_credentials_do_not_reach_the_test
+         recommended test: The code under test cannot access launch-machine credentials during the run.
+           inputs:  A test that imports or reads a credential-like artifact from launch-side user site-packages or startup paths, with a sentinel proving the value came from outside the project. The project itself must not contain that artifact.
+           detects: The sandbox only sets `PYTHONNOUSERSITE=1` and trims `PYTHONPATH`; it does not otherwise prevent the launched interpreter from loading launch-machine code or configuration from its normal site-packages and startup paths, so credentials exposed through those paths could still be visible to the code under test.
+           full detail: acceptance recommendation --criterion no-launch-credentials-visible
+
+  5. The run stops cleanly when the time budget is exhausted.
+       requirements: task-01
+       code evidence: addressed
+         5.1  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         5.2  tests/test_execution_sandbox.py::test_a_test_that_outlasts_its_own_budget_is_reported_as_timed_out
+         5.3  tests/test_execution_sandbox.py::test_the_abort_leaves_nothing_executing
+         5.4  tests/test_execution_sandbox.py::test_the_per_test_budget_is_refused_rather_than_ignored_when_unenforceable
+         5.5  tests/test_execution_sandbox.py::test_the_per_test_budget_still_applies_without_a_report_path
+
+  6. Every test the run was asked about ends with a recorded outcome.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/execution/netblock.py#@@ -0,0 +1,243 @@
+         6.2  src/acceptance/execution/outcome.py#@@ -0,0 +1,116 @@
+         6.3  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+       test evidence: partially supported — kills 2 of 4 enumerated defects (static prediction)  [tier: static]
+         6.4  tests/test_execution_sandbox.py::test_a_run_that_reports_nothing_says_so_rather_than_looking_untried
+         6.5  tests/test_execution_sandbox.py::test_an_empty_request_runs_nothing
+         recommended test: Each test run entry has a recorded outcome value at completion.
+           inputs:  A sandbox run whose report file contains one valid JSONL outcome line and one malformed/torn line for a requested test id. The easiest way is to monkeypatch or otherwise intercept the report-writing path so the test can append a bad line after a valid one, or to simulate `_read_report` directly with a temporary report file containing both lines. The requested test ids should include the id represented by the malformed line so the defect changes the returned outcomes.
+           detects: A torn or malformed JSONL entry in the report file is ignored by `_read_report`, so a test that was observed in the run can be lost from the returned outcomes instead of remaining recorded.
+           full detail: acceptance recommendation --criterion test-outcome-recorded
+
+  7. Every outcome that is not a completed run carries the reason it is not.
+       requirements: task-02
+       code evidence: addressed
+         7.1  src/acceptance/execution/outcome.py#@@ -0,0 +1,116 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         7.2  tests/test_execution_outcome.py::test_an_outcome_that_did_not_complete_must_say_why
+         7.3  tests/test_execution_outcome.py::test_only_passed_and_failed_count_as_completed
+         7.4  tests/test_execution_sandbox.py::test_a_test_that_does_not_exist_is_not_started_rather_than_dropped
+         7.5  tests/test_execution_sandbox.py::test_a_test_that_skips_itself_is_not_reported_as_never_started
+
+  8. A test the runner tried and could not complete stays distinguishable from one it never tried.
+       requirements: task-02
+       code evidence: addressed
+         8.1  src/acceptance/execution/netblock.py#@@ -0,0 +1,243 @@
+         8.2  src/acceptance/execution/outcome.py#@@ -0,0 +1,116 @@
+         8.3  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         8.4  tests/test_execution_outcome.py::test_a_completed_outcome_needs_no_reason_and_may_not_carry_one
+         8.5  tests/test_execution_sandbox.py::test_a_run_that_reports_nothing_says_so_rather_than_looking_untried
+         8.6  tests/test_execution_sandbox.py::test_a_test_that_does_not_exist_is_not_started_rather_than_dropped
+         8.7  tests/test_execution_sandbox.py::test_a_test_that_skips_itself_is_not_reported_as_never_started
+         8.8  tests/test_execution_sandbox.py::test_an_unusable_interpreter_yields_outcomes_rather_than_an_exception
+         8.9  tests/test_execution_sandbox.py::test_only_the_named_tests_run
+
+  9. Preserve the review's conclusions where they were when a run does not complete.
+       requirements: task-03
+       code evidence: addressed
+         9.1  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+       test evidence: partially supported — kills 1 of 3 enumerated defects (static prediction)  [tier: static]
+         9.2  tests/test_execution_sandbox.py::test_an_unusable_interpreter_yields_outcomes_rather_than_an_exception
+         recommended test: An incomplete run leaves the review's conclusions unchanged.
+           inputs:  An empty test-id request against a throwaway project that would otherwise collect at least one test if pytest were invoked without node ids. Include a side effect at module import or collection time to detect whether pytest ran at all.
+           detects: An empty test-id request returns SandboxRunResult(outcomes=[]), so an incomplete run can be reported with no outcomes and no abort reason; that leaves no explicit result to preserve the review's conclusions from.
+           full detail: acceptance recommendation --criterion conclusions-unchanged-on-incomplete-run
+
+  10. Evidence with no completed run behind it stays at the static tier.
+       requirements: task-03
+       code evidence: addressed
+         10.1  src/acceptance/execution/outcome.py#@@ -0,0 +1,116 @@
+         10.2  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         10.3  tests/test_execution_outcome.py::test_only_passed_and_failed_count_as_completed
+         10.4  tests/test_execution_sandbox.py::test_a_test_that_does_not_exist_is_not_started_rather_than_dropped
+         10.5  tests/test_execution_sandbox.py::test_a_test_that_skips_itself_is_not_reported_as_never_started
+         10.6  tests/test_execution_sandbox.py::test_an_unusable_interpreter_yields_outcomes_rather_than_an_exception
+         10.7  tests/test_execution_sandbox.py::test_only_the_named_tests_run
+
+  11. The review finishes normally rather than reporting an error.
+       requirements: task-03
+       code evidence: addressed
+         11.1  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         11.2  tests/test_execution_sandbox.py::test_an_empty_request_runs_nothing
+         11.3  tests/test_execution_sandbox.py::test_an_unusable_interpreter_yields_outcomes_rather_than_an_exception
+
+  12. Only the named tests are run; the review does not execute the project's full suite through any alternate path.
+       requirements: constraint-01
+       code evidence: addressed
+         12.1  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+         12.2  src/acceptance/execution/netblock.py#@@ -0,0 +1,243 @@
+       test evidence: partially supported — kills 1 of 2 enumerated defects (static prediction)  [tier: static]
+         12.3  tests/test_execution_sandbox.py::test_an_empty_request_runs_nothing
+         recommended test: The run executes only the tests explicitly named for review, and no execution path runs the entire suite.
+           inputs:  A project containing at least one named test and one clearly failing unnamed test, with the run invoked on only the named test id. The setup should make it obvious if pytest falls back to collecting the whole suite.
+           detects: The copied plugin module is written into `workspace/plugin`, but `_sandbox_env` only sets `PYTHONPATH` to that directory and the subprocess is launched from `project_root`; if pytest does not import the copied module from that path, the `-p _acceptance_sandbox_netblock` hook never loads and pytest can fall back to its normal collection behavior, including the full suite.
+           full detail: acceptance recommendation --criterion only-named-tests-run
+
+  13. A single test is subject to a time budget.
+       requirements: constraint-02
+       code evidence: addressed
+         13.1  src/acceptance/execution/netblock.py#@@ -0,0 +1,243 @@
+       test evidence: partially supported — kills 3 of 4 enumerated defects (static prediction)  [tier: static]
+         13.2  tests/test_execution_sandbox.py::test_a_test_that_outlasts_its_own_budget_is_reported_as_timed_out
+         13.3  tests/test_execution_sandbox.py::test_the_per_test_budget_is_refused_rather_than_ignored_when_unenforceable
+         13.4  tests/test_execution_sandbox.py::test_the_per_test_budget_still_applies_without_a_report_path
+         recommended test: A test run is stopped when that individual test exceeds its allotted time budget.
+           inputs:  A throwaway project with one test that blocks long enough to exceed any practical budget (for example, `time.sleep(1)` or longer), run through `run_tests` with a `SandboxConfig` whose `per_test_seconds` is exactly `0` in one case and a negative value in another, while `total_seconds` is large enough not to abort the whole run first. Use a POSIX environment so the per-test alarm path is available.
+           detects: A per-test budget of 0 or a negative value is treated as 'no timeout' by _can_time_out, so the extreme budget values are not handled as an enforced individual limit.
+           full detail: acceptance recommendation --criterion single-test-time-budget
+
+  14. The run as a whole is subject to a time budget.
+       requirements: constraint-02
+       code evidence: addressed
+         14.1  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  15. The time budgets and the interpreter the tests run under use conservative configuration defaults, and neither setting is read from the project under review.
+       requirements: constraint-03
+       code evidence: addressed
+         15.1  src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+       test evidence: not required — This is satisfied by the review configuration itself: the defaults and interpreter source are part of the runner setup, not behavior that a repository test can observe.
+
+  16. The change does not alter choosing which tests to run or deciding whether a project's tests can be run at all.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 7 changes across 7 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, so a reader can confirm it directly from the change without a test.
+
+  17. The change does not alter the code under test in order to observe what a test does.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 7 changes across 7 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work that must not be done, and the source change itself is sufficient to confirm whether such alteration was introduced.
+
+  18. The change does not record which lines a test executed.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 7 changes across 7 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, which is settled by inspecting the change rather than by a test.
+
+Mandate coverage: 9 of 9 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] Adds a new public package API (`acceptance.execution` exports and `run_tests`/`SandboxConfig`/outcome types) beyond what the obligations explicitly require; the task asks for sandboxed observation, not a new exported module surface.
+       src/acceptance/execution/__init__.py#@@ -0,0 +1,32 @@
+       src/acceptance/execution/outcome.py#@@ -0,0 +1,116 @@
+       src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+  2. [in_service] The sandbox now enforces an allowlisted subprocess environment and explicitly disables user site-packages (`PYTHONNOUSERSITE=1`), which is a broader launch-environment restriction not called for by the listed obligations.
+       src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+  3. [in_service] The plugin blocks DNS resolution and socket connection entry points by monkeypatching `socket.getaddrinfo`, `socket.create_connection`, `socket.socket.connect`, and `connect_ex`; while network blocking is requested, this specific implementation detail and the AF_UNIX exception are extra behavior not required by the obligations.
+       src/acceptance/execution/netblock.py#@@ -0,0 +1,243 @@
+       tests/test_execution_sandbox.py#@@ -0,0 +1,579 @@
+  4. [in_service] The sandbox distinguishes runtime skips from collection-time skips and records them as different reasons under `not_started`; the obligations require distinguishing tried-vs-never-started, but not this finer skip taxonomy.
+       src/acceptance/execution/netblock.py#@@ -0,0 +1,243 @@
+       tests/test_execution_sandbox.py#@@ -0,0 +1,579 @@
+  5. [in_service] The run result model adds `completed_outcomes`, `outcome_for`, and abort-reason validation semantics beyond merely recording outcomes and reasons; these are extra API/behavior not demanded by the obligations.
+       src/acceptance/execution/outcome.py#@@ -0,0 +1,116 @@
+       tests/test_execution_outcome.py#@@ -0,0 +1,90 @@
+  6. [in_service] The sandbox declines to run on platforms lacking `signal.setitimer` instead of attempting a degraded run; the obligations require a time budget, but not this platform-specific refusal policy.
+       src/acceptance/execution/netblock.py#@@ -0,0 +1,243 @@
+       tests/test_execution_sandbox.py#@@ -0,0 +1,579 @@
+  7. [in_service] The implementation copies the pytest plugin into a temporary workspace and manipulates `PYTHONPATH`/`PYTHONNOUSERSITE` to isolate execution; isolation is required, but this particular workspace-copy mechanism and environment shaping are extra implementation behavior not explicitly requested.
+       src/acceptance/execution/sandbox.py#@@ -0,0 +1,306 @@
+  8. [in_service] The test suite changes `tests/requirement/test_task_file.py` to stop asserting `completion_expectations` are present and to include `scope_exclusions`; this is a requirement-parser behavior change unrelated to the sandbox execution obligations.
+       tests/requirement/test_task_file.py#@@ -109,8 +109,25 @@ def test_parses_every_committed_task_file(path: Path):
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  observe-test-behavior
+    [missing_case] observe-test-behavior/empty-request-returns-no-observation
+      An empty test-id list returns `SandboxRunResult(outcomes=[])`, so the review run does not execute any selected tests or observe any behavior for that covered input.
+      src/acceptance/execution/sandbox.py#0
+    [scope_too_narrow] observe-test-behavior/duplicate-test-ids-are-deduplicated
+      `run_tests` collapses repeated test ids with `dict.fromkeys`, so a named set containing duplicates is not run or observed as requested and the result cannot reflect each requested occurrence.
+      src/acceptance/execution/sandbox.py#0
+    [not_wired] observe-test-behavior/report-file-path-not-created-in-plugin-env
+      The plugin reads `ACCEPTANCE_SANDBOX_REPORT`, but the subprocess environment only sets `PYTHONPATH` to the plugin directory and never wires the copied plugin module path into pytest's import path in a way that guarantees the plugin is loaded from the sandboxed copy; if pytest imports a different module or fails to load the copied one, no actual test behavior is observed through this path.
+      src/acceptance/execution/sandbox.py#0
+      src/acceptance/execution/netblock.py#0
+    [wrong_output_shape] observe-test-behavior/skipped-tests-recorded-as-not-started
+      Skipped tests are reported as `not_started` rather than as a distinct observed outcome, so the captured result does not preserve what the test actually did when it ran and called `pytest.skip()`.
+      src/acceptance/execution/netblock.py#0
+      src/acceptance/execution/outcome.py#0
+
+  isolated-sandbox
+    [other] isolated-sandbox/network-block-only-covers-socket-layer
+      The sandbox only patches Python-level socket entry points, so code under test can still reach the network through other mechanisms such as C extensions or libraries that bypass `socket`, meaning the run is not fully isolated.
+      src/acceptance/execution/netblock.py#0
+    [other] isolated-sandbox/user-site-packages-can-leak-in
+      The subprocess environment disables `PYTHONNOUSERSITE`, but it still inherits the interpreter's default site configuration and any already-installed user/site packages reachable through the chosen interpreter, so the run can execute with launch-side code outside the intended sandbox boundary.
+      src/acceptance/execution/sandbox.py#0
+    [other] isolated-sandbox/local-socket-traffic-remains-allowed
+      The network block explicitly allows `AF_UNIX` sockets, so code under test can still communicate through local socket endpoints; if the criterion expects an isolated sandbox with no reachable external services, this leaves a communication channel inside the run.
+      src/acceptance/execution/netblock.py#0
+
+  network-access-blocked-for-tests
+    [scope_too_narrow] network-access-blocked-for-tests/loopback-connections-allowed
+      The sandbox only blocks socket families outside `_ALLOWED_FAMILIES`, and `_ALLOWED_FAMILIES` includes `AF_UNIX`; a test that reaches a network service over loopback or another allowed family can still make a connection instead of being blocked.
+      src/acceptance/execution/netblock.py#0
+    [other] network-access-blocked-for-tests/python-socket-patching-misses-other-entry-points
+      The block is only installed by monkeypatching Python-level `socket` functions; code that reaches the network through another path, such as a C extension or a preexisting socket object, can still connect because those entry points are not intercepted.
+      src/acceptance/execution/netblock.py#0
+
+  no-launch-credentials-visible  (reused from an earlier run)
+    [scope_too_narrow] no-launch-credentials-visible/environment-allowlist-leaks-unlisted-credentials
+      The subprocess environment is built from a small allowlist, but it still inherits whatever launch-machine values happen to be in the named variables. If a credential is stored in one of those allowed names, it remains visible to the code under test.
+      src/acceptance/execution/sandbox.py#0
+    [other] no-launch-credentials-visible/usersite-packages-still-visible
+      The sandbox only sets `PYTHONNOUSERSITE=1` and trims `PYTHONPATH`; it does not otherwise prevent the launched interpreter from loading launch-machine code or configuration from its normal site-packages and startup paths, so credentials exposed through those paths could still be visible to the code under test.
+      src/acceptance/execution/sandbox.py#0
+
+  clean-timeout-stop
+    [scope_too_narrow] clean-timeout-stop/per-test-timeout-not-armed-on-some-platforms
+      The per-test alarm is only armed when signal.setitimer and SIGALRM are available; on platforms without them, the sandbox refuses to run instead of stopping an exhausted time budget cleanly, so the criterion is not met for those environments.
+      src/acceptance/execution/netblock.py#0
+    [other] clean-timeout-stop/whole-run-timeout-leaves-processes-running
+      When the whole-run budget expires, the code sends SIGTERM/SIGKILL to the process group but does not verify that every child has actually exited before returning, so a run could be reported as stopped while subprocesses continue executing briefly or remain alive.
+      src/acceptance/execution/sandbox.py#0
+
+  test-outcome-recorded
+    [scope_too_narrow] test-outcome-recorded/empty-request-returns-no-outcome
+      An empty `test_ids` input returns `SandboxRunResult(outcomes=[])`, so a run that was asked about zero tests completes without any recorded outcome entries.
+      src/acceptance/execution/sandbox.py#0
+    [scope_too_narrow] test-outcome-recorded/duplicate-test-ids-collapse-to-one-outcome
+      `run_tests` deduplicates `test_ids` with `dict.fromkeys`, so if the caller asks about the same test more than once, only one outcome is ever recorded for that request list.
+      src/acceptance/execution/sandbox.py#0
+    [unenforced_on_one_path] test-outcome-recorded/missing-report-path-drops-all-outcomes
+      If the sandbox plugin is loaded without `ACCEPTANCE_SANDBOX_REPORT`, `_Reporter.flush` becomes a no-op and the run can finish without writing any recorded outcomes at all.
+      src/acceptance/execution/netblock.py#0
+      src/acceptance/execution/sandbox.py#0
+    [established_not_maintained] test-outcome-recorded/malformed-report-line-is-silently-discarded
+      A torn or malformed JSONL entry in the report file is ignored by `_read_report`, so a test that was observed in the run can be lost from the returned outcomes instead of remaining recorded.
+      src/acceptance/execution/sandbox.py#0
+
+  noncompleted-outcome-carries-reason  (reused from an earlier run)
+    [scope_too_narrow] noncompleted-outcome-carries-reason/completed-kind-check-omits-not-started
+      `TestOutcome._reason_accompanies_every_incomplete_outcome` only treats `passed` and `failed` as completed, so any `network_blocked`, `timed_out`, or `not_started` outcome without a reason would still be accepted if it reaches model validation through another path.
+      src/acceptance/execution/outcome.py#0
+    [other] noncompleted-outcome-carries-reason/report-reader-can-build-reasonless-not-started
+      `_read_report` constructs `TestOutcome` directly from JSON lines, and `_not_started` is only used for synthetic outcomes; if the report file contains a non-completed kind with a missing or blank reason, the reader can still attempt to materialize it and rely on validation rather than guaranteeing the reason is present in the observed data path.
+      src/acceptance/execution/sandbox.py#0
+      src/acceptance/execution/outcome.py#0
+
+  distinguish-tried-from-never-started
+    [condition_inverted] distinguish-tried-from-never-started/completed-outcomes-lose-their-reason
+      Completed outcomes are rejected if they carry any reason, so a tried-and-complete test cannot be recorded with a separate reason field even though the criterion requires non-completed runs to remain distinguishable from never-started tests.
+      src/acceptance/execution/outcome.py#0
+    [scope_too_narrow] distinguish-tried-from-never-started/skipped-tests-collapsed-to-not-started
+      All skipped reports are recorded as kind `not_started`, including a test that reached its own body and called `pytest.skip()`. That collapses a tried-but-incomplete test into the same outcome as one that was never started.
+      src/acceptance/execution/netblock.py#0
+    [other] distinguish-tried-from-never-started/missing-report-becomes-not-started-for-every-test
+      If the subprocess produces no report at all, `_run_in_workspace` turns every requested test into `not_started` with a generic reason. A run that actually tried some tests but failed before flushing their outcomes would be indistinguishable from a run that never started any of them.
+      src/acceptance/execution/sandbox.py#0
+
+  conclusions-unchanged-on-incomplete-run  (reused from an earlier run)
+    [other] conclusions-unchanged-on-incomplete-run/empty-request-returns-success-without-preserving-conclusions
+      An empty test-id request returns SandboxRunResult(outcomes=[]), so an incomplete run can be reported with no outcomes and no abort reason; that leaves no explicit result to preserve the review's conclusions from.
+      src/acceptance/execution/sandbox.py#0
+    [other] conclusions-unchanged-on-incomplete-run/run-failure-collapses-to-not-started
+      Any exception from the sandbox setup or subprocess path is caught and converted into all-not-started outcomes, which can hide the distinction between a run that never happened and one that partially ran before failing, making it possible to lose the observed conclusions from the incomplete run.
+      src/acceptance/execution/sandbox.py#0
+    [scope_too_narrow] conclusions-unchanged-on-incomplete-run/duplicate-test-ids-are-deduplicated-before-running
+      The requested test list is deduplicated with dict.fromkeys before execution, so if the caller asks for the same test more than once the later occurrences are dropped and never get their own outcome, which means the run does not preserve conclusions for the full requested set.
+      src/acceptance/execution/sandbox.py#0
+
+  static-tier-for-unrun-evidence  (reused from an earlier run)
+    [scope_too_narrow] static-tier-for-unrun-evidence/completed-outcomes-only-classified
+      Only `PASSED` and `FAILED` outcomes are treated as completed evidence; `NETWORK_BLOCKED`, `TIMED_OUT`, and `NOT_STARTED` are left as non-completed outcomes, so evidence lacking a completed run can still be surfaced without being classified at the static tier in the review output.
+      src/acceptance/execution/outcome.py#0
+    [other] static-tier-for-unrun-evidence/missing-outcome-falls-through
+      If a requested test never appears in the report, `run_tests` synthesizes a `NOT_STARTED` outcome, but there is no code here that maps that outcome to the static tier in the review output; the criterion could fail if downstream output treats the synthesized result as ordinary evidence instead of static-tier evidence.
+      src/acceptance/execution/sandbox.py#0
+      src/acceptance/execution/outcome.py#0
+
+  review-finishes-normally  (reused from an earlier run)
+    [other] review-finishes-normally/sandbox-errors-propagate
+      run_tests can still return an error-like result when the subprocess setup or execution fails, because the broad exception handler turns any exception into an all-not-started result with a failure reason instead of guaranteeing a normal completion path for the review.
+      src/acceptance/execution/sandbox.py#0
+    [missing_case] review-finishes-normally/empty-request-returns-empty-result
+      An empty test_ids input returns SandboxRunResult(outcomes=[]), which can leave the review with no observed outcome at all rather than a normal completed review result if the caller expects at least one test outcome to be reported.
+      src/acceptance/execution/sandbox.py#0
+
+  only-named-tests-run  (reused from an earlier run)
+    [missing_case] only-named-tests-run/empty-test-list-runs-full-suite
+      When `test_ids` is empty, `run_tests` returns `SandboxRunResult(outcomes=[])` instead of refusing the request, so the caller can still reach pytest with no node ids and run the project's full suite through the default invocation path.
+      src/acceptance/execution/sandbox.py#0
+    [not_wired] only-named-tests-run/plugin-path-not-on-pytest-import-path
+      The copied plugin module is written into `workspace/plugin`, but `_sandbox_env` only sets `PYTHONPATH` to that directory and the subprocess is launched from `project_root`; if pytest does not import the copied module from that path, the `-p _acceptance_sandbox_netblock` hook never loads and pytest can fall back to its normal collection behavior, including the full suite.
+      src/acceptance/execution/sandbox.py#0
+
+  single-test-time-budget
+    [not_wired] single-test-time-budget/per-test-budget-not-armed-on-plugin-load
+      The per-test alarm is only installed from pytest_configure after the plugin is registered; if pytest never reaches that hook for some invocation path, individual tests can run without any time budget enforcement.
+      src/acceptance/execution/netblock.py#0
+      src/acceptance/execution/sandbox.py#0
+    [scope_too_narrow] single-test-time-budget/alarm-not-supported-on-some-platforms
+      The per-test budget is refused whenever signal.setitimer or SIGALRM is unavailable, so tests on platforms without that alarm support are not subject to an individual time budget at all.
+      src/acceptance/execution/netblock.py#0
+      src/acceptance/execution/sandbox.py#0
+    [boundary_unhandled] single-test-time-budget/per-test-budget-zero-or-negative-disabled
+      A per-test budget of 0 or a negative value is treated as 'no timeout' by _can_time_out, so the extreme budget values are not handled as an enforced individual limit.
+      src/acceptance/execution/netblock.py#0
+    [other] single-test-time-budget/whole-run-timeout-masks-individual-test-budget
+      The outer process wait timeout can stop the run before the current test's own alarm fires, so a single test that exceeds its allotted budget may be terminated only as part of the whole-run budget rather than by its individual budget.
+      src/acceptance/execution/sandbox.py#0
+      src/acceptance/execution/netblock.py#0
+
+  run-wide-time-budget  (reused from an earlier run)
+    none enumerated: No plausible static defect in the diff makes the whole-run budget absent or inverted: `run_tests` always routes through `_spawn_and_wait`, which enforces `process.wait(timeout=config.total_seconds)` and on timeout terminates the process group. The only remaining failure modes here are runtime/environmental (for example, subprocess semantics or signal support), not a concrete code-path defect in the changed regions.
+
+  time-budget-and-interpreter-defaults  (reused from an earlier run)
+    none enumerated: No plausible static defect is visible for this criterion: SandboxConfig hard-codes the interpreter default to sys.executable and the time budgets to positive constants, and run_tests passes that config through to the subprocess environment and command without reading either value from the project under review.
+
+  do-not-decide-test-selection-or-runnability  (reused from an earlier run)
+    [other] do-not-decide-test-selection-or-runnability/test-selection-argument-passed-through
+      `run_tests` takes an explicit `test_ids` list and passes those node ids directly to pytest on the command line, so this change does decide which tests to run instead of only observing a run that was chosen elsewhere.
+      src/acceptance/execution/sandbox.py#0
+    [missing_case] do-not-decide-test-selection-or-runnability/empty-request-rejected
+      An empty `test_ids` input is handled specially by returning an empty result instead of letting the caller's requested selection flow through, so the code can decide that no tests are runnable/selected for that case.
+      src/acceptance/execution/sandbox.py#0
+    [other] do-not-decide-test-selection-or-runnability/runnability-inferred-from-spawn-failure
+      `run_tests` catches exceptions from the subprocess path and converts them into an all-`not_started` result, which makes the implementation decide that the project's tests could not be run when the spawn/setup path fails.
+      src/acceptance/execution/sandbox.py#0
+
+  no-code-alteration-for-observation
+    [other] no-code-alteration-for-observation/socket-monkeypatch-observes-tests-by-altering-runtime
+      The sandbox observes tests by monkeypatching `socket.socket.connect`, `socket.socket.connect_ex`, `socket.getaddrinfo`, and `socket.create_connection` inside the pytest plugin, which alters the code/runtime environment under test in order to see what the test does.
+      src/acceptance/execution/netblock.py#0
+    [other] no-code-alteration-for-observation/signal-alarm-injects-timeout-into-test-execution
+      The plugin arms `SIGALRM` around each test and raises `TestTimedOut` from the signal handler, which injects control-flow into the running test process to observe whether the test exceeds its budget.
+      src/acceptance/execution/netblock.py#0
+    [other] no-code-alteration-for-observation/plugin-loaded-into-project-process-for-observation
+      The runner copies the plugin into the project workspace and loads it with pytest `-p`, so the observation mechanism runs inside the code-under-test process rather than only outside it.
+      src/acceptance/execution/sandbox.py#0
+      src/acceptance/execution/netblock.py#0
+
+  no-line-execution-recording  (reused from an earlier run)
+    none enumerated: No plausible static defect in the delivered code records executed line numbers: the sandbox plugin only blocks network, enforces timeouts, and writes per-test outcomes, and the result models only carry test-level status/reason fields. There is no line-tracing, coverage collection, or line-execution report path in the changed regions to inspect for this criterion.
+
+Changes since 6639e3ca:
+  closed:
+    - A test the runner tried and could not complete stays distinguishable from one it never tried.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+  moved:
+    - The run happens in an isolated sandbox.
+        test evidence: partially supported -> unsupported
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run d00123128b5c7539
+  continuing 9c7c98188e9d21ff
+  continue this run with: --continue d00123128b5c7539
+Model usage by stage:
+  stage                         model                                       calls  prompt  output  cached  this run  recorded
+  ----------------------------  ----------------------  -------------------------  ------  ------  ------  --------  --------
+  obligation linking            voyage/voyage-3.5-lite    1 (0 live / 1 replayed)     606       0       —   $0.0000   $0.0000
+  defect enumeration            openai/gpt-5.4-mini       8 (8 live / 0 replayed)  62,367   2,319    0.0%   $0.0572   $0.0572
+  defect-to-test pair mapping   openai/gpt-5.4-mini     35 (35 live / 0 replayed)  91,927  32,791    0.0%   $0.2165   $0.2165
+  coverage classification       openai/gpt-5.4-mini       1 (1 live / 0 replayed)  14,989   1,271    0.0%   $0.0170   $0.0170
+  unrequested-change detection  openai/gpt-5.4-mini       1 (1 live / 0 replayed)  14,352     694    0.0%   $0.0139   $0.0139
+  test recommendation           openai/gpt-5.4-mini       2 (2 live / 0 replayed)  28,854   3,502    0.0%   $0.0374   $0.0374
+  this run spent $0.3420 on 47 live call(s); the evidence cost $0.3420 to record (1 call(s) replayed at no cost to this run)
+

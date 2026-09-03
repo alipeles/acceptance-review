@@ -14,8 +14,8 @@ run carries the reason it is not, so that a test the runner tried and could not
 complete stays distinguishable from one it never tried.
 
 A run that does not complete leaves the review's conclusions where they were.
-Evidence with no completed run behind it stays at the static tier, and the
-review finishes normally rather than reporting an error.
+Evidence with no completed run behind it stays at the static tier, and that is
+an ordinary result rather than a failure.
 
 ## Constraints
 - Only the named tests are run. There is no path through which the whole suite
