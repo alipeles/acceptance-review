@@ -5676,3 +5676,84 @@ the record.
   > stands), #181 (umbrella).
 - **Status:** **filed 2026-09-02 as #330**, approved at #43's Gate 1 and attached
   as a sub-issue of #181, the decomposition umbrella. Closed here.
+
+### [2026-09-02] Twenty pairs went unjudged, all against one test, and the next run judged them fine
+- **Kind:** filing — a new issue, child of #183 (the evidence-judgement umbrella)
+- **Found during:** #43, Gate 2, run 1 (`dogfood-logs/43-gate2-run1/`)
+- **Where:** the defect-to-test pair judgement stage
+- **Severity:** should-fix
+- **What's wrong:** run 1 reported 20 pairs as "offered to the judge and not
+  answered; no verdict was produced". Every one of the 20 named the **same
+  test** — `test_a_test_that_does_not_exist_is_not_started_rather_than_dropped`
+  — paired against 20 different enumerated defects spanning 9 different
+  criteria. One test drawing no verdict across 20 independent pairs is a
+  property of the tool, not of the code under review.
+
+  Runs 2 and 3 over nearly the same input reported **zero** unjudged pairs, with
+  that test still in the candidate set. So it is intermittent rather than
+  deterministic, which is the harder kind to notice: a single clean run does not
+  show it, and the rating it silently weakens looks ordinary.
+- **Why I didn't act:** the pair-judgement stage is out of scope for #43, which
+  is the sandbox runner, and changing it would invalidate that stage's recorded
+  transcripts.
+- **Drafted issue:**
+
+  > **Title:** Every unjudged pair in a run named one test, and a rerun judged them all
+  >
+  > Child of #183.
+  >
+  > ## What happened
+  >
+  > `dogfood-logs/43-gate2-run1/output.log` ends with 20 entries under "Pairs
+  > left unjudged (a criterion's rating cannot account for these)". All 20 are
+  > `[unanswered]`, all 20 name the same test:
+  >
+  > ```
+  > tests/test_execution_sandbox.py::test_a_test_that_does_not_exist_is_not_started_rather_than_dropped
+  > ```
+  >
+  > The defects paired against it span nine criteria — `clean-timeout-stop`,
+  > `conclusions-unchanged-on-incomplete-run`,
+  > `distinguish-tried-from-never-started`,
+  > `do-not-decide-test-selection-or-runnability`,
+  > `network-access-blocked-for-tests`, `no-code-alteration-for-observation`,
+  > `no-launch-credentials-visible`, `noncompleted-outcome-carries-reason` and
+  > `observe-test-behavior`. Nothing about the criteria is common; the test is.
+  >
+  > ## Why it is not a property of the input
+  >
+  > Runs 2 (`dogfood-logs/43-gate2-run2/`) and 3
+  > (`dogfood-logs/43-gate2-run3/`) over nearly the same change reported zero
+  > unjudged pairs. That test is still present in both — it is renamed in
+  > neither and deleted in neither. The same input shape produced the failure
+  > once and not twice.
+  >
+  > ## Why it matters
+  >
+  > An unjudged pair is a defect the criterion's rating cannot account for. In
+  > run 1 that silently weakened nine criteria at once. The report does say so,
+  > which is the tool working — but the failure is invisible in the ordinary
+  > case, because a run that judges everything looks the same as a run that had
+  > nothing to miss.
+  >
+  > It is also the harder kind of intermittency to chase: a single rerun clears
+  > it, so the natural response is to rerun and move on, and the tool's own
+  > guidance to check the mapping before believing a clean verdict does not
+  > cover this stage.
+  >
+  > ## Acceptance
+  >
+  > - A run that leaves pairs unanswered says what it observed about the cause —
+  >   a truncated response, a schema mismatch, a batch that exceeded a limit —
+  >   rather than only that no verdict was produced.
+  > - Whatever makes one test's pairs fail as a group is identified. Twenty
+  >   pairs sharing a test and nothing else points at how the request is
+  >   assembled, not at the pairs themselves.
+  > - Two runs over the same input agree on which pairs are unjudged, or the
+  >   disagreement is reported.
+  >
+  > Related: #183 (umbrella), DR-164 (`docs/DR-164-mapping-stage-request-partitioning.md`,
+  > the record on partitioning a stage's requests), #184 (the determinism and
+  > reproducibility umbrella) if the cause turns out to be a determinism control
+  > rather than the judgement itself.
+- **Status:** open — drafted, not filed.
