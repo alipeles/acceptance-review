@@ -5674,4 +5674,5 @@ the record.
   >
   > Related: #304 (ids colliding and left unmerged — undecidable while this
   > stands), #181 (umbrella).
-- **Status:** open — drafted, not filed.
+- **Status:** **filed 2026-09-02 as #330**, approved at #43's Gate 1 and attached
+  as a sub-issue of #181, the decomposition umbrella. Closed here.
