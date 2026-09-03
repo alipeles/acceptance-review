@@ -172,30 +172,42 @@ def test_the_whole_run_budget_aborts_and_leaves_no_test_unaccounted_for(tmp_path
 
 
 def test_the_abort_leaves_nothing_executing(tmp_path):
-    """The hung test writes a file every tick; the file must stop growing."""
+    """A test's own child process must die with the run, not outlive it.
+
+    The child is the whole point. Killing the pytest process alone would pass a
+    test whose slow work runs inside pytest, because that work dies with its
+    process either way — so this test spawns a grandchild that ticks a file, and
+    fails unless the whole process group is stopped.
+    """
     marker = tmp_path / "ticks"
+    ticker = (
+        "import time\n"
+        f"for _ in range(600):\n"
+        f"    open({str(marker)!r}, 'a').write('x')\n"
+        "    time.sleep(0.1)\n"
+    )
     root = _project(
         tmp_path,
         f"""
+        import subprocess
+        import sys
         import time
 
-        def test_ticks_forever():
-            for _ in range(600):
-                with open({str(marker)!r}, "a") as handle:
-                    handle.write("x")
-                    handle.flush()
-                time.sleep(0.1)
+        def test_spawns_a_child_and_waits():
+            subprocess.Popen([sys.executable, "-c", {ticker!r}])
+            time.sleep(60)
         """,
     )
     run_tests(
-        ["test_subject.py::test_ticks_forever"],
+        ["test_subject.py::test_spawns_a_child_and_waits"],
         root,
         _fast(per_test_seconds=45.0, total_seconds=3.0),
     )
 
-    settled = marker.stat().st_size if marker.exists() else 0
+    assert marker.exists(), "the child never started; the test proves nothing"
+    settled = marker.stat().st_size
     time.sleep(1.5)
-    assert (marker.stat().st_size if marker.exists() else 0) == settled
+    assert marker.stat().st_size == settled, "the test's child process outlived the aborted run"
 
 
 # --- what the run may see ----------------------------------------------------
@@ -242,18 +254,24 @@ def test_only_the_named_tests_run(tmp_path):
 def test_an_empty_request_runs_nothing(tmp_path):
     """pytest with no node ids runs the whole suite. The runner must not.
 
-    The failing test in this project is the detector: if the empty request
-    reached pytest, it would be collected and the result would not be empty.
+    Asserting the result is empty proves nothing here — with no ids requested,
+    the result is empty whether or not pytest ran. The evidence is the marker
+    file, written when the project's test module is merely imported, so it
+    catches collection as well as execution.
     """
+    marker = tmp_path / "was-collected"
     root = _project(
         tmp_path,
-        """
+        f"""
+        open({str(marker)!r}, "w").write("collected")
+
         def test_would_be_collected():
-            raise AssertionError("the suite must not run on an empty request")
+            assert True
         """,
     )
     result = run_tests([], root, _fast())
 
+    assert not marker.exists(), "an empty request reached pytest and it collected"
     assert result.outcomes == []
     assert not result.aborted
 
