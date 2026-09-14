@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+from acceptance.evidence_tier import EvidenceTier
 from acceptance.mutation.attempt import MutationDescriptor, MutationOutcomeKind
 from acceptance.mutation.baseline import Baseline, establish_baseline
 from acceptance.mutation.runner import run_mutations
@@ -255,6 +256,58 @@ class TestWhenInjectionMayNotRun:
             _sets(_defect("d1"), _defect("d2")), change_set, project, Baseline(), _builder("x")
         )
         assert [a.defect_id for a in attempts] == ["d1", "d2"]
+
+
+class TestAMutantThatBreaksTheModule:
+    """The case that would inflate the rating if it were read as a kill.
+
+    A mutant can be valid Python and still stop the module loading. Every test
+    that imports it then fails — and if those were recorded as red tests, the
+    defect would be credited as killed by all of them, pushing the criterion
+    toward `strongly_supported` while nothing had actually been tested.
+
+    It does not happen, because a module that fails to load fails during
+    pytest's collection, before any test runs, so the per-test reporting hook
+    never fires and the tests come back not started. That is load-bearing
+    behaviour of the sandbox, which is why it is pinned here rather than left
+    to hold by accident.
+    """
+
+    def test_it_is_not_attempted_rather_than_killed(self, project, change_set, green):
+        attempts = run_mutations(
+            _sets(_defect("d-import-break")),
+            change_set,
+            project,
+            green,
+            _builder('raise RuntimeError("boom")\n', start=1, end=4),
+        )
+        (attempt,) = attempts
+        assert attempt.outcome is MutationOutcomeKind.NOT_ATTEMPTED
+        assert attempt.killing_tests == []
+
+    def test_the_reason_names_the_cause(self, project, change_set, green):
+        attempts = run_mutations(
+            _sets(_defect("d-import-break")),
+            change_set,
+            project,
+            green,
+            _builder('raise RuntimeError("boom")\n', start=1, end=4),
+        )
+        assert "none of the 1 candidate tests ran at all" in attempts[0].reason
+        assert "breaks the module rather than its behavior" in attempts[0].reason
+
+    def test_it_stays_at_the_static_tier(self, project, change_set, green):
+        """So the defect is handed to the static judge rather than counted as
+        covered by execution."""
+        attempts = run_mutations(
+            _sets(_defect("d-import-break")),
+            change_set,
+            project,
+            green,
+            _builder('raise RuntimeError("boom")\n', start=1, end=4),
+        )
+        assert attempts[0].settled is False
+        assert attempts[0].tier is EvidenceTier.STATIC
 
 
 class TestTheOriginalProjectIsNeverTouched:

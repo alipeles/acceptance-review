@@ -176,18 +176,12 @@ def _classify(
 
     unobserved = [outcome for outcome in result.outcomes if not outcome.completed]
     if unobserved:
-        names = ", ".join(outcome.test_id for outcome in unobserved[:5])
-        more = "" if len(unobserved) <= 5 else f" and {len(unobserved) - 5} more"
         return MutationAttempt(
             defect_id=defect.id,
             outcome=MutationOutcomeKind.NOT_ATTEMPTED,
             descriptor=descriptor,
             tests_run=tests,
-            reason=(
-                f"no test went red, but {len(unobserved)} of {len(result.outcomes)} did not "
-                f"complete under the mutant ({names}{more}), so the tests cannot be called "
-                "proven weak on this run"
-            ),
+            reason=_why_unobserved(unobserved, result.outcomes),
         )
 
     return MutationAttempt(
@@ -195,6 +189,37 @@ def _classify(
         outcome=MutationOutcomeKind.SURVIVED,
         descriptor=descriptor,
         tests_run=tests,
+    )
+
+
+def _why_unobserved(unobserved: list, outcomes: list) -> str:
+    """Why a run that produced no red test also proved nothing.
+
+    The two cases are worth separating, because only one of them says anything
+    about the mutant. **Every** test failing to run is the signature of a mutant
+    that broke the module rather than its behavior: a file that raises or fails
+    to import dies during pytest's collection, before any test runs, so nothing
+    is ever reported about any of them.
+
+    That case is the reason this stage cannot simply read "no test went red" as
+    a survival. Were it recorded as a kill instead — which it would be if
+    collection errors reached the per-test reporting hook — an unloadable module
+    would be credited as killed by every candidate test, inflating the criterion
+    toward `strongly_supported` while nothing had actually been tested. Silent
+    inflation is the failure #252 exists to remove.
+    """
+    if len(unobserved) == len(outcomes):
+        return (
+            f"none of the {len(outcomes)} candidate tests ran at all under the mutant, which is "
+            "what a mutant that breaks the module rather than its behavior looks like: the file "
+            "fails during collection and no test is reached. Nothing was learned about the "
+            "tests, so this defect goes to the static judge."
+        )
+    names = ", ".join(outcome.test_id for outcome in unobserved[:5])
+    more = "" if len(unobserved) <= 5 else f" and {len(unobserved) - 5} more"
+    return (
+        f"no test went red, but {len(unobserved)} of {len(outcomes)} did not complete under the "
+        f"mutant ({names}{more}), so the tests cannot be called proven weak on this run"
     )
 
 
