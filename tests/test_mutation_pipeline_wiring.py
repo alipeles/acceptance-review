@@ -26,6 +26,7 @@ import pytest
 
 from acceptance.change.diff import extract_change_set
 from acceptance.evidence_tier import EvidenceTier
+from acceptance.mutation.attempt import MutationOutcomeKind
 from acceptance.mutation.settings import ExecutionSettings, ReviewHalted
 from acceptance.pipeline import run_review
 from acceptance.report import render_report
@@ -139,16 +140,38 @@ def _repo(tmp_path, *, head_test: str = _TEST):
     return repo, base, _git(repo, "rev-parse", "HEAD")
 
 
-def _review(tmp_path, *, execution: ExecutionSettings | None, head_test: str = _TEST, capture=None):
+def _review(
+    tmp_path,
+    *,
+    execution: ExecutionSettings | None,
+    head_test: str = _TEST,
+    capture=None,
+    judgments: dict | None = None,
+):
     repo, base, head = _repo(tmp_path, head_test=head_test)
     return run_review(
         task_text=_TASK,
         change_set=extract_change_set(repo, base, head),
         repo=repo,
-        client=client_dispatching(_JUDGMENTS, capture=capture),
+        client=client_dispatching(judgments or _JUDGMENTS, capture=capture),
         reviewed_revision=head,
         execution=execution,
     )
+
+
+#: A descriptor answer that declines: no single contiguous edit expresses this
+#: defect. The runner turns it into `not_mutable`, which is the routing
+#: instruction that hands the defect to the static judge.
+_DECLINING = {
+    **_JUDGMENTS,
+    "_Descriptor": {
+        "region_label": "",
+        "start_line": 0,
+        "end_line": 0,
+        "replacement": "",
+        "reason": "the behaviour is absent, so there is no span to replace",
+    },
+}
 
 
 def _schemas(capture) -> list[str]:
@@ -194,6 +217,54 @@ class TestTheStaticJudgeSeesOnlyTheRemainder:
         capture: list = []
         _review(tmp_path, execution=None, capture=capture)
         assert "_PairVerdicts" in _schemas(capture)
+
+    def test_a_defect_injection_could_not_settle_reaches_the_static_judge(self, tmp_path):
+        """The fallback, with execution ON — which is the case the two tests
+        above do not cover between them. #45's Gate 2 asked for exactly this:
+        one is the tier skipping the model, the other is the tier never having
+        run, and neither shows a defect being handed on.
+        """
+        capture: list = []
+        _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True),
+            capture=capture,
+            judgments=_DECLINING,
+        )
+        schemas = _schemas(capture)
+        assert "_Descriptor" in schemas, "the tier did not run, so nothing was handed on"
+        assert "_PairVerdicts" in schemas
+
+    def test_the_unsettled_defect_is_recorded_with_its_reason(self, tmp_path):
+        review = _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=_DECLINING)
+        (attempt,) = review.mutation_attempts
+        assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE
+        assert attempt.reason
+        assert attempt.tier is EvidenceTier.STATIC
+
+    def test_no_model_call_decides_validity(self, tmp_path):
+        """DR-171 Decision 3, structurally: after the descriptor is proposed,
+        nothing asks a model whether the mutant is valid or whether it really
+        breaks the requirement. The four checks in `validity.py` decide, and
+        this pins that no second call creeps in between.
+        """
+        capture: list = []
+        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        schemas = _schemas(capture)
+
+        # One call per defect, and this fixture has one defect. A second would
+        # mean the mutant was proposed and then asked about again.
+        assert schemas.count("_Descriptor") == 1
+
+        # Nothing at all between proposing the mutant and the first stage that
+        # comes after the execution tier. The stages further down (`_Coverage`,
+        # `_Detections`, `_Recommendations`) are the ordinary rest of the
+        # review, and they run whether or not execution did.
+        next_call = schemas[schemas.index("_Descriptor") + 1]
+        assert next_call == "_Coverage", (
+            "a model call was made between proposing the mutant and recording its "
+            f"outcome: {next_call}"
+        )
 
 
 class TestExecutionOffChangesNothing:
@@ -284,6 +355,21 @@ def test_that_is_already_failing():
         )
         (obligation,) = [o for o in review.obligation_map if o.id == "equal-payments"]
         assert obligation.achieved_evidence_tier is EvidenceTier.DEFECT_KILLED
+
+    def test_a_halt_records_no_attempt_and_renders_no_report(self, tmp_path):
+        """#45's Gate 2 asked for the halted case alongside the
+        execution-disabled one. Nothing was injected, so there is no injected
+        text to record — and no review object either, which is the point of
+        raising rather than returning one.
+        """
+        with pytest.raises(ReviewHalted) as raised:
+            _review(
+                tmp_path,
+                execution=ExecutionSettings(enabled=True),
+                head_test=self._RED_TEST,
+            )
+        assert raised.value.baseline.failing_tests
+        assert raised.value.baseline.usable_tests == []
 
     def test_a_halt_costs_nothing_downstream(self, tmp_path):
         """The halt is a refusal to spend. If the pair stage still ran, halting

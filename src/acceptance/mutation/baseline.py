@@ -48,6 +48,23 @@ class SetAsideTest(_Model):
     kind: TestOutcomeKind
     reason: str
 
+    @model_validator(mode="after")
+    def _the_reason_is_said(self) -> SetAsideTest:
+        """A set-aside test with no reason names an exclusion nobody can act on.
+
+        The report prints the id and the reason, so an empty one turns a
+        disclosure into a bare name — which reads as the tool having lost track
+        of the test rather than having deliberately excluded it. Structural
+        here rather than left to `_read` supplying a default, for the same
+        reason `TestOutcome` and `MutationAttempt` require theirs.
+        """
+        if not self.reason.strip():
+            raise ValueError(
+                f"{self.test_id!r} was set aside with no reason: an exclusion a reader "
+                "cannot see the cause of is indistinguishable from a lost test"
+            )
+        return self
+
 
 class Baseline(_Model):
     """What the control run established.

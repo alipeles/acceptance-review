@@ -22,6 +22,7 @@ file.
 from __future__ import annotations
 
 import ast
+import json
 from collections.abc import Sequence
 
 from acceptance.mutation.attempt import MutationDescriptor
@@ -36,9 +37,29 @@ __all__ = ["DEFAULT_MAX_EDIT_LINES", "apply_span", "invalidity_reason"]
 #: (DR-170 Decision 6) — so it is configuration with a cautious default.
 DEFAULT_MAX_EDIT_LINES = 12
 
-#: Extensions whose files are parsed after the edit. Everything else is left to
-#: the other three checks. A missing parser is not a defect in the file.
-_PARSERS = {".py": ast.parse}
+#: Extensions whose files are parsed after the edit. A file whose extension is
+#: not here is left to the other three checks, and that is the revision's point:
+#: a missing parser is not a defect in the file.
+#:
+#: **It is a list of parsers we have, not a claim about which files are
+#: parseable.** Gate 2 of #45 found the gap that distinction hides — with only
+#: Python here, a mutated `.json` passed validity however malformed it was,
+#: while the requirement is that a file *that has a parser* still parses. Any
+#: format the checker can parse without a new dependency belongs here.
+#:
+#: `tomllib` is deliberately absent: it arrives in Python 3.11 and this project
+#: runs 3.10, so adding it would be a parse check that silently does nothing.
+_PARSERS = {
+    ".py": ast.parse,
+    ".pyi": ast.parse,
+    ".json": json.loads,
+}
+
+#: What each parser raises on malformed input. Caught by type rather than by a
+#: bare `except Exception`, so a bug *in* a parser surfaces as a crash instead of
+#: being reported as an invalid mutant — which would silently refuse every edit
+#: to that file type and look like the mutation stage working.
+_PARSE_ERRORS = (SyntaxError, ValueError)
 
 
 def apply_span(source: str, descriptor: MutationDescriptor) -> str:
@@ -108,7 +129,7 @@ def invalidity_reason(
         mutated = apply_span(source, descriptor)
         try:
             parse(mutated)
-        except SyntaxError as error:
+        except _PARSE_ERRORS as error:
             return f"the mutated {descriptor.path} does not parse: {error}"
 
     return None

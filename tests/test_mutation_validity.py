@@ -136,6 +136,35 @@ class TestFilesWithoutAParser:
         )
         assert invalidity_reason(descriptor, [_region("README.md", 1, 3)], self.MARKDOWN) is None
 
+    def test_a_json_file_that_stops_parsing_is_refused(self):
+        """#45's Gate 2 found this gap. With only Python in the parser map, a
+        mutated `.json` passed validity however malformed it was, while the
+        requirement is that a file *that has a parser* still parses."""
+        source = '{\n  "per_test_seconds": 30\n}\n'
+        descriptor = MutationDescriptor(
+            path="config.json",
+            start_line=2,
+            end_line=2,
+            replacement='  "per_test_seconds": 30,,,\n',
+            region_label="config.json#0",
+        )
+        reason = invalidity_reason(descriptor, [_region("config.json", 1, 3)], source)
+        assert reason is not None
+        assert "does not parse" in reason
+
+    def test_a_json_file_that_still_parses_is_valid(self):
+        """The parse check refuses malformed output, not every edit — otherwise
+        a documentation or config defect could never be injected at all."""
+        source = '{\n  "per_test_seconds": 30\n}\n'
+        descriptor = MutationDescriptor(
+            path="config.json",
+            start_line=2,
+            end_line=2,
+            replacement='  "per_test_seconds": 3000\n',
+            region_label="config.json#0",
+        )
+        assert invalidity_reason(descriptor, [_region("config.json", 1, 3)], source) is None
+
     def test_containment_still_applies_to_a_file_with_no_parser(self):
         """The check that carries validity once the parse check stops being
         universal. Without it a prose mutant could land anywhere."""

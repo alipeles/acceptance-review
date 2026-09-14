@@ -11,7 +11,7 @@ from __future__ import annotations
 import pytest
 
 from acceptance.execution.outcome import SandboxRunResult, TestOutcome, TestOutcomeKind
-from acceptance.mutation.baseline import Baseline, establish_baseline
+from acceptance.mutation.baseline import Baseline, SetAsideTest, establish_baseline
 from acceptance.mutation.baseline import _read as read_baseline
 
 
@@ -138,3 +138,10 @@ class TestHaltInvariants:
     def test_a_reason_without_a_halt_is_refused(self):
         with pytest.raises(ValueError, match="carries no halt reason"):
             Baseline(halt_reason="something")
+
+    def test_a_set_aside_test_without_a_reason_is_refused(self):
+        """#45's Gate 2 asked for this. The report prints the id and the reason,
+        so an empty one turns a disclosure into a bare name — which reads as the
+        tool having lost the test rather than deliberately excluded it."""
+        with pytest.raises(ValueError, match="set aside with no reason"):
+            SetAsideTest(test_id="t.py::a", kind=TestOutcomeKind.FAILED, reason="  ")
