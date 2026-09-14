@@ -36,6 +36,106 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-09-14] A prohibition decomposes into the thing it prohibits
+- **Kind:** filing (new sub-issue of #181, the decomposition umbrella)
+- **Found during:** #45, Gate 1, run 1
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** The constraint *"Nothing asks a model to confirm that the
+  edit really breaks the requirement"* produced the obligation
+  `confirm-edit-breaks-requirement`: *"A model confirms that the injected edit
+  really breaks the requirement"*, classed `human_review`. The negation is gone,
+  so the obligation asserts exactly what the constraint forbids. An
+  implementation that obeys the constraint is judged as failing; one that
+  violates it is judged as passing.
+- **Why I didn't act:** decomposition-prompt work is outside #45's area, and
+  changing that prompt invalidates every decomposition transcript in the corpus.
+- **Drafted fix:** File as a sub-issue of #181.
+
+  > **Title:** Decomposition turns a prohibition into the obligation it forbids
+  >
+  > **What happens.** A Constraints bullet phrased as a prohibition is
+  > decomposed into a positive obligation asserting the prohibited behaviour,
+  > with no trace of the negation.
+  >
+  > **Observed at #45's Gate 1, run 1** (`dogfood-logs/45-gate1-run1/`):
+  > input `Nothing asks a model to confirm that the edit really breaks the
+  > requirement.` → obligation `confirm-edit-breaks-requirement`,
+  > `[human_review/explicit]`, described as *"A model confirms that the injected
+  > edit really breaks the requirement."*
+  >
+  > **Why this is not the sanctioned reframing.** Prohibitions are meant to be
+  > handled by positive-obligation reframing rather than a new coverage status,
+  > and a correct reframing here is *"validity is established without a model
+  > call"*. What was emitted keeps the verb and drops the negation, which
+  > inverts the judgement rather than restating it.
+  >
+  > **Why it matters.** The inversion is silent. The obligation reads as
+  > well-formed, and the error only surfaces when a correct implementation is
+  > marked unaddressed — at Gate 2, long after decomposition.
+  >
+  > **Acceptance.** The prohibition above decomposes to an obligation a correct
+  > implementation satisfies. A regression case pins it.
+  >
+  > **Labels:** `track:checker`. **Parent:** #181.
+- **Status:** open
+
+### [2026-09-14] A conditional governing two conjuncts is dropped from the second one
+- **Kind:** filing (new sub-issue of #181, the decomposition umbrella)
+- **Found during:** #45, Gate 1, runs 2 and 3
+- **Where:** `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** One sentence carrying a condition over two conjuncts
+  decomposes into two obligations, and only the first keeps the condition.
+  At #45's Gate 1 the sentence *"Where nothing can be run, the review reaches
+  the conclusions it reaches today and its evidence stays at the weaker tier"*
+  produced `preserve-current-review-conclusions-when-unrunnable` (*"Where
+  nothing can be run, ..."* — condition kept) and `weaker-tier-evidence`
+  (*"The evidence for this judgement stays at the weaker tier"* — condition
+  gone). Read alone the second demands that **every** review record at the
+  weaker tier, contradicting `recorded-at-strongest-evidence-tier` in the same
+  obligation set.
+- **Why I didn't act:** same as the entry above — outside #45's area, and the
+  prompt change orphans the decomposition corpus. Two rewordings were tried
+  first and neither fixed it, so it is attributed to the tool rather than to
+  the task file.
+- **Drafted fix:** File as a sub-issue of #181.
+
+  > **Title:** A condition governing two conjuncts survives on the first
+  > obligation and is dropped from the second
+  >
+  > **What happens.** When one sentence applies a condition to two conjoined
+  > claims, decomposition splits it into two obligations and the condition
+  > reaches only the first. The second states its claim unconditionally.
+  >
+  > **Observed twice at #45's Gate 1**, with the condition in both positions,
+  > so it is not sensitive to word order:
+  >
+  > - run 2 (`dogfood-logs/45-gate1-run2/`), condition trailing: *"A review
+  >   where nothing can be run reaches the conclusions it reaches today, with
+  >   its evidence recorded at the weaker tier."* →
+  >   `weaker-tier-evidence-recorded`: *"The review records its evidence at the
+  >   weaker tier."*
+  > - run 3 (`dogfood-logs/45-gate1-run3/`), condition leading: *"Where nothing
+  >   can be run, the review reaches the conclusions it reaches today and its
+  >   evidence stays at the weaker tier."* → `weaker-tier-evidence`: *"The
+  >   evidence for this judgement stays at the weaker tier."*
+  >
+  > In both runs the sibling obligation from the same sentence kept the
+  > condition, so the split — not the parse of the condition — is where it is
+  > lost.
+  >
+  > **Why it matters.** The unconditional obligation can contradict another
+  > obligation in the same set, which is what happened here. Every downstream
+  > stage judges the obligation text, so a correct implementation is marked
+  > unaddressed against one of the two.
+  >
+  > **Acceptance.** Both conjuncts of a conditional sentence carry the
+  > condition. A regression case pins the run-3 sentence above.
+  >
+  > **Labels:** `track:checker`. **Parent:** #181.
+- **Status:** open
+
 ### [2026-08-20] #293's premise reproduces on a nine-line append, and #292's anchoring does not stop it
 - **Kind:** filing (comment on existing issue #293)
 - **Found during:** #291, Gate 2 runs 1 and 2
