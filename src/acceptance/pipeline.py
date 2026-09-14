@@ -284,6 +284,29 @@ def _run_execution_tier(
     if baseline.halted:
         raise ReviewHalted(baseline)
 
+    # No usable test means no mutant can be observed against anything, so every
+    # descriptor built here would be paid for and thrown away. `run_mutations`
+    # already refuses to inject in that case — but it is called AFTER the
+    # descriptors are built, so its check saved nothing.
+    #
+    # This cost $0.2554 in 71 wasted calls on #45's own Gate 2, where the
+    # control run produced no report at all. The unit test asserting that the
+    # runner asks for no descriptor passed throughout, because the runner does
+    # not ask for them; the pipeline does. That is precisely the shape CLAUDE.md
+    # warns about — a helper with a good test that the pipeline does not use the
+    # way the test assumes.
+    if not baseline.usable_tests:
+        attempts = run_mutations(
+            defect_sets,
+            change_set,
+            repo,
+            baseline,
+            from_mapping({}),
+            execution.sandbox,
+            execution.max_edit_lines,
+        )
+        return attempts, [], baseline.set_aside
+
     defects = [defect for defect_set in defect_sets for defect in defect_set.defects]
     regions_by_defect = {defect.id: regions_for(defect, change_set) for defect in defects}
     sources = _sources_for(regions_by_defect, repo)

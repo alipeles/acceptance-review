@@ -26,6 +26,7 @@ import pytest
 
 from acceptance.change.diff import extract_change_set
 from acceptance.evidence_tier import EvidenceTier
+from acceptance.execution.sandbox import SandboxConfig
 from acceptance.mutation.attempt import MutationOutcomeKind
 from acceptance.mutation.settings import ExecutionSettings, ReviewHalted
 from acceptance.pipeline import run_review
@@ -370,6 +371,41 @@ def test_that_is_already_failing():
             )
         assert raised.value.baseline.failing_tests
         assert raised.value.baseline.usable_tests == []
+
+    def test_no_descriptor_is_bought_when_no_test_can_be_observed(self, tmp_path):
+        """#45's Gate 2 run 2 paid $0.2554 for 71 descriptors and threw every
+        one away: the control run produced no report, so nothing could be
+        observed, and `run_mutations` refused to inject — but only *after* the
+        pipeline had already bought the descriptors.
+
+        The runner's own test that it asks for no descriptor passed throughout,
+        because the runner does not ask for them; the pipeline does. That is the
+        shape CLAUDE.md warns about, so the assertion belongs here.
+
+        Driven with an interpreter that does not exist, which is the cheapest
+        way to make a real project's tests unrunnable.
+        """
+        capture: list = []
+        _review(
+            tmp_path,
+            execution=ExecutionSettings(
+                enabled=True, sandbox=SandboxConfig(interpreter="/nonexistent/python")
+            ),
+            capture=capture,
+        )
+        assert "_Descriptor" not in _schemas(capture)
+
+    def test_the_defects_still_fall_back_to_the_static_judge(self, tmp_path):
+        capture: list = []
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(
+                enabled=True, sandbox=SandboxConfig(interpreter="/nonexistent/python")
+            ),
+            capture=capture,
+        )
+        assert all(a.outcome is MutationOutcomeKind.NOT_ATTEMPTED for a in review.mutation_attempts)
+        assert "_PairVerdicts" in _schemas(capture)
 
     def test_a_halt_costs_nothing_downstream(self, tmp_path):
         """The halt is a refusal to spend. If the pair stage still ran, halting
