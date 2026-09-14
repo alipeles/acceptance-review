@@ -117,6 +117,15 @@ class DerivedSupport(PersistableModel):
     enumerated: int = 0
     covered: int = 0
     unknown: int = 0
+    # How well this class is known: the WEAKEST tier among the verdicts it rests
+    # on (DR-171 Decision 7). A criterion whose defects were all settled by
+    # injection reaches `DEFECT_KILLED`; one where any defect was predicted
+    # rather than observed — or carries no verdict at all — stays `STATIC`,
+    # because a chain is only as strong as the input that was guessed.
+    #
+    # Defaulted, so a review recorded before the execution tier existed reads
+    # back unchanged.
+    achieved_tier: EvidenceTier = EvidenceTier.STATIC
 
 
 def _class_for(covered: int, enumerated: int, unknown: int) -> EvidenceClassification:
@@ -174,9 +183,18 @@ def derive_support(
     """
     kills_by_defect: dict[str, list[str]] = {}
     unanswered_defects: set[str] = set()
+    # The weakest tier any verdict about each defect carries. Weakest rather
+    # than strongest: one predicted answer among a defect's verdicts means the
+    # defect's own status was partly guessed, and a criterion cannot be better
+    # known than the defect it rests on.
+    tier_by_defect: dict[str, EvidenceTier] = {}
     for verdict in verdicts:
         if verdict.kills:
             kills_by_defect.setdefault(verdict.defect_id, []).append(verdict.test_id)
+        known = tier_by_defect.get(verdict.defect_id)
+        tier_by_defect[verdict.defect_id] = (
+            verdict.tier if known is None else min(known, verdict.tier)
+        )
     for entry in unjudged:
         # A pair the prefilter PROVED unreachable is not counted here. It is a
         # *survives* established statically, not a missing judgement — the
@@ -242,9 +260,24 @@ def derive_support(
                 enumerated=enumerated,
                 covered=covered,
                 unknown=unknown,
+                achieved_tier=_achieved_tier(defect_set, tier_by_defect),
             )
         )
     return results
+
+
+def _achieved_tier(defect_set: DefectSet, tier_by_defect: dict[str, EvidenceTier]) -> EvidenceTier:
+    """The weakest tier among the verdicts this criterion's rating rests on.
+
+    A defect with no verdict at all counts as `STATIC` rather than being
+    skipped. It is the least-known case of all, and letting it drop out would
+    let a criterion whose only *answered* defect was executed claim
+    `DEFECT_KILLED` while the rest of its denominator was never looked at.
+    """
+    return min(
+        (tier_by_defect.get(defect.id, EvidenceTier.STATIC) for defect in defect_set.defects),
+        default=EvidenceTier.STATIC,
+    )
 
 
 def tests_to_obligations(results: list[DerivedSupport]) -> dict[str, list[str]]:
@@ -284,7 +317,11 @@ def apply_derived_support(
                 update={
                     "evidence_class": result.evidence_class,
                     "test_evidence": list(result.test_links),
-                    "achieved_evidence_tier": EvidenceTier.STATIC,
+                    # Derived rather than hardcoded since DR-171 Decision 7: a
+                    # criterion every one of whose defects was settled by
+                    # injection reaches `DEFECT_KILLED`, and one with a single
+                    # predicted defect stays `STATIC`.
+                    "achieved_evidence_tier": result.achieved_tier,
                     # The class never travels without its denominator.
                     "enumerated_defects": result.enumerated,
                     "covered_defects": result.covered,

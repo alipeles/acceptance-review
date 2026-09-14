@@ -209,6 +209,20 @@ class PairVerdict(_Model):
     test_id: str
     kills: bool
     reason: str = ""
+    # How well this one answer is known (DR-171 Decision 7). `STATIC` is a
+    # prediction the pair-judgement stage made by reading; `DEFECT_KILLED` is
+    # what the mutation runner observed by injecting the defect and running the
+    # test. One record type for both, so the rating has one implementation: a
+    # parallel record for executed verdicts would fork that arithmetic and the
+    # two copies would drift, which is the failure CLAUDE.md records against the
+    # CLI and the benchmark.
+    #
+    # A review is therefore a mixture of tiers, and a repository where the tests
+    # cannot be run is simply the case where every verdict stays `STATIC`. That
+    # makes §8.3's graceful degradation structural rather than a promise.
+    #
+    # Defaulted, so adding it orphans no recorded transcript.
+    tier: EvidenceTier = EvidenceTier.STATIC
     # The identity a later run matches this verdict on, and the reason it is not
     # the defect id: ids are composed from the obligation id, so a reworded
     # requirement moves every defect id under it and keying on one would

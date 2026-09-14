@@ -54,6 +54,13 @@ from acceptance.evidence.discovery import discover_tests
 from acceptance.evidence.extraction import extract_test_evidence
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
+from acceptance.mutation.attempt import MutationAttempt
+from acceptance.mutation.baseline import establish_baseline
+from acceptance.mutation.descriptor import build_descriptors, from_mapping
+from acceptance.mutation.region import regions_for
+from acceptance.mutation.runner import run_mutations
+from acceptance.mutation.settings import ExecutionSettings, ReviewHalted
+from acceptance.mutation.verdicts import remaining_defect_sets, verdicts_from
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
 from acceptance.requirement.ledger import LedgerEntry
 from acceptance.requirement.linking import link_duplicate_obligations
@@ -68,9 +75,11 @@ from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     UNUSABLE_ANSWER,
     ChangeSet,
+    DefectSet,
     Finding,
     Link,
     Obligation,
+    PairVerdict,
     Review,
     UnrequestedChangeDisposition,
 )
@@ -241,6 +250,76 @@ def _apply_coverage_status(
     return updated
 
 
+def _run_execution_tier(
+    defect_sets: list[DefectSet],
+    tests: list,
+    change_set: ChangeSet,
+    repo: Path,
+    client: ModelClient,
+    unusable: UnusableAnswerLog,
+    execution: ExecutionSettings | None,
+) -> tuple[list[MutationAttempt], list[PairVerdict]]:
+    """Inject each enumerated defect and read who noticed, or do nothing.
+
+    Returns the attempts and the verdicts they support. With execution off — the
+    default — both are empty, `remaining_defect_sets` is then the identity, and
+    the pipeline behaves exactly as it did before this stage existed. That is
+    §8.3's graceful degradation reached with no separate mode, which is the same
+    property DR-171 Decision 7 relies on for a repository whose tests cannot run
+    at all.
+
+    Raises `ReviewHalted` when a candidate test is already failing against the
+    code as delivered and the caller did not allow it.
+    """
+    if execution is None or not execution.enabled:
+        return [], []
+
+    test_ids = [test.test_id for test in tests]
+    baseline = establish_baseline(
+        test_ids,
+        repo,
+        execution.sandbox,
+        allow_failing_tests=execution.allow_failing_tests,
+    )
+    if baseline.halted:
+        raise ReviewHalted(baseline)
+
+    defects = [defect for defect_set in defect_sets for defect in defect_set.defects]
+    regions_by_defect = {defect.id: regions_for(defect, change_set) for defect in defects}
+    sources = _sources_for(regions_by_defect, repo)
+    descriptors = build_descriptors(defects, regions_by_defect, sources, client, unusable)
+
+    attempts = run_mutations(
+        defect_sets,
+        change_set,
+        repo,
+        baseline,
+        from_mapping(descriptors),
+        execution.sandbox,
+        execution.max_edit_lines,
+    )
+    return attempts, verdicts_from(attempts, defect_sets)
+
+
+def _sources_for(regions_by_defect: dict, repo: Path) -> dict[str, str]:
+    """The text at head of every file any defect's regions name.
+
+    Read once here rather than per defect: at #316's scale 48 defects cite far
+    fewer than 48 distinct files, and the descriptor calls are issued
+    concurrently, so reading inside them would have several calls racing to read
+    the same file.
+    """
+    sources: dict[str, str] = {}
+    for regions in regions_by_defect.values():
+        for region in regions:
+            if region.path in sources:
+                continue
+            target = repo / region.path
+            if target.is_file():
+                sources[region.path] = target.read_text(encoding="utf-8")
+    return sources
+
+
 def run_review(
     task_text: str,
     change_set: ChangeSet,
@@ -257,6 +336,7 @@ def run_review(
     prior: Review | None = None,
     ledger_prior: LedgerEntry | None = None,
     ledger_sink: list | None = None,
+    execution: ExecutionSettings | None = None,
 ) -> Review:
     """Run the full static review pipeline and return the assembled Review.
 
@@ -364,8 +444,25 @@ def run_review(
     # reasoning: land it beside the existing chain and a carry defect shows as a
     # discrepancy against a stable baseline, land it in place of the chain and an
     # unexpected rating has three candidate causes and nothing to attribute it to.
+    # The execution tier runs HERE, BEFORE the static pair judgement, and the
+    # order is the whole point of M8.4 (DR-171 Decision 7, revised 2026-09-14).
+    # The original decision had injection "overwrite" static verdicts, which
+    # means judging all 23,808 pairs by model and then discarding the answers
+    # execution supersedes — paying the pair stage's $6.02 in full and adding
+    # the test runs on top. Inverted, the model is asked only about what
+    # execution could not settle.
+    #
+    # Off unless the caller opted in: §8.3 makes execution conditional on a
+    # feasibility probe, and #42 (M8.1) is that probe and does not exist yet.
+    attempts, executed_verdicts = _run_execution_tier(
+        defect_sets, discovered.tests, change_set, repo, client, unusable, execution
+    )
+
     pair_mapping = judge_pairs(
-        defect_sets,
+        # Only the defects injection could not reach. The FULL `defect_sets` still
+        # goes to `derive_support` below, so a criterion's denominator is
+        # unchanged — what shrinks is the question put to the model, not the bar.
+        remaining_defect_sets(attempts, defect_sets),
         discovered.tests,
         change_set,
         client,
@@ -375,6 +472,11 @@ def run_review(
         unusable=unusable,
         prior=list(ledger_prior.pair_verdicts) if ledger_prior is not None else None,
     )
+    # One list, two provenances. `PairVerdict.tier` is what tells them apart, and
+    # `derive_support` reduces both with the same arithmetic — which is what
+    # keeps the rating a single implementation rather than a static one and an
+    # executed one that can drift.
+    verdicts = executed_verdicts + pair_mapping.verdicts
 
     # Handed back rather than written here: the pipeline does not own the run id,
     # the parent pointer or the file, and a stage that wrote to disk on the way
@@ -386,7 +488,7 @@ def run_review(
     # entry holding half of what the run produced — the same reason it moved off
     # linking when #313 added the defect sets.
     if ledger_sink is not None:
-        ledger_sink.append((derived, decomposition, defect_sets, pair_mapping.verdicts))
+        ledger_sink.append((derived, decomposition, defect_sets, verdicts))
 
     # The rating, derived rather than judged (#316). Three stages used to stand
     # here — map tests to criteria, judge whether they discriminate, classify the
@@ -404,7 +506,7 @@ def run_review(
     # always recomputed. #292's anchored re-judgement is retired for the same
     # reason — it existed to stop a re-asked judge moving a rating for no reason,
     # and nothing is re-asked.
-    support = derive_support(needs_tests, defect_sets, pair_mapping.verdicts, pair_mapping.unjudged)
+    support = derive_support(needs_tests, defect_sets, verdicts, pair_mapping.unjudged)
     needs_tests = apply_derived_support(needs_tests, support)
 
     # Still extracted, and still structural. The declaration comparison below
