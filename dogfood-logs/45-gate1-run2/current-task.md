@@ -22,8 +22,8 @@ ones were set aside.
 The existing judgement that reads code without running it does not go away, and
 does not run first. It runs on what execution could not settle: a defect no edit
 could express, a defect whose edit could not be built, and every defect at all
-when the code cannot be run. Where nothing can be run, the review reaches the
-conclusions it reaches today and its evidence stays at the weaker tier.
+when the code cannot be run. A review where nothing can be run reaches the
+conclusions it reaches today, with its evidence recorded at the weaker tier.
 
 A defect execution did not settle carries the reason it did not.
 
