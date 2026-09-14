@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from acceptance.evidence_tier import EvidenceTier
+from acceptance.execution.sandbox import SandboxConfig
 from acceptance.mutation.attempt import MutationDescriptor, MutationOutcomeKind
 from acceptance.mutation.baseline import Baseline, establish_baseline
 from acceptance.mutation.runner import run_mutations
@@ -308,6 +309,72 @@ class TestAMutantThatBreaksTheModule:
         )
         assert attempts[0].settled is False
         assert attempts[0].tier is EvidenceTier.STATIC
+
+
+class TestWhenTheProjectsTestsCannotBeRun:
+    """The obvious case, and the one §8.3 is about: if the tests cannot run,
+    the review falls back to reading code. There is no trade-off to weigh —
+    injection is impossible, so the static judge takes everything.
+
+    Driven with an interpreter that does not exist, which is the cheapest way to
+    make a real project unrunnable without inventing a fixture for each of
+    §8.3's four infeasible classes.
+    """
+
+    BROKEN = SandboxConfig(interpreter="/nonexistent/python")
+
+    def test_the_control_run_reports_rather_than_raising(self, project):
+        baseline = establish_baseline([TEST_ID], project, self.BROKEN)
+        assert baseline.usable_tests == []
+
+    def test_an_unrunnable_suite_does_not_halt_the_review(self, project):
+        """A test the run could not complete is not a red test. Halting here
+        would stop every review on a project whose tests cannot run, which is
+        the case §8.3 says to degrade on."""
+        baseline = establish_baseline([TEST_ID], project, self.BROKEN)
+        assert baseline.halted is False
+
+    def test_every_defect_falls_back_rather_than_being_decided(self, project, change_set):
+        baseline = establish_baseline([TEST_ID], project, self.BROKEN)
+        attempts = run_mutations(
+            _sets(_defect("d1"), _defect("d2")),
+            change_set,
+            project,
+            baseline,
+            _builder("    payment = principal / months * 3\n"),
+            self.BROKEN,
+        )
+        assert [a.outcome for a in attempts] == [
+            MutationOutcomeKind.NOT_ATTEMPTED,
+            MutationOutcomeKind.NOT_ATTEMPTED,
+        ]
+
+    def test_the_fallback_is_at_the_static_tier_with_a_reason(self, project, change_set):
+        baseline = establish_baseline([TEST_ID], project, self.BROKEN)
+        (attempt,) = run_mutations(
+            _sets(_defect("d1")),
+            change_set,
+            project,
+            baseline,
+            _builder("x"),
+            self.BROKEN,
+        )
+        assert attempt.tier is EvidenceTier.STATIC
+        assert attempt.reason
+        assert attempt.settled is False
+
+    def test_no_mutant_is_built_so_no_descriptor_is_asked_for(self, project, change_set):
+        """The fallback is reached before any model call, so an unrunnable
+        project costs nothing extra rather than paying for edits nobody can
+        observe."""
+        asked = []
+
+        def build(defect, _regions, _sources):
+            asked.append(defect.id)
+
+        baseline = establish_baseline([TEST_ID], project, self.BROKEN)
+        run_mutations(_sets(_defect("d1")), change_set, project, baseline, build, self.BROKEN)
+        assert asked == []
 
 
 class TestTheOriginalProjectIsNeverTouched:
