@@ -182,7 +182,11 @@ The achieved tier is recorded per criterion; a static inference is never present
 
 ### 8.2 Surgical, hypothesis-driven mutation (not whole-suite)
 
-Whole-suite mutation (mutate everything, re-run the full suite many times) is deliberately avoided. Instead, the reviewer has already named a **specific plausible defect** for a criterion (e.g. "uses calendar-month boundaries instead of the contractual 26th-to-25th accrual period"). The product injects *that one defect* at the exact lines, runs *only the handful of mapped tests*, and observes whether they fail. A few executions per criterion, not a combinatorial explosion — converting "this assertion looks non-discriminating" into "the branch was flipped and the mapped test stayed green."
+Whole-suite mutation (mutate everything, re-run the full suite many times) is deliberately avoided. Instead, the reviewer has already named a **specific plausible defect** for a criterion (e.g. "uses calendar-month boundaries instead of the contractual 26th-to-25th accrual period"). The product injects *that one defect* at the exact lines and observes which tests go red — converting "this assertion looks non-discriminating" into "the branch was flipped and the mapped test stayed green."
+
+What is surgical is the **mutant**, not the test set: one named defect per criterion at one contiguous span, never a sweep of mutation operators across a file. That mutant is run against the **candidate tests** — the targeted subset test discovery already selected for the change under review — and never against the full suite (§1 principle 6, §17).
+
+Which of those candidate tests go red *is* the mapping from tests to criteria. There is no cheaper prior mapping to narrow the set with: the static per-pair judgement that used to supply one is precisely the cost execution exists to avoid, so spending it to choose which tests to run would forfeit the saving. Coverage may narrow the set further on suites too slow to run whole, but what coverage excludes is recorded as undecided and judged statically, never reported as uncovered — it is measured to miss tests that detect a defect through a file read or through behavior absent from the named lines (DR-171).
 
 ### 8.3 Feasibility detection and graceful degradation
 

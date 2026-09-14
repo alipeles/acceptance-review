@@ -4,7 +4,38 @@
 actual mutation at actual lines), owned by M8.4 / #45 (targeted mutation, the
 `defect-killed` evidence tier).
 **Resolved:** 2026-09-02, in conversation, before the M8 sequence starts.
+**Revised:** 2026-09-14, in conversation, before #45 starts. Decisions 4, 6, 7
+and 8 changed; see *Revision* below.
 **Status:** resolved.
+
+## Revision — 2026-09-14: injection replaces the static judgement rather than correcting it
+
+The original record treated execution as an upgrade layered on top of the static
+per-pair judgement. Decision 7 said injection "overwrites individual verdicts
+with better-evidenced ones", which means the model judges all 23,808 pairs and
+execution then discards some of its answers. That pays the pair stage's $6.02 in
+full and adds the test runs on top.
+
+The point of the execution tier is to remove that cost, not to add to it. This
+revision inverts the order: **execution decides first, and the static judge runs
+only on the remainder it could not reach.** Nothing about the evidence ladder,
+the mutant's construction, or the single-record design changes — Decisions 1, 2,
+3 and 5 stand as written.
+
+Three things follow, and they are Decisions 4, 6 and 7 below:
+
+- **Coverage stops being the selector.** The mutant runs against every candidate
+  test. Coverage was measured to miss 43 of 268 recorded kills, and under the
+  original design those became reported findings rather than wasted money.
+- **The candidate tests must be green at head before injection is worth doing**,
+  by default, with an override.
+- **`judge_pairs` becomes the fallback stage, not the default one.**
+
+**§8.2 was amended in the same conversation** to match, because its "runs *only
+the handful of mapped tests*" assumed a cheap prior mapping from tests to
+criteria. #312 and #316 deleted that mapping; the per-pair judgement replaced it,
+and its cost is the thing execution exists to avoid. Narrowing the test set with
+it would forfeit the whole saving.
 
 ## What was open
 
@@ -93,12 +124,40 @@ replacement text would change.
 A mutant is valid when all four hold:
 
 1. **It applies** — true by construction for a span replacement.
-2. **The mutated file parses** — `ast.parse` on the result. This is the
-   compile check, and in Python it is free.
+2. **The mutated file parses, when the file has a parser** — `ast.parse` on the
+   result for a Python file. This is the compile check, and in Python it is free.
+   **Revised 2026-09-14: a file with no parser is not thereby invalid.** See
+   *Non-Python files* below.
 3. **The span lies inside a region one of that defect's `code_refs` names.**
    This is what stops a mutant wandering into unrelated code, which is #171's
    third validity concern.
 4. **The edit is bounded in size**, by a recorded line count.
+
+### Non-Python files (added 2026-09-14)
+
+The original check 2 failed closed on any file `ast.parse` could not read, which
+silently made every documentation defect unmutable. That was never argued for; it
+fell out of writing the check in terms of Python.
+
+**A span replacement is text, and mutating a Markdown file works.** It is also
+the only way to reach a measured class of real defects: the coverage-prefilter
+experiment found tests asserting on README and decision-record text that kill
+documentation defects, and one of the nine defects with no usable region at
+#316's scale named a non-Python file outright. Injecting into the Markdown and
+running the candidate tests is exactly how those tests prove themselves — the
+test reads the mutated file and goes red.
+
+For a file with no parser, checks 1, 3 and 4 carry validity on their own. Check 3
+does the load-bearing work: the span must lie inside a region the defect's own
+`code_refs` names, so the mutant cannot wander into an unrelated file, and a
+defect whose `code_refs` name no region is `not_mutable` for that reason rather
+than for its file type.
+
+**What this does not license.** Mutating a file that is neither code nor an
+artifact a test reads — lockfiles, generated output, binary assets — is pointless
+rather than unsafe, and the bounded-size check plus the `code_refs` containment
+check already keep it rare. If it turns out to matter, an allowed-extension list
+is the cheap remedy; it is not added pre-emptively.
 
 **Rejected: a second model call to confirm the mutant really violates the
 obligation.** It would be judging its own output, it costs a call per defect,
@@ -107,30 +166,54 @@ mutant text is recorded in review state so that a person reading the finding can
 see exactly what was injected and disagree with it. That is weaker than a proof
 and is honest about being weaker.
 
-## Decision 4 — a defect no candidate test executes is decided at the coverage tier, not by forcing execution
+## Decision 4 (revised 2026-09-14) — the mutant runs against every candidate test, and injection is what maps tests to criteria
 
-This is the answer to the case where a defect can only occur on one path through
-the code — one arm of a conditional, one configuration, one input kind — and no
-test drives that path.
+**Superseded:** the original Decision 4 made coverage the selector — run only the
+tests that execute the defect's lines, and settle a defect no test covers at
+`COVERAGE_CONFIRMED` (§8.1 tier 3) without injecting. Both halves are withdrawn.
 
-The evidence ladder decomposes cleanly, and the mutation stage is only the last
-rung of it:
+**What replaces it.** Inject the mutant and run every candidate test against it.
+The tests that go red are the tests that discriminate for that defect, and that
+result *is* the mapping — there is nothing to select with beforehand that does not
+cost more than it saves.
 
-- **No candidate test executes the defect's lines.** The defect is uncovered, and
-  that is established at `COVERAGE_CONFIRMED` (§8.1 tier 3) without any mutation.
-  Nothing needs to be injected: a test that never executes a line cannot fail on
-  a mutation of it.
-- **Some tests execute the lines.** Mutate, and run exactly those tests. A test
-  goes red, the defect is killed; none does, the defect survives. Both are
-  `DEFECT_KILLED` (tier 4).
+- **Some test goes red.** The defect is killed and those tests discriminate.
+- **No test goes red.** The defect survives, and every candidate test is proven
+  not to discriminate for it.
 
-So the switch-arm case answers itself one rung down. This also matches what the
-code already does with the static prefilter: `defects/support.py` treats an
-`UnjudgedCause.PREFILTERED` pair as a survival established statically rather than
-as a missing judgement, on the reasoning that the filter's contract is to exclude
-only what it can prove. Coverage under injection has that same contract, which
-the coverage-prefilter experiment states directly: *"under injection the
-exclusion becomes sound for runtime defects."*
+Both are `DEFECT_KILLED` (tier 4), because both were observed rather than
+predicted.
+
+**Why coverage cannot be the selector.** It was measured wrong often enough to
+matter. Over #316's Gate 2 review, coverage reachability excluded 43 of 268
+recorded kills — tests that genuinely detect the defect while never executing the
+implicated lines. Three channels hide in that: tests asserting on README and
+decision-record text, which detect a documentation defect through a file read;
+absence defects (`not_wired`, `documented_not_implemented`, `missing_case`),
+where the named lines are where behavior *should* be and a test fails on its
+absence through code elsewhere; and coverage that simply does not see the
+execution, as when the code under test runs in a subprocess.
+
+Under the original Decision 4 each of those became a **reported finding** —
+"no test covers this defect" — not merely a wasted opportunity. That is the
+failure mode #312 (the defect-first restructure) exists to remove, arrived at
+from the other side.
+
+**Coverage survives as an optional narrowing, never as a verdict.** On a suite too
+slow to run whole against every mutant, coverage may cut the test set, and the
+measured lever is 2.6x, not 10x: the median filtered defect is still reachable by
+137 of 496 tests, because a pipeline-level suite executes most of the changed code
+on most tests. When it is used, what it excludes is recorded as **undecided and
+handed to the static judge** (Decision 7), never recorded as uncovered. This is
+narrower than the contract `defects/support.py` gives an
+`UnjudgedCause.PREFILTERED` pair, which it treats as a survival established
+statically; coverage has not earned that contract and the 43 lost kills are why.
+
+**Cost, measured.** At the suite's observed 0.2 seconds per test, 48 defects
+against 496 candidate tests is about 23,800 test executions, on the order of 79
+CPU-minutes and zero tokens, against $6.02 of static pair judging per review. It
+parallelises across cores; the static judging does not parallelise past the
+provider's rate limit.
 
 **Rejected: forcing the code down the path, or substituting a test double so the
 defect can be triggered.** Three reasons.
@@ -151,22 +234,34 @@ outside the defect's own region, so a red result no longer says the mapped test
 would catch this defect in the delivered code — it says the test noticed that we
 swapped a dependency.
 
-**A recorded limit of this decision.** Line-level coverage is too coarse for a
-defect that lives on an unexercised *branch* of a line that does execute — a
-configuration threshold the tests never cross, for instance. The `coverage`
-library supports branch coverage and M8.3 (#44, the coverage-confirmed tier)
-should record whether it is enabled, because the case above is decided wrongly
-under line coverage alone: the mutated line looks reached when the relevant
-branch was not.
+**A limit that the revision removes, and one it does not.** Line-level coverage
+is too coarse for a defect on an unexercised *branch* of a line that does execute
+— a configuration threshold the tests never cross. Under the original decision
+that defect was decided wrongly, because the mutated line looked reached when the
+relevant branch was not. Running every candidate test removes the problem
+entirely: the tests either go red or they do not, and no reachability claim is
+made. If coverage is later enabled as the optional narrowing above, M8.3 (#44,
+the coverage-confirmed tier) should record whether branch coverage is on, and
+whether subprocess coverage is configured, since both bound what the narrowing
+may safely exclude.
 
 ## Decision 5 — the ambiguous outcome is a surviving mutant on executed lines, and it stays a finding
 
 #171's comment names the "no test failed" result as ambiguous between blind
-tests and an injected edit that changed no behaviour. Decision 4 removes the
-first half: blind tests are separated out one rung down, before anything is
-injected. What is left is a mutant on lines that were executed, where no test
-failed. That is either a genuinely weak test or a behaviour-preserving mutation,
-and nothing mechanical separates them.
+tests and an injected edit that changed no behaviour.
+
+**Amended 2026-09-14.** The original Decision 4 removed the first half by
+splitting blind tests off one rung down, before injecting. The revised Decision 4
+does not split them off, so they land here instead — and that turns out to be the
+better place for them. Whether the suite fails to catch a defect because no test
+executes the code or because the tests that do execute it assert nothing useful,
+the finding delivered to the builder is the same: **no test you wrote catches
+this defect.** The two causes differ in the remedy, not in the verdict, and the
+remedy is a test recommendation either way.
+
+What is genuinely ambiguous is narrower: a survival may also be a mutation that
+changed no behaviour at all. Nothing mechanical separates a behaviour-preserving
+mutant from a weak test, which is why the mutant text is recorded.
 
 It is recorded as a survival and reported as one, at `DEFECT_KILLED` tier, with
 the mutant text attached. Two reasons for taking the risk in that direction. The
@@ -177,23 +272,85 @@ the rating, which is the failure #252 exists to remove, and inflation is silent
 where a wrong recommendation is visible and arguable. Recording the mutant text
 is what makes it arguable.
 
-## Decision 6 — one instrumented run of the selected tests at head, before any injection
+## Decision 6 (revised 2026-09-14) — one baseline run of the candidate tests at head, and a red one halts the review by default
 
-It buys three things at once: the per-test baseline (a test already red at head
-tells you nothing when it is red under mutation, so it is excluded from the
-verdict with a recorded reason), the coverage map that Decision 4 selects with,
-and a signal for #170's feasibility probe. The coverage-prefilter experiment
-measured that run at 5m15s on this repository.
+**Still required, and for the original reason.** A test already failing at head
+tells you nothing when it fails under mutation, so the control must be
+established before anything is injected. The run also feeds #170's feasibility
+probe. What it no longer has to produce is the coverage map, since the revised
+Decision 4 does not select with one; coverage instrumentation becomes optional on
+this run rather than the point of it.
 
-This is not the product grading the user's green suite, which §8.2's scope
-boundary rules out. It is establishing the control for the experiment, and the
-distinction is that nothing is reported about a test that is red at head except
-that it was excluded.
+**The run covers the candidate tests, not the suite.** This was already DR-170
+Decision 4's reading of §1 principle 6 and §17 ("CI owns full-suite execution",
+"targeted subsets only, never full suite"), and the revision does not disturb it.
+At #316's Gate 2 the candidate set was 496 tests of about 1,311; the
+coverage-prefilter experiment's 5m15s figure covered all 1,623 and is an upper
+bound, not an estimate.
 
-## Decision 7 — one `PairVerdict` record carrying a tier, so the static path stays and the rating has one implementation
+**New: a red candidate test halts the review by default, with an override.** If
+any candidate test fails at head, the review stops and says so, rather than
+falling back to static judging.
 
-Injection does not replace the static pair judgement. It overwrites individual
-verdicts with better-evidenced ones.
+The reasoning is cost, not policing. Falling back does not save money — it spends
+*more*, because the static pair stage is the expensive half ($6.02 at #316's
+scale) and the execution tier exists to avoid it. Spending that on a change whose
+own tests are failing buys a review whose conclusions rest on tests that do not
+pass. Halting is the cheap honest answer.
+
+**The override exists because a deferred failure is a real situation.** A known
+hard-to-fix test the builder has consciously parked should not make the tool
+unusable. With the override set, the review proceeds, failing tests are excluded
+from the verdict with a recorded reason, and the exclusion is reported.
+
+**This is still not the product grading the user's green suite**, which §8.2's
+scope boundary rules out. Three things keep the distinction real: no finding is
+ever produced *about* a failing test beyond the fact that it was excluded or that
+the review halted; only candidate tests are consulted, never the suite, so the
+product never forms a view on whether the project as a whole passes; and the halt
+is a refusal to spend, not a verdict on the change.
+
+**It is also not §8.3's graceful degradation, and must not be folded into it.**
+§8.3 covers a suite that *cannot* be run — cloud dependencies, UI-bound behavior,
+live-service tests, excessive runtime — and its answer is to degrade silently to
+static inference with a lower recorded tier. A suite that runs and fails is a
+different case, not in that list, and it is the one case where continuing costs
+more than stopping. Conflating them would make every red suite silently expensive.
+
+## Decision 7 (revised 2026-09-14) — one `PairVerdict` record carrying a tier, and the static judge runs on the remainder rather than first
+
+**Superseded:** the original wording was "Injection does not replace the static
+pair judgement. It overwrites individual verdicts with better-evidenced ones."
+Read literally that judges all 23,808 pairs by model and then discards the
+answers execution supersedes — paying the full $6.02 *and* the test runs. The
+single-record design below was the point of the decision; the ordering was an
+unexamined side effect of it.
+
+**What replaces it: execution decides first, and `judge_pairs` runs on what is
+left.** Concretely, in `src/acceptance/pipeline.py::run_review`, `judge_pairs`
+currently runs unconditionally over every test-and-defect pair. It moves after
+the mutation stage and receives only the remainder:
+
+- defects for which no valid mutant could be built (Decision 3);
+- the absence classes (`not_wired`, `documented_not_implemented`,
+  `missing_case`), where there is no span to replace because the defect is that
+  the code is not there;
+- every pair, when the feasibility probe declines or the candidate tests are red
+  and the override is set;
+- pairs excluded by the optional coverage narrowing, if it is enabled
+  (Decision 4).
+
+**Why the single-record design is untouched by this.** A parallel record type for
+executed verdicts would fork the rating logic and the two copies would drift —
+the failure `CLAUDE.md` records against the CLI and the benchmark, which had
+drifted onto different pipelines before a test pinned them together. One record
+with a tier field keeps one rating implementation whichever stage produced the
+verdict, and that argument does not depend on which stage runs first.
+
+**The degradation story is unchanged and still structural.** A repository where
+the probe declines everything is the case where the remainder is every pair, and
+every `PairVerdict` stays at `STATIC`. That is today's behaviour exactly, reached
+with no special case — which is what §8.3 asks for.
 
 `PairVerdict` gains a tier field. A verdict the pair-judgement stage produces is
 `STATIC`; one the mutation runner produces is `DEFECT_KILLED`.
@@ -201,25 +358,19 @@ verdicts with better-evidenced ones.
 which tier, and `Component.MUTATION_RUNNER` is already the only one authorized
 for `DEFECT_KILLED`, so nothing new is needed there.
 
-I verified that `defects/support.py::derive_support` computes the rating by
-collecting defects with at least one killing verdict and comparing that count to
-the enumerated count, with no reference to a tier. That arithmetic is unchanged
-by this decision. The single record is the point: a parallel record type for
-executed verdicts would fork the rating logic, and the two copies would drift —
-the failure CLAUDE.md records against the CLI and the benchmark, which had drifted
-onto different pipelines before a test pinned them together.
+I verified at the time this record was written that
+`defects/support.py::derive_support` computes the rating by collecting defects
+with at least one killing verdict and comparing that count to the enumerated
+count, with no reference to a tier. That arithmetic is unchanged by the original
+decision and by the revision alike.
 
 `defects/support.py` currently hardcodes `EvidenceTier.STATIC` as the achieved
 tier for every criterion. It becomes the weakest tier among the verdicts the
-criterion's rating actually rests on.
+criterion's rating actually rests on. A review is therefore a mixture of verdicts
+at different tiers, in the same way that running enumeration before test
+discovery makes its test-blindness structural rather than promised.
 
-The consequence worth stating plainly: a review is a mixture of verdicts at
-different tiers, and a repository where the feasibility probe fails is just the
-case where every verdict stays at `STATIC`. §8.3's graceful degradation is then
-structural rather than a promise, in the same way that running enumeration before
-test discovery makes its test-blindness structural.
-
-## Decision 8 — every attempt is recorded with a typed outcome
+## Decision 8 (revised 2026-09-14) — every attempt is recorded with a typed outcome
 
 Following `UnjudgedPair` and `UnjudgedCause`, which record pairs that got no
 verdict rather than dropping them, because a pair nothing can see is
@@ -227,15 +378,26 @@ indistinguishable from a verdict of *survives*. Mutation needs the same:
 
 | outcome | meaning | tier reached |
 |---|---|---|
-| `killed` | a selected test went red | `DEFECT_KILLED` |
-| `survived` | selected tests executed the span and none went red | `DEFECT_KILLED` |
-| `unreached` | no candidate test executes the span | `COVERAGE_CONFIRMED` |
+| `killed` | some candidate test went red under the mutant | `DEFECT_KILLED` |
+| `survived` | every candidate test ran under the mutant and none went red | `DEFECT_KILLED` |
 | `not_mutable` | no valid mutant could be constructed (Decision 3) | `STATIC` |
-| `not_attempted` | the feasibility probe failed, or the defect is in the class below | `STATIC` |
+| `not_attempted` | the probe declined, the candidate tests were red, or the defect is in a class injection cannot express | `STATIC` |
 
 `not_mutable` and `not_attempted` must carry a reason, for the same reason
 `DefectSet` requires one on an empty set: "looked and could not" and "did not
 look" are different, and only one of them is a defect in the tool.
+
+**`unreached` is withdrawn.** The original table gave it to a defect no candidate
+test executes, reaching `COVERAGE_CONFIRMED`. The revised Decision 4 does not ask
+that question, so the outcome has nothing to report: a defect no test executes
+now simply survives, along with every other defect the candidate tests fail to
+catch. If the optional coverage narrowing is enabled, the pairs it excludes are
+recorded as unjudged and routed to the static judge (Decision 7) rather than
+given an outcome of their own.
+
+**Both `STATIC` outcomes are routing instructions, not conclusions.** A defect
+marked `not_mutable` or `not_attempted` has not been decided; it is handed to
+`judge_pairs`, and the verdict that comes back is what the rating uses.
 
 ## What injection cannot decide, measured
 
@@ -259,11 +421,28 @@ recorded kills:
   `missing_case`, the implicated lines are where behaviour *should* be, and a
   test can fail on the absence through code that lives elsewhere.
 
-Those three classes stay on the static judgement permanently, on any repository,
-whatever the probe says. They are separate from the repositories where execution
-is unavailable, which is §8.3's case and is handled by Decision 7. The division
-of labour: injection decides the pairs it can reach, and the static prediction
-covers what injection cannot express, cannot run, or is not worth a suite run for.
+Those three classes stay on the static judgement, on any repository, whatever the
+probe says. They are separate from the repositories where execution is
+unavailable, which is §8.3's case and is handled by Decision 7. The division of
+labour: injection decides the pairs it can reach, and the static prediction
+covers what injection cannot express or cannot run.
+
+**Re-read after the 2026-09-14 revision.** Two of the three bullets above were
+written when coverage was the selector, and the revision narrows what they prove.
+The measurements stand; the attribution changes.
+
+- The **file-read** bullet no longer describes a limit. Its claim that "line
+  coverage cannot see that channel" is beside the point, since nothing consults
+  coverage; and Decision 3's revision means the Markdown can be mutated, so the
+  tests that read it go red and prove themselves. This class moves out of the
+  unreachable set and into injection's reach.
+- The **absence** bullet stands unchanged and is the harder class. A span
+  replacement cannot express "this code should exist and does not", because there
+  is no span to replace.
+- The **suspect verdicts** the experiment found — kills the static judge asserted
+  through code paths the test never drives — are no longer a limit at all. They
+  are the thing injection now settles, and settling them is what the 43
+  disagreement pairs in the pilot case list are for.
 
 ## Consequences
 
@@ -273,12 +452,25 @@ covers what injection cannot express, cannot run, or is not worth a suite run fo
   schema change and orphans nothing, since it is additive with a default.
 - **A new record type for mutation attempts** (Decision 8), holding the
   descriptor, the mutant text, the outcome and the reason.
-- **#44 (M8.3, the coverage-confirmed tier) owns the coverage map and the
-  baseline run** that Decisions 4 and 6 depend on, which confirms the sequencing
-  already recorded: M8.3 before M8.4.
+- **#45 (M8.4, targeted mutation) no longer depends on #44 (M8.3, the
+  coverage-confirmed tier), and the sequencing inverts.** The original record
+  made #44 own the coverage map that Decision 4 selected with; the revised
+  Decision 4 selects with nothing, so the only thing #45 needs from a prior run
+  is the per-test baseline, which it can take itself (Decision 6). #44's coverage
+  map becomes an optimization for slow suites and can follow.
+- **§8.2 was amended on 2026-09-14** to remove "runs *only the handful of mapped
+  tests*" and "not a combinatorial explosion", which assumed the mapping stage
+  #312 and #316 deleted. §1 principle 6 and §17 are untouched: the candidate test
+  set is a targeted subset, and the full suite is still never run.
+- **`judge_pairs` moves in `pipeline.py::run_review`** from running
+  unconditionally over every pair to running on the remainder after the mutation
+  stage (Decision 7). This is the change that realises the saving; the rest of
+  the revision is what makes it safe.
 - **#170 (the open decision on what declares a suite hermetic and fast enough)
   is unaffected by this record** and still has to be resolved before #42 (M8.1,
-  the feasibility probe) is implemented.
+  the feasibility probe) is implemented. Decision 6's green-candidate-tests gate
+  is a natural member of that probe's result once #42 exists; until then #45
+  carries it.
 - **The pilot case list already exists.** The coverage-prefilter experiment
   leaves 43 pairs where coverage and the static judge disagree, plus three from
   `prefilter-committee/`. Adjudicating them by injection measures pair-verdict

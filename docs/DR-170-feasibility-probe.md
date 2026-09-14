@@ -120,6 +120,15 @@ timed out, errored, or was blocked reaching the network. A test already red at
 head is excluded from the verdict with a recorded reason, which DR-171 Decision 6
 requires independently.
 
+**Amended 2026-09-14 by DR-171's revision.** Exclusion-and-continue is now the
+*override* path, not the default. A candidate test that is red at head halts the
+review unless the override is set, on the reasoning that falling back to static
+judging costs more than stopping — the static pair stage is the expensive half,
+and the execution tier exists to avoid it. This decision's per-test outcome
+vocabulary is unchanged; what changes is what the review does with a red one.
+The gate belongs in this probe's result once #42 (M8.1) exists; until then #45
+(M8.4, targeted mutation) carries it.
+
 ## Decision 5 — the verdict is per test, under one per-project collection gate
 
 **Per test.** #170's fourth candidate makes the argument — a repository can be
