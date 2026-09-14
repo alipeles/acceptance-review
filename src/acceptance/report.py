@@ -125,6 +125,17 @@ def render_report(review: Review) -> str:
         lines.extend(_pair_block(review))
         lines.append("")
 
+    # Both only when the execution tier ran. A review that did not run the tests
+    # renders exactly as it did before M8.4, rather than carrying two empty
+    # headings that a reader would have to learn to ignore.
+    if review.mutation_attempts:
+        lines.extend(_mutation_block(review))
+        lines.append("")
+
+    if review.set_aside_tests:
+        lines.extend(_set_aside_block(review))
+        lines.append("")
+
     if review.delta is not None:
         lines.extend(_delta_block(review.delta))
         lines.append("")
@@ -253,6 +264,55 @@ def _defect_block(defect_sets: list[DefectSet]) -> list[str]:
             lines.append(f"      {defect.description}")
             for ref in defect.code_refs:
                 lines.append(f"      {ref}")
+    return lines
+
+
+def _mutation_block(review: Review) -> list[str]:
+    """What was injected, and what each test did about it (M8.4).
+
+    The injected text is rendered, not summarised, and that is the point.
+    DR-171 Decision 3 spends no model call confirming that a mutant really
+    violates the obligation — it would be judging its own output at the tier it
+    is checking. Showing exactly what was injected is the whole of what replaces
+    that: a reader who thinks a survival is unfair can see the edit and say so.
+
+    A defect execution could not settle renders with its reason. Those went to
+    the static judge, and a reader comparing a criterion's executed and
+    predicted parts needs to know which is which.
+    """
+    lines = ["Defects injected, and which tests caught them:"]
+    for attempt in review.mutation_attempts:
+        lines.append("")
+        lines.append(f"  [{attempt.outcome.value}] {attempt.defect_id}")
+        descriptor = attempt.descriptor
+        if descriptor is not None:
+            span = f"{descriptor.start_line}-{descriptor.end_line}"
+            lines.append(f"    injected at {descriptor.path} lines {span}:")
+            for line in descriptor.replacement.splitlines() or [""]:
+                lines.append(f"      | {line}")
+        if attempt.killing_tests:
+            lines.append(f"    caught by ({len(attempt.killing_tests)}):")
+            lines.extend(f"      {test_id}" for test_id in attempt.killing_tests)
+        elif attempt.settled:
+            lines.append(
+                f"    no test caught it; {len(attempt.tests_run)} candidate test(s) ran "
+                "and none failed"
+            )
+        if attempt.reason:
+            lines.append(f"    {attempt.reason}")
+    return lines
+
+
+def _set_aside_block(review: Review) -> list[str]:
+    """Candidate tests that took no part in any conclusion, and why.
+
+    An exclusion nobody can see is indistinguishable from a test that was never
+    a candidate, and the two mean opposite things about the suite.
+    """
+    lines = ["Candidate tests set aside (no conclusion rests on these):"]
+    for test in review.set_aside_tests:
+        lines.append(f"  [{test.kind.value}] {test.test_id}")
+        lines.append(f"    {test.reason}")
     return lines
 
 

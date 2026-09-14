@@ -55,7 +55,7 @@ from acceptance.evidence.extraction import extract_test_evidence
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.mutation.attempt import MutationAttempt
-from acceptance.mutation.baseline import establish_baseline
+from acceptance.mutation.baseline import SetAsideTest, establish_baseline
 from acceptance.mutation.descriptor import build_descriptors, from_mapping
 from acceptance.mutation.region import regions_for
 from acceptance.mutation.runner import run_mutations
@@ -258,7 +258,7 @@ def _run_execution_tier(
     client: ModelClient,
     unusable: UnusableAnswerLog,
     execution: ExecutionSettings | None,
-) -> tuple[list[MutationAttempt], list[PairVerdict]]:
+) -> tuple[list[MutationAttempt], list[PairVerdict], list[SetAsideTest]]:
     """Inject each enumerated defect and read who noticed, or do nothing.
 
     Returns the attempts and the verdicts they support. With execution off — the
@@ -272,7 +272,7 @@ def _run_execution_tier(
     code as delivered and the caller did not allow it.
     """
     if execution is None or not execution.enabled:
-        return [], []
+        return [], [], []
 
     test_ids = [test.test_id for test in tests]
     baseline = establish_baseline(
@@ -298,7 +298,7 @@ def _run_execution_tier(
         execution.sandbox,
         execution.max_edit_lines,
     )
-    return attempts, verdicts_from(attempts, defect_sets)
+    return attempts, verdicts_from(attempts, defect_sets), baseline.set_aside
 
 
 def _sources_for(regions_by_defect: dict, repo: Path) -> dict[str, str]:
@@ -454,7 +454,7 @@ def run_review(
     #
     # Off unless the caller opted in: §8.3 makes execution conditional on a
     # feasibility probe, and #42 (M8.1) is that probe and does not exist yet.
-    attempts, executed_verdicts = _run_execution_tier(
+    attempts, executed_verdicts, set_aside_tests = _run_execution_tier(
         defect_sets, discovered.tests, change_set, repo, client, unusable, execution
     )
 
@@ -634,8 +634,14 @@ def run_review(
         requirement_map=decomposition.requirement_map,
         open_questions=open_questions,
         defect_sets=defect_sets,
-        pair_verdicts=pair_mapping.verdicts,
+        # Both provenances, in one list, distinguished by `PairVerdict.tier`.
+        # Storing only the judged half would leave a stored review unable to
+        # reproduce its own rating, since the executed verdicts are what several
+        # criteria rest on.
+        pair_verdicts=verdicts,
         unjudged_pairs=pair_mapping.unjudged,
+        mutation_attempts=attempts,
+        set_aside_tests=set_aside_tests,
         change_set=change_set,
         declaration=declaration,
         findings=findings,

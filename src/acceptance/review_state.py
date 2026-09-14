@@ -20,6 +20,8 @@ from pydantic import Field, field_validator, model_validator
 
 from acceptance.evidence_tier import Component, EvidenceTier, authorize_tier
 from acceptance.model_base import PersistableModel as _Model
+from acceptance.mutation.attempt import MutationAttempt
+from acceptance.mutation.baseline import SetAsideTest
 from acceptance.serialization import canonical_json
 from acceptance.source_ref import TextSpan
 
@@ -1248,6 +1250,22 @@ class Review(_Model):
     # claim as "judged and survives" or "excluded unjudged".
     pair_verdicts: list[PairVerdict] = Field(default_factory=list)
     unjudged_pairs: list[UnjudgedPair] = Field(default_factory=list)
+    # One entry per defect the mutation stage was asked about (M8.4), holding the
+    # edit that was injected and what became of it. Empty on every review that
+    # did not run the tests, which is every review until the caller opts in.
+    #
+    # The injected text is here because DR-171 Decision 3 refuses to spend a
+    # second model call confirming that the mutant really violates the
+    # obligation — it would be judging its own output at the same tier as the
+    # thing it checks. Recording exactly what was injected is the whole of what
+    # replaces that, so a reader can disagree with a survival. Weaker than a
+    # proof, and honest about being weaker.
+    mutation_attempts: list[MutationAttempt] = Field(default_factory=list)
+    # Candidate tests that took no part in any conclusion, and why. A test that
+    # failed against the code as delivered tells nothing when it fails under an
+    # injected defect, so it is excluded — and an exclusion nobody can see is
+    # indistinguishable from a test that was never a candidate.
+    set_aside_tests: list[SetAsideTest] = Field(default_factory=list)
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[TestRecommendation] = Field(default_factory=list)
     # Criteria the recommendation stage was asked about and returned nothing for

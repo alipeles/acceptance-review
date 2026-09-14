@@ -28,6 +28,7 @@ from acceptance.change.diff import extract_change_set
 from acceptance.evidence_tier import EvidenceTier
 from acceptance.mutation.settings import ExecutionSettings, ReviewHalted
 from acceptance.pipeline import run_review
+from acceptance.report import render_report
 from tests.support import client_dispatching
 
 _TASK = (
@@ -208,6 +209,52 @@ class TestExecutionOffChangesNothing:
         capture: list = []
         _review(tmp_path, execution=ExecutionSettings(enabled=False), capture=capture)
         assert "_Descriptor" not in _schemas(capture)
+
+    def test_the_report_carries_no_execution_headings(self, tmp_path):
+        """A review that did not run the tests renders exactly as it did before
+        M8.4, rather than carrying empty headings a reader must learn to skip."""
+        report = render_report(_review(tmp_path, execution=None))
+        assert "Defects injected" not in report
+        assert "set aside" not in report
+
+
+class TestWhatIsPersistedAndRendered:
+    def test_the_injected_text_is_stored_on_the_review(self, tmp_path):
+        """DR-171 Decision 3 spends no model call confirming the mutant really
+        violates the obligation. Recording what was injected is the whole of
+        what replaces that, so it has to survive into review state."""
+        review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
+        (attempt,) = review.mutation_attempts
+        assert attempt.descriptor is not None
+        assert "* 3" in attempt.descriptor.replacement
+
+    def test_the_report_shows_the_injected_text(self, tmp_path):
+        report = render_report(_review(tmp_path, execution=ExecutionSettings(enabled=True)))
+        assert "Defects injected, and which tests caught them:" in report
+        assert "payment = principal / months * 3" in report
+
+    def test_the_report_says_no_test_caught_it(self, tmp_path):
+        report = render_report(_review(tmp_path, execution=ExecutionSettings(enabled=True)))
+        assert "no test caught it" in report
+
+    def test_the_executed_verdicts_are_stored(self, tmp_path):
+        """A stored review has to be able to reproduce its own rating, and
+        several criteria rest on the executed half."""
+        review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
+        assert [v.tier for v in review.pair_verdicts] == [EvidenceTier.DEFECT_KILLED]
+
+    def test_a_set_aside_test_is_stored_and_reported(self, tmp_path):
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True, allow_failing_tests=True),
+            head_test=TestTheHaltGate._RED_TEST,
+        )
+        assert [t.test_id for t in review.set_aside_tests] == [
+            "test_loan.py::test_that_is_already_failing"
+        ]
+        report = render_report(review)
+        assert "Candidate tests set aside" in report
+        assert "test_that_is_already_failing" in report
 
 
 class TestTheHaltGate:

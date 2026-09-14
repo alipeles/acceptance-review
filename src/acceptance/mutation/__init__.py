@@ -19,21 +19,11 @@ of its decisions shape every module here:
 - **Decision 8.** Every attempt carries a typed outcome, and the two that settle
   nothing carry a reason. A defect nothing can see is indistinguishable from one
   that survived.
+
+**This package re-exports nothing, deliberately.** `review_state.py` holds the
+mutation records, so it imports `mutation.attempt` and `mutation.baseline` — and
+a re-export here of `region`, which imports `review_state` back, would make that
+a cycle. Every caller imports from the submodule it wants.
 """
 
 from __future__ import annotations
-
-from acceptance.mutation.attempt import (
-    MutationAttempt,
-    MutationDescriptor,
-    MutationOutcomeKind,
-)
-from acceptance.mutation.region import Region, regions_for
-
-__all__ = [
-    "MutationAttempt",
-    "MutationDescriptor",
-    "MutationOutcomeKind",
-    "Region",
-    "regions_for",
-]
