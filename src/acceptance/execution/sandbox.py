@@ -192,18 +192,40 @@ def _collect_in_workspace(
     shutil.copyfile(netblock.__file__, plugin_dir / f"{_PLUGIN_MODULE}.py")
     report_path = workspace / "outcomes.jsonl"
     report_path.touch()
-    env = _sandbox_env(plugin_dir, report_path, config)
+    env = _sandbox_env(plugin_dir, report_path, config, project_root)
     wanted = set(requested)
 
     exit_code, collected = _collect_once(requested, project_root, config, env, wanted)
     if exit_code == 0:
         return collected
 
+    # The joint collection failed, so the answer must be a set that collects
+    # JOINTLY. Admitting each file that collects alone is not enough and is
+    # actively misleading: every file here collects by itself, and the run still
+    # dies when they are collected together, which is how #45's mutant runs each
+    # lost all 326 tests after the baseline appeared healthy.
+    #
+    # So files are admitted one at a time, each kept only if the set still
+    # collects with it. A file that conflicts with one already admitted is
+    # dropped, and the loser is reported rather than lost.
+    #
+    # **Largest file first**, which decides who wins a conflict. Without it the
+    # winner is whichever came first alphabetically, and on this repository that
+    # meant keeping one test belonging to an archetype fixture and dropping the
+    # twenty-one real tests it collided with. The objective a review actually
+    # wants is to lose as little evidence as possible, and test count is the
+    # only measure of that available without knowing anything about the project.
+    # Ties break on the path, so the result does not depend on dict ordering.
+    admitted_ids: list[str] = []
     admitted: set[str] = set()
-    for ids in _by_file(requested).values():
-        code, found = _collect_once(ids, project_root, config, env, wanted)
+    by_file = _by_file(requested)
+    for path in sorted(by_file, key=lambda p: (-len(by_file[p]), p)):
+        ids = by_file[path]
+        candidate = admitted_ids + ids
+        code, found = _collect_once(candidate, project_root, config, env, wanted)
         if code == 0:
-            admitted |= found
+            admitted_ids = candidate
+            admitted = found
     return admitted
 
 
@@ -310,7 +332,7 @@ def _run_in_workspace(
     aborted, abort_reason, exit_code = _spawn_and_wait(
         command,
         cwd=project_root,
-        env=_sandbox_env(plugin_dir, report_path, config),
+        env=_sandbox_env(plugin_dir, report_path, config, project_root),
         total_seconds=config.total_seconds,
     )
 
@@ -384,7 +406,41 @@ def _why_unreached(
     return "the run reported on other tests and ended without reaching this one"
 
 
-def _sandbox_env(plugin_dir: Path, report_path: Path, config: SandboxConfig) -> dict[str, str]:
+def _import_roots(project_root: Path) -> list[str]:
+    """Where `project_root`'s own code must be imported from, ahead of anything else.
+
+    **Without this the mutation stage is worthless on most Python projects.** A
+    project installed into its environment — `pip install -e .`, the normal way a
+    `src/` layout is set up — resolves `import yourpackage` through an absolute
+    path recorded at install time. Copying the tree and running pytest with the
+    copy as the working directory does not change that: the tests run in the
+    copy and import the code from the ORIGINAL. Every mutant then has no effect
+    whatever, every defect is reported as survived, and the review confidently
+    tells the builder their tests are weak on the strength of code it never
+    altered.
+
+    I verified this before fixing it: a mutant that removes a `raise` was applied
+    to a copy, the test asserting that `raise` was run in the copy, and it
+    passed. The interpreter there reported loading the package from the original
+    working tree.
+
+    `PYTHONPATH` is what corrects it, because Python honours it before
+    site-packages and therefore before any path an install added. Both standard
+    layouts are covered — the root for a flat project, `src/` for a src-layout
+    one — and a directory that does not exist is simply omitted. A project whose
+    importable code is somewhere else entirely is caught by the control run's
+    faithfulness check rather than silently mis-reviewed.
+
+    The baseline gets the same treatment, which is the point: the control and
+    the mutants must differ only by the mutation.
+    """
+    roots = [project_root, project_root / "src"]
+    return [str(path.resolve()) for path in roots if path.is_dir()]
+
+
+def _sandbox_env(
+    plugin_dir: Path, report_path: Path, config: SandboxConfig, project_root: Path
+) -> dict[str, str]:
     """Build the subprocess environment from an allowlist, never by inheriting.
 
     An allowlist rather than a denylist of credential-looking names: a denylist
@@ -392,7 +448,10 @@ def _sandbox_env(plugin_dir: Path, report_path: Path, config: SandboxConfig) -> 
     execution-safety incident on someone else's repository.
     """
     env = {name: os.environ[name] for name in _INHERITED_ENV if name in os.environ}
-    env["PYTHONPATH"] = str(plugin_dir)
+    # The project's own code first, the plugin last: the plugin only has to be
+    # importable, while the project's code has to win against an installed copy
+    # of itself.
+    env["PYTHONPATH"] = os.pathsep.join([*_import_roots(project_root), str(plugin_dir)])
     env["PYTHONDONTWRITEBYTECODE"] = "1"
     # The launching machine's per-user site-packages directory is on the
     # interpreter's path by default, and dropping `PYTHONPATH` from the

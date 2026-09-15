@@ -172,10 +172,13 @@ class TestTheTwoOutcomesThatSettle:
             green,
             build,
         )
-        assert [a.outcome for a in attempts] == [
-            MutationOutcomeKind.SURVIVED,
-            MutationOutcomeKind.KILLED,
-        ]
+        # Looked up by id rather than by position: attempts come back sorted by
+        # defect id, so the order is not the order the defects were given.
+        by_id = {a.defect_id: a.outcome for a in attempts}
+        assert by_id == {
+            "d-wrong-amount": MutationOutcomeKind.SURVIVED,
+            "d-one-short": MutationOutcomeKind.KILLED,
+        }
 
     def test_the_injected_text_is_recorded(self, project, change_set, green):
         attempts = run_mutations(

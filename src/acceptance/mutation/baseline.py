@@ -32,6 +32,7 @@ from pydantic import Field, model_validator
 from acceptance.execution.outcome import SandboxRunResult, TestOutcome, TestOutcomeKind
 from acceptance.execution.sandbox import SandboxConfig, collect_tests, run_tests
 from acceptance.model_base import PersistableModel as _Model
+from acceptance.mutation.workspace import copied_project
 
 __all__ = ["Baseline", "SetAsideTest", "establish_baseline"]
 
@@ -152,10 +153,72 @@ def establish_baseline(
 
     result = _observe(runnable, project_root, config)
     baseline = _read(result, allow_failing_tests=allow_failing_tests)
+    if not baseline.halted and baseline.usable_tests:
+        baseline = _drop_unfaithful(baseline, project_root, config)
     # The dropped ids go first: they were excluded before anything ran, and a
     # reader scanning the block should meet "never admitted" before "ran and
     # failed".
     return baseline.model_copy(update={"set_aside": dropped + baseline.set_aside})
+
+
+def _drop_unfaithful(
+    baseline: Baseline, project_root: Path, config: SandboxConfig | None
+) -> Baseline:
+    """Set aside any test that does not behave the same in a copy of the project.
+
+    Every mutant runs in a copy, and the copy leaves things out — version
+    control history, caches, dependency trees. A test that depends on one of
+    those passes here and fails there, and the difference would be read as the
+    injected defect breaking it. **That is a false kill: a finding against the
+    builder for something they did not do.**
+
+    So the control is run twice, once in place and once in an unmodified copy,
+    and a test that disagrees between them is excluded from every later
+    conclusion with the reason recorded. This turns an exclusion list that is
+    wrong for some project from a source of false findings into a smaller set of
+    usable tests, which is the direction a review should fail in.
+
+    Costs one copy and one extra run of the control set, once per review,
+    against one copy and one run per defect afterwards.
+    """
+    try:
+        with copied_project(project_root, prefix="acceptance-control-") as root:
+            mirrored = _observe(baseline.usable_tests, root, config)
+    except OSError as error:  # the contract is that a baseline returns
+        mirrored = SandboxRunResult(
+            outcomes=[
+                TestOutcome(
+                    test_id=test_id,
+                    kind=TestOutcomeKind.NOT_STARTED,
+                    reason=f"the project could not be copied for the check: {error}",
+                )
+                for test_id in baseline.usable_tests
+            ]
+        )
+
+    unfaithful = [
+        SetAsideTest(
+            test_id=outcome.test_id,
+            kind=outcome.kind,
+            reason=(
+                "the test passes in the project but not in an unmodified copy of it, so a "
+                "failure under an injected defect could not be attributed to the defect. "
+                f"In the copy it was: {outcome.kind.value}"
+            ),
+        )
+        for outcome in mirrored.outcomes
+        if outcome.kind is not TestOutcomeKind.PASSED
+    ]
+    if not unfaithful:
+        return baseline
+
+    excluded = {test.test_id for test in unfaithful}
+    return baseline.model_copy(
+        update={
+            "usable_tests": [t for t in baseline.usable_tests if t not in excluded],
+            "set_aside": baseline.set_aside + unfaithful,
+        }
+    )
 
 
 def _observe(

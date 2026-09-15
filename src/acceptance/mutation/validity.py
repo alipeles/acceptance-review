@@ -99,6 +99,26 @@ def invalidity_reason(
             f"{descriptor.path}, which has {line_count} line(s)"
         )
 
+    # Check 5 — it changes something. A replacement identical to the lines it
+    # replaces is not a mutant: nothing can fail on it, so every candidate test
+    # "survives" and the criterion is recorded as having tests that do not
+    # discriminate. **That is a false finding against the builder**, and the
+    # silent kind — a survival reads exactly like a real one.
+    #
+    # Measured, not anticipated: four of twelve descriptors sampled at #45's
+    # Gate 2 returned text byte-identical to the original, one of them merely
+    # deleting a blank line. Reported as `not_mutable`, which is the honest
+    # answer — the stage was asked for an edit and did not produce one.
+    replaced = "".join(
+        source.splitlines(keepends=True)[descriptor.start_line - 1 : descriptor.end_line]
+    )
+    if replaced == descriptor.replacement:
+        return (
+            f"the replacement for {descriptor.path} lines {descriptor.start_line}.."
+            f"{descriptor.end_line} is identical to what it replaces, so nothing would be "
+            "injected and every test would 'survive' a defect that was never introduced"
+        )
+
     # Check 4 — the edit is bounded. Checked before the parse so an enormous
     # replacement is reported as oversized rather than as a syntax error.
     if descriptor.line_count > max_edit_lines:

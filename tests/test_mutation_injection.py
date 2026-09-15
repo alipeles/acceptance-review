@@ -90,6 +90,26 @@ def test_a_file_the_project_does_not_have_is_reported(project: Path):
         pass
 
 
+def test_a_relative_project_root_still_copies(project: Path, monkeypatch):
+    """`Path(".").name` is the empty string, so the copy destination became the
+    workspace itself — which already exists, so every injection died before it
+    started. The CLI passes `Path(".")` as a matter of course, so this was every
+    real run; only tests passing an absolute path ever worked.
+    """
+    monkeypatch.chdir(project)
+    with mutated_copy(Path("."), _descriptor()) as root:
+        assert (root / "pkg" / "calc.py").read_text(encoding="utf-8") == (
+            "def total(items):\n    return 0\n"
+        )
+
+
+def test_the_copy_keeps_the_project_s_own_directory_name(project: Path):
+    """pytest finds its rootdir and config by walking up from where it runs, so
+    a renamed root would show the project a different tree than it has."""
+    with mutated_copy(project, _descriptor()) as root:
+        assert root.name == project.name
+
+
 def test_each_mutant_gets_its_own_copy(project: Path):
     """Two mutants must never be observed stacked on one another."""
     with (

@@ -21,9 +21,11 @@ without a transcript.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from acceptance.concurrency import map_calls
 from acceptance.execution.outcome import SandboxRunResult, TestOutcomeKind
 from acceptance.execution.sandbox import SandboxConfig, run_tests
 from acceptance.mutation.attempt import (
@@ -37,7 +39,16 @@ from acceptance.mutation.region import Region, regions_for
 from acceptance.mutation.validity import DEFAULT_MAX_EDIT_LINES, invalidity_reason
 from acceptance.review_state import ChangeSet, Defect, DefectSet
 
-__all__ = ["DescriptorBuilder", "run_mutations"]
+__all__ = ["DEFAULT_INJECTIONS_IN_FLIGHT", "DescriptorBuilder", "run_mutations"]
+
+#: How many injections run at once. Sized for this machine's cores, because the
+#: work is local CPU and disk with no network in it at all — the opposite of the
+#: model-call concurrency in `concurrency.py`, whose limit is a provider's rate
+#: allowance. Two cores are left for the rest of the review and for the machine.
+#:
+#: Each injection is a full pytest process over the candidate set, so raising
+#: this past the core count makes every run slower without finishing sooner.
+DEFAULT_INJECTIONS_IN_FLIGHT = max(1, (os.cpu_count() or 4) - 2)
 
 #: Given one defect, the regions it named, and the text of each of those files
 #: at head, produce the smallest edit that makes the defect true — or `None`
@@ -53,8 +64,9 @@ def run_mutations(
     build_descriptor: DescriptorBuilder,
     config: SandboxConfig | None = None,
     max_edit_lines: int = DEFAULT_MAX_EDIT_LINES,
+    max_in_flight: int = DEFAULT_INJECTIONS_IN_FLIGHT,
 ) -> list[MutationAttempt]:
-    """One attempt per defect, in the order the defect sets hold them.
+    """One attempt per defect, sorted by defect id.
 
     Returns an attempt for every defect, including the ones nothing could be
     done with. A defect missing from this list would be indistinguishable from
@@ -78,8 +90,26 @@ def run_mutations(
             for defect in defects
         ]
 
-    return [
-        _attempt(
+    # Concurrent, because each injection is independent by construction: its own
+    # copy of the project, its own pytest process, no shared state. Serially
+    # this stage is one test run per defect end to end — on #45's own review, 58
+    # injections of 324 tests each, over an hour of wall clock for work that is
+    # entirely parallel.
+    #
+    # `map_calls` returns in INPUT order, not completion order, which is what
+    # keeps two runs over the same input byte-identical (`concurrency.py`, rule
+    # 1). No conclusion depends on the order — the rating is computed from sets
+    # and counts — but the stored review is a list, and a review that serialises
+    # differently on a rerun is one nobody can diff.
+    #
+    # The limit is `max_in_flight`, which is sized for CPUs rather than borrowed
+    # from `concurrency.DEFAULT_MAX_IN_FLIGHT`: that constant is chosen for a
+    # provider's rate limit and its own comment says the useful ceiling is "what
+    # the provider will accept at once, not how many cores are free". This work
+    # is the opposite — no network at all, entirely local CPU and disk.
+    attempts = map_calls(
+        defects,
+        lambda defect: _attempt(
             defect,
             change_set,
             project_root,
@@ -87,9 +117,13 @@ def run_mutations(
             build_descriptor,
             config,
             max_edit_lines,
-        )
-        for defect in defects
-    ]
+        ),
+        max_in_flight=max(1, max_in_flight),
+    )
+    # Sorted as well as ordered, so the record does not depend on the pool
+    # preserving order at all. Belt and braces: if `map_calls` is ever swapped
+    # for something that yields as results complete, this still holds.
+    return sorted(attempts, key=lambda attempt: attempt.defect_id)
 
 
 def _attempt(

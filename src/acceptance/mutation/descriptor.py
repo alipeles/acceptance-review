@@ -81,12 +81,32 @@ A requirement stated in prose can be broken in prose. If the defect is about \
 what a document says, edit the document — the tests that read it are the ones \
 that would catch it.
 
+FIRST, CHECK WHETHER THE DEFECT IS ALREADY TRUE
+
+Read the code before you edit it. The defect describes a way the change could \
+fail the requirement — but sometimes the code ALREADY behaves that way. A defect \
+saying "the feature is off by default" is already true if the default is off. A \
+defect saying "the report never states X" is already true if it never states X.
+
+**You cannot make a true thing truer, and you must not edit toward fixing it.** \
+Asked to inject a defect that already holds, the tempting move is to change the \
+code so the defect becomes injectable — turning the default on, adding the \
+missing line. That is the exact opposite of what is wanted: it repairs the code, \
+and the tests that then fail are catching the repair, not the defect.
+
+When the defect already holds, return an EMPTY `region_label` and say so in \
+`reason`, beginning with the words "already present". Name the line or lines \
+that make it true. This is a valuable answer, not a failure — a defect that is \
+present and that the tests do not notice is a finding in itself, and it needs no \
+experiment to establish.
+
 DECLINING IS A REAL ANSWER
 
 Some defects cannot be expressed as one contiguous replacement. A defect about \
-behavior that is ABSENT has no span to replace: the lines named are where the \
-code should be and is not. A defect needing coordinated edits in several places \
-is not one span either.
+behavior that is ABSENT has no span to replace when the code genuinely omits it \
+— though note that when the code DOES do the right thing, "nothing calls it" is \
+injected by deleting the call, which is an ordinary edit. A defect needing \
+coordinated edits in several places is not one span either.
 
 When that is the case, return an EMPTY `region_label` and say in `reason` \
 exactly why no single edit expresses this defect. Leave `replacement` empty and \
