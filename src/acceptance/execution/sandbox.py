@@ -35,7 +35,7 @@ from acceptance.execution import netblock
 from acceptance.execution.outcome import SandboxRunResult, TestOutcome, TestOutcomeKind
 from acceptance.model_base import PersistableModel as _Model
 
-__all__ = ["SandboxConfig", "run_tests"]
+__all__ = ["SandboxConfig", "collect_tests", "run_tests"]
 
 #: The module name the plugin is copied to and loaded under. Deliberately
 #: unlikely to collide with anything in a project under review.
@@ -123,6 +123,165 @@ def run_tests(
         shutil.rmtree(workspace, ignore_errors=True)
 
 
+def collect_tests(
+    test_ids: list[str],
+    project_root: Path,
+    config: SandboxConfig | None = None,
+) -> set[str]:
+    """Which of `test_ids` the project's own pytest can actually collect.
+
+    Discovery finds test files by walking the repository. pytest decides what is
+    a test by its own configuration, and the two disagree — a fixture directory
+    the project excludes, a module whose imports only resolve somewhere else, a
+    file with a syntax error, a `conftest.py` that excludes paths in Python code
+    no config file would reveal.
+
+    **A disagreement is not a small problem.** An id pytest cannot collect makes
+    it exit with a usage error and run *nothing*, so one bad id costs the whole
+    run. That is not hypothetical: it is what #45's own Gate 2 hit, where a
+    single test belonging to an archetype fixture took all 341 candidate tests
+    down with it and left the execution tier inert.
+
+    So the candidate set becomes the intersection of what discovery found and
+    what pytest will admit. The ids pytest omits are dropped by the caller with
+    a recorded reason, never silently.
+
+    Returns the collectable ids. On any failure — pytest missing, the project
+    uninstallable, collection timing out — returns an **empty set**, which the
+    caller reads as "nothing can be run here" and falls back to reading code.
+    Like `run_tests`, this returns rather than raises.
+
+    This is DR-170 Decision 5's per-project collection gate, at per-test grain.
+    That record asks whether pytest "can be invoked and can collect the
+    candidate node ids at all"; all-or-nothing is the difference between losing
+    one test and losing every test.
+    """
+    config = config or SandboxConfig()
+    requested = list(dict.fromkeys(test_ids))
+    if not requested:
+        return set()
+
+    workspace = Path(tempfile.mkdtemp(prefix="acceptance-collect-"))
+    try:
+        return _collect_in_workspace(requested, project_root, config, workspace)
+    except Exception:  # noqa: BLE001 - the contract is that this returns
+        return set()
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+
+
+def _collect_in_workspace(
+    requested: list[str],
+    project_root: Path,
+    config: SandboxConfig,
+    workspace: Path,
+) -> set[str]:
+    """Collect once for everything; on failure, collect file by file.
+
+    The fast path is one subprocess. When it fails, pytest reports the error
+    instead of the ids it managed to collect — so there is nothing to intersect
+    and the whole set would be lost. Falling back to one call per test *file*
+    contains the damage to the file that is actually broken, at the cost of one
+    process per file, and only on the path where something is already wrong.
+
+    Per file rather than per test id: the unit that fails to import is a module,
+    and per id would be hundreds of processes to learn what tens already say.
+    """
+    plugin_dir = workspace / "plugin"
+    plugin_dir.mkdir()
+    shutil.copyfile(netblock.__file__, plugin_dir / f"{_PLUGIN_MODULE}.py")
+    report_path = workspace / "outcomes.jsonl"
+    report_path.touch()
+    env = _sandbox_env(plugin_dir, report_path, config)
+    wanted = set(requested)
+
+    exit_code, collected = _collect_once(requested, project_root, config, env, wanted)
+    if exit_code == 0:
+        return collected
+
+    admitted: set[str] = set()
+    for ids in _by_file(requested).values():
+        code, found = _collect_once(ids, project_root, config, env, wanted)
+        if code == 0:
+            admitted |= found
+    return admitted
+
+
+def _by_file(test_ids: list[str]) -> dict[str, list[str]]:
+    grouped: dict[str, list[str]] = {}
+    for test_id in test_ids:
+        grouped.setdefault(test_id.split("::", 1)[0], []).append(test_id)
+    return grouped
+
+
+def _collect_once(
+    test_ids: list[str],
+    project_root: Path,
+    config: SandboxConfig,
+    env: dict[str, str],
+    wanted: set[str],
+) -> tuple[int | None, set[str]]:
+    """Ask pytest to collect `test_ids`; report its exit code and what it named.
+
+    Collection imports every named module, which runs its top-level code, so it
+    gets the same network block and the same allowlisted environment as a real
+    run. Importing a stranger's module is not a safe operation just because no
+    test is executed afterwards.
+    """
+    try:
+        completed = subprocess.run(
+            [
+                config.interpreter,
+                "-m",
+                "pytest",
+                "--collect-only",
+                "-q",
+                "-p",
+                _PLUGIN_MODULE,
+                "-p",
+                "no:cacheprovider",
+                "--no-header",
+                *test_ids,
+            ],
+            cwd=str(project_root),
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=config.total_seconds,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None, set()
+
+    return completed.returncode, _match(completed.stdout, wanted)
+
+
+def _match(stdout: str, wanted: set[str]) -> set[str]:
+    """Which wanted ids pytest named, allowing for parametrisation.
+
+    Test discovery yields `file.py::test_name`. pytest names a parametrised test
+    `file.py::test_name[case]`, once per case, and never the bare form — so an
+    exact-match intersection silently drops every parametrised test. Ten of this
+    repository's own candidates were lost that way before this existed.
+
+    The wanted id is returned, not the parametrised one: the rest of the review
+    identifies the test by the id discovery produced, and pytest accepts the
+    bare form on a command line and runs all of its cases.
+    """
+    admitted: set[str] = set()
+    for line in stdout.splitlines():
+        reported = line.strip()
+        if not reported:
+            continue
+        if reported in wanted:
+            admitted.add(reported)
+            continue
+        base = reported.split("[", 1)[0]
+        if "[" in reported and base in wanted:
+            admitted.add(base)
+    return admitted
+
+
 def _run_in_workspace(
     requested: list[str],
     project_root: Path,
@@ -155,7 +314,7 @@ def _run_in_workspace(
         total_seconds=config.total_seconds,
     )
 
-    observed = _read_report(report_path)
+    observed = _fold_parametrised(_read_report(report_path), requested)
     unreached = _why_unreached(aborted, abort_reason, exit_code, observed)
     outcomes = [observed.get(test_id) or _not_started(test_id, unreached) for test_id in requested]
     return SandboxRunResult(
@@ -163,6 +322,42 @@ def _run_in_workspace(
         aborted=aborted,
         abort_reason=abort_reason,
     )
+
+
+def _fold_parametrised(
+    observed: dict[str, TestOutcome], requested: list[str]
+) -> dict[str, TestOutcome]:
+    """Give each requested id an outcome, folding its parametrised cases into one.
+
+    A caller asks for `file.py::test_name`. pytest runs every case of it and
+    reports `file.py::test_name[case]` once per case, never the bare form — so
+    matching by exact id loses every parametrised test, and it loses them as
+    `not_started`, which reads as "the run never reached this" rather than "the
+    runner could not recognise its own output". Ten of this repository's own
+    candidate tests disappeared that way.
+
+    **A failure anywhere means the test failed.** The caller asked one question
+    — does this test pass against this code — and a test whose third case fails
+    does not pass. Reporting it as passed because two cases passed would make a
+    mutant that only breaks one case look survived.
+
+    An incomplete case wins over passing cases for the same reason: nothing was
+    established about a test whose cases did not all finish.
+    """
+    folded = dict(observed)
+    for test_id in requested:
+        if test_id in folded:
+            continue
+        cases = [
+            outcome for reported, outcome in observed.items() if reported.startswith(f"{test_id}[")
+        ]
+        if not cases:
+            continue
+        failed = next((c for c in cases if c.kind is TestOutcomeKind.FAILED), None)
+        incomplete = next((c for c in cases if not c.completed), None)
+        chosen = failed or incomplete or cases[0]
+        folded[test_id] = chosen.model_copy(update={"test_id": test_id})
+    return folded
 
 
 def _why_unreached(

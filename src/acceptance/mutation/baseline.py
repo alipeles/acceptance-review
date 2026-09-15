@@ -29,8 +29,8 @@ from pathlib import Path
 
 from pydantic import Field, model_validator
 
-from acceptance.execution.outcome import SandboxRunResult, TestOutcomeKind
-from acceptance.execution.sandbox import SandboxConfig, run_tests
+from acceptance.execution.outcome import SandboxRunResult, TestOutcome, TestOutcomeKind
+from acceptance.execution.sandbox import SandboxConfig, collect_tests, run_tests
 from acceptance.model_base import PersistableModel as _Model
 
 __all__ = ["Baseline", "SetAsideTest", "establish_baseline"]
@@ -126,8 +126,81 @@ def establish_baseline(
     if not requested:
         return Baseline()
 
-    result = run_tests(requested, project_root, config)
-    return _read(result, allow_failing_tests=allow_failing_tests)
+    # Ask pytest which of these it will admit, BEFORE asking it to run them.
+    # Discovery finds test files by walking the repository; pytest decides what
+    # is a test by its own rules, and an id it cannot collect makes it exit with
+    # a usage error and run nothing at all. One disagreement otherwise costs
+    # every test, which is what #45's own Gate 2 hit.
+    collectable = collect_tests(requested, project_root, config)
+    dropped = [
+        SetAsideTest(
+            test_id=test_id,
+            kind=TestOutcomeKind.NOT_STARTED,
+            reason=(
+                "the project's own pytest does not collect this test, so asking it to run "
+                "would make the whole run fail without running anything. Test discovery "
+                "found the file; pytest declines it."
+            ),
+        )
+        for test_id in requested
+        if test_id not in collectable
+    ]
+    runnable = [test_id for test_id in requested if test_id in collectable]
+
+    if not runnable:
+        return Baseline(set_aside=dropped)
+
+    result = _observe(runnable, project_root, config)
+    baseline = _read(result, allow_failing_tests=allow_failing_tests)
+    # The dropped ids go first: they were excluded before anything ran, and a
+    # reader scanning the block should meet "never admitted" before "ran and
+    # failed".
+    return baseline.model_copy(update={"set_aside": dropped + baseline.set_aside})
+
+
+def _observe(
+    runnable: list[str], project_root: Path, config: SandboxConfig | None
+) -> SandboxRunResult:
+    """Run the candidate tests, falling back to one file at a time if nothing ran.
+
+    **Whether a set of tests can run is a property of the set, not of each test
+    in it.** Two modules that each collect alone can collide when collected
+    together — one shadows the other's module name, or one's import leaves state
+    the other trips over — and pytest then exits with a usage error having run
+    nothing at all. The per-test gate in `collect_tests` cannot see that, because
+    it asks about each file on its own.
+
+    This is not hypothetical. On this repository, a test belonging to an
+    archetype fixture collects perfectly by itself and takes every other
+    candidate down when collected beside the real test module whose name it
+    shares. That is what left #45's execution tier inert.
+
+    So: run everything, and if the run observed *nothing*, run each file
+    separately and keep what each one yields. A file that poisons the combined
+    run is then the only thing lost. The fallback costs one process per file and
+    fires only when the fast path already failed.
+
+    Deliberately here and not in `run_tests`. A mutation run that observes
+    nothing is the ordinary signal that the mutant broke the module, and
+    retrying it file by file would spend tens of processes to re-learn something
+    the single run already said.
+    """
+    result = run_tests(runnable, project_root, config)
+    by_file = _by_file(runnable)
+    if result.completed_outcomes or len(by_file) < 2:
+        return result
+
+    outcomes: list[TestOutcome] = []
+    for ids in by_file.values():
+        outcomes.extend(run_tests(ids, project_root, config).outcomes)
+    return SandboxRunResult(outcomes=outcomes)
+
+
+def _by_file(test_ids: list[str]) -> dict[str, list[str]]:
+    grouped: dict[str, list[str]] = {}
+    for test_id in test_ids:
+        grouped.setdefault(test_id.split("::", 1)[0], []).append(test_id)
+    return grouped
 
 
 def _read(result: SandboxRunResult, *, allow_failing_tests: bool) -> Baseline:
