@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from acceptance.evidence_tier import EvidenceTier
+from acceptance.execution.outcome import SandboxRunResult, TestOutcome, TestOutcomeKind
 from acceptance.execution.sandbox import SandboxConfig
 from acceptance.mutation.attempt import (
     DeclineKind,
@@ -336,6 +337,96 @@ class TestAMutantThatBreaksTheModule:
         )
         assert attempts[0].settled is False
         assert attempts[0].tier is EvidenceTier.STATIC
+
+
+class TestAnEditThatUsesANameThatDoesNotExist:
+    """The case the module-level check above cannot see: the file still parses
+    and still imports, and the undefined name only fails when a test calls the
+    function. Every such test then fails with `NameError`, which says nothing
+    about the defect. #45's `gpt-5.4` audit found 7 kills of this shape."""
+
+    def _undefined_name(self):
+        return _builder("    payment = principal / months * RATE_TABLE[0]\n")
+
+    def test_it_is_not_counted_as_a_kill(self, project, change_set, green):
+        (attempt,) = run_mutations(
+            _sets(_defect("d-undefined")), change_set, project, green, self._undefined_name()
+        )
+        assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE
+        assert attempt.killing_tests == []
+        assert attempt.tier is EvidenceTier.STATIC
+
+    def test_the_reason_names_the_exception(self, project, change_set, green):
+        (attempt,) = run_mutations(
+            _sets(_defect("d-undefined")), change_set, project, green, self._undefined_name()
+        )
+        assert "NameError" in attempt.reason
+
+    def test_the_edit_and_the_tests_run_are_still_recorded(self, project, change_set, green):
+        """So a reader can see what the broken edit was."""
+        (attempt,) = run_mutations(
+            _sets(_defect("d-undefined")), change_set, project, green, self._undefined_name()
+        )
+        assert attempt.descriptor is not None
+        assert attempt.tests_run == [TEST_ID]
+
+
+class TestTheFailureTypeIsRecorded:
+    def test_an_assertion_failure_is_recorded_as_one(self, project):
+        """The control for the check above: an ordinary kill must not look
+        broken, or every real kill would be discarded."""
+        from acceptance.execution.sandbox import run_tests
+
+        (project / "loan.py").write_text(
+            LOAN.replace("range(months)", "range(months - 1)"), encoding="utf-8"
+        )
+        (outcome,) = run_tests([TEST_ID], project).outcomes
+        assert outcome.kind is TestOutcomeKind.FAILED
+        assert outcome.error_type == "AssertionError"
+
+    def test_a_real_kill_is_still_a_kill(self, project, change_set, green):
+        (attempt,) = run_mutations(
+            _sets(_defect("d-one-short")),
+            change_set,
+            project,
+            green,
+            _builder("    return [payment for _ in range(months - 1)]\n", start=4, end=4),
+        )
+        assert attempt.outcome is MutationOutcomeKind.KILLED
+
+
+class TestBrokenEditRuleNeedsEveryFailure:
+    """Decided by the reading of the sandbox result alone, so driven directly.
+    One test failing on its own assertion is a real observation about the
+    defect, and the rule must not throw it away."""
+
+    def _result(self, *error_types):
+        return SandboxRunResult(
+            outcomes=[
+                TestOutcome(test_id=f"t::{i}", kind=TestOutcomeKind.FAILED, error_type=error_type)
+                for i, error_type in enumerate(error_types)
+            ]
+        )
+
+    def _classify(self, result):
+        from acceptance.mutation.runner import _classify
+
+        descriptor = _builder("x\n")(None, None, None)
+        tests = [outcome.test_id for outcome in result.outcomes]
+        return _classify(_defect("d1"), descriptor, tests, result)
+
+    def test_all_name_errors_is_not_a_kill(self):
+        assert self._classify(self._result("NameError", "ImportError")).outcome is (
+            MutationOutcomeKind.NOT_MUTABLE
+        )
+
+    def test_one_assertion_among_name_errors_is_a_kill(self):
+        attempt = self._classify(self._result("NameError", "AssertionError"))
+        assert attempt.outcome is MutationOutcomeKind.KILLED
+
+    def test_an_unknown_exception_type_is_a_kill(self):
+        """A failure pytest recorded no type for is not assumed broken."""
+        assert self._classify(self._result(None)).outcome is MutationOutcomeKind.KILLED
 
 
 class TestWhenTheProjectsTestsCannotBeRun:

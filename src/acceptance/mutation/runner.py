@@ -41,7 +41,12 @@ from acceptance.mutation.region import Region, regions_for
 from acceptance.mutation.validity import DEFAULT_MAX_EDIT_LINES, invalidity_reason
 from acceptance.review_state import ChangeSet, Defect, DefectSet
 
-__all__ = ["DEFAULT_INJECTIONS_IN_FLIGHT", "DescriptorBuilder", "run_mutations"]
+__all__ = [
+    "BROKEN_EDIT_ERRORS",
+    "DEFAULT_INJECTIONS_IN_FLIGHT",
+    "DescriptorBuilder",
+    "run_mutations",
+]
 
 #: How many injections run at once. Sized for this machine's cores, because the
 #: work is local CPU and disk with no network in it at all — the opposite of the
@@ -51,6 +56,16 @@ __all__ = ["DEFAULT_INJECTIONS_IN_FLIGHT", "DescriptorBuilder", "run_mutations"]
 #: Each injection is a full pytest process over the candidate set, so raising
 #: this past the core count makes every run slower without finishing sooner.
 DEFAULT_INJECTIONS_IN_FLIGHT = max(1, (os.cpu_count() or 4) - 2)
+
+#: Exceptions that mean an edit broke the code rather than changed its behavior:
+#: a name that does not exist, or a module that no longer imports. When EVERY
+#: test that failed under an edit failed with one of these, the failures are
+#: about the broken edit and not about the defect, so no kill is recorded.
+#: `UnboundLocalError` and `ModuleNotFoundError` are listed by name because the
+#: match is on the recorded class name, not on the class hierarchy.
+BROKEN_EDIT_ERRORS = frozenset(
+    {"NameError", "UnboundLocalError", "ImportError", "ModuleNotFoundError"}
+)
 
 #: Given one defect, the regions it named, and the text of each of those files
 #: at head, produce the smallest edit that makes the defect true — or a typed
@@ -207,9 +222,16 @@ def _classify(
     `not_attempted` and handed to the static judge, which is the weaker claim
     and the honest one.
     """
-    killing = [
-        outcome.test_id for outcome in result.outcomes if outcome.kind is TestOutcomeKind.FAILED
-    ]
+    failed = [outcome for outcome in result.outcomes if outcome.kind is TestOutcomeKind.FAILED]
+    killing = [outcome.test_id for outcome in failed]
+    if failed and all(outcome.error_type in BROKEN_EDIT_ERRORS for outcome in failed):
+        return MutationAttempt(
+            defect_id=defect.id,
+            outcome=MutationOutcomeKind.NOT_MUTABLE,
+            descriptor=descriptor,
+            tests_run=tests,
+            reason=_why_broken(failed),
+        )
     if killing:
         return MutationAttempt(
             defect_id=defect.id,
@@ -234,6 +256,16 @@ def _classify(
         outcome=MutationOutcomeKind.SURVIVED,
         descriptor=descriptor,
         tests_run=tests,
+    )
+
+
+def _why_broken(failed: list) -> str:
+    names = sorted({outcome.error_type for outcome in failed})
+    return (
+        f"every one of the {len(failed)} tests that failed under the edit failed with "
+        f"{' or '.join(names)}, which means the edited code no longer loads or names "
+        "something that does not exist. Those failures say nothing about the named "
+        "defect, so this is not counted as a kill and the defect goes to the static judge."
     )
 
 

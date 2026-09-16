@@ -54,10 +54,24 @@ class TestOutcome(_Model):
     test_id: str
     kind: TestOutcomeKind
     reason: str | None = None
+    # The class name of the exception a FAILED test ended on, such as
+    # `AssertionError` or `NameError`, when pytest recorded one. It says whether
+    # the test failed on what it checks or on code that no longer loads, which
+    # the mutation runner needs to tell a real kill from a broken edit.
+    error_type: str | None = None
 
     @property
     def completed(self) -> bool:
         return self.kind in COMPLETED_KINDS
+
+    @model_validator(mode="after")
+    def _error_type_only_on_a_failure(self) -> TestOutcome:
+        if self.error_type is not None and self.kind is not TestOutcomeKind.FAILED:
+            raise ValueError(
+                f"outcome {self.kind.value} for {self.test_id!r} names an exception; "
+                "only a failed test has one"
+            )
+        return self
 
     @model_validator(mode="after")
     def _reason_accompanies_every_incomplete_outcome(self) -> TestOutcome:

@@ -104,24 +104,26 @@ class _Reporter:
         # `None` when the plugin was loaded without a report path. It still
         # accumulates, so nothing else has to care whether reporting is on.
         self._path = path
-        self._pending: dict[str, tuple[str, str | None]] = {}
+        self._pending: dict[str, tuple[str, str | None, str | None]] = {}
 
-    def note(self, node_id: str, kind: str, reason: str | None = None) -> None:
+    def note(
+        self, node_id: str, kind: str, reason: str | None = None, error_type: str | None = None
+    ) -> None:
         # Setup and teardown can each fail after the call phase already
         # recorded something. First non-passing observation wins, because it is
         # the one that explains the test.
         existing = self._pending.get(node_id)
         if existing is not None and existing[0] != "passed":
             return
-        self._pending[node_id] = (kind, reason)
+        self._pending[node_id] = (kind, reason, error_type)
 
     def flush(self, node_id: str) -> None:
         entry = self._pending.pop(node_id, None)
         if entry is None or self._path is None:
             return
-        kind, reason = entry
+        kind, reason, error_type = entry
         line = json.dumps(
-            {"test_id": node_id, "kind": kind, "reason": reason},
+            {"test_id": node_id, "kind": kind, "reason": reason, "error_type": error_type},
             sort_keys=True,
         )
         with open(self._path, "a", encoding="utf-8") as handle:
@@ -137,6 +139,25 @@ def _classify(report) -> tuple[str, str | None]:  # type: ignore[no-untyped-def]
     if TIMEOUT_MARKER in text:
         return "timed_out", "the test exceeded its own time budget"
     return "failed", None
+
+
+def _error_type(report) -> str | None:  # type: ignore[no-untyped-def]
+    """The name of the exception a failed test ended on, if pytest recorded one.
+
+    Read from the crash line pytest keeps for every failure, which starts with
+    the exception's class name — `NameError: name 'x' is not defined`. A plain
+    `assert` renders as `assert ...` rather than `AssertionError: ...`, so an
+    assertion is recognised by that prefix too.
+    """
+    crash = getattr(report.longrepr, "reprcrash", None)
+    message = (getattr(crash, "message", "") or "").strip()
+    if not message:
+        return None
+    if message.startswith("assert"):
+        return "AssertionError"
+    head = message.split(":", 1)[0].strip()
+    name = head.rsplit(".", 1)[-1]
+    return name if name.isidentifier() else None
 
 
 class SandboxPlugin:
@@ -197,7 +218,8 @@ class SandboxPlugin:
             return
         if report.failed:
             kind, reason = _classify(report)
-            self._reporter.note(report.nodeid, kind, reason)
+            error_type = _error_type(report) if kind == "failed" else None
+            self._reporter.note(report.nodeid, kind, reason, error_type)
             return
         if report.when == "call" and report.passed:
             self._reporter.note(report.nodeid, "passed", None)

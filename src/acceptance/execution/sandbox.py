@@ -545,6 +545,7 @@ def _read_report(report_path: Path) -> dict[str, TestOutcome]:
                 test_id=entry["test_id"],
                 kind=TestOutcomeKind(entry["kind"]),
                 reason=entry.get("reason"),
+                error_type=entry.get("error_type"),
             )
         except Exception:  # noqa: BLE001, S112 - a torn line is expected here
             continue
