@@ -71,6 +71,11 @@ class MutationDescriptor(_Model):
     `region_label` records which of the defect's own `code_refs` the span falls
     inside, so the containment check's answer is stored rather than recomputed
     by anyone who later wants to know why this edit was allowed.
+
+    `original` is the text the span held before the edit. It is stored because
+    a replacement alone cannot show a deletion — an empty replacement renders as
+    nothing — and a report reader has no other copy of the code as reviewed.
+    Defaulted, so a review recorded before it existed reads back unchanged.
     """
 
     path: str
@@ -78,6 +83,7 @@ class MutationDescriptor(_Model):
     end_line: int
     replacement: str
     region_label: str
+    original: str = ""
 
     @model_validator(mode="after")
     def _span_is_orderly(self) -> MutationDescriptor:

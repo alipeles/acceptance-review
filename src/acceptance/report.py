@@ -16,6 +16,7 @@ Status is stated in words, not symbols, and every evidence line carries its
 
 from __future__ import annotations
 
+from acceptance.evidence_tier import EvidenceTier
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     CompletionVerdict,
@@ -200,9 +201,17 @@ def _denominator(obligation: Obligation) -> str:
         return " — no plausible static defect enumerated; test evidence is not obtainable here"
     if not obligation.enumerated_defects:
         return " — no way this change could fail the criterion was enumerated for it"
+    # The tier sits beside this on the same line, so the wording must not
+    # contradict it. `DEFECT_KILLED` is reached only when every defect was
+    # settled by injection; anything less rests on at least one prediction.
+    basis = (
+        "observed under injection"
+        if obligation.achieved_evidence_tier is EvidenceTier.DEFECT_KILLED
+        else "static prediction"
+    )
     return (
         f" — kills {obligation.covered_defects} of {obligation.enumerated_defects} "
-        "enumerated defects (static prediction)"
+        f"enumerated defects ({basis})"
     )
 
 
@@ -288,8 +297,17 @@ def _mutation_block(review: Review) -> list[str]:
         if descriptor is not None:
             span = f"{descriptor.start_line}-{descriptor.end_line}"
             lines.append(f"    injected at {descriptor.path} lines {span}:")
-            for line in descriptor.replacement.splitlines() or [""]:
-                lines.append(f"      | {line}")
+            # Removed lines, then added ones, as a diff reads. Without the
+            # removed side a deletion rendered as nothing at all. A descriptor
+            # stored before `original` existed falls back to the old rendering.
+            if descriptor.original:
+                lines.extend(f"      - {line}" for line in descriptor.original.splitlines())
+                lines.extend(f"      + {line}" for line in descriptor.replacement.splitlines())
+                if not descriptor.replacement:
+                    lines.append("      (lines deleted)")
+            else:
+                for line in descriptor.replacement.splitlines() or [""]:
+                    lines.append(f"      | {line}")
         if attempt.killing_tests:
             lines.append(f"    caught by ({len(attempt.killing_tests)}):")
             lines.extend(f"      {test_id}" for test_id in attempt.killing_tests)

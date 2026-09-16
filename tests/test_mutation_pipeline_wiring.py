@@ -305,6 +305,25 @@ class TestWhatIsPersistedAndRendered:
         assert "Defects injected, and which tests caught them:" in report
         assert "payment = principal / months * 3" in report
 
+    def test_the_report_shows_what_the_edit_replaced(self, tmp_path):
+        """Removed and added lines both render, as a diff reads."""
+        report = render_report(_review(tmp_path, execution=ExecutionSettings(enabled=True)))
+        assert "      -     payment = principal / months\n" in report
+        assert "      +     payment = principal / months * 3" in report
+
+    def test_a_deletion_shows_the_lines_it_removed(self, tmp_path):
+        """Before `original` was stored, a deleting mutant rendered as one empty
+        line and no sign of what had gone."""
+        deleting = {
+            **_JUDGMENTS,
+            "_Descriptor": {**_JUDGMENTS["_Descriptor"], "replacement": ""},
+        }
+        report = render_report(
+            _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=deleting)
+        )
+        assert "      -     payment = principal / months" in report
+        assert "(lines deleted)" in report
+
     def test_the_report_says_no_test_caught_it(self, tmp_path):
         report = render_report(_review(tmp_path, execution=ExecutionSettings(enabled=True)))
         assert "no test caught it" in report

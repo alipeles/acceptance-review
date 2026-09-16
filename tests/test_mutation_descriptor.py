@@ -86,6 +86,14 @@ class TestAnEditingAnswer:
         built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
         assert built["d1"].replacement == "    payment = principal / months * 3\n"
 
+    def test_the_lines_it_replaces_are_recorded_from_the_source(self):
+        """A deletion's replacement is empty, so without the original a reader
+        would see nothing of what was removed."""
+        client = FakeClient(_edit(start_line=2, end_line=3, replacement=""))
+        built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        assert built["d1"].original == "".join(SOURCE.splitlines(keepends=True)[1:3])
+        assert built["d1"].original
+
 
 class TestDecliningIsARealAnswer:
     def test_an_empty_region_label_declines(self):

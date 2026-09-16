@@ -602,3 +602,26 @@ def test_every_rating_the_report_shows_carries_a_denominator_or_says_why_not():
     # No rating reaches the reader as a bare class.
     for line in lines:
         assert "—" in line
+
+
+def test_a_denominator_settled_by_injection_does_not_call_itself_a_prediction():
+    """The tier renders on the same line, so "(static prediction)" beside
+    `[tier: defect-killed]` would contradict itself."""
+    review = Review(
+        mode="local",
+        reviewed_revision="abc",
+        obligation_map=[
+            _obligation("Executed", "addressed", "partially_supported"),
+            _obligation("Predicted", "addressed", "partially_supported"),
+        ],
+    )
+    for obligation in review.obligation_map:
+        obligation.enumerated_defects = 3
+        obligation.covered_defects = 2
+    review.obligation_map[0].achieved_evidence_tier = EvidenceTier.DEFECT_KILLED
+    review.obligation_map[1].achieved_evidence_tier = EvidenceTier.STATIC
+
+    lines = [ln for ln in render_report(review).splitlines() if "test evidence:" in ln]
+
+    assert "(observed under injection)  [tier: defect-killed]" in lines[0]
+    assert "(static prediction)  [tier: static]" in lines[1]

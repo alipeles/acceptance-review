@@ -199,6 +199,48 @@ class TestTheRatingReadsBoth:
         )
         assert results[0].achieved_tier is EvidenceTier.STATIC
 
+    def test_an_executed_kill_is_not_dragged_down_by_a_predicted_verdict_on_the_same_defect(self):
+        """Across the tests for one defect, the best-known kill decides. One
+        test observed to catch the defect is enough to cover it; a second test
+        judged only by reading adds nothing that makes it less known."""
+        executed = verdicts_from([_killed("d1", ["t::a"], ["t::a"])], _sets("d1"))
+        predicted = [PairVerdict(defect_id="d1", test_id="t::b", kills=False)]
+        results = derive_support([self._obligation()], _sets("d1"), executed + predicted, [])
+        assert results[0].achieved_tier is EvidenceTier.DEFECT_KILLED
+        assert "observed under injection" in results[0].explanation
+        assert "static prediction" not in results[0].explanation
+
+    def test_an_executed_kill_outranks_a_predicted_kill_on_the_same_defect(self):
+        executed = verdicts_from([_killed("d1", ["t::a"], ["t::a"])], _sets("d1"))
+        predicted = [PairVerdict(defect_id="d1", test_id="t::b", kills=True)]
+        results = derive_support([self._obligation()], _sets("d1"), predicted + executed, [])
+        assert results[0].achieved_tier is EvidenceTier.DEFECT_KILLED
+
+    def test_a_predicted_kill_does_not_borrow_an_executed_survival_tier(self):
+        """Only killing verdicts count for a covered defect. The executed
+        survival says nothing about how well the kill is known."""
+        executed = verdicts_from([_survived("d1", ["t::a"])], _sets("d1"))
+        predicted = [PairVerdict(defect_id="d1", test_id="t::b", kills=True)]
+        results = derive_support([self._obligation()], _sets("d1"), executed + predicted, [])
+        assert results[0].achieved_tier is EvidenceTier.STATIC
+
+    def test_an_uncovered_defect_is_only_as_known_as_its_weakest_verdict(self):
+        """ "No test catches it" is a claim about every test."""
+        executed = verdicts_from([_survived("d1", ["t::a"])], _sets("d1"))
+        predicted = [PairVerdict(defect_id="d1", test_id="t::b", kills=False)]
+        results = derive_support([self._obligation()], _sets("d1"), executed + predicted, [])
+        assert results[0].achieved_tier is EvidenceTier.STATIC
+
+    def test_an_executed_survival_on_every_test_reaches_the_defect_killed_tier(self):
+        results = derive_support(
+            [self._obligation()],
+            _sets("d1"),
+            verdicts_from([_survived("d1", ["t::a", "t::b"])], _sets("d1")),
+            [],
+        )
+        assert results[0].evidence_class == "unsupported"
+        assert results[0].achieved_tier is EvidenceTier.DEFECT_KILLED
+
     def test_a_review_with_no_execution_is_unchanged(self):
         """§8.3's graceful degradation, structural rather than promised: a
         repository whose tests cannot run is the case where every verdict stays

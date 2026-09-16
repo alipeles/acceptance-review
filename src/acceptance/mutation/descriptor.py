@@ -205,10 +205,12 @@ def _ask_about(
         parse_as=_Descriptor,
         stage=_STAGE,
     )
-    return _descriptor_from(result, offered), scan(result, allowed, _STAGE)
+    return _descriptor_from(result, offered, sources), scan(result, allowed, _STAGE)
 
 
-def _descriptor_from(result: _Descriptor, regions: Sequence[Region]) -> MutationDescriptor | None:
+def _descriptor_from(
+    result: _Descriptor, regions: Sequence[Region], sources: dict[str, str]
+) -> MutationDescriptor | None:
     """The answer as a `MutationDescriptor`, or `None` where it declined.
 
     A malformed span is treated as a decline rather than raised. The stage's
@@ -225,12 +227,16 @@ def _descriptor_from(result: _Descriptor, regions: Sequence[Region]) -> Mutation
         return None
     if result.start_line < 1 or result.end_line < result.start_line:
         return None
+    # A span running past the end of the file keeps what it does reach; the
+    # mechanical checks refuse the span itself.
+    source_lines = sources[region.path].splitlines(keepends=True)
     return MutationDescriptor(
         path=region.path,
         start_line=result.start_line,
         end_line=result.end_line,
         replacement=result.replacement,
         region_label=label,
+        original="".join(source_lines[result.start_line - 1 : result.end_line]),
     )
 
 
