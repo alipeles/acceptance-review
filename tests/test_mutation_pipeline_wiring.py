@@ -21,6 +21,7 @@ never the amounts.
 from __future__ import annotations
 
 import subprocess
+from typing import ClassVar
 
 import pytest
 
@@ -246,6 +247,73 @@ class TestTheTierRuns:
         (attempt,) = review.mutation_attempts
         assert attempt.outcome is MutationOutcomeKind.SURVIVED
         assert attempt.observed is True
+
+
+class TestVerification:
+    """The verifier through the real pipeline. Off by default; when switched on,
+    its answer decides whether an observed result counts."""
+
+    _VERIFIED: ClassVar[dict] = {
+        **_JUDGMENTS,
+        "_Verification": {
+            "before_does": "expected",
+            "after_does": "defective",
+            "reason": "line 2 now triples the payment",
+        },
+    }
+    _REFUSED: ClassVar[dict] = {
+        **_JUDGMENTS,
+        "_Verification": {
+            "before_does": "expected",
+            "after_does": "unchanged",
+            "reason": "the edit changes nothing the defect names",
+        },
+    }
+
+    def test_off_by_default_so_no_verification_call_is_made(self, tmp_path):
+        capture: list = []
+        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        assert "_Verification" not in _schemas(capture)
+
+    def test_a_verified_edit_reaches_the_executed_tier(self, tmp_path):
+        """#45's Acceptance, visible in the pipeline's own output — once an
+        edit is verified."""
+        capture: list = []
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True, verify_edits=True),
+            capture=capture,
+            judgments=self._VERIFIED,
+        )
+        (obligation,) = [o for o in review.obligation_map if o.id == "equal-payments"]
+        assert obligation.achieved_evidence_tier is EvidenceTier.DEFECT_KILLED
+        assert obligation.evidence_class == "unsupported"
+        assert "_PairVerdicts" not in _schemas(capture)
+
+    def test_a_refused_edit_stays_static_and_goes_to_the_static_judge(self, tmp_path):
+        capture: list = []
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True, verify_edits=True),
+            capture=capture,
+            judgments=self._REFUSED,
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.verified is False
+        assert "the edit changes nothing the defect names" in attempt.verification_reason
+        assert "_PairVerdicts" in _schemas(capture)
+
+    def test_the_verifier_is_not_shown_the_tests(self, tmp_path):
+        capture: list = []
+        _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True, verify_edits=True),
+            capture=capture,
+            judgments=self._VERIFIED,
+        )
+        (prompt,) = [c["prompt"] for c in capture if c["schema"] == "_Verification"]
+        assert "test_returns_a_payment_for_each_month" not in prompt
+        assert "payment = principal / months * 3" in prompt
 
 
 class TestTheBreadthSettingsReachTheRunner:

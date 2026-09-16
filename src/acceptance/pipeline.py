@@ -61,6 +61,7 @@ from acceptance.mutation.region import regions_for
 from acceptance.mutation.runner import run_mutations
 from acceptance.mutation.settings import ExecutionSettings, ReviewHalted
 from acceptance.mutation.verdicts import remaining_defect_sets, verdicts_from
+from acceptance.mutation.verification import verify_attempts
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
 from acceptance.requirement.ledger import LedgerEntry
 from acceptance.requirement.linking import link_duplicate_obligations
@@ -323,6 +324,11 @@ def _run_execution_tier(
         max_failing_fraction=execution.max_failing_fraction,
         breadth_floor=execution.breadth_floor,
     )
+    # The tier gate's other half. Off by default: until the verifier is adopted,
+    # no observed result is verified, so none reaches `DEFECT_KILLED` and every
+    # defect still goes to the static judge (DR-171, revision of 2026-09-16).
+    if execution.verify_edits:
+        attempts = verify_attempts(attempts, defects, sources, client)
     return attempts, verdicts_from(attempts, defect_sets), baseline.set_aside
 
 

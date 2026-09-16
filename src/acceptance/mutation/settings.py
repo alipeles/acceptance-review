@@ -44,6 +44,12 @@ class ExecutionSettings(_Model):
     # See `runner.py` for the calibration and its limits.
     max_failing_fraction: float = DEFAULT_MAX_FAILING_FRACTION
     breadth_floor: int = DEFAULT_BREADTH_FLOOR
+    # Whether a model call checks that each observed edit really makes its
+    # defect true. Off: measured on #45's review it refused 77% of bad edits but
+    # also 26% of good ones, and about a quarter of what it let through would
+    # still be wrong (DR-171, revision of 2026-09-16). With it off nothing
+    # reaches `DEFECT_KILLED`.
+    verify_edits: bool = False
     sandbox: SandboxConfig = SandboxConfig()
 
 
