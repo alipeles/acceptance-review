@@ -677,6 +677,8 @@ _ENUMERATED = {
     "defects": [
         {
             "slug": "divides-by-thirty",
+            "expected_behavior": "the code behaves as the criterion requires",
+            "defective_behavior": "the code behaves as this defect describes",
             "type": "other",
             "description": "The daily rate divides by a hard-coded 30.",
             "code_refs": [],

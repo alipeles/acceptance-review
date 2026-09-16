@@ -157,6 +157,19 @@ class Defect(_Model):
     type: DefectType
     description: str
     code_refs: list[str] = Field(default_factory=list)
+    # The defect as two behaviours rather than one sentence: what the code must
+    # do for the criterion to hold, and what it would do instead if this defect
+    # were present. A single sentence such as "the rate uses a 30-day month"
+    # reads as a claim about the code as it is, and the mutation stage could not
+    # tell whether to make it true or whether it already is — so it sometimes
+    # edited the code to REPAIR a defect the code already had, and tests failing
+    # on the repair were counted as catching the defect (#45's gpt-5.4 audit).
+    #
+    # Neither says whether the code currently does one or the other; the
+    # enumerator stays a list of candidates, not a judgement of presence.
+    # Defaulted, so a review recorded before these existed reads back unchanged.
+    expected_behavior: str = ""
+    defective_behavior: str = ""
 
 
 class DefectSet(_Model):

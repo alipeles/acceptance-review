@@ -77,6 +77,8 @@ def _judgments(*, checkout: str = "code_only", alpha: str = "code_and_tests") ->
             "defects": [
                 {
                     "slug": "returns-a-constant",
+                    "expected_behavior": "the code behaves as the criterion requires",
+                    "defective_behavior": "the code behaves as this defect describes",
                     "type": "other",
                     "description": "returns a constant regardless of input",
                     "code_refs": [],

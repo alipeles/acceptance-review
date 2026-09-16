@@ -366,6 +366,8 @@ _HEAD_JUDGMENTS = {
         "defects": [
             {
                 "slug": "wrong-rounding",
+                "expected_behavior": "the code behaves as the criterion requires",
+                "defective_behavior": "the code behaves as this defect describes",
                 "type": "other",
                 "description": "rounds the wrong way",
                 "code_refs": [],
@@ -538,6 +540,8 @@ _TWO_FILE_JUDGMENTS = {
         "defects": [
             {
                 "slug": "returns-zero",
+                "expected_behavior": "the code behaves as the criterion requires",
+                "defective_behavior": "the code behaves as this defect describes",
                 "type": "other",
                 "description": "returns 0",
                 "code_refs": [],

@@ -328,6 +328,8 @@ _JUDGMENTS = {
         "defects": [
             {
                 "slug": "d1",
+                "expected_behavior": "the code behaves as the criterion requires",
+                "defective_behavior": "the code behaves as this defect describes",
                 "type": "other",
                 "description": "alpha returns a constant",
                 "code_refs": [],

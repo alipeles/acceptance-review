@@ -178,6 +178,27 @@ class TestWhatTheCallIsOffered:
         subject = "\n".join(message["content"] for message in client.calls[0]["messages"])
         assert "the payment ignores interest" in subject
 
+    def test_both_behaviours_are_shown_on_their_own_labelled_lines(self):
+        """The direction of the edit comes from these, not from the wording of
+        the description."""
+        defect = _defect().model_copy(
+            update={
+                "expected_behavior": "the payment includes interest",
+                "defective_behavior": "the payment is principal divided by months",
+            }
+        )
+        client = FakeClient(_edit())
+        build_descriptors([defect], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        subject = "\n".join(message["content"] for message in client.calls[0]["messages"])
+        assert "EXPECTED: the payment includes interest" in subject
+        assert "DEFECTIVE: the payment is principal divided by months" in subject
+
+    def test_a_defect_recorded_without_behaviours_shows_no_empty_labels(self):
+        client = FakeClient(_edit())
+        build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        subject = "\n".join(message["content"] for message in client.calls[0]["messages"])
+        assert "EXPECTED:" not in subject.split("## The defect", 1)[1]
+
     def test_the_stage_is_named_for_attribution(self):
         client = FakeClient(_edit())
         build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)

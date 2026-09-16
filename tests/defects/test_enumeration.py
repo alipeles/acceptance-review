@@ -88,6 +88,8 @@ def _defect(
 ) -> dict:
     return {
         "slug": slug,
+        "expected_behavior": "the code behaves as the criterion requires",
+        "defective_behavior": "the code behaves as this defect describes",
         "type": defect_type,
         "description": "The divisor is hard-coded to 30, so February is wrong.",
         "code_refs": ["billing.py#0"] if code_refs is None else code_refs,
@@ -172,6 +174,20 @@ def test_a_set_that_found_defects_carries_no_empty_set_reason():
 
 
 # --- the records themselves -------------------------------------------------
+
+
+def test_both_behaviours_reach_the_stored_defect():
+    """Typed fields rather than one sentence, so the mutation stage can read
+    which way to edit instead of inferring it from wording."""
+    answer = _defect()
+    answer["expected_behavior"] = "  the divisor is the month's own length  "
+    answer["defective_behavior"] = "the divisor is always 30"
+    client = client_dispatching(_answer([answer]))
+
+    (defect,) = enumerate_defects([_obligation()], _change_set(), client)[0].defects
+
+    assert defect.expected_behavior == "the divisor is the month's own length"
+    assert defect.defective_behavior == "the divisor is always 30"
 
 
 def test_every_defect_id_is_unique_within_the_review():

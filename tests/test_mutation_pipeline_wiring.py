@@ -90,6 +90,8 @@ _JUDGMENTS = {
         "defects": [
             {
                 "slug": "wrong-payment-amount",
+                "expected_behavior": "the code behaves as the criterion requires",
+                "defective_behavior": "the code behaves as this defect describes",
                 "type": "other",
                 "description": "The payment amount is wrong, so the loan is not repaid.",
                 "code_refs": ["loan.py#0"],
@@ -192,6 +194,16 @@ def _schemas(capture) -> list[str]:
 
 
 class TestTheTierRuns:
+    def test_the_enumerated_behaviours_reach_the_descriptor_request(self, tmp_path):
+        """Through the real pipeline: the two behaviours the listing step
+        returns are what the edit-building call is shown, rather than being
+        dropped on the way through the review state."""
+        capture: list = []
+        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        (prompt,) = [call["prompt"] for call in capture if call["schema"] == "_Descriptor"]
+        assert "EXPECTED: the code behaves as the criterion requires" in prompt
+        assert "DEFECTIVE: the code behaves as this defect describes" in prompt
+
     def test_the_descriptor_stage_is_called(self, tmp_path):
         """Acceptance, by the same path a review run takes: the pipeline asks
         for a mutant, rather than merely being able to."""

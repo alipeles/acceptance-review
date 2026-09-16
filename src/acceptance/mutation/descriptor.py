@@ -83,23 +83,31 @@ A requirement stated in prose can be broken in prose. If the defect is about \
 what a document says, edit the document — the tests that read it are the ones \
 that would catch it.
 
-FIRST, CHECK WHETHER THE DEFECT IS ALREADY TRUE
+FIRST, DECIDE WHICH BEHAVIOUR THE CODE HAS NOW
 
-Read the code before you edit it. The defect describes a way the change could \
-fail the requirement — but sometimes the code ALREADY behaves that way. A defect \
-saying "the feature is off by default" is already true if the default is off. A \
-defect saying "the report never states X" is already true if it never states X.
+The defect usually comes with two behaviours: EXPECTED (what the code must do) \
+and DEFECTIVE (what it would do if the defect were present). Exactly one of them \
+describes the code as it is. Read the code and decide which, before editing.
 
-**You cannot make a true thing truer, and you must not edit toward fixing it.** \
-Asked to inject a defect that already holds, the tempting move is to change the \
-code so the defect becomes injectable — turning the default on, adding the \
-missing line. That is the exact opposite of what is wanted: it repairs the code, \
-and the tests that then fail are catching the repair, not the defect.
+- The code does the EXPECTED behaviour: edit it so that it does the DEFECTIVE \
+  behaviour instead. After your edit, the DEFECTIVE sentence must be true of the \
+  code and the EXPECTED sentence false.
+- The code ALREADY does the DEFECTIVE behaviour: do not edit. Set `decline` to \
+  "already_present" and name in `reason` the lines that do it. This is a \
+  valuable answer — a defect that is present and that the tests do not notice is \
+  a finding in itself.
 
-When the defect already holds, set `decline` to "already_present" and name in \
-`reason` the line or lines that make it true. This is a valuable answer, not a \
-failure — a defect that is present and that the tests do not notice is a finding \
-in itself, and it needs no experiment to establish.
+**Never edit the code toward the EXPECTED behaviour.** That repairs the code, and \
+the tests that then fail are catching the repair, not the defect. If your edit \
+would make the EXPECTED sentence true, you have the direction backwards.
+
+If you cannot see enough of the code to tell which behaviour it has, say so: set \
+`decline` to "not_one_contiguous_edit" and explain in `reason` what you could not \
+see. Do not guess.
+
+When no EXPECTED and DEFECTIVE behaviours are given, apply the same test to the \
+defect's description: if the code already behaves the way the description says, \
+it is already present.
 
 DECLINING IS A REAL ANSWER
 
@@ -273,10 +281,14 @@ def _subject(defect: Defect, regions: Sequence[Region], sources: dict[str, str])
         "## The defect",
         f"id: {defect.id}",
         f"type: {defect.type.value}",
-        defect.description,
-        "",
-        "## Regions it implicates",
+        f"description: {defect.description}",
     ]
+    # Each on its own labelled line, so the direction of the edit is read from
+    # typed fields rather than inferred from the wording of one sentence.
+    if defect.expected_behavior and defect.defective_behavior:
+        lines.append(f"EXPECTED: {defect.expected_behavior}")
+        lines.append(f"DEFECTIVE: {defect.defective_behavior}")
+    lines += ["", "## Regions it implicates"]
     for region in regions:
         lines.append("")
         lines.append(
