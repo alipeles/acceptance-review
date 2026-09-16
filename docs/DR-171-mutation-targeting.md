@@ -6,7 +6,55 @@ actual mutation at actual lines), owned by M8.4 / #45 (targeted mutation, the
 **Resolved:** 2026-09-02, in conversation, before the M8 sequence starts.
 **Revised:** 2026-09-14, in conversation, before #45 starts. Decisions 4, 6, 7
 and 8 changed; see *Revision* below.
+**Revised again:** 2026-09-16, during #45, on measurement. Decisions 1 and 3
+changed; see *Revision — 2026-09-16* below.
 **Status:** resolved.
+
+## Revision — 2026-09-16: a defect is two behaviours, and validity is more than four checks
+
+Measured over #45's own Gate 2 review — 25 criteria, the diff `61c5a3c..518f876`,
+about 70 defects, 339 candidate tests — with every edit judged by hand
+(`dogfood-logs/45-injection-audits/`, audits v2 to v6 and their judgements).
+
+**Decision 1 is revised: the enumeration output shape DOES change.** Each defect
+now carries `expected_behavior` (what the code must do for the criterion) and
+`defective_behavior` (what it would do instead), beside the unchanged
+`description` and `code_refs`. A one-sentence defect is usually a present-tense
+claim about the code, and the edit-building step could not tell whether to make
+it true or whether it already was. When the code already had the defect, it
+edited the code to *repair* it, and the tests that failed were counted as
+catching the defect: 17 of 60 edits on `openai/gpt-5.4` (audit v5).
+
+With the two fields (audit v6), repairs fell to 9 of 66 and edits that genuinely
+inject the named defect rose from 32% to 47%. The grounds Decision 1 gave still
+hold for what it rejected — the enumerator is still not asked for an edit, and it
+is told not to say which of the two behaviours the code has — so the denominator
+is not thinned toward what is mutable. The recording cost it named was paid.
+
+**Decision 3 is amended: validity is six checks, not four.** Two were added on
+measurement:
+
+5. **The replacement differs from the text it replaces.** 21 of 71 descriptors
+   on `gpt-5.4-mini` returned their input verbatim; each would have been a
+   survival recorded against the builder for a defect never introduced.
+6. **A kill is not counted when every failed test failed with `NameError`,
+   `UnboundLocalError`, `ImportError` or `ModuleNotFoundError`.** The edit parses
+   and imports, then fails on a name that does not exist when a test calls it.
+   7 of 47 kills on `gpt-5.4` were this. The defect goes to the static judge.
+
+No confirming model call was added. Whether one is needed is **still open**:
+16 of 66 edits in audit v6 change something other than the named defect, and 5
+of those change nothing at all, which a check on the text cannot see.
+
+**Two measured corrections to *What injection cannot decide* below:**
+
+- **Absence defects are reachable.** All 19 `not_wired` and `missing_case`
+  defects named regions. When the code does the right thing, "nothing calls it"
+  is injected by deleting the call.
+- **A defect already true of the code cannot be injected**, and was not
+  anticipated here. The edit-building step answers `already_present` for it
+  (a typed decline, with `not_a_code_property` and `not_one_contiguous_edit`),
+  which is reported as needing human review and moves no rating.
 
 ## Revision — 2026-09-14: injection replaces the static judgement rather than correcting it
 
