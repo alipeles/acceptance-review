@@ -27,7 +27,7 @@ import pytest
 from acceptance.change.diff import extract_change_set
 from acceptance.evidence_tier import EvidenceTier
 from acceptance.execution.sandbox import SandboxConfig
-from acceptance.mutation.attempt import MutationOutcomeKind
+from acceptance.mutation.attempt import MutationOutcomeKind, RepairCorroboration
 from acceptance.mutation.settings import ExecutionSettings, ReviewHalted
 from acceptance.pipeline import run_review
 from acceptance.report import render_report
@@ -101,6 +101,7 @@ _JUDGMENTS = {
     },
     # The edit lands on the payment line, which the test never asserts about.
     "_Descriptor": {
+        "code_currently_does": "expected",
         "region_label": "loan.py#0",
         "start_line": 2,
         "end_line": 2,
@@ -169,6 +170,7 @@ def _review(
 _DECLINING = {
     **_JUDGMENTS,
     "_Descriptor": {
+        "code_currently_does": "expected",
         "region_label": "",
         "start_line": 0,
         "end_line": 0,
@@ -178,13 +180,40 @@ _DECLINING = {
     },
 }
 
-#: A descriptor answer saying the delivered code already has the defect.
+#: A descriptor answer saying the delivered code already has the defect, with no
+#: repair edit given.
 _ALREADY_PRESENT = {
     **_DECLINING,
     "_Descriptor": {
         **_DECLINING["_Descriptor"],
-        "decline": "already_present",
+        "code_currently_does": "defective",
+        "decline": "none",
         "reason": "line 2 already divides without interest",
+    },
+}
+
+#: The same claim with a repair edit that no candidate test notices: the test
+#: asserts only the schedule's length and positivity.
+_ALREADY_PRESENT_WITH_REPAIR = {
+    **_JUDGMENTS,
+    "_Descriptor": {
+        **_JUDGMENTS["_Descriptor"],
+        "code_currently_does": "defective",
+        "replacement": "    payment = round(principal / months, 2)\n",
+        "reason": "line 2 already divides without interest",
+    },
+}
+
+#: A repair the candidate test does notice, so it asserts the defective behaviour.
+_ALREADY_PRESENT_REPAIR_FAILS_A_TEST = {
+    **_JUDGMENTS,
+    "_Descriptor": {
+        **_JUDGMENTS["_Descriptor"],
+        "code_currently_does": "defective",
+        "start_line": 3,
+        "end_line": 3,
+        "replacement": "    return [payment for _ in range(months + 1)]\n",
+        "reason": "line 3 already returns one entry per month",
     },
 }
 
@@ -291,7 +320,7 @@ class TestAnAlreadyPresentDefect:
         )
         (attempt,) = review.mutation_attempts
         assert attempt.outcome is MutationOutcomeKind.ALREADY_PRESENT
-        assert attempt.reason == "line 2 already divides without interest"
+        assert attempt.reason.startswith("line 2 already divides without interest")
 
     def test_it_still_reaches_the_static_judge(self, tmp_path):
         """Additive: the decline is typed, but the defect is routed exactly as
@@ -305,20 +334,69 @@ class TestAnAlreadyPresentDefect:
         )
         assert "_PairVerdicts" in _schemas(capture)
 
-    def test_the_report_flags_it_for_human_review(self, tmp_path):
+    def test_the_report_flags_it_as_a_model_asserted_claim_at_the_static_tier(self, tmp_path):
         report = render_report(
             _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=_ALREADY_PRESENT)
         )
-        heading = "Defects said to be already present in the delivered code (needs human review):"
+        heading = (
+            "Defects the delivered code already has, as asserted by the model "
+            "(static tier; needs human review):"
+        )
         assert heading in report
         after = report.split(heading, 1)[1]
         assert "line 2 already divides without interest" in after
+        assert "no test run supports or contradicts this claim" in after
 
     def test_the_block_is_absent_when_nothing_was_already_present(self, tmp_path):
         report = render_report(
             _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=_DECLINING)
         )
-        assert "already present in the delivered code" not in report
+        assert "as asserted by the model" not in report
+
+    def test_without_a_repair_the_claim_is_not_run(self, tmp_path):
+        review = _review(
+            tmp_path, execution=ExecutionSettings(enabled=True), judgments=_ALREADY_PRESENT
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.repair_corroboration is RepairCorroboration.NOT_RUN
+
+    def test_a_repair_every_test_passes_means_no_test_pins_the_expected_behaviour(self, tmp_path):
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True),
+            judgments=_ALREADY_PRESENT_WITH_REPAIR,
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.outcome is MutationOutcomeKind.ALREADY_PRESENT
+        assert attempt.repair_corroboration is RepairCorroboration.NO_TEST_PINS_EXPECTED
+        assert attempt.tier is EvidenceTier.STATIC
+        assert "all passed — no test pins the expected behaviour" in render_report(review)
+
+    def test_a_repair_a_test_fails_names_the_test_asserting_the_defect(self, tmp_path):
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True),
+            judgments=_ALREADY_PRESENT_REPAIR_FAILS_A_TEST,
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.repair_corroboration is RepairCorroboration.A_TEST_ASSERTS_DEFECTIVE
+        assert attempt.repair_failing_tests == [_TEST_ID]
+        assert attempt.tier is EvidenceTier.STATIC
+        report = render_report(review)
+        assert "they assert the defective behaviour" in report
+
+    def test_a_claim_is_never_counted_as_a_kill(self, tmp_path):
+        """The repair's failing test is not a kill: it caught a repair, not the
+        defect. Nothing about the claim reaches the rating."""
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True),
+            judgments=_ALREADY_PRESENT_REPAIR_FAILS_A_TEST,
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.killing_tests == []
+        assert attempt.settled is False
+        assert all(v.tier is EvidenceTier.STATIC for v in review.pair_verdicts)
 
     def test_no_model_call_decides_validity(self, tmp_path):
         """DR-171 Decision 3, structurally: after the descriptor is proposed,

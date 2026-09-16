@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from acceptance.mutation.attempt import DeclineKind, DescriptorDecline
+from acceptance.mutation.attempt import AlreadyDefective, DeclineKind, DescriptorDecline
 from acceptance.mutation.descriptor import build_descriptors, from_mapping
 from acceptance.mutation.region import Region
 from acceptance.review_state import Defect, DefectType
@@ -54,6 +54,7 @@ def _region(label: str = "loan.py#0") -> Region:
 
 def _edit(**overrides) -> dict:
     answer = {
+        "code_currently_does": "expected",
         "region_label": "loan.py#0",
         "start_line": 2,
         "end_line": 2,
@@ -70,6 +71,7 @@ def _decline(
     kind: str = "not_one_contiguous_edit",
 ) -> dict:
     return {
+        "code_currently_does": "expected",
         "region_label": "",
         "start_line": 0,
         "end_line": 0,
@@ -105,25 +107,64 @@ class TestAnEditingAnswer:
 
 class TestDecliningIsARealAnswer:
     @pytest.mark.parametrize(
-        "kind",
-        [
-            DeclineKind.ALREADY_PRESENT,
-            DeclineKind.NOT_A_CODE_PROPERTY,
-            DeclineKind.NOT_ONE_CONTIGUOUS_EDIT,
-        ],
+        "kind", [DeclineKind.NOT_A_CODE_PROPERTY, DeclineKind.NOT_ONE_CONTIGUOUS_EDIT]
     )
     def test_a_named_decline_is_kept_with_its_kind_and_reason(self, kind):
-        client = FakeClient(_decline(reason="line 2 already does this", kind=kind.value))
+        client = FakeClient(_decline(reason="no span does this", kind=kind.value))
         built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
-        assert built["d1"] == DescriptorDecline(kind=kind, reason="line 2 already does this")
+        assert built["d1"] == DescriptorDecline(kind=kind, reason="no span does this")
 
     def test_a_named_decline_wins_over_an_edit_in_the_same_answer(self):
         """The model said no edit makes the defect true; an edit it also sent
         is one it does not stand behind."""
-        client = FakeClient(_edit(decline="already_present", reason="line 2"))
+        client = FakeClient(_edit(decline="not_a_code_property", reason="a process"))
         built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
         assert isinstance(built["d1"], DescriptorDecline)
 
+    def test_cannot_tell_is_a_decline_whatever_edit_came_with_it(self):
+        client = FakeClient(_edit(code_currently_does="cannot_tell", reason="caller not shown"))
+        built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        assert built["d1"] == DescriptorDecline(
+            kind=DeclineKind.CANNOT_TELL, reason="caller not shown"
+        )
+
+
+class TestTheCodeAlreadyDoesTheDefectiveBehaviour:
+    """`code_currently_does` is read before the edit, and "defective" makes the
+    answer a finding with its edit kept as a repair — never an injection."""
+
+    def test_it_is_a_claim_not_an_injection(self):
+        client = FakeClient(
+            _edit(code_currently_does="defective", reason="line 2 ignores interest")
+        )
+        built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        assert isinstance(built["d1"], AlreadyDefective)
+        assert built["d1"].reason == "line 2 ignores interest"
+
+    def test_its_edit_is_kept_as_the_repair(self):
+        client = FakeClient(_edit(code_currently_does="defective", reason="line 2"))
+        built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        assert built["d1"].repair is not None
+        assert built["d1"].repair.replacement == "    payment = principal / months * 3\n"
+
+    def test_it_wins_over_a_decline_in_the_same_answer(self):
+        client = FakeClient(
+            _decline(reason="line 2 ignores interest", kind="not_one_contiguous_edit")
+            | {"code_currently_does": "defective"}
+        )
+        built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        assert isinstance(built["d1"], AlreadyDefective)
+        assert built["d1"].repair is None
+
+    def test_the_field_comes_first_in_the_schema(self):
+        """So the model commits to what the code does before writing an edit."""
+        client = FakeClient(_edit())
+        build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        fields = list(client.calls[0]["constrained"].model_fields)
+        assert fields[0] == "code_currently_does"
+
+
+class TestMalformedAnswers:
     def test_a_decline_with_no_reason_still_carries_one(self):
         """An unsettled attempt must carry a reason, so a blank one from the
         model is replaced rather than allowed to fail validation later."""

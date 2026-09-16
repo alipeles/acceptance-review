@@ -30,10 +30,13 @@ from acceptance.execution.outcome import SandboxRunResult, TestOutcomeKind
 from acceptance.execution.sandbox import SandboxConfig, run_tests
 from acceptance.mutation.attempt import (
     DECLINE_OUTCOMES,
+    AlreadyDefective,
+    DescriptorAnswer,
     DescriptorDecline,
     MutationAttempt,
     MutationDescriptor,
     MutationOutcomeKind,
+    RepairCorroboration,
 )
 from acceptance.mutation.baseline import Baseline
 from acceptance.mutation.injection import mutated_copy
@@ -72,7 +75,7 @@ BROKEN_EDIT_ERRORS = frozenset(
 #: decline saying why none does, or `None` when no usable answer came back.
 DescriptorBuilder = Callable[
     [Defect, Sequence[Region], dict[str, str]],
-    MutationDescriptor | DescriptorDecline | None,
+    DescriptorAnswer,
 ]
 
 
@@ -176,6 +179,10 @@ def _attempt(
         )
 
     descriptor = build_descriptor(defect, readable, sources)
+    if isinstance(descriptor, AlreadyDefective):
+        return _already_defective(
+            defect, descriptor, readable, sources, project_root, tests, config, max_edit_lines
+        )
     if isinstance(descriptor, DescriptorDecline):
         return MutationAttempt(
             defect_id=defect.id,
@@ -205,6 +212,74 @@ def _attempt(
         )
 
     return _classify(defect, descriptor, tests, result)
+
+
+def _already_defective(
+    defect: Defect,
+    claim: AlreadyDefective,
+    readable: Sequence[Region],
+    sources: dict[str, str],
+    project_root: Path,
+    tests: list[str],
+    config: SandboxConfig | None,
+    max_edit_lines: int,
+) -> MutationAttempt:
+    """Record the claim that the code already has the defect, and test its repair.
+
+    The claim is the model's reading of the code and stays at the static tier
+    whatever the run shows. Running the candidate tests against the repair only
+    says how far a test run supports it:
+
+    - every test passes on the repair too: no test pins the expected behaviour,
+      which is consistent with the claim;
+    - a test fails on the repair: that test passes on the delivered code and
+      fails when the code does the expected behaviour, so it asserts the
+      defective one — the stronger finding.
+
+    The same rules that stop an injection being read as a kill apply to the
+    repair: it must pass the mechanical checks, a run where every failure is a
+    missing name or import says nothing, and a partly observed run with no
+    failure proves nothing.
+    """
+
+    def finding(corroboration, *, failing=(), note=""):
+        reason = claim.reason if not note else f"{claim.reason} ({note})"
+        return MutationAttempt(
+            defect_id=defect.id,
+            outcome=MutationOutcomeKind.ALREADY_PRESENT,
+            reason=reason,
+            repair=claim.repair,
+            repair_corroboration=corroboration,
+            repair_failing_tests=list(failing),
+        )
+
+    repair = claim.repair
+    if repair is None:
+        return finding(RepairCorroboration.NOT_RUN, note="no repair edit was given")
+    invalid = invalidity_reason(repair, readable, sources.get(repair.path, ""), max_edit_lines)
+    if invalid is not None:
+        return finding(RepairCorroboration.NOT_RUN, note=f"the repair was refused: {invalid}")
+    try:
+        with mutated_copy(project_root, repair) as root:
+            result = run_tests(tests, root, config)
+    except OSError as error:
+        return finding(
+            RepairCorroboration.NOT_RUN, note=f"the repaired copy could not be prepared: {error}"
+        )
+
+    failed = [outcome for outcome in result.outcomes if outcome.kind is TestOutcomeKind.FAILED]
+    if failed and all(outcome.error_type in BROKEN_EDIT_ERRORS for outcome in failed):
+        return finding(RepairCorroboration.NOT_RUN, note="the repair broke the code")
+    if failed:
+        return finding(
+            RepairCorroboration.A_TEST_ASSERTS_DEFECTIVE,
+            failing=[outcome.test_id for outcome in failed],
+        )
+    if any(not outcome.completed for outcome in result.outcomes):
+        return finding(
+            RepairCorroboration.NOT_RUN, note="the run on the repair was not fully observed"
+        )
+    return finding(RepairCorroboration.NO_TEST_PINS_EXPECTED)
 
 
 def _classify(

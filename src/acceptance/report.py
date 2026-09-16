@@ -17,7 +17,7 @@ Status is stated in words, not symbols, and every evidence line carries its
 from __future__ import annotations
 
 from acceptance.evidence_tier import EvidenceTier
-from acceptance.mutation.attempt import MutationOutcomeKind
+from acceptance.mutation.attempt import MutationOutcomeKind, RepairCorroboration
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     CompletionVerdict,
@@ -348,11 +348,38 @@ def _already_present_block(review: Review) -> list[str]:
     rating, because the defect still goes to the static judge like any other
     that injection could not settle.
     """
-    lines = ["Defects said to be already present in the delivered code (needs human review):"]
+    lines = [
+        (
+            "Defects the delivered code already has, as asserted by the model "
+            "(static tier; needs human review):"
+        )
+    ]
     for attempt in review.mutation_attempts:
-        if attempt.outcome is MutationOutcomeKind.ALREADY_PRESENT:
-            lines.append(f"  {attempt.defect_id}")
-            lines.append(f"    {attempt.reason}")
+        if attempt.outcome is not MutationOutcomeKind.ALREADY_PRESENT:
+            continue
+        lines.append(f"  {attempt.defect_id}")
+        lines.append(f"    {attempt.reason}")
+        corroboration = attempt.repair_corroboration
+        if corroboration is RepairCorroboration.A_TEST_ASSERTS_DEFECTIVE:
+            lines.append(
+                "    the candidate tests were run on an edit that repairs it, and these "
+                "failed there — they assert the defective behaviour:"
+            )
+            lines.extend(f"      {test_id}" for test_id in attempt.repair_failing_tests)
+        elif corroboration is RepairCorroboration.NO_TEST_PINS_EXPECTED:
+            lines.append(
+                "    the candidate tests were run on an edit that repairs it, and all "
+                "passed — no test pins the expected behaviour"
+            )
+        elif corroboration is RepairCorroboration.NOT_RUN:
+            lines.append("    no test run supports or contradicts this claim")
+        if attempt.repair is not None:
+            repair = attempt.repair
+            lines.append(
+                f"    repair at {repair.path} lines {repair.start_line}-{repair.end_line}:"
+            )
+            lines.extend(f"      - {line}" for line in repair.original.splitlines())
+            lines.extend(f"      + {line}" for line in repair.replacement.splitlines())
     return lines
 
 

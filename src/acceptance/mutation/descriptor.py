@@ -14,11 +14,18 @@ before the call, so an edit outside them is unrepresentable rather than merely
 refused afterwards — the containment check in `validity.py` still runs, because
 the line span inside a named region can still fall outside it.
 
+**The model says what the code does before it edits.** `code_currently_does` is
+the first field of the answer and decides what any edit means: "expected" makes
+it an injection; "defective" makes the answer a finding that the code already
+has the defect, with the edit kept as a repair to run the tests against;
+"cannot_tell" is a decline. On #45's own review the model, told the direction
+only in prose, still edited toward the expected behaviour in 9 of 66 edits.
+
 **Declining is a real answer.** A defect the smallest-edit question has no good
-answer for comes back with a named `DeclineKind` and a reason: the defect is
-already true of the code, it is not a property of any code, or it needs more
-than one contiguous edit. Each becomes its own outcome with the model's reason
-attached, and the defect goes to the static judge. A stage that
+answer for comes back with a named `DeclineKind` and a reason: it is not a
+property of any code, or it needs more than one contiguous edit. Each becomes its
+own outcome with the model's reason attached, and the defect goes to the static
+judge. A stage that
 invented an edit rather than declining would produce a mutant that tests nothing
 and a survival that means nothing.
 """
@@ -30,7 +37,13 @@ from typing import Literal
 
 from acceptance.concurrency import map_calls
 from acceptance.llm import ModelClient, StrictResponseModel
-from acceptance.mutation.attempt import DeclineKind, DescriptorDecline, MutationDescriptor
+from acceptance.mutation.attempt import (
+    AlreadyDefective,
+    DeclineKind,
+    DescriptorAnswer,
+    DescriptorDecline,
+    MutationDescriptor,
+)
 from acceptance.mutation.region import Region
 from acceptance.partition import partition
 from acceptance.request_blocks import Block, BlockKind, assemble
@@ -83,31 +96,29 @@ A requirement stated in prose can be broken in prose. If the defect is about \
 what a document says, edit the document — the tests that read it are the ones \
 that would catch it.
 
-FIRST, DECIDE WHICH BEHAVIOUR THE CODE HAS NOW
+FIRST, SAY WHICH BEHAVIOUR THE CODE HAS NOW
 
-The defect usually comes with two behaviours: EXPECTED (what the code must do) \
-and DEFECTIVE (what it would do if the defect were present). Exactly one of them \
-describes the code as it is. Read the code and decide which, before editing.
+The defect comes with two behaviours: EXPECTED (what the code must do) and \
+DEFECTIVE (what it would do if the defect were present). Exactly one of them \
+describes the code as it is. Read the code, then answer `code_currently_does` \
+before anything else:
 
-- The code does the EXPECTED behaviour: edit it so that it does the DEFECTIVE \
-  behaviour instead. After your edit, the DEFECTIVE sentence must be true of the \
-  code and the EXPECTED sentence false.
-- The code ALREADY does the DEFECTIVE behaviour: do not edit. Set `decline` to \
-  "already_present" and name in `reason` the lines that do it. This is a \
-  valuable answer — a defect that is present and that the tests do not notice is \
-  a finding in itself.
+- "expected": the code does the EXPECTED behaviour. Give the edit that makes it \
+  do the DEFECTIVE behaviour instead. After your edit the DEFECTIVE sentence must \
+  be true of the code and the EXPECTED sentence false.
+- "defective": the code ALREADY does the DEFECTIVE behaviour. That is a finding \
+  about the code, and your answer to this field is what records it. Name in \
+  `reason` the lines that do it. Then give the edit that REPAIRS it — the \
+  smallest edit that makes the code do the EXPECTED behaviour. The candidate \
+  tests are run against that repair to see whether any test notices.
+- "cannot_tell": you cannot see enough of the code to decide. Say in `reason` \
+  what you could not see, and give no edit. Do not guess.
 
-**Never edit the code toward the EXPECTED behaviour.** That repairs the code, and \
-the tests that then fail are catching the repair, not the defect. If your edit \
-would make the EXPECTED sentence true, you have the direction backwards.
+The edit you give always moves the code AWAY from what `code_currently_does` \
+says. An edit that leaves the behaviour the same is never an answer.
 
-If you cannot see enough of the code to tell which behaviour it has, say so: set \
-`decline` to "not_one_contiguous_edit" and explain in `reason` what you could not \
-see. Do not guess.
-
-When no EXPECTED and DEFECTIVE behaviours are given, apply the same test to the \
-defect's description: if the code already behaves the way the description says, \
-it is already present.
+When no EXPECTED and DEFECTIVE behaviours are given, use the defect's \
+description as the DEFECTIVE behaviour and its opposite as the EXPECTED one.
 
 DECLINING IS A REAL ANSWER
 
@@ -129,17 +140,21 @@ Never invent an edit to avoid declining. A mutant that does not make the named \
 defect true tests nothing, and the tests that survive it will be recorded as \
 proven weak on evidence that does not exist.
 
-When you DO produce an edit, set `decline` to "none" and leave `reason` empty."""
+When you do not decline, set `decline` to "none"."""
 
 
 class _Descriptor(StrictResponseModel):
+    # First, so the model commits to what the code does before it writes an
+    # edit — and so the direction of the edit is read from this field rather
+    # than inferred from the edit itself.
+    code_currently_does: Literal["expected", "defective", "cannot_tell"]
     region_label: str
     start_line: int
     end_line: int
     replacement: str
     # "none" for an edit; otherwise one of `DeclineKind`'s values. A literal
     # rather than an optional enum because strict mode has no optional fields.
-    decline: Literal["none", "already_present", "not_a_code_property", "not_one_contiguous_edit"]
+    decline: Literal["none", "not_a_code_property", "not_one_contiguous_edit"]
     reason: str
 
 
@@ -149,7 +164,7 @@ def build_descriptors(
     sources: dict[str, str],
     client: ModelClient,
     unusable: UnusableAnswerLog | None = None,
-) -> dict[str, MutationDescriptor | DescriptorDecline | None]:
+) -> dict[str, DescriptorAnswer]:
     """One answer per defect: a descriptor, a typed decline, or `None`.
 
     `None` means no usable answer — no region to ask about, or a response that
@@ -170,9 +185,7 @@ def build_descriptors(
         lambda defect: _ask_about(defect, regions_by_defect[defect.id], sources, client),
     )
 
-    built: dict[str, MutationDescriptor | DescriptorDecline | None] = {
-        defect.id: None for defect in defects
-    }
+    built: dict[str, DescriptorAnswer] = {defect.id: None for defect in defects}
     for defect, (descriptor, unusable_answers) in zip(asking, answers, strict=True):
         built[defect.id] = descriptor
         if unusable is not None:
@@ -180,7 +193,7 @@ def build_descriptors(
     return built
 
 
-def from_mapping(descriptors: dict[str, MutationDescriptor | DescriptorDecline | None]):
+def from_mapping(descriptors: dict[str, DescriptorAnswer]):
     """Adapt a prebuilt mapping to the runner's per-defect builder.
 
     The runner asks for one descriptor at a time so it can be driven by a stub
@@ -189,7 +202,7 @@ def from_mapping(descriptors: dict[str, MutationDescriptor | DescriptorDecline |
     the reason the runner never has to know that a model was involved.
     """
 
-    def build(defect: Defect, _regions, _sources) -> MutationDescriptor | DescriptorDecline | None:
+    def build(defect: Defect, _regions, _sources) -> DescriptorAnswer:
         return descriptors.get(defect.id)
 
     return build
@@ -200,7 +213,7 @@ def _ask_about(
     regions: list[Region],
     sources: dict[str, str],
     client: ModelClient,
-) -> tuple[MutationDescriptor | None, list[UnusableAnswer]]:
+) -> tuple[DescriptorAnswer, list[UnusableAnswer]]:
     """One call, about `defect` alone.
 
     **Records nothing.** Calls are issued concurrently, so anything appended to
@@ -231,22 +244,44 @@ def _ask_about(
 
 def _descriptor_from(
     result: _Descriptor, regions: Sequence[Region], sources: dict[str, str]
-) -> MutationDescriptor | DescriptorDecline | None:
-    """The answer as a descriptor, a typed decline, or `None` if it is unusable.
+) -> DescriptorAnswer:
+    """The answer as an injection, a claim the code is already defective, a
+    typed decline, or `None` if it is unusable.
 
-    A named decline wins over anything else in the answer: the model has said
-    no edit makes this defect true, and an edit it also supplied would be one
-    it does not stand behind.
+    `code_currently_does` is read first and decides what the edit means.
+    "defective" is a finding whatever else the answer says, and its edit is kept
+    as the repair. "cannot_tell" is a decline. Only "expected" makes the edit an
+    injection, and then a named decline still wins over it: the model has said
+    no edit makes this defect true.
 
     A malformed span, or an empty region with no decline named, is `None` rather
     than raised. The stage's contract to the runner is an answer or nothing, and
     such an answer is one the mechanical checks would have refused a moment
     later anyway — as `not_mutable`, which is where this lands.
     """
+    reason = result.reason.strip()
+    if result.code_currently_does == "defective":
+        return AlreadyDefective(
+            reason=reason or "the code already does the defective behaviour; no lines named",
+            repair=_span_from(result, regions, sources),
+        )
+    if result.code_currently_does == "cannot_tell":
+        return DescriptorDecline(
+            kind=DeclineKind.CANNOT_TELL,
+            reason=reason or "could not tell which behaviour the code has; no reason given",
+        )
     if result.decline != "none":
         kind = DeclineKind(result.decline)
-        reason = result.reason.strip() or f"declined as {kind.value}, with no reason given"
-        return DescriptorDecline(kind=kind, reason=reason)
+        return DescriptorDecline(
+            kind=kind, reason=reason or f"declined as {kind.value}, with no reason given"
+        )
+    return _span_from(result, regions, sources)
+
+
+def _span_from(
+    result: _Descriptor, regions: Sequence[Region], sources: dict[str, str]
+) -> MutationDescriptor | None:
+    """The edit in `result`, or `None` when it names no usable span."""
     label = result.region_label.strip()
     if not label:
         return None

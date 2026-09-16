@@ -35,11 +35,14 @@ from acceptance.model_base import PersistableModel as _Model
 __all__ = [
     "DECLINE_OUTCOMES",
     "SETTLING_KINDS",
+    "AlreadyDefective",
     "DeclineKind",
+    "DescriptorAnswer",
     "DescriptorDecline",
     "MutationAttempt",
     "MutationDescriptor",
     "MutationOutcomeKind",
+    "RepairCorroboration",
     "tier_for",
 ]
 
@@ -140,6 +143,9 @@ class DeclineKind(str, Enum):
     ALREADY_PRESENT = "already_present"
     NOT_A_CODE_PROPERTY = "not_a_code_property"
     NOT_ONE_CONTIGUOUS_EDIT = "not_one_contiguous_edit"
+    # The model could not see enough of the code to say which of the defect's
+    # two behaviours it has, and was told to say so rather than guess.
+    CANNOT_TELL = "cannot_tell"
 
 
 #: The outcome each kind of decline is recorded as.
@@ -147,6 +153,7 @@ DECLINE_OUTCOMES = {
     DeclineKind.ALREADY_PRESENT: MutationOutcomeKind.ALREADY_PRESENT,
     DeclineKind.NOT_A_CODE_PROPERTY: MutationOutcomeKind.NOT_A_CODE_PROPERTY,
     DeclineKind.NOT_ONE_CONTIGUOUS_EDIT: MutationOutcomeKind.NOT_MUTABLE,
+    DeclineKind.CANNOT_TELL: MutationOutcomeKind.NOT_MUTABLE,
 }
 
 
@@ -155,6 +162,44 @@ class DescriptorDecline(_Model):
 
     kind: DeclineKind
     reason: str
+
+
+class AlreadyDefective(_Model):
+    """The model's claim that the code already does the defective behaviour.
+
+    Not a skip: it is a claim that the delivered code fails the criterion, and it
+    is recorded as a finding. `repair` is the smallest edit the model gave that
+    would make the code do the EXPECTED behaviour instead, when it gave one. The
+    runner runs the candidate tests against it to corroborate the claim.
+    """
+
+    reason: str
+    repair: MutationDescriptor | None = None
+
+
+#: Everything the edit-building step can answer about one defect: an edit that
+#: injects it, a claim the code already has it, a typed decline, or nothing usable.
+DescriptorAnswer = MutationDescriptor | DescriptorDecline | AlreadyDefective | None
+
+
+class RepairCorroboration(str, Enum):
+    """What running the candidate tests against the repair edit showed.
+
+    The claim itself is a model's reading of the code, at the static tier, and
+    none of these raises its tier. They say how far a test run supports it.
+    """
+
+    # Every candidate test passed on the repaired code as well as on the code as
+    # delivered, so no test pins the expected behaviour. Consistent with the
+    # claim: the tests cannot tell the two behaviours apart.
+    NO_TEST_PINS_EXPECTED = "no_test_pins_expected"
+    # A test that passes on the delivered code failed on the repaired code, so
+    # that test asserts the DEFECTIVE behaviour. The stronger finding: the tests
+    # lock the defect in.
+    A_TEST_ASSERTS_DEFECTIVE = "a_test_asserts_defective"
+    # No repair edit was given, or it failed a mechanical check, or its run was
+    # not fully observed. The claim stands on the model's reading alone.
+    NOT_RUN = "not_run"
 
 
 class MutationAttempt(_Model):
@@ -182,6 +227,11 @@ class MutationAttempt(_Model):
     # Why the edit was or was not accepted as making the defect true. Empty
     # while no verification has run.
     verification_reason: str = ""
+    # For `already_present` only: the edit that would make the code do the
+    # EXPECTED behaviour, what the tests did on it, and which tests failed.
+    repair: MutationDescriptor | None = None
+    repair_corroboration: RepairCorroboration | None = None
+    repair_failing_tests: list[str] = Field(default_factory=list)
 
     @property
     def observed(self) -> bool:
@@ -200,6 +250,27 @@ class MutationAttempt(_Model):
     @property
     def tier(self) -> EvidenceTier:
         return tier_for(self.outcome, self.verified)
+
+    @model_validator(mode="after")
+    def _repair_fields_only_on_already_present(self) -> MutationAttempt:
+        has_repair = (
+            self.repair is not None
+            or self.repair_corroboration is not None
+            or bool(self.repair_failing_tests)
+        )
+        if has_repair and self.outcome is not MutationOutcomeKind.ALREADY_PRESENT:
+            raise ValueError(
+                f"defect {self.defect_id!r} is {self.outcome.value} and carries a repair; "
+                "only an already-present defect has one"
+            )
+        if self.repair_failing_tests and (
+            self.repair_corroboration is not RepairCorroboration.A_TEST_ASSERTS_DEFECTIVE
+        ):
+            raise ValueError(
+                f"defect {self.defect_id!r} names tests that failed on its repair, but "
+                "its corroboration does not say a test asserts the defective behaviour"
+            )
+        return self
 
     @model_validator(mode="after")
     def _only_an_observed_attempt_is_verified(self) -> MutationAttempt:
