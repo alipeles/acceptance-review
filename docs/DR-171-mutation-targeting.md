@@ -35,8 +35,9 @@ code either side of the edit, before and after, never the tests) and measured on
 | good edits it refused (false alarms) | 8 of 31 | 26% |
 
 About a quarter of what it would verify is still a bad edit, so it is **not
-adopted**; it sits behind `ExecutionSettings.verify_edits`, off. Six of its eight
-false alarms answered "cannot tell" on the 30-line window, and most bad edits it
+adopted**; it sits behind `ExecutionSettings.verify_edits`, off. Five of its eight
+false alarms answered "cannot tell" on the 30-line window (first recorded here as
+six, a miscount corrected on re-reading the per-edit results), and most bad edits it
 accepted do change the named behaviour literally while also crashing. **With it
 off, nothing reaches `DEFECT_KILLED` and injection saves no pair judgement.** The
 tier and the saving now both wait on a verifier good enough to adopt.

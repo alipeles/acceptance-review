@@ -361,15 +361,20 @@ def _already_present_block(review: Review) -> list[str]:
         lines.append(f"    {attempt.reason}")
         corroboration = attempt.repair_corroboration
         if corroboration is RepairCorroboration.A_TEST_ASSERTS_DEFECTIVE:
+            # Said as an observation, not a conclusion. The repair edit is not
+            # verified, and on #45's audit at least three repairs crashed, which
+            # makes tests fail for a reason that says nothing about the claim.
             lines.append(
-                "    the candidate tests were run on an edit that repairs it, and these "
-                "failed there — they assert the defective behaviour:"
+                "    the candidate tests were run on an edit meant to repair it, and these "
+                "failed there. That fits tests asserting the defective behaviour, but the "
+                "repair itself was not checked, so this does not confirm the claim:"
             )
             lines.extend(f"      {test_id}" for test_id in attempt.repair_failing_tests)
         elif corroboration is RepairCorroboration.NO_TEST_PINS_EXPECTED:
             lines.append(
-                "    the candidate tests were run on an edit that repairs it, and all "
-                "passed — no test pins the expected behaviour"
+                "    the candidate tests were run on an edit meant to repair it, and all "
+                "passed. That fits no test pinning the expected behaviour, but the repair "
+                "itself was not checked, so this does not confirm the claim"
             )
         elif corroboration is RepairCorroboration.NOT_RUN:
             lines.append("    no test run supports or contradicts this claim")

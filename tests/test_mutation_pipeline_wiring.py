@@ -482,7 +482,9 @@ class TestAnAlreadyPresentDefect:
         assert attempt.outcome is MutationOutcomeKind.ALREADY_PRESENT
         assert attempt.repair_corroboration is RepairCorroboration.NO_TEST_PINS_EXPECTED
         assert attempt.tier is EvidenceTier.STATIC
-        assert "all passed — no test pins the expected behaviour" in render_report(review)
+        assert "That fits no test pinning the expected behaviour, but the repair" in render_report(
+            review
+        )
 
     def test_a_repair_a_test_fails_names_the_test_asserting_the_defect(self, tmp_path):
         review = _review(
@@ -495,7 +497,7 @@ class TestAnAlreadyPresentDefect:
         assert attempt.repair_failing_tests == [_TEST_ID]
         assert attempt.tier is EvidenceTier.STATIC
         report = render_report(review)
-        assert "they assert the defective behaviour" in report
+        assert "so this does not confirm the claim" in report
 
     def test_a_claim_is_never_counted_as_a_kill(self, tmp_path):
         """The repair's failing test is not a kill: it caught a repair, not the
