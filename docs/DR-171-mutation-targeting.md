@@ -7,8 +7,72 @@ actual mutation at actual lines), owned by M8.4 / #45 (targeted mutation, the
 **Revised:** 2026-09-14, in conversation, before #45 starts. Decisions 4, 6, 7
 and 8 changed; see *Revision* below.
 **Revised again:** 2026-09-16, during #45, on measurement. Decisions 1 and 3
-changed; see *Revision — 2026-09-16* below.
+changed; see *Revision — 2026-09-16* below, and its later addendum on the tier
+gate, the breadth check and the verifier measurement.
 **Status:** resolved.
+
+## Addendum to the 2026-09-16 revision: the tier is gated on a verified edit
+
+Measured on the same review (audits v6 and v7 and their judgements, and
+`verifier-measurement-gpt-5.4.md`).
+
+**Decisions 7 and 8 are amended: an observed result is not a settled one.** An
+injection result is evidence about a defect only if the edit made that defect
+true, and on audit v6 about half did not. A kill or survival is now *observed*;
+it *settles* its defect — produces verdicts, reaches `DEFECT_KILLED`, and leaves
+the static judge's input — only when its edit is **verified**. An unverified one
+is kept and reported, stays `STATIC`, and its defect goes to the static judge. A
+bad edit costs compute rather than a wrong tier.
+
+**Decision 3 stands: no confirming model call is adopted.** A verifier was built
+(`mutation/verification.py`: shown the defect's two behaviours and 30 lines of
+code either side of the edit, before and after, never the tests) and measured on
+`openai/gpt-5.4` against audit v6's 66 hand-labelled edits:
+
+| | count | rate |
+|---|---|---|
+| bad edits it refused (catch rate) | 27 of 35 | 77% |
+| good edits it refused (false alarms) | 8 of 31 | 26% |
+
+About a quarter of what it would verify is still a bad edit, so it is **not
+adopted**; it sits behind `ExecutionSettings.verify_edits`, off. Six of its eight
+false alarms answered "cannot tell" on the 30-line window, and most bad edits it
+accepted do change the named behaviour literally while also crashing. **With it
+off, nothing reaches `DEFECT_KILLED` and injection saves no pair judgement.** The
+tier and the saving now both wait on a verifier good enough to adopt.
+
+**The edit-building answer states what the code does first.** A required
+`code_currently_does` field — expected, defective, cannot tell — is read
+mechanically and decides what the edit means. "Defective" is recorded as
+`already_present` at the static tier, flagged in the report as model-asserted,
+and its edit is run as a repair: every candidate test passing says no test pins
+the expected behaviour; a test failing names a test that asserts the defective
+behaviour. This replaces the `already_present` typed decline.
+
+**A seventh mechanical check: breadth.** A result is refused when more than 7.5%
+of candidate tests fail under the edit and more than 10 do, whatever exception
+they failed on. On audits v5 and v6 (339 candidate tests) real kills failed at
+most 23; the widest edits that broke far more failed 79, 29 and 26, but most
+failed 4 or fewer. 7.5% keeps every real kill and catches only the extremes. The
+exception list of check 6 was deliberately not widened: a real injected defect
+can fail with a `TypeError`.
+
+**Result, on 22 of the 25 criteria** (three contested ones left out for human
+adjudication), v6 recounted on the same criteria against v7:
+
+| | v6 | v7 |
+|---|---|---|
+| edits counted (kills and survivals) | 58 | 44 |
+| put the named defect into the code | 25 (43%) | 25 (57%) |
+| repair a defect the code already had | 7 | 3 |
+| change something other than the defect | 16 | 12 |
+| break far more than the defect | 10 | 4 |
+| real kills | 20 of 46 | 23 of 36 |
+| real survivals | 5 of 12 | 2 of 8 |
+
+v7 also refused 8 edits after their run, all correctly, and recorded 12
+already-present claims, 9 of them right. Edits that change the wrong thing are
+the largest remaining problem and nothing adopted addresses them.
 
 ## Revision — 2026-09-16: a defect is two behaviours, and validity is more than four checks
 
