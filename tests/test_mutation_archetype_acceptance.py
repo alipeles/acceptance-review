@@ -139,10 +139,10 @@ class TestTheGroundTruthIsReproduced:
     def test_every_labelled_defect_got_an_attempt(self, by_id, ground_truth):
         assert set(by_id) == set(ground_truth)
 
-    def test_every_attempt_was_settled_by_execution(self, by_id):
+    def test_every_attempt_was_observed_by_execution(self, by_id):
         """None of the three is `not_mutable` or `not_attempted`. If one were,
         the comparison below would be vacuous for it."""
-        assert all(attempt.settled for attempt in by_id.values())
+        assert all(attempt.observed for attempt in by_id.values())
 
     @pytest.mark.parametrize(
         "defect_id", ["d-payments-not-equal", "d-one-entry-short", "d-interest-ignored"]
@@ -172,8 +172,17 @@ class TestTheUpgradeThisMilestoneExistsFor:
             assert attempt.descriptor is not None
             assert attempt.descriptor.replacement.strip()
 
-    def test_the_verdicts_reach_the_executed_tier(self, attempts, defect_sets):
-        verdicts = verdicts_from(attempts, defect_sets)
+    def test_the_verdicts_reach_the_executed_tier_once_the_edits_are_verified(
+        self, attempts, defect_sets
+    ):
+        """The edits here were written by hand to match each labelled defect,
+        so they stand in for a passed verification."""
+        verified = [attempt.model_copy(update={"verified": True}) for attempt in attempts]
+        verdicts = verdicts_from(verified, defect_sets)
         assert len(verdicts) == 3
         assert all(v.tier is EvidenceTier.DEFECT_KILLED for v in verdicts)
         assert [v.defect_id for v in verdicts if v.kills] == ["d-one-entry-short"]
+
+    def test_without_verification_nothing_reaches_the_executed_tier(self, attempts, defect_sets):
+        assert verdicts_from(attempts, defect_sets) == []
+        assert all(attempt.tier is EvidenceTier.STATIC for attempt in attempts)

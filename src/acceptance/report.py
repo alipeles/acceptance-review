@@ -285,10 +285,9 @@ def _mutation_block(review: Review) -> list[str]:
     """What was injected, and what each test did about it (M8.4).
 
     The injected text is rendered, not summarised, and that is the point.
-    DR-171 Decision 3 spends no model call confirming that a mutant really
-    violates the obligation — it would be judging its own output at the tier it
-    is checking. Showing exactly what was injected is the whole of what replaces
-    that: a reader who thinks a survival is unfair can see the edit and say so.
+    Showing exactly what was injected lets a reader who thinks a result is
+    unfair see the edit and say so, and every observed result says whether its
+    edit was verified — only a verified one counts.
 
     A defect execution could not settle renders with its reason. Those went to
     the static judge, and a reader comparing a criterion's executed and
@@ -316,11 +315,24 @@ def _mutation_block(review: Review) -> list[str]:
         if attempt.killing_tests:
             lines.append(f"    caught by ({len(attempt.killing_tests)}):")
             lines.extend(f"      {test_id}" for test_id in attempt.killing_tests)
-        elif attempt.settled:
+        elif attempt.observed:
             lines.append(
                 f"    no test caught it; {len(attempt.tests_run)} candidate test(s) ran "
                 "and none failed"
             )
+        # An observed result counts only once its edit is verified. Said on
+        # every observed attempt, because "caught by" above reads as evidence
+        # and an unverified one is not.
+        if attempt.observed:
+            if attempt.verified:
+                lines.append("    edit verified to make the defect true; tier: defect-killed")
+            else:
+                lines.append(
+                    "    edit NOT verified to make the defect true, so this result is not "
+                    "counted; tier: static, and the defect went to the static judge"
+                )
+            if attempt.verification_reason:
+                lines.append(f"    {attempt.verification_reason}")
         if attempt.reason:
             lines.append(f"    {attempt.reason}")
     return lines

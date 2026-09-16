@@ -55,22 +55,26 @@ def _descriptor() -> MutationDescriptor:
     )
 
 
-def _killed(defect_id: str, killing: list[str], ran: list[str]) -> MutationAttempt:
+def _killed(
+    defect_id: str, killing: list[str], ran: list[str], verified: bool = True
+) -> MutationAttempt:
     return MutationAttempt(
         defect_id=defect_id,
         outcome=MutationOutcomeKind.KILLED,
         descriptor=_descriptor(),
         tests_run=ran,
         killing_tests=killing,
+        verified=verified,
     )
 
 
-def _survived(defect_id: str, ran: list[str]) -> MutationAttempt:
+def _survived(defect_id: str, ran: list[str], verified: bool = True) -> MutationAttempt:
     return MutationAttempt(
         defect_id=defect_id,
         outcome=MutationOutcomeKind.SURVIVED,
         descriptor=_descriptor(),
         tests_run=ran,
+        verified=verified,
     )
 
 
@@ -119,6 +123,42 @@ class TestVerdictsFrom:
     def test_the_reason_says_the_answer_was_observed(self):
         verdicts = verdicts_from([_survived("d1", ["t::a"])], _sets("d1"))
         assert "injected" in verdicts[0].reason
+
+
+class TestAnUnverifiedEditCountsForNothing:
+    """The tier gate. About half the edits on #45's own review did not make
+    the named defect true, so an observed result is evidence only once its
+    edit is verified. Until then it costs compute, not credibility."""
+
+    def test_an_unverified_kill_produces_no_verdict(self):
+        attempt = _killed("d1", ["t::a"], ["t::a"], verified=False)
+        assert verdicts_from([attempt], _sets("d1")) == []
+
+    def test_an_unverified_survival_produces_no_verdict(self):
+        attempt = _survived("d1", ["t::a"], verified=False)
+        assert verdicts_from([attempt], _sets("d1")) == []
+
+    def test_its_defect_still_goes_to_the_static_judge(self):
+        attempt = _killed("d1", ["t::a"], ["t::a"], verified=False)
+        remaining = remaining_defect_sets([attempt], _sets("d1"))
+        assert [d.id for d in remaining[0].defects] == ["d1"]
+
+    def test_it_stays_at_the_static_tier_whatever_the_run_observed(self):
+        assert _killed("d1", ["t::a"], ["t::a"], verified=False).tier is EvidenceTier.STATIC
+        assert _survived("d1", ["t::a"], verified=False).tier is EvidenceTier.STATIC
+
+    def test_the_criterion_it_belongs_to_stays_static(self):
+        """Through the rating: with no verdict from the unverified kill, the
+        criterion rests only on what the static judge says."""
+        attempt = _killed("d1", ["t::a"], ["t::a"], verified=False)
+        predicted = [PairVerdict(defect_id="d1", test_id="t::a", kills=True)]
+        results = derive_support(
+            [TestTheRatingReadsBoth()._obligation()],
+            _sets("d1"),
+            verdicts_from([attempt], _sets("d1")) + predicted,
+            [],
+        )
+        assert results[0].achieved_tier is EvidenceTier.STATIC
 
 
 class TestRemainingDefectSets:

@@ -29,11 +29,15 @@ def _descriptor() -> MutationDescriptor:
 
 
 class TestTiers:
-    def test_both_settling_outcomes_reach_defect_killed(self):
+    def test_both_observed_outcomes_reach_defect_killed_once_verified(self):
         """A survival is as strong as a kill. They disagree about the tests,
         not about how well the answer is known."""
-        assert tier_for(MutationOutcomeKind.KILLED) is EvidenceTier.DEFECT_KILLED
-        assert tier_for(MutationOutcomeKind.SURVIVED) is EvidenceTier.DEFECT_KILLED
+        assert tier_for(MutationOutcomeKind.KILLED, verified=True) is EvidenceTier.DEFECT_KILLED
+        assert tier_for(MutationOutcomeKind.SURVIVED, verified=True) is EvidenceTier.DEFECT_KILLED
+
+    def test_an_observed_outcome_stays_static_until_verified(self):
+        assert tier_for(MutationOutcomeKind.KILLED) is EvidenceTier.STATIC
+        assert tier_for(MutationOutcomeKind.SURVIVED) is EvidenceTier.STATIC
 
     def test_the_unsettled_outcomes_stay_static(self):
         assert tier_for(MutationOutcomeKind.NOT_MUTABLE) is EvidenceTier.STATIC
@@ -45,9 +49,40 @@ class TestTiers:
             outcome=MutationOutcomeKind.SURVIVED,
             descriptor=_descriptor(),
             tests_run=["t.py::a"],
+            verified=True,
         )
         assert attempt.tier is EvidenceTier.DEFECT_KILLED
         assert attempt.settled is True
+
+    def test_an_unverified_attempt_is_observed_but_not_settled(self):
+        attempt = MutationAttempt(
+            defect_id="d1",
+            outcome=MutationOutcomeKind.SURVIVED,
+            descriptor=_descriptor(),
+            tests_run=["t.py::a"],
+        )
+        assert attempt.observed is True
+        assert attempt.settled is False
+        assert attempt.tier is EvidenceTier.STATIC
+
+    def test_an_attempt_whose_tests_never_ran_cannot_be_verified(self):
+        with pytest.raises(ValueError, match="only an edit whose tests were run"):
+            MutationAttempt(
+                defect_id="d1",
+                outcome=MutationOutcomeKind.NOT_MUTABLE,
+                reason="no region",
+                verified=True,
+            )
+
+    def test_a_record_stored_before_verification_existed_reads_back_static(self):
+        stored = {
+            "defect_id": "d1",
+            "outcome": "killed",
+            "descriptor": _descriptor().model_dump(),
+            "tests_run": ["t.py::a"],
+            "killing_tests": ["t.py::a"],
+        }
+        assert MutationAttempt.model_validate(stored).tier is EvidenceTier.STATIC
 
 
 class TestReasons:
@@ -118,9 +153,8 @@ class TestKillingTests:
 class TestDescriptorIsRecorded:
     @pytest.mark.parametrize("outcome", [MutationOutcomeKind.KILLED, MutationOutcomeKind.SURVIVED])
     def test_a_settled_attempt_without_a_descriptor_is_refused(self, outcome):
-        """DR-171 Decision 3 spends no model call confirming the mutant really
-        violates the obligation. Recording what was injected is the whole of
-        what replaces that, so a settled attempt without it is unarguable."""
+        """An observed result with no record of what was injected cannot be
+        checked by anyone, including the verification that gates its tier."""
         killing = ["t.py::a"] if outcome is MutationOutcomeKind.KILLED else []
         with pytest.raises(ValueError, match="no record of what was injected"):
             MutationAttempt(

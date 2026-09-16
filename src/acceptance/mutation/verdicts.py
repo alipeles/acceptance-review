@@ -51,6 +51,8 @@ def verdicts_from(
 
     verdicts: list[PairVerdict] = []
     for attempt in attempts:
+        # Settled, not merely observed: an unverified edit may not have made
+        # the defect true, so its test results say nothing about the defect.
         if not attempt.settled:
             continue
         killing = set(attempt.killing_tests)

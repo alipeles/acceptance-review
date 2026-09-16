@@ -7,9 +7,15 @@ empty set and `TestOutcome` requires one on a test that did not complete:
 "looked and could not" and "did not look" are different, and only one of them is
 a defect in the tool.
 
-The two settling outcomes both reach `DEFECT_KILLED`, because both were
-observed. `killed` and `survived` are equally strong evidence; they disagree
-about the tests, not about how well the answer is known.
+`killed` and `survived` are the two outcomes where the tests were run against
+the edit and read. They are **observed**, but not yet **settled**: an observation
+is only evidence about the named defect if the edit really made that defect true.
+Measured on #45's own review, about half the edits did not — they repaired a
+defect the code already had, changed something else, or broke far more — so an
+observed outcome settles the defect and reaches `DEFECT_KILLED` only when its
+edit has been verified. An unverified observation is kept and reported, stays at
+`STATIC`, and its defect goes to the static judge like any other. A bad edit then
+costs compute rather than a wrong tier.
 
 The two non-settling outcomes are **routing instructions, not conclusions**. A
 defect marked `not_mutable` or `not_attempted` has not been decided here; it is
@@ -65,20 +71,24 @@ class MutationOutcomeKind(str, Enum):
     NOT_ATTEMPTED = "not_attempted"
 
 
-#: The kinds where execution actually decided the question. Only these may be
-#: read as evidence about the tests; the other two say something about the run.
+#: The kinds where the tests were run against the edit and read. Necessary for an
+#: attempt to settle its defect, not sufficient: see `MutationAttempt.settled`.
 SETTLING_KINDS = frozenset({MutationOutcomeKind.KILLED, MutationOutcomeKind.SURVIVED})
 
 
-def tier_for(kind: MutationOutcomeKind) -> EvidenceTier:
+def tier_for(kind: MutationOutcomeKind, verified: bool = False) -> EvidenceTier:
     """The evidence tier an outcome of `kind` reaches.
+
+    `DEFECT_KILLED` needs both an observed outcome and a verified edit. Anything
+    less is `STATIC`, whatever the run observed.
 
     Routed through `authorize_tier` rather than returned directly, so the
     ceiling this component is allowed to produce is enforced by the one place
     that owns it (CLAUDE.md's evidence-tier invariant) instead of being restated
     here where it could drift.
     """
-    tier = EvidenceTier.DEFECT_KILLED if kind in SETTLING_KINDS else EvidenceTier.STATIC
+    reached = kind in SETTLING_KINDS and verified
+    tier = EvidenceTier.DEFECT_KILLED if reached else EvidenceTier.STATIC
     return authorize_tier(Component.MUTATION_RUNNER, tier)
 
 
@@ -150,11 +160,8 @@ class DescriptorDecline(_Model):
 class MutationAttempt(_Model):
     """One defect's trip through the mutation stage, whatever became of it.
 
-    `mutant_text` is the replacement as applied, kept because DR-171 Decision 3
-    refuses to spend a second model call confirming that the edit really
-    violates the obligation. Recording what was injected is what makes a
-    survival arguable by the person reading it, which is weaker than a proof and
-    honest about being weaker.
+    The descriptor is kept whatever became of the edit, so a reader who
+    disagrees with what was injected can see exactly what it was.
 
     `killing_tests` names the tests that went red. It is populated only on
     `killed`, and it is the mapping from tests to this defect — not a prediction
@@ -167,19 +174,46 @@ class MutationAttempt(_Model):
     killing_tests: list[str] = Field(default_factory=list)
     tests_run: list[str] = Field(default_factory=list)
     reason: str = ""
+    # Whether the edit was checked and found to make the named defect true.
+    # False until something verifies it, and false for every attempt recorded
+    # before verification existed — so an old stored review reads back at the
+    # static tier rather than claiming evidence nobody checked.
+    verified: bool = False
+    # Why the edit was or was not accepted as making the defect true. Empty
+    # while no verification has run.
+    verification_reason: str = ""
 
     @property
-    def settled(self) -> bool:
+    def observed(self) -> bool:
+        """The tests were run against the edit and their results read."""
         return self.outcome in SETTLING_KINDS
 
     @property
+    def settled(self) -> bool:
+        """Observed, AND the edit was verified to make the named defect true.
+
+        Only a settled attempt produces verdicts, reaches `DEFECT_KILLED`, and
+        removes its defect from the static judge's input.
+        """
+        return self.observed and self.verified
+
+    @property
     def tier(self) -> EvidenceTier:
-        return tier_for(self.outcome)
+        return tier_for(self.outcome, self.verified)
+
+    @model_validator(mode="after")
+    def _only_an_observed_attempt_is_verified(self) -> MutationAttempt:
+        if self.verified and not self.observed:
+            raise ValueError(
+                f"defect {self.defect_id!r} is {self.outcome.value} and marked verified; "
+                "only an edit whose tests were run can be verified"
+            )
+        return self
 
     @model_validator(mode="after")
     def _reason_accompanies_every_unsettled_attempt(self) -> MutationAttempt:
         has_reason = bool(self.reason.strip())
-        if not self.settled and not has_reason:
+        if not self.observed and not has_reason:
             raise ValueError(
                 f"outcome {self.outcome.value} for defect {self.defect_id!r} must carry a "
                 "reason: a defect the stage tried and could not settle has to stay "
@@ -203,7 +237,7 @@ class MutationAttempt(_Model):
 
     @model_validator(mode="after")
     def _a_settled_attempt_injected_something(self) -> MutationAttempt:
-        if self.settled and self.descriptor is None:
+        if self.observed and self.descriptor is None:
             raise ValueError(
                 f"defect {self.defect_id!r} is recorded as {self.outcome.value} with no "
                 "descriptor, so there is no record of what was injected"

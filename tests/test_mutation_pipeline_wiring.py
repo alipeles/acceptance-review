@@ -211,30 +211,45 @@ class TestTheTierRuns:
         _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
         assert "_Descriptor" in _schemas(capture)
 
-    def test_the_criterion_reaches_the_executed_tier(self, tmp_path):
-        """The static "looks weak" becoming an observed "does not
-        discriminate", visible in the pipeline's own output."""
+    def test_the_survival_is_observed_and_recorded(self, tmp_path):
+        """The test runs the mutated line and still passes."""
         review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
-        (obligation,) = [o for o in review.obligation_map if o.id == "equal-payments"]
-        assert obligation.achieved_evidence_tier is EvidenceTier.DEFECT_KILLED
+        (attempt,) = review.mutation_attempts
+        assert attempt.outcome is MutationOutcomeKind.SURVIVED
+        assert attempt.observed is True
 
-    def test_the_surviving_defect_leaves_the_criterion_unsupported(self, tmp_path):
-        """The test runs the mutated line and still passes, so it is proven not
-        to discriminate — not merely predicted not to."""
+
+class TestAnUnverifiedEditIsNotEvidence:
+    """The tier gate, through the real pipeline. No verification runs yet, so
+    every observed result stays at the static tier and its defect goes to the
+    static judge — a bad edit costs compute, not a wrong tier."""
+
+    def test_the_criterion_stays_at_the_static_tier(self, tmp_path):
         review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
         (obligation,) = [o for o in review.obligation_map if o.id == "equal-payments"]
-        assert obligation.evidence_class == "unsupported"
-        assert obligation.test_evidence == []
+        assert obligation.achieved_evidence_tier is EvidenceTier.STATIC
+
+    def test_the_attempt_is_not_settled(self, tmp_path):
+        review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
+        (attempt,) = review.mutation_attempts
+        assert attempt.verified is False
+        assert attempt.settled is False
+
+    def test_its_defect_still_goes_to_the_static_judge(self, tmp_path):
+        capture: list = []
+        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        assert "_PairVerdicts" in _schemas(capture)
+
+    def test_no_executed_verdict_is_stored(self, tmp_path):
+        review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
+        assert all(v.tier is EvidenceTier.STATIC for v in review.pair_verdicts)
+
+    def test_the_report_says_the_result_is_not_counted(self, tmp_path):
+        report = render_report(_review(tmp_path, execution=ExecutionSettings(enabled=True)))
+        assert "edit NOT verified to make the defect true" in report
 
 
 class TestTheStaticJudgeSeesOnlyTheRemainder:
-    def test_no_pair_is_judged_when_execution_settled_every_defect(self, tmp_path):
-        """Where the saving lives. The one enumerated defect was settled by
-        injection, so the expensive stage is asked nothing at all."""
-        capture: list = []
-        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
-        assert "_PairVerdicts" not in _schemas(capture)
-
     def test_the_pair_stage_is_asked_when_execution_is_off(self, tmp_path):
         """The control for the test above: without execution the same review
         does spend that call, so the absence above is the tier working rather
@@ -319,12 +334,11 @@ class TestAnAlreadyPresentDefect:
         # mean the mutant was proposed and then asked about again.
         assert schemas.count("_Descriptor") == 1
 
-        # Nothing at all between proposing the mutant and the first stage that
-        # comes after the execution tier. The stages further down (`_Coverage`,
-        # `_Detections`, `_Recommendations`) are the ordinary rest of the
-        # review, and they run whether or not execution did.
+        # Nothing between proposing the mutant and the first stage that comes
+        # after the execution tier: the static pair judgement, which an
+        # unverified result still reaches, or the ordinary rest of the review.
         next_call = schemas[schemas.index("_Descriptor") + 1]
-        assert next_call == "_Coverage", (
+        assert next_call in {"_PairVerdicts", "_Coverage"}, (
             "a model call was made between proposing the mutant and recording its "
             f"outcome: {next_call}"
         )
@@ -390,12 +404,6 @@ class TestWhatIsPersistedAndRendered:
         report = render_report(_review(tmp_path, execution=ExecutionSettings(enabled=True)))
         assert "no test caught it" in report
 
-    def test_the_executed_verdicts_are_stored(self, tmp_path):
-        """A stored review has to be able to reproduce its own rating, and
-        several criteria rest on the executed half."""
-        review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
-        assert [v.tier for v in review.pair_verdicts] == [EvidenceTier.DEFECT_KILLED]
-
     def test_a_set_aside_test_is_stored_and_reported(self, tmp_path):
         review = _review(
             tmp_path,
@@ -435,8 +443,12 @@ def test_that_is_already_failing():
             execution=ExecutionSettings(enabled=True, allow_failing_tests=True),
             head_test=self._RED_TEST,
         )
-        (obligation,) = [o for o in review.obligation_map if o.id == "equal-payments"]
-        assert obligation.achieved_evidence_tier is EvidenceTier.DEFECT_KILLED
+        assert [t.test_id for t in review.set_aside_tests] == [
+            "test_loan.py::test_that_is_already_failing"
+        ]
+        (attempt,) = review.mutation_attempts
+        assert attempt.observed is True
+        assert attempt.tests_run == [_TEST_ID]
 
     def test_a_halt_records_no_attempt_and_renders_no_report(self, tmp_path):
         """#45's Gate 2 asked for the halted case alongside the
