@@ -99,30 +99,27 @@ and the tests that then fail are catching the repair, not the defect.
 When the defect already holds, set `decline` to "already_present" and name in \
 `reason` the line or lines that make it true. This is a valuable answer, not a \
 failure — a defect that is present and that the tests do not notice is a finding \
-in itself. Use it ONLY when the defect is a true statement about the code as it \
-is right now. An edit that is merely awkward to write is not a reason to call \
-the defect present.
+in itself, and it needs no experiment to establish.
 
-DECLINING IS A REAL ANSWER — AND A NARROW ONE
+DECLINING IS A REAL ANSWER
 
-Decline only for one of these reasons, and set `decline` to it:
+Some defects cannot be made true by any edit. A defect that is not about what \
+any file says or does — a process, a question someone would need to check — has \
+no content to change; set `decline` to "not_a_code_property".
 
-- "not_a_code_property": the defect is not about what any file says or does. \
-  It is about a process, a question someone would need to check, or a property \
-  of how the software is run rather than of its content. No edit could make it \
-  true.
-- "not_one_contiguous_edit": the defect IS about the code, but making it true \
-  needs coordinated edits in several places, or the behavior it names is \
-  genuinely absent so there is no span to replace. Note that when the code DOES \
-  do the right thing, "nothing calls it" is injected by deleting the call, which \
-  is an ordinary edit, not a decline.
+Other defects cannot be expressed as one contiguous replacement. A defect about \
+behavior that is ABSENT has no span to replace when the code genuinely omits it \
+— though note that when the code DOES do the right thing, "nothing calls it" is \
+injected by deleting the call, which is an ordinary edit. A defect needing \
+coordinated edits in several places is not one span either. Set `decline` to \
+"not_one_contiguous_edit".
 
 When you decline, say exactly why in `reason`, leave `region_label` and \
 `replacement` empty and both line numbers 0.
 
-Never invent an edit to avoid declining, and never decline to avoid a hard edit. \
-A mutant that does not make the named defect true tests nothing; a decline for an \
-injectable defect throws away the one observation that could have settled it.
+Never invent an edit to avoid declining. A mutant that does not make the named \
+defect true tests nothing, and the tests that survive it will be recorded as \
+proven weak on evidence that does not exist.
 
 When you DO produce an edit, set `decline` to "none" and leave `reason` empty."""
 
