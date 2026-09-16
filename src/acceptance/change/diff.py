@@ -186,6 +186,16 @@ def _whole_file_hunk(content: str) -> list[DiffHunk]:
     ]
 
 
+def is_test_path(path: str) -> bool:
+    """Whether `path` is a test file by the same rule the change set uses.
+
+    Public so that every stage that must stay blind to the tests — defect
+    enumeration through the change set, and the mutation stage's surrounding
+    code — applies one definition rather than each keeping its own.
+    """
+    return _categorize(path) == "test"
+
+
 def _categorize(path: str) -> str:
     name = path.rsplit("/", 1)[-1]
     if _TEST_PATH_RE.search(path):

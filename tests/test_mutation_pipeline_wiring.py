@@ -234,6 +234,15 @@ class TestTheTierRuns:
         assert "EXPECTED: the code behaves as the criterion requires" in prompt
         assert "DEFECTIVE: the code behaves as this defect describes" in prompt
 
+    def test_the_descriptor_request_carries_the_surrounding_code(self, tmp_path):
+        """Through the real pipeline: M2.2's retrieval reaches the edit-building
+        call — the enclosing definition, numbered with the file's own lines."""
+        capture: list = []
+        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        (prompt,) = [call["prompt"] for call in capture if call["schema"] == "_Descriptor"]
+        assert "## Surrounding code (enclosing definitions and their callers)" in prompt
+        assert "function amortize — loan.py lines 1-3" in prompt
+
     def test_the_descriptor_stage_is_called(self, tmp_path):
         """Acceptance, by the same path a review run takes: the pipeline asks
         for a mutant, rather than merely being able to."""
@@ -314,6 +323,17 @@ class TestVerification:
         (prompt,) = [c["prompt"] for c in capture if c["schema"] == "_Verification"]
         assert "test_returns_a_payment_for_each_month" not in prompt
         assert "payment = principal / months * 3" in prompt
+
+    def test_the_verifier_is_shown_the_surrounding_code(self, tmp_path):
+        capture: list = []
+        _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True, verify_edits=True),
+            capture=capture,
+            judgments=self._VERIFIED,
+        )
+        (prompt,) = [c["prompt"] for c in capture if c["schema"] == "_Verification"]
+        assert "function amortize — loan.py lines 1-3" in prompt
 
 
 class TestTheBreadthSettingsReachTheRunner:

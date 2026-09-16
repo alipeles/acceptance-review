@@ -23,10 +23,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Literal
 
+from acceptance.change.context import RetrievalResult
 from acceptance.concurrency import map_calls
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel as _Model
 from acceptance.mutation.attempt import MutationAttempt, MutationDescriptor
+from acceptance.mutation.surrounding import contexts_for, render_contexts
 from acceptance.mutation.validity import apply_span
 from acceptance.partition import partition
 from acceptance.request_blocks import Block, BlockKind, assemble
@@ -87,13 +89,17 @@ class EditVerdict(_Model):
 def verify_edits(
     items: Sequence[tuple[Defect, MutationDescriptor, str]],
     client: ModelClient,
+    surrounding: RetrievalResult | None = None,
 ) -> list[EditVerdict]:
     """One verdict per `(defect, edit, source of the edited file)`, in input order.
+
+    With `surrounding`, each call is also shown the enclosing definitions and
+    call sites the edit falls in, as the edit-building call is (`surrounding.py`).
 
     Calls are issued concurrently and returned in input order, so two runs over
     the same input record the same thing (`concurrency.py`, rule 2).
     """
-    return map_calls(list(items), lambda item: _ask(item[0], item[1], item[2], client))
+    return map_calls(list(items), lambda item: _ask(item[0], item[1], item[2], client, surrounding))
 
 
 def verify_attempts(
@@ -101,6 +107,7 @@ def verify_attempts(
     defects: Sequence[Defect],
     sources: dict[str, str],
     client: ModelClient,
+    surrounding: RetrievalResult | None = None,
 ) -> list[MutationAttempt]:
     """`attempts` with every observed one verified or not.
 
@@ -119,6 +126,7 @@ def verify_attempts(
     verdicts = verify_edits(
         [(by_id[a.defect_id], a.descriptor, sources[a.descriptor.path]) for a in asking],
         client,
+        surrounding,
     )
     decided = {
         attempt.defect_id: verdict for attempt, verdict in zip(asking, verdicts, strict=True)
@@ -137,12 +145,22 @@ def verify_attempts(
 
 
 def _ask(
-    defect: Defect, descriptor: MutationDescriptor, source: str, client: ModelClient
+    defect: Defect,
+    descriptor: MutationDescriptor,
+    source: str,
+    client: ModelClient,
+    surrounding: RetrievalResult | None = None,
 ) -> EditVerdict:
+    subject = _subject(defect, descriptor, source)
+    spans = [(descriptor.path, descriptor.start_line, descriptor.end_line)]
+    context = render_contexts(contexts_for(spans, surrounding))
+    if context:
+        # Shows the code BEFORE the edit, like the edit-building call saw it.
+        subject = f"{subject}\n\n{context}"
     messages = assemble(
         [
             Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
-            Block(BlockKind.SUBJECT, _subject(defect, descriptor, source)),
+            Block(BlockKind.SUBJECT, subject),
         ]
     )
     batch = partition([defect], 1, key=lambda d: d.id)[0]

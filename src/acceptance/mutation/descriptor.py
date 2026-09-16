@@ -35,6 +35,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Literal
 
+from acceptance.change.context import RetrievalResult
 from acceptance.concurrency import map_calls
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.mutation.attempt import (
@@ -45,6 +46,7 @@ from acceptance.mutation.attempt import (
     MutationDescriptor,
 )
 from acceptance.mutation.region import Region
+from acceptance.mutation.surrounding import contexts_for, region_spans, render_contexts
 from acceptance.partition import partition
 from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import Defect
@@ -65,6 +67,10 @@ regions it implicates, with line numbers as they are in the file right now.
 Produce the SMALLEST edit that would make that defect real.
 
 THE EDIT
+
+You may also be shown the surrounding code: the definitions the regions sit in, \
+and where those are called from. Read it to understand what the code does. Your \
+edit must still land inside one of the offered regions.
 
 Replace one contiguous run of lines in ONE file. Give:
 
@@ -164,8 +170,13 @@ def build_descriptors(
     sources: dict[str, str],
     client: ModelClient,
     unusable: UnusableAnswerLog | None = None,
+    surrounding: RetrievalResult | None = None,
 ) -> dict[str, DescriptorAnswer]:
     """One answer per defect: a descriptor, a typed decline, or `None`.
+
+    `surrounding` is the M2.2 retrieval for the change. When given, each call is
+    also shown the enclosing definitions and call sites its defect's regions fall
+    in (`surrounding.py`); the edit is still confined to the named regions.
 
     `None` means no usable answer — no region to ask about, or a response that
     described no span and named no decline.
@@ -182,7 +193,9 @@ def build_descriptors(
 
     answers = map_calls(
         asking,
-        lambda defect: _ask_about(defect, regions_by_defect[defect.id], sources, client),
+        lambda defect: _ask_about(
+            defect, regions_by_defect[defect.id], sources, client, surrounding
+        ),
     )
 
     built: dict[str, DescriptorAnswer] = {defect.id: None for defect in defects}
@@ -213,6 +226,7 @@ def _ask_about(
     regions: list[Region],
     sources: dict[str, str],
     client: ModelClient,
+    surrounding: RetrievalResult | None = None,
 ) -> tuple[DescriptorAnswer, list[UnusableAnswer]]:
     """One call, about `defect` alone.
 
@@ -225,10 +239,14 @@ def _ask_about(
     allowed = {"region_label": [region.label for region in offered] + [""]}
     constrained = constrain(_Descriptor, allowed)
 
+    subject = _subject(defect, offered, sources)
+    context = render_contexts(contexts_for(region_spans(offered), surrounding))
+    if context:
+        subject = f"{subject}\n\n{context}"
     messages = assemble(
         [
             Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
-            Block(BlockKind.SUBJECT, _subject(defect, offered, sources)),
+            Block(BlockKind.SUBJECT, subject),
         ]
     )
     batch = partition([defect], ONE_DEFECT_PER_CALL, key=lambda d: d.id)[0]

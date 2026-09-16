@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from acceptance.change.context import retrieve_context
 from acceptance.config import (
     DEFAULT_LINK_DISTANCE_THRESHOLD,
     DEFAULT_LINK_PAIR_BATCH_SIZE,
@@ -311,7 +312,12 @@ def _run_execution_tier(
     defects = [defect for defect_set in defect_sets for defect in defect_set.defects]
     regions_by_defect = {defect.id: regions_for(defect, change_set) for defect in defects}
     sources = _sources_for(regions_by_defect, repo)
-    descriptors = build_descriptors(defects, regions_by_defect, sources, client, unusable)
+    # M2.2's bounded retrieval, once for the change: each region's enclosing
+    # definition and its in-repo callers. Both model calls in this tier read it.
+    surrounding = retrieve_context(repo, change_set)
+    descriptors = build_descriptors(
+        defects, regions_by_defect, sources, client, unusable, surrounding
+    )
 
     attempts = run_mutations(
         defect_sets,
@@ -328,7 +334,7 @@ def _run_execution_tier(
     # no observed result is verified, so none reaches `DEFECT_KILLED` and every
     # defect still goes to the static judge (DR-171, revision of 2026-09-16).
     if execution.verify_edits:
-        attempts = verify_attempts(attempts, defects, sources, client)
+        attempts = verify_attempts(attempts, defects, sources, client, surrounding)
     return attempts, verdicts_from(attempts, defect_sets), baseline.set_aside
 
 
