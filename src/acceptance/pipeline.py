@@ -320,6 +320,8 @@ def _run_execution_tier(
         from_mapping(descriptors),
         execution.sandbox,
         execution.max_edit_lines,
+        max_failing_fraction=execution.max_failing_fraction,
+        breadth_floor=execution.breadth_floor,
     )
     return attempts, verdicts_from(attempts, defect_sets), baseline.set_aside
 

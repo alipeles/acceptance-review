@@ -429,6 +429,62 @@ class TestBrokenEditRuleNeedsEveryFailure:
         assert self._classify(self._result(None)).outcome is MutationOutcomeKind.KILLED
 
 
+class TestTheBreadthCheck:
+    """Breadth, not exception type. A real injected defect can fail with a
+    `TypeError`, but it fails a handful of nearby tests; an edit that breaks
+    something shared fails far more. Calibrated on #45's own review, where real
+    kills failed at most 23 of 339 candidate tests."""
+
+    def _classify(self, failed: int, candidates: int, error_type: str = "TypeError"):
+        from acceptance.mutation.runner import _classify
+
+        outcomes = [
+            TestOutcome(test_id=f"t::{i}", kind=TestOutcomeKind.FAILED, error_type=error_type)
+            for i in range(failed)
+        ] + [
+            TestOutcome(test_id=f"t::{i}", kind=TestOutcomeKind.PASSED)
+            for i in range(failed, candidates)
+        ]
+        result = SandboxRunResult(outcomes=outcomes)
+        descriptor = _builder("x\n")(None, None, None)
+        return _classify(_defect("d1"), descriptor, [o.test_id for o in outcomes], result)
+
+    def test_the_largest_real_kill_measured_is_still_a_kill(self):
+        assert self._classify(23, 339).outcome is MutationOutcomeKind.KILLED
+
+    def test_the_widest_crashers_measured_are_not_kills(self):
+        for failed in (26, 29, 79):
+            attempt = self._classify(failed, 339)
+            assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE, failed
+            assert attempt.killing_tests == []
+
+    def test_it_ignores_the_exception_type(self):
+        """An `AssertionError` failing 79 tests is as broad as a `TypeError`."""
+        assert self._classify(79, 339, "AssertionError").outcome is MutationOutcomeKind.NOT_MUTABLE
+
+    def test_the_reason_gives_the_count(self):
+        assert "79 of the 339 candidate tests failed" in self._classify(79, 339).reason
+
+    def test_a_small_suite_keeps_a_kill_below_the_floor(self):
+        """7.5% of 20 is 1.5; without the floor a 3-test kill would be dropped."""
+        assert self._classify(3, 20).outcome is MutationOutcomeKind.KILLED
+
+    def test_the_settings_reach_the_runner(self, project, change_set, green):
+        """Wiring: a threshold passed to `run_mutations` is the one applied. The
+        one candidate test fails under this edit; with the floor at 0 and any
+        fraction below 100% that is too broad."""
+        (attempt,) = run_mutations(
+            _sets(_defect("d-one-short")),
+            change_set,
+            project,
+            green,
+            _builder("    return [payment for _ in range(months - 1)]\n", start=4, end=4),
+            max_failing_fraction=0.5,
+            breadth_floor=0,
+        )
+        assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE
+
+
 class TestWhenTheProjectsTestsCannotBeRun:
     """The obvious case, and the one §8.3 is about: if the tests cannot run,
     the review falls back to reading code. There is no trade-off to weigh —

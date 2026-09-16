@@ -46,7 +46,9 @@ from acceptance.review_state import ChangeSet, Defect, DefectSet
 
 __all__ = [
     "BROKEN_EDIT_ERRORS",
+    "DEFAULT_BREADTH_FLOOR",
     "DEFAULT_INJECTIONS_IN_FLIGHT",
+    "DEFAULT_MAX_FAILING_FRACTION",
     "DescriptorBuilder",
     "run_mutations",
 ]
@@ -70,6 +72,29 @@ BROKEN_EDIT_ERRORS = frozenset(
     {"NameError", "UnboundLocalError", "ImportError", "ModuleNotFoundError"}
 )
 
+#: The breadth check. An edit that makes one defect true fails the handful of
+#: tests near that defect; an edit that crashes a shared path or disables a
+#: feature fails far more. When more than this fraction of the candidate tests
+#: fail under an edit, the failures are about the edit's breadth and not about
+#: the defect, and no kill is recorded — whatever exception the tests failed on.
+#:
+#: Calibrated on #45's own review (339 candidate tests, 58 hand-judged kills
+#: across audits v5 and v6). Real kills failed at most 23 tests. Edits that broke
+#: far more than their defect failed 79, 29, 26, 16, 14 and 12, and the other ten
+#: 4 or fewer. 7.5% is 25.4 tests at that size: it keeps every real kill with a
+#: margin of two, and catches only the three widest crashers plus three other bad
+#: edits (49, 47, 33). **It is a backstop for the extreme cases, not a filter for
+#: most bad edits**: breadth does not separate the rest.
+#:
+#: One suite size only, so this is a conservative default rather than a measured
+#: rule, and it is configuration.
+DEFAULT_MAX_FAILING_FRACTION = 0.075
+
+#: Below this many failures the breadth check never fires. The fraction alone
+#: would demote a genuine kill of 3 tests in a 20-test suite. Not measured — no
+#: small suite has been audited — so it errs toward keeping kills.
+DEFAULT_BREADTH_FLOOR = 10
+
 #: Given one defect, the regions it named, and the text of each of those files
 #: at head, produce the smallest edit that makes the defect true — or a typed
 #: decline saying why none does, or `None` when no usable answer came back.
@@ -88,6 +113,8 @@ def run_mutations(
     config: SandboxConfig | None = None,
     max_edit_lines: int = DEFAULT_MAX_EDIT_LINES,
     max_in_flight: int = DEFAULT_INJECTIONS_IN_FLIGHT,
+    max_failing_fraction: float = DEFAULT_MAX_FAILING_FRACTION,
+    breadth_floor: int = DEFAULT_BREADTH_FLOOR,
 ) -> list[MutationAttempt]:
     """One attempt per defect, sorted by defect id.
 
@@ -140,6 +167,7 @@ def run_mutations(
             build_descriptor,
             config,
             max_edit_lines,
+            _Breadth(max_failing_fraction, breadth_floor),
         ),
         max_in_flight=max(1, max_in_flight),
     )
@@ -157,6 +185,7 @@ def _attempt(
     build_descriptor: DescriptorBuilder,
     config: SandboxConfig | None,
     max_edit_lines: int,
+    breadth: _Breadth,
 ) -> MutationAttempt:
     regions = regions_for(defect, change_set)
     if not regions:
@@ -181,7 +210,15 @@ def _attempt(
     descriptor = build_descriptor(defect, readable, sources)
     if isinstance(descriptor, AlreadyDefective):
         return _already_defective(
-            defect, descriptor, readable, sources, project_root, tests, config, max_edit_lines
+            defect,
+            descriptor,
+            readable,
+            sources,
+            project_root,
+            tests,
+            config,
+            max_edit_lines,
+            breadth,
         )
     if isinstance(descriptor, DescriptorDecline):
         return MutationAttempt(
@@ -211,7 +248,32 @@ def _attempt(
             reason=f"the mutated copy could not be prepared: {error}",
         )
 
-    return _classify(defect, descriptor, tests, result)
+    return _classify(defect, descriptor, tests, result, breadth)
+
+
+class _Breadth:
+    """The breadth check's two numbers, passed as one."""
+
+    def __init__(self, max_failing_fraction: float, floor: int) -> None:
+        self.max_failing_fraction = max_failing_fraction
+        self.floor = floor
+
+    def too_broad(self, failed: int, candidates: int) -> bool:
+        """More than the fraction of the candidate tests failed, and more than
+        the floor. The candidates are the tests the control run found passing,
+        so every failure here is one the edit caused."""
+        return failed > self.floor and failed > self.max_failing_fraction * candidates
+
+    def reason(self, failed: int, candidates: int) -> str:
+        return (
+            f"{failed} of the {candidates} candidate tests failed under the edit, more than "
+            f"{self.max_failing_fraction:.1%} of them. An edit that makes one defect true "
+            "fails the tests near it; one that fails this many has broken something shared, "
+            "so the failures say nothing about the named defect and no kill is counted."
+        )
+
+
+_DEFAULT_BREADTH = _Breadth(DEFAULT_MAX_FAILING_FRACTION, DEFAULT_BREADTH_FLOOR)
 
 
 def _already_defective(
@@ -223,6 +285,7 @@ def _already_defective(
     tests: list[str],
     config: SandboxConfig | None,
     max_edit_lines: int,
+    breadth: _Breadth = _DEFAULT_BREADTH,
 ) -> MutationAttempt:
     """Record the claim that the code already has the defect, and test its repair.
 
@@ -270,6 +333,12 @@ def _already_defective(
     failed = [outcome for outcome in result.outcomes if outcome.kind is TestOutcomeKind.FAILED]
     if failed and all(outcome.error_type in BROKEN_EDIT_ERRORS for outcome in failed):
         return finding(RepairCorroboration.NOT_RUN, note="the repair broke the code")
+    if breadth.too_broad(len(failed), len(tests)):
+        return finding(
+            RepairCorroboration.NOT_RUN,
+            note=f"the repair failed {len(failed)} of {len(tests)} candidate tests, too many "
+            "to say anything about this defect",
+        )
     if failed:
         return finding(
             RepairCorroboration.A_TEST_ASSERTS_DEFECTIVE,
@@ -287,6 +356,7 @@ def _classify(
     descriptor: MutationDescriptor,
     tests: list[str],
     result: SandboxRunResult,
+    breadth: _Breadth = _DEFAULT_BREADTH,
 ) -> MutationAttempt:
     """Read the mutated run as killed, survived, or nothing at all.
 
@@ -306,6 +376,14 @@ def _classify(
             descriptor=descriptor,
             tests_run=tests,
             reason=_why_broken(failed),
+        )
+    if breadth.too_broad(len(failed), len(tests)):
+        return MutationAttempt(
+            defect_id=defect.id,
+            outcome=MutationOutcomeKind.NOT_MUTABLE,
+            descriptor=descriptor,
+            tests_run=tests,
+            reason=breadth.reason(len(failed), len(tests)),
         )
     if killing:
         return MutationAttempt(

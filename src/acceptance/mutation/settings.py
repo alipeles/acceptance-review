@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from acceptance.execution.sandbox import SandboxConfig
 from acceptance.model_base import PersistableModel as _Model
+from acceptance.mutation.runner import DEFAULT_BREADTH_FLOOR, DEFAULT_MAX_FAILING_FRACTION
 from acceptance.mutation.validity import DEFAULT_MAX_EDIT_LINES
 
 __all__ = ["ExecutionSettings", "ReviewHalted"]
@@ -38,6 +39,11 @@ class ExecutionSettings(_Model):
     enabled: bool = False
     allow_failing_tests: bool = False
     max_edit_lines: int = DEFAULT_MAX_EDIT_LINES
+    # The breadth check: no kill is counted when more than this fraction of the
+    # candidate tests fail under an edit, and more than `breadth_floor` of them.
+    # See `runner.py` for the calibration and its limits.
+    max_failing_fraction: float = DEFAULT_MAX_FAILING_FRACTION
+    breadth_floor: int = DEFAULT_BREADTH_FLOOR
     sandbox: SandboxConfig = SandboxConfig()
 
 

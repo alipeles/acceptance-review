@@ -85,6 +85,28 @@ class TestValidity:
         assert reason is not None
         assert "runs past the end" in reason
 
+    def test_an_edit_byte_identical_to_its_input_is_refused(self):
+        """Nothing is injected, so every test would 'survive' a defect that was
+        never introduced — a false finding against the builder. 21 of 71 edits
+        on `gpt-5.4-mini` were this."""
+        reason = invalidity_reason(
+            _descriptor(replacement="    return sum(items)\n"),
+            [_region("src.py", 1, 3)],
+            PY_SOURCE,
+        )
+        assert reason is not None
+        assert "identical to what it replaces" in reason
+
+    def test_an_edit_differing_only_in_whitespace_is_not_identical(self):
+        """Byte-identical means byte-identical. A whitespace change in Python
+        can change behaviour, so it is left to the other checks."""
+        reason = invalidity_reason(
+            _descriptor(replacement="    return  sum(items)\n"),
+            [_region("src.py", 1, 3)],
+            PY_SOURCE,
+        )
+        assert reason is None or "identical" not in reason
+
     def test_an_oversized_edit_is_refused(self):
         reason = invalidity_reason(
             _descriptor(start_line=1, end_line=6, replacement="x = 1\n"),

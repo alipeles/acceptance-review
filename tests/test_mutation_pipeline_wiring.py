@@ -248,6 +248,30 @@ class TestTheTierRuns:
         assert attempt.observed is True
 
 
+class TestTheBreadthSettingsReachTheRunner:
+    def test_a_kill_too_broad_for_the_configured_threshold_is_not_a_kill(self, tmp_path):
+        """The edit drops a month, which the one candidate test catches. With
+        the floor at 0 and the fraction at 50%, one failure of one test is too
+        broad — so this passes only if the pipeline hands the settings on."""
+        killing = {
+            **_JUDGMENTS,
+            "_Descriptor": {
+                **_JUDGMENTS["_Descriptor"],
+                "start_line": 3,
+                "end_line": 3,
+                "replacement": "    return [payment for _ in range(months - 1)]\n",
+            },
+        }
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True, max_failing_fraction=0.5, breadth_floor=0),
+            judgments=killing,
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE
+        assert "candidate tests failed under the edit" in attempt.reason
+
+
 class TestAnUnverifiedEditIsNotEvidence:
     """The tier gate, through the real pipeline. No verification runs yet, so
     every observed result stays at the static tier and its defect goes to the
