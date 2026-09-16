@@ -29,6 +29,8 @@ from acceptance.concurrency import map_calls
 from acceptance.execution.outcome import SandboxRunResult, TestOutcomeKind
 from acceptance.execution.sandbox import SandboxConfig, run_tests
 from acceptance.mutation.attempt import (
+    DECLINE_OUTCOMES,
+    DescriptorDecline,
     MutationAttempt,
     MutationDescriptor,
     MutationOutcomeKind,
@@ -51,9 +53,12 @@ __all__ = ["DEFAULT_INJECTIONS_IN_FLIGHT", "DescriptorBuilder", "run_mutations"]
 DEFAULT_INJECTIONS_IN_FLIGHT = max(1, (os.cpu_count() or 4) - 2)
 
 #: Given one defect, the regions it named, and the text of each of those files
-#: at head, produce the smallest edit that makes the defect true — or `None`
-#: when it cannot be expressed as one contiguous span replacement.
-DescriptorBuilder = Callable[[Defect, Sequence[Region], dict[str, str]], MutationDescriptor | None]
+#: at head, produce the smallest edit that makes the defect true — or a typed
+#: decline saying why none does, or `None` when no usable answer came back.
+DescriptorBuilder = Callable[
+    [Defect, Sequence[Region], dict[str, str]],
+    MutationDescriptor | DescriptorDecline | None,
+]
 
 
 def run_mutations(
@@ -156,6 +161,12 @@ def _attempt(
         )
 
     descriptor = build_descriptor(defect, readable, sources)
+    if isinstance(descriptor, DescriptorDecline):
+        return MutationAttempt(
+            defect_id=defect.id,
+            outcome=DECLINE_OUTCOMES[descriptor.kind],
+            reason=descriptor.reason,
+        )
     if descriptor is None:
         return _not_mutable(
             defect, "no single contiguous edit was found that would make this defect true"

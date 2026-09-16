@@ -17,6 +17,7 @@ Status is stated in words, not symbols, and every evidence line carries its
 from __future__ import annotations
 
 from acceptance.evidence_tier import EvidenceTier
+from acceptance.mutation.attempt import MutationOutcomeKind
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     CompletionVerdict,
@@ -131,6 +132,10 @@ def render_report(review: Review) -> str:
     # headings that a reader would have to learn to ignore.
     if review.mutation_attempts:
         lines.extend(_mutation_block(review))
+        lines.append("")
+
+    if any(a.outcome is MutationOutcomeKind.ALREADY_PRESENT for a in review.mutation_attempts):
+        lines.extend(_already_present_block(review))
         lines.append("")
 
     if review.set_aside_tests:
@@ -317,6 +322,24 @@ def _mutation_block(review: Review) -> list[str]:
                 "and none failed"
             )
         if attempt.reason:
+            lines.append(f"    {attempt.reason}")
+    return lines
+
+
+def _already_present_block(review: Review) -> list[str]:
+    """Defects the delivered code was said to already have.
+
+    Separate from the injection list because it is a different kind of claim.
+    Every other outcome is about the tests; this one says the code itself fails
+    the criterion. It comes from one model answer with no experiment behind it,
+    so it is a lead for a person to check, not a conclusion — and it moves no
+    rating, because the defect still goes to the static judge like any other
+    that injection could not settle.
+    """
+    lines = ["Defects said to be already present in the delivered code (needs human review):"]
+    for attempt in review.mutation_attempts:
+        if attempt.outcome is MutationOutcomeKind.ALREADY_PRESENT:
+            lines.append(f"  {attempt.defect_id}")
             lines.append(f"    {attempt.reason}")
     return lines
 

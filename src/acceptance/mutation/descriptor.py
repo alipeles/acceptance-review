@@ -15,9 +15,10 @@ refused afterwards — the containment check in `validity.py` still runs, becaus
 the line span inside a named region can still fall outside it.
 
 **Declining is a real answer.** A defect the smallest-edit question has no good
-answer for — one about behavior that is absent, or spread across files — comes
-back with an empty region label and a reason. That becomes `not_mutable` with
-the reason attached, and the defect goes to the static judge. A stage that
+answer for comes back with a named `DeclineKind` and a reason: the defect is
+already true of the code, it is not a property of any code, or it needs more
+than one contiguous edit. Each becomes its own outcome with the model's reason
+attached, and the defect goes to the static judge. A stage that
 invented an edit rather than declining would produce a mutant that tests nothing
 and a survival that means nothing.
 """
@@ -25,10 +26,11 @@ and a survival that means nothing.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Literal
 
 from acceptance.concurrency import map_calls
 from acceptance.llm import ModelClient, StrictResponseModel
-from acceptance.mutation.attempt import MutationDescriptor
+from acceptance.mutation.attempt import DeclineKind, DescriptorDecline, MutationDescriptor
 from acceptance.mutation.region import Region
 from acceptance.partition import partition
 from acceptance.request_blocks import Block, BlockKind, assemble
@@ -94,29 +96,35 @@ code so the defect becomes injectable — turning the default on, adding the \
 missing line. That is the exact opposite of what is wanted: it repairs the code, \
 and the tests that then fail are catching the repair, not the defect.
 
-When the defect already holds, return an EMPTY `region_label` and say so in \
-`reason`, beginning with the words "already present". Name the line or lines \
-that make it true. This is a valuable answer, not a failure — a defect that is \
-present and that the tests do not notice is a finding in itself, and it needs no \
-experiment to establish.
+When the defect already holds, set `decline` to "already_present" and name in \
+`reason` the line or lines that make it true. This is a valuable answer, not a \
+failure — a defect that is present and that the tests do not notice is a finding \
+in itself. Use it ONLY when the defect is a true statement about the code as it \
+is right now. An edit that is merely awkward to write is not a reason to call \
+the defect present.
 
-DECLINING IS A REAL ANSWER
+DECLINING IS A REAL ANSWER — AND A NARROW ONE
 
-Some defects cannot be expressed as one contiguous replacement. A defect about \
-behavior that is ABSENT has no span to replace when the code genuinely omits it \
-— though note that when the code DOES do the right thing, "nothing calls it" is \
-injected by deleting the call, which is an ordinary edit. A defect needing \
-coordinated edits in several places is not one span either.
+Decline only for one of these reasons, and set `decline` to it:
 
-When that is the case, return an EMPTY `region_label` and say in `reason` \
-exactly why no single edit expresses this defect. Leave `replacement` empty and \
-both line numbers 0.
+- "not_a_code_property": the defect is not about what any file says or does. \
+  It is about a process, a question someone would need to check, or a property \
+  of how the software is run rather than of its content. No edit could make it \
+  true.
+- "not_one_contiguous_edit": the defect IS about the code, but making it true \
+  needs coordinated edits in several places, or the behavior it names is \
+  genuinely absent so there is no span to replace. Note that when the code DOES \
+  do the right thing, "nothing calls it" is injected by deleting the call, which \
+  is an ordinary edit, not a decline.
 
-Never invent an edit to avoid declining. A mutant that does not make the named \
-defect true tests nothing, and the tests that survive it will be recorded as \
-proven weak on evidence that does not exist.
+When you decline, say exactly why in `reason`, leave `region_label` and \
+`replacement` empty and both line numbers 0.
 
-When you DO produce an edit, leave `reason` empty."""
+Never invent an edit to avoid declining, and never decline to avoid a hard edit. \
+A mutant that does not make the named defect true tests nothing; a decline for an \
+injectable defect throws away the one observation that could have settled it.
+
+When you DO produce an edit, set `decline` to "none" and leave `reason` empty."""
 
 
 class _Descriptor(StrictResponseModel):
@@ -124,6 +132,9 @@ class _Descriptor(StrictResponseModel):
     start_line: int
     end_line: int
     replacement: str
+    # "none" for an edit; otherwise one of `DeclineKind`'s values. A literal
+    # rather than an optional enum because strict mode has no optional fields.
+    decline: Literal["none", "already_present", "not_a_code_property", "not_one_contiguous_edit"]
     reason: str
 
 
@@ -133,8 +144,11 @@ def build_descriptors(
     sources: dict[str, str],
     client: ModelClient,
     unusable: UnusableAnswerLog | None = None,
-) -> dict[str, MutationDescriptor | None]:
-    """One descriptor per defect, or `None` where the stage declined.
+) -> dict[str, MutationDescriptor | DescriptorDecline | None]:
+    """One answer per defect: a descriptor, a typed decline, or `None`.
+
+    `None` means no usable answer — no region to ask about, or a response that
+    described no span and named no decline.
 
     Calls are issued concurrently and the results are recorded in the order the
     defects were given, not in completion order — `concurrency.py` rule 2, which
@@ -151,7 +165,9 @@ def build_descriptors(
         lambda defect: _ask_about(defect, regions_by_defect[defect.id], sources, client),
     )
 
-    built: dict[str, MutationDescriptor | None] = {defect.id: None for defect in defects}
+    built: dict[str, MutationDescriptor | DescriptorDecline | None] = {
+        defect.id: None for defect in defects
+    }
     for defect, (descriptor, unusable_answers) in zip(asking, answers, strict=True):
         built[defect.id] = descriptor
         if unusable is not None:
@@ -159,7 +175,7 @@ def build_descriptors(
     return built
 
 
-def from_mapping(descriptors: dict[str, MutationDescriptor | None]):
+def from_mapping(descriptors: dict[str, MutationDescriptor | DescriptorDecline | None]):
     """Adapt a prebuilt mapping to the runner's per-defect builder.
 
     The runner asks for one descriptor at a time so it can be driven by a stub
@@ -168,7 +184,7 @@ def from_mapping(descriptors: dict[str, MutationDescriptor | None]):
     the reason the runner never has to know that a model was involved.
     """
 
-    def build(defect: Defect, _regions, _sources) -> MutationDescriptor | None:
+    def build(defect: Defect, _regions, _sources) -> MutationDescriptor | DescriptorDecline | None:
         return descriptors.get(defect.id)
 
     return build
@@ -210,14 +226,22 @@ def _ask_about(
 
 def _descriptor_from(
     result: _Descriptor, regions: Sequence[Region], sources: dict[str, str]
-) -> MutationDescriptor | None:
-    """The answer as a `MutationDescriptor`, or `None` where it declined.
+) -> MutationDescriptor | DescriptorDecline | None:
+    """The answer as a descriptor, a typed decline, or `None` if it is unusable.
 
-    A malformed span is treated as a decline rather than raised. The stage's
-    contract to the runner is a descriptor or nothing, and an answer whose line
-    numbers do not describe a span is one the mechanical checks would have
-    refused a moment later anyway — as `not_mutable`, which is where this lands.
+    A named decline wins over anything else in the answer: the model has said
+    no edit makes this defect true, and an edit it also supplied would be one
+    it does not stand behind.
+
+    A malformed span, or an empty region with no decline named, is `None` rather
+    than raised. The stage's contract to the runner is an answer or nothing, and
+    such an answer is one the mechanical checks would have refused a moment
+    later anyway — as `not_mutable`, which is where this lands.
     """
+    if result.decline != "none":
+        kind = DeclineKind(result.decline)
+        reason = result.reason.strip() or f"declined as {kind.value}, with no reason given"
+        return DescriptorDecline(kind=kind, reason=reason)
     label = result.region_label.strip()
     if not label:
         return None

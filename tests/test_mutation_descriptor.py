@@ -9,6 +9,9 @@ that only a recorded transcript can settle.
 
 from __future__ import annotations
 
+import pytest
+
+from acceptance.mutation.attempt import DeclineKind, DescriptorDecline
 from acceptance.mutation.descriptor import build_descriptors, from_mapping
 from acceptance.mutation.region import Region
 from acceptance.review_state import Defect, DefectType
@@ -55,18 +58,23 @@ def _edit(**overrides) -> dict:
         "start_line": 2,
         "end_line": 2,
         "replacement": "    payment = principal / months * 3\n",
+        "decline": "none",
         "reason": "",
     }
     answer.update(overrides)
     return answer
 
 
-def _decline(reason: str = "the behaviour is absent, so there is no span") -> dict:
+def _decline(
+    reason: str = "the behaviour is absent, so there is no span",
+    kind: str = "not_one_contiguous_edit",
+) -> dict:
     return {
         "region_label": "",
         "start_line": 0,
         "end_line": 0,
         "replacement": "",
+        "decline": kind,
         "reason": reason,
     }
 
@@ -96,8 +104,35 @@ class TestAnEditingAnswer:
 
 
 class TestDecliningIsARealAnswer:
-    def test_an_empty_region_label_declines(self):
-        client = FakeClient(_decline())
+    @pytest.mark.parametrize(
+        "kind",
+        [
+            DeclineKind.ALREADY_PRESENT,
+            DeclineKind.NOT_A_CODE_PROPERTY,
+            DeclineKind.NOT_ONE_CONTIGUOUS_EDIT,
+        ],
+    )
+    def test_a_named_decline_is_kept_with_its_kind_and_reason(self, kind):
+        client = FakeClient(_decline(reason="line 2 already does this", kind=kind.value))
+        built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        assert built["d1"] == DescriptorDecline(kind=kind, reason="line 2 already does this")
+
+    def test_a_named_decline_wins_over_an_edit_in_the_same_answer(self):
+        """The model said no edit makes the defect true; an edit it also sent
+        is one it does not stand behind."""
+        client = FakeClient(_edit(decline="already_present", reason="line 2"))
+        built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        assert isinstance(built["d1"], DescriptorDecline)
+
+    def test_a_decline_with_no_reason_still_carries_one(self):
+        """An unsettled attempt must carry a reason, so a blank one from the
+        model is replaced rather than allowed to fail validation later."""
+        client = FakeClient(_decline(reason="  ", kind="not_a_code_property"))
+        built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
+        assert built["d1"].reason
+
+    def test_an_empty_region_with_no_decline_named_is_unusable(self):
+        client = FakeClient(_edit(region_label=""))
         built = build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
         assert built["d1"] is None
 

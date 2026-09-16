@@ -103,6 +103,7 @@ _JUDGMENTS = {
         "start_line": 2,
         "end_line": 2,
         "replacement": "    payment = principal / months * 3\n",
+        "decline": "none",
         "reason": "",
     },
     "_Coverage": {
@@ -170,7 +171,18 @@ _DECLINING = {
         "start_line": 0,
         "end_line": 0,
         "replacement": "",
+        "decline": "not_one_contiguous_edit",
         "reason": "the behaviour is absent, so there is no span to replace",
+    },
+}
+
+#: A descriptor answer saying the delivered code already has the defect.
+_ALREADY_PRESENT = {
+    **_DECLINING,
+    "_Descriptor": {
+        **_DECLINING["_Descriptor"],
+        "decline": "already_present",
+        "reason": "line 2 already divides without interest",
     },
 }
 
@@ -237,11 +249,49 @@ class TestTheStaticJudgeSeesOnlyTheRemainder:
         assert "_PairVerdicts" in schemas
 
     def test_the_unsettled_defect_is_recorded_with_its_reason(self, tmp_path):
+        """The model's own reason, not a generic sentence put in its place."""
         review = _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=_DECLINING)
         (attempt,) = review.mutation_attempts
         assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE
-        assert attempt.reason
+        assert attempt.reason == "the behaviour is absent, so there is no span to replace"
         assert attempt.tier is EvidenceTier.STATIC
+
+
+class TestAnAlreadyPresentDefect:
+    def test_it_is_recorded_as_its_own_outcome(self, tmp_path):
+        review = _review(
+            tmp_path, execution=ExecutionSettings(enabled=True), judgments=_ALREADY_PRESENT
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.outcome is MutationOutcomeKind.ALREADY_PRESENT
+        assert attempt.reason == "line 2 already divides without interest"
+
+    def test_it_still_reaches_the_static_judge(self, tmp_path):
+        """Additive: the decline is typed, but the defect is routed exactly as
+        any other defect injection could not settle."""
+        capture: list = []
+        _review(
+            tmp_path,
+            execution=ExecutionSettings(enabled=True),
+            capture=capture,
+            judgments=_ALREADY_PRESENT,
+        )
+        assert "_PairVerdicts" in _schemas(capture)
+
+    def test_the_report_flags_it_for_human_review(self, tmp_path):
+        report = render_report(
+            _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=_ALREADY_PRESENT)
+        )
+        heading = "Defects said to be already present in the delivered code (needs human review):"
+        assert heading in report
+        after = report.split(heading, 1)[1]
+        assert "line 2 already divides without interest" in after
+
+    def test_the_block_is_absent_when_nothing_was_already_present(self, tmp_path):
+        report = render_report(
+            _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=_DECLINING)
+        )
+        assert "already present in the delivered code" not in report
 
     def test_no_model_call_decides_validity(self, tmp_path):
         """DR-171 Decision 3, structurally: after the descriptor is proposed,

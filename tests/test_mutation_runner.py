@@ -20,7 +20,12 @@ import pytest
 
 from acceptance.evidence_tier import EvidenceTier
 from acceptance.execution.sandbox import SandboxConfig
-from acceptance.mutation.attempt import MutationDescriptor, MutationOutcomeKind
+from acceptance.mutation.attempt import (
+    DeclineKind,
+    DescriptorDecline,
+    MutationDescriptor,
+    MutationOutcomeKind,
+)
 from acceptance.mutation.baseline import Baseline, establish_baseline
 from acceptance.mutation.runner import run_mutations
 from acceptance.review_state import ChangeSet, Defect, DefectSet, DefectType, DiffHunk, FileChange
@@ -215,6 +220,25 @@ class TestEveryDefectIsAccountedFor:
         )
         assert attempts[0].outcome is MutationOutcomeKind.NOT_MUTABLE
         assert "no single contiguous edit" in attempts[0].reason
+
+    @pytest.mark.parametrize(
+        ("kind", "outcome"),
+        [
+            (DeclineKind.ALREADY_PRESENT, MutationOutcomeKind.ALREADY_PRESENT),
+            (DeclineKind.NOT_A_CODE_PROPERTY, MutationOutcomeKind.NOT_A_CODE_PROPERTY),
+            (DeclineKind.NOT_ONE_CONTIGUOUS_EDIT, MutationOutcomeKind.NOT_MUTABLE),
+        ],
+    )
+    def test_a_typed_decline_becomes_its_outcome_with_the_model_s_reason(
+        self, project, change_set, green, kind, outcome
+    ):
+        decline = DescriptorDecline(kind=kind, reason="the model's own words")
+        attempts = run_mutations(
+            _sets(_defect("d1")), change_set, project, green, lambda _d, _r, _s: decline
+        )
+        assert attempts[0].outcome is outcome
+        assert attempts[0].reason == "the model's own words"
+        assert attempts[0].tier is EvidenceTier.STATIC
 
     def test_an_invalid_descriptor_is_not_mutable_with_the_check_s_reason(
         self, project, change_set, green

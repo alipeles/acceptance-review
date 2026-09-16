@@ -27,7 +27,10 @@ from acceptance.evidence_tier import Component, EvidenceTier, authorize_tier
 from acceptance.model_base import PersistableModel as _Model
 
 __all__ = [
+    "DECLINE_OUTCOMES",
     "SETTLING_KINDS",
+    "DeclineKind",
+    "DescriptorDecline",
     "MutationAttempt",
     "MutationDescriptor",
     "MutationOutcomeKind",
@@ -36,11 +39,29 @@ __all__ = [
 
 
 class MutationOutcomeKind(str, Enum):
-    """The four things that can become of a defect the stage was asked about."""
+    """The things that can become of a defect the stage was asked about.
+
+    Three of them record why no mutant was built, and they are kept apart
+    because each asks something different of the reader:
+
+    - `already_present`: the descriptor stage said the delivered code already
+      behaves the way the defect describes. That is a claim that the code is
+      wrong, not that the tests are thin, so it is shown as needing human review.
+    - `not_a_code_property`: the defect is not about what any span of code or
+      text does — a question about the process, say — so no edit could settle it.
+    - `not_mutable`: the defect is about code, but no single valid contiguous
+      edit could be built for it. Also the outcome when a mechanical check
+      refuses the edit, or the defect named no usable region.
+
+    All three are routed to the static judge exactly as before; none moves a
+    rating.
+    """
 
     KILLED = "killed"
     SURVIVED = "survived"
     NOT_MUTABLE = "not_mutable"
+    ALREADY_PRESENT = "already_present"
+    NOT_A_CODE_PROPERTY = "not_a_code_property"
     NOT_ATTEMPTED = "not_attempted"
 
 
@@ -96,6 +117,34 @@ class MutationDescriptor(_Model):
     @property
     def line_count(self) -> int:
         return self.end_line - self.start_line + 1
+
+
+class DeclineKind(str, Enum):
+    """Why the descriptor stage built no edit, as the model must choose it.
+
+    A fixed choice rather than a sentence, so the three cases can be told apart
+    without a person reading every reason, and so a model that gave up has to
+    name a category rather than hide in a generic sentence.
+    """
+
+    ALREADY_PRESENT = "already_present"
+    NOT_A_CODE_PROPERTY = "not_a_code_property"
+    NOT_ONE_CONTIGUOUS_EDIT = "not_one_contiguous_edit"
+
+
+#: The outcome each kind of decline is recorded as.
+DECLINE_OUTCOMES = {
+    DeclineKind.ALREADY_PRESENT: MutationOutcomeKind.ALREADY_PRESENT,
+    DeclineKind.NOT_A_CODE_PROPERTY: MutationOutcomeKind.NOT_A_CODE_PROPERTY,
+    DeclineKind.NOT_ONE_CONTIGUOUS_EDIT: MutationOutcomeKind.NOT_MUTABLE,
+}
+
+
+class DescriptorDecline(_Model):
+    """The descriptor stage's answer when it built no edit, with its reason."""
+
+    kind: DeclineKind
+    reason: str
 
 
 class MutationAttempt(_Model):
