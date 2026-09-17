@@ -75,6 +75,35 @@ v7 also refused 8 edits after their run, all correctly, and recorded 12
 already-present claims, 9 of them right. Edits that change the wrong thing are
 the largest remaining problem and nothing adopted addresses them.
 
+### Surrounding code, measured (audit v8)
+
+Both model calls in the tier are now shown M2.2's bounded retrieval — each
+region's enclosing definition and its in-repo call sites, **test files withheld**
+by the change set's own test-path rule, because a call that reads the tests can
+aim an edit at what they catch. Not whole files: those change how much the call
+sees as well as what, and make every request unique.
+
+**It did not improve the edits.** Same 64 defects and 22 criteria as v7:
+
+| | v7 | v8 |
+|---|---|---|
+| edits counted | 44 | 48 |
+| put the named defect in | 25 (57%) | 25 (52%) |
+| real kills | 23 of 36 | 21 of 39 |
+| edits that break far more | 4 | 2 |
+| already-present claims right | 9 of 12 | 9 of 9 |
+
+One run each, so a 5-point move is not separable from noise. **And the verifier
+re-measured with the same context got no better**: 25 of 35 bad edits refused
+(71%, from 77%) with false alarms unchanged at 8 of 31. Its unresolved "cannot
+tell" refusals are about code the edited code *calls*, which this retrieval does
+not return — it returns callers.
+
+**The breadth check's first measured false refusal** is in v8: the reversed
+containment check in `region.py` is exactly what its defect names, and it failed
+26 tests because every injected edit passes through that one check. A defect in
+shared code cannot be distinguished from a broad edit by count alone.
+
 ## Revision — 2026-09-16: a defect is two behaviours, and validity is more than four checks
 
 Measured over #45's own Gate 2 review — 25 criteria, the diff `61c5a3c..518f876`,
