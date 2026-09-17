@@ -5871,3 +5871,33 @@ the record.
   > rather than the judgement itself.
 - **Status:** **filed 2026-09-03 as #331**, approved at #43's Gate 2 and attached
   as a sub-issue of #183, the evidence-judgement umbrella. Closed here.
+
+
+### [2026-09-17] A schema-constrained call to an Anthropic model comes back unusable
+- **Kind:** filing
+- **Found during:** #45, the third measurement arm (a Claude model building the injected edits)
+- **Where:** `src/acceptance/llm.py:908` (`_persist_live_call`), with
+  `src/acceptance/mutation/descriptor.py::_Descriptor` as the response model
+- **Severity:** should-fix
+- **What's wrong:** Running one stage on `anthropic/claude-sonnet-5` aborts the
+  run. The whole answer arrives as a JSON string inside the first field, so
+  validation fails with seven errors at once: `code_currently_does` holds the
+  entire object as text and every other field is missing. The same request shape
+  on `openai/gpt-5.4` and `openai/gpt-5.4-mini` validates. The harness asks
+  LiteLLM for `response_format={"type": "json_schema", ..., "strict": True}`,
+  which for Anthropic becomes tool use; something in that translation is not
+  producing the object the schema describes. Cause not yet identified — it could
+  be the nesting of the schema, LiteLLM's Anthropic path, or the `strict` flag
+  being unsupported there.
+- **Why I didn't act:** out of scope for #45, and it is provider plumbing rather
+  than the mutation stage. It also blocks a measurement #45 wanted, so it needs
+  its own task rather than a patch inside this one.
+- **Drafted fix:** file as a sub-issue of #184 (the determinism and
+  reproducibility umbrella), titled *A schema-constrained call to an Anthropic
+  model returns its answer as text*. Body: the failure above with the traceback;
+  that M0.4 requires the harness to support swapping providers so their cost and
+  judgement can be compared, which this prevents; and an Acceptance check of one
+  recorded stage answered by an Anthropic model, validating against the same
+  response model an OpenAI model already satisfies, with a test that fails if the
+  reply is accepted as free text.
+- **Status:** open
