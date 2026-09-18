@@ -296,7 +296,13 @@ def _mutation_block(review: Review) -> list[str]:
     lines = ["Defects injected, and which tests caught them:"]
     for attempt in review.mutation_attempts:
         lines.append("")
-        lines.append(f"  [{attempt.outcome.value}] {attempt.defect_id}")
+        # The label carries the not-counted mark, not just the explanation two
+        # lines below it. "[killed]" above "caught by (1)" reads as the
+        # conclusion to anyone skimming, and for an unverified edit it is not
+        # one — the explanation was there and still left the outcome word
+        # standing on its own.
+        mark = "" if attempt.verified or not attempt.observed else ", NOT COUNTED"
+        lines.append(f"  [{attempt.outcome.value}{mark}] {attempt.defect_id}")
         descriptor = attempt.descriptor
         if descriptor is not None:
             span = f"{descriptor.start_line}-{descriptor.end_line}"

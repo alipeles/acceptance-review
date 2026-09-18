@@ -355,6 +355,32 @@ class TestThroughTheWholeReview:
 
     def test_the_report_says_the_result_is_not_counted(self, repo):
         report = render_report(_review(repo, execution=ExecutionSettings(enabled=True)))
+        # The outcome label itself, so the mark cannot be missed by a reader who
+        # reads "[killed]" and "caught by" and stops there.
+        assert "[killed, NOT COUNTED]" in report
         assert "edit NOT verified to make the defect true" in report
         assert "this result is not counted" in report
         assert "tier: static" in report
+
+    def test_a_verified_result_carries_no_such_mark(self, repo):
+        """The control: the mark must distinguish, not decorate every result."""
+        judgments = {
+            **_JUDGMENTS,
+            "_Verification": {
+                "before_does": "expected",
+                "after_does": "defective",
+                "reason": "line 3 now returns one entry fewer",
+            },
+        }
+        root, base, head = repo
+        review = run_review(
+            task_text=_TASK,
+            change_set=extract_change_set(root, base, head),
+            repo=root,
+            client=client_dispatching(judgments),
+            reviewed_revision=head,
+            execution=ExecutionSettings(enabled=True, verify_edits=True),
+        )
+        report = render_report(review)
+        assert "[killed]" in report
+        assert "NOT COUNTED" not in report
