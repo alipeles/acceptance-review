@@ -265,6 +265,15 @@ _JUDGMENTS = {
             }
         ]
     },
+    # Verification runs -- the tier runs only when it is on -- and REFUSES this
+    # edit. That is what makes an observed-but-unverified result reachable
+    # through the pipeline at all, since `decide_execution` declines the run
+    # when verification is off.
+    "_Verification": {
+        "before_does": "expected",
+        "after_does": "unchanged",
+        "reason": "the edit changes nothing the defect names",
+    },
     "_Coverage": {
         "classifications": [
             {
@@ -302,13 +311,23 @@ def repo(tmp_path):
     return root, base, _git(root, "rev-parse", "HEAD")
 
 
-def _review(repo, *, execution, capture=None):
+_VERIFIED = {
+    **_JUDGMENTS,
+    "_Verification": {
+        "before_does": "expected",
+        "after_does": "defective",
+        "reason": "line 3 now returns one entry fewer",
+    },
+}
+
+
+def _review(repo, *, execution, capture=None, judgments=None):
     root, base, head = repo
     return run_review(
         task_text=_TASK,
         change_set=extract_change_set(root, base, head),
         repo=root,
-        client=client_dispatching(_JUDGMENTS, capture=capture),
+        client=client_dispatching(judgments or _JUDGMENTS, capture=capture),
         reviewed_revision=head,
         execution=execution,
     )
@@ -318,7 +337,7 @@ class TestThroughTheWholeReview:
     def test_the_criterion_is_rated_as_if_execution_had_not_run(self, repo):
         """Nothing verifies edits by default, so a review that injected and
         observed must land exactly where one that did not injects lands."""
-        executed = _review(repo, execution=ExecutionSettings(enabled=True))
+        executed = _review(repo, execution=ExecutionSettings(verify_edits=True))
         static_only = _review(repo, execution=None)
         (with_it,) = [o for o in executed.obligation_map if o.id == "equal-payments"]
         (without,) = [o for o in static_only.obligation_map if o.id == "equal-payments"]
@@ -329,14 +348,14 @@ class TestThroughTheWholeReview:
     def test_the_observation_was_really_made(self, repo):
         """The control for the test above: if no edit ran, that equality would
         hold for an uninteresting reason."""
-        review = _review(repo, execution=ExecutionSettings(enabled=True))
+        review = _review(repo, execution=ExecutionSettings(verify_edits=True))
         (attempt,) = review.mutation_attempts
         assert attempt.observed is True
         assert attempt.verified is False
         assert attempt.tests_run
 
     def test_no_stored_verdict_claims_the_executed_tier(self, repo):
-        review = _review(repo, execution=ExecutionSettings(enabled=True))
+        review = _review(repo, execution=ExecutionSettings(verify_edits=True))
         assert all(v.tier is EvidenceTier.STATIC for v in review.pair_verdicts)
 
     def test_the_static_judge_is_told_nothing_about_the_edit(self, repo):
@@ -345,7 +364,7 @@ class TestThroughTheWholeReview:
         hint. It is given the defect, and no trace of what was injected or of
         what the tests did about it."""
         capture: list = []
-        _review(repo, execution=ExecutionSettings(enabled=True), capture=capture)
+        _review(repo, execution=ExecutionSettings(verify_edits=True), capture=capture)
         prompts = [c["prompt"] for c in capture if c["schema"] == "_PairVerdicts"]
         assert prompts, "the static judge was never asked, so there is no request to inspect"
         for prompt in prompts:
@@ -354,7 +373,7 @@ class TestThroughTheWholeReview:
             assert "injected" not in prompt
 
     def test_the_report_says_the_result_is_not_counted(self, repo):
-        report = render_report(_review(repo, execution=ExecutionSettings(enabled=True)))
+        report = render_report(_review(repo, execution=ExecutionSettings(verify_edits=True)))
         # The outcome label itself, so the mark cannot be missed by a reader who
         # reads "[killed]" and "caught by" and stops there.
         assert "[killed, NOT COUNTED]" in report
@@ -379,7 +398,7 @@ class TestThroughTheWholeReview:
             repo=root,
             client=client_dispatching(judgments),
             reviewed_revision=head,
-            execution=ExecutionSettings(enabled=True, verify_edits=True),
+            execution=ExecutionSettings(verify_edits=True),
         )
         report = render_report(review)
         assert "[killed]" in report

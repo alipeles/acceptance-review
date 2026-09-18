@@ -1,8 +1,13 @@
-"""The `--execute` flags reach the pipeline, and a halt is not an error.
+"""The CLI hands the pipeline execution settings, and asks nobody whether to run.
 
-A flag that parses but never arrives is the same shape of hole as a helper the
-pipeline never calls, so these assert what `run_check` was actually given rather
-than that the parser accepted the words.
+**There is no `--execute` flag and no override for failing tests.** Whether
+running the project's tests is worth doing is the review's own decision
+(`mutation/settings.py::decide_execution`), and a red candidate test is set
+aside rather than stopping anything — the human's rulings of 2026-09-18.
+
+These assert what `run_check` was actually given, not that the parser accepted
+some words: a flag that parses but never arrives is the same shape of hole as a
+helper the pipeline never calls.
 """
 
 from __future__ import annotations
@@ -10,8 +15,7 @@ from __future__ import annotations
 import pytest
 
 from acceptance import cli
-from acceptance.mutation.baseline import Baseline
-from acceptance.mutation.settings import ReviewHalted
+from acceptance.mutation.settings import ExecutionSettings
 
 
 @pytest.fixture
@@ -31,60 +35,35 @@ def _argv(*extra: str) -> list[str]:
     return ["check", "--task", "t.md", "--base", "HEAD~1", *extra]
 
 
-class TestTheFlagsArrive:
-    def test_execution_is_off_without_the_flag(self, captured_settings):
+class TestTheSettingsArrive:
+    def test_the_pipeline_is_given_settings_to_decide_with(self, captured_settings):
+        """Not `None`: the review cannot decide whether a run is worth doing
+        without the budgets a run would use."""
         cli.main(_argv())
-        assert captured_settings["execution"].enabled is False
+        assert isinstance(captured_settings["execution"], ExecutionSettings)
 
-    def test_execute_turns_it_on(self, captured_settings):
-        cli.main(_argv("--execute"))
-        assert captured_settings["execution"].enabled is True
+    def test_the_settings_carry_no_on_switch(self, captured_settings):
+        """The decision is computed per review, so there is no field here for
+        an operator to set — and none for the CLI to pass."""
+        cli.main(_argv())
+        fields = set(type(captured_settings["execution"]).model_fields)
+        assert "enabled" not in fields
+        assert "allow_failing_tests" not in fields
 
-    def test_the_override_is_off_by_default(self, captured_settings):
-        cli.main(_argv("--execute"))
-        assert captured_settings["execution"].allow_failing_tests is False
-
-    def test_allow_failing_tests_arrives(self, captured_settings):
-        cli.main(_argv("--execute", "--allow-failing-tests"))
-        assert captured_settings["execution"].allow_failing_tests is True
+    def test_verification_is_off_by_default(self, captured_settings):
+        """It is below its adoption bar (#335), and while it is off no
+        observation can count — which is what makes a run not worth doing."""
+        cli.main(_argv())
+        assert captured_settings["execution"].verify_edits is False
 
 
-class TestAHaltIsReportedNotRaised:
-    @pytest.fixture
-    def halting(self, monkeypatch):
-        baseline = Baseline(
-            halted=True,
-            halt_reason="1 candidate test(s) fail against the code as delivered",
-            set_aside=[
-                {
-                    "test_id": "tests/test_a.py::test_broken",
-                    "kind": "failed",
-                    "reason": "the test failed against the code as delivered",
-                }
-            ],
-        )
-
-        def fake_run_check(*_args, **_kwargs):
-            raise ReviewHalted(baseline)
-
-        monkeypatch.setattr(cli, "run_check", fake_run_check)
-
-    def test_the_exit_code_distinguishes_a_halt_from_a_failure(self, halting, capsys):
-        """Exit 2, not 1. Nothing failed — the review declined to spend on a
-        control that would prove nothing — and a caller scripting this has to be
-        able to tell the two apart."""
-        assert cli.main(_argv("--execute")) == 2
-
-    def test_the_failing_test_is_named_on_stderr(self, halting, capsys):
-        cli.main(_argv("--execute"))
-        err = capsys.readouterr().err
-        assert "tests/test_a.py::test_broken" in err
-
-    def test_stdout_carries_no_report(self, halting, capsys):
-        """A halt must not be mistakable for a clean review."""
-        cli.main(_argv("--execute"))
-        assert capsys.readouterr().out == ""
-
-    def test_the_override_is_suggested(self, halting, capsys):
-        cli.main(_argv("--execute"))
-        assert "--allow-failing-tests" in capsys.readouterr().err
+class TestTheRetiredFlags:
+    @pytest.mark.parametrize("flag", ["--execute", "--allow-failing-tests"])
+    def test_the_flag_is_gone(self, flag, capsys, monkeypatch):
+        """Refused rather than silently accepted, so a caller still passing it
+        learns the decision moved rather than believing they switched something
+        on."""
+        monkeypatch.setattr(cli, "run_check", lambda *a, **k: 0)
+        with pytest.raises(SystemExit):
+            cli.main(_argv(flag))
+        assert "unrecognized arguments" in capsys.readouterr().err

@@ -23,13 +23,11 @@ from __future__ import annotations
 import subprocess
 from typing import ClassVar
 
-import pytest
-
 from acceptance.change.diff import extract_change_set
 from acceptance.evidence_tier import EvidenceTier
 from acceptance.execution.sandbox import SandboxConfig
 from acceptance.mutation.attempt import MutationOutcomeKind, RepairCorroboration
-from acceptance.mutation.settings import ExecutionSettings, ReviewHalted
+from acceptance.mutation.settings import ExecutionSettings
 from acceptance.pipeline import run_review
 from acceptance.report import render_report
 from tests.support import client_dispatching
@@ -109,6 +107,13 @@ _JUDGMENTS = {
         "replacement": "    payment = principal / months * 3\n",
         "decline": "none",
         "reason": "",
+    },
+    # The tier runs only when verification is on (`decide_execution`), so every
+    # fixture that exercises it needs an answer here. This one verifies the edit.
+    "_Verification": {
+        "before_does": "expected",
+        "after_does": "defective",
+        "reason": "line 2 now triples the payment",
     },
     "_Coverage": {
         "classifications": [
@@ -229,7 +234,7 @@ class TestTheTierRuns:
         returns are what the edit-building call is shown, rather than being
         dropped on the way through the review state."""
         capture: list = []
-        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        _review(tmp_path, execution=ExecutionSettings(verify_edits=True), capture=capture)
         (prompt,) = [call["prompt"] for call in capture if call["schema"] == "_Descriptor"]
         assert "EXPECTED: the code behaves as the criterion requires" in prompt
         assert "DEFECTIVE: the code behaves as this defect describes" in prompt
@@ -238,7 +243,7 @@ class TestTheTierRuns:
         """Through the real pipeline: M2.2's retrieval reaches the edit-building
         call — the enclosing definition, numbered with the file's own lines."""
         capture: list = []
-        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        _review(tmp_path, execution=ExecutionSettings(verify_edits=True), capture=capture)
         (prompt,) = [call["prompt"] for call in capture if call["schema"] == "_Descriptor"]
         assert "## Surrounding code (enclosing definitions and their callers)" in prompt
         assert "function amortize — loan.py lines 1-3" in prompt
@@ -247,12 +252,12 @@ class TestTheTierRuns:
         """Acceptance, by the same path a review run takes: the pipeline asks
         for a mutant, rather than merely being able to."""
         capture: list = []
-        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        _review(tmp_path, execution=ExecutionSettings(verify_edits=True), capture=capture)
         assert "_Descriptor" in _schemas(capture)
 
     def test_the_survival_is_observed_and_recorded(self, tmp_path):
         """The test runs the mutated line and still passes."""
-        review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
+        review = _review(tmp_path, execution=ExecutionSettings(verify_edits=True))
         (attempt,) = review.mutation_attempts
         assert attempt.outcome is MutationOutcomeKind.SURVIVED
         assert attempt.observed is True
@@ -279,10 +284,16 @@ class TestVerification:
         },
     }
 
-    def test_off_by_default_so_no_verification_call_is_made(self, tmp_path):
+    def test_nothing_runs_at_all_by_default(self, tmp_path):
+        """With verification off, no result could count, so `decide_execution`
+        declines the whole run — no control run, no descriptor, no verification."""
         capture: list = []
-        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        review = _review(tmp_path, execution=ExecutionSettings(), capture=capture)
         assert "_Verification" not in _schemas(capture)
+        assert "_Descriptor" not in _schemas(capture)
+        assert review.mutation_attempts == []
+        assert review.execution_decision.run is False
+        assert "no result could have counted" in review.execution_decision.reason
 
     def test_a_verified_edit_reaches_the_executed_tier(self, tmp_path):
         """#45's Acceptance, visible in the pipeline's own output — once an
@@ -290,7 +301,7 @@ class TestVerification:
         capture: list = []
         review = _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True, verify_edits=True),
+            execution=ExecutionSettings(verify_edits=True),
             capture=capture,
             judgments=self._VERIFIED,
         )
@@ -303,7 +314,7 @@ class TestVerification:
         capture: list = []
         review = _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True, verify_edits=True),
+            execution=ExecutionSettings(verify_edits=True),
             capture=capture,
             judgments=self._REFUSED,
         )
@@ -316,7 +327,7 @@ class TestVerification:
         capture: list = []
         _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True, verify_edits=True),
+            execution=ExecutionSettings(verify_edits=True),
             capture=capture,
             judgments=self._VERIFIED,
         )
@@ -328,7 +339,7 @@ class TestVerification:
         capture: list = []
         _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True, verify_edits=True),
+            execution=ExecutionSettings(verify_edits=True),
             capture=capture,
             judgments=self._VERIFIED,
         )
@@ -352,7 +363,9 @@ class TestTheBreadthSettingsReachTheRunner:
         }
         review = _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True, max_failing_fraction=0.5, breadth_floor=0),
+            execution=ExecutionSettings(
+                verify_edits=True, max_failing_fraction=0.5, breadth_floor=0
+            ),
             judgments=killing,
         )
         (attempt,) = review.mutation_attempts
@@ -360,33 +373,51 @@ class TestTheBreadthSettingsReachTheRunner:
         assert "candidate tests failed under the edit" in attempt.reason
 
 
+_REFUSED_VERIFICATION = {
+    **_JUDGMENTS,
+    "_Verification": {
+        "before_does": "expected",
+        "after_does": "unchanged",
+        "reason": "the edit changes nothing the defect names",
+    },
+}
+
+
 class TestAnUnverifiedEditIsNotEvidence:
-    """The tier gate, through the real pipeline. No verification runs yet, so
-    every observed result stays at the static tier and its defect goes to the
+    """The tier gate, through the real pipeline. An observed result whose edit
+    verification refused stays at the static tier and its defect goes to the
     static judge — a bad edit costs compute, not a wrong tier."""
 
+    def _refused(self, tmp_path, capture=None):
+        return _review(
+            tmp_path,
+            execution=ExecutionSettings(verify_edits=True),
+            judgments=_REFUSED_VERIFICATION,
+            capture=capture,
+        )
+
     def test_the_criterion_stays_at_the_static_tier(self, tmp_path):
-        review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
+        review = self._refused(tmp_path)
         (obligation,) = [o for o in review.obligation_map if o.id == "equal-payments"]
         assert obligation.achieved_evidence_tier is EvidenceTier.STATIC
 
     def test_the_attempt_is_not_settled(self, tmp_path):
-        review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
+        review = self._refused(tmp_path)
         (attempt,) = review.mutation_attempts
         assert attempt.verified is False
         assert attempt.settled is False
 
     def test_its_defect_still_goes_to_the_static_judge(self, tmp_path):
         capture: list = []
-        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        self._refused(tmp_path, capture=capture)
         assert "_PairVerdicts" in _schemas(capture)
 
     def test_no_executed_verdict_is_stored(self, tmp_path):
-        review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
+        review = self._refused(tmp_path)
         assert all(v.tier is EvidenceTier.STATIC for v in review.pair_verdicts)
 
     def test_the_report_says_the_result_is_not_counted(self, tmp_path):
-        report = render_report(_review(tmp_path, execution=ExecutionSettings(enabled=True)))
+        report = render_report(self._refused(tmp_path))
         assert "edit NOT verified to make the defect true" in report
 
 
@@ -408,7 +439,7 @@ class TestTheStaticJudgeSeesOnlyTheRemainder:
         capture: list = []
         _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True),
+            execution=ExecutionSettings(verify_edits=True),
             capture=capture,
             judgments=_DECLINING,
         )
@@ -418,7 +449,9 @@ class TestTheStaticJudgeSeesOnlyTheRemainder:
 
     def test_the_unsettled_defect_is_recorded_with_its_reason(self, tmp_path):
         """The model's own reason, not a generic sentence put in its place."""
-        review = _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=_DECLINING)
+        review = _review(
+            tmp_path, execution=ExecutionSettings(verify_edits=True), judgments=_DECLINING
+        )
         (attempt,) = review.mutation_attempts
         assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE
         assert attempt.reason == "the behaviour is absent, so there is no span to replace"
@@ -428,7 +461,7 @@ class TestTheStaticJudgeSeesOnlyTheRemainder:
 class TestAnAlreadyPresentDefect:
     def test_it_is_recorded_as_its_own_outcome(self, tmp_path):
         review = _review(
-            tmp_path, execution=ExecutionSettings(enabled=True), judgments=_ALREADY_PRESENT
+            tmp_path, execution=ExecutionSettings(verify_edits=True), judgments=_ALREADY_PRESENT
         )
         (attempt,) = review.mutation_attempts
         assert attempt.outcome is MutationOutcomeKind.ALREADY_PRESENT
@@ -440,7 +473,7 @@ class TestAnAlreadyPresentDefect:
         capture: list = []
         _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True),
+            execution=ExecutionSettings(verify_edits=True),
             capture=capture,
             judgments=_ALREADY_PRESENT,
         )
@@ -448,7 +481,9 @@ class TestAnAlreadyPresentDefect:
 
     def test_the_report_flags_it_as_a_model_asserted_claim_at_the_static_tier(self, tmp_path):
         report = render_report(
-            _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=_ALREADY_PRESENT)
+            _review(
+                tmp_path, execution=ExecutionSettings(verify_edits=True), judgments=_ALREADY_PRESENT
+            )
         )
         heading = (
             "Defects the delivered code already has, as asserted by the model "
@@ -461,13 +496,13 @@ class TestAnAlreadyPresentDefect:
 
     def test_the_block_is_absent_when_nothing_was_already_present(self, tmp_path):
         report = render_report(
-            _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=_DECLINING)
+            _review(tmp_path, execution=ExecutionSettings(verify_edits=True), judgments=_DECLINING)
         )
         assert "as asserted by the model" not in report
 
     def test_without_a_repair_the_claim_is_not_run(self, tmp_path):
         review = _review(
-            tmp_path, execution=ExecutionSettings(enabled=True), judgments=_ALREADY_PRESENT
+            tmp_path, execution=ExecutionSettings(verify_edits=True), judgments=_ALREADY_PRESENT
         )
         (attempt,) = review.mutation_attempts
         assert attempt.repair_corroboration is RepairCorroboration.NOT_RUN
@@ -475,7 +510,7 @@ class TestAnAlreadyPresentDefect:
     def test_a_repair_every_test_passes_means_no_test_pins_the_expected_behaviour(self, tmp_path):
         review = _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True),
+            execution=ExecutionSettings(verify_edits=True),
             judgments=_ALREADY_PRESENT_WITH_REPAIR,
         )
         (attempt,) = review.mutation_attempts
@@ -489,7 +524,7 @@ class TestAnAlreadyPresentDefect:
     def test_a_repair_a_test_fails_names_the_test_asserting_the_defect(self, tmp_path):
         review = _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True),
+            execution=ExecutionSettings(verify_edits=True),
             judgments=_ALREADY_PRESENT_REPAIR_FAILS_A_TEST,
         )
         (attempt,) = review.mutation_attempts
@@ -504,7 +539,7 @@ class TestAnAlreadyPresentDefect:
         defect. Nothing about the claim reaches the rating."""
         review = _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True),
+            execution=ExecutionSettings(verify_edits=True),
             judgments=_ALREADY_PRESENT_REPAIR_FAILS_A_TEST,
         )
         (attempt,) = review.mutation_attempts
@@ -519,7 +554,7 @@ class TestAnAlreadyPresentDefect:
         this pins that no second call creeps in between.
         """
         capture: list = []
-        _review(tmp_path, execution=ExecutionSettings(enabled=True), capture=capture)
+        _review(tmp_path, execution=ExecutionSettings(verify_edits=True), capture=capture)
         schemas = _schemas(capture)
 
         # One call per defect, and this fixture has one defect. A second would
@@ -530,7 +565,7 @@ class TestAnAlreadyPresentDefect:
         # after the execution tier: the static pair judgement, which an
         # unverified result still reaches, or the ordinary rest of the review.
         next_call = schemas[schemas.index("_Descriptor") + 1]
-        assert next_call in {"_PairVerdicts", "_Coverage"}, (
+        assert next_call in {"_Verification", "_PairVerdicts", "_Coverage"}, (
             "a model call was made between proposing the mutant and recording its "
             f"outcome: {next_call}"
         )
@@ -547,7 +582,7 @@ class TestExecutionOffChangesNothing:
 
     def test_no_descriptor_call_is_made(self, tmp_path):
         capture: list = []
-        _review(tmp_path, execution=ExecutionSettings(enabled=False), capture=capture)
+        _review(tmp_path, execution=ExecutionSettings(), capture=capture)
         assert "_Descriptor" not in _schemas(capture)
 
     def test_the_report_carries_no_execution_headings(self, tmp_path):
@@ -563,19 +598,19 @@ class TestWhatIsPersistedAndRendered:
         """DR-171 Decision 3 spends no model call confirming the mutant really
         violates the obligation. Recording what was injected is the whole of
         what replaces that, so it has to survive into review state."""
-        review = _review(tmp_path, execution=ExecutionSettings(enabled=True))
+        review = _review(tmp_path, execution=ExecutionSettings(verify_edits=True))
         (attempt,) = review.mutation_attempts
         assert attempt.descriptor is not None
         assert "* 3" in attempt.descriptor.replacement
 
     def test_the_report_shows_the_injected_text(self, tmp_path):
-        report = render_report(_review(tmp_path, execution=ExecutionSettings(enabled=True)))
+        report = render_report(_review(tmp_path, execution=ExecutionSettings(verify_edits=True)))
         assert "Defects injected, and which tests caught them:" in report
         assert "payment = principal / months * 3" in report
 
     def test_the_report_shows_what_the_edit_replaced(self, tmp_path):
         """Removed and added lines both render, as a diff reads."""
-        report = render_report(_review(tmp_path, execution=ExecutionSettings(enabled=True)))
+        report = render_report(_review(tmp_path, execution=ExecutionSettings(verify_edits=True)))
         assert "      -     payment = principal / months\n" in report
         assert "      +     payment = principal / months * 3" in report
 
@@ -587,20 +622,20 @@ class TestWhatIsPersistedAndRendered:
             "_Descriptor": {**_JUDGMENTS["_Descriptor"], "replacement": ""},
         }
         report = render_report(
-            _review(tmp_path, execution=ExecutionSettings(enabled=True), judgments=deleting)
+            _review(tmp_path, execution=ExecutionSettings(verify_edits=True), judgments=deleting)
         )
         assert "      -     payment = principal / months" in report
         assert "(lines deleted)" in report
 
     def test_the_report_says_no_test_caught_it(self, tmp_path):
-        report = render_report(_review(tmp_path, execution=ExecutionSettings(enabled=True)))
+        report = render_report(_review(tmp_path, execution=ExecutionSettings(verify_edits=True)))
         assert "no test caught it" in report
 
     def test_a_set_aside_test_is_stored_and_reported(self, tmp_path):
         review = _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True, allow_failing_tests=True),
-            head_test=TestTheHaltGate._RED_TEST,
+            execution=ExecutionSettings(verify_edits=True),
+            head_test=TestARedCandidateTestIsSetAside._RED_TEST,
         )
         assert [t.test_id for t in review.set_aside_tests] == [
             "test_loan.py::test_that_is_already_failing"
@@ -610,7 +645,11 @@ class TestWhatIsPersistedAndRendered:
         assert "test_that_is_already_failing" in report
 
 
-class TestTheHaltGate:
+class TestARedCandidateTestIsSetAside:
+    """A test already failing at head no longer stops anything — the human's
+    ruling of 2026-09-18. It is set aside by name, the rest carry on, and the
+    review returns normally."""
+
     _RED_TEST = (
         _TEST
         + """
@@ -620,19 +659,18 @@ def test_that_is_already_failing():
 """
     )
 
-    def test_a_red_candidate_test_halts_the_review(self, tmp_path):
-        with pytest.raises(ReviewHalted) as raised:
-            _review(
-                tmp_path,
-                execution=ExecutionSettings(enabled=True),
-                head_test=self._RED_TEST,
-            )
-        assert "test_that_is_already_failing" in raised.value.baseline.halt_reason
-
-    def test_the_override_sets_it_aside_and_carries_on(self, tmp_path):
+    def test_the_review_returns_rather_than_stopping(self, tmp_path):
         review = _review(
             tmp_path,
-            execution=ExecutionSettings(enabled=True, allow_failing_tests=True),
+            execution=ExecutionSettings(verify_edits=True),
+            head_test=self._RED_TEST,
+        )
+        assert review.obligation_map, "the review produced nothing"
+
+    def test_the_failing_test_is_named_and_the_others_carry_on(self, tmp_path):
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(verify_edits=True),
             head_test=self._RED_TEST,
         )
         assert [t.test_id for t in review.set_aside_tests] == [
@@ -642,21 +680,19 @@ def test_that_is_already_failing():
         assert attempt.observed is True
         assert attempt.tests_run == [_TEST_ID]
 
-    def test_a_halt_records_no_attempt_and_renders_no_report(self, tmp_path):
-        """#45's Gate 2 asked for the halted case alongside the
-        execution-disabled one. Nothing was injected, so there is no injected
-        text to record — and no review object either, which is the point of
-        raising rather than returning one.
-        """
-        with pytest.raises(ReviewHalted) as raised:
+    def test_the_report_says_which_was_set_aside(self, tmp_path):
+        report = render_report(
             _review(
                 tmp_path,
-                execution=ExecutionSettings(enabled=True),
+                execution=ExecutionSettings(verify_edits=True),
                 head_test=self._RED_TEST,
             )
-        assert raised.value.baseline.failing_tests
-        assert raised.value.baseline.usable_tests == []
+        )
+        assert "Candidate tests set aside" in report
+        assert "test_that_is_already_failing" in report
 
+
+class TestWhenTheTestsCannotBeRunAtAll:
     def test_no_descriptor_is_bought_when_no_test_can_be_observed(self, tmp_path):
         """#45's Gate 2 run 2 paid $0.2554 for 71 descriptors and threw every
         one away: the control run produced no report, so nothing could be
@@ -674,7 +710,7 @@ def test_that_is_already_failing():
         _review(
             tmp_path,
             execution=ExecutionSettings(
-                enabled=True, sandbox=SandboxConfig(interpreter="/nonexistent/python")
+                verify_edits=True, sandbox=SandboxConfig(interpreter="/nonexistent/python")
             ),
             capture=capture,
         )
@@ -685,23 +721,9 @@ def test_that_is_already_failing():
         review = _review(
             tmp_path,
             execution=ExecutionSettings(
-                enabled=True, sandbox=SandboxConfig(interpreter="/nonexistent/python")
+                verify_edits=True, sandbox=SandboxConfig(interpreter="/nonexistent/python")
             ),
             capture=capture,
         )
         assert all(a.outcome is MutationOutcomeKind.NOT_ATTEMPTED for a in review.mutation_attempts)
         assert "_PairVerdicts" in _schemas(capture)
-
-    def test_a_halt_costs_nothing_downstream(self, tmp_path):
-        """The halt is a refusal to spend. If the pair stage still ran, halting
-        would cost more than continuing and the gate would be pointless."""
-        capture: list = []
-        with pytest.raises(ReviewHalted):
-            _review(
-                tmp_path,
-                execution=ExecutionSettings(enabled=True),
-                head_test=self._RED_TEST,
-                capture=capture,
-            )
-        assert "_PairVerdicts" not in _schemas(capture)
-        assert "_Descriptor" not in _schemas(capture)

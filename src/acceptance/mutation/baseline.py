@@ -5,22 +5,20 @@ mutant, so this run is what makes every later result mean anything. DR-171
 Decision 6.
 
 It is not the product grading the user's green suite, which §8.2's scope
-boundary rules out, and three things keep that distinction real. No finding is
-produced *about* a failing test beyond the fact that it was set aside or that
-the review halted. Only candidate tests are consulted, never the suite, so the
-product never forms a view on whether the project as a whole passes. And the
-halt is a refusal to spend, not a verdict on the change.
+boundary rules out, and two things keep that distinction real. No finding is
+produced *about* a failing test beyond the fact that it was set aside. And only
+candidate tests are consulted, never the suite, so the product never forms a
+view on whether the project as a whole passes.
 
-**Why a red test halts rather than degrading.** Falling back to the static pair
-judgement does not save money — it spends more, because that judgement is the
-expensive half and this whole tier exists to avoid it. Spending it on a change
-whose own tests are failing buys a review resting on tests that do not pass.
-Stopping is the cheap honest answer, and the override is there because a
-deliberately parked failure is a real situation.
+**A red test is set aside; it does not stop anything.** The human's ruling of
+2026-09-18, reversing DR-171 Decision 6 (revised), where one red candidate test
+halted the review by default. That decision argued from cost — falling back to
+the static pair judgement spends more than stopping — but cost does not answer
+the correctness question. One test nobody can trust says nothing about the
+others, and stopping on it throws away every observation the rest could make.
 
-This is also distinct from §8.3's graceful degradation, which covers a suite
-that *cannot* be run and answers by degrading silently to a lower tier. A suite
-that runs and fails is the one case where continuing costs more than stopping.
+§8.3's graceful degradation is a different case: a suite that *cannot* be run
+degrades to a lower tier. A test that runs and fails is simply excluded.
 """
 
 from __future__ import annotations
@@ -41,8 +39,8 @@ class SetAsideTest(_Model):
     """One candidate test that takes no part in any later conclusion, and why.
 
     Two different things arrive here and the reason is what keeps them apart: a
-    test that ran and failed, and a test the run could not complete. Only the
-    first is what the halt gate is about.
+    test that ran and failed, and a test the run could not complete. The second
+    is a feasibility outcome, which #42 (M8.1, the feasibility probe) owns.
     """
 
     test_id: str
@@ -77,8 +75,6 @@ class Baseline(_Model):
 
     usable_tests: list[str] = Field(default_factory=list)
     set_aside: list[SetAsideTest] = Field(default_factory=list)
-    halted: bool = False
-    halt_reason: str = ""
 
     @property
     def failing_tests(self) -> list[SetAsideTest]:
@@ -86,42 +82,27 @@ class Baseline(_Model):
         could not complete them."""
         return [test for test in self.set_aside if test.kind is TestOutcomeKind.FAILED]
 
-    @model_validator(mode="after")
-    def _a_halt_says_why(self) -> Baseline:
-        has_reason = bool(self.halt_reason.strip())
-        if self.halted and not has_reason:
-            raise ValueError("a halted review must say why it stopped")
-        if not self.halted and has_reason:
-            raise ValueError("a review that did not halt carries no halt reason")
-        return self
-
-    @model_validator(mode="after")
-    def _a_halted_baseline_offers_no_tests(self) -> Baseline:
-        if self.halted and self.usable_tests:
-            raise ValueError(
-                "a halted baseline offers usable tests, which would let injection run "
-                "against a control the review already rejected"
-            )
-        return self
-
 
 def establish_baseline(
     test_ids: list[str],
     project_root: Path,
     config: SandboxConfig | None = None,
-    *,
-    allow_failing_tests: bool = False,
 ) -> Baseline:
-    """Run `test_ids` unmutated and decide whether injection may proceed.
+    """Run `test_ids` unmutated and report which of them injection may use.
 
-    With `allow_failing_tests` false — the default — a single failing candidate
-    test halts the review. With it true, the failures are set aside by name and
-    the rest carry on.
+    **A test that fails here is set aside, and the rest carry on.** It takes no
+    part in any conclusion and the report names it. It does not stop the other
+    tests from running and it does not stop the review — the human's ruling of
+    2026-09-18, which reverses DR-171 Decision 6 (revised), where a single red
+    candidate test halted the review by default. The cost argument that decision
+    rested on does not answer the correctness one: one test nobody can trust
+    says nothing about the others, and blocking them on it throws away every
+    observation the run could still make.
 
-    A test the run could not complete never halts. That is a feasibility
-    outcome rather than a red test, it is #42's (M8.1, the feasibility probe)
-    question rather than this one's, and treating "could not run" as "is broken"
-    would stop the review on a slow machine.
+    A test the run could not complete is set aside for its own reason. That is a
+    feasibility outcome rather than a red test — #42's (M8.1, the feasibility
+    probe) question rather than this one's — and calling "could not run" the same
+    thing as "is broken" would mislabel a slow machine.
     """
     requested = list(dict.fromkeys(test_ids))
     if not requested:
@@ -152,8 +133,8 @@ def establish_baseline(
         return Baseline(set_aside=dropped)
 
     result = _observe(runnable, project_root, config)
-    baseline = _read(result, allow_failing_tests=allow_failing_tests)
-    if not baseline.halted and baseline.usable_tests:
+    baseline = _read(result)
+    if baseline.usable_tests:
         baseline = _drop_unfaithful(baseline, project_root, config)
     # The dropped ids go first: they were excluded before anything ran, and a
     # reader scanning the block should meet "never admitted" before "ran and
@@ -266,7 +247,7 @@ def _by_file(test_ids: list[str]) -> dict[str, list[str]]:
     return grouped
 
 
-def _read(result: SandboxRunResult, *, allow_failing_tests: bool) -> Baseline:
+def _read(result: SandboxRunResult) -> Baseline:
     usable: list[str] = []
     set_aside: list[SetAsideTest] = []
 
@@ -280,20 +261,6 @@ def _read(result: SandboxRunResult, *, allow_failing_tests: bool) -> Baseline:
                 kind=outcome.kind,
                 reason=outcome.reason or "the test failed against the code as delivered",
             )
-        )
-
-    failing = [test for test in set_aside if test.kind is TestOutcomeKind.FAILED]
-    if failing and not allow_failing_tests:
-        names = ", ".join(test.test_id for test in failing)
-        return Baseline(
-            set_aside=set_aside,
-            halted=True,
-            halt_reason=(
-                f"{len(failing)} candidate test(s) fail against the code as delivered "
-                f"({names}). A test that is already red says nothing when it goes red under "
-                "an injected defect, so nothing would be learned by continuing. Re-run "
-                "allowing failing tests to proceed with these set aside."
-            ),
         )
 
     return Baseline(usable_tests=usable, set_aside=set_aside)

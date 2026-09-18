@@ -39,6 +39,7 @@ __all__ = [
     "Disposition",
     "EvidenceClassification",
     "EvidenceTier",
+    "ExecutionDecision",
     "ExecutionEvidence",
     "FileChange",
     "Finding",
@@ -136,6 +137,23 @@ class DefectType(str, Enum):
     description. DR-312 asks for its share as a standing metric: a rising share
     is a taxonomy gap, and a near-zero share alongside poor enumeration recall
     is odd defects being forced into the nearest slot."""
+
+
+class ExecutionDecision(_Model):
+    """Whether this review ran the project's tests, and why.
+
+    The decision is the review's own, not the operator's (the human's ruling of
+    2026-09-18): the person running a review has no way to know whether a run
+    would produce anything, and the review does. `mutation/settings.py` computes
+    it; it lives here because it is review state, and because the mutation
+    package imports this module.
+
+    Recorded and rendered rather than taken silently, so that "we did not run the
+    tests" stays distinguishable from "we ran them and found nothing".
+    """
+
+    run: bool
+    reason: str
 
 
 class Defect(_Model):
@@ -1279,6 +1297,12 @@ class Review(_Model):
     # injected defect, so it is excluded — and an exclusion nobody can see is
     # indistinguishable from a test that was never a candidate.
     set_aside_tests: list[SetAsideTest] = Field(default_factory=list)
+    # Whether this review ran the project's tests, and why it decided that. The
+    # decision is the review's own, not the operator's (the human's ruling of
+    # 2026-09-18), and recording it is what makes "we did not run the tests"
+    # distinguishable from "we ran them and found nothing". `None` on a review
+    # recorded before the decision existed.
+    execution_decision: ExecutionDecision | None = None
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[TestRecommendation] = Field(default_factory=list)
     # Criteria the recommendation stage was asked about and returned nothing for

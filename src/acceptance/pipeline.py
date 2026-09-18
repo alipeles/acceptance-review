@@ -60,7 +60,7 @@ from acceptance.mutation.baseline import SetAsideTest, establish_baseline
 from acceptance.mutation.descriptor import build_descriptors, from_mapping
 from acceptance.mutation.region import regions_for
 from acceptance.mutation.runner import run_mutations
-from acceptance.mutation.settings import ExecutionSettings, ReviewHalted
+from acceptance.mutation.settings import ExecutionSettings, decide_execution
 from acceptance.mutation.verdicts import remaining_defect_sets, verdicts_from
 from acceptance.mutation.verification import verify_attempts
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
@@ -78,6 +78,7 @@ from acceptance.review_state import (
     UNUSABLE_ANSWER,
     ChangeSet,
     DefectSet,
+    ExecutionDecision,
     Finding,
     Link,
     Obligation,
@@ -260,31 +261,35 @@ def _run_execution_tier(
     client: ModelClient,
     unusable: UnusableAnswerLog,
     execution: ExecutionSettings | None,
-) -> tuple[list[MutationAttempt], list[PairVerdict], list[SetAsideTest]]:
-    """Inject each enumerated defect and read who noticed, or do nothing.
+) -> tuple[list[MutationAttempt], list[PairVerdict], list[SetAsideTest], ExecutionDecision]:
+    """Inject each enumerated defect and read who noticed, or decide not to.
 
-    Returns the attempts and the verdicts they support. With execution off — the
-    default — both are empty, `remaining_defect_sets` is then the identity, and
-    the pipeline behaves exactly as it did before this stage existed. That is
-    §8.3's graceful degradation reached with no separate mode, which is the same
-    property DR-171 Decision 7 relies on for a repository whose tests cannot run
-    at all.
+    **The decision to run is the review's, not the caller's** (`decide_execution`,
+    the human's ruling of 2026-09-18). It is returned so it can be recorded and
+    rendered: a review that did not run the tests has to say so and say why,
+    because that is a different fact from a run that found nothing.
 
-    Raises `ReviewHalted` when a candidate test is already failing against the
-    code as delivered and the caller did not allow it.
+    When it decides against, the attempts and verdicts are empty,
+    `remaining_defect_sets` is then the identity, and the pipeline behaves
+    exactly as it did before this stage existed. That is §8.3's graceful
+    degradation reached with no separate mode, and it is the same property
+    DR-171 Decision 7 relies on for a repository whose tests cannot run at all.
+
+    A candidate test that fails against the code as delivered no longer stops
+    anything: it is set aside and the rest carry on.
     """
-    if execution is None or not execution.enabled:
-        return [], [], []
+    editable = sum(
+        1
+        for defect_set in (defect_sets or [])
+        for defect in defect_set.defects
+        if regions_for(defect, change_set)
+    )
+    decision = decide_execution(execution, editable)
+    if not decision.run:
+        return [], [], [], decision
 
     test_ids = [test.test_id for test in tests]
-    baseline = establish_baseline(
-        test_ids,
-        repo,
-        execution.sandbox,
-        allow_failing_tests=execution.allow_failing_tests,
-    )
-    if baseline.halted:
-        raise ReviewHalted(baseline)
+    baseline = establish_baseline(test_ids, repo, execution.sandbox)
 
     # No usable test means no mutant can be observed against anything, so every
     # descriptor built here would be paid for and thrown away. `run_mutations`
@@ -307,7 +312,7 @@ def _run_execution_tier(
             execution.sandbox,
             execution.max_edit_lines,
         )
-        return attempts, [], baseline.set_aside
+        return attempts, [], baseline.set_aside, decision
 
     defects = [defect for defect_set in defect_sets for defect in defect_set.defects]
     regions_by_defect = {defect.id: regions_for(defect, change_set) for defect in defects}
@@ -335,7 +340,7 @@ def _run_execution_tier(
     # defect still goes to the static judge (DR-171, revision of 2026-09-16).
     if execution.verify_edits:
         attempts = verify_attempts(attempts, defects, sources, client, surrounding)
-    return attempts, verdicts_from(attempts, defect_sets), baseline.set_aside
+    return attempts, verdicts_from(attempts, defect_sets), baseline.set_aside, decision
 
 
 def _sources_for(regions_by_defect: dict, repo: Path) -> dict[str, str]:
@@ -491,7 +496,7 @@ def run_review(
     #
     # Off unless the caller opted in: §8.3 makes execution conditional on a
     # feasibility probe, and #42 (M8.1) is that probe and does not exist yet.
-    attempts, executed_verdicts, set_aside_tests = _run_execution_tier(
+    attempts, executed_verdicts, set_aside_tests, execution_decision = _run_execution_tier(
         defect_sets, discovered.tests, change_set, repo, client, unusable, execution
     )
 
@@ -679,6 +684,7 @@ def run_review(
         unjudged_pairs=pair_mapping.unjudged,
         mutation_attempts=attempts,
         set_aside_tests=set_aside_tests,
+        execution_decision=execution_decision,
         change_set=change_set,
         declaration=declaration,
         findings=findings,

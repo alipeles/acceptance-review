@@ -125,11 +125,6 @@ def run_mutations(
     """
     defects = [defect for defect_set in defect_sets for defect in defect_set.defects]
 
-    if baseline.halted:
-        return [
-            _not_attempted(defect, f"the review halted before injection: {baseline.halt_reason}")
-            for defect in defects
-        ]
     if not baseline.usable_tests:
         return [
             _not_attempted(

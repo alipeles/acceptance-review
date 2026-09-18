@@ -39,7 +39,7 @@ from acceptance.coverage.open_questions import (
 )
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode, ModelClient
-from acceptance.mutation.settings import ExecutionSettings, ReviewHalted
+from acceptance.mutation.settings import ExecutionSettings
 from acceptance.pipeline import run_review
 from acceptance.recommendation import lookup as lookup_recommendation
 from acceptance.recommendation import render as render_recommendation
@@ -810,26 +810,10 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="RUN_ID",
         help="Run id to continue: carry forward each requirement whose text is unchanged.",
     )
-    # The execution tier (M8.4). Opt-in, because §8.3 makes execution
-    # conditional on a feasibility probe and #42 (M8.1) is that probe and does
-    # not exist yet — so until it does, the operator decides rather than the
-    # tool deciding on a project's behalf.
-    check.add_argument(
-        "--execute",
-        action="store_true",
-        help=(
-            "Run the candidate tests: inject each enumerated defect and observe "
-            "which tests catch it, instead of predicting it by reading."
-        ),
-    )
-    check.add_argument(
-        "--allow-failing-tests",
-        action="store_true",
-        help=(
-            "With --execute, continue when a candidate test already fails at head, "
-            "setting those tests aside. Without it, a failing test stops the review."
-        ),
-    )
+    # The execution tier (M8.4) has no flag. Whether running the project's tests
+    # is worth doing is the review's own decision — `decide_execution` — and it
+    # is reported with its reason. The human's ruling of 2026-09-18: the person
+    # running a review has no way to know whether a run would produce anything.
     _add_model_flags(check, default_mode=Mode.REPLAY.value)  # never call live unbidden
     rec = subparsers.add_parser(
         "recommendation",
@@ -948,27 +932,11 @@ def main(argv: list[str] | None = None) -> int:
                 continue_from=args.continue_from,
                 ledger=LedgerStore(),
                 run_id=run_id,
-                execution=ExecutionSettings(
-                    enabled=args.execute,
-                    allow_failing_tests=args.allow_failing_tests,
-                ),
+                execution=ExecutionSettings(),
             )
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)
             return 1
-        except ReviewHalted as exc:
-            # Not an error in the tool, and said on stderr so it cannot be
-            # mistaken for a report. Exit 2 rather than 1: nothing failed, the
-            # review declined to spend on a control that would prove nothing,
-            # and a caller scripting this needs to tell the two apart.
-            print(f"acceptance: review halted: {exc}", file=sys.stderr)
-            for test in exc.baseline.failing_tests:
-                print(f"  failing at head: {test.test_id}", file=sys.stderr)
-            print(
-                "  re-run with --allow-failing-tests to proceed with these set aside.",
-                file=sys.stderr,
-            )
-            return 2
         except LLMError as exc:
             print(f"acceptance: model error: {exc}", file=sys.stderr)
             return 1

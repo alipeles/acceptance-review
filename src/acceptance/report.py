@@ -130,6 +130,15 @@ def render_report(review: Review) -> str:
     # Both only when the execution tier ran. A review that did not run the tests
     # renders exactly as it did before M8.4, rather than carrying two empty
     # headings that a reader would have to learn to ignore.
+    # The review's own decision about running the project's tests, and why.
+    # Rendered whenever it was made, including when it decided against: the
+    # mandate asks the review to say which it chose, and a silent absence reads
+    # as a stage that was never reached.
+    if review.execution_decision is not None:
+        lines.append("Running the project's tests:")
+        lines.append(f"  {review.execution_decision.reason}")
+        lines.append("")
+
     if review.mutation_attempts:
         lines.extend(_mutation_block(review))
         lines.append("")

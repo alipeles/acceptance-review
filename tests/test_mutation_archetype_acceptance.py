@@ -125,7 +125,6 @@ def _build(defect, regions, _sources) -> MutationDescriptor | None:
 @pytest.fixture(scope="module")
 def attempts(materialized, change_set, defect_sets):
     baseline = establish_baseline([TEST_ID], materialized.repo_path)
-    assert baseline.halted is False, baseline.halt_reason
     assert baseline.usable_tests == [TEST_ID], baseline.set_aside
     return run_mutations(defect_sets, change_set, materialized.repo_path, baseline, _build)
 

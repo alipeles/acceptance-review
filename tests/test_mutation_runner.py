@@ -27,7 +27,7 @@ from acceptance.mutation.attempt import (
     MutationDescriptor,
     MutationOutcomeKind,
 )
-from acceptance.mutation.baseline import Baseline, establish_baseline
+from acceptance.mutation.baseline import Baseline, SetAsideTest, establish_baseline
 from acceptance.mutation.runner import run_mutations
 from acceptance.review_state import ChangeSet, Defect, DefectSet, DefectType, DiffHunk, FileChange
 
@@ -115,7 +115,6 @@ def _builder(replacement: str, *, start: int = 3, end: int = 3):
 @pytest.fixture
 def green(project: Path) -> Baseline:
     baseline = establish_baseline([TEST_ID], project)
-    assert baseline.halted is False, baseline.halt_reason
     assert baseline.usable_tests == [TEST_ID], baseline.set_aside
     return baseline
 
@@ -267,11 +266,22 @@ class TestEveryDefectIsAccountedFor:
 
 
 class TestWhenInjectionMayNotRun:
-    def test_a_halted_baseline_attempts_nothing(self, project, change_set):
-        halted = Baseline(halted=True, halt_reason="a candidate test is red at head")
-        attempts = run_mutations(_sets(_defect("d1")), change_set, project, halted, _builder("x"))
+    def test_a_baseline_with_no_usable_test_attempts_nothing(self, project, change_set):
+        """There is no halt any more: a red candidate test is set aside and the
+        rest carry on. The only case where nothing can be observed is a baseline
+        that offers no usable test at all."""
+        empty = Baseline(
+            set_aside=[
+                SetAsideTest(
+                    test_id=TEST_ID,
+                    kind=TestOutcomeKind.FAILED,
+                    reason="already red against the code as delivered",
+                )
+            ]
+        )
+        attempts = run_mutations(_sets(_defect("d1")), change_set, project, empty, _builder("x"))
         assert attempts[0].outcome is MutationOutcomeKind.NOT_ATTEMPTED
-        assert "halted before injection" in attempts[0].reason
+        assert "no candidate test survived the control run" in attempts[0].reason
 
     def test_no_usable_test_attempts_nothing(self, project, change_set):
         attempts = run_mutations(
@@ -501,12 +511,13 @@ class TestWhenTheProjectsTestsCannotBeRun:
         baseline = establish_baseline([TEST_ID], project, self.BROKEN)
         assert baseline.usable_tests == []
 
-    def test_an_unrunnable_suite_does_not_halt_the_review(self, project):
-        """A test the run could not complete is not a red test. Halting here
-        would stop every review on a project whose tests cannot run, which is
-        the case §8.3 says to degrade on."""
+    def test_an_unrunnable_test_is_set_aside_with_its_own_reason(self, project):
+        """A test the run could not complete is not a red test. It is set aside
+        for a different reason, which is what keeps "could not run" — the case
+        §8.3 says to degrade on — apart from "is broken"."""
         baseline = establish_baseline([TEST_ID], project, self.BROKEN)
-        assert baseline.halted is False
+        assert [test.test_id for test in baseline.set_aside] == [TEST_ID]
+        assert baseline.failing_tests == []
 
     def test_every_defect_falls_back_rather_than_being_decided(self, project, change_set):
         baseline = establish_baseline([TEST_ID], project, self.BROKEN)
