@@ -271,7 +271,7 @@ class PairVerdict(_Model):
 
 
 class UnjudgedCause(str, Enum):
-    """Why a pair carries no verdict. Two causes, kept apart deliberately.
+    """Why a pair carries no verdict. Three causes, kept apart deliberately.
 
     `MappingResult` draws the same distinction between `unmapped_obligation_ids`
     and `indeterminate_obligation_ids`, for the same reason: one is a decision we
@@ -279,6 +279,10 @@ class UnjudgedCause(str, Enum):
     would hide a judge that is shedding work behind a filter that is doing its
     job, and the remedies are opposite — a wrong `PREFILTERED` means fixing the
     filter, a rising `UNANSWERED` count means the batch is too large.
+
+    Only `PREFILTERED` is a claim about the pair. The other two are admissions
+    that nobody looked, and `defects/support.py` counts them towards a criterion's
+    `unknown` tally on that basis.
     """
 
     PREFILTERED = "prefiltered"
@@ -286,6 +290,20 @@ class UnjudgedCause(str, Enum):
 
     UNANSWERED = "unanswered"
     """Offered to the judge, which returned nothing about it."""
+
+    PASSED_UNDER_EDIT = "passed_under_edit"
+    """The test still passed when the defect was injected, so it was not asked.
+
+    Not a survival (#340). The edit that this rests on was **not** verified to
+    make the named defect true, and measured on #45's review about half of them
+    did not — so the test passing under it is a reason to spend the model call
+    elsewhere, never evidence that the test fails to catch the defect. The pair
+    is recorded here precisely so the rating cannot mistake it for one.
+
+    Produced only where the same edit made some OTHER candidate test fail. An
+    edit nothing failed under cannot be told apart from an edit that changed
+    nothing, so it skips nothing and every pair for that defect is asked.
+    """
 
 
 class UnjudgedPair(_Model):

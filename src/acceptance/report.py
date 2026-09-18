@@ -27,6 +27,7 @@ from acceptance.review_state import (
     RequirementMap,
     Review,
     TestRecommendation,
+    UnjudgedCause,
     UnobtainedRecommendation,
 )
 
@@ -348,9 +349,44 @@ def _mutation_block(review: Review) -> list[str]:
                 )
             if attempt.verification_reason:
                 lines.append(f"    {attempt.verification_reason}")
+        lines.extend(_pair_disposition(review, attempt.defect_id))
         if attempt.reason:
             lines.append(f"    {attempt.reason}")
     return lines
+
+
+def _pair_disposition(review: Review, defect_id: str) -> list[str]:
+    """Where this defect's pairs went: settled by the run, asked, or dropped.
+
+    Three numbers rather than one, because they answer different questions and
+    the middle one is the only one that cost money (#340). A reader who sees a
+    large drop count and no saving is looking at the two-pass case — the defect's
+    asked pairs produced no kill, so its dropped pairs were asked after all, and
+    the drop count here is zero even though the run held some back.
+    """
+    settled = sum(
+        1
+        for verdict in review.pair_verdicts
+        if verdict.defect_id == defect_id and verdict.tier is EvidenceTier.DEFECT_KILLED
+    )
+    asked = sum(
+        1
+        for verdict in review.pair_verdicts
+        if verdict.defect_id == defect_id and verdict.tier is not EvidenceTier.DEFECT_KILLED
+    )
+    dropped = sum(
+        1
+        for entry in review.unjudged_pairs
+        if entry.defect_id == defect_id and entry.cause is UnjudgedCause.PASSED_UNDER_EDIT
+    )
+    if not (settled or asked or dropped):
+        return []
+    return [
+        (
+            f"    pairs: {settled} settled by the run, {asked} put to the model, "
+            f"{dropped} dropped as not worth asking"
+        )
+    ]
 
 
 def _already_present_block(review: Review) -> list[str]:

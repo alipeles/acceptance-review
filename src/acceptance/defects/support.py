@@ -217,6 +217,14 @@ def derive_support(
         # (#314). Counting it as unknown would make a filter doing its job
         # indistinguishable from a judge shedding work, and those have opposite
         # remedies.
+        #
+        # `PREFILTERED` is the ONLY cause that earns that, and the test is
+        # written as an exclusion so a cause added later counts as unknown until
+        # someone argues otherwise. `PASSED_UNDER_EDIT` is the case that makes
+        # the direction matter (#340): the edit behind it was never verified to
+        # make the defect true, and about half of them do not, so a test passing
+        # under it proves nothing. Treated as an established survival it would
+        # let an unverified edit firm up a rating by removing the question.
         if entry.cause is not UnjudgedCause.PREFILTERED:
             unanswered_defects.add(entry.defect_id)
 

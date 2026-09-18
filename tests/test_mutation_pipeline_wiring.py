@@ -30,6 +30,7 @@ from acceptance.mutation.attempt import MutationOutcomeKind, RepairCorroboration
 from acceptance.mutation.settings import ExecutionSettings
 from acceptance.pipeline import run_review
 from acceptance.report import render_report
+from acceptance.review_state import UnjudgedCause
 from tests.support import client_dispatching
 
 _TASK = (
@@ -284,16 +285,38 @@ class TestVerification:
         },
     }
 
-    def test_nothing_runs_at_all_by_default(self, tmp_path):
-        """With verification off, no result could count, so `decide_execution`
-        declines the whole run — no control run, no descriptor, no verification."""
+    def test_nothing_runs_at_all_when_no_consumer_wants_it(self, tmp_path):
+        """No consumer switched on, so `decide_execution` declines the whole run
+        — no control run, no descriptor, no verification.
+
+        This used to be the DEFAULT. Since #340 routing is on by default and is a
+        consumer, so reaching this state takes turning both off. What the test
+        pins is unchanged: a declined run touches nothing.
+        """
         capture: list = []
-        review = _review(tmp_path, execution=ExecutionSettings(), capture=capture)
+        settings = ExecutionSettings(verify_edits=False, route_pairs=False)
+        review = _review(tmp_path, execution=settings, capture=capture)
         assert "_Verification" not in _schemas(capture)
         assert "_Descriptor" not in _schemas(capture)
         assert review.mutation_attempts == []
         assert review.execution_decision.run is False
         assert "no result could have counted" in review.execution_decision.reason
+
+    def test_the_default_runs_but_verifies_nothing(self, tmp_path):
+        """#340's default, and the line it must not cross.
+
+        The run happens, so pairs can be routed. Verification does not, so no
+        attempt is settled and nothing reaches `defect-killed` — the tier gate
+        `tests/test_unverified_mutation_is_inert.py` owns is untouched by making
+        the run happen more often.
+        """
+        capture: list = []
+        review = _review(tmp_path, execution=ExecutionSettings(), capture=capture)
+        assert review.execution_decision.run is True
+        assert "_Descriptor" in _schemas(capture), "the run must actually inject"
+        assert "_Verification" not in _schemas(capture)
+        assert review.mutation_attempts
+        assert not any(attempt.settled for attempt in review.mutation_attempts)
 
     def test_a_verified_edit_reaches_the_executed_tier(self, tmp_path):
         """#45's Acceptance, visible in the pipeline's own output — once an
@@ -581,8 +604,10 @@ class TestExecutionOffChangesNothing:
         assert obligation.achieved_evidence_tier is EvidenceTier.STATIC
 
     def test_no_descriptor_call_is_made(self, tmp_path):
+        """Every consumer off, which since #340 means saying so explicitly."""
         capture: list = []
-        _review(tmp_path, execution=ExecutionSettings(), capture=capture)
+        settings = ExecutionSettings(verify_edits=False, route_pairs=False)
+        _review(tmp_path, execution=settings, capture=capture)
         assert "_Descriptor" not in _schemas(capture)
 
     def test_the_report_carries_no_execution_headings(self, tmp_path):
@@ -779,3 +804,160 @@ class TestWhenTheTestsCannotBeRunAtAll:
         )
         assert all(a.outcome is MutationOutcomeKind.NOT_ATTEMPTED for a in review.mutation_attempts)
         assert "_PairVerdicts" in _schemas(capture)
+
+
+# --- the run decides which pairs are worth a model call (#340) -----------------
+
+#: Two candidate tests, and the edit above (`payment = principal / months * 3`)
+#: separates them. The strict one pins the amount and goes red; the loose one
+#: asserts length and positivity and does not. That split is the whole point:
+#: routing keeps the red test's pair and holds back the other's.
+_TWO_TESTS = """from loan import amortize
+
+
+def test_returns_a_payment_for_each_month():
+    schedule = amortize(1200.0, 12)
+    assert isinstance(schedule, list)
+    assert len(schedule) == 12
+    assert all(payment > 0 for payment in schedule)
+
+
+def test_each_payment_is_the_loan_over_the_term():
+    assert amortize(1200.0, 12)[0] == 100.0
+"""
+
+_LOOSE_ID = "test_loan.py::test_returns_a_payment_for_each_month"
+_STRICT_ID = "test_loan.py::test_each_payment_is_the_loan_over_the_term"
+_DEFECT_ID = "equal-payments/wrong-payment-amount"
+
+#: The static judge says the red test does catch the defect. Needed so rule 6
+#: does NOT fire: with no kill among the asked pairs the held-back pair would be
+#: asked after all, and the saving would be invisible.
+_JUDGE_CONFIRMS_THE_KILL = {
+    **_JUDGMENTS,
+    "_PairVerdicts": {
+        "tests": [
+            {
+                "test_id": _STRICT_ID,
+                "defects": [
+                    {"defect_id": _DEFECT_ID, "fails": True, "reason": "it pins the amount"}
+                ],
+            }
+        ]
+    },
+}
+
+
+def _tests_put_to_the_judge(capture) -> set[str]:
+    """Every test the pair stage actually named to the model.
+
+    Read off the request as sent, for the same reason
+    `test_the_static_judge_is_told_nothing_about_the_edit` is: the claim is about
+    what the model was asked, and only the request settles that. The fixture
+    enumerates one defect, so a test absent from every pair prompt is a pair that
+    was never offered.
+    """
+    named: set[str] = set()
+    for call in capture:
+        if call["schema"] != "_PairVerdicts":
+            continue
+        for line in call["prompt"].splitlines():
+            if line.startswith("### test "):
+                named.add(line[len("### test ") :].strip())
+    return named
+
+
+class TestTheRunRoutesPairsThroughTheRealPipeline:
+    """#340, asserted on `run_review` rather than on the helper.
+
+    `CLAUDE.md` records this repo's recurring defect shape: a helper with a good
+    unit test that the pipeline never calls. `pairs_not_worth_asking` has its own
+    unit tests in `tests/test_pair_routing.py`; what is pinned here is that a real
+    review computes it, hands it to `judge_pairs`, and the model is not asked.
+    """
+
+    def test_the_fixture_really_separates_the_two_tests(self, tmp_path):
+        """Not an assertion about the feature — an assertion that the setup can
+        show anything at all. Without it every test below passes vacuously on a
+        run where the edit killed nothing."""
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(),
+            head_test=_TWO_TESTS,
+            judgments=_JUDGE_CONFIRMS_THE_KILL,
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.outcome is MutationOutcomeKind.KILLED
+        assert attempt.killing_tests == [_STRICT_ID]
+        assert _LOOSE_ID in attempt.tests_run
+        assert not attempt.verified, "verification is off, so nothing is settled"
+
+    def test_the_test_that_kept_passing_is_never_put_to_the_model(self, tmp_path):
+        capture: list = []
+        _review(
+            tmp_path,
+            execution=ExecutionSettings(),
+            head_test=_TWO_TESTS,
+            capture=capture,
+            judgments=_JUDGE_CONFIRMS_THE_KILL,
+        )
+        named = _tests_put_to_the_judge(capture)
+        assert _STRICT_ID in named, "the red test's pair is still judged"
+        assert _LOOSE_ID not in named
+
+    def test_the_held_back_pair_is_recorded_rather_than_dropped(self, tmp_path):
+        """A pair nobody records reads exactly like one judged `survives`, which
+        is the failure `UnjudgedPair` exists to prevent."""
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(),
+            head_test=_TWO_TESTS,
+            judgments=_JUDGE_CONFIRMS_THE_KILL,
+        )
+        held = [e for e in review.unjudged_pairs if e.cause is UnjudgedCause.PASSED_UNDER_EDIT]
+        assert [(e.defect_id, e.test_id) for e in held] == [(_DEFECT_ID, _LOOSE_ID)]
+        assert "not verified" in held[0].reason
+        assert _LOOSE_ID not in {v.test_id for v in review.pair_verdicts}
+
+    def test_routing_off_puts_both_tests_to_the_model(self, tmp_path):
+        """The control. Without it the two tests above pass on a review whose
+        pair stage was never reached at all."""
+        capture: list = []
+        _review(
+            tmp_path,
+            execution=ExecutionSettings(verify_edits=False, route_pairs=False),
+            head_test=_TWO_TESTS,
+            capture=capture,
+            judgments=_JUDGE_CONFIRMS_THE_KILL,
+        )
+        assert _tests_put_to_the_judge(capture) == {_LOOSE_ID, _STRICT_ID}
+
+    def test_the_report_names_where_the_defects_pairs_went(self, tmp_path):
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(),
+            head_test=_TWO_TESTS,
+            judgments=_JUDGE_CONFIRMS_THE_KILL,
+        )
+        report = render_report(review)
+        assert "pairs: 0 settled by the run, 1 put to the model, 1 dropped" in report
+
+    def test_a_defect_with_no_kill_among_its_judged_pairs_gets_them_back(self, tmp_path):
+        """#340 rule 6, through the pipeline.
+
+        Here the judge does NOT confirm the kill, so the run demonstrated nothing
+        usable about the defect and the saving bought nothing. The held-back pair
+        is put to the model after all, before the rating is derived — the same
+        call rule 3 makes for an edit no test failed under, arriving one step
+        later.
+        """
+        capture: list = []
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(),
+            head_test=_TWO_TESTS,
+            capture=capture,
+            judgments=_JUDGMENTS,  # no `_PairVerdicts` answer: nothing kills
+        )
+        assert _tests_put_to_the_judge(capture) == {_LOOSE_ID, _STRICT_ID}
+        assert not [e for e in review.unjudged_pairs if e.cause is UnjudgedCause.PASSED_UNDER_EDIT]

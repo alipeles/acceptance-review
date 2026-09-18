@@ -61,7 +61,11 @@ from acceptance.mutation.descriptor import build_descriptors, from_mapping
 from acceptance.mutation.region import regions_for
 from acceptance.mutation.runner import run_mutations
 from acceptance.mutation.settings import ExecutionSettings, decide_execution
-from acceptance.mutation.verdicts import remaining_defect_sets, verdicts_from
+from acceptance.mutation.verdicts import (
+    pairs_not_worth_asking,
+    remaining_defect_sets,
+    verdicts_from,
+)
 from acceptance.mutation.verification import verify_attempts
 from acceptance.requirement.declaration import declaration_absent_finding, parse_declaration
 from acceptance.requirement.ledger import LedgerEntry
@@ -513,6 +517,14 @@ def run_review(
         tests_per_batch=tests_per_batch,
         unusable=unusable,
         prior=list(ledger_prior.pair_verdicts) if ledger_prior is not None else None,
+        # The second, weaker use of the run above (#340). `remaining_defect_sets`
+        # removes whole defects and needs a VERIFIED edit to do it; this removes
+        # individual pairs and needs only an observed one, because what it
+        # produces is not a verdict. The two are deliberately separate arguments:
+        # collapsing them would let an unverified edit do a verified edit's job.
+        skipped=pairs_not_worth_asking(attempts)
+        if (execution is not None and execution.route_pairs)
+        else None,
     )
     # One list, two provenances. `PairVerdict.tier` is what tells them apart, and
     # `derive_support` reduces both with the same arithmetic — which is what
