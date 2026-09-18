@@ -9,7 +9,61 @@ and 8 changed; see *Revision* below.
 **Revised again:** 2026-09-16, during #45, on measurement. Decisions 1 and 3
 changed; see *Revision — 2026-09-16* below, and its later addendum on the tier
 gate, the breadth check and the verifier measurement.
-**Status:** resolved.
+**Status:** resolved. **M8.4 landed 2026-09-18**; see *Where M8.4 landed* below.
+
+## Where M8.4 landed, 2026-09-18
+
+Stated plainly, because every softer phrasing of this has been wrong.
+
+**Injection works mechanically.** It resolves the region a defect names, asks for
+an edit, checks it, copies the project, applies the edit, runs the candidate
+tests and reads the result. Every step is wired into `pipeline.py::run_review`
+and tested through it.
+
+**Roughly half the edits are valid.** Measured by hand over the same review nine
+times (`dogfood-logs/45-injection-audits/`, protocol in `docs/audit-protocol.md`):
+25 of 48 counted edits on `openai/gpt-5.4` put the named defect into the code.
+The rest repaired a defect the code already had, changed something other than the
+defect, or broke far more than it. Widening the context the edit-building call
+sees did not improve that, and the arm that would have swapped the model could
+not run (#339).
+
+**The edit checker is below its adoption bar and switched off.** 27 of 35 bad
+edits refused (77%, bar 80%) and 8 of 31 good edits wrongly refused (26%, bar
+under 10%). About a quarter of what it would accept is still a bad edit. #335
+carries the bar and the work.
+
+**So the tier is landed but earning nothing.** No observed result is verified,
+so none reaches `defect-killed`, so every defect still goes to the static pair
+judgement. The tier gate that enforces this is `MutationAttempt.settled`, and
+`tests/test_unverified_mutation_is_inert.py` fails if anything derives a class, a
+rating or a prescription from an unverified attempt.
+
+**The feature currently costs money and saves none.** Since the human's ruling of
+2026-09-18 the review decides whether running the tests is worth doing, and with
+verification off it decides against and says so — so on a normal review the tier
+now spends nothing rather than spending for nothing. It begins to earn when #335
+clears its bar.
+
+### The cost of touching this stage, measured
+
+Gate 2 run 3 cost **$11.5874** against run 1's $5.12, and $10.09 of it was the
+pair judgement. Nothing was reused, and the reason is worth recording because it
+will recur:
+
+- The reuse key for a criterion's defects mixes **per-criterion** inputs (its own
+  text, the content of the regions its defects name) with inputs **shared by
+  every criterion** (this stage's prompt, its response shape, the model, the
+  seed). Changing a shared one discards every stored defect set at once. Run 2
+  reused 10 of 25 sets; run 3 reused 0 of 31, because the two behaviour fields
+  changed the prompt and the response shape.
+- **The cost does not land where the change is.** Regenerating all 31 sets of
+  defects cost $1.12. The pair judgement embeds defect descriptions, and a model
+  asked the same question twice writes different words, so all 1330 of its
+  requests were new. One edited line in the enumeration prompt costs about ten
+  dollars on a review this size.
+
+Sequence work on this stage so that price is paid once. It was paid twice here.
 
 ## Addendum to the 2026-09-16 revision: the tier is gated on a verified edit
 
