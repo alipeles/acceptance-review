@@ -5902,3 +5902,33 @@ the record.
   reply is accepted as free text.
 - **Status:** **filed 2026-09-18 as #339**, approved by the human and attached
   as a sub-issue of #184, the determinism and reproducibility umbrella. Closed here.
+
+### [2026-09-18] A criterion is prescribed a test the review already holds
+- **Kind:** filing
+- **Found during:** #45, Gate 2 run 3 (`dogfood-logs/45-gate2-run3/`)
+- **Where:** `src/acceptance/defects/pair_mapping.py`, seen through the
+  `test-discrimination-shown` criterion in run `34e2dd05d2fd3f0b`
+- **Severity:** should-fix
+- **What's wrong:** The criterion "a test that fails is shown to discriminate for
+  that defect" came back partially supported, and the recommendation asked for a
+  test showing an observed-but-unverified attempt rendered against a verified
+  control. **That test exists** —
+  `tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_report_says_the_result_is_not_counted`
+  and `::test_a_verified_result_carries_no_such_mark`. The pair judgement linked
+  both to two *other* criteria in the same run (`run-candidate-tests-on-throwaway-copy`
+  and `one-failing-test-covers-defect`) and to none of this one's three defects,
+  so the criterion reads as 1 of 3 covered and is prescribed evidence the review
+  is already holding.
+- **Why I didn't act:** prescribing what already exists is #250 and #287's
+  failure shape and it is a mapping-quality problem, not #45's. Fixing it means
+  changing how pairs are judged or how test-to-criterion links are derived, which
+  is its own measurement.
+- **Drafted fix:** file as a sub-issue of #183, the evidence-judgement umbrella,
+  titled *A criterion is prescribed a test that another criterion was linked to*.
+  Body: the run above with the two test names and the three criteria involved;
+  that one test legitimately bears on several criteria, so the defect is not that
+  it was linked elsewhere but that it was linked **only** elsewhere; and an
+  Acceptance check that a review prescribing a test names no test already in its
+  own `test_evidence` for any criterion, with a regression test over this run's
+  recorded verdicts.
+- **Status:** open
