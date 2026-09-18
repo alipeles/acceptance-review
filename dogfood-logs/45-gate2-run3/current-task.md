@@ -3,10 +3,7 @@
 For a named plausible defect, the review builds the smallest edit that makes that
 defect true, applies it to a throwaway copy of the code, and runs the project's
 candidate tests against that copy. A test that fails is shown to discriminate for
-that defect, and one such test is enough: no second test has to agree, and a
-defect one test fails on is covered. That holds for a failure the edit caused; a
-failure the edit could not have caused, because the edit was refused or because
-it broke something other than the behaviour named, says nothing either way.
+that defect, and one such test is enough: a defect any test fails on is covered.
 When no test fails, the candidate tests are shown not to discriminate for it.
 Either way the conclusion is an observation rather than a prediction, and is
 recorded at the strongest evidence tier the review produces on its own.

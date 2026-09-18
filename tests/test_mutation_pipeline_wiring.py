@@ -645,6 +645,58 @@ class TestWhatIsPersistedAndRendered:
         assert "test_that_is_already_failing" in report
 
 
+class TestTheControlRunComesFirst:
+    """The tests run once against the code as delivered BEFORE anything is
+    altered. Gate 2 run 3 asked for this directly: the existing coverage proved
+    it only indirectly, by showing no descriptor is bought when the control run
+    finds nothing usable.
+
+    Asserted on call order, by recording when the control run happens relative
+    to the first descriptor request.
+    """
+
+    def test_the_baseline_runs_before_any_descriptor_is_asked_for(self, tmp_path, monkeypatch):
+        from acceptance import pipeline
+
+        order: list[str] = []
+        real_baseline = pipeline.establish_baseline
+
+        def recording_baseline(*args, **kwargs):
+            order.append("control run")
+            return real_baseline(*args, **kwargs)
+
+        real_descriptors = pipeline.build_descriptors
+
+        def recording_descriptors(*args, **kwargs):
+            order.append("descriptor")
+            return real_descriptors(*args, **kwargs)
+
+        monkeypatch.setattr(pipeline, "establish_baseline", recording_baseline)
+        monkeypatch.setattr(pipeline, "build_descriptors", recording_descriptors)
+
+        _review(tmp_path, execution=ExecutionSettings(verify_edits=True))
+
+        assert order, "neither the control run nor the descriptor stage was reached"
+        assert order[0] == "control run"
+        assert "descriptor" in order, "the tier stopped before injecting, so the order is vacuous"
+        assert order.index("control run") < order.index("descriptor")
+
+    def test_it_runs_once_rather_than_per_defect(self, tmp_path, monkeypatch):
+        """One run against the delivered code, not one per injected edit."""
+        from acceptance import pipeline
+
+        calls: list[int] = []
+        real_baseline = pipeline.establish_baseline
+
+        def counting_baseline(*args, **kwargs):
+            calls.append(1)
+            return real_baseline(*args, **kwargs)
+
+        monkeypatch.setattr(pipeline, "establish_baseline", counting_baseline)
+        _review(tmp_path, execution=ExecutionSettings(verify_edits=True))
+        assert len(calls) == 1
+
+
 class TestARedCandidateTestIsSetAside:
     """A test already failing at head no longer stops anything — the human's
     ruling of 2026-09-18. It is set aside by name, the rest carry on, and the
