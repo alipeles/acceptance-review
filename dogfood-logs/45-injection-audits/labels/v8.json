@@ -1,0 +1,335 @@
+{
+  "audit": "v8",
+  "source": "injection-audit-v8.md",
+  "revision": "518f876",
+  "descriptor_model": "openai/gpt-5.4",
+  "protocol": "docs/audit-protocol.md",
+  "claims_complete": true,
+  "labels": [
+    {
+      "defect_id": "execution-could-not-settle-defects/halted-baseline-prevents-static-fallback",
+      "outcome": "already_present",
+      "claim": "right",
+      "repair": "does not repair"
+    },
+    {
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/baseline-halt-changes-review-conclusions",
+      "outcome": "already_present",
+      "claim": "right",
+      "repair": "does not repair"
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/execution-flag-off-by-default",
+      "outcome": "already_present",
+      "claim": "right",
+      "repair": "does not repair"
+    },
+    {
+      "defect_id": "smallest-edit-that-makes-defect-true/no-search-for-smaller-edit",
+      "outcome": "already_present",
+      "claim": "right",
+      "repair": "no repair"
+    },
+    {
+      "defect_id": "smallest-edit-that-makes-defect-true/region-bounds-can-overconstrain-minimality",
+      "outcome": "already_present",
+      "claim": "right",
+      "repair": "no repair"
+    },
+    {
+      "defect_id": "tests-candidate-selection/execution-tier-alters-candidate-selection",
+      "outcome": "already_present",
+      "claim": "right",
+      "repair": "no repair"
+    },
+    {
+      "defect_id": "tests-candidate-selection/execution-tier-changes-test-run-eligibility",
+      "outcome": "already_present",
+      "claim": "right",
+      "repair": "does not repair"
+    },
+    {
+      "defect_id": "weaker-tier-evidence/mutation-attempt-tier-returns-stronger-evidence",
+      "outcome": "already_present",
+      "claim": "right",
+      "repair": "does not repair"
+    },
+    {
+      "defect_id": "weaker-tier-evidence/pair-verdict-tier-default-stays-static",
+      "outcome": "already_present",
+      "claim": "right",
+      "repair": "repairs"
+    },
+    {
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/no-discriminate-report-not-wired",
+      "outcome": "killed",
+      "edit": "overbroad"
+    },
+    {
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/survival-classified-as-set-aside",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/survival-not-propagated-to-review-state",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "carry-reason-for-non-settlement/baseline-set-aside-reason-defaults-to-generic-text",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "carry-reason-for-non-settlement/not-attempted-missing-reason",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "carry-reason-for-non-settlement/not-attempted-path-loses-reason",
+      "outcome": "killed",
+      "edit": "overbroad"
+    },
+    {
+      "defect_id": "continue-with-set-aside-tests/allow-failing-tests-not-propagated",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "continue-with-set-aside-tests/failing-tests-not-listed-in-report",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "continue-with-set-aside-tests/set-aside-tests-still-count-in-conclusions",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "does-not-run-first/execution-tier-only-runs-when-explicitly-enabled",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/execution-disabled-skips-static-judgement",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/unsettled-defects-dropped-from-review-state",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "injected-text-recorded-next-to-result/mutation-attempts-without-descriptor-cannot-record-injected-text",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "mechanical-validity-checks/containment-check-only-uses-resolved-regions",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "mechanical-validity-checks/descriptor-declines-are-not-mechanically-enforced",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "no-edit-without-named-region/missing-region-not-reported-as-not-editable",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "no-line-execution-recording/execution-tier-still-derives-line-coverage",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "no-line-execution-recording/line-execution-recording-still-present",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parse-failure-becomes-not-mutable",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parser-check-applies-to-all-files",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parserless-files-still-rejected",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "no-whole-suite-run/whole-suite-execution-flag",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "observation-not-prediction/execution-verdicts-not-marked-as-observed",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "parser-files-still-parse/parse-check-only-covers-python",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "parser-files-still-parse/parse-errors-treated-as-acceptance",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "preserve-code-reading-judgement/execution-off-path-skips-static-judgement",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "preserve-code-reading-judgement/static-judgement-skipped-when-execution-runs",
+      "outcome": "killed",
+      "edit": "backwards"
+    },
+    {
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/execution-tier-overrides-static-when-run-is-unavailable",
+      "outcome": "killed",
+      "edit": "backwards"
+    },
+    {
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/unrunnable-defects-return-not-attempted-instead-of-static",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "report-lists-set-aside-tests/report-omits-set-aside-tests",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "report-lists-set-aside-tests/set-aside-tests-never-populated",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/baseline-halt-prevents-execution",
+      "outcome": "killed",
+      "edit": "backwards"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/missing-region-rejected-as-mutable",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/span-validation-not-applied-before-injection",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "smallest-edit-that-makes-defect-true/mutation-stage-not-invoked",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/baseline-failure-halts-before-discrimination",
+      "outcome": "killed",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/killed-tests-not-marked-as-killing",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/mutation-kill-not-recorded-as-discriminating",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/mutation-verdicts-dropped-from-review",
+      "outcome": "killed",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "does-not-run-first/execution-path-not-wired-into-review-flow",
+      "outcome": "not_mutable",
+      "edit": "overbroad"
+    },
+    {
+      "defect_id": "does-not-run-first/static-judgement-still-runs-before-execution",
+      "outcome": "not_mutable"
+    },
+    {
+      "defect_id": "mechanical-validity-checks/parse-check-applies-only-to-some-file-types",
+      "outcome": "not_mutable"
+    },
+    {
+      "defect_id": "no-whole-suite-run/baseline-control-run-uses-all-tests",
+      "outcome": "not_mutable",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/no-tests-after-empty-baseline",
+      "outcome": "not_mutable"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/region-containment-check-too-permissive",
+      "outcome": "not_mutable",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "weaker-tier-evidence/executed-verdicts-upgrade-support-tier",
+      "outcome": "not_mutable"
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/not-attempted-defects-never-fed-to-static-judge",
+      "outcome": "survived",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "injected-text-recorded-next-to-result/mutation-block-omits-injected-text-for-unsettled-attempts",
+      "outcome": "survived",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "mechanical-validity-checks/mechanical-checks-bypassable-through-execution-settings",
+      "outcome": "survived",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "observation-not-prediction/prediction-language-still-used-in-recorded-conclusion",
+      "outcome": "survived",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/partial-run-treated-as-not-attempted",
+      "outcome": "survived",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/descriptor-allows-multi-file-edit",
+      "outcome": "survived",
+      "edit": "unrelated"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/descriptor-response-shape-can-lose-span-bounds",
+      "outcome": "survived",
+      "edit": "injects"
+    },
+    {
+      "defect_id": "smallest-edit-that-makes-defect-true/descriptor-can-return-non-minimal-edit",
+      "outcome": "survived",
+      "edit": "backwards"
+    },
+    {
+      "defect_id": "weaker-tier-evidence/report-shows-executed-verdicts-as-stronger-tier",
+      "outcome": "survived",
+      "edit": "unrelated"
+    }
+  ]
+}
