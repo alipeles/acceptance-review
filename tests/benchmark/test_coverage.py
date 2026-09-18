@@ -200,6 +200,8 @@ def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
                 "defects": [
                     {
                         "slug": "is-wrong",
+                        "expected_behavior": "the code behaves as the criterion requires",
+                        "defective_behavior": "the code behaves as this defect describes",
                         "type": "other",
                         "description": "the stated rule is not honoured",
                         "code_refs": [],
@@ -658,12 +660,16 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
                 "defects": [
                     {
                         "slug": "omits-a-field",
+                        "expected_behavior": "the code behaves as the criterion requires",
+                        "defective_behavior": "the code behaves as this defect describes",
                         "type": "other",
                         "description": "omits a field",
                         "code_refs": [],
                     },
                     {
                         "slug": "wrong-order",
+                        "expected_behavior": "the code behaves as the criterion requires",
+                        "defective_behavior": "the code behaves as this defect describes",
                         "type": "other",
                         "description": "prints the fields in the wrong order",
                         "code_refs": [],
@@ -771,6 +777,8 @@ def test_the_shared_pipeline_partitions_the_pair_call(tmp_path):
                             "defects": [
                                 {
                                     "slug": slug,
+                                    "expected_behavior": "the code behaves as the criterion requires",
+                                    "defective_behavior": "the code behaves as this defect describes",
                                     "type": "other",
                                     "description": f"the behaviour is wrong ({slug})",
                                     "code_refs": [],
@@ -922,6 +930,8 @@ def test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives(t
                     "defects": [
                         {
                             "slug": "hard-codes-thirty",
+                            "expected_behavior": "the code behaves as the criterion requires",
+                            "defective_behavior": "the code behaves as this defect describes",
                             "type": "other",
                             "description": "hard-codes price/30 instead of price/days_in_month",
                             "code_refs": [],

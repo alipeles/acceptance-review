@@ -717,6 +717,8 @@ def _gap_client():
                 "defects": [
                     {
                         "slug": "empty-raises",
+                        "expected_behavior": "the code behaves as the criterion requires",
+                        "defective_behavior": "the code behaves as this defect describes",
                         "type": "other",
                         "description": "raises IndexError on an empty input",
                         "code_refs": [],

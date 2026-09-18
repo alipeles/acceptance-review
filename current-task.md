@@ -1,31 +1,50 @@
 # Task
 
-The review can run a named set of a project's tests and observe what each one
-does, rather than only reading them. The run happens in an isolated sandbox. A
-test that reaches for the network does not reach it. No credential held by the
-machine that launched the run is visible to the code under test. The run is
-bounded by a time budget, and when that budget is exhausted the run stops
-cleanly, leaving nothing still executing behind it.
+For a named plausible defect, the review builds the smallest edit that makes that
+defect true, applies it to a throwaway copy of the code, and runs the project's
+candidate tests against that copy. A test that fails is shown to discriminate for
+that defect, and one such test is enough: no second test has to agree, and a
+defect one test fails on is covered. That holds for a failure the edit caused; a
+failure the edit could not have caused, because the edit was refused or because
+it broke something other than the behaviour named, says nothing either way.
+When no test fails, the candidate tests are shown not to discriminate for it.
+Either way the conclusion is an observation rather than a prediction, and is
+recorded at the strongest evidence tier the review produces on its own.
 
-Every test the run was asked about ends with a recorded outcome: it completed
-and passed, it completed and failed, it was blocked reaching the network, it
-exhausted its time, or it was never started. An outcome that is not a completed
-run carries the reason it is not, so that a test the runner tried and could not
-complete stays distinguishable from one it never tried.
+The injected text is recorded next to the result, so a reader who disagrees with
+what was injected can see exactly what it was.
 
-A run that does not complete leaves the review's conclusions where they were.
-Evidence with no completed run behind it stays at the static tier, and the
-review finishes normally rather than reporting an error.
+Whether running the project's tests is worth doing is the review's own decision.
+Nobody is asked to switch it on: the review runs them when something will use the
+result, does not run them otherwise, and says which it chose and why.
+
+When it does run them, it runs them once against the code as delivered before
+altering anything. A test that already fails there tells nothing when it fails
+later, so this run is what makes the later result mean anything. Such a test is
+set aside: it takes no part in any conclusion, and the report names it. One test
+that cannot be trusted does not stop the others from running, and does not stop
+the review.
+
+The existing judgement that reads code without running it does not go away, and
+does not run first. It runs on what execution could not settle: a defect no edit
+could express, a defect whose edit could not be built, and every defect at all
+when the code cannot be run. Where nothing can be run, the review reaches the
+conclusions it reaches today, and in that case — and only in that case — its
+evidence stays at the weaker tier.
+
+A defect execution did not settle carries the reason it did not.
 
 ## Constraints
-- Only the named tests are run. There is no path through which the whole suite
-  runs.
-- A time budget applies both to a single test and to the run as a whole.
-- The time budgets and the interpreter the tests run under are configuration
-  with conservative defaults, and neither is read from the project under review.
+- The edit replaces one continuous stretch of a single file, within a region the
+  defect names. A defect naming no region cannot be edited, and says so.
+- A file that has a parser must still parse after the edit. A file with no parser
+  is not invalid for lacking one — a requirement can be stated in prose and
+  broken in prose, and the tests that read that prose are the ones that catch it.
+- Whether an edit is valid is settled by mechanical checks alone.
 
 ## Scope exclusions
-- Choosing which tests to run, and deciding whether a project's tests can be run
-  at all.
-- Altering the code under test in order to observe what a test does.
-- Recording which lines a test executed.
+- Deciding whether a project's tests can be run at all, and which of them are
+  candidates.
+- Recording which lines of code a test executed.
+- Writing or altering a test so that a defect can be reached.
+- Running the project's whole test suite.

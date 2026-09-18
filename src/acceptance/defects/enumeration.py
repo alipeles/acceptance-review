@@ -82,6 +82,18 @@ Write each description as the failure, not as the requirement. "The rate is
 computed from a 30-day month, so February is wrong" — not "the rate must be
 computed correctly". A reader must be able to tell what to go and check.
 
+Then state the defect as two behaviours, each about what the code DOES, in terms
+a reader could check against the code:
+
+- `expected_behavior`: what the code must do for the criterion to hold, at the
+  point this defect concerns. "The monthly rate divides the annual rate by 12."
+- `defective_behavior`: what the code would do instead if this defect were
+  present. "The monthly rate divides the annual rate by 30."
+
+The two must be about the same point in the code and must contradict each
+other, so that exactly one of them can be true of it. Do not say which one the
+delivered code currently does — you are listing candidates, not judging them.
+
 Give each defect a short `slug`: lowercase words joined by hyphens, naming the
 specific failure. It is a label, not a sentence.
 
@@ -117,6 +129,8 @@ class _Defect(StrictResponseModel):
     # `_defects_from`, which is where an unconvertible value is reported.
     type: str
     description: str
+    expected_behavior: str
+    defective_behavior: str
     code_refs: list[str]
 
 
@@ -266,6 +280,8 @@ def _defects_from(
                 obligation_id=obligation.id,
                 type=_defect_type(entry.type),
                 description=entry.description,
+                expected_behavior=entry.expected_behavior.strip(),
+                defective_behavior=entry.defective_behavior.strip(),
                 code_refs=[ref for ref in entry.code_refs if ref in label_to_ref],
             )
         )

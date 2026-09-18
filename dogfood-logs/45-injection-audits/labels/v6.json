@@ -1,0 +1,340 @@
+{
+  "audit": "v6",
+  "source": "injection-audit-v6.md",
+  "revision": "518f876",
+  "descriptor_model": "openai/gpt-5.4",
+  "protocol": "docs/audit-protocol.md",
+  "note": "The set the edit verifier was measured against, twice. A result that clears the adoption bar on THIS set is not confirmed; see the protocol.",
+  "labels": [
+    {
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/survival-classified-as-set-aside",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/survival-not-propagated-to-review-state",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "candidate-tests-run-once-before-changes/prechange-run-only-when-execution-enabled",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "carry-reason-for-non-settlement/baseline-set-aside-reason-defaults-to-generic-text",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "carry-reason-for-non-settlement/not-attempted-missing-reason",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "carry-reason-for-non-settlement/not-attempted-path-loses-reason",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "continue-with-set-aside-tests/failing-tests-not-listed-in-report",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "continue-with-set-aside-tests/set-aside-tests-still-count-in-conclusions",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "does-not-run-first/execution-path-not-wired-into-review-flow",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "does-not-run-first/execution-tier-only-runs-when-explicitly-enabled",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/execution-disabled-skips-static-judgement",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/halted-baseline-prevents-static-fallback",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/unsettled-defects-dropped-from-review-state",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "injected-text-recorded-next-to-result/mutation-attempts-without-descriptor-cannot-record-injected-text",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "mechanical-validity-checks/containment-check-only-uses-resolved-regions",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "no-edit-without-named-region/missing-region-not-reported-as-not-editable",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "no-line-execution-recording/execution-tier-still-derives-line-coverage",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "no-line-execution-recording/line-execution-recording-still-present",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parse-failure-becomes-not-mutable",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parserless-files-still-rejected",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "no-whole-suite-run/baseline-control-run-uses-all-tests",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "no-whole-suite-run/whole-suite-execution-flag",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "parser-files-still-parse/parse-check-only-covers-python",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "parser-files-still-parse/parse-errors-treated-as-acceptance",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "preserve-code-reading-judgement/execution-off-path-skips-static-judgement",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "preserve-code-reading-judgement/static-judgement-skipped-when-execution-runs",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/baseline-halt-changes-review-conclusions",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/unrunnable-defects-return-not-attempted-instead-of-static",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "recorded-at-strongest-evidence-tier/executed-tier-not-persisted-on-review",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "recorded-at-strongest-evidence-tier/executed-verdicts-not-included-in-support-input",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "recorded-at-strongest-evidence-tier/strongest-tier-computed-as-weakest-tier",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "report-lists-set-aside-tests/report-omits-set-aside-tests",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "report-lists-set-aside-tests/set-aside-tests-never-populated",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/execution-flag-off-by-default",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/no-tests-after-empty-baseline",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/missing-region-rejected-as-mutable",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/region-containment-check-too-permissive",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/span-validation-not-applied-before-injection",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "smallest-edit-that-makes-defect-true/descriptor-can-return-non-minimal-edit",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "smallest-edit-that-makes-defect-true/mutation-stage-not-invoked",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "smallest-edit-that-makes-defect-true/region-bounds-can-overconstrain-minimality",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "stop-review-on-failing-candidate-test/allow-failing-tests-defaults-to-continue",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "stop-review-on-failing-candidate-test/baseline-failure-not-propagated",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "stop-review-on-failing-candidate-test/halted-baseline-not-returned",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/baseline-failure-halts-before-discrimination",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/killed-tests-not-marked-as-killing",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/mutation-kill-not-recorded-as-discriminating",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/mutation-verdicts-dropped-from-review",
+      "outcome": "killed",
+      "edit": "good"
+    },
+    {
+      "defect_id": "tests-candidate-selection/execution-tier-alters-candidate-selection",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "tests-candidate-selection/execution-tier-changes-test-run-eligibility",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "weaker-tier-evidence/executed-verdicts-upgrade-support-tier",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "weaker-tier-evidence/pair-verdict-tier-default-stays-static",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "weaker-tier-evidence/report-shows-executed-verdicts-as-stronger-tier",
+      "outcome": "killed",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/no-discriminate-report-not-wired",
+      "outcome": "survived",
+      "edit": "good"
+    },
+    {
+      "defect_id": "continue-with-set-aside-tests/allow-failing-tests-not-propagated",
+      "outcome": "survived",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/not-attempted-defects-never-fed-to-static-judge",
+      "outcome": "survived",
+      "edit": "good"
+    },
+    {
+      "defect_id": "mechanical-validity-checks/mechanical-checks-bypassable-through-execution-settings",
+      "outcome": "survived",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parser-check-applies-to-all-files",
+      "outcome": "survived",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "observation-not-prediction/prediction-language-still-used-in-recorded-conclusion",
+      "outcome": "survived",
+      "edit": "good"
+    },
+    {
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/execution-tier-overrides-static-when-run-is-unavailable",
+      "outcome": "survived",
+      "edit": "good"
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/baseline-halt-prevents-execution",
+      "outcome": "survived",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "run-candidate-tests-on-altered-copy/partial-run-treated-as-not-attempted",
+      "outcome": "survived",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/descriptor-allows-multi-file-edit",
+      "outcome": "survived",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/descriptor-response-shape-can-lose-span-bounds",
+      "outcome": "survived",
+      "edit": "good"
+    },
+    {
+      "defect_id": "smallest-edit-that-makes-defect-true/no-search-for-smaller-edit",
+      "outcome": "survived",
+      "edit": "bad"
+    },
+    {
+      "defect_id": "stop-review-on-failing-candidate-test/halt-reason-not-emitted-to-caller",
+      "outcome": "survived",
+      "edit": "good"
+    }
+  ]
+}

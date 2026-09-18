@@ -16,6 +16,8 @@ Status is stated in words, not symbols, and every evidence line carries its
 
 from __future__ import annotations
 
+from acceptance.evidence_tier import EvidenceTier
+from acceptance.mutation.attempt import MutationOutcomeKind, RepairCorroboration
 from acceptance.review_state import (
     UNREQUESTED_CHANGE,
     CompletionVerdict,
@@ -125,6 +127,30 @@ def render_report(review: Review) -> str:
         lines.extend(_pair_block(review))
         lines.append("")
 
+    # Both only when the execution tier ran. A review that did not run the tests
+    # renders exactly as it did before M8.4, rather than carrying two empty
+    # headings that a reader would have to learn to ignore.
+    # The review's own decision about running the project's tests, and why.
+    # Rendered whenever it was made, including when it decided against: the
+    # mandate asks the review to say which it chose, and a silent absence reads
+    # as a stage that was never reached.
+    if review.execution_decision is not None:
+        lines.append("Running the project's tests:")
+        lines.append(f"  {review.execution_decision.reason}")
+        lines.append("")
+
+    if review.mutation_attempts:
+        lines.extend(_mutation_block(review))
+        lines.append("")
+
+    if any(a.outcome is MutationOutcomeKind.ALREADY_PRESENT for a in review.mutation_attempts):
+        lines.extend(_already_present_block(review))
+        lines.append("")
+
+    if review.set_aside_tests:
+        lines.extend(_set_aside_block(review))
+        lines.append("")
+
     if review.delta is not None:
         lines.extend(_delta_block(review.delta))
         lines.append("")
@@ -189,9 +215,17 @@ def _denominator(obligation: Obligation) -> str:
         return " — no plausible static defect enumerated; test evidence is not obtainable here"
     if not obligation.enumerated_defects:
         return " — no way this change could fail the criterion was enumerated for it"
+    # The tier sits beside this on the same line, so the wording must not
+    # contradict it. `DEFECT_KILLED` is reached only when every defect was
+    # settled by injection; anything less rests on at least one prediction.
+    basis = (
+        "observed under injection"
+        if obligation.achieved_evidence_tier is EvidenceTier.DEFECT_KILLED
+        else "static prediction"
+    )
     return (
         f" — kills {obligation.covered_defects} of {obligation.enumerated_defects} "
-        "enumerated defects (static prediction)"
+        f"enumerated defects ({basis})"
     )
 
 
@@ -253,6 +287,132 @@ def _defect_block(defect_sets: list[DefectSet]) -> list[str]:
             lines.append(f"      {defect.description}")
             for ref in defect.code_refs:
                 lines.append(f"      {ref}")
+    return lines
+
+
+def _mutation_block(review: Review) -> list[str]:
+    """What was injected, and what each test did about it (M8.4).
+
+    The injected text is rendered, not summarised, and that is the point.
+    Showing exactly what was injected lets a reader who thinks a result is
+    unfair see the edit and say so, and every observed result says whether its
+    edit was verified — only a verified one counts.
+
+    A defect execution could not settle renders with its reason. Those went to
+    the static judge, and a reader comparing a criterion's executed and
+    predicted parts needs to know which is which.
+    """
+    lines = ["Defects injected, and which tests caught them:"]
+    for attempt in review.mutation_attempts:
+        lines.append("")
+        # The label carries the not-counted mark, not just the explanation two
+        # lines below it. "[killed]" above "caught by (1)" reads as the
+        # conclusion to anyone skimming, and for an unverified edit it is not
+        # one — the explanation was there and still left the outcome word
+        # standing on its own.
+        mark = "" if attempt.verified or not attempt.observed else ", NOT COUNTED"
+        lines.append(f"  [{attempt.outcome.value}{mark}] {attempt.defect_id}")
+        descriptor = attempt.descriptor
+        if descriptor is not None:
+            span = f"{descriptor.start_line}-{descriptor.end_line}"
+            lines.append(f"    injected at {descriptor.path} lines {span}:")
+            # Removed lines, then added ones, as a diff reads. Without the
+            # removed side a deletion rendered as nothing at all. A descriptor
+            # stored before `original` existed falls back to the old rendering.
+            if descriptor.original:
+                lines.extend(f"      - {line}" for line in descriptor.original.splitlines())
+                lines.extend(f"      + {line}" for line in descriptor.replacement.splitlines())
+                if not descriptor.replacement:
+                    lines.append("      (lines deleted)")
+            else:
+                for line in descriptor.replacement.splitlines() or [""]:
+                    lines.append(f"      | {line}")
+        if attempt.killing_tests:
+            lines.append(f"    caught by ({len(attempt.killing_tests)}):")
+            lines.extend(f"      {test_id}" for test_id in attempt.killing_tests)
+        elif attempt.observed:
+            lines.append(
+                f"    no test caught it; {len(attempt.tests_run)} candidate test(s) ran "
+                "and none failed"
+            )
+        # An observed result counts only once its edit is verified. Said on
+        # every observed attempt, because "caught by" above reads as evidence
+        # and an unverified one is not.
+        if attempt.observed:
+            if attempt.verified:
+                lines.append("    edit verified to make the defect true; tier: defect-killed")
+            else:
+                lines.append(
+                    "    edit NOT verified to make the defect true, so this result is not "
+                    "counted; tier: static, and the defect went to the static judge"
+                )
+            if attempt.verification_reason:
+                lines.append(f"    {attempt.verification_reason}")
+        if attempt.reason:
+            lines.append(f"    {attempt.reason}")
+    return lines
+
+
+def _already_present_block(review: Review) -> list[str]:
+    """Defects the delivered code was said to already have.
+
+    Separate from the injection list because it is a different kind of claim.
+    Every other outcome is about the tests; this one says the code itself fails
+    the criterion. It comes from one model answer with no experiment behind it,
+    so it is a lead for a person to check, not a conclusion — and it moves no
+    rating, because the defect still goes to the static judge like any other
+    that injection could not settle.
+    """
+    lines = [
+        (
+            "Defects the delivered code already has, as asserted by the model "
+            "(static tier; needs human review):"
+        )
+    ]
+    for attempt in review.mutation_attempts:
+        if attempt.outcome is not MutationOutcomeKind.ALREADY_PRESENT:
+            continue
+        lines.append(f"  {attempt.defect_id}")
+        lines.append(f"    {attempt.reason}")
+        corroboration = attempt.repair_corroboration
+        if corroboration is RepairCorroboration.A_TEST_ASSERTS_DEFECTIVE:
+            # Said as an observation, not a conclusion. The repair edit is not
+            # verified, and on #45's audit at least three repairs crashed, which
+            # makes tests fail for a reason that says nothing about the claim.
+            lines.append(
+                "    the candidate tests were run on an edit meant to repair it, and these "
+                "failed there. That fits tests asserting the defective behaviour, but the "
+                "repair itself was not checked, so this does not confirm the claim:"
+            )
+            lines.extend(f"      {test_id}" for test_id in attempt.repair_failing_tests)
+        elif corroboration is RepairCorroboration.NO_TEST_PINS_EXPECTED:
+            lines.append(
+                "    the candidate tests were run on an edit meant to repair it, and all "
+                "passed. That fits no test pinning the expected behaviour, but the repair "
+                "itself was not checked, so this does not confirm the claim"
+            )
+        elif corroboration is RepairCorroboration.NOT_RUN:
+            lines.append("    no test run supports or contradicts this claim")
+        if attempt.repair is not None:
+            repair = attempt.repair
+            lines.append(
+                f"    repair at {repair.path} lines {repair.start_line}-{repair.end_line}:"
+            )
+            lines.extend(f"      - {line}" for line in repair.original.splitlines())
+            lines.extend(f"      + {line}" for line in repair.replacement.splitlines())
+    return lines
+
+
+def _set_aside_block(review: Review) -> list[str]:
+    """Candidate tests that took no part in any conclusion, and why.
+
+    An exclusion nobody can see is indistinguishable from a test that was never
+    a candidate, and the two mean opposite things about the suite.
+    """
+    lines = ["Candidate tests set aside (no conclusion rests on these):"]
+    for test in review.set_aside_tests:
+        lines.append(f"  [{test.kind.value}] {test.test_id}")
+        lines.append(f"    {test.reason}")
     return lines
 
 

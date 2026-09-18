@@ -131,6 +131,8 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
                         "defects": [
                             {
                                 "slug": "behaviour-is-wrong",
+                                "expected_behavior": "the code behaves as the criterion requires",
+                                "defective_behavior": "the code behaves as this defect describes",
                                 "type": "other",
                                 "description": "the behaviour under review is wrong",
                                 "code_refs": [],

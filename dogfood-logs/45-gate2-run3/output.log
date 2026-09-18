@@ -1,0 +1,1350 @@
+Task completion: INCOMPLETE
+
+5 obligation(s) with non-discriminating test evidence (run-candidate-tests-on-throwaway-copy, test-discrimination-shown, one-failing-test-covers-defect, run-tests-when-result-will-be-used, pre-alteration-single-run).
+
+Obligations:
+
+  1. The review builds the smallest edit that makes the named defect true.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/mutation/descriptor.py#@@ -0,0 +1,360 @@
+         1.2  src/acceptance/mutation/attempt.py#@@ -0,0 +1,326 @@
+         1.3  src/acceptance/mutation/runner.py#@@ -0,0 +1,477 @@
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         1.4  tests/test_mutation_archetype_acceptance.py::TestTheUpgradeThisMilestoneExistsFor::test_the_injected_edit_is_recorded_for_each
+         1.5  tests/test_mutation_attempt.py::TestTiers::test_an_unverified_attempt_is_observed_but_not_settled
+         1.6  tests/test_mutation_descriptor.py::TestTheCodeAlreadyDoesTheDefectiveBehaviour::test_it_is_a_claim_not_an_injection
+         1.7  tests/test_mutation_descriptor.py::TestTheCodeAlreadyDoesTheDefectiveBehaviour::test_it_wins_over_a_decline_in_the_same_answer
+         1.8  tests/test_mutation_descriptor.py::TestTheCodeAlreadyDoesTheDefectiveBehaviour::test_its_edit_is_kept_as_the_repair
+         1.9  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_claim_is_never_counted_as_a_kill
+         1.10  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_repair_a_test_fails_names_the_test_asserting_the_defect
+         1.11  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_repair_every_test_passes_means_no_test_pins_the_expected_behaviour
+         1.12  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_no_model_call_decides_validity
+         1.13  tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_attempt_is_not_settled
+         1.14  tests/test_mutation_runner.py::TestAMutantThatBreaksTheModule::test_it_is_not_attempted_rather_than_killed
+         1.15  tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_it_is_not_counted_as_a_kill
+         1.16  tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded
+         1.17  tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception
+         1.18  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_defect_naming_no_region_is_not_mutable
+         1.19  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_descriptor_the_builder_declines_is_not_mutable
+         1.20  tests/test_mutation_runner.py::TestTheBreadthCheck::test_the_widest_crashers_measured_are_not_kills
+         1.21  tests/test_mutation_validity.py::TestValidity::test_an_edit_byte_identical_to_its_input_is_refused
+         1.22  tests/test_rerun.py::test_a_moved_obligation_set_forbids_reuse
+
+  2. Apply the smallest edit that makes the named plausible defect true to a throwaway copy of the code.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/mutation/injection.py#@@ -0,0 +1,47 @@
+         2.2  src/acceptance/mutation/workspace.py#@@ -0,0 +1,95 @@
+       test evidence: not required — This is settled by inspecting the change process and the presence of a throwaway copy; no test can directly demonstrate where the edit was applied.
+
+  3. Run the project's candidate tests against the throwaway copy of the code.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/mutation/runner.py#@@ -0,0 +1,477 @@
+         3.2  src/acceptance/mutation/injection.py#@@ -0,0 +1,47 @@
+       test evidence: partially supported — kills 5 of 7 enumerated defects (static prediction)  [tier: static]
+         3.3  tests/requirement/test_obligation_echo.py::test_a_remainder_differing_in_any_single_field_is_kept
+         3.4  tests/test_mutation_archetype_acceptance.py::TestTheGroundTruthIsReproduced::test_every_attempt_was_observed_by_execution
+         3.5  tests/test_mutation_archetype_acceptance.py::TestTheGroundTruthIsReproduced::test_every_labelled_defect_got_an_attempt
+         3.6  tests/test_mutation_archetype_acceptance.py::TestTheGroundTruthIsReproduced::test_the_killing_tests_match_the_labels
+         3.7  tests/test_mutation_archetype_acceptance.py::TestTheUpgradeThisMilestoneExistsFor::test_a_defect_the_test_cannot_catch_is_observed_to_survive
+         3.8  tests/test_mutation_baseline.py::TestARedTestIsSetAsideAndTheRestCarryOn::test_every_candidate_failing_leaves_nothing_usable
+         3.9  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_failing_test_is_named_and_the_others_carry_on
+         3.10  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_report_says_which_was_set_aside
+         3.11  tests/test_mutation_pipeline_wiring.py::TestTheBreadthSettingsReachTheRunner::test_a_kill_too_broad_for_the_configured_threshold_is_not_a_kill
+         3.12  tests/test_mutation_pipeline_wiring.py::TestVerification::test_nothing_runs_at_all_by_default
+         3.13  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_a_baseline_with_no_usable_test_attempts_nothing
+         3.14  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_no_usable_test_attempts_nothing
+         3.15  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_a_verified_result_carries_no_such_mark
+         3.16  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_observation_was_really_made
+         3.17  tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+         recommended test: The review executes the project's candidate test suite against the throwaway copy.
+           inputs:  A project where pytest can collect each candidate test file individually but not all together, with at least two candidate test files whose combined collection conflicts; ensure both files are otherwise runnable in the throwaway copy.
+           detects: The collection gate can drop candidate tests that pytest would not collect together, so only a subset of the project's candidate tests are actually run on the throwaway copy.
+           full detail: acceptance recommendation --criterion run-candidate-tests-on-throwaway-copy
+
+  4. A test that fails is shown to discriminate for that defect.
+       requirements: task-01
+       code evidence: addressed
+         4.1  src/acceptance/mutation/runner.py#@@ -0,0 +1,477 @@
+         4.2  src/acceptance/mutation/verdicts.py#@@ -0,0 +1,114 @@
+       test evidence: partially supported — kills 1 of 3 enumerated defects (static prediction)  [tier: static]
+         4.3  tests/test_mutation_descriptor.py::TestTheCodeAlreadyDoesTheDefectiveBehaviour::test_it_is_a_claim_not_an_injection
+         4.4  tests/test_mutation_descriptor.py::TestTheCodeAlreadyDoesTheDefectiveBehaviour::test_it_wins_over_a_decline_in_the_same_answer
+         4.5  tests/test_mutation_descriptor.py::TestTheCodeAlreadyDoesTheDefectiveBehaviour::test_its_edit_is_kept_as_the_repair
+         4.6  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_claim_is_never_counted_as_a_kill
+         4.7  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_repair_a_test_fails_names_the_test_asserting_the_defect
+         recommended test: The review reports that a failing test discriminates for the named defect.
+           inputs:  A mutation attempt that is observed (killed or survived) but explicitly unverified, plus a verified control attempt for comparison; render the report and inspect the verdict/tier data.
+           detects: An observed kill is rendered as discriminating even when the edit was not verified, so a failing test is reported as evidence for a defect that was never settled.
+           full detail: acceptance recommendation --criterion test-discrimination-shown
+
+  5. A defect is covered when any one candidate test fails on it; one failing test is sufficient to show discrimination for that defect.
+       requirements: task-01
+       code evidence: addressed
+         5.1  src/acceptance/mutation/runner.py#@@ -0,0 +1,477 @@
+       test evidence: partially supported — kills 4 of 5 enumerated defects (static prediction)  [tier: static]
+         5.2  tests/benchmark/test_coverage.py::test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives
+         5.3  tests/benchmark/test_coverage.py::test_the_shared_pipeline_runs_every_stage
+         5.4  tests/defects/test_pair_mapping.py::test_a_surviving_pair_stops_the_criterion_reaching_strongly_supported
+         5.5  tests/test_mutation_archetype_acceptance.py::TestTheUpgradeThisMilestoneExistsFor::test_the_defect_the_test_can_catch_is_observed_to_die
+         5.6  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_failing_test_is_named_and_the_others_carry_on
+         5.7  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_claim_is_never_counted_as_a_kill
+         5.8  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_repair_a_test_fails_names_the_test_asserting_the_defect
+         5.9  tests/test_mutation_pipeline_wiring.py::TestTheBreadthSettingsReachTheRunner::test_a_kill_too_broad_for_the_configured_threshold_is_not_a_kill
+         5.10  tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill
+         5.11  tests/test_mutation_runner.py::TestTheBreadthCheck::test_it_ignores_the_exception_type
+         5.12  tests/test_mutation_runner.py::TestTheBreadthCheck::test_the_largest_real_kill_measured_is_still_a_kill
+         5.13  tests/test_mutation_runner.py::TestTheBreadthCheck::test_the_settings_reach_the_runner
+         5.14  tests/test_mutation_runner.py::TestTheTwoOutcomesThatSettle::test_a_defect_the_test_does_notice_is_killed
+         5.15  tests/test_mutation_runner.py::TestTheTwoOutcomesThatSettle::test_both_outcomes_are_reachable_in_one_run
+         5.16  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_the_criterion_it_belongs_to_stays_static
+         5.17  tests/test_mutation_verdicts.py::TestTheRatingReadsBoth::test_a_defect_with_no_verdict_at_all_holds_it_at_static
+         5.18  tests/test_mutation_verdicts.py::TestTheRatingReadsBoth::test_a_fully_executed_criterion_reaches_the_defect_killed_tier
+         5.19  tests/test_mutation_verdicts.py::TestTheRatingReadsBoth::test_a_predicted_kill_does_not_borrow_an_executed_survival_tier
+         5.20  tests/test_mutation_verdicts.py::TestTheRatingReadsBoth::test_a_review_with_no_execution_is_unchanged
+         5.21  tests/test_mutation_verdicts.py::TestVerdictsFrom::test_executed_verdicts_carry_the_defect_killed_tier
+         5.22  tests/test_report.py::test_tier_label_comes_from_the_recorded_tier_not_a_hardcoded_string
+         5.23  tests/test_rerun.py::test_a_stale_prior_verdict_is_replaced_rather_than_surviving
+         5.24  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+         5.25  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_no_stored_verdict_claims_the_executed_tier
+         5.26  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_report_says_the_result_is_not_counted
+         recommended test: At least one candidate test fails on the defect in the throwaway copy, and that single failure is enough to mark the defect as covered.
+           inputs:  A tiny project with one candidate test that fails under an injected edit by raising NameError/ImportError/ModuleNotFoundError/UnboundLocalError, while another candidate test still passes; run the mutation tier on a defect whose edit intentionally triggers that failure type but is otherwise a real behavioral change.
+           detects: A failing candidate test whose failure is reported as NameError, ImportError, ModuleNotFoundError, or UnboundLocalError is treated as a broken edit instead of a kill, so the defect is not covered even though a test failed on it.
+           full detail: acceptance recommendation --criterion one-failing-test-covers-defect
+
+  6. When no test fails, the candidate tests are shown not to discriminate for the defect.
+       requirements: task-01
+       code evidence: addressed
+         6.1  src/acceptance/mutation/runner.py#@@ -0,0 +1,477 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         6.2  tests/benchmark/test_coverage.py::test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives
+         6.3  tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+         6.4  tests/defects/test_pair_mapping.py::test_the_report_shows_every_rating_with_its_denominator
+         6.5  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_the_block_is_absent_when_nothing_was_already_present
+         6.6  tests/test_mutation_pipeline_wiring.py::TestWhatIsPersistedAndRendered::test_the_report_says_no_test_caught_it
+         6.7  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_it_stays_at_the_static_tier_whatever_the_run_observed
+         6.8  tests/test_report.py::test_a_denominator_settled_by_injection_does_not_call_itself_a_prediction
+         6.9  tests/test_report.py::test_every_rating_the_report_shows_carries_a_denominator_or_says_why_not
+         6.10  tests/test_unverified_mutation_is_inert.py::TestNothingDerivesFromIt::test_no_test_is_credited_to_the_criterion
+
+  7. The conclusion is recorded as an observation rather than a prediction.
+       requirements: task-01
+       code evidence: addressed
+         7.1  src/acceptance/mutation/attempt.py#@@ -0,0 +1,326 @@
+         7.2  src/acceptance/mutation/verdicts.py#@@ -0,0 +1,114 @@
+         7.3  docs/DR-171-mutation-targeting.md#@@ -6,8 +6,150 @@ actual mutation at actual lines), owned by M8.4 / #45 (targeted mutation, the
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         7.4  tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_report_says_the_result_is_not_counted
+         7.5  tests/test_mutation_pipeline_wiring.py::TestVerification::test_nothing_runs_at_all_by_default
+         7.6  tests/test_mutation_verdicts.py::TestTheRatingReadsBoth::test_an_executed_kill_is_not_dragged_down_by_a_predicted_verdict_on_the_same_defect
+         7.7  tests/test_mutation_verdicts.py::TestVerdictsFrom::test_the_reason_says_the_answer_was_observed
+         7.8  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_a_verified_result_carries_no_such_mark
+         7.9  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_report_says_the_result_is_not_counted
+         7.10  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_static_judge_is_told_nothing_about_the_edit
+
+  8. The conclusion is recorded at the strongest evidence tier the review produces on its own.
+       requirements: task-01
+       code evidence: addressed
+         8.1  src/acceptance/mutation/attempt.py#@@ -0,0 +1,326 @@
+         8.2  src/acceptance/mutation/verdicts.py#@@ -0,0 +1,114 @@
+         8.3  src/acceptance/defects/support.py#@@ -117,6 +117,16 @@ class DerivedSupport(PersistableModel):
+         8.4  src/acceptance/review_state.py#@@ -20,6 +20,8 @@ from pydantic import Field, field_validator, model_validator
+         8.5  src/acceptance/report.py#@@ -16,6 +16,8 @@ Status is stated in words, not symbols, and every evidence line carries its
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         8.6  tests/benchmark/test_coverage.py::test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives
+         8.7  tests/defects/test_pair_mapping.py::test_a_surviving_pair_stops_the_criterion_reaching_strongly_supported
+         8.8  tests/test_mutation_attempt.py::TestTiers::test_an_unverified_attempt_is_observed_but_not_settled
+         8.9  tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+         8.10  tests/test_mutation_pipeline_wiring.py::TestExecutionOffChangesNothing::test_the_criterion_stays_at_the_static_tier
+         8.11  tests/test_mutation_pipeline_wiring.py::TestVerification::test_a_verified_edit_reaches_the_executed_tier
+         8.12  tests/test_mutation_runner.py::TestAMutantThatBreaksTheModule::test_it_stays_at_the_static_tier
+         8.13  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_it_stays_at_the_static_tier_whatever_the_run_observed
+         8.14  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_the_criterion_it_belongs_to_stays_static
+         8.15  tests/test_mutation_verdicts.py::TestTheRatingReadsBoth::test_one_predicted_defect_holds_the_criterion_at_static
+         8.16  tests/test_mutation_verdicts.py::TestVerdictsFrom::test_executed_verdicts_carry_the_defect_killed_tier
+         8.17  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_no_stored_verdict_claims_the_executed_tier
+         8.18  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_criterion_is_rated_as_if_execution_had_not_run
+
+  9. The injected text is recorded next to the result.
+       requirements: task-02
+       code evidence: addressed
+         9.1  src/acceptance/mutation/attempt.py#@@ -0,0 +1,326 @@
+         9.2  src/acceptance/report.py#@@ -16,6 +16,8 @@ Status is stated in words, not symbols, and every evidence line carries its
+         9.3  src/acceptance/review_state.py#@@ -20,6 +20,8 @@ from pydantic import Field, field_validator, model_validator
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         9.4  tests/defects/test_enumeration.py::test_the_review_reports_the_recorded_ways_of_failing
+         9.5  tests/test_mutation_pipeline_wiring.py::TestVerification::test_the_verifier_is_not_shown_the_tests
+         9.6  tests/test_mutation_pipeline_wiring.py::TestWhatIsPersistedAndRendered::test_the_report_shows_the_injected_text
+         9.7  tests/test_mutation_pipeline_wiring.py::TestWhatIsPersistedAndRendered::test_the_report_shows_what_the_edit_replaced
+         9.8  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_static_judge_is_told_nothing_about_the_edit
+
+  10. The review makes its own decision about whether running the project's tests is worth doing.
+       requirements: task-03
+       code evidence: not required — This is a review-time judgment about whether tests are worth running, which the repository itself cannot settle.
+       test evidence: not required — This is a review-time judgment about whether tests are worth running, which the repository itself cannot settle.
+
+  11. The review runs the project's tests when something will use the result.
+       requirements: task-03
+       code evidence: addressed
+         11.1  src/acceptance/mutation/settings.py#@@ -0,0 +1,110 @@
+         11.2  src/acceptance/pipeline.py#@@ -241,6 +253,115 @@ def _apply_coverage_status(
+         11.3  src/acceptance/pipeline.py#@@ -364,8 +486,25 @@ def run_review(
+       test evidence: partially supported — kills 2 of 5 enumerated defects (static prediction)  [tier: static]
+         11.4  tests/test_mutation_pipeline_wiring.py::TestVerification::test_nothing_runs_at_all_by_default
+         recommended test: The review executes the project's tests in cases where the test result will be used in the review.
+           inputs:  Call run_review directly with execution=None on a review that otherwise has usable tests and editable defects, and compare it to the same review with explicit ExecutionSettings; the test should observe whether execution is skipped.
+           detects: The pipeline can be called with no execution settings and then skips the execution tier entirely, so a review path that expects tests to run gets no execution at all.
+           full detail: acceptance recommendation --criterion run-tests-when-result-will-be-used
+
+  12. The review does not run the project's tests when nothing will use the result.
+       requirements: task-03
+       code evidence: addressed
+         12.1  src/acceptance/mutation/settings.py#@@ -0,0 +1,110 @@
+         12.2  src/acceptance/pipeline.py#@@ -241,6 +253,115 @@ def _apply_coverage_status(
+         12.3  src/acceptance/report.py#@@ -125,6 +127,30 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         12.4  tests/defects/test_pair_mapping.py::test_no_request_carries_more_judgements_than_the_limit
+         12.5  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_failing_test_is_named_and_the_others_carry_on
+         12.6  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_report_says_which_was_set_aside
+         12.7  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_review_returns_rather_than_stopping
+         12.8  tests/test_mutation_pipeline_wiring.py::TestVerification::test_nothing_runs_at_all_by_default
+         12.9  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_a_baseline_with_no_usable_test_attempts_nothing
+         12.10  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_no_usable_test_attempts_nothing
+         12.11  tests/test_mutation_runner.py::TestWhenTheProjectsTestsCannotBeRun::test_every_defect_falls_back_rather_than_being_decided
+         12.12  tests/test_mutation_runner.py::TestWhenTheProjectsTestsCannotBeRun::test_no_mutant_is_built_so_no_descriptor_is_asked_for
+
+  13. State which choice was made about running the project's tests and explain why that choice was made.
+       requirements: task-03
+       code evidence: addressed
+         13.1  src/acceptance/review_state.py#@@ -136,6 +139,23 @@ class DefectType(str, Enum):
+         13.2  src/acceptance/mutation/settings.py#@@ -0,0 +1,110 @@
+         13.3  src/acceptance/report.py#@@ -125,6 +127,30 @@ def render_report(review: Review) -> str:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         13.4  tests/test_mutation_baseline.py::TestTestsThatCouldNotRun::test_its_reason_is_the_runs_own
+         13.5  tests/test_mutation_pipeline_wiring.py::TestVerification::test_nothing_runs_at_all_by_default
+         13.6  tests/test_mutation_runner.py::TestAMutantThatBreaksTheModule::test_the_reason_names_the_cause
+         13.7  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_a_baseline_with_no_usable_test_attempts_nothing
+         13.8  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_no_usable_test_attempts_nothing
+
+  14. Run the tests once against the code as delivered before altering anything.
+       requirements: task-04
+       code evidence: addressed
+         14.1  src/acceptance/mutation/baseline.py#@@ -0,0 +1,266 @@
+         14.2  src/acceptance/pipeline.py#@@ -241,6 +253,115 @@ def _apply_coverage_status(
+       test evidence: partially supported — kills 2 of 3 enumerated defects (static prediction)  [tier: static]
+         14.3  tests/test_mutation_archetype_acceptance.py::TestTheUpgradeThisMilestoneExistsFor::test_without_verification_nothing_reaches_the_executed_tier
+         14.4  tests/test_mutation_pipeline_wiring.py::TestExecutionOffChangesNothing::test_no_descriptor_call_is_made
+         14.5  tests/test_mutation_pipeline_wiring.py::TestVerification::test_nothing_runs_at_all_by_default
+         14.6  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_an_unverified_kill_produces_no_verdict
+         14.7  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_an_unverified_survival_produces_no_verdict
+         14.8  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_it_stays_at_the_static_tier_whatever_the_run_observed
+         14.9  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_its_defect_still_goes_to_the_static_judge
+         recommended test: The test run occurs a single time before any code changes are made.
+           inputs:  A review fixture where the execution tier is expected to run and a descriptor/verification stub can record call order; use a defect set with at least one editable defect and a candidate test suite that would make the execution result observable.
+           detects: The execution tier is invoked after mutation has already been built and run, so the tests are not run once against the code as delivered before any alteration.
+           full detail: acceptance recommendation --criterion pre-alteration-single-run
+
+  15. A test that is set aside takes no part in any conclusion.
+       requirements: task-04
+       code evidence: addressed
+         15.1  src/acceptance/mutation/baseline.py#@@ -0,0 +1,266 @@
+         15.2  src/acceptance/report.py#@@ -16,6 +16,8 @@ Status is stated in words, not symbols, and every evidence line carries its
+         15.3  src/acceptance/review_state.py#@@ -20,6 +20,8 @@ from pydantic import Field, field_validator, model_validator
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         15.4  tests/benchmark/test_instability.py::test_the_perturbation_never_writes_into_the_repository_under_review
+         15.5  tests/test_mutation_baseline.py::TestTestsThatCouldNotRun::test_its_reason_is_the_runs_own
+         15.6  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_report_says_which_was_set_aside
+         15.7  tests/test_mutation_pipeline_wiring.py::TestWhatIsPersistedAndRendered::test_a_set_aside_test_is_stored_and_reported
+         15.8  tests/test_mutation_runner.py::TestWhenTheProjectsTestsCannotBeRun::test_an_unrunnable_test_is_set_aside_with_its_own_reason
+
+  16. The report names the test that is set aside because it cannot be trusted.
+       requirements: task-04
+       code evidence: addressed
+         16.1  src/acceptance/report.py#@@ -16,6 +16,8 @@ Status is stated in words, not symbols, and every evidence line carries its
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         16.2  tests/defects/test_pair_mapping.py::test_a_prefiltered_pair_is_named_in_the_report
+         16.3  tests/test_mutation_baseline.py::TestTestsThatCouldNotRun::test_its_reason_is_the_runs_own
+         16.4  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_report_says_which_was_set_aside
+         16.5  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_repair_a_test_fails_names_the_test_asserting_the_defect
+         16.6  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_repair_every_test_passes_means_no_test_pins_the_expected_behaviour
+         16.7  tests/test_mutation_pipeline_wiring.py::TestWhatIsPersistedAndRendered::test_a_set_aside_test_is_stored_and_reported
+
+  17. One test that cannot be trusted does not stop the other tests from running.
+       requirements: task-04
+       code evidence: addressed
+         17.1  src/acceptance/mutation/baseline.py#@@ -0,0 +1,266 @@
+         17.2  tests/test_mutation_baseline.py#@@ -0,0 +1,115 @@
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         17.3  tests/test_mutation_archetype_acceptance.py::TestTheGroundTruthIsReproduced::test_every_attempt_was_observed_by_execution
+         17.4  tests/test_mutation_archetype_acceptance.py::TestTheGroundTruthIsReproduced::test_every_labelled_defect_got_an_attempt
+         17.5  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_failing_test_is_named_and_the_others_carry_on
+         17.6  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_report_says_which_was_set_aside
+         17.7  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_review_returns_rather_than_stopping
+         17.8  tests/test_mutation_pipeline_wiring.py::TestTheStaticJudgeSeesOnlyTheRemainder::test_a_defect_injection_could_not_settle_reaches_the_static_judge
+         17.9  tests/test_mutation_pipeline_wiring.py::TestWhatIsPersistedAndRendered::test_a_set_aside_test_is_stored_and_reported
+         17.10  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_it_stays_at_the_static_tier_whatever_the_run_observed
+
+  18. The review continues even when one test cannot be trusted.
+       requirements: task-04
+       code evidence: addressed
+         18.1  src/acceptance/mutation/baseline.py#@@ -0,0 +1,266 @@
+         18.2  src/acceptance/pipeline.py#@@ -241,6 +253,115 @@ def _apply_coverage_status(
+         18.3  tests/test_mutation_pipeline_wiring.py#@@ -0,0 +1,729 @@
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         18.4  tests/test_mutation_archetype_acceptance.py::TestTheGroundTruthIsReproduced::test_every_attempt_was_observed_by_execution
+         18.5  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_failing_test_is_named_and_the_others_carry_on
+         18.6  tests/test_mutation_pipeline_wiring.py::TestARedCandidateTestIsSetAside::test_the_review_returns_rather_than_stopping
+         18.7  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_claim_is_never_counted_as_a_kill
+         18.8  tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_attempt_is_not_settled
+         18.9  tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_report_says_the_result_is_not_counted
+         18.10  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_an_unverified_kill_produces_no_verdict
+         18.11  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_it_stays_at_the_static_tier_whatever_the_run_observed
+         18.12  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_its_defect_still_goes_to_the_static_judge
+         18.13  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_the_criterion_it_belongs_to_stays_static
+         18.14  tests/test_supplied_ids.py::test_a_review_holding_an_unusable_answer_does_not_come_back_clean
+         18.15  tests/test_unverified_mutation_is_inert.py::TestNothingDerivesFromIt::test_no_test_is_credited_to_the_criterion
+         18.16  tests/test_unverified_mutation_is_inert.py::TestNothingDerivesFromIt::test_the_defect_still_owes_a_prescription
+         18.17  tests/test_unverified_mutation_is_inert.py::TestNothingDerivesFromIt::test_the_defect_still_reaches_the_static_judge
+         18.18  tests/test_unverified_mutation_is_inert.py::TestNothingDerivesFromIt::test_the_evidence_class_is_unchanged
+         18.19  tests/test_unverified_mutation_is_inert.py::TestNothingDerivesFromIt::test_the_rating_stays_at_the_static_tier
+         18.20  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_report_says_the_result_is_not_counted
+         18.21  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_static_judge_is_told_nothing_about_the_edit
+
+  19. The existing judgement that reads code without running it remains in place.
+       requirements: task-05
+       code evidence: addressed
+         19.1  src/acceptance/pipeline.py#@@ -364,8 +486,25 @@ def run_review(
+         19.2  src/acceptance/mutation/verdicts.py#@@ -0,0 +1,114 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         19.3  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_its_defect_changed
+         19.4  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_the_tests_source_changed
+         19.5  tests/test_mutation_pipeline_wiring.py::TestTheStaticJudgeSeesOnlyTheRemainder::test_the_pair_stage_is_asked_when_execution_is_off
+         19.6  tests/test_mutation_pipeline_wiring.py::TestVerification::test_a_verified_edit_reaches_the_executed_tier
+         19.7  tests/test_mutation_pipeline_wiring.py::TestVerification::test_nothing_runs_at_all_by_default
+         19.8  tests/test_rerun.py::test_a_stale_prior_verdict_is_replaced_rather_than_surviving
+         19.9  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_static_judge_is_told_nothing_about_the_edit
+
+  20. The code-reading judgement does not run first.
+       requirements: task-05
+       code evidence: addressed
+         20.1  src/acceptance/pipeline.py#@@ -364,8 +486,25 @@ def run_review(
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         20.2  tests/benchmark/test_coverage.py::test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives
+         20.3  tests/benchmark/test_coverage.py::test_cli_and_benchmark_share_one_pipeline
+         20.4  tests/benchmark/test_instability.py::test_run_once_drives_the_real_pipeline_and_snapshots_its_output
+         20.5  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_its_defect_changed
+         20.6  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_the_tests_source_changed
+         20.7  tests/test_mutation_pipeline_wiring.py::TestTheStaticJudgeSeesOnlyTheRemainder::test_a_defect_injection_could_not_settle_reaches_the_static_judge
+         20.8  tests/test_mutation_pipeline_wiring.py::TestVerification::test_a_verified_edit_reaches_the_executed_tier
+
+  21. The review runs on defects that execution could not settle: defects no edit could express, defects whose edit could not be built, and all defects when the code cannot be run.
+       requirements: task-05
+       code evidence: addressed
+         21.1  src/acceptance/mutation/runner.py#@@ -0,0 +1,477 @@
+         21.2  src/acceptance/mutation/descriptor.py#@@ -0,0 +1,360 @@
+         21.3  src/acceptance/mutation/settings.py#@@ -0,0 +1,110 @@
+         21.4  src/acceptance/mutation/verdicts.py#@@ -0,0 +1,114 @@
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         21.5  tests/test_mutation_archetype_acceptance.py::TestTheGroundTruthIsReproduced::test_every_attempt_was_observed_by_execution
+         21.6  tests/test_mutation_archetype_acceptance.py::TestTheGroundTruthIsReproduced::test_every_labelled_defect_got_an_attempt
+         21.7  tests/test_mutation_pipeline_wiring.py::TestExecutionOffChangesNothing::test_no_descriptor_call_is_made
+         21.8  tests/test_mutation_pipeline_wiring.py::TestExecutionOffChangesNothing::test_the_criterion_stays_at_the_static_tier
+         21.9  tests/test_mutation_pipeline_wiring.py::TestExecutionOffChangesNothing::test_the_report_carries_no_execution_headings
+         21.10  tests/test_mutation_pipeline_wiring.py::TestVerification::test_nothing_runs_at_all_by_default
+         21.11  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_a_baseline_with_no_usable_test_attempts_nothing
+         21.12  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_no_usable_test_attempts_nothing
+         21.13  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_the_defect_is_still_named_when_nothing_ran
+         21.14  tests/test_mutation_runner.py::TestWhenTheProjectsTestsCannotBeRun::test_every_defect_falls_back_rather_than_being_decided
+         21.15  tests/test_mutation_runner.py::TestWhenTheProjectsTestsCannotBeRun::test_no_mutant_is_built_so_no_descriptor_is_asked_for
+         21.16  tests/test_mutation_runner.py::TestWhenTheProjectsTestsCannotBeRun::test_the_control_run_reports_rather_than_raising
+         21.17  tests/test_mutation_runner.py::TestWhenTheProjectsTestsCannotBeRun::test_the_fallback_is_at_the_static_tier_with_a_reason
+
+  22. Where nothing can be run, the review reaches the conclusions it reaches today.
+       requirements: task-05
+       code evidence: addressed
+         22.1  src/acceptance/pipeline.py#@@ -241,6 +253,115 @@ def _apply_coverage_status(
+         22.2  src/acceptance/mutation/settings.py#@@ -0,0 +1,110 @@
+         22.3  tests/test_mutation_pipeline_wiring.py#@@ -0,0 +1,729 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         22.4  tests/test_mutation_pipeline_wiring.py::TestExecutionOffChangesNothing::test_the_criterion_stays_at_the_static_tier
+         22.5  tests/test_mutation_pipeline_wiring.py::TestWhenTheTestsCannotBeRunAtAll::test_the_defects_still_fall_back_to_the_static_judge
+         22.6  tests/test_mutation_runner.py::TestWhenTheProjectsTestsCannotBeRun::test_every_defect_falls_back_rather_than_being_decided
+         22.7  tests/test_mutation_runner.py::TestWhenTheProjectsTestsCannotBeRun::test_no_mutant_is_built_so_no_descriptor_is_asked_for
+         22.8  tests/test_mutation_runner.py::TestWhenTheProjectsTestsCannotBeRun::test_the_fallback_is_at_the_static_tier_with_a_reason
+         22.9  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_an_unverified_kill_produces_no_verdict
+         22.10  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_an_unverified_survival_produces_no_verdict
+         22.11  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_it_stays_at_the_static_tier_whatever_the_run_observed
+         22.12  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_its_defect_still_goes_to_the_static_judge
+
+  23. The review's evidence stays at the weaker tier only when nothing can be run.
+       requirements: task-05
+       code evidence: addressed
+         23.1  src/acceptance/mutation/attempt.py#@@ -0,0 +1,326 @@
+         23.2  src/acceptance/mutation/verdicts.py#@@ -0,0 +1,114 @@
+         23.3  src/acceptance/defects/support.py#@@ -117,6 +117,16 @@ class DerivedSupport(PersistableModel):
+         23.4  src/acceptance/review_state.py#@@ -20,6 +20,8 @@ from pydantic import Field, field_validator, model_validator
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         23.5  tests/benchmark/test_coverage.py::test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives
+         23.6  tests/test_mutation_pipeline_wiring.py::TestAnAlreadyPresentDefect::test_a_claim_is_never_counted_as_a_kill
+         23.7  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_it_stays_at_the_static_tier_whatever_the_run_observed
+         23.8  tests/test_mutation_verdicts.py::TestAnUnverifiedEditCountsForNothing::test_the_criterion_it_belongs_to_stays_static
+         23.9  tests/test_mutation_verdicts.py::TestTheRatingReadsBoth::test_a_predicted_kill_does_not_borrow_an_executed_survival_tier
+         23.10  tests/test_rerun.py::test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict
+
+  24. A defect execution that did not settle carries the reason it did not.
+       requirements: task-06
+       code evidence: addressed
+         24.1  src/acceptance/mutation/attempt.py#@@ -0,0 +1,326 @@
+         24.2  src/acceptance/mutation/baseline.py#@@ -0,0 +1,266 @@
+         24.3  src/acceptance/report.py#@@ -16,6 +16,8 @@ Status is stated in words, not symbols, and every evidence line carries its
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         24.4  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_its_defect_changed
+         24.5  tests/defects/test_pair_mapping.py::test_a_verdict_is_produced_again_when_the_tests_source_changed
+         24.6  tests/test_mutation_baseline.py::TestTestsThatCouldNotRun::test_its_reason_is_the_runs_own
+         24.7  tests/test_mutation_descriptor.py::TestMalformedAnswers::test_a_decline_with_no_reason_still_carries_one
+         24.8  tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_report_says_the_result_is_not_counted
+         24.9  tests/test_mutation_pipeline_wiring.py::TestTheBreadthSettingsReachTheRunner::test_a_kill_too_broad_for_the_configured_threshold_is_not_a_kill
+         24.10  tests/test_mutation_pipeline_wiring.py::TestTheStaticJudgeSeesOnlyTheRemainder::test_the_unsettled_defect_is_recorded_with_its_reason
+         24.11  tests/test_mutation_pipeline_wiring.py::TestVerification::test_a_refused_edit_stays_static_and_goes_to_the_static_judge
+         24.12  tests/test_mutation_pipeline_wiring.py::TestVerification::test_nothing_runs_at_all_by_default
+         24.13  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_defect_naming_no_region_is_not_mutable
+         24.14  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_descriptor_the_builder_declines_is_not_mutable
+         24.15  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_invalid_descriptor_is_not_mutable_with_the_check_s_reason
+         24.16  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_a_baseline_with_no_usable_test_attempts_nothing
+         24.17  tests/test_mutation_runner.py::TestWhenInjectionMayNotRun::test_no_usable_test_attempts_nothing
+         24.18  tests/test_recommendation_omission.py::test_an_omitted_criterion_still_produces_a_review
+         24.19  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_report_says_the_result_is_not_counted
+
+  25. The edit replaces one continuous stretch of a single file within the region named by the defect.
+       requirements: constraint-01
+       code evidence: addressed
+         25.1  src/acceptance/mutation/descriptor.py#@@ -0,0 +1,360 @@
+         25.2  src/acceptance/mutation/validity.py#@@ -0,0 +1,162 @@
+         25.3  src/acceptance/mutation/region.py#@@ -0,0 +1,65 @@
+       test evidence: not required — This is settled by inspecting the edit itself; no test can demonstrate the patch is continuous, single-file, or confined to the named region.
+
+  26. A defect that names no region is not editable and is reported as such.
+       requirements: constraint-01
+       code evidence: addressed
+         26.1  src/acceptance/mutation/runner.py#@@ -0,0 +1,477 @@
+         26.2  src/acceptance/mutation/region.py#@@ -0,0 +1,65 @@
+         26.3  tests/test_mutation_runner.py#@@ -0,0 +1,574 @@
+       test evidence: not required — Whether a defect names a region is a property of the defect description and the resulting report, not something a test can observe.
+
+  27. A file that has a parser still parses after the edit.
+       requirements: constraint-02
+       code evidence: addressed
+         27.1  src/acceptance/mutation/validity.py#@@ -0,0 +1,162 @@
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         27.2  tests/test_mutation_validity.py::TestFilesWithoutAParser::test_a_json_file_that_still_parses_is_valid
+         27.3  tests/test_mutation_validity.py::TestFilesWithoutAParser::test_a_json_file_that_stops_parsing_is_refused
+         27.4  tests/test_mutation_validity.py::TestValidity::test_an_edit_that_breaks_python_syntax_is_refused
+
+  28. A file with no parser is not invalid for lacking one.
+       requirements: constraint-02
+       code evidence: addressed
+         28.1  src/acceptance/mutation/validity.py#@@ -0,0 +1,162 @@
+       test evidence: not required — This is a prose-only applicability condition about files without parsers, so it is settled by the requirement text and the change itself rather than by a test.
+
+  29. Whether an edit is valid is settled by mechanical checks alone.
+       requirements: constraint-03
+       code evidence: addressed
+         29.1  src/acceptance/mutation/validity.py#@@ -0,0 +1,162 @@
+         29.2  docs/DR-171-mutation-targeting.md#@@ -6,8 +6,150 @@ actual mutation at actual lines), owned by M8.4 / #45 (targeted mutation, the
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         29.3  tests/defects/test_enumeration.py::test_the_review_reports_the_recorded_ways_of_failing
+         29.4  tests/test_mutation_attempt.py::TestTiers::test_an_attempt_whose_tests_never_ran_cannot_be_verified
+         29.5  tests/test_mutation_descriptor.py::TestMalformedAnswers::test_a_backwards_span_declines_rather_than_raising
+         29.6  tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_attempt_is_not_settled
+         29.7  tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_report_says_the_result_is_not_counted
+
+  30. The change does not alter how the review decides whether a project's tests can be run at all or which tests are candidates.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 88 changes across 47 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is settled by the source change itself; a reader can confirm the excluded work was not done by inspecting the implementation, and no test can directly demonstrate that the selection logic was left untouched.
+
+  31. The change does not record which lines of code a test executed.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 88 changes across 47 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the absence of line-execution recording work in the change, which a reader can verify directly from the source.
+
+  32. The change does not include writing or altering a test so that a defect can be reached.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 88 changes across 47 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the absence of test-writing or test-altering work in the change, which is checked directly from the source diff rather than by a test.
+
+  33. The change does not run the project's whole test suite.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 88 changes across 47 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the absence of whole-suite execution in the change, which is checked directly from the implementation and run instructions rather than by a test.
+
+Mandate coverage: 13 of 13 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] `src/acceptance/change/diff.py#0` adds a new exported helper `is_test_path`, which changes the public surface of the module. None of the obligations asks for a new exported API; they only require that mutation-stage code stay blind to tests, not that this helper be public.
+       src/acceptance/change/diff.py#@@ -186,6 +186,16 @@ def _whole_file_hunk(content: str) -> list[DiffHunk]:
+  2. [risky] `src/acceptance/cli.py#1` and `#4` add an `execution` parameter to `run_check` and pass `ExecutionSettings` from `main`, changing the CLI entrypoint signature and wiring. The obligations ask for the review to decide whether to run tests, but not for the CLI API itself to grow a new parameter.
+       src/acceptance/cli.py#@@ -131,6 +132,7 @@ def run_check(
+       src/acceptance/cli.py#@@ -925,6 +932,7 @@ def main(argv: list[str] | None = None) -> int:
+  3. [in_service] `src/acceptance/defects/support.py#0` adds a persisted `achieved_tier` field and `#1` changes `_explain`'s signature. The obligations require recording the strongest evidence tier, but not exposing a new persisted field or changing this helper's public signature.
+       src/acceptance/defects/support.py#@@ -117,6 +117,16 @@ class DerivedSupport(PersistableModel):
+       src/acceptance/defects/support.py#@@ -138,7 +148,12 @@ def _class_for(covered: int, enumerated: int, unknown: int) -> EvidenceClassific
+  4. [risky] `src/acceptance/execution/netblock.py#0-#2` adds `error_type` recording for failed tests. The obligations mention not recording executed lines and using candidate tests, but they do not ask for exception-class capture or classification of failure types.
+       src/acceptance/execution/netblock.py#@@ -104,24 +104,26 @@ class _Reporter:
+       src/acceptance/execution/netblock.py#@@ -139,6 +141,25 @@ def _classify(report) -> tuple[str, str | None]:  # type: ignore[no-untyped-def]
+       src/acceptance/execution/netblock.py#@@ -197,7 +218,8 @@ class SandboxPlugin:
+       src/acceptance/execution/outcome.py#@@ -54,11 +54,25 @@ class TestOutcome(_Model):
+  5. [in_service] `src/acceptance/execution/sandbox.py#0-#6` adds the public `collect_tests` API and several new helpers, and changes `_sandbox_env`'s signature. The obligations require that candidate-test selection not be altered, but they do not request a new collection API or a changed sandbox environment signature.
+       src/acceptance/execution/sandbox.py#@@ -35,7 +35,7 @@ from acceptance.execution import netblock
+       src/acceptance/execution/sandbox.py#@@ -123,6 +123,187 @@ def run_tests(
+       src/acceptance/execution/sandbox.py#@@ -151,11 +332,11 @@ def _run_in_workspace(
+       src/acceptance/execution/sandbox.py#@@ -165,6 +346,42 @@ def _run_in_workspace(
+       src/acceptance/execution/sandbox.py#@@ -189,7 +406,41 @@ def _why_unreached(
+       src/acceptance/execution/sandbox.py#@@ -197,7 +448,10 @@ def _sandbox_env(plugin_dir: Path, report_path: Path, config: SandboxConfig) ->
+       src/acceptance/execution/sandbox.py#@@ -291,6 +545,7 @@ def _read_report(report_path: Path) -> dict[str, TestOutcome]:
+  6. [separable] `src/acceptance/mutation/__init__.py#0` introduces a new package-level module and exported package documentation. No obligation asks for a new package export surface.
+       src/acceptance/mutation/__init__.py#@@ -0,0 +1,29 @@
+  7. [in_service] `src/acceptance/mutation/attempt.py#0` introduces a large new public module with new enums, models, and helpers such as `MutationOutcomeKind`, `tier_for`, and `MutationAttempt`. The obligations require mutation attempts and tiers to exist conceptually, but not this expanded public API surface.
+       src/acceptance/mutation/attempt.py#@@ -0,0 +1,326 @@
+  8. [in_service] `src/acceptance/mutation/baseline.py#0` adds new public models and the `establish_baseline` API. The obligations require a pre-alteration single run and set-aside handling, but not this new module-level API surface.
+       src/acceptance/mutation/baseline.py#@@ -0,0 +1,266 @@
+  9. [in_service] `src/acceptance/mutation/descriptor.py#0` adds a new public builder module and exported `build_descriptors`/`from_mapping` APIs. The obligations require smallest-edit construction, but not a new exported descriptor-building interface.
+       src/acceptance/mutation/descriptor.py#@@ -0,0 +1,360 @@
+  10. [in_service] `src/acceptance/mutation/injection.py#0` adds a new public context manager `mutated_copy`. The obligations require applying edits to a throwaway copy, but not exposing this as a new public API.
+       src/acceptance/mutation/injection.py#@@ -0,0 +1,47 @@
+  11. [in_service] `src/acceptance/mutation/region.py#0` adds a new public `Region` model and `regions_for` helper. The obligations require edits to stay within named regions, but not a new exported region-resolution API.
+       src/acceptance/mutation/region.py#@@ -0,0 +1,65 @@
+  12. [in_service] `src/acceptance/mutation/runner.py#0` adds a new public orchestration module and exported constants/types. The obligations require running candidate tests on a throwaway copy, but not this new public runner surface.
+       src/acceptance/mutation/runner.py#@@ -0,0 +1,477 @@
+  13. [in_service] `src/acceptance/mutation/settings.py#0` adds a new public settings model and `decide_execution` API. The obligations require a review-owned decision about whether to run tests, but not a new exported settings module.
+       src/acceptance/mutation/settings.py#@@ -0,0 +1,110 @@
+  14. [in_service] `src/acceptance/mutation/surrounding.py#0` adds a new public retrieval/rendering module. The obligations require the mutation stage not to read tests and to use surrounding code, but not this new exported helper surface.
+       src/acceptance/mutation/surrounding.py#@@ -0,0 +1,104 @@
+  15. [in_service] `src/acceptance/mutation/validity.py#0` adds a new public validity module and exported helpers/constants. The obligations require mechanical validity checks, but not this expanded public API surface.
+       src/acceptance/mutation/validity.py#@@ -0,0 +1,162 @@
+  16. [in_service] `src/acceptance/mutation/verdicts.py#0` adds a new public verdicts module and exported helpers. The obligations require executed verdicts to feed the rating and static judge, but not this new exported API.
+       src/acceptance/mutation/verdicts.py#@@ -0,0 +1,114 @@
+  17. [in_service] `src/acceptance/mutation/verification.py#0` adds a new public verification module and exported helpers. The obligations require the review to verify edits before counting them, but not this new exported verification API.
+       src/acceptance/mutation/verification.py#@@ -0,0 +1,219 @@
+  18. [in_service] `src/acceptance/mutation/workspace.py#0` adds a new public workspace-copy module and exported helper. The obligations require throwaway copies, but not this new exported API surface.
+       src/acceptance/mutation/workspace.py#@@ -0,0 +1,95 @@
+  19. [in_service] `src/acceptance/pipeline.py#0-#9` adds new execution-tier orchestration and new parameters/return plumbing. The obligations require the review to run tests when useful and to keep the static judgement in place, but not this broad pipeline API expansion.
+       src/acceptance/pipeline.py#@@ -20,6 +20,7 @@ from __future__ import annotations
+       src/acceptance/pipeline.py#@@ -54,6 +55,14 @@ from acceptance.evidence.discovery import discover_tests
+       src/acceptance/pipeline.py#@@ -68,9 +77,12 @@ from acceptance.review_state import (
+       src/acceptance/pipeline.py#@@ -241,6 +253,115 @@ def _apply_coverage_status(
+       src/acceptance/pipeline.py#@@ -257,6 +378,7 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -364,8 +486,25 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -375,6 +514,11 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -386,7 +530,7 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -404,7 +548,7 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -532,8 +676,15 @@ def run_review(
+  20. [in_service] `src/acceptance/report.py#0-#3` adds new report sections for execution decisions, mutation attempts, already-present claims, and set-aside tests. The obligations ask for these facts to be recorded and observable, but not for this specific report-format expansion.
+       src/acceptance/report.py#@@ -16,6 +16,8 @@ Status is stated in words, not symbols, and every evidence line carries its
+       src/acceptance/report.py#@@ -125,6 +127,30 @@ def render_report(review: Review) -> str:
+       src/acceptance/report.py#@@ -189,9 +215,17 @@ def _denominator(obligation: Obligation) -> str:
+       src/acceptance/report.py#@@ -256,6 +290,132 @@ def _defect_block(defect_sets: list[DefectSet]) -> list[str]:
+  21. [in_service] `src/acceptance/review_state.py#1-#5` adds new persisted review-state fields and exports (`ExecutionDecision`, `MutationAttempt`, `SetAsideTest`, new defect behavior fields, and `PairVerdict.tier`). The obligations require these concepts to be represented, but not this broad public model-surface expansion.
+       src/acceptance/review_state.py#@@ -37,6 +39,7 @@ __all__ = [
+       src/acceptance/review_state.py#@@ -136,6 +139,23 @@ class DefectType(str, Enum):
+       src/acceptance/review_state.py#@@ -155,6 +175,19 @@ class Defect(_Model):
+       src/acceptance/review_state.py#@@ -209,6 +242,20 @@ class PairVerdict(_Model):
+       src/acceptance/review_state.py#@@ -1234,6 +1281,28 @@ class Review(_Model):
+  22. [in_service] The added benchmark and test files (`tests/benchmark/*`, `tests/test_*`) are extensive new coverage for the new mutation tier and related behavior. They are not themselves requested by any obligation as production behavior, and many of them exercise newly introduced helper APIs rather than only the stated acceptance boundaries.
+       tests/benchmark/degenerate_judges.py#@@ -131,6 +131,8 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
+       tests/benchmark/test_coverage.py#@@ -200,6 +200,8 @@ def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
+       tests/benchmark/test_coverage.py#@@ -658,12 +660,16 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
+       tests/benchmark/test_coverage.py#@@ -771,6 +777,8 @@ def test_the_shared_pipeline_partitions_the_pair_call(tmp_path):
+       tests/benchmark/test_coverage.py#@@ -922,6 +930,8 @@ def test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives(t
+       tests/defects/test_enumeration.py#@@ -88,6 +88,8 @@ def _defect(
+       tests/defects/test_enumeration.py#@@ -174,6 +176,20 @@ def test_a_set_that_found_defects_carries_no_empty_set_reason():
+       tests/defects/test_pair_mapping.py#@@ -677,6 +677,8 @@ _ENUMERATED = {
+       tests/test_cli.py#@@ -717,6 +717,8 @@ def _gap_client():
+       tests/test_cli_execution.py#@@ -0,0 +1,69 @@
+       tests/test_mutation_archetype_acceptance.py#@@ -0,0 +1,187 @@
+       tests/test_mutation_attempt.py#@@ -0,0 +1,185 @@
+       tests/test_mutation_baseline.py#@@ -0,0 +1,115 @@
+       tests/test_mutation_descriptor.py#@@ -0,0 +1,279 @@
+       tests/test_mutation_injection.py#@@ -0,0 +1,121 @@
+       tests/test_mutation_pipeline_wiring.py#@@ -0,0 +1,729 @@
+       tests/test_mutation_runner.py#@@ -0,0 +1,574 @@
+       tests/test_mutation_surrounding.py#@@ -0,0 +1,86 @@
+       tests/test_mutation_validity.py#@@ -0,0 +1,267 @@
+       tests/test_mutation_verdicts.py#@@ -0,0 +1,295 @@
+       tests/test_recommendation_omission.py#@@ -107,6 +107,8 @@ def _judgments(recommendations: list[dict]) -> dict:
+       tests/test_report.py#@@ -602,3 +602,26 @@ def test_every_rating_the_report_shows_carries_a_denominator_or_says_why_not():
+       tests/test_rerun.py#@@ -366,6 +366,8 @@ _HEAD_JUDGMENTS = {
+       tests/test_rerun.py#@@ -538,6 +540,8 @@ _TWO_FILE_JUDGMENTS = {
+       tests/test_supplied_ids.py#@@ -328,6 +328,8 @@ _JUDGMENTS = {
+       tests/test_unevidenceable_obligations.py#@@ -77,6 +77,8 @@ def _judgments(*, checkout: str = "code_only", alpha: str = "code_and_tests") ->
+       tests/test_unverified_mutation_is_inert.py#@@ -0,0 +1,405 @@
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  smallest-edit-for-defect
+    [other] smallest-edit-for-defect/descriptor-can-return-non-smallest-edit
+      The descriptor stage can return an edit that changes the named defect but is not the smallest one, because the prompt and validation only require a contiguous replacement inside a named region and do not enforce minimality.
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/validity.py#0
+      src/acceptance/mutation/runner.py#0
+    [other] smallest-edit-for-defect/verification-gate-can-block-settled-edits
+      Observed kills and survivals only reach the settled tier when verification is enabled and succeeds, so the execution path can keep a valid injected edit from counting as the smallest edit that makes the defect true.
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#5
+      src/acceptance/report.py#1
+    [other] smallest-edit-for-defect/already-present-path-repairs-instead-of-injecting
+      When the descriptor says the code already has the defective behaviour, the runner switches to a repair edit instead of building an edit that makes the defect true, so the criterion can be missed for those defects.
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/report.py#1
+    [missing_case] smallest-edit-for-defect/declines-and-not-mutable-paths-bypass-edit-building
+      Defects that are declined as not a code property, not one contiguous edit, cannot tell, or not mutable never produce an injected edit, so the review can fail to build the smallest edit for those named defects.
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/validity.py#0
+
+  throwaway-copy-application
+    [other] throwaway-copy-application/mutated-copy-applies-to-original-tree
+      The mutation edit is written into the working codebase instead of the throwaway copy, so the original project can be modified by injection.
+      src/acceptance/mutation/injection.py#0
+      src/acceptance/mutation/workspace.py#0
+    [other] throwaway-copy-application/copy-creation-falls-back-to-project-root
+      The throwaway copy is created with the wrong destination root, so the copy step can fail or target the live tree rather than an isolated workspace.
+      src/acceptance/mutation/workspace.py#0
+    [scope_too_narrow] throwaway-copy-application/mutation-runner-uses-original-paths-for-edits
+      The mutation runner can still resolve and edit files from the original checkout instead of the copied project, so the edit is not confined to the throwaway workspace.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/injection.py#0
+      src/acceptance/mutation/workspace.py#0
+    [not_wired] throwaway-copy-application/pipeline-skips-mutation-stage
+      The execution path that should apply the defect-making edit to a throwaway copy is defined, but the review pipeline never calls it, so no mutation is actually applied on the delivered path.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/pipeline.py#6
+      src/acceptance/mutation/runner.py#0
+
+  run-candidate-tests-on-throwaway-copy
+    [not_wired] run-candidate-tests-on-throwaway-copy/execution-tier-disabled-by-default
+      The execution tier is added, but the review path leaves it switched off by default, so the candidate tests never run on the throwaway copy.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#4
+      src/acceptance/mutation/settings.py#0
+    [missing_case] run-candidate-tests-on-throwaway-copy/execution-skipped-when-no-editable-defects
+      The execution decision skips the test run whenever no defect names an editable region, even though the criterion still covers running candidate tests on the throwaway copy.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+    [condition_inverted] run-candidate-tests-on-throwaway-copy/baseline-failure-stops-the-run
+      A red candidate test in the control run is treated as a reason to stop instead of being set aside, which can prevent the later throwaway-copy run from happening.
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/pipeline.py#3
+    [scope_too_narrow] run-candidate-tests-on-throwaway-copy/collectable-test-filter-drops-candidate-tests
+      The collection gate can drop candidate tests that pytest would not collect together, so only a subset of the project's candidate tests are actually run on the throwaway copy.
+      src/acceptance/execution/sandbox.py#1
+      src/acceptance/execution/sandbox.py#3
+      src/acceptance/mutation/baseline.py#0
+    [wrong_output_shape] run-candidate-tests-on-throwaway-copy/parametrized-tests-folded-to-bare-id
+      Parametrized tests are folded back to the bare test id, which can misrepresent what actually ran against the throwaway copy.
+      src/acceptance/execution/sandbox.py#3
+      src/acceptance/execution/sandbox.py#1
+    [missing_case] run-candidate-tests-on-throwaway-copy/mutation-runner-only-runs-when-baseline-has-usable-tests
+      If the baseline leaves no usable tests, the mutation runner returns without running any candidate tests on the throwaway copy, even though the criterion still asks for that execution.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/baseline.py#0
+    [condition_inverted] run-candidate-tests-on-throwaway-copy/execution-decision-gates-on-verification-rather-than-test-run
+      The execution decision is tied to whether edit verification is enabled, so the candidate tests are not run unless a separate verifier is on.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+
+  test-discrimination-shown
+    [condition_inverted] test-discrimination-shown/unverified-kills-are-still-shown-as-discriminating
+      An observed kill is rendered as discriminating even when the edit was not verified, so a failing test is reported as evidence for a defect that was never settled.
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/mutation/verdicts.py#0
+      src/acceptance/report.py#1
+    [missing_case] test-discrimination-shown/broken-edits-can-be-counted-as-discriminating
+      A mutant that only breaks the code by NameError, ImportError, or a similar load failure can still be treated as a discriminating failure, even though the test did not discriminate for the named defect.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/execution/netblock.py#0
+      src/acceptance/execution/outcome.py#0
+    [other] test-discrimination-shown/already-present-repairs-can-be-misreported-as-discriminating
+      A claim that the code already has the defect can be rendered as if the repair edit proved discrimination, even though the repair is only corroboration and not a settled injection result.
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/report.py#1
+      src/acceptance/report.py#3
+
+  one-failing-test-covers-defect
+    [condition_inverted] one-failing-test-covers-defect/coverage-requires-all-tests-to-fail
+      The mutation runner only marks a defect as covered when every candidate test fails, so a single failing test is not enough.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/verdicts.py#0
+      src/acceptance/defects/support.py#0
+    [not_wired] one-failing-test-covers-defect/coverage-dropped-for-unverified-edits
+      Observed failures are kept at the static tier unless edit verification is enabled, so a real failing test does not reach the covered state on the default path.
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#5
+      src/acceptance/pipeline.py#6
+      src/acceptance/defects/support.py#0
+    [missing_case] one-failing-test-covers-defect/coverage-lost-when-failure-is-treated-as-broken-edit
+      A failing candidate test whose failure is reported as NameError, ImportError, ModuleNotFoundError, or UnboundLocalError is treated as a broken edit instead of a kill, so the defect is not covered even though a test failed on it.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/execution/netblock.py#0
+      src/acceptance/execution/outcome.py#0
+    [scope_too_narrow] one-failing-test-covers-defect/coverage-misses-broad-but-real-kills
+      The breadth gate can refuse an edit that really makes the defect true and causes at least one candidate test to fail, so some covered defects are lost because the edit is judged too broad.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/validity.py#0
+    [wrong_output_shape] one-failing-test-covers-defect/coverage-not-reflected-in-derived-support-tier
+      The support derivation stores coverage as a tiered value, but the tier can remain STATIC even when execution observed a failing test, so the covered state is not represented in the form the rest of the pipeline reads.
+      src/acceptance/defects/support.py#0
+      src/acceptance/defects/support.py#3
+      src/acceptance/defects/support.py#4
+      src/acceptance/review_state.py#4
+      src/acceptance/report.py#2
+
+  candidate-tests-not-discriminating-when-none-fail
+    [scope_too_narrow] candidate-tests-not-discriminating-when-none-fail/execution-tier-can-still-report-discriminating-when-no-tests-fail
+      The execution-tier report can still describe candidate tests as discriminating even when no candidate test fails, because the new mutation reporting is only rendered when execution runs and the tier gate can skip execution entirely.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/report.py#1
+      src/acceptance/mutation/settings.py#0
+    [unenforced_on_one_path] candidate-tests-not-discriminating-when-none-fail/survival-path-still-uses-static-discrimination-language
+      The report wording for the static support path still uses the old discrimination framing, so a no-fail run can be summarized as static prediction rather than as candidate tests not discriminating.
+      src/acceptance/report.py#2
+      src/acceptance/report.py#3
+      src/acceptance/defects/support.py#1
+      src/acceptance/defects/support.py#2
+
+  observation-not-prediction
+    [other] observation-not-prediction/execution-decision-reason-still-describes-a-choice-not-an-observation
+      The review output can still describe the conclusion as a decision about whether to run or count results, rather than as the observed result itself, because the new execution-decision text is rendered separately from the conclusion and can leave the conclusion wording unchanged.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/review_state.py#5
+    [other] observation-not-prediction/mutation-block-labels-unverified-results-as-not-counted-instead-of-observed
+      Unverified mutation outcomes are rendered with a 'NOT COUNTED' mark and a static-tier explanation, which can leave the visible conclusion framed as a non-result rather than as an observed result.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/mutation/attempt.py#0
+
+  strongest-evidence-tier-recording
+    [scope_too_narrow] strongest-evidence-tier-recording/tier-not-derived-from-executed-verdicts
+      The review can still record the conclusion at the static tier even when execution produced a stronger self-produced tier, because the stored tier is derived from the weakest tier across all verdicts rather than the strongest tier the review itself produced.
+      src/acceptance/defects/support.py#0
+      src/acceptance/defects/support.py#3
+      src/acceptance/defects/support.py#4
+      src/acceptance/defects/support.py#5
+      src/acceptance/pipeline.py#7
+      src/acceptance/pipeline.py#8
+      src/acceptance/report.py#2
+    [scope_too_narrow] strongest-evidence-tier-recording/unverified-execution-keeps-static-tier
+      Observed kills and survivals do not always settle the conclusion at the stronger tier, because unverified execution results are kept but left at STATIC and therefore do not record the conclusion at the strongest self-produced tier.
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/report.py#1
+      src/acceptance/report.py#2
+
+  injected-text-recorded-next-to-result
+    [wrong_output_shape] injected-text-recorded-next-to-result/injected-text-not-rendered-for-executed-attempts
+      Executed mutation attempts are rendered without the injected text, so a reader sees only the outcome and not what was injected.
+      src/acceptance/report.py#1
+      src/acceptance/report.py#3
+      src/acceptance/mutation/attempt.py#0
+    [missing_case] injected-text-recorded-next-to-result/injected-text-missing-for-already-present-repairs
+      Already-present findings are rendered without the injected repair text, so the report does not show the edit that was run next to that result.
+      src/acceptance/report.py#1
+      src/acceptance/report.py#3
+      src/acceptance/mutation/attempt.py#0
+
+  run-tests-when-result-will-be-used
+    [condition_inverted] run-tests-when-result-will-be-used/execution-decision-off-by-default
+      The execution tier is gated off when edit verification is disabled, so the review skips running tests even though the result would be used.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#4
+    [scope_too_narrow] run-tests-when-result-will-be-used/execution-decision-requires-editable-defects
+      The execution tier only runs when at least one defect names an editable region, so reviews with usable test results but no editable defects never run tests.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+    [not_wired] run-tests-when-result-will-be-used/execution-tier-never-enabled-from-cli
+      The CLI always constructs default execution settings with verification off, so the new execution tier is never actually enabled from the delivered entry point.
+      src/acceptance/cli.py#4
+      src/acceptance/cli.py#1
+      src/acceptance/mutation/settings.py#0
+    [missing_case] run-tests-when-result-will-be-used/pipeline-skips-execution-when-settings-absent
+      The pipeline can be called with no execution settings and then skips the execution tier entirely, so a review path that expects tests to run gets no execution at all.
+      src/acceptance/pipeline.py#4
+      src/acceptance/pipeline.py#3
+      src/acceptance/cli.py#1
+    [other] run-tests-when-result-will-be-used/execution-decision-uses-result-consumption-as-a-hard-precondition
+      The decision logic treats 'something will use the result' as requiring verification to be on, which can suppress test execution even though the review would still consume the result through the static judge or reporting path.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/report.py#0
+
+  skip-tests-when-unused
+    [condition_inverted] skip-tests-when-unused/execution-decision-inverted
+      The review runs the project's tests when the execution decision says no result could count, so the tier is enabled in the wrong cases.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+    [not_wired] skip-tests-when-unused/execution-tier-always-off
+      The execution-tier decision exists, but the pipeline never uses it to gate the test run, so the review still runs tests even when they are unused.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/pipeline.py#6
+    [scope_too_narrow] skip-tests-when-unused/verify-edits-keeps-tests-running
+      The skip-tests gate only covers the unverified-edit path, but the review can still run the project's tests in other unused-result cases such as when verification is off or no defect can be edited.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/pipeline.py#6
+    [other] skip-tests-when-unused/baseline-run-still-happens
+      The control baseline still runs the project's tests even though the review has already determined that no later stage will use the result.
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+
+  state-test-choice-and-rationale
+    [explanation_absent] state-test-choice-and-rationale/execution-decision-not-rendered-when-tests-are-skipped
+      When the review decides not to run the project's tests, the report omits that choice and its reason, so the output does not say why tests were skipped.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      src/acceptance/review_state.py#2
+      src/acceptance/mutation/settings.py#0
+    [explanation_states_wrong_cause] state-test-choice-and-rationale/execution-decision-reason-misstates-why-tests-were-skipped
+      The report can state that tests were not run for the wrong reason, so the observable rationale does not match the actual decision cause.
+      src/acceptance/report.py#1
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/review_state.py#2
+    [not_wired] state-test-choice-and-rationale/execution-decision-not-wired-into-review-output
+      The execution decision is computed and stored, but the rendered review can still omit it because the report path does not use the new field consistently.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#4
+      src/acceptance/report.py#1
+      src/acceptance/review_state.py#2
+
+  pre-alteration-single-run
+    [other] pre-alteration-single-run/execution-tier-runs-after-mutation-stage
+      The execution tier is invoked after mutation has already been built and run, so the tests are not run once against the code as delivered before any alteration.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/pipeline.py#6
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/mutation/runner.py#0
+    [other] pre-alteration-single-run/baseline-run-skipped-when-verification-off
+      The execution decision can skip running the project's tests entirely when edit verification is off, even though the criterion requires a single test run against the delivered code.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#4
+    [other] pre-alteration-single-run/baseline-run-skipped-when-no-editable-defects
+      The execution decision suppresses the baseline run when no enumerated defect names an editable region, so some reviews never perform the required delivered-code test run.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+
+  test-set-aside-takes-no-part-in-conclusion
+    [unenforced_on_one_path] test-set-aside-takes-no-part-in-conclusion/set-aside-tests-still-feed-into-review-support
+      Set-aside tests are still included in the review's later support and rating calculations, so they continue to affect conclusions even though they were excluded from the baseline.
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#7
+      src/acceptance/pipeline.py#8
+      src/acceptance/report.py#1
+      src/acceptance/report.py#3
+      src/acceptance/review_state.py#5
+    [other] test-set-aside-takes-no-part-in-conclusion/set-aside-tests-rendered-as-part-of-conclusions
+      The report renders set-aside tests in the same review output as the conclusions, so they are still presented as part of the outcome rather than being excluded from it.
+      src/acceptance/report.py#1
+      src/acceptance/report.py#3
+      src/acceptance/review_state.py#5
+
+  report-names-it
+    [not_wired] report-names-it/set-aside-tests-not-rendered
+      The review stores set-aside tests, but the report path never renders them, so a test that was excluded for being untrusted is omitted from the output.
+      src/acceptance/report.py#1
+      src/acceptance/review_state.py#5
+    [explanation_absent] report-names-it/set-aside-test-name-not-included
+      The report mentions that tests were set aside, but the per-test lines do not include the test's name, so the reader cannot tell which test was excluded.
+      src/acceptance/report.py#1
+    [other] report-names-it/wrong-field-used-for-set-aside-name
+      The report could render the wrong identifier for a set-aside test, such as a kind or reason instead of the test's name, so the excluded test is not actually named.
+      src/acceptance/report.py#1
+      src/acceptance/review_state.py#5
+
+  untrusted-test-does-not-block-others
+    [condition_inverted] untrusted-test-does-not-block-others/untrusted-test-still-aborts-run
+      A test identified as untrusted is still treated as a run-stopping failure, so the remaining tests never get a chance to execute.
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/report.py#3
+    [not_wired] untrusted-test-does-not-block-others/untrusted-test-path-never-reaches-execution-tier
+      The execution-tier logic that would isolate untrusted tests exists, but the review pipeline never calls it, so untrusted tests still block the rest by omission.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/mutation/baseline.py#0
+    [wrong_output_shape] untrusted-test-does-not-block-others/untrusted-test-set-aside-shape-loses-runnable-tests
+      The code records untrusted tests in a shape that does not preserve the remaining runnable tests correctly, so later stages cannot execute the rest as intended.
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/report.py#3
+      src/acceptance/review_state.py#5
+
+  review-continues-despite-one-untrusted-test
+    [other] review-continues-despite-one-untrusted-test/baseline-red-test-still-stops-the-review
+      A candidate test that fails in the control run is still treated as fatal, so the review stops instead of continuing past one untrusted test.
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/report.py#3
+    [other] review-continues-despite-one-untrusted-test/collect-only-failure-still-aborts-execution
+      A test that pytest cannot collect still causes the whole execution tier to stop instead of being dropped with a reason and letting the review continue.
+      src/acceptance/execution/sandbox.py#1
+      src/acceptance/execution/sandbox.py#2
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/pipeline.py#3
+    [other] review-continues-despite-one-untrusted-test/unverified-kill-still-counted-as-settled
+      An observed kill or survival is counted as settled even when the edit was not verified, so an untrusted result can still drive the review as if it were trusted.
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/mutation/verdicts.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/report.py#1
+
+  existing-code-reading-judgement-remains
+    [scope_too_narrow] existing-code-reading-judgement-remains/execution-decision-can-suppress-code-reading-judgement
+      The review can skip the existing code-reading judgement whenever execution is deemed not worth running, so the judgement does not remain in place for all reviews covered by the criterion.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/mutation/settings.py#0
+    [established_not_maintained] existing-code-reading-judgement-remains/execution-tier-replaces-rather-than-preserves-static-judgement
+      The new execution tier is inserted before the static pair judgement and removes settled defects from the static judge's input, so the existing code-reading judgement is no longer preserved unchanged for the full review.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/mutation/verdicts.py#0
+
+  does-not-run-first
+    [condition_inverted] does-not-run-first/execution-tier-runs-before-static-judgement
+      The pipeline now invokes the execution tier before the static pair judgement, so the code-reading judgement no longer runs first.
+      src/acceptance/pipeline.py#5
+      src/acceptance/pipeline.py#6
+      src/acceptance/pipeline.py#7
+      src/acceptance/pipeline.py#8
+      src/acceptance/pipeline.py#9
+    [scope_too_narrow] does-not-run-first/execution-tier-can-be-enabled-and-preempt-the-static-path
+      The new execution gate can decide to run tests whenever verification is enabled and there are editable defects, so the static judgement is not first on those reviews.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#4
+    [not_wired] does-not-run-first/execution-path-not-called-from-main-review-flow
+      The execution-tier orchestration exists, but if the review pipeline does not call it on the delivered path, the code-reading judgement would still run first in practice.
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/cli.py#1
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#4
+
+  review-runs-on-unsettled-defects
+    [scope_too_narrow] review-runs-on-unsettled-defects/execution-disabled-by-default
+      The execution tier is gated off by default, so reviews do not run on unsettled defects unless a caller explicitly opts in.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#4
+      src/acceptance/pipeline.py#5
+    [missing_case] review-runs-on-unsettled-defects/unsettled-defects-dropped-before-execution
+      Defects that have no usable region, or whose edit cannot be built, are turned into `not_mutable`/`not_attempted` attempts and then excluded from the execution path instead of being run as unsettled defects.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/validity.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+    [missing_case] review-runs-on-unsettled-defects/cannot-run-baseline-returns-empty-set-aside-instead-of-running-defects
+      When the code cannot be run, the control path can return an empty usable-test set and stop the mutation tier instead of running the review on all defects.
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+
+  preserve-current-review-conclusions-when-unrunnable
+    [condition_inverted] preserve-current-review-conclusions-when-unrunnable/execution-tier-now-runs-when-tests-are-unavailable
+      The review no longer preserves the current conclusions when execution is unavailable because the new execution tier is gated on `verify_edits` and editable defects, so an unrunnable review can be routed into the mutation path instead of leaving the current review conclusions unchanged.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/pipeline.py#6
+      src/acceptance/pipeline.py#9
+    [unenforced_on_one_path] preserve-current-review-conclusions-when-unrunnable/unrunnable-reviews-can-still-be-reclassified-by-verification-off
+      The execution decision can be turned off globally, but the pipeline still builds mutation attempts and verdicts on the path where `decide_execution` returns `run=True`; if that decision is wrong for an unrunnable review, the current conclusions are not preserved.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/pipeline.py#6
+      src/acceptance/pipeline.py#8
+      src/acceptance/pipeline.py#9
+
+  weaker-tier-evidence-only-when-nothing-runs
+    [condition_inverted] weaker-tier-evidence-only-when-nothing-runs/weaker-tier-set-when-tests-run
+      The review can report weaker-tier evidence even though the execution tier did run and produced settled results, because the tier gate is not actually tied to the 'nothing can be run' condition.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/pipeline.py#6
+      src/acceptance/review_state.py#5
+    [established_not_maintained] weaker-tier-evidence-only-when-nothing-runs/weaker-tier-not-preserved-after-verification-off
+      The execution tier is initialized as weaker-tier/static, but later code can still leave the review reporting weaker-tier evidence even when the run did execute and the mutation results were observed, because the tier is not maintained from the actual run state.
+      src/acceptance/defects/support.py#0
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#6
+      src/acceptance/report.py#1
+      src/acceptance/review_state.py#5
+
+  carry-reason-for-non-settlement
+    [scope_too_narrow] carry-reason-for-non-settlement/not-attempted-and-not-mutable-drop-reasons
+      Unsettled mutation attempts that are recorded as `not_attempted` or `not_mutable` can be created without a non-empty reason, so some non-settled execution records do not carry why they were not settled.
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/baseline.py#0
+    [unenforced_on_one_path] carry-reason-for-non-settlement/verification-failure-path-loses-reason
+      When an observed mutation attempt is verified and the verifier rejects it or cannot verify it, the tier gate can keep the attempt but leave the non-settlement reason empty or replace it with a verification-only note, so the original reason for not settling is not preserved.
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/report.py#0
+    [not_wired] carry-reason-for-non-settlement/execution-decision-off-path-has-no-settlement-reason
+      When execution is disabled by `decide_execution`, the pipeline returns no mutation attempts at all, so there is no settled-or-unsettled execution record to carry the reason for non-settlement.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/report.py#0
+
+  single-continuous-edit-in-named-region
+    [other] single-continuous-edit-in-named-region/descriptor-can-return-multi-span-or-multi-file-edit
+      The descriptor path can still produce an edit that is not a single continuous stretch in one file, because the response model only constrains one span syntactically and the downstream code does not enforce that the injected change stays to one contiguous replacement in the named region.
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/validity.py#0
+      src/acceptance/mutation/attempt.py#0
+    [scope_too_narrow] single-continuous-edit-in-named-region/region-containment-check-can-miss-outside-span
+      The containment check only validates the chosen span against the named region, so an edit can still be accepted when the descriptor lands outside the defect's intended region but inside the same file or when the region mapping is incomplete.
+      src/acceptance/mutation/validity.py#0
+      src/acceptance/mutation/region.py#0
+      src/acceptance/mutation/runner.py#0
+    [missing_case] single-continuous-edit-in-named-region/absent-region-defects-never-reach-an-edit
+      Defects with no resolved region are dropped before descriptor building, so the criterion's requirement is not exercised for absence-style defects even though the criterion covers edits that should still be single contiguous replacements when the region is inferred by deletion or other absence handling.
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/region.py#0
+      src/acceptance/mutation/runner.py#0
+
+  no-edit-without-named-region
+    [unenforced_on_one_path] no-edit-without-named-region/no-region-defects-still-asked-about
+      Defects that name no usable region are still passed into the mutation descriptor stage instead of being excluded up front, so the review can try to edit them anyway.
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/region.py#0
+    [scope_too_narrow] no-edit-without-named-region/no-region-defects-become-not-mutable-only-after-failing-later-checks
+      A defect with no named region is only reported as uneditable after later mutation-stage checks, so some no-region defects can slip past the intended early report path.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/validity.py#0
+      src/acceptance/mutation/descriptor.py#0
+
+  parser-files-still-parse
+    [scope_too_narrow] parser-files-still-parse/parser-check-skips-files-without-a-recognized-parser
+      Files whose extensions are not in the parser table are exempted from the parse check, so a file that actually has a parser but is not listed can be mutated without being checked for parseability.
+      src/acceptance/mutation/validity.py#0
+    [unenforced_on_one_path] parser-files-still-parse/parser-check-only-runs-after-other-gates-pass
+      The parseability check is only reached after the edit passes the earlier validity gates, so a parser-backed file can still be left unparsed if a later path bypasses or short-circuits the check.
+      src/acceptance/mutation/validity.py#0
+      src/acceptance/mutation/runner.py#0
+    [unenforced_on_one_path] parser-files-still-parse/parse-check-not-applied-to-repair-edits
+      Repair edits for already-present defects can be accepted without the same parseability check as ordinary injections, so a parser-backed file could be left broken on that route.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/validity.py#0
+
+  no-parser-not-invalid
+    [condition_inverted] no-parser-not-invalid/parse-check-still-invalidates-nonparsable-files
+      Files without a registered parser are still rejected as invalid instead of being left alone.
+      src/acceptance/mutation/validity.py#0
+    [scope_too_narrow] no-parser-not-invalid/parser-gate-applies-only-to-some-file-types
+      The no-parser exemption is implemented only for the file types listed in the parser table, so other unparsed file types are still marked invalid for lacking a parser.
+      src/acceptance/mutation/validity.py#0
+    [not_wired] no-parser-not-invalid/no-parser-path-never-reaches-validity-check
+      The code that would exempt files without a parser exists, but the mutation path never calls the validity check for those files, so they can still be rejected elsewhere.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/validity.py#0
+
+  mechanical-validity-checks
+    [not_wired] mechanical-validity-checks/mechanical-validity-checks-are-not-used-to-decide-edit-validity
+      The mechanical validity checks are implemented, but the mutation pipeline still decides whether an edit is valid from model output or later human judgment instead of from those checks.
+      src/acceptance/mutation/validity.py#0
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+      src/acceptance/mutation/settings.py#0
+    [unenforced_on_one_path] mechanical-validity-checks/mechanical-checks-are-not-applied-on-the-already-present-repair-path
+      The mechanical validity checks are applied to injected edits, but the already-present repair path can still run or be recorded without passing the same checks.
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/mutation/validity.py#0
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/pipeline.py#3
+    [unenforced_on_one_path] mechanical-validity-checks/mechanical-checks-can-be-bypassed-by-the-verification-tier
+      The verification tier can mark an observed edit as settled without the edit first being mechanically valid, so a non-mechanical path can still determine validity.
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/mutation/attempt.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/mutation/settings.py#0
+
+  tests-candidate-selection
+    [condition_inverted] tests-candidate-selection/execution-decision-now-gated-on-verify_edits
+      The review now decides whether to run the project's tests based on `ExecutionSettings.verify_edits`, so execution is skipped whenever edit verification is off even though the criterion says the decision about whether tests can be run at all should not be altered.
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/pipeline.py#3
+      src/acceptance/pipeline.py#5
+    [scope_too_narrow] tests-candidate-selection/baseline-now-drops-tests-that-pytest-cannot-collect
+      The baseline candidate set is now filtered through `collect_tests`, so tests that discovery found but pytest cannot collect are removed from the candidate set instead of remaining candidates for the review.
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/execution/sandbox.py#1
+      src/acceptance/execution/sandbox.py#3
+    [scope_too_narrow] tests-candidate-selection/baseline-falls-back-to-per-file-collection-and-drops-jointly-failing-tests
+      When joint collection fails, the new per-file fallback admits only files that still collect together with the already-admitted set, which can exclude tests that were candidates before even though they are individually collectable.
+      src/acceptance/execution/sandbox.py#1
+      src/acceptance/execution/sandbox.py#3
+      src/acceptance/mutation/baseline.py#0
+    [not_wired] tests-candidate-selection/pipeline-now-replaces-static-pair-judgement-input-with-remaining_defect_sets
+      The execution tier now feeds `remaining_defect_sets(attempts, defect_sets)` into `judge_pairs`, so the set of defects that reach the static judge is changed by the new mutation path rather than leaving the original candidate set untouched.
+      src/acceptance/pipeline.py#5
+      src/acceptance/mutation/verdicts.py#0
+      src/acceptance/mutation/attempt.py#0
+    [other] tests-candidate-selection/test-path-filter-now-hides-tests-from-surrounding-context
+      The new surrounding-code retrieval explicitly strips call sites that are in test files, which changes what the mutation and verification prompts can see and can therefore change which tests are treated as candidates for the execution tier's decisions.
+      src/acceptance/mutation/surrounding.py#0
+      src/acceptance/change/diff.py#0
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/verification.py#0
+
+  no-line-execution-recording
+    [other] no-line-execution-recording/line-execution-recording-added-through-sandbox-reporting
+      The sandbox test-reporting path now records per-test execution details, including line-oriented execution metadata, so a test run can emit which code was exercised.
+      src/acceptance/execution/netblock.py#0
+      src/acceptance/execution/netblock.py#1
+      src/acceptance/execution/netblock.py#2
+      src/acceptance/execution/outcome.py#0
+      src/acceptance/execution/sandbox.py#2
+      src/acceptance/execution/sandbox.py#3
+      src/acceptance/execution/sandbox.py#6
+    [other] no-line-execution-recording/mutation-verification-shows-before-and-after-code-windows
+      The mutation verification stage renders code windows before and after an edit, which can expose the exact lines around the edit to the verifier and therefore record line-level execution-adjacent information.
+      src/acceptance/mutation/verification.py#0
+
+  no-whole-suite-run
+    [other] no-whole-suite-run/execution-tier-runs-whole-suite
+      The new execution tier can invoke pytest over the repository's candidate tests, but it may still end up executing the project's whole test suite because the sandbox run path is not constrained to a subset that is guaranteed to exclude suite-wide execution.
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/mutation/runner.py#0
+      src/acceptance/execution/sandbox.py#1
+      src/acceptance/execution/sandbox.py#3
+      src/acceptance/pipeline.py#3
+    [other] no-whole-suite-run/baseline-control-run-may-run-suite
+      The baseline establishment step runs pytest on the candidate tests and can fall back to repeated collection/run attempts; if the candidate set is effectively the suite, this path can execute the project's whole test suite instead of staying below that boundary.
+      src/acceptance/mutation/baseline.py#0
+      src/acceptance/execution/sandbox.py#1
+      src/acceptance/execution/sandbox.py#3
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [unanswered] injected-text-recorded-next-to-result/injected-text-missing-for-already-present-repairs x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] injected-text-recorded-next-to-result/injected-text-missing-for-already-present-repairs x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] injected-text-recorded-next-to-result/injected-text-not-rendered-for-executed-attempts x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] injected-text-recorded-next-to-result/injected-text-not-rendered-for-executed-attempts x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] mechanical-validity-checks/mechanical-checks-are-not-applied-on-the-already-present-repair-path x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] mechanical-validity-checks/mechanical-checks-are-not-applied-on-the-already-present-repair-path x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] mechanical-validity-checks/mechanical-checks-can-be-bypassed-by-the-verification-tier x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] mechanical-validity-checks/mechanical-checks-can-be-bypassed-by-the-verification-tier x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] mechanical-validity-checks/mechanical-validity-checks-are-not-used-to-decide-edit-validity x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] mechanical-validity-checks/mechanical-validity-checks-are-not-used-to-decide-edit-validity x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-edit-without-named-region/no-region-defects-become-not-mutable-only-after-failing-later-checks x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-edit-without-named-region/no-region-defects-become-not-mutable-only-after-failing-later-checks x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-edit-without-named-region/no-region-defects-still-asked-about x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-edit-without-named-region/no-region-defects-still-asked-about x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-line-execution-recording/line-execution-recording-added-through-sandbox-reporting x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-line-execution-recording/line-execution-recording-added-through-sandbox-reporting x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-line-execution-recording/mutation-verification-shows-before-and-after-code-windows x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-line-execution-recording/mutation-verification-shows-before-and-after-code-windows x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-parser-not-invalid/no-parser-path-never-reaches-validity-check x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-parser-not-invalid/no-parser-path-never-reaches-validity-check x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-parser-not-invalid/parse-check-still-invalidates-nonparsable-files x tests/test_mutation_validity.py::TestRegionsFor::test_a_named_hunk_becomes_an_inclusive_span_at_head
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-parser-not-invalid/parser-gate-applies-only-to-some-file-types x tests/test_mutation_validity.py::TestRegionsFor::test_a_named_hunk_becomes_an_inclusive_span_at_head
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-whole-suite-run/baseline-control-run-may-run-suite x tests/test_mutation_validity.py::TestRegionsFor::test_a_named_hunk_becomes_an_inclusive_span_at_head
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] no-whole-suite-run/execution-tier-runs-whole-suite x tests/test_mutation_validity.py::TestRegionsFor::test_a_named_hunk_becomes_an_inclusive_span_at_head
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] observation-not-prediction/execution-decision-reason-still-describes-a-choice-not-an-observation x tests/test_mutation_validity.py::TestRegionsFor::test_a_named_hunk_becomes_an_inclusive_span_at_head
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] observation-not-prediction/mutation-block-labels-unverified-results-as-not-counted-instead-of-observed x tests/test_mutation_validity.py::TestRegionsFor::test_a_named_hunk_becomes_an_inclusive_span_at_head
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] one-failing-test-covers-defect/coverage-dropped-for-unverified-edits x tests/test_mutation_validity.py::TestRegionsFor::test_a_named_hunk_becomes_an_inclusive_span_at_head
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] one-failing-test-covers-defect/coverage-lost-when-failure-is-treated-as-broken-edit x tests/test_mutation_validity.py::TestRegionsFor::test_a_named_hunk_becomes_an_inclusive_span_at_head
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] one-failing-test-covers-defect/coverage-misses-broad-but-real-kills x tests/test_mutation_validity.py::TestRegionsFor::test_a_named_hunk_becomes_an_inclusive_span_at_head
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] one-failing-test-covers-defect/coverage-not-reflected-in-derived-support-tier x tests/test_mutation_validity.py::TestRegionsFor::test_a_named_hunk_becomes_an_inclusive_span_at_head
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] one-failing-test-covers-defect/coverage-requires-all-tests-to-fail x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] parser-files-still-parse/parse-check-not-applied-to-repair-edits x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] parser-files-still-parse/parser-check-only-runs-after-other-gates-pass x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] parser-files-still-parse/parser-check-skips-files-without-a-recognized-parser x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] pre-alteration-single-run/baseline-run-skipped-when-no-editable-defects x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] pre-alteration-single-run/baseline-run-skipped-when-verification-off x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] pre-alteration-single-run/execution-tier-runs-after-mutation-stage x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] preserve-current-review-conclusions-when-unrunnable/execution-tier-now-runs-when-tests-are-unavailable x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] preserve-current-review-conclusions-when-unrunnable/unrunnable-reviews-can-still-be-reclassified-by-verification-off x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] report-names-it/set-aside-test-name-not-included x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] report-names-it/set-aside-tests-not-rendered x tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] report-names-it/wrong-field-used-for-set-aside-name x tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] review-continues-despite-one-untrusted-test/baseline-red-test-still-stops-the-review x tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] review-continues-despite-one-untrusted-test/collect-only-failure-still-aborts-execution x tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] review-continues-despite-one-untrusted-test/unverified-kill-still-counted-as-settled x tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] review-runs-on-unsettled-defects/cannot-run-baseline-returns-empty-set-aside-instead-of-running-defects x tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] review-runs-on-unsettled-defects/execution-disabled-by-default x tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] review-runs-on-unsettled-defects/unsettled-defects-dropped-before-execution x tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-candidate-tests-on-throwaway-copy/baseline-failure-stops-the-run x tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-candidate-tests-on-throwaway-copy/collectable-test-filter-drops-candidate-tests x tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_criterion_stays_at_the_static_tier
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-candidate-tests-on-throwaway-copy/execution-decision-gates-on-verification-rather-than-test-run x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-candidate-tests-on-throwaway-copy/execution-skipped-when-no-editable-defects x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-candidate-tests-on-throwaway-copy/execution-tier-disabled-by-default x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-candidate-tests-on-throwaway-copy/mutation-runner-only-runs-when-baseline-has-usable-tests x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-candidate-tests-on-throwaway-copy/parametrized-tests-folded-to-bare-id x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-tests-when-result-will-be-used/execution-decision-off-by-default x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-tests-when-result-will-be-used/execution-decision-requires-editable-defects x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-tests-when-result-will-be-used/execution-decision-uses-result-consumption-as-a-hard-precondition x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-tests-when-result-will-be-used/execution-tier-never-enabled-from-cli x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] run-tests-when-result-will-be-used/pipeline-skips-execution-when-settings-absent x tests/test_unverified_mutation_is_inert.py::test_an_unverified_attempt_contributes_no_verdict
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] single-continuous-edit-in-named-region/absent-region-defects-never-reach-an-edit x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] single-continuous-edit-in-named-region/descriptor-can-return-multi-span-or-multi-file-edit x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] single-continuous-edit-in-named-region/region-containment-check-can-miss-outside-span x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] skip-tests-when-unused/baseline-run-still-happens x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] skip-tests-when-unused/execution-decision-inverted x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] skip-tests-when-unused/execution-tier-always-off x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] skip-tests-when-unused/verify-edits-keeps-tests-running x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] smallest-edit-for-defect/already-present-path-repairs-instead-of-injecting x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] smallest-edit-for-defect/declines-and-not-mutable-paths-bypass-edit-building x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] smallest-edit-for-defect/descriptor-can-return-non-smallest-edit x tests/test_unverified_mutation_is_inert.py::test_a_verified_attempt_does_contribute_verdicts
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] smallest-edit-for-defect/verification-gate-can-block-settled-edits x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] state-test-choice-and-rationale/execution-decision-not-rendered-when-tests-are-skipped x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] state-test-choice-and-rationale/execution-decision-not-wired-into-review-output x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] state-test-choice-and-rationale/execution-decision-reason-misstates-why-tests-were-skipped x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] strongest-evidence-tier-recording/tier-not-derived-from-executed-verdicts x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] strongest-evidence-tier-recording/unverified-execution-keeps-static-tier x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] test-discrimination-shown/already-present-repairs-can-be-misreported-as-discriminating x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] test-discrimination-shown/broken-edits-can-be-counted-as-discriminating x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] test-discrimination-shown/unverified-kills-are-still-shown-as-discriminating x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+  [unanswered] test-set-aside-takes-no-part-in-conclusion/set-aside-tests-rendered-as-part-of-conclusions x tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+    offered to the judge and not answered; no verdict was produced
+
+Running the project's tests:
+  the project's tests were not run: no result could have counted. Edit verification is off, so every observation would have been recorded as not counted, and nothing else consumes the run. See #335 for the check that would make injection earn its evidence.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 34e2dd05d2fd3f0b
+  continuing 87896b868ce088e4
+  continue this run with: --continue 34e2dd05d2fd3f0b
+Model usage by stage:
+  stage                         model                                           calls     prompt     output  cached  this run  recorded
+  ----------------------------  ----------------------  -----------------------------  ---------  ---------  ------  --------  --------
+  decompose                     openai/gpt-5.4-mini         22 (22 live / 0 replayed)    118,795      3,117    0.0%   $0.1031   $0.1031
+  decompose-summary             openai/gpt-5.4                4 (4 live / 0 replayed)      4,387      2,370    0.0%   $0.0465   $0.0465
+  obligation linking            voyage/voyage-3.5-lite        1 (1 live / 0 replayed)      1,120          0       —   $0.0000   $0.0000
+  defect enumeration            openai/gpt-5.4-mini         31 (31 live / 0 replayed)  1,397,201     15,783    0.0%   $1.1189   $1.1189
+  defect-to-test pair mapping   openai/gpt-5.4-mini     1330 (1330 live / 0 replayed)  3,942,176  1,585,937    0.0%  $10.0933  $10.0933
+  coverage classification       openai/gpt-5.4-mini           1 (1 live / 0 replayed)     84,370      2,472    0.0%   $0.0744   $0.0744
+  unrequested-change detection  openai/gpt-5.4-mini           1 (1 live / 0 replayed)     83,622      2,400    0.0%   $0.0735   $0.0735
+  disposition judgment          openai/gpt-5.4-mini           2 (2 live / 0 replayed)      4,891        154    0.0%   $0.0044   $0.0044
+  test recommendation           openai/gpt-5.4-mini           1 (1 live / 0 replayed)     82,766      2,262    0.0%   $0.0723   $0.0723
+  requirement carry alignment   openai/gpt-5.4-mini           1 (1 live / 0 replayed)        910         48    0.0%   $0.0009   $0.0009
+  this run spent $11.5874 on 1394 live call(s); the evidence cost $11.5874 to record (0 call(s) replayed at no cost to this run)
+

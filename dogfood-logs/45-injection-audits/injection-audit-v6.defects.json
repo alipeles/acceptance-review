@@ -1,0 +1,1471 @@
+[
+  {
+    "obligation_id": "smallest-edit-that-makes-defect-true",
+    "defects": [
+      {
+        "id": "smallest-edit-that-makes-defect-true/descriptor-can-return-non-minimal-edit",
+        "obligation_id": "smallest-edit-that-makes-defect-true",
+        "type": "other",
+        "description": "The mutation descriptor stage can return an edit that is valid but not the smallest edit that makes the named defect true, because the code only checks mechanical validity and accepts whatever span the model supplies.",
+        "code_refs": [
+          "src/acceptance/mutation/descriptor.py#0",
+          "src/acceptance/mutation/validity.py#0",
+          "src/acceptance/mutation/runner.py#0"
+        ],
+        "expected_behavior": "For each named plausible defect, the review should choose the smallest contiguous edit that makes that defect true in the throwaway copy.",
+        "defective_behavior": "The review accepts a larger or otherwise non-minimal edit that still makes the defect true."
+      },
+      {
+        "id": "smallest-edit-that-makes-defect-true/no-search-for-smaller-edit",
+        "obligation_id": "smallest-edit-that-makes-defect-true",
+        "type": "other",
+        "description": "The implementation does not appear to search among multiple candidate spans or otherwise minimize the edit after the model response, so a plausible larger edit could be used even when a smaller one exists.",
+        "code_refs": [
+          "src/acceptance/mutation/descriptor.py#0",
+          "src/acceptance/mutation/runner.py#0"
+        ],
+        "expected_behavior": "The review should compare candidate edits and retain the smallest one that makes the defect true.",
+        "defective_behavior": "The review uses the first acceptable edit returned by the descriptor stage, without proving it is minimal."
+      },
+      {
+        "id": "smallest-edit-that-makes-defect-true/region-bounds-can-overconstrain-minimality",
+        "obligation_id": "smallest-edit-that-makes-defect-true",
+        "type": "scope_too_narrow",
+        "description": "The descriptor stage only considers regions already resolved from the defect's code refs, so a smaller edit outside those regions would never be found even if it would make the defect true.",
+        "code_refs": [
+          "src/acceptance/mutation/descriptor.py#0",
+          "src/acceptance/mutation/region.py#0",
+          "src/acceptance/mutation/runner.py#0"
+        ],
+        "expected_behavior": "The review should be able to build the smallest edit that makes the defect true wherever that edit must land in the throwaway copy.",
+        "defective_behavior": "The review restricts candidate edits to predeclared regions and may miss a smaller valid edit elsewhere in the file or project."
+      },
+      {
+        "id": "smallest-edit-that-makes-defect-true/mutation-stage-not-invoked",
+        "obligation_id": "smallest-edit-that-makes-defect-true",
+        "type": "not_wired",
+        "description": "The execution tier that is supposed to build and apply the smallest edit is gated behind opt-in settings, so the review can run without ever constructing the edit at all.",
+        "code_refs": [
+          "src/acceptance/cli.py#3",
+          "src/acceptance/cli.py#4",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4"
+        ],
+        "expected_behavior": "When the criterion is being exercised, the review should actually invoke the mutation stage and build the edit in a throwaway copy.",
+        "defective_behavior": "The review leaves execution disabled and falls back to the static path, so no edit is built or applied."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The review builds the smallest edit that makes the named plausible defect true.\",\"observable_behavior\":\"The review constructs a minimal code edit that causes the named defect to hold in a throwaway copy of the code.\"}",
+    "carry_key": "f9b3cd54d13a9712ba0369aa87263b022fdafc0f780824c09999741f37463143",
+    "region_digests": {
+      "src/acceptance/cli.py#3": "4db599c3462645f422041efadc266bf5121ef7c613dc9ada6b31f4c0cf83e0b6",
+      "src/acceptance/cli.py#4": "d5f0484719bbe792d73ac062853c73c0cf12236ec9817e90328bb8211dd747a1",
+      "src/acceptance/mutation/descriptor.py#0": "5b7251c255e35e74acf90bc0a9c56a7a5c924651aacb404c0ecd13d78a3b722a",
+      "src/acceptance/mutation/region.py#0": "6bae146c6c1376f8260db941d4ce2c02e43ec8f2f9285cad5f0dbb699105c4c8",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/mutation/validity.py#0": "6030a4eaa3d1257941102a80ef5d4e760ff206e67c05fdab6fa96266ad0d602f",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "run-candidate-tests-on-altered-copy",
+    "defects": [
+      {
+        "id": "run-candidate-tests-on-altered-copy/execution-flag-off-by-default",
+        "obligation_id": "run-candidate-tests-on-altered-copy",
+        "type": "scope_too_narrow",
+        "description": "The mutation runner is only invoked when the new execution setting is enabled, so the candidate tests are not run against the altered copy on ordinary review runs.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/mutation/settings.py#0"
+        ],
+        "expected_behavior": "The review should execute the candidate tests against the altered copy whenever this criterion applies, not only when an opt-in flag is set.",
+        "defective_behavior": "The review skips the mutation stage unless `execution.enabled` is true, returning empty mutation results instead of running the candidate tests."
+      },
+      {
+        "id": "run-candidate-tests-on-altered-copy/baseline-halt-prevents-execution",
+        "obligation_id": "run-candidate-tests-on-altered-copy",
+        "type": "missing_case",
+        "description": "A failing candidate test at head halts the review before any altered-copy execution happens, so the candidate tests are never run against the mutant in that case.",
+        "code_refs": [
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/cli.py#4",
+          "src/acceptance/mutation/settings.py#0"
+        ],
+        "expected_behavior": "Even when the baseline run finds failing candidate tests, the implementation should still run the candidate tests against the altered copy if the criterion is meant to hold for those inputs.",
+        "defective_behavior": "`establish_baseline` returns a halted baseline and `run_review` raises `ReviewHalted`, stopping before `run_mutations` can execute the candidate tests on the altered copy."
+      },
+      {
+        "id": "run-candidate-tests-on-altered-copy/no-tests-after-empty-baseline",
+        "obligation_id": "run-candidate-tests-on-altered-copy",
+        "type": "missing_case",
+        "description": "When the control run leaves no usable candidate tests, the mutation stage returns without running anything against the altered copy.",
+        "code_refs": [
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/baseline.py#0"
+        ],
+        "expected_behavior": "If the criterion covers this input, the implementation should still execute the candidate tests against the altered copy rather than short-circuiting because the baseline produced no usable tests.",
+        "defective_behavior": "`run_mutations` returns `not_attempted` attempts immediately when `baseline.usable_tests` is empty, so no candidate tests are executed on the altered copy."
+      },
+      {
+        "id": "run-candidate-tests-on-altered-copy/partial-run-treated-as-not-attempted",
+        "obligation_id": "run-candidate-tests-on-altered-copy",
+        "type": "other",
+        "description": "If the altered-copy test run is only partially observed, the code records the attempt as `not_attempted` instead of as an execution of the candidate tests against the altered copy.",
+        "code_refs": [
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/attempt.py#0"
+        ],
+        "expected_behavior": "The candidate tests should be treated as executed against the altered copy whenever the runner actually starts them, even if some do not complete.",
+        "defective_behavior": "`_classify` converts any run with unobserved outcomes into `NOT_ATTEMPTED`, so a partially executed altered-copy run is not recorded as candidate tests having been executed."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"Run the project's candidate tests against the altered copy.\",\"observable_behavior\":\"The project's candidate tests are executed against the altered copy.\"}",
+    "carry_key": "84a6c38f010d850f5d0b936bb8c477554ca36fec30db4d37e45602cd7ff07da3",
+    "region_digests": {
+      "src/acceptance/cli.py#4": "d5f0484719bbe792d73ac062853c73c0cf12236ec9817e90328bb8211dd747a1",
+      "src/acceptance/mutation/attempt.py#0": "c534492d5bfa403cab6b9228602a9fc166c3cb0a83bc8841a110b2e658c527c7",
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/mutation/settings.py#0": "097767ee5765b4b85110ce99e3261650702a7dc3f397b124d84f5a88986fba0f",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "test-fails-discriminate-defect",
+    "defects": [
+      {
+        "id": "test-fails-discriminate-defect/mutation-kill-not-recorded-as-discriminating",
+        "obligation_id": "test-fails-discriminate-defect",
+        "type": "not_wired",
+        "description": "A candidate test can fail against the injected mutant, but that failure is not turned into a recorded discriminating verdict for the named defect.",
+        "code_refs": [
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/verdicts.py#0",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/review_state.py#1",
+          "src/acceptance/review_state.py#2"
+        ],
+        "expected_behavior": "When a mutant run produces a failing candidate test, the review records a verdict for that defect/test pair showing the test discriminates for the defect.",
+        "defective_behavior": "The mutant run may detect the failing test, but the result is only kept as an attempt or baseline note and never becomes a recorded discriminating verdict."
+      },
+      {
+        "id": "test-fails-discriminate-defect/killed-tests-not-marked-as-killing",
+        "obligation_id": "test-fails-discriminate-defect",
+        "type": "wrong_output_shape",
+        "description": "A failing test under mutation is recorded, but not in the form that says it discriminates for the defect, so downstream support logic cannot treat it as a kill.",
+        "code_refs": [
+          "src/acceptance/mutation/attempt.py#0",
+          "src/acceptance/mutation/verdicts.py#0",
+          "src/acceptance/review_state.py#1"
+        ],
+        "expected_behavior": "A failing candidate test is recorded as a settled mutation outcome with the failing test listed among the defect's killing tests and a verdict marked as killing that defect.",
+        "defective_behavior": "A failing candidate test is recorded without the killing-test linkage or with the wrong tier/kills shape, so it does not read as a discriminating verdict for that defect."
+      },
+      {
+        "id": "test-fails-discriminate-defect/mutation-verdicts-dropped-from-review",
+        "obligation_id": "test-fails-discriminate-defect",
+        "type": "not_wired",
+        "description": "The execution stage can produce discriminating verdicts, but they are not carried into the review record that the report and support code read.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/pipeline.py#6",
+          "src/acceptance/pipeline.py#7",
+          "src/acceptance/pipeline.py#8",
+          "src/acceptance/report.py#0",
+          "src/acceptance/review_state.py#1",
+          "src/acceptance/review_state.py#2"
+        ],
+        "expected_behavior": "Executed discriminating verdicts are appended into the review's pair verdicts and used by support/reporting so the review records that the test discriminates for the defect.",
+        "defective_behavior": "The execution stage computes verdicts, but the review continues to use only the static pair-judgement verdicts, so the failing test is not recorded as discriminating for the defect."
+      },
+      {
+        "id": "test-fails-discriminate-defect/baseline-failure-halts-before-discrimination",
+        "obligation_id": "test-fails-discriminate-defect",
+        "type": "missing_case",
+        "description": "A candidate test that already fails at head prevents the mutant run from ever reaching the point where a later failure could be recorded as discriminating for the defect.",
+        "code_refs": [
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/mutation/settings.py#0",
+          "src/acceptance/cli.py#3",
+          "src/acceptance/cli.py#4",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4"
+        ],
+        "expected_behavior": "When the control run finds failing candidate tests and the project does not allow them to be set aside, the review stops before mutation and reports why.",
+        "defective_behavior": "The review proceeds into mutation anyway, so a test that already failed at head can later be treated as discriminating for the defect."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"A test that fails is shown to discriminate for that defect.\",\"observable_behavior\":\"When a candidate test fails against the altered copy, the review records that the test discriminates for the named defect.\"}",
+    "carry_key": "e976729adca506fdaaf3962c692b65bd81799a8ba6f1174de207140c2f073038",
+    "region_digests": {
+      "src/acceptance/cli.py#3": "4db599c3462645f422041efadc266bf5121ef7c613dc9ada6b31f4c0cf83e0b6",
+      "src/acceptance/cli.py#4": "d5f0484719bbe792d73ac062853c73c0cf12236ec9817e90328bb8211dd747a1",
+      "src/acceptance/mutation/attempt.py#0": "c534492d5bfa403cab6b9228602a9fc166c3cb0a83bc8841a110b2e658c527c7",
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/mutation/settings.py#0": "097767ee5765b4b85110ce99e3261650702a7dc3f397b124d84f5a88986fba0f",
+      "src/acceptance/mutation/verdicts.py#0": "eed99df8a79e445e92252528c87db90c15c22dba360b04e912b6d82a90cf84aa",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/pipeline.py#5": "36e2842a942cf90f3929918af5705db35250bbcc3369f268f2983ed3c71beacc",
+      "src/acceptance/pipeline.py#6": "517b298305d85826effe7d8b50ca12eb001e570c8143fdf24e8a248f3339e24c",
+      "src/acceptance/pipeline.py#7": "1a5b6d122517492f49561e27aafe5492c56df06e175b461bdce8340aa120737f",
+      "src/acceptance/pipeline.py#8": "7fa253d364bf34f96f304144bf44c13fe5f243508da447198b9a9c69467400b5",
+      "src/acceptance/report.py#0": "b57b554f868f139cdc2a3115e73e0ff3d567b6dfe48beb98352c6407d267cca2",
+      "src/acceptance/review_state.py#1": "ae7e0fcac2034f04537624bbcfc8dc6a480267934e8b8d502717f92ce33cebad",
+      "src/acceptance/review_state.py#2": "5023cdb36efe3e98d30adc0e1da6c1eed13433b375de69948684f5cdb3803b37"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "candidate-tests-not-discriminate-when-none-fail",
+    "defects": [
+      {
+        "id": "candidate-tests-not-discriminate-when-none-fail/no-discriminate-report-not-wired",
+        "obligation_id": "candidate-tests-not-discriminate-when-none-fail",
+        "type": "not_wired",
+        "description": "The execution path can run the mutation stage and record injected attempts, but the review/reporting path never turns the all-survived case into the required 'candidate tests do not discriminate' conclusion, so a no-fail run can finish without that observation being reported.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/report.py#0",
+          "src/acceptance/report.py#1",
+          "src/acceptance/review_state.py#2"
+        ],
+        "expected_behavior": "When every candidate test survives the injected defect, the review path should emit the non-discrimination conclusion for that defect and record it in the review output.",
+        "defective_behavior": "The code records mutation attempts and verdicts, but the delivered review path omits or bypasses the specific no-fail conclusion, so the review can end without saying the candidate tests do not discriminate."
+      },
+      {
+        "id": "candidate-tests-not-discriminate-when-none-fail/survival-classified-as-set-aside",
+        "obligation_id": "candidate-tests-not-discriminate-when-none-fail",
+        "type": "condition_inverted",
+        "description": "A mutant run with no red tests can be classified as not_attempted instead of survived if the unobserved-test check is treated as the deciding condition, so the code may fail to report non-discrimination even though every candidate test completed and passed.",
+        "code_refs": [
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/attempt.py#0",
+          "src/acceptance/mutation/verdicts.py#0"
+        ],
+        "expected_behavior": "When the mutant run completes and no candidate test fails, the attempt should be classified as survived so the review can report that the candidate tests did not discriminate.",
+        "defective_behavior": "The code treats the absence of red tests as a non-settling or incomplete run and routes the attempt to not_attempted instead of survived, preventing the non-discrimination conclusion from being recorded."
+      },
+      {
+        "id": "candidate-tests-not-discriminate-when-none-fail/survival-not-propagated-to-review-state",
+        "obligation_id": "candidate-tests-not-discriminate-when-none-fail",
+        "type": "not_wired",
+        "description": "The mutation runner can produce survived attempts, but those attempts may not be propagated into the stored review state or rendered report in a way that the no-fail conclusion is visible to callers.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/pipeline.py#6",
+          "src/acceptance/pipeline.py#7",
+          "src/acceptance/pipeline.py#8",
+          "src/acceptance/report.py#0",
+          "src/acceptance/review_state.py#2"
+        ],
+        "expected_behavior": "Survived mutation attempts should be carried through the pipeline into the review object and report so that a no-fail run is observable as non-discrimination.",
+        "defective_behavior": "The pipeline may compute attempts and verdicts but fail to wire them into the final review/report path that the caller sees, so the review does not actually show the non-discrimination result."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"When no test fails, the candidate tests are shown not to discriminate for the defect.\",\"observable_behavior\":\"The review reports that the candidate tests do not discriminate for the defect when no test fails.\"}",
+    "carry_key": "becdceea38866bf186eec50451dba90568a7ce633f8fe3988dc3fbfc0de2364c",
+    "region_digests": {
+      "src/acceptance/mutation/attempt.py#0": "c534492d5bfa403cab6b9228602a9fc166c3cb0a83bc8841a110b2e658c527c7",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/mutation/verdicts.py#0": "eed99df8a79e445e92252528c87db90c15c22dba360b04e912b6d82a90cf84aa",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/pipeline.py#5": "36e2842a942cf90f3929918af5705db35250bbcc3369f268f2983ed3c71beacc",
+      "src/acceptance/pipeline.py#6": "517b298305d85826effe7d8b50ca12eb001e570c8143fdf24e8a248f3339e24c",
+      "src/acceptance/pipeline.py#7": "1a5b6d122517492f49561e27aafe5492c56df06e175b461bdce8340aa120737f",
+      "src/acceptance/pipeline.py#8": "7fa253d364bf34f96f304144bf44c13fe5f243508da447198b9a9c69467400b5",
+      "src/acceptance/report.py#0": "b57b554f868f139cdc2a3115e73e0ff3d567b6dfe48beb98352c6407d267cca2",
+      "src/acceptance/report.py#1": "1359717fb0c3800861e17f9f916d8a558768bd5a3db660a591ced71800741cd1",
+      "src/acceptance/review_state.py#2": "5023cdb36efe3e98d30adc0e1da6c1eed13433b375de69948684f5cdb3803b37"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "observation-not-prediction",
+    "defects": [
+      {
+        "id": "observation-not-prediction/prediction-language-still-used-in-recorded-conclusion",
+        "obligation_id": "observation-not-prediction",
+        "type": "other",
+        "description": "The execution-tier record can still be written in predictive language, so the stored conclusion may describe what the candidate tests would do rather than what they did.",
+        "code_refs": [
+          "src/acceptance/mutation/attempt.py#0",
+          "src/acceptance/mutation/verdicts.py#0",
+          "src/acceptance/report.py#0"
+        ],
+        "expected_behavior": "The recorded conclusion text states that the candidate tests were run against the altered copy and reports the observed result.",
+        "defective_behavior": "The recorded conclusion text is phrased as a forecast or expectation about how the candidate tests would behave."
+      },
+      {
+        "id": "observation-not-prediction/execution-verdicts-not-marked-as-observed",
+        "obligation_id": "observation-not-prediction",
+        "type": "other",
+        "description": "The mutation verdicts can be stored without any field that distinguishes them as observed execution results, so later reporting may not be able to tell them apart from predicted pair verdicts.",
+        "code_refs": [
+          "src/acceptance/mutation/attempt.py#0",
+          "src/acceptance/review_state.py#1",
+          "src/acceptance/pipeline.py#5"
+        ],
+        "expected_behavior": "Execution-derived conclusions are recorded with metadata that identifies them as results of running the candidate tests against the mutant.",
+        "defective_behavior": "Execution-derived conclusions are recorded in the same shape as predicted verdicts, with no distinguishing evidence tier or equivalent marker."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The conclusion is an observation rather than a prediction.\",\"observable_behavior\":\"The recorded conclusion states an observed result from running the candidate tests against the altered copy, not a forecast about what would happen.\"}",
+    "carry_key": "791e6fb67c4dc322a4a4bc97ff2cc63614abb86ac281a96ad26cf72746b2d5f7",
+    "region_digests": {
+      "src/acceptance/mutation/attempt.py#0": "c534492d5bfa403cab6b9228602a9fc166c3cb0a83bc8841a110b2e658c527c7",
+      "src/acceptance/mutation/verdicts.py#0": "eed99df8a79e445e92252528c87db90c15c22dba360b04e912b6d82a90cf84aa",
+      "src/acceptance/pipeline.py#5": "36e2842a942cf90f3929918af5705db35250bbcc3369f268f2983ed3c71beacc",
+      "src/acceptance/report.py#0": "b57b554f868f139cdc2a3115e73e0ff3d567b6dfe48beb98352c6407d267cca2",
+      "src/acceptance/review_state.py#1": "ae7e0fcac2034f04537624bbcfc8dc6a480267934e8b8d502717f92ce33cebad"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "recorded-at-strongest-evidence-tier",
+    "defects": [
+      {
+        "id": "recorded-at-strongest-evidence-tier/strongest-tier-computed-as-weakest-tier",
+        "obligation_id": "recorded-at-strongest-evidence-tier",
+        "type": "condition_inverted",
+        "description": "The derived support tier is computed from the weakest verdict tier instead of the strongest one, so a criterion that has any static verdict is recorded as STATIC even when execution produced DEFECT_KILLED evidence.",
+        "code_refs": [
+          "src/acceptance/defects/support.py#0",
+          "src/acceptance/defects/support.py#1",
+          "src/acceptance/defects/support.py#2",
+          "src/acceptance/defects/support.py#3"
+        ],
+        "expected_behavior": "The criterion's recorded evidence tier should be the strongest tier among the verdicts that support it, so any executed DEFECT_KILLED evidence should raise the recorded tier to DEFECT_KILLED.",
+        "defective_behavior": "The criterion's recorded evidence tier is taken as the weakest tier among the verdicts it rests on, so a single STATIC verdict suppresses stronger executed evidence."
+      },
+      {
+        "id": "recorded-at-strongest-evidence-tier/executed-verdicts-not-included-in-support-input",
+        "obligation_id": "recorded-at-strongest-evidence-tier",
+        "type": "not_wired",
+        "description": "The execution tier produces verdicts, but the support calculation can still be fed only the static pair verdicts if the new executed verdict list is not actually threaded into the rating path, leaving the recorded tier unchanged at STATIC.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/pipeline.py#7"
+        ],
+        "expected_behavior": "The review should pass both executed verdicts and static pair verdicts into the support derivation so the recorded tier reflects the strongest evidence actually produced.",
+        "defective_behavior": "The review derives support from the static pair verdicts alone, so executed DEFECT_KILLED evidence never affects the recorded tier."
+      },
+      {
+        "id": "recorded-at-strongest-evidence-tier/executed-tier-not-persisted-on-review",
+        "obligation_id": "recorded-at-strongest-evidence-tier",
+        "type": "not_wired",
+        "description": "The review object has a tier field for pair verdicts, but if the executed verdicts are not stored on the review or are dropped before serialization, the strongest evidence tier cannot be reconstructed from the recorded output.",
+        "code_refs": [
+          "src/acceptance/review_state.py#1",
+          "src/acceptance/review_state.py#2",
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/report.py#0",
+          "src/acceptance/report.py#1"
+        ],
+        "expected_behavior": "The review should persist the executed verdicts with their tiers so the conclusion can be recorded at the strongest evidence tier the review produced.",
+        "defective_behavior": "The review stores only the static pair verdicts or omits the executed verdicts entirely, so the recorded output cannot reflect stronger execution evidence."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The conclusion is recorded at the strongest evidence tier the review produces on its own.\",\"observable_behavior\":\"The output records the conclusion at the strongest evidence tier the review produces on its own.\"}",
+    "carry_key": "4b3f547bdee7c8b2a4cb30b380072c498dd31f69b09c6fd9e2a729dbb5740cb5",
+    "region_digests": {
+      "src/acceptance/defects/support.py#0": "ec9c61e4e6acca1aebd00480c868e8c8ed21b9157f18132a48e16ccec45fd87b",
+      "src/acceptance/defects/support.py#1": "39a220059a76be55ec1d92eba0896bd1a16876e57549d33bc7d8c8dcba27749c",
+      "src/acceptance/defects/support.py#2": "0595b12769b48cac8511f05c3055c365f327e6581cc69944405d498453e181ad",
+      "src/acceptance/defects/support.py#3": "98402858e586660893fa627582e9d9f71a50596f680f2715a0d1c74bf766ac53",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/pipeline.py#5": "36e2842a942cf90f3929918af5705db35250bbcc3369f268f2983ed3c71beacc",
+      "src/acceptance/pipeline.py#7": "1a5b6d122517492f49561e27aafe5492c56df06e175b461bdce8340aa120737f",
+      "src/acceptance/report.py#0": "b57b554f868f139cdc2a3115e73e0ff3d567b6dfe48beb98352c6407d267cca2",
+      "src/acceptance/report.py#1": "1359717fb0c3800861e17f9f916d8a558768bd5a3db660a591ced71800741cd1",
+      "src/acceptance/review_state.py#1": "ae7e0fcac2034f04537624bbcfc8dc6a480267934e8b8d502717f92ce33cebad",
+      "src/acceptance/review_state.py#2": "5023cdb36efe3e98d30adc0e1da6c1eed13433b375de69948684f5cdb3803b37"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "injected-text-recorded-next-to-result",
+    "defects": [
+      {
+        "id": "injected-text-recorded-next-to-result/mutation-block-omits-injected-text-for-unsettled-attempts",
+        "obligation_id": "injected-text-recorded-next-to-result",
+        "type": "scope_too_narrow",
+        "description": "The report only shows the injected text when an attempt is settled, so not-mutable or not-attempted defects can be listed without the injected text that explains what was injected or why the attempt could not be settled.",
+        "code_refs": [
+          "src/acceptance/report.py#1",
+          "src/acceptance/mutation/attempt.py#0"
+        ],
+        "expected_behavior": "Every mutation attempt that is recorded in the review should render the injected text alongside the result entry, including attempts that end as not_mutable or not_attempted when they have a descriptor.",
+        "defective_behavior": "The mutation report skips the injected text for attempts that are not settled and only prints the reason, leaving the result without the injected text next to it."
+      },
+      {
+        "id": "injected-text-recorded-next-to-result/mutation-attempts-without-descriptor-cannot-record-injected-text",
+        "obligation_id": "injected-text-recorded-next-to-result",
+        "type": "missing_case",
+        "description": "A settled mutation attempt can be created without a descriptor, which means the review can record an outcome without any injected text to display next to it.",
+        "code_refs": [
+          "src/acceptance/mutation/attempt.py#0",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/report.py#1"
+        ],
+        "expected_behavior": "Any settled mutation attempt should carry the descriptor for the injected edit so the result can include the exact injected text.",
+        "defective_behavior": "The attempt record allows a settled outcome to exist with no descriptor, so the review can store the result but has no injected text to show beside it."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The injected text is recorded next to the result.\",\"observable_behavior\":\"The result includes the injected text alongside it so a reader can see exactly what was injected.\"}",
+    "carry_key": "de896cfc31f32122ce0133c291454cbcdbc4607aa427c6193ece8998e5162f4a",
+    "region_digests": {
+      "src/acceptance/mutation/attempt.py#0": "c534492d5bfa403cab6b9228602a9fc166c3cb0a83bc8841a110b2e658c527c7",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/report.py#1": "1359717fb0c3800861e17f9f916d8a558768bd5a3db660a591ced71800741cd1"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "candidate-tests-run-once-before-changes",
+    "defects": [
+      {
+        "id": "candidate-tests-run-once-before-changes/prechange-run-only-when-execution-enabled",
+        "obligation_id": "candidate-tests-run-once-before-changes",
+        "type": "scope_too_narrow",
+        "description": "The pre-change candidate-test run is skipped unless the new execution flag is enabled, so reviews that do not opt in never perform the required baseline run before mutation starts.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/mutation/settings.py#0"
+        ],
+        "expected_behavior": "Before any mutation is applied, the candidate tests are run once against the delivered code for every review that reaches the mutation stage.",
+        "defective_behavior": "The baseline test run happens only inside the execution tier when `execution.enabled` is true, and otherwise no pre-change run is performed."
+      },
+      {
+        "id": "candidate-tests-run-once-before-changes/baseline-run-not-called-from-review-path",
+        "obligation_id": "candidate-tests-run-once-before-changes",
+        "type": "not_wired",
+        "description": "The baseline test-run logic exists, but the delivered review path could bypass it entirely if the execution tier wiring is incomplete, leaving mutation to proceed without any pre-change check.",
+        "code_refs": [
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4"
+        ],
+        "expected_behavior": "The review pipeline calls the baseline test run before building descriptors or applying any edits.",
+        "defective_behavior": "The baseline runner is defined but never invoked from the review path, so mutation begins without first testing the delivered code."
+      },
+      {
+        "id": "candidate-tests-run-once-before-changes/baseline-run-after-descriptor-build",
+        "obligation_id": "candidate-tests-run-once-before-changes",
+        "type": "condition_inverted",
+        "description": "The control run is placed after mutation-descriptor construction or other pre-change work, so the candidate tests are not actually run before alterations are prepared.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/mutation/descriptor.py#0",
+          "src/acceptance/mutation/baseline.py#0"
+        ],
+        "expected_behavior": "The candidate tests are run against the delivered code before any mutation descriptors are built or edits are applied.",
+        "defective_behavior": "Descriptor building or mutation setup happens first, and the baseline test run occurs only afterward."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"Before any changes are made, the candidate tests are run once against the code as delivered.\",\"observable_behavior\":\"A pre-change test run is performed against the delivered code before any alterations are applied.\"}",
+    "carry_key": "c8412ec265a3d0ac3d758ec0dc4a7e4a0e058f86ffdd896f5fa0e3411212693b",
+    "region_digests": {
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/descriptor.py#0": "5b7251c255e35e74acf90bc0a9c56a7a5c924651aacb404c0ecd13d78a3b722a",
+      "src/acceptance/mutation/settings.py#0": "097767ee5765b4b85110ce99e3261650702a7dc3f397b124d84f5a88986fba0f",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "stop-review-on-failing-candidate-test",
+    "defects": [
+      {
+        "id": "stop-review-on-failing-candidate-test/baseline-failure-not-propagated",
+        "obligation_id": "stop-review-on-failing-candidate-test",
+        "type": "not_wired",
+        "description": "The control-run halt is detected, but the review pipeline does not stop and surface that halt as the review outcome.",
+        "code_refs": [
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/mutation/settings.py#0",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#3",
+          "src/acceptance/pipeline.py#4"
+        ],
+        "expected_behavior": "When the baseline run finds any candidate test failing on the delivered code, the pipeline raises or otherwise returns the halt so the review stops and the stopping reason is emitted.",
+        "defective_behavior": "The baseline run may set `halted=True`, but the pipeline continues into mutation and pair judgement instead of stopping and reporting why."
+      },
+      {
+        "id": "stop-review-on-failing-candidate-test/halted-baseline-not-returned",
+        "obligation_id": "stop-review-on-failing-candidate-test",
+        "type": "wrong_output_shape",
+        "description": "A failing baseline is represented as a `Baseline` object with flags and text instead of being surfaced as the review-stopping error the criterion requires.",
+        "code_refs": [
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/mutation/settings.py#0",
+          "src/acceptance/cli.py#4",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#3"
+        ],
+        "expected_behavior": "A candidate test failure on delivered code should cause the review entry point to stop and emit the halt reason in the outward-facing control flow.",
+        "defective_behavior": "The code records the failure inside `Baseline.halted` and `Baseline.halt_reason`, but callers that only inspect the normal `Review` path would not see a stopped review unless they also handle the separate exception path."
+      },
+      {
+        "id": "stop-review-on-failing-candidate-test/allow-failing-tests-defaults-to-continue",
+        "obligation_id": "stop-review-on-failing-candidate-test",
+        "type": "condition_inverted",
+        "description": "The gate that should stop on a red candidate test can be bypassed by default, so the review continues instead of stopping.",
+        "code_refs": [
+          "src/acceptance/mutation/settings.py#0",
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/cli.py#3",
+          "src/acceptance/cli.py#4",
+          "src/acceptance/pipeline.py#2"
+        ],
+        "expected_behavior": "With no explicit override, a candidate test that fails on the delivered code should halt the review and report the reason.",
+        "defective_behavior": "The execution settings or baseline gate treat failing candidate tests as set-aside by default, allowing the review to proceed without stopping or explaining the halt."
+      },
+      {
+        "id": "stop-review-on-failing-candidate-test/halt-reason-not-emitted-to-caller",
+        "obligation_id": "stop-review-on-failing-candidate-test",
+        "type": "wrong_output_shape",
+        "description": "The stopping reason is stored on the halt object, but the delivered path does not emit it in the review-facing output.",
+        "code_refs": [
+          "src/acceptance/mutation/settings.py#0",
+          "src/acceptance/cli.py#4",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/report.py#0"
+        ],
+        "expected_behavior": "When the review stops because a candidate test already fails, the reason for stopping should be emitted to the caller or report output.",
+        "defective_behavior": "The halt reason remains only inside `ReviewHalted.baseline.halt_reason` and is not surfaced by the normal review result shape unless the CLI exception handler is reached."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"If any candidate test fails on the delivered code, the review stops and says why.\",\"observable_behavior\":\"A candidate test failure on the delivered code causes the review to stop and emit the reason for stopping.\"}",
+    "carry_key": "b13e0031f9b08be16e0999b19e26439b91d94226c0c7338063b44a147879e213",
+    "region_digests": {
+      "src/acceptance/cli.py#3": "4db599c3462645f422041efadc266bf5121ef7c613dc9ada6b31f4c0cf83e0b6",
+      "src/acceptance/cli.py#4": "d5f0484719bbe792d73ac062853c73c0cf12236ec9817e90328bb8211dd747a1",
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/settings.py#0": "097767ee5765b4b85110ce99e3261650702a7dc3f397b124d84f5a88986fba0f",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#3": "3b15c2516ff3b8c2836cb60d7e07f60c1dbd024051386d81117870b11e91e28a",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/report.py#0": "b57b554f868f139cdc2a3115e73e0ff3d567b6dfe48beb98352c6407d267cca2"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "continue-with-set-aside-tests",
+    "defects": [
+      {
+        "id": "continue-with-set-aside-tests/allow-failing-tests-not-propagated",
+        "obligation_id": "continue-with-set-aside-tests",
+        "type": "not_wired",
+        "description": "The continue-anyway flag is accepted on the CLI but never reaches the execution tier, so failing candidate tests still halt the review instead of being set aside.",
+        "code_refs": [
+          "src/acceptance/cli.py#1",
+          "src/acceptance/cli.py#2",
+          "src/acceptance/cli.py#3",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#3",
+          "src/acceptance/pipeline.py#4"
+        ],
+        "expected_behavior": "The CLI passes the configured continue-anyway setting into the review pipeline, and the baseline run uses it to decide whether failing candidate tests are set aside or halt the review.",
+        "defective_behavior": "The CLI parses the flag but does not pass it into the pipeline or baseline logic, so the baseline run always behaves as if continuing were disabled."
+      },
+      {
+        "id": "continue-with-set-aside-tests/failing-tests-not-listed-in-report",
+        "obligation_id": "continue-with-set-aside-tests",
+        "type": "wrong_output_shape",
+        "description": "The review records set-aside tests internally but the report does not identify which failing candidate tests were set aside, so the observable output does not show the exclusion list.",
+        "code_refs": [
+          "src/acceptance/report.py#0",
+          "src/acceptance/report.py#1",
+          "src/acceptance/review_state.py#2"
+        ],
+        "expected_behavior": "When failing candidate tests are set aside, the report renders those tests by name and reason so a reader can see exactly which tests took no part in the conclusion.",
+        "defective_behavior": "The report either omits the set-aside tests entirely or renders them only as a generic note without naming the tests that were excluded."
+      },
+      {
+        "id": "continue-with-set-aside-tests/set-aside-tests-still-count-in-conclusions",
+        "obligation_id": "continue-with-set-aside-tests",
+        "type": "other",
+        "description": "Set-aside failing candidate tests are still fed into later support or verdict aggregation, so they continue to influence the conclusion even though they were supposed to be excluded.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/pipeline.py#7",
+          "src/acceptance/mutation/verdicts.py#0",
+          "src/acceptance/defects/support.py#1",
+          "src/acceptance/defects/support.py#2"
+        ],
+        "expected_behavior": "Once a candidate test is set aside for failing at head, it is removed from the evidence used to form conclusions and does not contribute to derived support or verdict-based ratings.",
+        "defective_behavior": "The code keeps set-aside failing tests in the verdict/support inputs, so they still affect the conclusion despite being marked excluded."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"When the project is configured to continue anyway after a failing candidate test, the failing tests are set aside and take no part in any conclusion.\",\"observable_behavior\":\"The report excludes the configured-to-be-set-aside failing candidate tests from the conclusion and identifies which tests were set aside.\"}",
+    "carry_key": "bc727fe295b46f8700ab3c749eaf2209663d89d4154333634a337f126fb4ba3d",
+    "region_digests": {
+      "src/acceptance/cli.py#1": "ec9d21b748a8c73fcf09f70fb2ce2957385e2cfade212182b014f1e8bd5a2d7a",
+      "src/acceptance/cli.py#2": "ca4d2e405391586469573076f7eff7bb6cec15b03dc2858725dec720a73ea5a5",
+      "src/acceptance/cli.py#3": "4db599c3462645f422041efadc266bf5121ef7c613dc9ada6b31f4c0cf83e0b6",
+      "src/acceptance/defects/support.py#1": "39a220059a76be55ec1d92eba0896bd1a16876e57549d33bc7d8c8dcba27749c",
+      "src/acceptance/defects/support.py#2": "0595b12769b48cac8511f05c3055c365f327e6581cc69944405d498453e181ad",
+      "src/acceptance/mutation/verdicts.py#0": "eed99df8a79e445e92252528c87db90c15c22dba360b04e912b6d82a90cf84aa",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#3": "3b15c2516ff3b8c2836cb60d7e07f60c1dbd024051386d81117870b11e91e28a",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/pipeline.py#5": "36e2842a942cf90f3929918af5705db35250bbcc3369f268f2983ed3c71beacc",
+      "src/acceptance/pipeline.py#7": "1a5b6d122517492f49561e27aafe5492c56df06e175b461bdce8340aa120737f",
+      "src/acceptance/report.py#0": "b57b554f868f139cdc2a3115e73e0ff3d567b6dfe48beb98352c6407d267cca2",
+      "src/acceptance/report.py#1": "1359717fb0c3800861e17f9f916d8a558768bd5a3db660a591ced71800741cd1",
+      "src/acceptance/review_state.py#2": "5023cdb36efe3e98d30adc0e1da6c1eed13433b375de69948684f5cdb3803b37"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "report-lists-set-aside-tests",
+    "defects": [
+      {
+        "id": "report-lists-set-aside-tests/report-omits-set-aside-tests",
+        "obligation_id": "report-lists-set-aside-tests",
+        "type": "explanation_absent",
+        "description": "The report can render the set-aside section without naming the failing tests that were excluded, so a reader cannot tell which tests were set aside.",
+        "code_refs": [
+          "src/acceptance/report.py#0",
+          "src/acceptance/report.py#1",
+          "src/acceptance/review_state.py#2"
+        ],
+        "expected_behavior": "When failing candidate tests are set aside, the generated report names those tests in the set-aside section.",
+        "defective_behavior": "The report shows that some tests were set aside but does not include their test ids or names."
+      },
+      {
+        "id": "report-lists-set-aside-tests/set-aside-tests-never-populated",
+        "obligation_id": "report-lists-set-aside-tests",
+        "type": "not_wired",
+        "description": "The baseline/control-run path can record failing tests, but the review may never carry them through to the report, so the report has nothing to name.",
+        "code_refs": [
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/pipeline.py#8",
+          "src/acceptance/report.py#0",
+          "src/acceptance/review_state.py#2"
+        ],
+        "expected_behavior": "When the control run finds failing candidate tests and the project is configured to continue, those failing tests are stored on the review and passed to report rendering.",
+        "defective_behavior": "The control-run results are computed, but the failing tests are not wired into the review state or report path, so the report cannot list them."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The report states which failing tests were set aside.\",\"observable_behavior\":\"The generated report names the tests that were set aside.\"}",
+    "carry_key": "5e8765521110db4e6c587e9c8a52f4f8fe6f05ebe99d54fdf132cb31c0deb702",
+    "region_digests": {
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/pipeline.py#8": "7fa253d364bf34f96f304144bf44c13fe5f243508da447198b9a9c69467400b5",
+      "src/acceptance/report.py#0": "b57b554f868f139cdc2a3115e73e0ff3d567b6dfe48beb98352c6407d267cca2",
+      "src/acceptance/report.py#1": "1359717fb0c3800861e17f9f916d8a558768bd5a3db660a591ced71800741cd1",
+      "src/acceptance/review_state.py#2": "5023cdb36efe3e98d30adc0e1da6c1eed13433b375de69948684f5cdb3803b37"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "preserve-code-reading-judgement",
+    "defects": [
+      {
+        "id": "preserve-code-reading-judgement/static-judgement-skipped-when-execution-runs",
+        "obligation_id": "preserve-code-reading-judgement",
+        "type": "scope_too_narrow",
+        "description": "When execution is enabled and produces mutation verdicts, the pipeline can bypass the existing code-reading judgement for those defects instead of still including it in the review's output and decision-making.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/pipeline.py#7",
+          "src/acceptance/mutation/verdicts.py#0"
+        ],
+        "expected_behavior": "The review always retains the existing code-reading judgement as part of its output and as part of the decision path, even when execution runs first.",
+        "defective_behavior": "The review replaces the code-reading judgement with execution results for defects that execution settles, so those defects no longer go through the existing judgement."
+      },
+      {
+        "id": "preserve-code-reading-judgement/execution-off-path-skips-static-judgement",
+        "obligation_id": "preserve-code-reading-judgement",
+        "type": "not_wired",
+        "description": "The new execution tier may be wired into the main review path in a way that leaves the existing code-reading judgement unreachable whenever execution is disabled or halted, so the judgement no longer participates in the delivered review flow.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/pipeline.py#7"
+        ],
+        "expected_behavior": "The existing code-reading judgement remains wired into the review path and still runs for the cases the criterion covers.",
+        "defective_behavior": "The review path only invokes the new execution-related logic and never reaches the existing code-reading judgement on the delivered path."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The existing judgement that reads code without running it does not go away.\",\"observable_behavior\":\"The review still includes the existing code-reading judgement in its output and decision-making.\"}",
+    "carry_key": "a6f6d6d81597b35b3ab6c69c2ae0924c3ea01139f98bcdfb06f6a846c373f604",
+    "region_digests": {
+      "src/acceptance/mutation/verdicts.py#0": "eed99df8a79e445e92252528c87db90c15c22dba360b04e912b6d82a90cf84aa",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/pipeline.py#5": "36e2842a942cf90f3929918af5705db35250bbcc3369f268f2983ed3c71beacc",
+      "src/acceptance/pipeline.py#7": "1a5b6d122517492f49561e27aafe5492c56df06e175b461bdce8340aa120737f"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "does-not-run-first",
+    "defects": [
+      {
+        "id": "does-not-run-first/static-judgement-still-runs-before-execution",
+        "obligation_id": "does-not-run-first",
+        "type": "condition_inverted",
+        "description": "The review pipeline still reaches the code-reading judgement before the execution-based mutation stage, so the later-stage review is not actually deferred.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/pipeline.py#7",
+          "src/acceptance/pipeline.py#8"
+        ],
+        "expected_behavior": "The execution-based review runs first, and only after it finishes does the code-reading judgement run on whatever execution could not settle.",
+        "defective_behavior": "The code-reading judgement runs before the execution-based review, making it the initial pass instead of a later-stage review."
+      },
+      {
+        "id": "does-not-run-first/execution-tier-only-runs-when-explicitly-enabled",
+        "obligation_id": "does-not-run-first",
+        "type": "scope_too_narrow",
+        "description": "The execution-based review is gated behind an opt-in flag, so the code-reading judgement still runs first on the default path where execution is disabled.",
+        "code_refs": [
+          "src/acceptance/cli.py#3",
+          "src/acceptance/cli.py#4",
+          "src/acceptance/pipeline.py#3",
+          "src/acceptance/pipeline.py#4"
+        ],
+        "expected_behavior": "For the criterion to hold, execution-based review must precede the code-reading judgement on the normal review flow, not only when an explicit execution flag is supplied.",
+        "defective_behavior": "Execution-based review happens before the code-reading judgement only when `--execute` is set; otherwise the static judgement remains the first pass."
+      },
+      {
+        "id": "does-not-run-first/execution-path-not-wired-into-review-flow",
+        "obligation_id": "does-not-run-first",
+        "type": "not_wired",
+        "description": "The execution-stage machinery exists, but the review flow may never call it on the delivered path, leaving the code-reading judgement as the effective first stage.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/baseline.py#0"
+        ],
+        "expected_behavior": "The review pipeline should invoke the execution-based stage before the static judgement whenever execution is enabled for a review.",
+        "defective_behavior": "The execution-stage functions are defined, but the review path does not actually route through them before the code-reading judgement runs."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The code-reading judgement does not run before execution-based review; it remains a later-stage review rather than the first pass.\",\"observable_behavior\":\"Review flow shows the code-reading judgement occurring after execution-based review, not as the initial step.\"}",
+    "carry_key": "c85f8274ac576276c9aaef00d48d93a07b6c87d64616d700d17aba930e2bf704",
+    "region_digests": {
+      "src/acceptance/cli.py#3": "4db599c3462645f422041efadc266bf5121ef7c613dc9ada6b31f4c0cf83e0b6",
+      "src/acceptance/cli.py#4": "d5f0484719bbe792d73ac062853c73c0cf12236ec9817e90328bb8211dd747a1",
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#3": "3b15c2516ff3b8c2836cb60d7e07f60c1dbd024051386d81117870b11e91e28a",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/pipeline.py#7": "1a5b6d122517492f49561e27aafe5492c56df06e175b461bdce8340aa120737f",
+      "src/acceptance/pipeline.py#8": "7fa253d364bf34f96f304144bf44c13fe5f243508da447198b9a9c69467400b5"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "execution-could-not-settle-defects",
+    "defects": [
+      {
+        "id": "execution-could-not-settle-defects/execution-disabled-skips-static-judgement",
+        "obligation_id": "execution-could-not-settle-defects",
+        "type": "not_wired",
+        "description": "The execution tier is gated off entirely, so defects that execution could not settle never reach the code-reading judgement.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/mutation/settings.py#0"
+        ],
+        "expected_behavior": "When execution cannot settle a defect, the review still invokes the static judgement on that defect and records the resulting conclusion.",
+        "defective_behavior": "The pipeline returns with no static judgement for unsettled defects because the execution tier is disabled or bypassed before the code-reading stage runs."
+      },
+      {
+        "id": "execution-could-not-settle-defects/unsettled-defects-dropped-from-review-state",
+        "obligation_id": "execution-could-not-settle-defects",
+        "type": "wrong_output_shape",
+        "description": "The review stores mutation attempts, but unsettled defects could be omitted or stored in a form the later judgement cannot consume, so the code-reading conclusion would never be recorded for them.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/review_state.py#2",
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/verdicts.py#0"
+        ],
+        "expected_behavior": "Every defect execution could not settle is represented in the review state in a form that the later static judgement can read and use.",
+        "defective_behavior": "Unsettled defects are either not stored at all or are stored only as execution-stage records that are never converted into the static judgement input."
+      },
+      {
+        "id": "execution-could-not-settle-defects/not-attempted-defects-never-fed-to-static-judge",
+        "obligation_id": "execution-could-not-settle-defects",
+        "type": "missing_case",
+        "description": "Defects that execution could not settle because the edit could not be built, or because the code could not be run, may be recorded as terminal outcomes but never handed to the code-reading judgement.",
+        "code_refs": [
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/verdicts.py#0",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/pipeline.py#7"
+        ],
+        "expected_behavior": "Defects whose edit could not be built, and defects that could not be run, are still passed to the static judgement so the review can conclude from code-reading evidence.",
+        "defective_behavior": "Those not_mutable and not_attempted defects are recorded as execution outcomes only, but the remaining defect set given to the static judgement omits them or drops them from consideration."
+      },
+      {
+        "id": "execution-could-not-settle-defects/halted-baseline-prevents-static-fallback",
+        "obligation_id": "execution-could-not-settle-defects",
+        "type": "condition_inverted",
+        "description": "A baseline failure stops the review instead of routing the unsettled defects to the static judgement, so the code-reading conclusion is lost when execution cannot settle because the candidate tests already fail.",
+        "code_refs": [
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/mutation/settings.py#0",
+          "src/acceptance/cli.py#4",
+          "src/acceptance/pipeline.py#2"
+        ],
+        "expected_behavior": "When the control run cannot support execution, the review still reaches the static judgement for the defects execution could not settle, or otherwise records that code-reading evidence was used.",
+        "defective_behavior": "Any failing candidate test at head halts the review before the static judgement runs, so unsettled defects never receive a code-reading conclusion."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The judgement that reads code without running it runs on what execution could not settle: defects no edit could express, defects whose edit could not be built, and every defect at all when the code cannot be run.\",\"observable_behavior\":\"When execution cannot settle a defect, the review still reaches a conclusion from code-reading evidence.\"}",
+    "carry_key": "501ccf67213cfd6d3be71c708cce1be2ba7d8e01c0dfd25b82e4af21b25e16c9",
+    "region_digests": {
+      "src/acceptance/cli.py#4": "d5f0484719bbe792d73ac062853c73c0cf12236ec9817e90328bb8211dd747a1",
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/mutation/settings.py#0": "097767ee5765b4b85110ce99e3261650702a7dc3f397b124d84f5a88986fba0f",
+      "src/acceptance/mutation/verdicts.py#0": "eed99df8a79e445e92252528c87db90c15c22dba360b04e912b6d82a90cf84aa",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/pipeline.py#5": "36e2842a942cf90f3929918af5705db35250bbcc3369f268f2983ed3c71beacc",
+      "src/acceptance/pipeline.py#7": "1a5b6d122517492f49561e27aafe5492c56df06e175b461bdce8340aa120737f",
+      "src/acceptance/review_state.py#2": "5023cdb36efe3e98d30adc0e1da6c1eed13433b375de69948684f5cdb3803b37"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "preserve-current-review-conclusions-when-unrunnable",
+    "defects": [
+      {
+        "id": "preserve-current-review-conclusions-when-unrunnable/execution-tier-overrides-static-when-run-is-unavailable",
+        "obligation_id": "preserve-current-review-conclusions-when-unrunnable",
+        "type": "scope_too_narrow",
+        "description": "The review stops preserving the current conclusions when execution is enabled but the project cannot actually be run, because the execution tier is treated as mandatory instead of falling back to the existing static judgement.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/settings.py#0"
+        ],
+        "expected_behavior": "When the code cannot be run, the review should still reach the same conclusions it reaches today by skipping execution and using the existing static judgement on the unrunnable cases.",
+        "defective_behavior": "When execution is enabled and the project cannot be run, the review should halt or replace the current conclusions instead of preserving them."
+      },
+      {
+        "id": "preserve-current-review-conclusions-when-unrunnable/unrunnable-defects-return-not-attempted-instead-of-static",
+        "obligation_id": "preserve-current-review-conclusions-when-unrunnable",
+        "type": "established_not_maintained",
+        "description": "A defect that execution could not settle is recorded as a mutation-stage outcome, but the later support calculation may no longer preserve the pre-existing static conclusions for those unrunnable cases.",
+        "code_refs": [
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/verdicts.py#0",
+          "src/acceptance/defects/support.py#0",
+          "src/acceptance/defects/support.py#1",
+          "src/acceptance/defects/support.py#2",
+          "src/acceptance/defects/support.py#3",
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/pipeline.py#7"
+        ],
+        "expected_behavior": "When nothing can be run, defects that execution cannot settle should be handed to the existing static judgement so the review keeps the conclusions it would have reached today.",
+        "defective_behavior": "When execution cannot settle a defect, the code records a mutation outcome and lets that replace or alter the static conclusion instead of preserving it."
+      },
+      {
+        "id": "preserve-current-review-conclusions-when-unrunnable/baseline-halt-changes-review-conclusions",
+        "obligation_id": "preserve-current-review-conclusions-when-unrunnable",
+        "type": "unenforced_on_one_path",
+        "description": "The control-run halt path can change the review's conclusions by stopping before the existing review logic runs, so unrunnable cases do not necessarily preserve today's conclusions.",
+        "code_refs": [
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/mutation/settings.py#0",
+          "src/acceptance/cli.py#4",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4"
+        ],
+        "expected_behavior": "When the code cannot be run, the review should still produce the same conclusions it produces today, even if the control run finds failing candidate tests or cannot complete them.",
+        "defective_behavior": "When the control run cannot complete or finds failing candidate tests, the review halts and returns a different outcome instead of preserving the current conclusions."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"Where nothing can be run, the review reaches the conclusions it reaches today.\",\"observable_behavior\":\"When the code cannot be run, the review produces the same conclusions it produces today.\"}",
+    "carry_key": "49f8afae00ef6e5276da9dc238d161adfc6af90bc224f2b9fb7682123bf04a01",
+    "region_digests": {
+      "src/acceptance/cli.py#4": "d5f0484719bbe792d73ac062853c73c0cf12236ec9817e90328bb8211dd747a1",
+      "src/acceptance/defects/support.py#0": "ec9c61e4e6acca1aebd00480c868e8c8ed21b9157f18132a48e16ccec45fd87b",
+      "src/acceptance/defects/support.py#1": "39a220059a76be55ec1d92eba0896bd1a16876e57549d33bc7d8c8dcba27749c",
+      "src/acceptance/defects/support.py#2": "0595b12769b48cac8511f05c3055c365f327e6581cc69944405d498453e181ad",
+      "src/acceptance/defects/support.py#3": "98402858e586660893fa627582e9d9f71a50596f680f2715a0d1c74bf766ac53",
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/mutation/settings.py#0": "097767ee5765b4b85110ce99e3261650702a7dc3f397b124d84f5a88986fba0f",
+      "src/acceptance/mutation/verdicts.py#0": "eed99df8a79e445e92252528c87db90c15c22dba360b04e912b6d82a90cf84aa",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/pipeline.py#5": "36e2842a942cf90f3929918af5705db35250bbcc3369f268f2983ed3c71beacc",
+      "src/acceptance/pipeline.py#7": "1a5b6d122517492f49561e27aafe5492c56df06e175b461bdce8340aa120737f"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "weaker-tier-evidence",
+    "defects": [
+      {
+        "id": "weaker-tier-evidence/executed-verdicts-upgrade-support-tier",
+        "obligation_id": "weaker-tier-evidence",
+        "type": "established_not_maintained",
+        "description": "Executed mutation verdicts are recorded at the stronger `DEFECT_KILLED` tier and then fed into support derivation, so the judgement can be upgraded above the weaker tier instead of staying there.",
+        "code_refs": [
+          "src/acceptance/review_state.py#1",
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/defects/support.py#0",
+          "src/acceptance/defects/support.py#1",
+          "src/acceptance/defects/support.py#3"
+        ],
+        "expected_behavior": "Any evidence that contributes to this judgement is recorded and retained at the weaker evidence tier throughout support derivation and review storage.",
+        "defective_behavior": "Executed verdicts are appended to the review as `DEFECT_KILLED` evidence and `derive_support` can propagate that stronger tier into `achieved_evidence_tier`."
+      },
+      {
+        "id": "weaker-tier-evidence/mutation-attempt-tier-returns-stronger-evidence",
+        "obligation_id": "weaker-tier-evidence",
+        "type": "other",
+        "description": "The mutation attempt tier helper maps settling outcomes to `DEFECT_KILLED`, so the execution path can produce stronger-than-weaker evidence for this judgement.",
+        "code_refs": [
+          "src/acceptance/mutation/attempt.py#0"
+        ],
+        "expected_behavior": "The mutation execution path must record this judgement using the weaker evidence tier.",
+        "defective_behavior": "`tier_for()` returns `EvidenceTier.DEFECT_KILLED` for `killed` and `survived` outcomes, and `MutationAttempt.tier` exposes that stronger tier."
+      },
+      {
+        "id": "weaker-tier-evidence/pair-verdict-tier-default-stays-static",
+        "obligation_id": "weaker-tier-evidence",
+        "type": "scope_too_narrow",
+        "description": "Only the new `PairVerdict.tier` field defaults to `STATIC`; the execution path can still create verdicts at `DEFECT_KILLED`, so the weaker tier is not enforced for all records that feed this judgement.",
+        "code_refs": [
+          "src/acceptance/review_state.py#1",
+          "src/acceptance/mutation/verdicts.py#0"
+        ],
+        "expected_behavior": "Every record that contributes to this judgement should be stored at the weaker evidence tier.",
+        "defective_behavior": "`PairVerdict` defaults to `STATIC`, but `verdicts_from()` explicitly emits `PairVerdict(..., tier=EvidenceTier.DEFECT_KILLED)` for settled mutation attempts."
+      },
+      {
+        "id": "weaker-tier-evidence/report-shows-executed-verdicts-as-stronger-tier",
+        "obligation_id": "weaker-tier-evidence",
+        "type": "other",
+        "description": "The report renders mutation attempts and set-aside tests, but the executed verdicts are still stored as stronger evidence, so the review output can reflect stronger-tier evidence instead of only the weaker tier.",
+        "code_refs": [
+          "src/acceptance/report.py#0",
+          "src/acceptance/report.py#1",
+          "src/acceptance/mutation/attempt.py#0",
+          "src/acceptance/mutation/verdicts.py#0"
+        ],
+        "expected_behavior": "The review record for this judgement should present only weaker-tier evidence.",
+        "defective_behavior": "`render_report()` includes the mutation block, and the underlying attempts/verdicts can carry `DEFECT_KILLED` rather than staying at the weaker tier."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The evidence for this judgement stays at the weaker tier.\",\"observable_behavior\":\"The review records this judgement using the weaker evidence tier.\"}",
+    "carry_key": "a9c3d8ae038830b754a8d415de61f195ff73bf7074b0347a93c5129fd75e4521",
+    "region_digests": {
+      "src/acceptance/defects/support.py#0": "ec9c61e4e6acca1aebd00480c868e8c8ed21b9157f18132a48e16ccec45fd87b",
+      "src/acceptance/defects/support.py#1": "39a220059a76be55ec1d92eba0896bd1a16876e57549d33bc7d8c8dcba27749c",
+      "src/acceptance/defects/support.py#3": "98402858e586660893fa627582e9d9f71a50596f680f2715a0d1c74bf766ac53",
+      "src/acceptance/mutation/attempt.py#0": "c534492d5bfa403cab6b9228602a9fc166c3cb0a83bc8841a110b2e658c527c7",
+      "src/acceptance/mutation/verdicts.py#0": "eed99df8a79e445e92252528c87db90c15c22dba360b04e912b6d82a90cf84aa",
+      "src/acceptance/pipeline.py#5": "36e2842a942cf90f3929918af5705db35250bbcc3369f268f2983ed3c71beacc",
+      "src/acceptance/report.py#0": "b57b554f868f139cdc2a3115e73e0ff3d567b6dfe48beb98352c6407d267cca2",
+      "src/acceptance/report.py#1": "1359717fb0c3800861e17f9f916d8a558768bd5a3db660a591ced71800741cd1",
+      "src/acceptance/review_state.py#1": "ae7e0fcac2034f04537624bbcfc8dc6a480267934e8b8d502717f92ce33cebad"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "carry-reason-for-non-settlement",
+    "defects": [
+      {
+        "id": "carry-reason-for-non-settlement/not-attempted-missing-reason",
+        "obligation_id": "carry-reason-for-non-settlement",
+        "type": "other",
+        "description": "Unsettled mutation attempts can be created without any reason text, so a non-settling defect execution would be recorded with an empty reason.",
+        "code_refs": [
+          "src/acceptance/mutation/attempt.py#0"
+        ],
+        "expected_behavior": "Every MutationAttempt whose outcome is not settled must carry a non-empty reason explaining why execution did not settle the defect.",
+        "defective_behavior": "A non-settling MutationAttempt is accepted or constructed with an empty reason, so the record does not explain the non-settlement."
+      },
+      {
+        "id": "carry-reason-for-non-settlement/baseline-set-aside-reason-defaults-to-generic-text",
+        "obligation_id": "carry-reason-for-non-settlement",
+        "type": "other",
+        "description": "The baseline control run fabricates a generic reason for every failing or otherwise non-passing candidate test, so the recorded reason may not actually explain the non-settlement that occurred.",
+        "code_refs": [
+          "src/acceptance/mutation/baseline.py#0"
+        ],
+        "expected_behavior": "When a defect execution does not settle, the recorded reason should be the actual reason returned by the execution stage for that attempt.",
+        "defective_behavior": "The code substitutes a canned fallback reason instead of preserving the execution-stage reason, so the record can misstate why the attempt did not settle."
+      },
+      {
+        "id": "carry-reason-for-non-settlement/not-attempted-path-loses-reason",
+        "obligation_id": "carry-reason-for-non-settlement",
+        "type": "other",
+        "description": "The mutation runner can return a not_attempted outcome with a reason, but the classification path for partially observed runs may drop or replace that reason before the attempt is stored.",
+        "code_refs": [
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/review_state.py#2"
+        ],
+        "expected_behavior": "Any defect execution classified as not_attempted must be stored with the reason produced by the runner.",
+        "defective_behavior": "The runner or its caller records the non-settlement outcome without preserving the reason, leaving the attempt reason empty or replaced."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"A defect execution that did not settle carries the reason it did not.\",\"observable_behavior\":\"Unsettled defect execution records include the reason for non-settlement.\"}",
+    "carry_key": "39e229ff54471593f3a63c933e16a30dfc0c7989cfcd6fea134587a3522610eb",
+    "region_digests": {
+      "src/acceptance/mutation/attempt.py#0": "c534492d5bfa403cab6b9228602a9fc166c3cb0a83bc8841a110b2e658c527c7",
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909",
+      "src/acceptance/review_state.py#2": "5023cdb36efe3e98d30adc0e1da6c1eed13433b375de69948684f5cdb3803b37"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "single-continuous-edit-in-named-region",
+    "defects": [
+      {
+        "id": "single-continuous-edit-in-named-region/descriptor-allows-multi-file-edit",
+        "obligation_id": "single-continuous-edit-in-named-region",
+        "type": "other",
+        "description": "The mutation descriptor path can point at one file while the injected replacement is assembled from text that does not stay confined to a single continuous span in that file, so the recorded edit is not a single patch in one file.",
+        "code_refs": [
+          "src/acceptance/mutation/descriptor.py#0",
+          "src/acceptance/mutation/validity.py#0",
+          "src/acceptance/mutation/injection.py#0",
+          "src/acceptance/mutation/attempt.py#0"
+        ],
+        "expected_behavior": "The injected edit is represented as one contiguous line span in exactly one file, and the recorded descriptor/replacement pair corresponds to that single span only.",
+        "defective_behavior": "The implementation records or applies an edit that spans multiple disjoint regions or effectively changes more than one file, so the result is not a single continuous patch in one file."
+      },
+      {
+        "id": "single-continuous-edit-in-named-region/region-containment-check-too-permissive",
+        "obligation_id": "single-continuous-edit-in-named-region",
+        "type": "condition_inverted",
+        "description": "The containment check can accept an edit whose span is not actually inside the defect's named region, so the injected change is not confined to the region the defect names.",
+        "code_refs": [
+          "src/acceptance/mutation/validity.py#0",
+          "src/acceptance/mutation/region.py#0",
+          "src/acceptance/mutation/runner.py#0"
+        ],
+        "expected_behavior": "An edit is accepted only when its start and end lines lie wholly inside one of the defect's named regions for the same file.",
+        "defective_behavior": "An edit is accepted even when its span falls outside the named region, or the containment test is effectively reversed so outside spans pass and inside spans are rejected."
+      },
+      {
+        "id": "single-continuous-edit-in-named-region/missing-region-rejected-as-mutable",
+        "obligation_id": "single-continuous-edit-in-named-region",
+        "type": "missing_case",
+        "description": "A defect with no resolved region can still be sent through mutation instead of being rejected as uneditable, so the criterion is not enforced for defects whose named region is absent.",
+        "code_refs": [
+          "src/acceptance/mutation/region.py#0",
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/descriptor.py#0"
+        ],
+        "expected_behavior": "If the defect names no usable region in the delivered code, the mutation stage declines it and records that no single continuous edit can be made there.",
+        "defective_behavior": "The mutation stage proceeds anyway, fabricates or guesses an edit, and treats the defect as mutable despite having no named region to confine it to."
+      },
+      {
+        "id": "single-continuous-edit-in-named-region/span-validation-not-applied-before-injection",
+        "obligation_id": "single-continuous-edit-in-named-region",
+        "type": "not_wired",
+        "description": "The mechanical validity checks that should enforce single-span, single-file injection may exist but not actually gate the mutation path, allowing invalid edits to be applied.",
+        "code_refs": [
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/validity.py#0",
+          "src/acceptance/mutation/injection.py#0"
+        ],
+        "expected_behavior": "Before a mutant is written, the runner checks the descriptor mechanically and refuses any edit that is not one contiguous span in one file within the named region.",
+        "defective_behavior": "The runner builds or applies the mutant without consulting the validity gate, so an out-of-region or non-contiguous edit can still be injected."
+      },
+      {
+        "id": "single-continuous-edit-in-named-region/descriptor-response-shape-can-lose-span-bounds",
+        "obligation_id": "single-continuous-edit-in-named-region",
+        "type": "wrong_output_shape",
+        "description": "The descriptor path can return an answer shape that does not preserve the exact single-span bounds needed to prove the edit is one continuous replacement in one file.",
+        "code_refs": [
+          "src/acceptance/mutation/attempt.py#0",
+          "src/acceptance/mutation/descriptor.py#0",
+          "src/acceptance/review_state.py#0"
+        ],
+        "expected_behavior": "The descriptor records one file path, one start line, one end line, and one replacement text for the edit, so the injected change can be checked as a single contiguous span.",
+        "defective_behavior": "The implementation returns or stores the edit in a shape that drops or obscures the span boundaries, nests multiple spans, or otherwise prevents checking that it is one continuous patch in one file."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The edit replaces one continuous stretch of a single file within the region named by the defect.\",\"observable_behavior\":\"The change shows a single contiguous patch in one file, confined to the defect's named region.\"}",
+    "carry_key": "e3c5bd9478d936e8fa37d34346a509f4218b2f0bffa7b3067ba32bcfa7c70def",
+    "region_digests": {
+      "src/acceptance/mutation/attempt.py#0": "c534492d5bfa403cab6b9228602a9fc166c3cb0a83bc8841a110b2e658c527c7",
+      "src/acceptance/mutation/descriptor.py#0": "5b7251c255e35e74acf90bc0a9c56a7a5c924651aacb404c0ecd13d78a3b722a",
+      "src/acceptance/mutation/injection.py#0": "f82047411b904b3b63a09ff29811b7387dd4b14195336647a5e9a7d4979f0c07",
+      "src/acceptance/mutation/region.py#0": "6bae146c6c1376f8260db941d4ce2c02e43ec8f2f9285cad5f0dbb699105c4c8",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/mutation/validity.py#0": "6030a4eaa3d1257941102a80ef5d4e760ff206e67c05fdab6fa96266ad0d602f",
+      "src/acceptance/review_state.py#0": "a6069c7e21e9b5327e9db8edb76f58fb70a0fb79b9f8aab26cfe65d20bcaf8dd"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "no-edit-without-named-region",
+    "defects": [
+      {
+        "id": "no-edit-without-named-region/missing-region-not-reported-as-not-editable",
+        "obligation_id": "no-edit-without-named-region",
+        "type": "other",
+        "description": "A defect that names no region is treated as if it were merely missing a descriptor and is routed to the generic 'not mutable' path without explicitly reporting that it cannot be edited because no region was named.",
+        "code_refs": [
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/descriptor.py#0",
+          "src/acceptance/mutation/region.py#0"
+        ],
+        "expected_behavior": "When a defect has no named region, the review should report that the defect cannot be edited because there is no region to edit within.",
+        "defective_behavior": "When a defect has no named region, the review only reports a generic inability to mutate or a missing edit span, without stating that the defect is not editable for lack of a named region."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"A defect that names no region is not editable and is reported as such.\",\"observable_behavior\":\"The review reports that a defect without a named region cannot be edited.\"}",
+    "carry_key": "2c3405944b07d81e3759870ba39228e0ef17932740e88de8550f5323703b336e",
+    "region_digests": {
+      "src/acceptance/mutation/descriptor.py#0": "5b7251c255e35e74acf90bc0a9c56a7a5c924651aacb404c0ecd13d78a3b722a",
+      "src/acceptance/mutation/region.py#0": "6bae146c6c1376f8260db941d4ce2c02e43ec8f2f9285cad5f0dbb699105c4c8",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "parser-files-still-parse",
+    "defects": [
+      {
+        "id": "parser-files-still-parse/parse-check-only-covers-python",
+        "obligation_id": "parser-files-still-parse",
+        "type": "scope_too_narrow",
+        "description": "The validity check only parses Python-like files, so edited files with another parser can be accepted even when they no longer parse.",
+        "code_refs": [
+          "src/acceptance/mutation/validity.py#0"
+        ],
+        "expected_behavior": "Every file type that has a parser in the mutation validity check is parsed after the edit, and malformed output for any such file is rejected.",
+        "defective_behavior": "Only `.py` and `.pyi` files are parsed, while other parseable file types are left to the non-parse checks and can pass validity even if they are syntactically broken."
+      },
+      {
+        "id": "parser-files-still-parse/parse-errors-treated-as-acceptance",
+        "obligation_id": "parser-files-still-parse",
+        "type": "condition_inverted",
+        "description": "A parse failure from the mutated file is not rejected, so an invalid edit can still be treated as valid.",
+        "code_refs": [
+          "src/acceptance/mutation/validity.py#0"
+        ],
+        "expected_behavior": "If the mutated file has a parser and parsing raises a syntax/value error, the edit is marked invalid.",
+        "defective_behavior": "If parsing raises a syntax/value error, the edit is still accepted as valid instead of being rejected."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"A file that has a parser still parses after the edit.\",\"observable_behavior\":\"Parsing the file after the edit succeeds for files that have a parser.\"}",
+    "carry_key": "4305f8d354f6c7e950ae778bf34d5c7c26a2e0ee9e756e557b04337cfa0510a0",
+    "region_digests": {
+      "src/acceptance/mutation/validity.py#0": "6030a4eaa3d1257941102a80ef5d4e760ff206e67c05fdab6fa96266ad0d602f"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "no-parser-not-invalid",
+    "defects": [
+      {
+        "id": "no-parser-not-invalid/parserless-files-still-rejected",
+        "obligation_id": "no-parser-not-invalid",
+        "type": "condition_inverted",
+        "description": "Files without a parser are still treated as invalid, so the new validity check rejects them instead of allowing prose-only files to be mutated.",
+        "code_refs": [
+          "src/acceptance/mutation/validity.py#0"
+        ],
+        "expected_behavior": "When a file has no parser, the validity check should skip the parse requirement and treat the file as valid on that ground.",
+        "defective_behavior": "When a file has no parser, the validity check reports the file invalid solely because no parser is available."
+      },
+      {
+        "id": "no-parser-not-invalid/parser-check-applies-to-all-files",
+        "obligation_id": "no-parser-not-invalid",
+        "type": "scope_too_narrow",
+        "description": "The parse check only covers a fixed set of extensions, so a file type that does have a parser but is not listed can still be rejected or mishandled as if lacking one.",
+        "code_refs": [
+          "src/acceptance/mutation/validity.py#0"
+        ],
+        "expected_behavior": "Any file type that has a parser should be treated as valid when its mutated text still parses under that parser.",
+        "defective_behavior": "Only the hardcoded extensions in the parser table are recognized, and other parseable file types are treated as outside the rule or invalid by omission."
+      },
+      {
+        "id": "no-parser-not-invalid/parse-failure-becomes-not-mutable",
+        "obligation_id": "no-parser-not-invalid",
+        "type": "other",
+        "description": "A malformed parse is converted into a generic not-mutable rejection, so the code can still be treating parser absence as an invalidity path instead of merely skipping the parse check for files that have no parser.",
+        "code_refs": [
+          "src/acceptance/mutation/validity.py#0",
+          "src/acceptance/mutation/runner.py#0"
+        ],
+        "expected_behavior": "A file with no parser should pass validity on that ground alone, with parse-related rejection reserved for files that actually have a parser and fail it.",
+        "defective_behavior": "The validity path collapses parser-related cases into a not-mutable rejection, making parser absence function like a violation instead of a non-issue."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"A file with no parser is not invalid for lacking one.\",\"observable_behavior\":\"The absence of a parser on a file is not treated as a violation of this requirement.\"}",
+    "carry_key": "819173e40a895376b45e39e6c76fa1a9fdf08fa21ae6c1bcd5009fb45217d17a",
+    "region_digests": {
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/mutation/validity.py#0": "6030a4eaa3d1257941102a80ef5d4e760ff206e67c05fdab6fa96266ad0d602f"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "mechanical-validity-checks",
+    "defects": [
+      {
+        "id": "mechanical-validity-checks/mechanical-checks-bypassable-through-execution-settings",
+        "obligation_id": "mechanical-validity-checks",
+        "type": "other",
+        "description": "The new execution path can decide whether an edit is valid by running tests and halting or proceeding, so edit validity is no longer settled only by the mechanical validity checks.",
+        "code_refs": [
+          "src/acceptance/mutation/settings.py#0",
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/mutation/baseline.py#0"
+        ],
+        "expected_behavior": "Mechanical validity checks alone determine whether a mutation descriptor is valid, and execution settings only affect whether execution runs after validity is established.",
+        "defective_behavior": "The execution tier can short-circuit or override the validity decision by halting on baseline failures or proceeding past them, so validity depends on execution control flow as well as mechanical checks."
+      },
+      {
+        "id": "mechanical-validity-checks/parse-check-applies-only-to-some-file-types",
+        "obligation_id": "mechanical-validity-checks",
+        "type": "scope_too_narrow",
+        "description": "The parse validity check only covers a small hardcoded set of suffixes, so files with another parser can be mutated without being checked for parse validity.",
+        "code_refs": [
+          "src/acceptance/mutation/validity.py#0"
+        ],
+        "expected_behavior": "Any file type that has a parser must be re-parsed after the edit, so malformed mutants are rejected mechanically for every parseable file type the criterion covers.",
+        "defective_behavior": "Only .py, .pyi, and .json files are parsed after mutation, so other parseable file types can slip through validity checks even when the edit breaks them."
+      },
+      {
+        "id": "mechanical-validity-checks/containment-check-only-uses-resolved-regions",
+        "obligation_id": "mechanical-validity-checks",
+        "type": "scope_too_narrow",
+        "description": "The containment check only looks at regions that were resolved from the change set, so a defect with no resolved region can still be treated as mutable instead of being rejected mechanically.",
+        "code_refs": [
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/validity.py#0",
+          "src/acceptance/mutation/region.py#0"
+        ],
+        "expected_behavior": "If a defect names no editable region, mechanical validity rejects the edit as not mutable before any execution happens.",
+        "defective_behavior": "A defect with no resolved region can still reach later validity steps or be treated as valid because the containment check only runs after regions are found."
+      },
+      {
+        "id": "mechanical-validity-checks/descriptor-declines-are-not-mechanically-enforced",
+        "obligation_id": "mechanical-validity-checks",
+        "type": "unenforced_on_one_path",
+        "description": "A descriptor that declines by returning an empty region label is converted to None, but the runner still has to rely on later control flow to mark the defect not mutable, so the mechanical validity decision is not enforced at the descriptor boundary itself.",
+        "code_refs": [
+          "src/acceptance/mutation/descriptor.py#0",
+          "src/acceptance/mutation/runner.py#0"
+        ],
+        "expected_behavior": "A declined descriptor is mechanically rejected as not mutable at the point the descriptor is interpreted, with no later stage able to treat it as a valid edit.",
+        "defective_behavior": "The descriptor builder can return None for a decline, and the runner separately turns that into not_mutable, leaving the validity decision unenforced at the descriptor stage."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"Whether an edit is valid is settled by mechanical checks alone.\",\"observable_behavior\":\"Mechanical validation determines edit validity without human judgment.\"}",
+    "carry_key": "41b77e7d4e3fffb8176e33f654fcf19c678aaf357c3dcb45b5029c27c28fdb59",
+    "region_digests": {
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/descriptor.py#0": "5b7251c255e35e74acf90bc0a9c56a7a5c924651aacb404c0ecd13d78a3b722a",
+      "src/acceptance/mutation/region.py#0": "6bae146c6c1376f8260db941d4ce2c02e43ec8f2f9285cad5f0dbb699105c4c8",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/mutation/settings.py#0": "097767ee5765b4b85110ce99e3261650702a7dc3f397b124d84f5a88986fba0f",
+      "src/acceptance/mutation/validity.py#0": "6030a4eaa3d1257941102a80ef5d4e760ff206e67c05fdab6fa96266ad0d602f",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "tests-candidate-selection",
+    "defects": [
+      {
+        "id": "tests-candidate-selection/execution-tier-alters-candidate-selection",
+        "obligation_id": "tests-candidate-selection",
+        "type": "other",
+        "description": "The new execution tier can stop the review after the control run and remove failing candidate tests from later mutation and rating, so the set of tests treated as candidates is no longer the same as before.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/mutation/runner.py#0",
+          "src/acceptance/mutation/settings.py#0",
+          "src/acceptance/cli.py#3",
+          "src/acceptance/cli.py#4"
+        ],
+        "expected_behavior": "The code that decides whether tests are candidates should remain unchanged by the new execution path; candidate selection should still be determined only by the existing discovery logic.",
+        "defective_behavior": "The code establishes a baseline run, halts on failing candidate tests unless overridden, and filters those tests out of later stages, changing which tests are treated as candidates."
+      },
+      {
+        "id": "tests-candidate-selection/execution-tier-changes-test-run-eligibility",
+        "obligation_id": "tests-candidate-selection",
+        "type": "other",
+        "description": "The new execution settings introduce a path that decides whether the review can run tests at all, instead of leaving that decision to the existing review flow.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/mutation/settings.py#0",
+          "src/acceptance/cli.py#4"
+        ],
+        "expected_behavior": "The code should not add any new decision about whether the project's tests can be run at all; that decision should stay where it already was.",
+        "defective_behavior": "The pipeline now calls a baseline control run and can raise ReviewHalted when candidate tests fail at head, so the review itself decides whether tests may run."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The change does not alter how the review decides whether a project's tests can be run at all or which tests are candidates.\",\"observable_behavior\":\"The diff contains changes to the logic that determines whether tests can run at all or which tests are selected as candidates.\"}",
+    "carry_key": "fdb2515ad06826b34033ee646270f9afbea8ef610b4dab714b1041609bf7299b",
+    "region_digests": {
+      "src/acceptance/cli.py#3": "4db599c3462645f422041efadc266bf5121ef7c613dc9ada6b31f4c0cf83e0b6",
+      "src/acceptance/cli.py#4": "d5f0484719bbe792d73ac062853c73c0cf12236ec9817e90328bb8211dd747a1",
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/mutation/settings.py#0": "097767ee5765b4b85110ce99e3261650702a7dc3f397b124d84f5a88986fba0f",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "no-line-execution-recording",
+    "defects": [
+      {
+        "id": "no-line-execution-recording/line-execution-recording-still-present",
+        "obligation_id": "no-line-execution-recording",
+        "type": "other",
+        "description": "The review report or review state still includes a field or block that records executed line information, so the change continues to persist or render line execution data.",
+        "code_refs": [
+          "src/acceptance/review_state.py#2",
+          "src/acceptance/report.py#0",
+          "src/acceptance/report.py#1"
+        ],
+        "expected_behavior": "The delivered code should not store or display which lines of code a test executed anywhere in the review output or persisted review state.",
+        "defective_behavior": "The delivered code stores or renders line-execution information such as executed line spans, coverage line records, or a report section that lists executed lines."
+      },
+      {
+        "id": "no-line-execution-recording/execution-tier-still-derives-line-coverage",
+        "obligation_id": "no-line-execution-recording",
+        "type": "other",
+        "description": "The new execution tier still feeds line-coverage-style evidence into support derivation, so the system continues to record which lines tests executed indirectly through evidence tier bookkeeping.",
+        "code_refs": [
+          "src/acceptance/defects/support.py#0",
+          "src/acceptance/defects/support.py#1",
+          "src/acceptance/defects/support.py#2",
+          "src/acceptance/defects/support.py#3",
+          "src/acceptance/pipeline.py#5",
+          "src/acceptance/review_state.py#1"
+        ],
+        "expected_behavior": "The delivered code should avoid recording executed lines as evidence and should only record test outcomes or mutation results relevant to the criterion.",
+        "defective_behavior": "The delivered code derives support from execution data that encodes line coverage or executed-line information, thereby preserving line-execution recording under a different name."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The change does not record which lines of code a test executed.\",\"observable_behavior\":\"Recording which lines of code a test executed.\"}",
+    "carry_key": "491c8c7e9662f9ae006a7ec16d12a5ded6c2db1e9e14464d765e4f28bef7c169",
+    "region_digests": {
+      "src/acceptance/defects/support.py#0": "ec9c61e4e6acca1aebd00480c868e8c8ed21b9157f18132a48e16ccec45fd87b",
+      "src/acceptance/defects/support.py#1": "39a220059a76be55ec1d92eba0896bd1a16876e57549d33bc7d8c8dcba27749c",
+      "src/acceptance/defects/support.py#2": "0595b12769b48cac8511f05c3055c365f327e6581cc69944405d498453e181ad",
+      "src/acceptance/defects/support.py#3": "98402858e586660893fa627582e9d9f71a50596f680f2715a0d1c74bf766ac53",
+      "src/acceptance/pipeline.py#5": "36e2842a942cf90f3929918af5705db35250bbcc3369f268f2983ed3c71beacc",
+      "src/acceptance/report.py#0": "b57b554f868f139cdc2a3115e73e0ff3d567b6dfe48beb98352c6407d267cca2",
+      "src/acceptance/report.py#1": "1359717fb0c3800861e17f9f916d8a558768bd5a3db660a591ced71800741cd1",
+      "src/acceptance/review_state.py#1": "ae7e0fcac2034f04537624bbcfc8dc6a480267934e8b8d502717f92ce33cebad",
+      "src/acceptance/review_state.py#2": "5023cdb36efe3e98d30adc0e1da6c1eed13433b375de69948684f5cdb3803b37"
+    },
+    "carried_from": null
+  },
+  {
+    "obligation_id": "no-whole-suite-run",
+    "defects": [
+      {
+        "id": "no-whole-suite-run/whole-suite-execution-flag",
+        "obligation_id": "no-whole-suite-run",
+        "type": "other",
+        "description": "The new execution path can still run the project's whole test suite because the runner is given the full discovered test list and there is no visible filter that limits execution to a named subset.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/pipeline.py#4",
+          "src/acceptance/mutation/baseline.py#0",
+          "src/acceptance/mutation/runner.py#0"
+        ],
+        "expected_behavior": "The execution tier should invoke only the named candidate tests, not the project's whole suite.",
+        "defective_behavior": "The execution tier passes the complete discovered test list into the sandbox runner, so the whole suite can be executed."
+      },
+      {
+        "id": "no-whole-suite-run/baseline-control-run-uses-all-tests",
+        "obligation_id": "no-whole-suite-run",
+        "type": "other",
+        "description": "The control run before mutation can execute every discovered test instead of only the named candidates, so the review may observe whole-suite execution before any defect injection happens.",
+        "code_refs": [
+          "src/acceptance/pipeline.py#2",
+          "src/acceptance/mutation/baseline.py#0"
+        ],
+        "expected_behavior": "The baseline run should be limited to the candidate tests named for the review.",
+        "defective_behavior": "The baseline establishment takes the full test id list and runs them all, which can amount to executing the project's whole suite."
+      }
+    ],
+    "reason": "",
+    "obligation_text": "{\"description\":\"The change does not run the project's whole test suite.\",\"observable_behavior\":\"evidence of the project's whole test suite being executed\"}",
+    "carry_key": "1e2664df4186a97383041ec53c24fba29e73ac083048a3b30f48449ab4af8639",
+    "region_digests": {
+      "src/acceptance/mutation/baseline.py#0": "88139d39288c777f6ffe8216a1b7f4a2a9795b54af3e83bdc27562a3d4603fac",
+      "src/acceptance/mutation/runner.py#0": "ec1dcf8d4f3e91147e698984b82cd6c5c1a1b008f36bceabbb1e5ded48c59836",
+      "src/acceptance/pipeline.py#2": "24823539ed47a564f69cf0f64ec0f89027034515abf89aabcd1a84c9b7544290",
+      "src/acceptance/pipeline.py#4": "54c806b2e02116b8e534f5caff4594783445ff230f6bee5ff71d66453f626909"
+    },
+    "carried_from": null
+  }
+]

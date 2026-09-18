@@ -1,0 +1,136 @@
+run c4e3938a331d4d36
+  requirements: 13 derived, 0 carried, 0 revised; 35 decompose call(s)
+  continue this run with: --continue c4e3938a331d4d36
+Model usage by stage:
+  stage               model                                                            calls   prompt  output  cached  this run  recorded
+  ------------------  -------------------------------------------  -------------------------  -------  ------  ------  --------  --------
+  decompose           openai/gpt-5.4-mini                          29 (0 live / 29 replayed)  161,034   4,650    0.0%   $0.0000   $0.1417
+  decompose-summary   openai/gpt-5.4                                 6 (0 live / 6 replayed)    6,467   2,588    0.0%   $0.0000   $0.0550
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (0 live / 2 replayed)    1,978     130    0.0%   $0.0000   $0.0013
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.1980 to record (37 call(s) replayed at no cost to this run)
+Requirements: 13   with obligations: 13
+
+[task-01] The review has already named, for each requirement, the concrete ways the
+    change could fail it. Until now it has only predicted whether the project's tests
+    would notice those failures. It can now find out by trying.
+    -> named-concrete-failure-modes  [explanation_observability/explicit]
+       The review names, for each requirement, the concrete ways the change could fail
+       it.
+    -> test-coverage-prediction-only  [explanation_observability/explicit]
+       The review has only predicted whether the project's tests would notice those
+       failures.
+    -> can-find-out-by-trying  [functional/explicit]
+       The review can now find out by trying.
+
+[task-02] For a named plausible defect, the review builds the smallest edit that makes
+    that defect true, applies it to a throwaway copy of the code, and runs the project's
+    candidate tests against the altered copy. A test that fails is shown to discriminate
+    for that defect. When no test fails, the candidate tests are shown not to
+    discriminate for it. Either way the conclusion is an observation rather than a
+    prediction, and is recorded at the strongest evidence tier the review produces on
+    its own.
+    -> smallest-edit-that-makes-defect-true  [functional/explicit]
+       The review builds the smallest edit that makes the named plausible defect true.
+    -> run-candidate-tests-on-altered-copy  [functional/explicit]
+       Run the project's candidate tests against the altered copy.
+    -> test-fails-discriminate-defect  [functional/explicit]
+       A test that fails is shown to discriminate for that defect.
+    -> candidate-tests-not-discriminate-when-none-fail  [functional/explicit]
+       When no test fails, the candidate tests are shown not to discriminate for the
+       defect.
+    -> observation-not-prediction  [invariant/explicit]
+       The conclusion is an observation rather than a prediction.
+    -> recorded-at-strongest-evidence-tier  [explanation_observability/explicit]
+       The conclusion is recorded at the strongest evidence tier the review produces on
+       its own.
+
+[task-03] The edit stays inside the region the defect already points at, and is recorded
+    next to the result, so a reader who disagrees with what was injected can see exactly
+    what it was.
+    -> recorded-next-to-result  [explanation_observability/explicit]
+       The injected text is recorded next to the result.
+
+[task-04] Before anything is altered, the candidate tests run once against the code as
+    delivered. A test that already fails there tells nothing when it fails later, so
+    this run is what makes the later result mean anything. If any candidate test fails
+    on the delivered code, the review stops and says why. A project can be configured to
+    continue anyway, for a failure its owners have chosen to live with; then the failing
+    tests take no part in any conclusion, and the report says which ones were set aside.
+    -> candidate-tests-run-once-before-changes  [functional/explicit]
+       Before any changes are made, the candidate tests are run once against the code as
+       delivered.
+    -> stop-review-on-failing-candidate-test  [functional/explicit]
+       If any candidate test fails on the delivered code, the review stops and says why.
+    -> continue-with-set-aside-tests  [functional/explicit]
+       When the project is configured to continue anyway after a failing candidate test,
+       the failing tests are set aside and take no part in any conclusion.
+    -> report-lists-set-aside-tests  [explanation_observability/explicit]
+       The report states which failing tests were set aside.
+
+[task-05] The existing judgement that reads code without running it does not go away,
+    and does not run first. It runs on what execution could not settle: a defect no edit
+    could express, a defect whose edit could not be built, and every defect at all when
+    the code cannot be run. A review where nothing can be run reaches the same
+    conclusions it reaches today, by the same path, with its evidence recorded at the
+    weaker tier.
+    -> existing-judgement-preserved  [compatibility/explicit]
+       The existing judgement that reads code without running it is preserved.
+    -> does-not-run-first  [invariant/explicit]
+       The code-reading judgement is not run before the execution-based review; it runs
+       after execution has had the chance to settle what it can.
+    -> execution-could-not-settle-defects  [functional/explicit]
+       The review runs on defects that execution could not settle: defects no edit could
+       express, defects whose edit could not be built, and defects when the code cannot
+       be run.
+    -> same-conclusions-without-running  [functional/explicit]
+       A review where nothing can be run reaches the same conclusions it reaches today.
+    -> same-path  [invariant/explicit]
+       The review reaches the same conclusions by the same path.
+    -> weaker-tier-evidence-recording  [invariant/explicit]
+       Record the evidence for this requirement at the weaker tier.
+
+[task-06] Nothing is dropped in silence. A defect execution did not settle carries the
+    reason it did not.
+    -> reason-for-unsettled-defect-execution  [invariant/explicit]
+       A defect execution that did not settle carries the reason it did not.
+
+[constraint-01] The edit replaces one continuous stretch of a single file, within a
+    region the defect names. A defect naming no region cannot be edited, and says so.
+    -> single-continuous-edit-in-named-region  [functional/explicit]
+       The edit replaces one continuous stretch of a single file within the region named
+       by the defect.
+    -> no-edit-without-named-region  [invariant/explicit]
+       A defect that names no region is not editable and is reported as such.
+
+[constraint-02] A file that has a parser must still parse after the edit. A file with no
+    parser is not invalid for lacking one — a requirement can be stated in prose and
+    broken in prose, and the tests that read that prose are the ones that catch it.
+    -> parser-files-still-parse  [invariant/explicit]
+       A file that has a parser still parses after the edit.
+    -> no-parser-not-invalid  [invariant/explicit]
+       A file with no parser is not invalid for lacking one.
+
+[constraint-03] Nothing asks a model to confirm that the edit really breaks the
+    requirement.
+    -> confirm-edit-breaks-requirement  [human_review/explicit]
+       A model confirms that the injected edit really breaks the requirement.
+
+[exclusion-01] Deciding whether a project's tests can be run at all, and which of them
+    are candidates.
+    -> tests-candidate-selection  [functional/explicit]
+       The change does not alter how the review decides whether a project's tests can be
+       run at all or which tests are candidates.
+
+[exclusion-02] Recording which lines of code a test executed.
+    -> no-line-execution-recording  [functional/explicit]
+       The change does not record which lines of code a test executed.
+
+[exclusion-03] Writing or altering a test so that a defect can be reached.
+    -> no-test-writing-or-altering-for-defect-reachability  [test_demand/explicit]
+       The change does not include writing or altering a test so that a defect can be
+       reached.
+
+[exclusion-04] Running the project's whole test suite.
+    -> no-whole-suite-run  [functional/explicit]
+       The change does not run the project's whole test suite.
+

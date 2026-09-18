@@ -20,6 +20,8 @@ from pydantic import Field, field_validator, model_validator
 
 from acceptance.evidence_tier import Component, EvidenceTier, authorize_tier
 from acceptance.model_base import PersistableModel as _Model
+from acceptance.mutation.attempt import MutationAttempt
+from acceptance.mutation.baseline import SetAsideTest
 from acceptance.serialization import canonical_json
 from acceptance.source_ref import TextSpan
 
@@ -37,6 +39,7 @@ __all__ = [
     "Disposition",
     "EvidenceClassification",
     "EvidenceTier",
+    "ExecutionDecision",
     "ExecutionEvidence",
     "FileChange",
     "Finding",
@@ -136,6 +139,23 @@ class DefectType(str, Enum):
     is odd defects being forced into the nearest slot."""
 
 
+class ExecutionDecision(_Model):
+    """Whether this review ran the project's tests, and why.
+
+    The decision is the review's own, not the operator's (the human's ruling of
+    2026-09-18): the person running a review has no way to know whether a run
+    would produce anything, and the review does. `mutation/settings.py` computes
+    it; it lives here because it is review state, and because the mutation
+    package imports this module.
+
+    Recorded and rendered rather than taken silently, so that "we did not run the
+    tests" stays distinguishable from "we ran them and found nothing".
+    """
+
+    run: bool
+    reason: str
+
+
 class Defect(_Model):
     """One concrete way the delivered code could plausibly fail an obligation.
 
@@ -155,6 +175,19 @@ class Defect(_Model):
     type: DefectType
     description: str
     code_refs: list[str] = Field(default_factory=list)
+    # The defect as two behaviours rather than one sentence: what the code must
+    # do for the criterion to hold, and what it would do instead if this defect
+    # were present. A single sentence such as "the rate uses a 30-day month"
+    # reads as a claim about the code as it is, and the mutation stage could not
+    # tell whether to make it true or whether it already is — so it sometimes
+    # edited the code to REPAIR a defect the code already had, and tests failing
+    # on the repair were counted as catching the defect (#45's gpt-5.4 audit).
+    #
+    # Neither says whether the code currently does one or the other; the
+    # enumerator stays a list of candidates, not a judgement of presence.
+    # Defaulted, so a review recorded before these existed reads back unchanged.
+    expected_behavior: str = ""
+    defective_behavior: str = ""
 
 
 class DefectSet(_Model):
@@ -209,6 +242,20 @@ class PairVerdict(_Model):
     test_id: str
     kills: bool
     reason: str = ""
+    # How well this one answer is known (DR-171 Decision 7). `STATIC` is a
+    # prediction the pair-judgement stage made by reading; `DEFECT_KILLED` is
+    # what the mutation runner observed by injecting the defect and running the
+    # test. One record type for both, so the rating has one implementation: a
+    # parallel record for executed verdicts would fork that arithmetic and the
+    # two copies would drift, which is the failure CLAUDE.md records against the
+    # CLI and the benchmark.
+    #
+    # A review is therefore a mixture of tiers, and a repository where the tests
+    # cannot be run is simply the case where every verdict stays `STATIC`. That
+    # makes §8.3's graceful degradation structural rather than a promise.
+    #
+    # Defaulted, so adding it orphans no recorded transcript.
+    tier: EvidenceTier = EvidenceTier.STATIC
     # The identity a later run matches this verdict on, and the reason it is not
     # the defect id: ids are composed from the obligation id, so a reworded
     # requirement moves every defect id under it and keying on one would
@@ -1234,6 +1281,28 @@ class Review(_Model):
     # claim as "judged and survives" or "excluded unjudged".
     pair_verdicts: list[PairVerdict] = Field(default_factory=list)
     unjudged_pairs: list[UnjudgedPair] = Field(default_factory=list)
+    # One entry per defect the mutation stage was asked about (M8.4), holding the
+    # edit that was injected and what became of it. Empty on every review that
+    # did not run the tests, which is every review until the caller opts in.
+    #
+    # The injected text is here because DR-171 Decision 3 refuses to spend a
+    # second model call confirming that the mutant really violates the
+    # obligation — it would be judging its own output at the same tier as the
+    # thing it checks. Recording exactly what was injected is the whole of what
+    # replaces that, so a reader can disagree with a survival. Weaker than a
+    # proof, and honest about being weaker.
+    mutation_attempts: list[MutationAttempt] = Field(default_factory=list)
+    # Candidate tests that took no part in any conclusion, and why. A test that
+    # failed against the code as delivered tells nothing when it fails under an
+    # injected defect, so it is excluded — and an exclusion nobody can see is
+    # indistinguishable from a test that was never a candidate.
+    set_aside_tests: list[SetAsideTest] = Field(default_factory=list)
+    # Whether this review ran the project's tests, and why it decided that. The
+    # decision is the review's own, not the operator's (the human's ruling of
+    # 2026-09-18), and recording it is what makes "we did not run the tests"
+    # distinguishable from "we ran them and found nothing". `None` on a review
+    # recorded before the decision existed.
+    execution_decision: ExecutionDecision | None = None
     findings: list[Finding] = Field(default_factory=list)
     recommendations: list[TestRecommendation] = Field(default_factory=list)
     # Criteria the recommendation stage was asked about and returned nothing for

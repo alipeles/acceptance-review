@@ -39,6 +39,7 @@ from acceptance.coverage.open_questions import (
 )
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode, ModelClient
+from acceptance.mutation.settings import ExecutionSettings
 from acceptance.pipeline import run_review
 from acceptance.recommendation import lookup as lookup_recommendation
 from acceptance.recommendation import render as render_recommendation
@@ -131,6 +132,7 @@ def run_check(
     continue_from: str | None = None,
     ledger: LedgerStore | None = None,
     run_id: str | None = None,
+    execution: ExecutionSettings | None = None,
 ) -> Review:
     """Walking-skeleton pipeline: ingest → build empty Review → persist.
 
@@ -204,6 +206,7 @@ def run_check(
         prior=prior,
         ledger_prior=ledger.read_if_present(continue_from) if ledger is not None else None,
         ledger_sink=sink,
+        execution=execution,
     )
     store.write(review)
     if ledger is not None and sink:
@@ -807,6 +810,10 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="RUN_ID",
         help="Run id to continue: carry forward each requirement whose text is unchanged.",
     )
+    # The execution tier (M8.4) has no flag. Whether running the project's tests
+    # is worth doing is the review's own decision — `decide_execution` — and it
+    # is reported with its reason. The human's ruling of 2026-09-18: the person
+    # running a review has no way to know whether a run would produce anything.
     _add_model_flags(check, default_mode=Mode.REPLAY.value)  # never call live unbidden
     rec = subparsers.add_parser(
         "recommendation",
@@ -925,6 +932,7 @@ def main(argv: list[str] | None = None) -> int:
                 continue_from=args.continue_from,
                 ledger=LedgerStore(),
                 run_id=run_id,
+                execution=ExecutionSettings(),
             )
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)

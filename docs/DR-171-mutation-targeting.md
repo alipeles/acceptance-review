@@ -6,7 +6,203 @@ actual mutation at actual lines), owned by M8.4 / #45 (targeted mutation, the
 **Resolved:** 2026-09-02, in conversation, before the M8 sequence starts.
 **Revised:** 2026-09-14, in conversation, before #45 starts. Decisions 4, 6, 7
 and 8 changed; see *Revision* below.
-**Status:** resolved.
+**Revised again:** 2026-09-16, during #45, on measurement. Decisions 1 and 3
+changed; see *Revision — 2026-09-16* below, and its later addendum on the tier
+gate, the breadth check and the verifier measurement.
+**Status:** resolved. **M8.4 landed 2026-09-18**; see *Where M8.4 landed* below.
+
+## Where M8.4 landed, 2026-09-18
+
+Stated plainly, because every softer phrasing of this has been wrong.
+
+**Injection works mechanically.** It resolves the region a defect names, asks for
+an edit, checks it, copies the project, applies the edit, runs the candidate
+tests and reads the result. Every step is wired into `pipeline.py::run_review`
+and tested through it.
+
+**Roughly half the edits are valid.** Measured by hand over the same review nine
+times (`dogfood-logs/45-injection-audits/`, protocol in `docs/audit-protocol.md`):
+25 of 48 counted edits on `openai/gpt-5.4` put the named defect into the code.
+The rest repaired a defect the code already had, changed something other than the
+defect, or broke far more than it. Widening the context the edit-building call
+sees did not improve that, and the arm that would have swapped the model could
+not run (#339).
+
+**The edit checker is below its adoption bar and switched off.** 27 of 35 bad
+edits refused (77%, bar 80%) and 8 of 31 good edits wrongly refused (26%, bar
+under 10%). About a quarter of what it would accept is still a bad edit. #335
+carries the bar and the work.
+
+**So the tier is landed but earning nothing.** No observed result is verified,
+so none reaches `defect-killed`, so every defect still goes to the static pair
+judgement. The tier gate that enforces this is `MutationAttempt.settled`, and
+`tests/test_unverified_mutation_is_inert.py` fails if anything derives a class, a
+rating or a prescription from an unverified attempt.
+
+**The feature currently costs money and saves none.** Since the human's ruling of
+2026-09-18 the review decides whether running the tests is worth doing, and with
+verification off it decides against and says so — so on a normal review the tier
+now spends nothing rather than spending for nothing. It begins to earn when #335
+clears its bar.
+
+### The cost of touching this stage, measured
+
+Gate 2 run 3 cost **$11.5874** against run 1's $5.12, and $10.09 of it was the
+pair judgement. Nothing was reused, and the reason is worth recording because it
+will recur:
+
+- The reuse key for a criterion's defects mixes **per-criterion** inputs (its own
+  text, the content of the regions its defects name) with inputs **shared by
+  every criterion** (this stage's prompt, its response shape, the model, the
+  seed). Changing a shared one discards every stored defect set at once. Run 2
+  reused 10 of 25 sets; run 3 reused 0 of 31, because the two behaviour fields
+  changed the prompt and the response shape.
+- **The cost does not land where the change is.** Regenerating all 31 sets of
+  defects cost $1.12. The pair judgement embeds defect descriptions, and a model
+  asked the same question twice writes different words, so all 1330 of its
+  requests were new. One edited line in the enumeration prompt costs about ten
+  dollars on a review this size.
+
+Sequence work on this stage so that price is paid once. It was paid twice here.
+
+## Addendum to the 2026-09-16 revision: the tier is gated on a verified edit
+
+Measured on the same review (audits v6 and v7 and their judgements, and
+`verifier-measurement-gpt-5.4.md`).
+
+**Decisions 7 and 8 are amended: an observed result is not a settled one.** An
+injection result is evidence about a defect only if the edit made that defect
+true, and on audit v6 about half did not. A kill or survival is now *observed*;
+it *settles* its defect — produces verdicts, reaches `DEFECT_KILLED`, and leaves
+the static judge's input — only when its edit is **verified**. An unverified one
+is kept and reported, stays `STATIC`, and its defect goes to the static judge. A
+bad edit costs compute rather than a wrong tier.
+
+**Decision 3 stands: no confirming model call is adopted.** A verifier was built
+(`mutation/verification.py`: shown the defect's two behaviours and 30 lines of
+code either side of the edit, before and after, never the tests) and measured on
+`openai/gpt-5.4` against audit v6's 66 hand-labelled edits:
+
+| | count | rate |
+|---|---|---|
+| bad edits it refused (catch rate) | 27 of 35 | 77% |
+| good edits it refused (false alarms) | 8 of 31 | 26% |
+
+About a quarter of what it would verify is still a bad edit, so it is **not
+adopted**; it sits behind `ExecutionSettings.verify_edits`, off. Five of its eight
+false alarms answered "cannot tell" on the 30-line window (first recorded here as
+six, a miscount corrected on re-reading the per-edit results), and most bad edits it
+accepted do change the named behaviour literally while also crashing. **With it
+off, nothing reaches `DEFECT_KILLED` and injection saves no pair judgement.** The
+tier and the saving now both wait on a verifier good enough to adopt.
+
+**The edit-building answer states what the code does first.** A required
+`code_currently_does` field — expected, defective, cannot tell — is read
+mechanically and decides what the edit means. "Defective" is recorded as
+`already_present` at the static tier, flagged in the report as model-asserted,
+and its edit is run as a repair: every candidate test passing says no test pins
+the expected behaviour; a test failing names a test that asserts the defective
+behaviour. This replaces the `already_present` typed decline.
+
+**A seventh mechanical check: breadth.** A result is refused when more than 7.5%
+of candidate tests fail under the edit and more than 10 do, whatever exception
+they failed on. On audits v5 and v6 (339 candidate tests) real kills failed at
+most 23; the widest edits that broke far more failed 79, 29 and 26, but most
+failed 4 or fewer. 7.5% keeps every real kill and catches only the extremes. The
+exception list of check 6 was deliberately not widened: a real injected defect
+can fail with a `TypeError`.
+
+**Result, on 22 of the 25 criteria** (three contested ones left out for human
+adjudication), v6 recounted on the same criteria against v7:
+
+| | v6 | v7 |
+|---|---|---|
+| edits counted (kills and survivals) | 58 | 44 |
+| put the named defect into the code | 25 (43%) | 25 (57%) |
+| repair a defect the code already had | 7 | 3 |
+| change something other than the defect | 16 | 12 |
+| break far more than the defect | 10 | 4 |
+| real kills | 20 of 46 | 23 of 36 |
+| real survivals | 5 of 12 | 2 of 8 |
+
+v7 also refused 8 edits after their run, all correctly, and recorded 12
+already-present claims, 9 of them right. Edits that change the wrong thing are
+the largest remaining problem and nothing adopted addresses them.
+
+### Surrounding code, measured (audit v8)
+
+Both model calls in the tier are now shown M2.2's bounded retrieval — each
+region's enclosing definition and its in-repo call sites, **test files withheld**
+by the change set's own test-path rule, because a call that reads the tests can
+aim an edit at what they catch. Not whole files: those change how much the call
+sees as well as what, and make every request unique.
+
+**It did not improve the edits.** Same 64 defects and 22 criteria as v7:
+
+| | v7 | v8 |
+|---|---|---|
+| edits counted | 44 | 48 |
+| put the named defect in | 25 (57%) | 25 (52%) |
+| real kills | 23 of 36 | 21 of 39 |
+| edits that break far more | 4 | 2 |
+| already-present claims right | 9 of 12 | 9 of 9 |
+
+One run each, so a 5-point move is not separable from noise. **And the verifier
+re-measured with the same context got no better**: 25 of 35 bad edits refused
+(71%, from 77%) with false alarms unchanged at 8 of 31. Its unresolved "cannot
+tell" refusals are about code the edited code *calls*, which this retrieval does
+not return — it returns callers.
+
+**The breadth check's first measured false refusal** is in v8: the reversed
+containment check in `region.py` is exactly what its defect names, and it failed
+26 tests because every injected edit passes through that one check. A defect in
+shared code cannot be distinguished from a broad edit by count alone.
+
+## Revision — 2026-09-16: a defect is two behaviours, and validity is more than four checks
+
+Measured over #45's own Gate 2 review — 25 criteria, the diff `61c5a3c..518f876`,
+about 70 defects, 339 candidate tests — with every edit judged by hand
+(`dogfood-logs/45-injection-audits/`, audits v2 to v6 and their judgements).
+
+**Decision 1 is revised: the enumeration output shape DOES change.** Each defect
+now carries `expected_behavior` (what the code must do for the criterion) and
+`defective_behavior` (what it would do instead), beside the unchanged
+`description` and `code_refs`. A one-sentence defect is usually a present-tense
+claim about the code, and the edit-building step could not tell whether to make
+it true or whether it already was. When the code already had the defect, it
+edited the code to *repair* it, and the tests that failed were counted as
+catching the defect: 17 of 60 edits on `openai/gpt-5.4` (audit v5).
+
+With the two fields (audit v6), repairs fell to 9 of 66 and edits that genuinely
+inject the named defect rose from 32% to 47%. The grounds Decision 1 gave still
+hold for what it rejected — the enumerator is still not asked for an edit, and it
+is told not to say which of the two behaviours the code has — so the denominator
+is not thinned toward what is mutable. The recording cost it named was paid.
+
+**Decision 3 is amended: validity is six checks, not four.** Two were added on
+measurement:
+
+5. **The replacement differs from the text it replaces.** 21 of 71 descriptors
+   on `gpt-5.4-mini` returned their input verbatim; each would have been a
+   survival recorded against the builder for a defect never introduced.
+6. **A kill is not counted when every failed test failed with `NameError`,
+   `UnboundLocalError`, `ImportError` or `ModuleNotFoundError`.** The edit parses
+   and imports, then fails on a name that does not exist when a test calls it.
+   7 of 47 kills on `gpt-5.4` were this. The defect goes to the static judge.
+
+No confirming model call was added. Whether one is needed is **still open**:
+16 of 66 edits in audit v6 change something other than the named defect, and 5
+of those change nothing at all, which a check on the text cannot see.
+
+**Two measured corrections to *What injection cannot decide* below:**
+
+- **Absence defects are reachable.** All 19 `not_wired` and `missing_case`
+  defects named regions. When the code does the right thing, "nothing calls it"
+  is injected by deleting the call.
+- **A defect already true of the code cannot be injected**, and was not
+  anticipated here. The edit-building step answers `already_present` for it
+  (a typed decline, with `not_a_code_property` and `not_one_contiguous_edit`),
+  which is reported as needing human review and moves no rating.
 
 ## Revision — 2026-09-14: injection replaces the static judgement rather than correcting it
 
