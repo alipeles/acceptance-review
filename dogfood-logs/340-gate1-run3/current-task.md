@@ -13,14 +13,14 @@ the named defect is what it caught.
 Where no candidate test failed under an edit, every pair for that defect is put
 to the model, as is every pair for a defect no edit could be built for.
 
-A pair the review drops this way has not been decided. The review's output says
-so, rather than presenting a dropped pair as answered. The review records, for
-each dropped pair, why it was dropped and which injection attempt the decision
-rests on. A dropped pair is not a demonstration that the test fails to catch the
-defect.
+A pair the review drops this way has not been decided, and must not read as
+though it had been. It is recorded with the reason it was dropped and the
+injection attempt the decision rests on, and it is not a demonstration that the
+test fails to catch the defect.
 
-When the review decides whether running the project's tests is worth doing, it
-counts the pairs that running them would let it drop.
+Whether running the project's tests is worth doing is the review's own decision,
+and choosing which pairs to put to the model counts among the things that make a
+run worth doing.
 
 Dropping pairs can be turned off, so a review can still be run the way it runs
 today.

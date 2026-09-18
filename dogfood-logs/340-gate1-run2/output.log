@@ -1,0 +1,137 @@
+run 469fb7a97284a3d6
+  requirements: 13 derived, 0 carried, 0 revised; 36 decompose call(s)
+  continue this run with: --continue 469fb7a97284a3d6
+Model usage by stage:
+  stage               model                                                            calls   prompt  output  cached  this run  recorded
+  ------------------  -------------------------------------------  -------------------------  -------  ------  ------  --------  --------
+  decompose           openai/gpt-5.4-mini                          29 (0 live / 29 replayed)  159,387   4,331   12.2%   $0.0000   $0.1259
+  decompose-summary   openai/gpt-5.4                                 7 (0 live / 7 replayed)    7,175   3,353    0.0%   $0.0000   $0.0682
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (0 live / 2 replayed)    1,928     150    0.0%   $0.0000   $0.0014
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.1955 to record (38 call(s) replayed at no cost to this run)
+Requirements: 13   with obligations: 13
+
+[task-01] The review already runs the project's candidate tests against each edit it
+    injects, and then uses the result for nothing unless the edit was separately
+    checked. Checking is off, so on a normal review the result is used for nothing at
+    all, and every combination of a plausible defect and a candidate test is still put
+    to a model. Those calls are almost all of what a review costs, and nearly every time
+    the answer is that the test would not catch the defect.
+    -> candidate-defect-test-pairs-are-modeled  [functional/explicit]
+       Every combination of a plausible defect and a candidate test is still put to a
+       model.
+    -> review-cost-is-mostly-model-calls  [explanation_observability/explicit]
+       The review's cost is dominated by the model calls made for plausible defect and
+       candidate test combinations.
+    -> test-would-not-catch-defect  [explanation_observability/explicit]
+       A test would not catch the defect in nearly every case.
+
+[task-02] Let the run choose which of those questions are worth asking. When at least
+    one candidate test failed under an edit, that edit demonstrably changed what the
+    code does, so a test that went on passing under it is not sensitive to the change
+    and is not asked about. The tests that failed under the same edit are still asked
+    about, because a test going red does not on its own say the named defect is what it
+    caught.
+    -> let-run-choose-questions  [human_review/explicit]
+       Let the run choose which of those questions are worth asking.
+    -> edit-changed-code-behavior  [invariant/explicit]
+       An edit under which at least one candidate test failed demonstrably changed what
+       the code does.
+    -> passing-test-not-asked-about  [functional/explicit]
+       A test that went on passing under the edit is not sensitive to the change and is
+       not asked about.
+    -> failed-tests-still-asked-about  [regression/explicit]
+       The tests that failed under the same edit are still asked about.
+
+[task-03] When no candidate test failed under an edit, nothing was demonstrated: an edit
+    that changed nothing and an edit that changed something no test watches look alike
+    from outside. Every pair for that defect is asked about, exactly as if no edit had
+    been built. A defect for which no edit could be built is asked about as it is today.
+    -> every-pair-asked-about  [functional/explicit]
+       Every pair for that defect is asked about.
+    -> as-if-no-edit-had-been-built  [invariant/explicit]
+       Treat the defect as if no edit had been built when no candidate test failed under
+       an edit.
+    -> asked-about-as-it-is-today  [compatibility/explicit]
+       A defect for which no edit could be built is asked about as it is today.
+
+[task-04] A pair dropped this way has not been decided, and must not read as though it
+    had been. It is recorded with the reason it was dropped and the injection attempt
+    the decision rests on, so a reader can see it was skipped rather than answered, and
+    it is not a demonstration that the test fails to catch the defect.
+    -> must-not-read-as-though-it-had-been  [invariant/explicit]
+       The dropped pair is recorded in a way that makes clear it was skipped rather than
+       answered, and it does not read as though it had been decided.
+    -> record-drop-reason-and-injection-attempt  [functional/explicit]
+       Record the reason it was dropped and the injection attempt the decision rests on.
+
+[task-05] Whether running the project's tests is worth doing is the review's own
+    decision, and that decision has to account for this. Until now nothing consumed the
+    run unless edits were checked, and the review declined to run on that ground.
+    Choosing which questions to ask is a second thing the run earns.
+    -> test-run-worth-doing-is-review-decision  [human_review/explicit]
+       Whether running the project's tests is worth doing is determined by the review's
+       own decision.
+    -> account-for-test-run-worth  [human_review/explicit]
+       The review's decision about whether running the project's tests is worth doing
+       accounts for this requirement.
+    -> account-for-question-selection  [human_review/explicit]
+       The review's decision about which questions to ask accounts for this requirement.
+    -> run-consumes-only-on-edits-checked  [invariant/explicit]
+       The run is consumed only when edits are checked.
+    -> review-declined-to-run-on-that-ground  [human_review/explicit]
+       The review declined to run on that ground.
+    -> choose-questions-as-run-earn  [functional/explicit]
+       The run earns the choice of which questions to ask.
+
+[task-06] Dropping pairs can be turned off, so a review can still be run the way it runs
+    today.
+    -> dropping-pairs-can-be-turned-off  [functional/explicit]
+       The review supports turning off dropping pairs.
+    -> preserve-current-review-run-mode  [compatibility/explicit]
+       Preserve the ability to run a review the way it runs today.
+
+[task-07] For each defect the stage was asked about, the report says how many of its
+    pairs the run itself decided, how many were asked of the model, and how many were
+    dropped.
+    -> report-counts-self-decided-pairs  [functional/explicit]
+       The report states how many of its pairs the run itself decided.
+    -> asked-of-model-count-reported  [functional/explicit]
+       The report states how many pairs were asked of the model for each defect the
+       stage was asked about.
+    -> dropped-pairs-count-reported  [functional/explicit]
+       The report states how many pairs were dropped.
+
+[constraint-01] Nothing about the edit, or about what the tests did under it, reaches
+    the model.
+    -> model-sees-no-edit-or-test-result  [invariant/explicit]
+       Nothing about the edit or about what the tests did under it reaches the model.
+
+[constraint-02] An edit nobody checked still settles nothing. A dropped pair reaches no
+    evidence tier and yields no finding.
+    -> unchecked-edit-settles-nothing  [invariant/explicit]
+       An edit that was not separately checked does not settle the question of whether
+       it makes the named defect true.
+    -> dropped-pair-no-evidence-tier  [invariant/explicit]
+       A dropped pair does not reach any evidence tier and does not yield a finding.
+
+[exclusion-01] Checking whether an edit really makes its named defect true.
+    -> no-edit-checking  [functional/explicit]
+       The change does not add or perform checking whether an edit really makes its
+       named defect true.
+
+[exclusion-02] Building an edit, choosing the region it falls in, or deciding whether it
+    is valid.
+    -> no-edit-construction-or-validation  [functional/explicit]
+       The change does not include building an edit, choosing the region it falls in, or
+       deciding whether it is valid.
+
+[exclusion-03] Which tests are candidates, and whether the project's tests can be run at
+    all.
+    -> exclude-test-selection-and-run-eligibility  [functional/explicit]
+       The change does not alter which tests are candidates, and it does not alter
+       whether the project's tests can be run at all.
+
+[exclusion-04] Running the project's whole test suite.
+    -> no-whole-suite-run  [functional/explicit]
+       The change does not run the project's whole test suite.
+

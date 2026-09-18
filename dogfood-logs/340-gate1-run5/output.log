@@ -1,0 +1,123 @@
+run e0c0ad243a8456ef
+  continuing 3dfa03e43b7edb95
+  requirements: 0 derived, 11 carried, 2 revised; 9 decompose call(s)
+  continue this run with: --continue e0c0ad243a8456ef
+Model usage by stage:
+  stage                        model                                     calls  prompt  output  cached  this run  recorded
+  ---------------------------  ----------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose                    openai/gpt-5.4-mini     7 (0 live / 7 replayed)  37,542     994   25.9%   $0.0000   $0.0261
+  decompose-summary            openai/gpt-5.4          2 (0 live / 2 replayed)   2,019     927    0.0%   $0.0000   $0.0190
+  obligation linking           voyage/voyage-3.5-lite  1 (0 live / 1 replayed)     925       0       —   $0.0000   $0.0000
+  requirement carry alignment  openai/gpt-5.4-mini     1 (0 live / 1 replayed)     435      36    0.0%   $0.0000   $0.0005
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.0455 to record (11 call(s) replayed at no cost to this run)
+Requirements: 13   with obligations: 13
+
+[task-01] The review injects an edit for each plausible defect it enumerates and runs
+    the project's candidate tests against that edit. It must use what that run showed to
+    decide which defect-and-test pairs are worth putting to a model, so that the model
+    is asked far fewer of those questions than it is asked today.
+    -> inject-edit-for-each-plausible-defect  [functional/explicit]
+       Inject an edit for each plausible defect it enumerates.
+    -> run-candidate-tests-against-edit  [functional/explicit]
+       Run the project's candidate tests against that edit.
+    -> run-guided-pair-selection  [functional/explicit]
+       Use what the candidate-test run showed to decide which defect-and-test pairs are
+       worth putting to a model.
+    -> reduce-model-questions  [functional/explicit]
+       The review asks the model far fewer defect-and-test questions than it does today.
+
+[task-02] Where at least one candidate test failed under an edit, a test that went on
+    passing under the same edit is not put to the model. The tests that failed under it
+    are still put to the model, because a test going red does not on its own say the
+    named defect is what it caught.
+    -> exclude-passing-tests-under-edit  [functional/explicit]
+       A test that went on passing under the same edit is not put to the model when at
+       least one candidate test failed under that edit.
+    -> retain-failed-tests-in-model-input  [functional/explicit]
+       The tests that failed under it are still put to the model.
+    -> red-test-does-not-identify-defect  [invariant/explicit]
+       A test going red does not by itself establish that the named defect is what it
+       caught.
+
+[task-03] Where no candidate test failed under an edit, every pair for that defect is
+    put to the model, as is every pair for a defect no edit could be built for.
+    -> every-pair-put-to-model-when-no-candidate-test-failed  [functional/explicit]
+       Where no candidate test failed under an edit, every pair for that defect is put
+       to the model.
+    -> every-pair-for-unbuildable-defect  [functional/explicit]
+       Every pair for a defect no edit could be built for is put to the model.
+
+[task-04] A pair the review drops this way has not been decided. The review's output
+    says so, rather than presenting a dropped pair as answered. The review records, for
+    each dropped pair, why it was dropped and which injection attempt the decision rests
+    on. A dropped pair is not a demonstration that the test fails to catch the defect.
+    -> dropped-pair-not-decided  [explanation_observability/explicit]
+       A pair the review drops this way is reported as not decided.
+    -> state-dropped-pair-as-dropped  [explanation_observability/explicit]
+       The review's output states that a dropped pair was dropped rather than presenting
+       it as answered.
+    -> dropped-pair-drop-reason-recorded  [explanation_observability/explicit]
+       The review records, for each dropped pair, why it was dropped.
+    -> injection-attempt-basis  [functional/explicit]
+       The review records which injection attempt the decision rests on.
+    -> dropped-pair-not-demonstration-of-test-failure  [regression/explicit]
+       A dropped pair is not a demonstration that the test fails to catch the defect.
+
+[task-05] When the review decides whether running the project's tests is worth doing, it
+    counts the pairs that running them would let it drop.
+    -> test-worth-doing-review  [human_review/explicit]
+       The review decides whether running the project's tests is worth doing.
+    -> pair-drop-counting  [functional/explicit]
+       Count the pairs that running the project's tests would let it drop.
+
+[task-06] Dropping pairs can be turned off, so a review can still be run the way it runs
+    today.
+    -> dropping-pairs-can-be-turned-off  [functional/explicit]
+       The review supports turning off dropping pairs.
+    -> preserve-current-review-run-mode  [compatibility/explicit]
+       Preserve the ability to run a review the way it runs today.
+
+[task-07] For each defect the stage was asked about, the report says how many of its
+    pairs the run itself decided, how many were put to the model, and how many were
+    dropped.
+    -> report-says-how-many-pairs-run-decided  [functional/explicit]
+       The report states how many of its pairs the run itself decided.
+    -> put-to-the-model-count  [functional/explicit]
+       The report states how many pairs were put to the model.
+    -> dropped-pairs-count  [functional/explicit]
+       The report states how many pairs were dropped.
+
+[constraint-01] Nothing about the edit, or about what the tests did under it, reaches
+    the model.
+    -> model-sees-no-edit-or-test-result  [invariant/explicit]
+       Nothing about the edit or about what the tests did under it reaches the model.
+
+[constraint-02] An edit nobody checked still settles nothing. A dropped pair reaches no
+    evidence tier and yields no finding.
+    -> unchecked-edit-settles-nothing  [invariant/explicit]
+       An edit that was not separately checked does not settle the question of whether
+       it makes the named defect true.
+    -> dropped-pair-no-evidence-tier  [invariant/explicit]
+       A dropped pair does not reach any evidence tier and does not yield a finding.
+
+[exclusion-01] Checking whether an edit really makes its named defect true.
+    -> no-edit-checking  [functional/explicit]
+       The change does not add or perform checking whether an edit really makes its
+       named defect true.
+
+[exclusion-02] Building an edit, choosing the region it falls in, or deciding whether it
+    is valid.
+    -> no-edit-construction-or-validation  [functional/explicit]
+       The change does not include building an edit, choosing the region it falls in, or
+       deciding whether it is valid.
+
+[exclusion-03] Which tests are candidates, and whether the project's tests can be run at
+    all.
+    -> exclude-test-selection-and-run-eligibility  [functional/explicit]
+       The change does not alter which tests are candidates, and it does not alter
+       whether the project's tests can be run at all.
+
+[exclusion-04] Running the project's whole test suite.
+    -> no-whole-suite-run  [functional/explicit]
+       The change does not run the project's whole test suite.
+

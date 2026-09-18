@@ -1,0 +1,129 @@
+run 23bd6200d738cd1e
+  continuing 469fb7a97284a3d6
+  requirements: 1 derived, 7 carried, 5 revised; 24 decompose call(s)
+  REMOVED task-01: The review already runs the project's candidate tests against each edit it
+injects, and then uses the result for nothing unless the edit was separately
+checked. Checking is off, so on a normal review the result is used for nothing at
+all, and every combination of a plausible defect and a candidate test is still
+put to a model. Those calls are almost all of what a review costs, and nearly
+every time the answer is that the test would not catch the defect. (3 obligation(s) dropped)
+  continue this run with: --continue 23bd6200d738cd1e
+Model usage by stage:
+  stage                        model                                                            calls  prompt  output  cached  this run  recorded
+  ---------------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------
+  decompose                    openai/gpt-5.4-mini                          18 (0 live / 18 replayed)  96,501   2,499   15.1%   $0.0000   $0.0738
+  decompose-summary            openai/gpt-5.4                                 6 (0 live / 6 replayed)   6,064   2,607    0.0%   $0.0000   $0.0543
+  obligation linking           voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (0 live / 2 replayed)   1,941     197    0.0%   $0.0000   $0.0017
+  requirement carry alignment  openai/gpt-5.4-mini                            1 (0 live / 1 replayed)     999      72    0.0%   $0.0000   $0.0011
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.1308 to record (27 call(s) replayed at no cost to this run)
+Requirements: 13   with obligations: 13
+
+[task-01] The review injects an edit for each plausible defect it enumerates and runs
+    the project's candidate tests against that edit. It must use what that run showed to
+    decide which defect-and-test pairs are worth putting to a model, so that the model
+    is asked far fewer of those questions than it is asked today.
+    -> inject-edit-for-each-plausible-defect  [functional/explicit]
+       Inject an edit for each plausible defect it enumerates.
+    -> run-candidate-tests-against-edit  [functional/explicit]
+       Run the project's candidate tests against that edit.
+    -> run-guided-pair-selection  [functional/explicit]
+       Use what the candidate-test run showed to decide which defect-and-test pairs are
+       worth putting to a model.
+    -> reduce-model-questions  [functional/explicit]
+       The review asks the model far fewer defect-and-test questions than it does today.
+
+[task-02] Where at least one candidate test failed under an edit, a test that went on
+    passing under the same edit is not put to the model. The tests that failed under it
+    are still put to the model, because a test going red does not on its own say the
+    named defect is what it caught.
+    -> exclude-passing-tests-under-edit  [functional/explicit]
+       A test that went on passing under the same edit is not put to the model when at
+       least one candidate test failed under that edit.
+    -> retain-failed-tests-in-model-input  [functional/explicit]
+       The tests that failed under it are still put to the model.
+    -> red-test-does-not-identify-defect  [invariant/explicit]
+       A test going red does not by itself establish that the named defect is what it
+       caught.
+
+[task-03] Where no candidate test failed under an edit, every pair for that defect is
+    put to the model, as is every pair for a defect no edit could be built for.
+    -> every-pair-put-to-model-when-no-candidate-test-failed  [functional/explicit]
+       Where no candidate test failed under an edit, every pair for that defect is put
+       to the model.
+    -> every-pair-for-unbuildable-defect  [functional/explicit]
+       Every pair for a defect no edit could be built for is put to the model.
+
+[task-04] A pair the review drops this way has not been decided, and must not read as
+    though it had been. It is recorded with the reason it was dropped and the injection
+    attempt the decision rests on, and it is not a demonstration that the test fails to
+    catch the defect.
+    -> must-not-read-as-though-it-had-been  [invariant/explicit]
+       The review output states that the pair was not decided and does not present it as
+       though it had been.
+    -> record-dropped-reason  [explanation_observability/explicit]
+       Record the reason it was dropped.
+    -> injection-attempt-decision-basis  [human_review/explicit]
+       The decision is based on the injection attempt.
+    -> test-fails-to-catch-defect-not-demonstrated  [invariant/explicit]
+       A test does not demonstrate that it fails to catch the defect.
+
+[task-05] Whether running the project's tests is worth doing is the review's own
+    decision, and choosing which pairs to put to the model counts among the things that
+    make a run worth doing.
+    -> tests-worth-doing-is-review-decision  [human_review/explicit]
+       Whether running the project's tests is worth doing is the review's own decision.
+    -> pair-selection-affects-run-worth  [functional/explicit]
+       Choosing which pairs to put to the model counts among the factors that determine
+       whether a run is worth doing.
+
+[task-06] Dropping pairs can be turned off, so a review can still be run the way it runs
+    today.
+    -> dropping-pairs-can-be-turned-off  [functional/explicit]
+       The review supports turning off dropping pairs.
+    -> preserve-current-review-run-mode  [compatibility/explicit]
+       Preserve the ability to run a review the way it runs today.
+
+[task-07] For each defect the stage was asked about, the report says how many of its
+    pairs the run itself decided, how many were put to the model, and how many were
+    dropped.
+    -> report-says-how-many-pairs-run-decided  [functional/explicit]
+       The report states how many of its pairs the run itself decided.
+    -> put-to-the-model-count  [functional/explicit]
+       The report states how many pairs were put to the model.
+    -> dropped-pairs-count  [functional/explicit]
+       The report states how many pairs were dropped.
+
+[constraint-01] Nothing about the edit, or about what the tests did under it, reaches
+    the model.
+    -> model-sees-no-edit-or-test-result  [invariant/explicit]
+       Nothing about the edit or about what the tests did under it reaches the model.
+
+[constraint-02] An edit nobody checked still settles nothing. A dropped pair reaches no
+    evidence tier and yields no finding.
+    -> unchecked-edit-settles-nothing  [invariant/explicit]
+       An edit that was not separately checked does not settle the question of whether
+       it makes the named defect true.
+    -> dropped-pair-no-evidence-tier  [invariant/explicit]
+       A dropped pair does not reach any evidence tier and does not yield a finding.
+
+[exclusion-01] Checking whether an edit really makes its named defect true.
+    -> no-edit-checking  [functional/explicit]
+       The change does not add or perform checking whether an edit really makes its
+       named defect true.
+
+[exclusion-02] Building an edit, choosing the region it falls in, or deciding whether it
+    is valid.
+    -> no-edit-construction-or-validation  [functional/explicit]
+       The change does not include building an edit, choosing the region it falls in, or
+       deciding whether it is valid.
+
+[exclusion-03] Which tests are candidates, and whether the project's tests can be run at
+    all.
+    -> exclude-test-selection-and-run-eligibility  [functional/explicit]
+       The change does not alter which tests are candidates, and it does not alter
+       whether the project's tests can be run at all.
+
+[exclusion-04] Running the project's whole test suite.
+    -> no-whole-suite-run  [functional/explicit]
+       The change does not run the project's whole test suite.
+
