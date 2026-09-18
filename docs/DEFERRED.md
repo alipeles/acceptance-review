@@ -5900,4 +5900,5 @@ the record.
   recorded stage answered by an Anthropic model, validating against the same
   response model an OpenAI model already satisfies, with a test that fails if the
   reply is accepted as free text.
-- **Status:** open
+- **Status:** **filed 2026-09-18 as #339**, approved by the human and attached
+  as a sub-issue of #184, the determinism and reproducibility umbrella. Closed here.
