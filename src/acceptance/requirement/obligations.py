@@ -58,7 +58,7 @@ from acceptance.requirement.ledger import (
     carry_key,
 )
 from acceptance.requirement.registry import build_registry
-from acceptance.requirement.spans import locate_within, normalise, quotable_spans
+from acceptance.requirement.spans import locate_within, normalise, offerable, quotable_spans
 from acceptance.requirement.summary import (
     SUMMARY_STAGE,
     SpanDecision,
@@ -1118,7 +1118,7 @@ def decompose(
                 client,
                 [_summary, span],
                 span,
-                [normalise(decision.text)],
+                [offerable(decision.text)],
                 {},
                 {"size": ONE_REQUIREMENT_PER_CALL},
             )
@@ -1142,7 +1142,7 @@ def decompose(
                     span,
                     seen_ids,
                     unusable_answers,
-                    quote_override=normalise(decision.text),
+                    quote_override=offerable(decision.text),
                 )
                 span_obligations.extend(produced_here)
             span_questions = _record_questions(

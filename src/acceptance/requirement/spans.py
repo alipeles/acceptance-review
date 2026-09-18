@@ -28,7 +28,32 @@ import re
 from acceptance.review_state import RequirementRef
 from acceptance.source_ref import TextSpan
 
-__all__ = ["locate_in_text", "locate_within", "normalise", "quotable_spans"]
+__all__ = ["locate_in_text", "locate_within", "normalise", "offerable", "quotable_spans"]
+
+# The double quote is refused inside a string literal by a strict response
+# schema. Observed at #340's Gate 1, where a task file containing one aborted the
+# whole review on an unhandled provider error:
+#
+#   Invalid schema for response_format '_Decomposition': In
+#   context=(...,'source_quote'), " is not allowed in string literals for
+#   structured outputs (strict=true)
+#
+# Substituting is the only repair that KEEPS the constraint. Dropping the enum
+# for a requirement whose text happens to contain a quotation mark would let that
+# call quote anything, which is exactly what `findings.md` §8 closed — and it
+# would do it silently, on an input property nobody would think to look at.
+#
+# Only this character is known to be refused, because only this one has been
+# observed. Another refused character would present the same way, and the repair
+# is to extend these two constants together.
+_REFUSED = '"'
+_SUBSTITUTE = "”"  # RIGHT DOUBLE QUOTATION MARK
+
+#: Characters `_SUBSTITUTE` may stand for when a quotation is matched back. The
+#: substitution happens on the way out, so the source still holds the original
+#: and the offered span holds the stand-in; matching has to accept either.
+_INTERCHANGEABLE = frozenset({_REFUSED, _SUBSTITUTE, "“"})
+_QUOTE_CLASS = "[" + "".join(sorted(re.escape(ch) for ch in _INTERCHANGEABLE)) + "]"
 
 # A sentence ends at `.`, `?` or `!` followed by whitespace. Deliberately crude:
 # this decides which quotations are OFFERED, and the whole block is always among
@@ -42,6 +67,22 @@ def normalise(text: str) -> str:
     return " ".join(text.split())
 
 
+def offerable(text: str) -> str:
+    """One quotation as it may be OFFERED to the model.
+
+    `normalise`, plus the substitution above. Kept separate from `normalise`
+    rather than folded into it because the two have different jobs: `normalise`
+    is used for comparisons that must see the text as written, and only a value
+    on its way into a response schema needs to avoid a character the schema
+    refuses.
+
+    A span that contains no refused character comes back byte-identical, so the
+    request a quotation-free mandate builds is unchanged and its recorded
+    transcripts still replay.
+    """
+    return normalise(text).replace(_REFUSED, _SUBSTITUTE)
+
+
 def quotable_spans(text: str) -> list[str]:
     """Every quotation a requirement of this text may offer, whole block first.
 
@@ -53,12 +94,12 @@ def quotable_spans(text: str) -> list[str]:
     becomes an enum inside the hashed request, so two runs over the same task
     file must build it identically.
     """
-    whole = normalise(text)
+    whole = offerable(text)
     if not whole:
         return []
     offered = [whole]
     for sentence in _SENTENCE_BREAK.split(text):
-        candidate = normalise(sentence)
+        candidate = offerable(sentence)
         if candidate and candidate not in offered:
             offered.append(candidate)
     return offered
@@ -78,6 +119,17 @@ def locate_within(requirement: RequirementRef, quote: str) -> TextSpan | None:
     return locate_in_text(requirement.span.text, requirement.span.start, quote)
 
 
+def _word_pattern(word: str) -> str:
+    """One word of a quotation, matching whichever quote character the text uses.
+
+    The quotation was offered with `_SUBSTITUTE` where the source has `_REFUSED`,
+    so a character-for-character match would reject the model's answer for a
+    substitution we made ourselves — the same failure the whitespace handling
+    above exists to prevent, on a different character.
+    """
+    return "".join(_QUOTE_CLASS if ch in _INTERCHANGEABLE else re.escape(ch) for ch in word)
+
+
 def locate_in_text(haystack: str, offset: int, quote: str) -> TextSpan | None:
     """`quote` located in `haystack`, ignoring how either is wrapped.
 
@@ -87,7 +139,7 @@ def locate_in_text(haystack: str, offset: int, quote: str) -> TextSpan | None:
     words = quote.split()
     if not words:
         return None
-    pattern = re.compile(r"\s+".join(re.escape(word) for word in words))
+    pattern = re.compile(r"\s+".join(_word_pattern(word) for word in words))
     found = pattern.search(haystack)
     if found is None:
         return None
