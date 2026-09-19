@@ -28,6 +28,7 @@ from acceptance.review_state import (
     Review,
     TestRecommendation,
     UnjudgedCause,
+    UnjudgedPair,
     UnobtainedRecommendation,
 )
 
@@ -250,12 +251,33 @@ def _pair_block(review: Review) -> list[str]:
     # and one the judge was asked about and never answered are different failures
     # with opposite remedies, and DR-164's silent id filter is the precedent for
     # why neither may be left invisible.
+    #
+    # `PASSED_UNDER_EDIT` is counted per defect rather than listed per pair, and
+    # that is a §16 requirement rather than a convenience. Measured on #340's own
+    # Gate 2: 1,526 of them, one pair and one reason line each, which was 636 KB
+    # of a 768 KB report — 83% of the document, burying every finding in it. The
+    # two individually-listed causes stay individual because they are rare and
+    # each one names a specific failure; this one is a bulk decision about a
+    # defect, so the defect is the level it reads at. Every pair is still in
+    # review state for anyone who needs the list.
     lines = [
         "Pairs left unjudged (a criterion's rating cannot account for these):",
     ]
+    routed: dict[str, list[UnjudgedPair]] = {}
     for entry in review.unjudged_pairs:
+        if entry.cause is UnjudgedCause.PASSED_UNDER_EDIT:
+            routed.setdefault(entry.defect_id, []).append(entry)
+            continue
         lines.append(f"  [{entry.cause.value}] {entry.defect_id} x {entry.test_id}")
         lines.append(f"    {entry.reason}")
+    for defect_id, entries in routed.items():
+        lines.append(
+            f"  [{UnjudgedCause.PASSED_UNDER_EDIT.value}] {defect_id} "
+            f"x {len(entries)} candidate test(s)"
+        )
+        # The reason once, not once per pair: it is the same sentence for every
+        # pair of one defect, because it is a fact about that defect's edit.
+        lines.append(f"    {entries[0].reason}")
     return lines
 
 
@@ -379,8 +401,12 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
         for entry in review.unjudged_pairs
         if entry.defect_id == defect_id and entry.cause is UnjudgedCause.PASSED_UNDER_EDIT
     )
-    if not (settled or asked or dropped):
-        return []
+    # No early return on three zeroes. The criterion is that the report states
+    # these counts for every defect the stage was asked about, and #340's own Gate
+    # 2 raised exactly this: a `not_mutable` defect has no pairs of its own here,
+    # and omitting the line left the report silent about it rather than saying
+    # zero. "Nothing to report" and "not reported" are the distinction this whole
+    # project is about.
     return [
         (
             f"    pairs: {settled} settled by the run, {asked} put to the model, "

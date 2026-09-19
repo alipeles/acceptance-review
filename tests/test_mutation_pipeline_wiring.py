@@ -961,3 +961,75 @@ class TestTheRunRoutesPairsThroughTheRealPipeline:
         )
         assert _tests_put_to_the_judge(capture) == {_LOOSE_ID, _STRICT_ID}
         assert not [e for e in review.unjudged_pairs if e.cause is UnjudgedCause.PASSED_UNDER_EDIT]
+
+    def test_the_report_says_a_dropped_pair_is_not_evidence(self, tmp_path):
+        """#340's Gate 2 asked for this by name, on two criteria.
+
+        The rendered text is what a reader acts on, and a line saying a test
+        "still passed" invites exactly the inference the tier gate forbids. The
+        refusal has to be in the report, not only in the enum's docstring.
+        """
+        report = render_report(
+            _review(
+                tmp_path,
+                execution=ExecutionSettings(),
+                head_test=_TWO_TESTS,
+                judgments=_JUDGE_CONFIRMS_THE_KILL,
+            )
+        )
+        assert "not evidence that the test fails to catch the defect" in report
+        assert "the edit was not verified" in report.lower()
+
+    def test_the_report_names_the_defect_whose_edit_the_decision_rests_on(self, tmp_path):
+        """One injection attempt per defect, so naming the defect names the
+        attempt. Without it a reader cannot tell which edit produced the skip."""
+        report = render_report(
+            _review(
+                tmp_path,
+                execution=ExecutionSettings(),
+                head_test=_TWO_TESTS,
+                judgments=_JUDGE_CONFIRMS_THE_KILL,
+            )
+        )
+        assert f"[passed_under_edit] {_DEFECT_ID}" in report
+
+    def test_the_dropped_pairs_are_counted_not_listed_one_by_one(self, tmp_path):
+        """§16. On #340's own Gate 2 the per-pair listing was 636 KB of a 768 KB
+        report — 1,526 pairs at two lines each, burying every finding in it."""
+        report = render_report(
+            _review(
+                tmp_path,
+                execution=ExecutionSettings(),
+                head_test=_TWO_TESTS,
+                judgments=_JUDGE_CONFIRMS_THE_KILL,
+            )
+        )
+        assert "x 1 candidate test(s)" in report
+        assert f"{_DEFECT_ID} x {_LOOSE_ID}" not in report
+
+    def test_the_pair_counts_are_stated_even_when_they_are_all_zero(self, tmp_path):
+        """ "Nothing to report" and "not reported" are different, which is the
+        distinction this project exists to keep. A defect no edit could be built
+        for still says so."""
+        report = render_report(
+            _review(tmp_path, execution=ExecutionSettings(), judgments=_DECLINING)
+        )
+        assert "pairs: 0 settled by the run, 0 put to the model, 0 dropped" in report
+
+    def test_a_kill_is_never_read_as_naming_the_defect(self, tmp_path):
+        """The other criterion #340's Gate 2 flagged. A test going red under an
+        unverified edit is a reason to ask fewer questions and nothing else, so
+        the pair it belongs to is still judged and its verdict comes from the
+        model rather than from the run."""
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(),
+            head_test=_TWO_TESTS,
+            judgments=_JUDGE_CONFIRMS_THE_KILL,
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.killing_tests == [_STRICT_ID]
+        killing_pair = [v for v in review.pair_verdicts if v.test_id == _STRICT_ID]
+        assert killing_pair, "the red test's pair must still carry a judged verdict"
+        assert all(v.tier is EvidenceTier.STATIC for v in killing_pair)
+        assert all(v.reason == "it pins the amount" for v in killing_pair)
