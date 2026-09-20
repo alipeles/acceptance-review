@@ -46,6 +46,16 @@ class SetAsideTest(_Model):
     test_id: str
     kind: TestOutcomeKind
     reason: str
+    # Carried from the `TestOutcome` this was built from, and the reason that
+    # matters: `reason` is a sentence this module writes and is therefore the
+    # same for every test excluded the same way, while these two say what
+    # actually happened to THIS test. Without them a review that set aside 76
+    # candidate tests recorded one sentence 76 times, and which tests failed for
+    # which reason could not be recovered — the sandbox sends the run's output to
+    # `DEVNULL`, so nothing else holds it. Both defaulted, so a review recorded
+    # before they existed reads back unchanged.
+    error_type: str | None = None
+    detail: str | None = None
 
     @model_validator(mode="after")
     def _the_reason_is_said(self) -> SetAsideTest:
@@ -186,6 +196,8 @@ def _drop_unfaithful(
                 "failure under an injected defect could not be attributed to the defect. "
                 f"In the copy it was: {outcome.kind.value}"
             ),
+            error_type=outcome.error_type,
+            detail=outcome.detail,
         )
         for outcome in mirrored.outcomes
         if outcome.kind is not TestOutcomeKind.PASSED
@@ -260,6 +272,8 @@ def _read(result: SandboxRunResult) -> Baseline:
                 test_id=outcome.test_id,
                 kind=outcome.kind,
                 reason=outcome.reason or "the test failed against the code as delivered",
+                error_type=outcome.error_type,
+                detail=outcome.detail,
             )
         )
 

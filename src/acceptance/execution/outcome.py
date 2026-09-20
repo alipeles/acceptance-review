@@ -59,6 +59,11 @@ class TestOutcome(_Model):
     # the test failed on what it checks or on code that no longer loads, which
     # the mutation runner needs to tell a real kill from a broken edit.
     error_type: str | None = None
+    # What pytest said the failure was — its `E ` lines, bounded. The reason
+    # field says which CATEGORY the outcome falls in; this says what actually
+    # happened, and it is the only thing that lets two failures be told apart.
+    # Defaulted, so an outcome recorded before it existed reads back unchanged.
+    detail: str | None = None
 
     @property
     def completed(self) -> bool:
