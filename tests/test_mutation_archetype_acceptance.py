@@ -32,7 +32,7 @@ from acceptance.evidence_tier import EvidenceTier
 from acceptance.mutation.attempt import MutationDescriptor, MutationOutcomeKind
 from acceptance.mutation.baseline import establish_baseline
 from acceptance.mutation.runner import run_mutations
-from acceptance.mutation.verdicts import verdicts_from
+from acceptance.mutation.verdicts import pairs_not_worth_asking, verdicts_from
 from acceptance.review_state import Defect, DefectSet, DefectType
 
 FIXTURE = Path(__file__).parent / "fixtures" / "archetypes" / "03-superficial-test"
@@ -185,3 +185,43 @@ class TestTheUpgradeThisMilestoneExistsFor:
     def test_without_verification_nothing_reaches_the_executed_tier(self, attempts, defect_sets):
         assert verdicts_from(attempts, defect_sets) == []
         assert all(attempt.tier is EvidenceTier.STATIC for attempt in attempts)
+
+
+class TestRoutingChangesNothingHereButTheCost:
+    """#340's archetype acceptance, against the same hand-authored ground truth.
+
+    This fixture is the one place the routing decision can be checked against
+    labels a person wrote. Its shape is also the awkward case: of three labelled
+    defects only `d-one-entry-short` is killed at all, and it is killed by the
+    fixture's single candidate test — so that defect has no passing test to hold
+    back, and the two survivors hold nothing back either. Routing is therefore a
+    no-op here, and saying so is the assertion: the saving must not come at the
+    price of moving a result on a case whose answer is known.
+    """
+
+    def test_routing_holds_nothing_back_on_this_fixture(self, attempts):
+        """Every defect is either a survival, which skips nothing by rule, or a
+        kill whose only candidate test is the killing one."""
+        assert pairs_not_worth_asking(attempts) == {}
+
+    def test_the_labelled_kill_is_untouched(self, by_id, ground_truth):
+        """#340 asks for this by name: `d-one-entry-short` is still shown killed
+        by the test the labels name, with routing in force."""
+        attempt = by_id["d-one-entry-short"]
+        assert attempt.killing_tests == ground_truth["d-one-entry-short"]
+        assert attempt.defect_id not in {
+            defect_id for defect_id, _ in pairs_not_worth_asking(attempts_of(by_id))
+        }
+
+    def test_a_survivor_holds_nothing_back_even_with_a_passing_test(self, by_id):
+        """The rule that makes the no-op above a guarantee rather than an
+        accident of this fixture's single test. Both survivors ran the candidate
+        test and it passed; an edit nothing failed under still skips nothing."""
+        survivors = [a for a in by_id.values() if a.outcome is MutationOutcomeKind.SURVIVED]
+        assert survivors, "the fixture must carry survivors, or this asserts nothing"
+        assert all(a.tests_run for a in survivors)
+        assert pairs_not_worth_asking(survivors) == {}
+
+
+def attempts_of(by_id) -> list:
+    return list(by_id.values())

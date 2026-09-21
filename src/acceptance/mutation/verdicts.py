@@ -27,7 +27,56 @@ from acceptance.evidence_tier import EvidenceTier
 from acceptance.mutation.attempt import MutationAttempt, MutationOutcomeKind
 from acceptance.review_state import DefectSet, PairVerdict
 
-__all__ = ["remaining_defect_sets", "verdicts_from"]
+__all__ = ["pairs_not_worth_asking", "remaining_defect_sets", "verdicts_from"]
+
+
+def pairs_not_worth_asking(
+    attempts: Sequence[MutationAttempt],
+) -> dict[tuple[str, str], str]:
+    """Pairs the run already answered well enough to spend the model call elsewhere.
+
+    The second, weaker use of the injection run (#340). `verdicts_from` above is
+    the strong use and is unchanged: it needs a **verified** edit, because a
+    verdict is evidence. This needs only an **observed** one, because the answer
+    it produces is not a verdict at all — it decides which questions are worth
+    asking, and a pair it removes is recorded as unjudged and rated as unknown.
+
+    Returned for an attempt where some candidate test **failed** under the edit:
+    that edit demonstrably changed what the code does, so a test that went on
+    passing under it is not sensitive to the change. The tests that failed are
+    **not** included — a test going red does not on its own say the named defect
+    is what it caught, so they are still asked about.
+
+    Nothing is returned for a `survived` attempt. An edit nothing failed under
+    cannot be told apart from an edit that changed nothing, so it has shown
+    nothing and must skip nothing.
+
+    Nothing is returned for a **settled** attempt either. Its defect leaves
+    through `remaining_defect_sets` and `verdicts_from` gives every one of its
+    pairs a real verdict, so listing them here would record a pair as both
+    judged and skipped.
+
+    The value is the sentence the report shows, naming the attempt the decision
+    rests on — `UnjudgedPair` carries a reason and this is the only place that
+    knows what was injected.
+    """
+    skipped: dict[tuple[str, str], str] = {}
+    for attempt in attempts:
+        if attempt.settled or attempt.outcome is not MutationOutcomeKind.KILLED:
+            continue
+        killing = set(attempt.killing_tests)
+        if not killing:
+            continue
+        for test_id in attempt.tests_run:
+            if test_id in killing:
+                continue
+            skipped[(attempt.defect_id, test_id)] = (
+                "not asked: the test still passed when this defect was injected, "
+                f"and {len(killing)} other candidate test(s) failed under the same "
+                "edit. The edit was not verified, so this is not evidence that the "
+                "test fails to catch the defect."
+            )
+    return skipped
 
 
 def verdicts_from(

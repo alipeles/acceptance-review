@@ -1143,3 +1143,129 @@ def test_the_stage_is_byte_identical_when_its_calls_finish_out_of_order(tmp_path
         return result.model_dump_json(), [entry.returned_id for entry in log.answers]
 
     assert run(_Reordering) == run(_Judge)
+
+
+# --- the injection run decides which pairs are worth asking (#340) -------------
+
+
+_D1 = "daily-rate-d1"
+_D2 = "daily-rate-d2"
+_T1 = "test_billing.py::test_half_month"
+_T2 = "test_billing.py::test_full_month"
+
+
+def _routed(tmp_path, skipped, kills=None, judge=None):
+    """One `judge_pairs` run over two defects and two tests, with `skipped` set."""
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    judge = judge or _Judge(kills=kills or (lambda defect_id, test_id: False))
+    result = judge_pairs(
+        [_defect_set("divides by 30", "ignores days")],
+        [_test("test_half_month"), _test("test_full_month")],
+        _change_set(),
+        judge.client,
+        repo=repo,
+        skipped=skipped,
+    )
+    return result, judge
+
+
+def test_a_skipped_pair_is_never_offered_to_the_model(tmp_path):
+    """The saving itself. A pair the run answered costs no call."""
+    _, judge = _routed(
+        tmp_path,
+        skipped={(_D1, _T2): "not asked: the test still passed"},
+        kills=lambda defect_id, test_id: defect_id == _D1,
+    )
+
+    assert (_D1, _T2) not in judge.pairs_asked()
+    assert (_D1, _T1) in judge.pairs_asked(), "the failing test is still asked about"
+    assert (_D2, _T2) in judge.pairs_asked(), "another defect's pairs are untouched"
+
+
+def test_a_skipped_pair_comes_back_unjudged_with_its_reason(tmp_path):
+    """Recorded, not dropped. A pair nobody records is indistinguishable from one
+    judged `survives`, which is the whole reason `UnjudgedPair` exists."""
+    result, _ = _routed(
+        tmp_path,
+        skipped={(_D1, _T2): "not asked: the test still passed"},
+        kills=lambda defect_id, test_id: defect_id == _D1,
+    )
+
+    (entry,) = [e for e in result.unjudged if e.cause is UnjudgedCause.PASSED_UNDER_EDIT]
+    assert (entry.defect_id, entry.test_id) == (_D1, _T2)
+    assert entry.reason == "not asked: the test still passed"
+    # No verdict for it, at any tier.
+    assert (_D1, _T2) not in {(v.defect_id, v.test_id) for v in result.verdicts}
+
+
+def test_a_defect_whose_asked_pairs_yield_no_kill_has_its_skipped_pairs_judged(tmp_path):
+    """#340's rule 6, and the reason this stage runs in two passes.
+
+    The run held back `_T2` because `_T1` failed under the edit. The model then
+    says `_T1` does not catch the defect after all — so the run demonstrated
+    nothing usable about it, and the saving bought nothing. Paying for the full
+    judgement is the same call rule 3 makes for an edit no test failed under; it
+    simply arrives one step later.
+    """
+    result, judge = _routed(
+        tmp_path,
+        skipped={(_D1, _T2): "not asked: the test still passed"},
+        kills=lambda defect_id, test_id: False,  # nothing kills anything
+    )
+
+    assert (_D1, _T2) in judge.pairs_asked(), "the held-back pair must be asked after all"
+    assert (_D1, _T2) in {(v.defect_id, v.test_id) for v in result.verdicts}
+    assert [e for e in result.unjudged if e.cause is UnjudgedCause.PASSED_UNDER_EDIT] == []
+
+
+def test_the_second_pass_happens_before_the_result_is_returned(tmp_path):
+    """The rating is derived from what this returns, so the intermediate state —
+    where the pair is skipped and the defect has no kill — must never escape."""
+    result, _ = _routed(
+        tmp_path,
+        skipped={(_D1, _T1): "not asked", (_D1, _T2): "not asked"},
+        kills=lambda defect_id, test_id: False,
+    )
+
+    judged = {(v.defect_id, v.test_id) for v in result.verdicts}
+    assert (_D1, _T1) in judged and (_D1, _T2) in judged
+
+
+def test_a_kill_on_an_asked_pair_keeps_the_saving(tmp_path):
+    """The control for the test above. Rule 6 must fire only where the run gave
+    nothing usable, or it would undo the whole feature."""
+    result, judge = _routed(
+        tmp_path,
+        skipped={(_D1, _T2): "not asked"},
+        kills=lambda defect_id, test_id: (defect_id, test_id) == (_D1, _T1),
+    )
+
+    assert (_D1, _T2) not in judge.pairs_asked()
+    (entry,) = [e for e in result.unjudged if e.cause is UnjudgedCause.PASSED_UNDER_EDIT]
+    assert (entry.defect_id, entry.test_id) == (_D1, _T2)
+
+
+def test_the_prefilter_keeps_its_own_cause(tmp_path):
+    """Two different claims about one pair, and the prefilter's is the stronger.
+
+    It PROVED there is no path; routing only observed a test not reacting to an
+    unverified edit. If routing ran first the pair would be recorded as the
+    weaker claim and `derive_support` would count it as unknown rather than as
+    the established survival the prefilter earned.
+    """
+    result, _ = _routed(tmp_path, skipped={})
+    assert all(e.cause is not UnjudgedCause.PASSED_UNDER_EDIT for e in result.unjudged)
+
+
+def test_routing_off_asks_about_everything(tmp_path):
+    """`ExecutionSettings.route_pairs` off reaches here as an empty mapping, and
+    the stage behaves exactly as it did before #340."""
+    result, judge = _routed(tmp_path, skipped=None)
+
+    assert judge.pairs_asked() == {
+        (_D1, _T1),
+        (_D1, _T2),
+        (_D2, _T1),
+        (_D2, _T2),
+    }
+    assert len(result.verdicts) == 4

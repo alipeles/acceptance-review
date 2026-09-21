@@ -45,6 +45,7 @@ file (DR-293).
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Literal
 
@@ -544,19 +545,101 @@ def judge_pairs(
     unusable: UnusableAnswerLog | None = None,
     prior: list[PairVerdict] | None = None,
     tests_per_batch: int = DEFAULT_TESTS_PER_BATCH,
+    skipped: Mapping[tuple[str, str], str] | None = None,
 ) -> PairMappingResult:
     """Judge every pair the prefilter does not prove unreachable.
 
     With `prior`, a verdict whose defect content and test source are both
     unchanged is reused and no judgement is issued for it — so adding one test
     between two continued runs costs that test's pairs and nothing else.
+
+    `skipped` maps a pair to the sentence saying why the injection run already
+    answered it well enough to spend the call elsewhere (#340,
+    `mutation/verdicts.py::pairs_not_worth_asking`). Those pairs are not offered
+    to the model and are returned as `PASSED_UNDER_EDIT`.
+
+    **With one exception, and it is the reason this runs in two passes.** If a
+    defect's remaining pairs — the ones whose tests failed under the edit —
+    produce no kill, the run has given nothing usable about that defect, and its
+    skipped pairs are asked after all. That is the same reasoning that stops a
+    `survived` attempt skipping anything, arriving one step later: a saving that
+    bought nothing must not also cost the defect its judgement. It has to happen
+    here rather than in the caller, because the rating is derived from what this
+    returns and must never see the intermediate state.
     """
     defects = [defect for entry in defect_sets for defect in entry.defects]
     pairs = form_pairs(defects, tests)
     judged, unjudged = prefilter(pairs, repo, change_set)
 
+    # AFTER the prefilter, so a pair it proves unreachable keeps that cause. The
+    # two are different claims and the prefilter's is the stronger one.
+    skipped = skipped or {}
+    held_back = [pair for pair in judged if pair.key in skipped]
+    judged = [pair for pair in judged if pair.key not in skipped]
+
     prior_by_identity = {(entry.defect_text, entry.test_id): entry for entry in (prior or [])}
 
+    def _judge(offered: list[Pair]) -> tuple[list[PairVerdict], list[UnjudgedPair]]:
+        """Carry what can be carried, ask about the rest, read the answers.
+
+        Factored out because #340's second pass reuses every step of it. It
+        appends nothing to the enclosing lists, so the two passes cannot
+        interleave their results by accident.
+        """
+        return _carry_and_ask(
+            offered,
+            client,
+            prior_by_identity,
+            batch_size,
+            tests_per_batch,
+            unusable,
+        )
+
+    verdicts, unanswered = _judge(judged)
+    unjudged.extend(unanswered)
+
+    # The exception in the docstring. A defect whose asked pairs produced a kill
+    # keeps its saving; one that produced none pays for the full judgement.
+    killed = {entry.defect_id for entry in verdicts if entry.kills}
+    revisit = [pair for pair in held_back if pair.defect.id not in killed]
+    dropped = [pair for pair in held_back if pair.defect.id in killed]
+
+    if revisit:
+        more_verdicts, more_unanswered = _judge(revisit)
+        verdicts.extend(more_verdicts)
+        unjudged.extend(more_unanswered)
+
+    unjudged.extend(
+        UnjudgedPair(
+            defect_id=pair.defect.id,
+            test_id=pair.test.test_id,
+            cause=UnjudgedCause.PASSED_UNDER_EDIT,
+            reason=skipped[pair.key],
+        )
+        for pair in dropped
+    )
+
+    # Sorted on the pair identity rather than on the order pairs were formed in,
+    # so a carried verdict and a fresh one land in the same place. Byte-identical
+    # reruns depend on it: the two runs partition the same pairs differently the
+    # moment one of them carries.
+    return PairMappingResult(
+        verdicts=sorted(verdicts, key=lambda entry: (entry.defect_id, entry.test_id)),
+        unjudged=sorted(unjudged, key=lambda entry: (entry.defect_id, entry.test_id)),
+        unusable_answers=[],
+    )
+
+
+def _carry_and_ask(
+    judged: list[Pair],
+    client: ModelClient,
+    prior_by_identity: dict[tuple[str, str], PairVerdict],
+    batch_size: int,
+    tests_per_batch: int,
+    unusable: UnusableAnswerLog | None,
+) -> tuple[list[PairVerdict], list[UnjudgedPair]]:
+    """The judgement itself, over exactly the pairs handed to it."""
+    unjudged: list[UnjudgedPair] = []
     carried: list[PairVerdict] = []
     to_ask: list[Pair] = []
     keys: dict[tuple[str, str], str] = {}
@@ -639,12 +722,4 @@ def judge_pairs(
                 )
             )
 
-    # Sorted on the pair identity rather than on the order pairs were formed in,
-    # so a carried verdict and a fresh one land in the same place. Byte-identical
-    # reruns depend on it: the two runs partition the same pairs differently the
-    # moment one of them carries.
-    return PairMappingResult(
-        verdicts=sorted(carried + fresh, key=lambda entry: (entry.defect_id, entry.test_id)),
-        unjudged=sorted(unjudged, key=lambda entry: (entry.defect_id, entry.test_id)),
-        unusable_answers=[],
-    )
+    return carried + fresh, unjudged

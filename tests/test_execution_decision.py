@@ -24,9 +24,15 @@ class TestWhenItDeclines:
         assert "no execution settings" in decision.reason
 
     def test_nothing_would_consume_the_result(self):
-        """The case the ruling is about: with edit verification off every
-        observation is recorded as not counted, so a run earns nothing."""
-        decision = decide_execution(ExecutionSettings(), 5)
+        """The case the ruling is about, and it now needs BOTH consumers off.
+
+        With edit verification off every observation is recorded as not counted,
+        so the run earns no evidence. Since #340 that is no longer enough to make
+        it worthless: routing spends the same run on deciding which pairs are
+        worth a model call, which needs no verified edit. The run is pointless
+        only when neither consumer wants it.
+        """
+        decision = decide_execution(ExecutionSettings(verify_edits=False, route_pairs=False), 5)
         assert decision.run is False
         assert "no result could have counted" in decision.reason
         assert "#335" in decision.reason, "the reason should name what would change it"
@@ -49,6 +55,20 @@ class TestWhenItRuns:
         decision = decide_execution(ExecutionSettings(verify_edits=True), 3)
         assert "3 enumerated defect(s)" in decision.reason
         assert "verification is on" in decision.reason
+
+    def test_routing_alone_is_enough(self):
+        """#340: the default. Nothing here can reach `defect-killed`, and the run
+        is still worth doing because it decides which pairs to pay for."""
+        decision = decide_execution(ExecutionSettings(), 3)
+        assert decision.run is True
+
+    def test_the_reason_does_not_promise_evidence_routing_cannot_give(self):
+        """The trap this guards: a reader seeing 'the tests were run' and taking
+        the results as evidence. With verification off they are not, and the
+        sentence has to say so rather than leave it to the tier column."""
+        decision = decide_execution(ExecutionSettings(), 3)
+        assert "which pairs are worth a model call" in decision.reason
+        assert "cannot count as evidence" in decision.reason
 
 
 class TestTheDecisionIsAlwaysExplained:

@@ -9,13 +9,18 @@ know whether a run would produce anything, and the review does.
 than taken silently, because "we did not run the tests" and "we ran them and
 found nothing" are different facts about a review.
 
-Today the rule turns on **whether any result could count**. While edit
-verification is off, every observation an injection run makes is recorded as not
-counted (the tier gate, DR-171's addendum of 2026-09-16), so a run spends money
-and roughly ten minutes to earn nothing. That is the case the ruling is about.
-Two other consumers would each make a run worth doing and neither exists yet:
-the coverage prefilter over the same control run (#336) and the feasibility
-probe (#42, M8.1).
+The rule turns on **whether anything consumes the result**, which is not the
+same as whether the result could count as evidence. While edit verification is
+off, every observation an injection run makes is recorded as not counted (the
+tier gate, DR-171's addendum of 2026-09-16) — but since #340 a run still earns
+its keep by deciding which defect-and-test pairs are worth a model call, which
+needs no verified edit because it produces no verdict. So the run is worth doing
+whenever **either** consumer is switched on, and worth nothing when both are off.
+
+One further consumer would make a run worth doing and does not exist yet: the
+coverage prefilter over the same control run (#336). The feasibility probe (#42,
+M8.1) is a different question — whether a run can work, not whether it is worth
+doing — and will sit in front of this.
 
 Every value here is configuration with a conservative default and none is read
 from the project under review (DR-170 Decision 6). This repository exhibits none
@@ -54,6 +59,12 @@ class ExecutionSettings(_Model):
     # reaches `DEFECT_KILLED`, which is why it also decides whether running is
     # worth doing at all.
     verify_edits: bool = False
+    # Whether the injection run is allowed to decide which defect-and-test pairs
+    # are worth a model call (#340). On, because the pair judgement is the cost
+    # of a review — 1,330 of 1,394 calls and $10.09 of $11.59 on #45's Gate 2 run
+    # 3 — and this is the only consumer of the run that pays for itself today.
+    # Off runs the review the way it ran before, for comparison.
+    route_pairs: bool = True
     sandbox: SandboxConfig = SandboxConfig()
 
 
@@ -81,14 +92,14 @@ def decide_execution(
                 "the review was given no execution settings, so the project's tests were not run"
             ),
         )
-    if not settings.verify_edits:
+    if not settings.verify_edits and not settings.route_pairs:
         return ExecutionDecision(
             run=False,
             reason=(
                 "the project's tests were not run: no result could have counted. Edit "
                 "verification is off, so every observation would have been recorded as not "
-                "counted, and nothing else consumes the run. See #335 for the check that "
-                "would make injection earn its evidence."
+                "counted, and pair routing is off too, so nothing else consumes the run. "
+                "See #335 for the check that would make injection earn its evidence."
             ),
         )
     if defects_with_regions == 0:
@@ -100,11 +111,17 @@ def decide_execution(
                 "against"
             ),
         )
+    earns = "edit verification is on, so an observation can count"
+    if not settings.verify_edits:
+        earns = (
+            "pair routing is on, so an observation can decide which pairs are worth a "
+            "model call — it still cannot count as evidence, because edit verification "
+            "is off"
+        )
     return ExecutionDecision(
         run=True,
         reason=(
             f"the project's tests were run: {defects_with_regions} enumerated defect(s) "
-            "name an editable region and edit verification is on, so an observation can "
-            "count"
+            f"name an editable region and {earns}"
         ),
     )
