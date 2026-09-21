@@ -254,6 +254,35 @@ class TestEveryDefectIsAccountedFor:
         assert attempts[0].outcome is MutationOutcomeKind.NOT_MUTABLE
         assert attempts[0].reason
 
+    def test_an_edit_changing_only_comments_is_not_mutable(self, project, change_set, green):
+        """The wiring for the check moved out of `verification.py`.
+
+        `run_mutations` is given no verifier and `ExecutionSettings.verify_edits`
+        is off by default, so before the move nothing would have refused this and
+        the attempt would have been recorded as a survival — a defect that was
+        never injected, with a test that looks as though it fails to catch it.
+        """
+        attempts = run_mutations(
+            _sets(_defect("d1")),
+            change_set,
+            project,
+            green,
+            _builder("    payment = principal / months  # split it evenly\n"),
+        )
+        assert attempts[0].outcome is MutationOutcomeKind.NOT_MUTABLE
+        assert "only in comments or whitespace" in attempts[0].reason
+
+    def test_an_edit_that_really_changes_the_code_still_runs(self, project, change_set, green):
+        """The companion to the case above: the check must not refuse a mutant."""
+        attempts = run_mutations(
+            _sets(_defect("d1")),
+            change_set,
+            project,
+            green,
+            _builder("    payment = principal / months * 3\n"),
+        )
+        assert attempts[0].outcome is not MutationOutcomeKind.NOT_MUTABLE
+
     def test_every_defect_gets_exactly_one_attempt(self, project, change_set, green):
         attempts = run_mutations(
             _sets(_defect("d1"), _defect("d2"), _defect("d3", refs=[])),
