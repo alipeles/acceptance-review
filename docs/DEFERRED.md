@@ -6261,3 +6261,183 @@ the record.
   compiled-form pair is not an example of it, and the comment left on #277 has
   been corrected.
 - **Status:** **withdrawn 2026-09-21**, nothing filed.
+
+### [2026-09-21] An enumerated "defect" whose defective behaviour is the requirement, confirmed as already present
+- **Kind:** filing
+- **Found during:** #348, Gate 2 run 1
+- **Where:** defect enumeration (`src/acceptance/defects/enumeration.py`) and the
+  already-present judgement in the mutation descriptor stage
+- **Severity:** should-fix
+- **What's wrong:** For the obligation "for each defect, report how many of its
+  pairs were asked about", the enumerator produced
+  `pairs-asked-about-count-per-defect/asked-count-excludes-unanswered-pairs`:
+  the asked count "underreports" because it leaves out pairs skipped as already
+  covered. The requirement it belongs to asks for asked and skipped as two
+  separate counts, and a skipped pair is by definition not asked — so the
+  "defective behaviour" is the required behaviour. The mutation stage then
+  marked it `[already_present]`: "Lines 308-316 currently exclude
+  `DEFECT_ALREADY_COVERED` pairs from `asked` ... The smallest repair is to count
+  all unjudged pairs for the defect in `asked`." Following that repair would
+  break the requirement. It moved no rating, but it is a lead telling a reader
+  correct code is wrong. `dogfood-logs/348-gate2-run1/`.
+- **Why I didn't act:** out of scope for #348; the enumeration and the
+  already-present check are other stages.
+- **Drafted fix:** file as a sub-issue of #183, the evidence-judgement umbrella:
+
+  > **Title:** A defect whose defective behaviour satisfies its own criterion is
+  > enumerated, and then confirmed as already present
+  >
+  > At #348's Gate 2 (`dogfood-logs/348-gate2-run1/`) the enumerator produced a
+  > defect for "report how many of its pairs were asked about" whose defective
+  > behaviour — the asked count excludes pairs skipped once the defect was
+  > covered — is what the requirement asks for, since it asks for asked and
+  > skipped as separate counts. The mutation stage then reported it
+  > `[already_present]` and recommended "counting all unjudged pairs in
+  > `asked`", which would break the requirement.
+  >
+  > Two checks are missing. The enumerator does not test a defect against the
+  > criterion's own text (a defect must violate it), and the already-present
+  > judgement does not either, so it confirmed a "defect" the criterion
+  > requires. Related to the 2026-08-19 queue entry "A prescription's `detects`
+  > names a defect that would not violate the obligation", which is the same
+  > failure at the recommendation stage.
+  >
+  > **Deliverable:** an enumerated defect whose defective behaviour the
+  > criterion requires is refused, or at least never reported as already
+  > present.
+  >
+  > **Acceptance:** replaying #348's Gate 2 run 1 no longer reports
+  > `asked-count-excludes-unanswered-pairs` as already present.
+- **Status:** filed as #357 (sub-issue of #183), approved at #348 Gate 2, 2026-09-21
+
+### [2026-09-21] One transient provider error aborts a whole review, with a raw traceback
+- **Kind:** filing
+- **Found during:** #348, Gate 2 run 2
+- **Where:** src/acceptance/llm.py — `_persist_live_call` and `_persist_live_embedding`
+- **Severity:** blocker
+- **What's wrong:** No provider call is retried, completion or embedding, and a
+  provider exception is not converted to `LLMError`, so the CLI's
+  `acceptance: model error:` path never sees it. At #348's Gate 2 a single
+  `VoyageException - 502 Bad Gateway` during pair ranking ended the run with a
+  Python traceback, after enumeration and every injected-edit test run had
+  finished. Per-call recording limited the money lost — the rerun replayed 74
+  calls — but the wall-clock time, including the test runs under injected
+  edits, was lost, and every review is exposed to it. #348 adds several
+  embedding requests per review, so the exposure has grown.
+- **Why I didn't act:** out of scope for #348, and it is the shared model
+  client, which every stage goes through.
+- **Drafted fix:** file as a sub-issue of #184, the determinism and
+  reproducibility umbrella:
+
+  > **Title:** One transient provider error aborts a whole review
+  >
+  > `llm.py` retries nothing. A 502, a timeout or a rate-limit response from
+  > any provider, on any of a review's ~500 calls, raises out of the pipeline
+  > and discards the run; the CLI prints a raw traceback because provider
+  > exceptions are not converted to `LLMError`. Observed at #348's Gate 2
+  > (`dogfood-logs/348-gate2-run2/output-attempt1-502.log`): a Voyage 502 in
+  > pair ranking, after enumeration and all injected-edit test runs had
+  > completed.
+  >
+  > Recording is per call, so a rerun replays what finished and the money lost
+  > is small. The time is not, and neither is the reliability: the chance a
+  > review survives falls with every call it makes.
+  >
+  > **Deliverable:** live provider calls — completion and embedding — retry
+  > transient failures (connection errors, 5xx, 429) with bounded backoff
+  > before failing, and a call that still fails raises `LLMError` naming the
+  > stage, the provider and the status, so the CLI reports it in one line.
+  > A retry changes nothing that is recorded: only a successful response is
+  > persisted, as now, so request keys and replay are unaffected.
+  >
+  > **Acceptance:** a completion and an embedding call whose provider fails
+  > transiently once and then succeeds are recorded exactly as a call that
+  > succeeded first time; one that keeps failing surfaces as a single-line
+  > `acceptance: model error:` naming the stage.
+- **Status:** filed as #356 (sub-issue of #184), approved at #348 Gate 2, 2026-09-21
+
+### [2026-09-21] The reachability prefilter "proves" no path from a test that reads its subject from disk
+- **Kind:** filing
+- **Found during:** #348, Gate 2 run 3
+- **Where:** src/acceptance/defects/reachability.py (the `PREFILTERED` reason)
+- **Severity:** should-fix
+- **What's wrong:** `tests/test_rank_prefilter_findings.py` opens
+  `docs/experiments/rank-prefilter/FINDINGS.md` and the replay logs by path and
+  asserts on their content. Every pair between it and the two defects enumerated
+  for the findings criterion was marked `[prefiltered]`: "the test's module
+  imports no first-party module, the test takes no fixture, and it references no
+  name defined in docs/experiments/rank-prefilter/FINDINGS.md — no path to the
+  defect exists". A path exists; the prefilter looks only for imports, fixtures
+  and Python names. Because `PREFILTERED` counts as an established survival, the
+  criterion was rated `unsupported` (0 of 2), where run 2 — before the test
+  existed — had it `indeterminate`. The prefilter's contract is that it
+  excludes only what it can prove, and here it proved something false.
+  `tests/test_decision_records.py` was excluded the same way. Any criterion
+  about a document, a config file or a fixture read from disk is exposed.
+- **Why I didn't act:** out of scope for #348; the prefilter belongs to the pair
+  stage's candidate reachability.
+- **Drafted fix:** file as a sub-issue of #182, the test discovery and mapping
+  umbrella:
+
+  > **Title:** The reachability prefilter proves "no path" from a test that
+  > reads its subject from disk
+  >
+  > At #348's Gate 2 (`dogfood-logs/348-gate2-run3/`), a test that reads
+  > `FINDINGS.md` by path and asserts on its text was prefiltered against both
+  > defects of the criterion about that file, with the reason "no path to the
+  > defect exists". The criterion was rated `unsupported`, because a prefiltered
+  > pair is treated as a proven survival.
+  >
+  > The prefilter follows imports, fixtures and Python names. A non-Python
+  > implicated file has none of those, so every test is "proved" unreachable
+  > from it — including the tests that read it.
+  >
+  > **Deliverable:** the prefilter proves no path only where it can: a defect
+  > whose implicated files are not Python modules is not prefiltered on import
+  > evidence (its pairs go to the judge), or a test whose source names the
+  > implicated file's path counts as reaching it.
+  >
+  > **Acceptance:** replaying #348's Gate 2 run 3, no pair between
+  > `tests/test_rank_prefilter_findings.py` and a defect implicating
+  > `FINDINGS.md` is `prefiltered`.
+- **Status:** filed as #358 (sub-issue of #182), approved at #348 Gate 2, 2026-09-21
+
+### [2026-09-21] The same unchanged hunk is `in_service` in one run and `separable` in the next
+- **Kind:** filing
+- **Found during:** #348, Gate 2 run 3
+- **Where:** unrequested-change detection (`src/acceptance/coverage/unrequested.py`)
+- **Severity:** should-fix
+- **What's wrong:** The `review_state.py` hunks that add `DEFECT_ALREADY_COVERED`
+  and rewrite the `UnjudgedCause` docstring to describe it were identical in
+  runs 2 and 3. Run 2 classed them `in_service` ("The cause itself is requested,
+  but the exact schema/validation machinery is an internal implementation
+  choice"). Run 3 split out the docstring rewrite as `[separable]`
+  ("documentation/internal commentary change not required by the functional
+  obligations"). The docstring had to change: it said "Three causes" and that
+  every cause but one counts as unknown, both false once the fourth cause
+  exists. A `separable` flag is a Gate 2 stop, so a flag that appears and
+  disappears on an unchanged diff stops or passes a gate at random.
+- **Why I didn't act:** out of scope for #348.
+- **Drafted fix:** file as a sub-issue of #185, the findings, verdict and
+  presentation umbrella:
+
+  > **Title:** An unchanged hunk flips between `in_service` and `separable`
+  > across runs
+  >
+  > #348's Gate 2 runs 2 and 3 (`dogfood-logs/348-gate2-run{2,3}/`) reviewed the
+  > same `review_state.py` hunks. Run 2 called them `in_service`; run 3 split the
+  > docstring part out as `separable`, calling a docstring kept accurate after
+  > a requested change "not required by the functional obligations".
+  >
+  > Two defects, separable: the classification of an unchanged hunk is not
+  > carried between continued runs, so it is re-derived and can flip; and a
+  > comment or docstring edit that keeps existing documentation true of a
+  > requested change is judged unrequested.
+  >
+  > **Deliverable:** a continued run carries an unchanged hunk's classification
+  > rather than re-deriving it, and documentation that describes a requested
+  > change is `in_service`.
+  >
+  > **Acceptance:** re-running #348's Gate 2 with `--continue` from run 2 gives
+  > the `review_state.py` hunks run 2's classification.
+- **Status:** filed as #359 (sub-issue of #185), approved at #348 Gate 2, 2026-09-21
