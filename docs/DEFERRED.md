@@ -6059,3 +6059,172 @@ the record.
   running `ruff check --fix` and `ruff format` on the file. The only lint-rule
   change was reordering three imports that already sit below the
   `sys.path.insert`, so the script's behaviour is unchanged.
+
+### [2026-09-21] #334's stated reason for the bytecode check does not hold
+- **Kind:** filing
+- **Found during:** #334, Gate 1
+- **Where:** issue #334 (sample several candidate edits per defect), the Why and
+  Deliverable sections
+- **Severity:** should-fix
+- **What's wrong:** #334 proposes compiling a module before and after an edit and
+  comparing the code objects, because a text comparison "misses an added
+  condition that is always true, a value the callee ignores, and a reordering
+  with no effect". Measured on the project's own interpreter, all three compile
+  to *different* code, so the proposed check lets all three through exactly as
+  the text check does. What it does catch is edits differing only in formatting,
+  comments or line position — a real gap, since the existing check in
+  `mutation/validity.py` is byte equality. Evidence and method:
+  `docs/experiments/334-bytecode-equivalence/`.
+- **Why I didn't act:** it changes what #334 delivers, which is a change to the
+  plan and therefore the human's call.
+- **Drafted fix:** comment on #334:
+
+  > **The bytecode comparison catches a different class than this issue
+  > describes.**
+  >
+  > Measured 2026-09-21 on python 3.10.11, the interpreter the project runs
+  > (`docs/experiments/334-bytecode-equivalence/probe.py`). "Equal" means the
+  > check refuses the edit:
+  >
+  > | edit | code objects equal | instruction stream equal |
+  > |---|---|---|
+  > | always-true condition, `if True:` | no | no |
+  > | always-true condition, `if i is not None or True:` | no | no |
+  > | value the caller ignores | no | no |
+  > | reordering with no effect | no | no |
+  > | blank line only | no | **yes** |
+  > | comment only | **yes** | **yes** |
+  >
+  > The three cases this issue names all change the compiled form: an always-true
+  > condition emits a test and a jump, an ignored assignment emits a store, a
+  > reordering emits the same instructions in a different order. None changes
+  > behaviour, which is a different question. Those three are what #335's first
+  > question — does the edit change the code's behaviour at all — is for.
+  >
+  > Two consequences for this issue. The rationale should be restated as catching
+  > formatting-, comment- and position-only edits, which the byte-equality check
+  > in `mutation/validity.py` accepts today. And the comparison must be on the
+  > instruction stream, not on whole code objects: whole-object equality reports
+  > the blank-line case as different, because line-number tables differ, so the
+  > wording "compare the code objects" describes the comparison that misses the
+  > one case it fixes.
+  >
+  > The Acceptance item "shown to reject at least one edit the text comparison
+  > accepts" stays reachable — a whitespace-only edit is one.
+- **Status:** open
+
+### [2026-09-21] Decision: raise the temperature for edit building only, after #334 is measured
+- **Kind:** decision
+- **Found during:** #334, Gate 1
+- **Where:** `src/acceptance/config.py:144` (`temperature: float = 0.0`),
+  `src/acceptance/llm.py:506` (`model_for`), `llm.py::controls_in_force`
+- **Severity:** should-fix
+- **What's wrong:** nothing is broken; the question is whether the edit-building
+  stage should sample at a temperature above zero so its candidates vary. The
+  human raised it: we want the model to get creative on this stage.
+- **Why I didn't act:** it changes the determinism strategy CLAUDE.md states, and
+  folding it into #334 would make #334's own measurement unattributable — the
+  candidate loop and the temperature would move together.
+- **Recommendation:** build #334 at temperature zero with the sequential re-ask,
+  take its validity measurement, then raise the temperature for that stage alone
+  and re-run the same audit. One variable, one comparison. File as its own issue
+  with a Decision Record.
+
+  What it costs, verified in the code: replay is unaffected, since a replayed run
+  reads a transcript and samples nothing. What weakens is the narrower claim that
+  two *recorded* runs over the same input are byte-identical. Temperature is a
+  single client-wide value hashed into every request, so a per-stage override is
+  new machinery — though `model_for(stage)` already resolves a per-stage model
+  and falls back to the run's, so the shape exists. And `controls_in_force`
+  reports a control as pinned only if every call agrees, so one stage at a higher
+  temperature makes the **whole run** stop reporting itself as temperature-pinned;
+  its docstring says that is deliberate, "a run is only as pinned as its
+  least-pinned call". Changing it also orphans the edit-building stage's
+  recordings once — a one-lane cost, since it is that stage's own control.
+- **Alternative rejected:** raise it as part of #334. Cheaper in wall clock and
+  worthless as evidence.
+- **Status:** open
+
+### [2026-09-21] A subordinate clause becomes an obligation that contradicts an exclusion from the same run
+- **Kind:** filing
+- **Found during:** #334, Gate 1, run 1
+- **Where:** `src/acceptance/requirement/obligations.py` (decomposition);
+  `dogfood-logs/334-gate1-run1/`, run `7be8d2eaf9d5acd6`
+- **Severity:** should-fix
+- **What's wrong:** the task file's first sentence opened *"When the review needs
+  an edit that makes a named plausible defect true, it asks for several candidate
+  edits instead of one…"*. The opening clause states the condition under which
+  the requirement applies. Decomposition turned it into its own obligation,
+  `candidate-edit-makes-defect-true`, described as *"The review needs an edit
+  that makes a named plausible defect true"* and tagged `human_review` — which
+  under the gate rules is a mandatory pause. The same run derived
+  `defect-truth-not-judged` from Scope exclusion 1, *"Whether an edit that passes
+  the checks really makes its named defect true"*. So one run produced an
+  obligation and its own exclusion, and put the pause flag on the invented one.
+- **Why I didn't act:** decomposition is outside #334.
+- **Drafted fix:** file as a sub-issue of #181, the decomposition umbrella:
+
+  > **A "when X" condition becomes an obligation, and contradicts a Scope
+  > exclusion derived in the same run**
+  >
+  > Observed at #334's Gate 1, run `7be8d2eaf9d5acd6`
+  > (`dogfood-logs/334-gate1-run1/`). A sentence of the form "When <condition>,
+  > the system does <requirement>" yielded an obligation asserting the condition
+  > as a thing the system needs, alongside the real obligations from the main
+  > clause. It was tagged `human_review`, so it would have forced a gate pause on
+  > a question the task file never asked.
+  >
+  > The contradiction is the sharper signal: Scope exclusion 1 said this exact
+  > property is out of scope, the run derived that exclusion correctly, and the
+  > two coexist in one obligation set with nothing flagging the conflict.
+  >
+  > Rewording the clause to *"When the review builds an edit for a named
+  > plausible defect"* removed it on run 2, so it is sensitive to phrasing rather
+  > than unconditional.
+  >
+  > **Acceptance.** A requirement of the form "When <condition>, <requirement>"
+  > yields obligations for the requirement and none for the condition; and an
+  > obligation that asserts what a Scope exclusion excludes is reported rather
+  > than emitted silently. A regression case pins both.
+- **Status:** open
+
+### [2026-09-21] One clause yields two near-identical obligations that never merge, with no diagnostic
+- **Kind:** filing
+- **Found during:** #334, Gate 1, run 1
+- **Where:** `src/acceptance/requirement/linking.py`;
+  `dogfood-logs/334-gate1-run1/`, run `7be8d2eaf9d5acd6`
+- **Severity:** should-fix
+- **What's wrong:** the clause *"A candidate that fails a check is set aside and
+  the next is tried"* appears once in the task file and produced two obligations:
+  `failed-candidate-set-aside`, *"A candidate that fails a check is set aside and
+  the next candidate is tried."*, and `next-is-tried`, *"A failed candidate edit
+  is set aside and the next candidate is tried."* They differ only in word order.
+  Neither merged, and the run printed **no diagnostic** — no `Unreconciled
+  linking answers` line anywhere in the log.
+- **Why I didn't act:** decomposition is outside #334.
+- **Drafted fix:** file as a sub-issue of #181, the decomposition umbrella:
+
+  > **Two obligations from one clause, differing only in word order, are left
+  > unmerged and nothing says so**
+  >
+  > Observed at #334's Gate 1, run `7be8d2eaf9d5acd6`
+  > (`dogfood-logs/334-gate1-run1/`), on a clause written once in the task file,
+  > so the redundancy is not authored.
+  >
+  > Distinct from #242, where a cluster containing one denied pair refuses to
+  > merge and reports that it did: this run's log has no such line, so the pair
+  > was not recognised as a candidate for merging at all. Related to #304, twin
+  > Constraint/Completion obligations left unmerged with no diagnostic, but the
+  > twins here are inside a single requirement rather than across two sections.
+  >
+  > Redundancy is not cosmetic: every downstream stage judges the obligation set,
+  > so a duplicated obligation is rated twice, recommended for twice and counted
+  > twice.
+  >
+  > **Note.** Run 2's rewrite deleted the clause, so the behaviour is untested
+  > rather than shown fixed.
+  >
+  > **Acceptance.** Two obligations derived from one clause whose descriptions
+  > differ only in word order either merge, or the run reports why they did not.
+  > A regression case pins it.
+- **Status:** open
