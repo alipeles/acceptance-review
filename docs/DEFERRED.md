@@ -6228,3 +6228,57 @@ the record.
   > differ only in word order either merge, or the run reports why they did not.
   > A regression case pins it.
 - **Status:** open
+
+### [2026-09-21] The obligation breakdown a human confirms is not the obligation set the tool recorded
+- **Kind:** filing
+- **Found during:** #334, Gate 1, while judging run 3
+- **Where:** the rendering of `decompose`'s breakdown; `dogfood-logs/334-gate1-run{1,2,3}/`
+- **Severity:** blocker
+- **What's wrong:** the printed breakdown omitted an obligation the run had
+  recorded, in two of three runs:
+
+  | run | ledger | printed | never printed |
+  |---|---|---|---|
+  | `7be8d2eaf9d5acd6` | 25 | 24 | `compiled-before-after-comparison` |
+  | `a1c00b42b03c0fb7` | 15 | 14 | `compiled-before-after-compare-compiled-forms` |
+  | `a7f05ec002634926` | 12 | 12 | — |
+
+  Both hidden obligations are `importance: critical` and carry their own source
+  span. Run 2's, in full: *"Compile the code before and after the edit and
+  compare the two compiled forms."* Both sat in the one requirement that also
+  held near-duplicates; run 3, which had none, hid nothing.
+
+  It surfaced only because run 3 reported `3 obligation(s) dropped` for a
+  requirement whose breakdown had shown two. The count was right.
+
+  **Gate 1 is the human reading this breakdown and confirming it.** Every later
+  stage judges the persisted set, not the printed one, so a human can sign off on
+  a set they were never shown — and the divergence appears exactly when
+  duplicates are present, which is when the review matters most. A confirmation
+  given at Gate 1 in this session had to be withdrawn for this reason.
+- **Why I didn't act:** presentation is outside #334, and the cause is not yet
+  located.
+- **Hypothesis, NOT verified:** the renderer suppresses one of a near-identical
+  pair while the persisted set keeps both. The rendering code was not read.
+- **How to check any run:** `.acceptance/ledger/<run>.json`, field
+  `derivations[].obligations`, against `grep -c '^    -> ' output.log`.
+- **Drafted fix:** file as a sub-issue of #185, the umbrella for findings model,
+  verdict and presentation:
+
+  > **`decompose` prints fewer obligations than it records, so Gate 1 confirms a
+  > set nobody saw**
+  >
+  > Observed at #334's Gate 1 in two of three runs (figures above). Both omitted
+  > obligations were `importance: critical`.
+  >
+  > Filed under presentation rather than #181, the decomposition umbrella,
+  > because the recorded set was correct in each case — including the duplicate,
+  > which is #181's separate problem. What failed is that the breakdown a human
+  > is asked to confirm is not the set the run holds.
+  >
+  > **Acceptance.** The printed breakdown lists every obligation the run
+  > recorded, with a regression case over a requirement holding two obligations
+  > whose descriptions differ only in word order. If any obligation is
+  > deliberately collapsed for readability, the output says how many and why,
+  > rather than omitting it silently.
+- **Status:** open

@@ -1,0 +1,99 @@
+run 7be8d2eaf9d5acd6
+  requirements: 7 derived, 0 carried, 0 revised; 25 decompose call(s)
+  continue this run with: --continue 7be8d2eaf9d5acd6
+Model usage by stage:
+  stage               model                                                            calls   prompt  output  cached  this run  recorded
+  ------------------  -------------------------------------------  -------------------------  -------  ------  ------  --------  --------
+  decompose           openai/gpt-5.4-mini                          22 (22 live / 0 replayed)  119,658   3,309    0.0%   $0.1046   $0.1046
+  decompose-summary   openai/gpt-5.4                                 3 (3 live / 0 replayed)    2,832   1,646    0.0%   $0.0318   $0.0318
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)    1,701     135    0.0%   $0.0013   $0.0013
+  this run spent $0.1377 on 27 live call(s); the evidence cost $0.1377 to record (0 call(s) replayed at no cost to this run)
+Requirements: 7   with obligations: 7
+
+[task-01] When the review needs an edit that makes a named plausible defect true, it
+    asks for several candidate edits instead of one and uses the first candidate that
+    passes the checks the review already applies to an edit. How many candidates it asks
+    for is configurable. A candidate that fails a check is set aside and the next is
+    tried, and when no candidate passes, the defect is handled the way a defect no edit
+    could be built for is handled today.
+    -> candidate-edit-makes-defect-true  [human_review/explicit]
+       The review needs an edit that makes a named plausible defect true.
+    -> several-candidate-edits  [functional/explicit]
+       The review asks for several candidate edits instead of one.
+    -> use-first-passing-candidate  [functional/explicit]
+       The review uses the first candidate edit that passes the checks the review
+       already applies to an edit.
+    -> candidate-count-configurable  [docs_config/explicit]
+       The number of candidates the review asks for is configurable.
+    -> failed-candidate-set-aside  [functional/explicit]
+       A candidate that fails a check is set aside and the next candidate is tried.
+    -> next-is-tried  [functional/explicit]
+       A failed candidate edit is set aside and the next candidate is tried.
+    -> fallback-handling-matches-no-edit-defect  [functional/explicit]
+       When no candidate passes, the defect is handled the same way a defect for which
+       no edit could be built is handled today.
+
+[task-02] The review also gains one further check on whether an edit changes anything at
+    all. The code is compiled before and after the edit and the two compiled forms are
+    compared, so an edit that leaves behaviour untouched is refused even when its text
+    differs from the text it replaced. A condition that is always true, a value the
+    caller ignores, and a reordering with no effect each read as a change to the text
+    and as no change to the compiled form, and each is refused here.
+    -> compiled-form-change-check  [functional/explicit]
+       The review compares the compiled forms before and after the edit to determine
+       whether the edit changes anything at all.
+    -> behavior-unchanged-edits-refused  [regression/explicit]
+       Refuse edits that leave behaviour untouched, even when the edited text differs
+       from the text it replaced.
+    -> always-true-condition-is-refused  [regression/explicit]
+       An edit that changes only a condition that is always true is refused because it
+       leaves the compiled form unchanged.
+    -> value-the-caller-ignores  [functional/explicit]
+       The edit changes a value the caller ignores.
+    -> no-effect-reordering-refused  [regression/explicit]
+       A reordering with no effect is treated as a change to the text and as no change
+       to the compiled form, so it is refused.
+    -> no-op-change-refused  [regression/explicit]
+       The change is refused when it leaves behavior untouched even if its text differs
+       from the text it replaced.
+    -> always-true-condition-refused  [regression/explicit]
+       The change is refused when it introduces a condition that is always true.
+    -> ignored-value-refused  [regression/explicit]
+       The change is refused when it introduces a value the caller ignores.
+    -> no-effect-reordering-refused-2  [regression/explicit]
+       The change is refused when it only reorders code with no effect.
+
+[task-03] For each defect, the review records how many candidates it asked for, how many
+    it set aside and why, and which candidate it used. Its report says what building
+    edits cost and how long it took, since asking for several candidates multiplies
+    both.
+    -> record-candidate-request-count  [functional/explicit]
+       For each defect, the review records how many candidates it asked for.
+    -> set-aside-count-and-reasons  [functional/explicit]
+       Record how many candidates were set aside and why.
+    -> which-candidate-it-used  [functional/explicit]
+       Record which candidate it used for each defect review.
+    -> report-captures-edit-cost-and-duration  [explanation_observability/explicit]
+       The report states what building edits cost and how long they took.
+
+[constraint-01] Two runs over the same input pick the same candidate.
+    -> deterministic-candidate-selection  [invariant/explicit]
+       Two runs over the same input pick the same candidate.
+
+[exclusion-01] Whether an edit that passes the checks really makes its named defect
+    true.
+    -> defect-truth-not-judged  [functional/explicit]
+       The review does not assess whether an edit that passes the checks really makes
+       its named defect true.
+
+[exclusion-02] Which plausible defects are enumerated, and which region of the code an
+    edit is allowed to fall in.
+    -> exclude-defect-enumeration-and-edit-region  [functional/explicit]
+       The change does not alter which plausible defects are enumerated, and it does not
+       alter which region of the code an edit is allowed to fall in.
+
+[exclusion-03] Running the candidate tests, and anything decided from what they did.
+    -> no-candidate-test-execution-decision  [regression/explicit]
+       The change does not include running the candidate tests or making any decision
+       based on their results.
+

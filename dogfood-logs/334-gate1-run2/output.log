@@ -1,0 +1,77 @@
+run a1c00b42b03c0fb7
+  continuing 7be8d2eaf9d5acd6
+  requirements: 0 derived, 5 carried, 2 revised; 9 decompose call(s)
+  continue this run with: --continue a1c00b42b03c0fb7
+Model usage by stage:
+  stage                        model                                                          calls  prompt  output  cached  this run  recorded
+  ---------------------------  -------------------------------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose                    openai/gpt-5.4-mini                          7 (7 live / 0 replayed)  37,875   1,054   25.7%   $0.0266   $0.0266
+  decompose-summary            openai/gpt-5.4                               2 (2 live / 0 replayed)   1,879     894    0.0%   $0.0181   $0.0181
+  obligation linking           voyage/voyage-3.5-lite, openai/gpt-5.4-mini  2 (2 live / 0 replayed)   1,296      84    0.0%   $0.0010   $0.0010
+  requirement carry alignment  openai/gpt-5.4-mini                          1 (1 live / 0 replayed)     603      36    0.0%   $0.0006   $0.0006
+  this run spent $0.0463 on 12 live call(s); the evidence cost $0.0463 to record (0 call(s) replayed at no cost to this run)
+Requirements: 7   with obligations: 7
+
+[task-01] When the review builds an edit for a named plausible defect, it asks for
+    several candidate edits instead of one and uses the first that passes the checks the
+    review already applies to an edit. How many candidates it asks for is configurable.
+    When no candidate passes, the defect is handled the way a defect no edit could be
+    built for is handled today.
+    -> multiple-candidate-edits  [functional/explicit]
+       The review asks for several candidate edits instead of one.
+    -> first-passing-candidate  [functional/explicit]
+       The review uses the first candidate edit that passes the checks the review
+       already applies to an edit.
+    -> candidate-count-configurable  [docs_config/explicit]
+       The number of candidates requested is configurable.
+    -> fallback-to-no-edit-built-handling  [compatibility/explicit]
+       When no candidate passes, the defect is handled the way a defect no edit could be
+       built for is handled today.
+
+[task-02] The review also gains one further check on whether an edit changes anything at
+    all. The code is compiled before and after the edit and the two compiled forms are
+    compared, so an edit whose text differs from the text it replaced — by adding a
+    condition that is always true, by changing a value the caller ignores, or by
+    reordering with no effect — is refused when the two compiled forms agree.
+    -> compiled-form-change-check  [functional/explicit]
+       The review includes a check that determines whether an edit changes anything at
+       all by comparing the compiled forms before and after the edit.
+    -> compiled-forms-agreement-refuses-no-op-edit  [compatibility/explicit]
+       An edit whose text differs from the text it replaced is refused when the two
+       compiled forms agree, including edits that only add an always-true condition,
+       change a value the caller ignores, or reorder with no effect.
+
+[task-03] For each defect, the review records how many candidates it asked for, how many
+    it set aside and why, and which candidate it used. Its report says what building
+    edits cost and how long it took, since asking for several candidates multiplies
+    both.
+    -> record-candidate-request-count  [functional/explicit]
+       For each defect, the review records how many candidates it asked for.
+    -> set-aside-count-and-reasons  [functional/explicit]
+       Record how many candidates were set aside and why.
+    -> which-candidate-it-used  [functional/explicit]
+       Record which candidate it used for each defect review.
+    -> report-captures-edit-cost-and-duration  [explanation_observability/explicit]
+       The report states what building edits cost and how long they took.
+
+[constraint-01] Two runs over the same input pick the same candidate.
+    -> deterministic-candidate-selection  [invariant/explicit]
+       Two runs over the same input pick the same candidate.
+
+[exclusion-01] Whether an edit that passes the checks really makes its named defect
+    true.
+    -> defect-truth-not-judged  [functional/explicit]
+       The review does not assess whether an edit that passes the checks really makes
+       its named defect true.
+
+[exclusion-02] Which plausible defects are enumerated, and which region of the code an
+    edit is allowed to fall in.
+    -> exclude-defect-enumeration-and-edit-region  [functional/explicit]
+       The change does not alter which plausible defects are enumerated, and it does not
+       alter which region of the code an edit is allowed to fall in.
+
+[exclusion-03] Running the candidate tests, and anything decided from what they did.
+    -> no-candidate-test-execution-decision  [regression/explicit]
+       The change does not include running the candidate tests or making any decision
+       based on their results.
+
