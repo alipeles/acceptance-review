@@ -44,14 +44,24 @@ _DEFECT = "daily-rate-d1"
 _DESCRIPTION = "divides by 30"
 
 
-def _tests(count: int):
-    """`count` tests, `test_r01` the most similar to the defect and so on down.
+def _name(rank: int) -> str:
+    """The test at similarity `rank`, 1 the most similar to the defect.
 
-    Named so the id order is the REVERSE of the similarity order: a ranking that
-    silently fell back to id order would ask `test_r10` first, and the tests
-    below would see it.
+    The leading letter runs BACKWARDS against the rank — rank 1 is `test_y_r01`,
+    rank 2 `test_x_r02` — so sorting by id is the reverse of sorting by
+    similarity. The ranking breaks ties on test id, so a ranking that silently
+    stopped using similarity would still produce a clean order; this makes it the
+    wrong one, and the tests below see it.
     """
-    return [_test(f"test_r{count + 1 - rank:02d}") for rank in range(1, count + 1)]
+    return f"test_{chr(ord('z') - rank)}_r{rank:02d}"
+
+
+def _id(rank: int) -> str:
+    return f"test_billing.py::{_name(rank)}"
+
+
+def _tests(count: int):
+    return [_test(_name(rank)) for rank in range(1, count + 1)]
 
 
 def _geometry(tests) -> dict[str, list[float]]:
@@ -95,7 +105,7 @@ def _run(tmp_path, count=10, kills=None, stop_after_kills=1, tests_per_batch=2, 
 
 
 def _kills_at(*ranks: int):
-    wanted = {f"test_billing.py::test_r{rank:02d}" for rank in ranks}
+    wanted = {_id(rank) for rank in ranks}
     return lambda defect_id, test_id: test_id in wanted
 
 
@@ -109,10 +119,8 @@ def _covered(result) -> list[UnjudgedPair]:
 def test_tests_are_asked_most_similar_first(tmp_path):
     _, judge = _run(tmp_path, kills=_kills_at(3))
 
-    assert judge.requests[0]["test_id"] == [
-        "test_billing.py::test_r01",
-        "test_billing.py::test_r02",
-    ]
+    # The first round is the two most similar; a request lists its tests by id.
+    assert set(judge.requests[0]["test_id"]) == {_id(1), _id(2)}
 
 
 def test_a_covered_defect_is_asked_no_further(tmp_path):
@@ -121,7 +129,7 @@ def test_a_covered_defect_is_asked_no_further(tmp_path):
     result, judge = _run(tmp_path, kills=_kills_at(3))
 
     asked = {test_id for _, test_id in judge.pairs_asked()}
-    assert asked == {f"test_billing.py::test_r{rank:02d}" for rank in range(1, 7)}
+    assert asked == {_id(rank) for rank in range(1, 7)}
     assert len(result.verdicts) == 6
 
 
@@ -131,10 +139,8 @@ def test_every_pair_not_asked_is_recorded_with_its_rank_and_what_covered_it(tmp_
 
     skipped = _covered(result)
     assert sorted(entry.rank for entry in skipped) == [7, 8, 9, 10]
-    assert {entry.test_id for entry in skipped} == {
-        f"test_billing.py::test_r{rank:02d}" for rank in range(7, 11)
-    }
-    assert all(entry.covered_by == ["test_billing.py::test_r03"] for entry in skipped)
+    assert {entry.test_id for entry in skipped} == {_id(rank) for rank in range(7, 11)}
+    assert all(entry.covered_by == [_id(3)] for entry in skipped)
     # Every pair is accounted for exactly once: judged, or unjudged with a cause.
     accounted = [(v.defect_id, v.test_id) for v in result.verdicts] + [
         (e.defect_id, e.test_id) for e in result.unjudged
@@ -167,12 +173,9 @@ def test_the_stop_number_is_how_many_kills_it_takes(tmp_path):
     result, judge = _run(tmp_path, kills=_kills_at(1, 5), stop_after_kills=2)
 
     asked = {test_id for _, test_id in judge.pairs_asked()}
-    assert "test_billing.py::test_r05" in asked
+    assert _id(5) in asked
     assert {entry.rank for entry in _covered(result)} == {7, 8, 9, 10}
-    assert all(
-        entry.covered_by == ["test_billing.py::test_r01", "test_billing.py::test_r05"]
-        for entry in _covered(result)
-    )
+    assert all(set(entry.covered_by) == {_id(1), _id(5)} for entry in _covered(result))
 
 
 def test_a_defect_short_of_the_stop_number_is_asked_about_in_full(tmp_path):
@@ -207,7 +210,7 @@ def test_turned_off_it_asks_every_pair_in_one_pass_and_embeds_nothing(tmp_path):
 def test_it_works_on_what_routing_leaves(tmp_path):
     """#340's held-back pairs keep their own cause when the defect is covered;
     the walk orders and stops only what reaches the judge."""
-    held = "test_billing.py::test_r02"
+    held = _id(2)
     result, judge = _run(tmp_path, kills=_kills_at(1), skipped={(_DEFECT, held): "not asked"})
 
     assert (_DEFECT, held) not in judge.pairs_asked()
