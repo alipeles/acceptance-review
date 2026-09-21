@@ -1,18 +1,21 @@
 # Task
 
-The review refuses an edit that differs from the text it replaced only in
-comments or whitespace. It refuses it always, not only when the review is also
-checking whether an edit really makes its named defect true.
+When the review builds an edit for a named plausible defect, it asks for several
+candidate edits instead of one and uses the first that passes the checks the
+review already applies to an edit. How many candidates it asks for is
+configurable. When no candidate passes, the defect is handled the way a defect no
+edit could be built for is handled today.
 
-The refusal is recorded as one of the review's own mechanical checks, not as a
-judgement about what the edit does, so that counts of what each judgement refused
-are not inflated by edits no judgement was asked about.
+For each defect, the review records how many candidates it asked for, how many it
+set aside and why, and which candidate it used. Its report says what building
+edits cost and how long it took, since asking for several candidates multiplies
+both.
 
 ## Constraints
-- The refusal is reached without asking a model.
+- Two runs over the same input pick the same candidate.
 
 ## Scope exclusions
-- The questions the review asks about an edit's behaviour, and whether they run
-  at all.
-- Building an edit, or choosing the region of the code it falls in.
-- Running the project's tests.
+- Whether an edit that passes the checks really makes its named defect true.
+- Which plausible defects are enumerated, and which region of the code an edit is
+  allowed to fall in.
+- Running the candidate tests, and anything decided from what they did.
