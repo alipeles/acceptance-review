@@ -46,6 +46,7 @@ from acceptance.defects.pair_mapping import (
     DEFAULT_TESTS_PER_BATCH,
     judge_pairs,
 )
+from acceptance.defects.pair_ranking import DEFAULT_STOP_AFTER_KILLS
 from acceptance.defects.support import (
     apply_derived_support,
     derive_support,
@@ -376,6 +377,7 @@ def run_review(
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
     pair_batch_size: int = DEFAULT_PAIR_BATCH_SIZE,
     tests_per_batch: int = DEFAULT_TESTS_PER_BATCH,
+    stop_after_kills: int | None = DEFAULT_STOP_AFTER_KILLS,
     link_pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
     link_distance_threshold: float | None = DEFAULT_LINK_DISTANCE_THRESHOLD,
     task_identifier: str = "<inline>",
@@ -525,6 +527,11 @@ def run_review(
         skipped=pairs_not_worth_asking(attempts)
         if (execution is not None and execution.route_pairs)
         else None,
+        # #348: within whatever pairs the two filters above leave, walk each
+        # defect's tests in similarity order and stop once it is covered. It
+        # composes with them rather than replacing either — they decide which
+        # pairs reach the judge, this decides the order and where to stop.
+        stop_after_kills=stop_after_kills,
     )
     # One list, two provenances. `PairVerdict.tier` is what tells them apart, and
     # `derive_support` reduces both with the same arithmetic — which is what

@@ -28,6 +28,7 @@ from acceptance.config import (
     DEFAULT_MODEL,
     DEFAULT_PAIR_BATCH_SIZE,
     DEFAULT_SEED,
+    DEFAULT_STOP_AFTER_KILLS,
     DEFAULT_TESTS_PER_BATCH,
     RunConfig,
 )
@@ -200,6 +201,7 @@ def run_check(
         policy=config.scope_expansion_policy,
         pair_batch_size=config.pair_batch_size,
         tests_per_batch=config.tests_per_batch,
+        stop_after_kills=config.stop_after_kills,
         link_pair_batch_size=config.link_pair_batch_size,
         link_distance_threshold=config.link_distance_threshold,
         task_identifier=task,
@@ -750,6 +752,25 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
         ),
     )
     parser.add_argument(
+        "--stop-after-kills",
+        type=int,
+        default=DEFAULT_STOP_AFTER_KILLS,
+        help=(
+            "Stop asking about a defect once this many of its tests are recorded "
+            "as catching it; its tests are asked in order of similarity to the "
+            f"defect (default: {DEFAULT_STOP_AFTER_KILLS}). A defect no test "
+            "catches still has every test asked about."
+        ),
+    )
+    parser.add_argument(
+        "--full-pair-sweep",
+        action="store_true",
+        help=(
+            "Ask every (defect, test) pair, unranked and without stopping early, "
+            "as reviews ran before ranking existed. Overrides --stop-after-kills."
+        ),
+    )
+    parser.add_argument(
         "--embedding-model",
         default=DEFAULT_EMBEDDING_MODEL,
         help=(
@@ -912,6 +933,7 @@ def main(argv: list[str] | None = None) -> int:
             temperature=args.temperature,
             pair_batch_size=args.pair_batch_size,
             tests_per_batch=args.tests_per_batch,
+            stop_after_kills=None if args.full_pair_sweep else args.stop_after_kills,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )

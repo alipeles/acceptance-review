@@ -23,6 +23,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from acceptance.defects.pair_mapping import DEFAULT_PAIR_BATCH_SIZE, DEFAULT_TESTS_PER_BATCH
+from acceptance.defects.pair_ranking import DEFAULT_STOP_AFTER_KILLS
 from acceptance.llm import DEFAULT_TRANSCRIPT_ROOT, Mode, ModelClient, TranscriptStore
 from acceptance.review_state import DeterminismControls, LinkPrefilter, ReviewProvenance
 
@@ -159,6 +160,13 @@ class RunConfig(BaseModel):
     # caps judgements per response, this one shapes the rectangle those
     # judgements are drawn from. See `pair_mapping.py::_batches`.
     tests_per_batch: int = Field(default=DEFAULT_TESTS_PER_BATCH, ge=1)
+    # How many of a defect's tests must be recorded as catching it before the
+    # pair judge stops asking about it, walking its tests in similarity order
+    # (#348). `None` turns ranking and stopping off and asks every pair, which is
+    # how a review ran before. It decides which questions reach the model, so it
+    # is a determinism control in the seed's sense; it moves no request key, but
+    # it changes which requests there are.
+    stop_after_kills: int | None = Field(default=DEFAULT_STOP_AFTER_KILLS, ge=1)
     # And for obligation linking (#144), whose unit is a PAIR of obligations
     # rather than an obligation — see the constant's note.
     link_pair_batch_size: int = Field(default=DEFAULT_LINK_PAIR_BATCH_SIZE, ge=1)

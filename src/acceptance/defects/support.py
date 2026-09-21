@@ -225,6 +225,21 @@ def derive_support(
         # make the defect true, and about half of them do not, so a test passing
         # under it proves nothing. Treated as an established survival it would
         # let an unverified edit firm up a rating by removing the question.
+        #
+        # `DEFECT_ALREADY_COVERED` (#348) is the other exclusion, and it is sound
+        # only because the defect is already covered: no answer about the skipped
+        # pair can un-cover it, so the class cannot move. That premise is CHECKED
+        # here, not trusted — a cause naming kills the verdicts do not contain
+        # would be exactly the silent un-covering this module refuses.
+        if entry.cause is UnjudgedCause.DEFECT_ALREADY_COVERED:
+            missing = set(entry.covered_by) - set(kills_by_defect.get(entry.defect_id, []))
+            if missing:
+                raise ValueError(
+                    f"{entry.defect_id} x {entry.test_id} was left unasked as already "
+                    f"covered by {sorted(entry.covered_by)}, but {sorted(missing)} "
+                    "carry no killing verdict for that defect"
+                )
+            continue
         if entry.cause is not UnjudgedCause.PREFILTERED:
             unanswered_defects.add(entry.defect_id)
 
