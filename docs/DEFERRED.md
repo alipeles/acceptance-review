@@ -5978,7 +5978,8 @@ the record.
   > **Acceptance.** The `task-03` input above decomposes to obligations a correct
   > implementation satisfies — the check asks, and refuses a non-matching edit —
   > and a regression case pins it.
-- **Status:** open
+- **Status:** **filed 2026-09-21 as #352**, sub-issue of #181, on the human's
+  approval.
 
 ### [2026-09-21] A plain Constraints prohibition yields an open question instead of an obligation
 - **Kind:** filing
@@ -6009,7 +6010,8 @@ the record.
   > **Acceptance.** The constraint above yields an obligation that a verifier
   > shown neither the tests nor their results satisfies, and no open question;
   > a regression case pins it.
-- **Status:** open
+- **Status:** **filed 2026-09-21 as #353**, sub-issue of #181, on the human's
+  approval.
 
 ### [2026-09-21] A suite test compares whole pytest summary lines, so a stray warning fails it
 - **Kind:** defect
@@ -6053,4 +6055,7 @@ the record.
   that one file, committed straight to main. Or add `docs/experiments/` to
   ruff's `extend-exclude`, if experiment scripts are not meant to be held to the
   gate; that is #348's call.
-- **Status:** open
+- **Status:** **fixed on main 2026-09-21**, on the human's instruction, by
+  running `ruff check --fix` and `ruff format` on the file. The only lint-rule
+  change was reordering three imports that already sit below the
+  `sys.path.insert`, so the script's behaviour is unchanged.
