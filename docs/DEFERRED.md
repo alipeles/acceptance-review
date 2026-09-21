@@ -5803,3 +5803,136 @@ the record.
 - **Status:** **filed 2026-09-18 as #339**, approved by the human and attached
   as a sub-issue of #184, the determinism and reproducibility umbrella. Closed here.
 
+
+### [2026-09-19] WITHDRAWN — "the test suite is four times slower" was one bad measurement
+- **Kind:** decision
+- **Found during:** #340, Gate 2 run 1 (`dogfood-logs/340-gate2-run1/`)
+- **Where:** `src/acceptance/mutation/settings.py::decide_execution`, and every
+  test that constructs a plain `ExecutionSettings()`
+- **Severity:** should-fix
+- **What's wrong:** **Nothing, on the evidence. I withdraw the claim.**
+
+  I reported the full suite at 1858s against 448s before #340 and attributed it
+  to `ExecutionSettings.route_pairs` defaulting to on, which makes
+  `decide_execution` return `run=True` where it used to decline. The mechanism is
+  real — those tests do copy the project and run candidate tests against an
+  injected edit — but the measurement was not.
+
+  | run | code | wall clock |
+  |---|---|---|
+  | before #340 | `route_pairs` absent | 448s |
+  | after #340 | `route_pairs` on | **1858s** |
+  | after #340, later the same day | `route_pairs` on, unchanged | **465s** |
+
+  Same code, same default, four times apart. So the 1858s figure measures this
+  machine on that occasion, not the change. I drew a causal conclusion from one
+  observation with no control, which is the thing this project exists to catch
+  other people doing.
+
+  **It is probably the same underlying variance as the intermittent set-aside
+  failures** recorded in the entry above: this machine sometimes runs this
+  workload very differently, and both findings are downstream of that. Whatever
+  that is, it is the thing worth chasing, not the suite time.
+- **Why I didn't act:** the fix touches test files across the repo, which is
+  outside #340's area, and the right shape depends on whether the default itself
+  should change — which is the decision below.
+- **Drafted fix:** two options, and I recommend the first.
+
+  1. **Leave the default on and make the tests explicit.** Tests that are not
+     about execution pass `ExecutionSettings(route_pairs=False)`, or a shared
+     fixture supplies it. The product default stays the one we want in a real
+     review, and the slowdown disappears from CI. Cost: an edit in every test file
+     that builds `ExecutionSettings()`, and a standing trap — a new test written
+     the obvious way is slow again, with nothing to warn the author.
+  2. **Default `route_pairs` off and switch it on in the CLI.** CI stays fast with
+     no test edits, but the default a library caller gets stops matching the
+     default a reviewer gets, and `benchmark/coverage.py::classify_case` would
+     need the same switch or the benchmark would silently measure the unrouted
+     path. That last point is why I did not pick it: the CLI and the benchmark
+     have drifted onto different behaviour before, which is why a test pins that
+     they share `run_review`.
+
+  Rejected: raising the sandbox's time budget, which hides the cost rather than
+  removing it.
+
+  **None of that is called for now.** Keep the entry only as the record of the
+  retraction, and of the two options in case a controlled measurement later shows
+  a real cost. Measure it properly first: the same commit, both settings,
+  several runs each.
+- **Status:** withdrawn — kept for the retraction, not for action
+
+### [2026-09-20] A set-aside candidate test records no evidence of why it failed
+- **Kind:** filing
+- **Found during:** #340, Gate 2 run 1, while investigating 75 set-aside tests
+- **Where:** `src/acceptance/execution/sandbox.py::_run_in_workspace` (stdout and
+  stderr to `DEVNULL`) and `src/acceptance/mutation/baseline.py::_read`
+- **Severity:** should-fix
+- **What's wrong:** Two places throw away the only evidence that could explain a
+  candidate test the review sets aside.
+
+  1. `_run_in_workspace` spawns pytest with `stdout=subprocess.DEVNULL` and
+     `stderr=subprocess.DEVNULL`. The assertion text, the traceback and the
+     `short test summary info` are gone.
+  2. The plugin *does* record an exception class per failure —
+     `TestOutcome.error_type`, read from pytest's crash line — and `_read` drops
+     it when it builds a `SetAsideTest`, which carries only `test_id`, `kind` and
+     `reason`.
+
+  So a failing candidate test reaches the report as *"the test failed against the
+  code as delivered"* and nothing else, for every failure, with no way to tell
+  them apart afterwards. **I verified this by having to monkeypatch
+  `_spawn_and_wait` to learn anything at all**; on #340's Gate 2 that sentence was
+  all 71 tests had between them.
+
+  This is not a cosmetic gap. A set-aside test takes no part in any conclusion,
+  so it silently shrinks what execution can observe — on #340's Gate 2, 76 of 232
+  candidate tests.
+- **Why I didn't act:** the human asked for causes, not fixes, and this sits in
+  `execution/`, outside #340's area.
+- **Drafted fix:** carry `error_type` onto `SetAsideTest` and render it, and keep
+  the failing tests' output rather than discarding it — the `short test summary
+  info` block at minimum, bounded so a large run cannot flood review state.
+  Whether the full text belongs in review state or in a run artefact is the open
+  part. File as a sub-issue of #184, the determinism and reproducibility
+  umbrella, since it is about the execution harness rather than a review stage.
+- **Status:** open
+
+### [2026-09-20] Candidate tests are set aside nondeterministically under load
+- **Kind:** filing
+- **Found during:** #340, Gate 2 run 1
+- **Where:** `src/acceptance/mutation/baseline.py::establish_baseline`, and the
+  per-test budget in `src/acceptance/execution/netblock.py`
+- **Severity:** should-fix
+- **What's wrong:** The same commit, the same candidate set and the same code
+  path produce very different baselines from run to run. Measured at `4ad8290`
+  over 232 candidate tests:
+
+  | run | path | set aside |
+  |---|---|---|
+  | the Gate 2 review itself | `acceptance check` | 76 (1 timed out, 75 failed) |
+  | `establish_baseline` direct | real path | 76 (1 timed out, 75 failed) |
+  | `establish_baseline` with output captured | real path | 5 |
+  | again | real path | 5 |
+  | `run_tests` alone | no baseline | 0 |
+  | raw pytest, sandbox invocation, no budget | — | 0 |
+
+  Every one of the 75 passes when run alone, in pairs, in batches of 30, and in
+  the full set of 232. The budget is wall-clock: the whole run gets 300s and each
+  test 30s, and a test that runs the review's own execution tier takes seconds
+  unloaded and can exceed 30s when the machine is busy. #340 made that far more
+  likely by turning the tier on by default, so roughly 50 of this repository's
+  candidate tests now spawn nested pytest runs.
+
+  **I could not confirm the mechanism** and am not asserting one. A per-test
+  timeout is reported as `timed_out`, not `failed`, and `TestTimedOut` derives
+  from `BaseException` precisely so a broad `except Exception` cannot swallow it —
+  so the obvious explanation is ruled out. What the 75 failures actually were
+  cannot be recovered, because of the entry above.
+- **Why I didn't act:** the cause is unknown, and the entry above is the
+  prerequisite for finding it.
+- **Drafted fix:** none yet — this needs the evidence the entry above would
+  preserve. File as a sub-issue of #184, the determinism and reproducibility
+  umbrella, blocked on it. Worth stating in the body that a baseline that varies
+  run to run makes every execution-tier figure non-comparable between runs, which
+  is a determinism problem and not only a flakiness one.
+- **Status:** open
