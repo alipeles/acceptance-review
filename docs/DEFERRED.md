@@ -6010,3 +6010,30 @@ the record.
   > shown neither the tests nor their results satisfies, and no open question;
   > a regression case pins it.
 - **Status:** open
+
+### [2026-09-21] A suite test compares whole pytest summary lines, so a stray warning fails it
+- **Kind:** defect
+- **Found during:** setting up the #348 and #335 worktrees
+- **Where:** `tests/test_suite_shape_without_root_task_file.py:172`
+- **Severity:** should-fix
+- **What's wrong:** `test_the_affected_tests_have_the_same_outcome_with_and_without_it`
+  runs pytest twice as subprocesses, with and without the root task file, and
+  asserts the two summary lines are equal as strings. Any warning emitted in one
+  subprocess and not the other fails it regardless of what the product did.
+  Observed running the full suite concurrently in two worktrees: the assertion
+  failed as `'62 passed' == '62 passed, 1 warning'`. Re-run alone in the same
+  worktree the file passes, 3 passed in 32s, so the cause is concurrent load and
+  not the change under review. The other worktree's suite was green at the same
+  revision.
+- **Why I didn't act:** it is nobody's current task, and the fix needs a decision
+  about which parts of the summary are load-bearing rather than a quick edit.
+- **Drafted fix:** compare the passed / failed / skipped / xfailed counts the two
+  runs report, not the rendered summary line — the test's stated question is
+  whether the same tests reach the same outcomes, and the warning count is not
+  part of that. Keep the existing guards that the run was not vacuous.
+- **Related:** may be the same underlying sensitivity to load as the entry on
+  candidate tests being set aside nondeterministically, queued against #184, the
+  determinism umbrella. Also worth checking against the open investigation into
+  a local `pytest` run collecting ten fewer tests than CI does on the same
+  commit, since both are about the suite behaving differently by environment.
+- **Status:** open
