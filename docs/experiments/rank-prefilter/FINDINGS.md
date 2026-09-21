@@ -138,6 +138,44 @@ model choice is a cost question, and on these corpora the cost difference is
 small. #348 ranks with the configured embedding model, and adds no setting
 for a second one.
 
+## Replaying the built walk over two recorded reviews (#348's first Acceptance item)
+
+`replay_stop_rule.py` feeds each review's recorded verdicts through the
+product's own `rank_pairs` and `_walk_ranked` (stop after 1 kill, rounds of 4
+tests per defect doubling each round, `voyage-3.5-lite`), and compares every
+criterion's class, covered count and unknown count against the full sweep.
+Output in `replay-340.log` and `replay-45-run3.log`.
+
+| review | criteria that differ | pairs asked, of the full sweep | mean / median judgements per covered defect | first-kill rank mean / median / p90 / max |
+|---|---|---|---|---|
+| #340 (`07d61a8`) | 0 of 28 | 1,968 of 18,419 (10.7%) | 12.4 / 4 | 7.6 / 2 / 19 / 91 |
+| #45 run 3 (`82b29b5`) | 0 of 33 | 9,524 of 50,540 (18.8%) | 49.5 / 4 | 34.6 / 4 / 90 / 452 |
+
+**Every rating is identical, as it must be by construction.** The saving is
+81% and 89% of the pair judgements.
+
+**The "under 10 per covered defect" bar is missed, for two reasons:**
+
+1. **Growing rounds overshoot.** A kill at rank 5 is found in the second round,
+   which asks ranks 5 to 12. Against stopping exactly at the first kill:
+
+   | round policy | #340 mean | #45 mean | sequential rounds to sweep a defect, #340 / #45 |
+   |---|---|---|---|
+   | stop exactly (1 test per round) | 7.6 | 34.6 | 282 / 532 |
+   | fixed 4 | 9.5 | 36.4 | 71 / 133 |
+   | 4, then ×1.5 | 10.8 | 44.0 | 9 / 11 |
+   | 4, then ×2 (built) | 12.4 | 49.5 | 7 / 8 |
+
+2. **On #45 even a perfect stop misses it.** The first kill's mean rank is 34.6
+   there, against a median of 4: a minority of defects have their first kill
+   deep in the ranking (p90 90, max 452), and a mean over covered defects is
+   dominated by them. #45's first-kill tail is much longer than the three
+   corpora the ranking was measured on (#340's p90 is 19).
+
+The median is 4 on both reviews under every policy. A bar stated as a mean
+over covered defects measures the tail of the ranking, not the typical
+defect.
+
 ## Caveats
 
 - The oracle for #314/#316/#340 rankings is the pair judge's own kills, noisy

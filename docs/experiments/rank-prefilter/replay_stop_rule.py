@@ -167,6 +167,51 @@ def main() -> None:
         f"stopped early; mean {sum(per_covered) / max(1, len(per_covered)):.1f} judgements "
         f"per covered defect"
     )
+    # What the rounds cost against stopping exactly at the first kill: the first
+    # kill's rank is the least any walk in this order could have asked.
+    first_kill = {}
+    for v in list(static.values()):
+        if v.kills:
+            rank = ranks[(v.defect_id, v.test_id)]
+            first_kill[v.defect_id] = min(rank, first_kill.get(v.defect_id, rank))
+    exact = sorted(first_kill.values())
+    asked = sorted(per_covered)
+
+    def q(xs, p):
+        return xs[min(len(xs) - 1, int(p * len(xs)))] if xs else 0
+
+    print(
+        f"  judgements per covered defect: median {q(asked, 0.5)}, p75 {q(asked, 0.75)}, "
+        f"p90 {q(asked, 0.9)}, max {asked[-1] if asked else 0}"
+    )
+    # Other round policies, costed from the same first-kill ranks: a defect
+    # whose first kill is at rank r costs the first round boundary at or past r,
+    # and the rounds needed is the count of boundaries to reach the longest list.
+    longest = max((len([p for p in pairs if p.defect.id == d]) for d in first_kill), default=0)
+    policies = {
+        "stop exactly (1 per round)": lambda k: k + 1,
+        "fixed 4": lambda k: 4 * (k + 1),
+        "4 then x1.5": lambda k: int(4 * (1.5 ** (k + 1) - 1) / 0.5),
+        "4 then x2 (built)": lambda k: 4 * (2 ** (k + 1) - 1),
+    }
+    for name, boundary in policies.items():
+        costs, rounds = [], 0
+        for r in exact:
+            k = 0
+            while boundary(k) < r:
+                k += 1
+            costs.append(boundary(k))
+        while boundary(rounds) < longest:
+            rounds += 1
+        print(
+            f"  policy {name:28} mean {sum(costs) / max(1, len(costs)):6.1f}, "
+            f"median {q(sorted(costs), 0.5)}, rounds to sweep {longest}: {rounds + 1}"
+        )
+    print(
+        f"  first-kill rank (the least any walk could ask): mean "
+        f"{sum(exact) / max(1, len(exact)):.1f}, median {q(exact, 0.5)}, p90 {q(exact, 0.9)}, "
+        f"max {exact[-1] if exact else 0}"
+    )
 
 
 if __name__ == "__main__":
