@@ -6282,3 +6282,44 @@ the record.
   > deliberately collapsed for readability, the output says how many and why,
   > rather than omitting it silently.
 - **Status:** open
+
+### [2026-09-21] Two decomposition calls disagreeing about one span aborts the whole decomposition
+- **Kind:** filing
+- **Found during:** #348, Gate 1 run 1
+- **Where:** src/acceptance/requirement/obligations.py:1155
+- **Severity:** should-fix
+- **What's wrong:** The coverage step called the trailing phrase "exactly as
+  today" of a Task paragraph uncovered by the derived obligations. The call that
+  was then asked about that phrase alone produced neither an obligation nor an
+  open question. `obligations.py` raises `SchemaValidationError` on that, and
+  `decompose` exits 1 with no obligation set at all. The raise exists so an
+  uncovered property is not lost silently, which is right; losing the whole run
+  is the other extreme. Same shape as the closed #266, where one weak obligation
+  aborted a whole review.
+- **Why I didn't act:** out of scope for #348, and it is in the decomposition
+  code, which #181 owns. The wording was weak as well and was fixed in the task
+  file for run 2.
+- **Drafted fix:** file as a sub-issue of #181, the decomposition umbrella:
+
+  > **Title:** Two decomposition calls disagreeing about one span abort the whole
+  > decomposition
+  >
+  > When the coverage step judges a span of a requirement uncovered and the
+  > follow-up call about that span alone yields neither an obligation nor an open
+  > question, `requirement/obligations.py` raises `SchemaValidationError` and
+  > `decompose` (and every review) exits with nothing. Observed at #348's Gate 1,
+  > `dogfood-logs/348-gate1-run1/`, on the span "exactly as today".
+  >
+  > The two calls contradict each other, and that is information, not an error:
+  > either the span has no content of its own (the follow-up is right) or the
+  > follow-up missed a property (the coverage step is right). Neither answer
+  > justifies destroying the run.
+  >
+  > **Deliverable:** the contradiction is recorded, never raised. The span becomes
+  > an open question on its requirement stating that the two steps disagreed
+  > and quoting the span, so the property is surfaced rather than lost, and
+  > the rest of the decomposition completes.
+  >
+  > **Acceptance:** a replayed decomposition in which the span call yields
+  > nothing completes, and carries an open question quoting the span.
+- **Status:** filed as #355 (sub-issue of #181), approved at #348 Gate 1, 2026-09-21
