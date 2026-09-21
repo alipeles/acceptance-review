@@ -5936,3 +5936,77 @@ the record.
   run to run makes every execution-tier figure non-comparable between runs, which
   is a determinism problem and not only a flakiness one.
 - **Status:** open
+
+### [2026-09-21] A requirement saying what a check asks is decomposed as a claim that the answer is always yes, and the refusal sentence is dropped
+- **Kind:** filing
+- **Found during:** #335, Gate 1, runs 1 and 2
+- **Where:** `src/acceptance/requirement/obligations.py` (decomposition)
+- **Severity:** should-fix
+- **What's wrong:** The input (run 2, `task-03`) is *"Only an edit that does
+  change behaviour reaches the second question, which asks whether the changed
+  behaviour matches the defect's defective behaviour. An edit whose changed
+  behaviour does not match is refused."* It yields
+  `changed-behaviour-matches-defect-behaviour`: *"The changed behaviour matches
+  the defect's defective behaviour."* That is a claim about every edit, which no
+  implementation can satisfy; the requirement was that the software *asks* and
+  *refuses* on a no. The third sentence, the refusal, produces no obligation at
+  all. Run 1 phrased it as a question and got the same obligation, so rewording
+  did not change it.
+- **Why I didn't act:** decomposition is outside #335; belongs under #181, the
+  decomposition umbrella.
+- **Drafted fix:** file as a sub-issue of #181:
+
+  > **A requirement describing a check is decomposed as the check always passing**
+  >
+  > A requirement stating that the software asks a question and refuses on a
+  > negative answer is decomposed into an obligation asserting the answer is
+  > positive, and the refusal is lost. Observed at #335's Gate 1
+  > (`dogfood-logs/335-gate1-run2/`, `task-03` →
+  > `changed-behaviour-matches-defect-behaviour`), stable across a rewording
+  > (`335-gate1-run1`, `task-04` → `defective-behaviour-match`), and again in
+  > runs 3 and 4 after the sentence was restated a third time. Run 3 shows the
+  > same shape a second way: *"An edit that fails either half is refused,
+  > including one that repairs a defect the code already had"* yielded
+  > `repairs-existing-defect`, *"The change includes an edit that repairs a
+  > defect the code already had."*
+  >
+  > Related, not the same: #342 (a prohibition keeps its verb and loses its
+  > negation) and #343 (a condition dropped from the second of two conjuncts).
+  > All three lose the operator — negation, condition, interrogative — and keep
+  > the content.
+  >
+  > **Acceptance.** The `task-03` input above decomposes to obligations a correct
+  > implementation satisfies — the check asks, and refuses a non-matching edit —
+  > and a regression case pins it.
+- **Status:** open
+
+### [2026-09-21] A plain Constraints prohibition yields an open question instead of an obligation
+- **Kind:** filing
+- **Found during:** #335, Gate 1, run 1 (carried unchanged into run 2)
+- **Where:** `src/acceptance/requirement/obligations.py` (decomposition)
+- **Severity:** should-fix
+- **What's wrong:** The constraint *"Neither question is shown the tests, or what
+  the tests did under the edit."* produced no obligation and the open question
+  `constraint-01-open-1`: *"What specific check or behavior should be preserved
+  or changed regarding whether the two questions are shown the tests, or what the
+  tests did under the edit?"* The constraint answers it, and "the two questions"
+  is defined in the Task section above it. The human ruled it a wrong question at
+  the gate and chose to continue with the missing obligation carried by hand.
+- **Why I didn't act:** decomposition is outside #335.
+- **Drafted fix:** file as a sub-issue of #181, the decomposition umbrella:
+
+  > **A prohibition in Constraints is turned into an open question the
+  > prohibition itself answers**
+  >
+  > Observed at #335's Gate 1 (`dogfood-logs/335-gate1-run1/`, `constraint-01`).
+  > The constraint is a complete prohibition; the decomposer derived no
+  > obligation and asked what should be "preserved or changed". Its referent,
+  > "the two questions", is defined in the Task section, so this may be #178
+  > (open questions about terms another section defines); it may instead be a
+  > prohibition-handling failure related to #342. The run does not separate the
+  > two. Carried unchanged by `--continue` into run 2, so reproduced once only.
+  >
+  > **Acceptance.** The constraint above yields an obligation that a verifier
+  > shown neither the tests nor their results satisfies, and no open question;
+  > a regression case pins it.
+- **Status:** open

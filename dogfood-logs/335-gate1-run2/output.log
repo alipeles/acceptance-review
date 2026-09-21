@@ -1,0 +1,92 @@
+run 58eb650f5d04d24e
+  continuing 384604f689ad8fca
+  requirements: 0 derived, 9 carried, 2 revised; 7 decompose call(s)
+  REMOVED task-02: Split the check into two questions asked in sequence. (2 obligation(s) dropped)
+  continue this run with: --continue 58eb650f5d04d24e
+Model usage by stage:
+  stage                        model                                                          calls  prompt  output  cached  this run  recorded
+  ---------------------------  -------------------------------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose                    openai/gpt-5.4-mini                          5 (5 live / 0 replayed)  26,737     678   18.2%   $0.0198   $0.0198
+  decompose-summary            openai/gpt-5.4                               2 (2 live / 0 replayed)   1,773     564    0.0%   $0.0129   $0.0129
+  obligation linking           voyage/voyage-3.5-lite, openai/gpt-5.4-mini  2 (2 live / 0 replayed)   1,307      74    0.0%   $0.0009   $0.0009
+  requirement carry alignment  openai/gpt-5.4-mini                          1 (1 live / 0 replayed)     451      36    0.0%   $0.0005   $0.0005
+  this run spent $0.0341 on 10 live call(s); the evidence cost $0.0341 to record (0 call(s) replayed at no cost to this run)
+Requirements: 11   with obligations: 9   raised a question: 1   deliberately none: 1
+
+[task-01] Before an injected edit's result is allowed to count as evidence, the review
+    checks that the edit really makes its named defect true. That check asks two
+    questions, in sequence.
+    -> evidence-check-defect-truth  [functional/explicit]
+       The review checks that an injected edit's result really makes its named defect
+       true before counting it as evidence.
+    -> two-questions-sequence  [functional/explicit]
+       The check asks two questions in sequence.
+
+[task-02] The first asks whether the edit changes the code's behaviour at all. Both
+    versions of the code are compared with comments and whitespace removed, so an edit
+    that only reformats or re-comments the code is not mistaken for a change. An edit
+    that changes no behaviour is refused at this step, without the defect being
+    considered.
+    -> behavior-change-check  [functional/explicit]
+       Determine whether the edit changes the code's behaviour at all.
+    -> ignore-comments-and-whitespace-in-comparison  [invariant/explicit]
+       Compare both versions of the code with comments and whitespace removed.
+    -> reformatting-not-counted-as-change  [invariant/explicit]
+       An edit that only reformats or re-comments the code is not mistaken for a change.
+    -> no-behavior-change-refusal  [invariant/explicit]
+       The step refuses edits that change no behaviour, without considering the defect.
+
+[task-03] Only an edit that does change behaviour reaches the second question, which
+    asks whether the changed behaviour matches the defect's defective behaviour. An edit
+    whose changed behaviour does not match is refused.
+    -> change-behaviour-reaches-second-question  [invariant/explicit]
+       Only edits that do change behaviour reach the second question.
+    -> changed-behaviour-matches-defect-behaviour  [functional/explicit]
+       The changed behaviour matches the defect's defective behaviour.
+
+[task-04] An edit is verified only when it passes both. When an edit is refused, the
+    review records which of the two questions refused it and why, so that the two can be
+    told apart wherever refusals are counted.
+    -> passes-both-questions  [invariant/explicit]
+       An edit is verified only when it passes both questions.
+    -> refusal-records-question-and-reason  [functional/explicit]
+       When an edit is refused, the review records which of the two questions refused it
+       and why.
+
+[task-05] Verification is on by default.
+    -> verification-on-by-default  [invariant/explicit]
+       Verification is on by default.
+
+[constraint-01] Neither question is shown the tests, or what the tests did under the
+    edit.
+    ?  constraint-01-open-1
+       What specific check or behavior should be preserved or changed regarding whether
+       the two questions are shown the tests, or what the tests did under the edit?
+
+[exclusion-01] Building an edit, choosing the region it falls in, or the mechanical
+    checks that decide whether it is valid.
+    -> no-edit-building-region-or-validity-checks  [functional/explicit]
+       The change does not include building an edit, choosing the region it falls in, or
+       the mechanical checks that decide whether it is valid.
+
+[exclusion-02] Which tests are candidates, and running them.
+    -> exclude-candidate-selection-and-test-running  [functional/explicit]
+       The change does not include which tests are candidates or running them.
+
+[exclusion-03] What a verified or unverified result does downstream once the check has
+    decided.
+    -> downstream-effects-excluded  [functional/explicit]
+       The change does not alter what a verified or unverified result does downstream
+       once the check has decided.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       This is a section marker only: "Implementation" names the implementation section
+       and, standing alone, imposes no checkable requirement.
+
+[completion-02] Documentation update: the mutation-targeting decision record states the
+    measured refusal rates that justify turning verification on by default.
+    -> decision-record-doc-update  [docs_config/explicit]
+       The mutation-targeting decision record states the measured refusal rates that
+       justify turning verification on by default.
+
