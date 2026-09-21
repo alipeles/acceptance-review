@@ -104,10 +104,15 @@ class _Reporter:
         # `None` when the plugin was loaded without a report path. It still
         # accumulates, so nothing else has to care whether reporting is on.
         self._path = path
-        self._pending: dict[str, tuple[str, str | None, str | None]] = {}
+        self._pending: dict[str, tuple[str, str | None, str | None, str | None]] = {}
 
     def note(
-        self, node_id: str, kind: str, reason: str | None = None, error_type: str | None = None
+        self,
+        node_id: str,
+        kind: str,
+        reason: str | None = None,
+        error_type: str | None = None,
+        detail: str | None = None,
     ) -> None:
         # Setup and teardown can each fail after the call phase already
         # recorded something. First non-passing observation wins, because it is
@@ -115,15 +120,21 @@ class _Reporter:
         existing = self._pending.get(node_id)
         if existing is not None and existing[0] != "passed":
             return
-        self._pending[node_id] = (kind, reason, error_type)
+        self._pending[node_id] = (kind, reason, error_type, detail)
 
     def flush(self, node_id: str) -> None:
         entry = self._pending.pop(node_id, None)
         if entry is None or self._path is None:
             return
-        kind, reason, error_type = entry
+        kind, reason, error_type, detail = entry
         line = json.dumps(
-            {"test_id": node_id, "kind": kind, "reason": reason, "error_type": error_type},
+            {
+                "test_id": node_id,
+                "kind": kind,
+                "reason": reason,
+                "error_type": error_type,
+                "detail": detail,
+            },
             sort_keys=True,
         )
         with open(self._path, "a", encoding="utf-8") as handle:
@@ -139,6 +150,39 @@ def _classify(report) -> tuple[str, str | None]:  # type: ignore[no-untyped-def]
     if TIMEOUT_MARKER in text:
         return "timed_out", "the test exceeded its own time budget"
     return "failed", None
+
+
+#: How much of one failure's text is kept. Deliberately small: a review can set
+#: aside dozens of candidate tests — 76 of 232 on #340's Gate 2 — and the whole
+#: traceback for each would become the report, which is the §16 failure the
+#: per-defect pair counts already had to be rescued from.
+_DETAIL_LIMIT = 400
+
+
+def _detail(report) -> str | None:  # type: ignore[no-untyped-def]
+    """What pytest said the failure WAS, bounded to one readable line.
+
+    Only pytest's `E ` lines — the exception and its message — not the frames
+    around them. That is what answers the question a reader of a set-aside test
+    has, which is *why*, and it is what lets failures be grouped by cause.
+
+    **Without this a failing candidate test records nothing.** `_run_in_workspace`
+    sends the run's stdout and stderr to `DEVNULL`, so before this the entire
+    evidence for setting a test aside was the sentence "the test failed against
+    the code as delivered" — identical for every failure, on every run. #340's
+    Gate 2 set aside 76 candidate tests, a third of the evidence available to the
+    execution tier, and which tests failed for which reason could not be
+    recovered afterwards at all.
+    """
+    text = getattr(report, "longreprtext", "") or ""
+    lines = [
+        stripped[2:].strip()
+        for stripped in (line.strip() for line in text.splitlines())
+        if stripped.startswith("E ")
+    ]
+    if not lines:
+        return None
+    return " / ".join(lines)[:_DETAIL_LIMIT] or None
 
 
 def _error_type(report) -> str | None:  # type: ignore[no-untyped-def]
@@ -219,7 +263,7 @@ class SandboxPlugin:
         if report.failed:
             kind, reason = _classify(report)
             error_type = _error_type(report) if kind == "failed" else None
-            self._reporter.note(report.nodeid, kind, reason, error_type)
+            self._reporter.note(report.nodeid, kind, reason, error_type, _detail(report))
             return
         if report.when == "call" and report.passed:
             self._reporter.note(report.nodeid, "passed", None)

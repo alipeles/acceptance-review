@@ -473,8 +473,15 @@ def _set_aside_block(review: Review) -> list[str]:
     """
     lines = ["Candidate tests set aside (no conclusion rests on these):"]
     for test in review.set_aside_tests:
-        lines.append(f"  [{test.kind.value}] {test.test_id}")
+        label = test.kind.value if not test.error_type else f"{test.kind.value}: {test.error_type}"
+        lines.append(f"  [{label}] {test.test_id}")
         lines.append(f"    {test.reason}")
+        # What actually happened to THIS test, as distinct from the category the
+        # line above puts it in. Without it every failure renders identically and
+        # a reader cannot tell one cause from another, which is what made #340's
+        # 76 set-aside tests undiagnosable.
+        if test.detail:
+            lines.append(f"    it failed with: {test.detail}")
     return lines
 
 
