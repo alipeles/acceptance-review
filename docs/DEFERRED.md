@@ -6037,3 +6037,20 @@ the record.
   a local `pytest` run collecting ten fewer tests than CI does on the same
   commit, since both are about the suite behaving differently by environment.
 - **Status:** open
+
+### [2026-09-21] main fails both lint gates on a committed experiment script
+- **Kind:** defect
+- **Found during:** #335, implementation
+- **Where:** `docs/experiments/rank-prefilter/score_rank.py`, committed to main
+  in `b6ef92f` ("Commit the ranking measurement that #348 rests on")
+- **Severity:** blocker (for every branch's CI, not for #335's code)
+- **What's wrong:** `ruff check .` reports I001 (unsorted imports, line 23) and
+  `ruff format --check .` would reformat the file. CI runs both, so every branch
+  cut from main after `b6ef92f` fails lint until this is fixed. #335's own files
+  pass both.
+- **Why I didn't act:** another task's file, landed by #348's session.
+- **Drafted fix:** `.venv/bin/ruff check --fix` and `.venv/bin/ruff format` on
+  that one file, committed straight to main. Or add `docs/experiments/` to
+  ruff's `extend-exclude`, if experiment scripts are not meant to be held to the
+  gate; that is #348's call.
+- **Status:** open
