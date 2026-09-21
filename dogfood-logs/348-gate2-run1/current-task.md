@@ -35,12 +35,6 @@ runs today.
   aside for other reasons, such as what the project's tests did under an injected
   edit.
 
-## Completion expectations
-- Implementation
-- Documentation update: the ranking experiment's findings record whether the
-  ranking still holds with the embedding request the review can send, and what
-  stopping early costs and saves on recorded reviews.
-
 ## Scope exclusions
 - Changing what is sent in an embedding request.
 - Skipping pairs of a defect that no test has caught, by rank or by any other
