@@ -1,0 +1,123 @@
+run d1504313805d47f8
+  continuing 93fa206c07245a75
+  requirements: 0 derived, 10 carried, 1 revised; 6 decompose call(s)
+  REMOVED task-01: The review asks a model, for each defect and each candidate test, whether the
+test would catch the defect. A defect counts as covered as soon as one test is
+recorded as catching it, so once that has happened, asking about the defect's
+remaining tests cannot change how the defect is rated. The review should stop
+paying for those questions. (4 obligation(s) dropped)
+  continue this run with: --continue d1504313805d47f8
+Model usage by stage:
+  stage                        model                                     calls  prompt  output  cached  this run  recorded
+  ---------------------------  ----------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose                    openai/gpt-5.4-mini     5 (5 live / 0 replayed)  27,185     767    0.0%   $0.0238   $0.0238
+  decompose-summary            openai/gpt-5.4          1 (1 live / 0 replayed)   1,136     672    0.0%   $0.0129   $0.0129
+  obligation linking           voyage/voyage-3.5-lite  1 (1 live / 0 replayed)     884       0       —   $0.0000   $0.0000
+  requirement carry alignment  openai/gpt-5.4-mini     1 (1 live / 0 replayed)     511      24    0.0%   $0.0005   $0.0005
+  this run spent $0.0373 on 8 live call(s); the evidence cost $0.0373 to record (0 call(s) replayed at no cost to this run)
+Requirements: 11   with obligations: 11
+
+[task-01] Before asking a model whether a candidate test would catch a defect, the
+    review ranks each defect's candidate tests by how similar the test's source is to
+    the defect's description, using the embedding model the review is already configured
+    with. It then asks about a defect's tests in that ranked order, in groups sized to
+    the way questions are already batched, and stops asking about a defect once the
+    configured number of its tests have been recorded as catching it. That number
+    defaults to one.
+    -> rank-candidate-tests-by-similarity  [functional/explicit]
+       Before asking a model whether a candidate test would catch a defect, rank each
+       defect's candidate tests by how similar the test's source is to the defect's
+       description, using the embedding model the review is already configured with.
+    -> rank-tests-in-similarity-order  [functional/explicit]
+       Ask about a defect's tests in the ranked order produced by similarity between
+       each test's source and the defect's description.
+    -> batch-questions-in-existing-group-sizes  [functional/explicit]
+       Ask about a defect's tests in groups sized to the way questions are already
+       batched.
+    -> stop-after-configured-number-of-catching-tests  [functional/explicit]
+       The review stops asking about a defect once the configured number of its tests
+       have been recorded as catching it.
+    -> default-number-is-one  [functional/explicit]
+       The configured number of tests recorded as catching a defect defaults to one.
+
+[task-02] A defect none of whose tests is recorded as catching it has every one of its
+    tests asked about.
+    -> test-every-test-asked-about  [functional/explicit]
+       A defect none of whose tests is recorded as catching it has every one of its
+       tests asked about.
+
+[task-03] A pair the review stops before asking about is not answered. The review
+    records it as unjudged, with a cause naming the pair's rank and the tests that had
+    already covered the defect. Such a pair never counts toward a defect's unknown
+    pairs, and it cannot move how the defect is rated in either direction. That cause
+    can only exist on a defect that already has the configured number of catching tests.
+    -> unasked-pair-not-answered  [functional/explicit]
+       A pair the review stops before asking about is not answered.
+    -> unjudged-recorded  [functional/explicit]
+       The review records it as unjudged.
+    -> cause-names-rank-and-tests  [explanation_observability/explicit]
+       Record the cause with the pair's rank and the tests that had already covered the
+       defect.
+    -> unknown-pairs-exclusion  [invariant/explicit]
+       A pair the review stops before asking about does not count toward a defect's
+       unknown pairs.
+    -> defect-rating-unchanged  [invariant/explicit]
+       The defect's rating is not changed in either direction by this cause.
+    -> cause-only-on-defects-with-configured-catching-tests  [invariant/explicit]
+       The cause exists only on a defect that already has the configured number of
+       catching tests.
+
+[task-04] The report says, for each defect, how many of its pairs were asked about and
+    how many were skipped by stopping early.
+    -> pairs-asked-about-count-per-defect  [functional/explicit]
+       For each defect, report how many of its pairs were asked about.
+    -> skipped-by-stopping-early-count  [functional/explicit]
+       The report states how many pairs were skipped by stopping early for each defect.
+
+[task-05] Ranking and stopping can be turned off, so a review can still be run the way
+    it runs today.
+    -> ranking-and-stopping-can-be-turned-off  [functional/explicit]
+       Ranking and stopping can be turned off.
+    -> review-can-still-run-as-today  [compatibility/explicit]
+       A review can still be run the way it runs today.
+
+[constraint-01] The embedding calls are recorded and replayed like every other model
+    call, so two runs over the same input produce identical results.
+    -> deterministic-embedding-replay  [compatibility/explicit]
+       The embedding calls are recorded and replayed like every other model call, so two
+       runs over the same input produce identical results.
+
+[constraint-02] The question put to the model does not change. Nothing about the
+    ranking, a test's rank, or whether other tests have already caught the defect
+    reaches the model.
+    -> question-input-unchanged  [invariant/explicit]
+       The question put to the model remains unchanged.
+    -> ranking-not-exposed-to-model  [invariant/explicit]
+       The model is not given ranking information.
+    -> test-rank-not-exposed-to-model  [invariant/explicit]
+       The model is not given a test's rank.
+    -> prior-catches-not-exposed-to-model  [invariant/explicit]
+       The model is not given whether other tests have already caught the defect.
+
+[constraint-03] This works on whatever pairs are left after the review has already set
+    pairs aside for other reasons, such as what the project's tests did under an
+    injected edit.
+    -> leftover-pairs-only  [functional/explicit]
+       Apply this step only to whatever pairs remain after the review has already set
+       pairs aside for other reasons, including pairs skipped because the project's
+       tests under an injected edit already handled them.
+
+[exclusion-01] Changing what is sent in an embedding request.
+    -> embedding-request-unchanged  [docs_config/explicit]
+       The change does not alter what is sent in an embedding request.
+
+[exclusion-02] Skipping pairs of a defect that no test has caught, by rank or by any
+    other cheaper check.
+    -> skip-uncaught-pairs-by-rank-or-cheaper-check  [functional/explicit]
+       The change does not skip pairs of a defect that no test has caught, whether by
+       rank or by any other cheaper check.
+
+[exclusion-03] Changing which tests are candidates for a defect.
+    -> preserve-candidate-test-set  [invariant/explicit]
+       The change does not alter which tests are candidates for a defect.
+

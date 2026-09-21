@@ -1,16 +1,20 @@
 # Task
 
-Before asking a model whether a candidate test would catch a defect, the review
-ranks each defect's candidate tests by how similar
-the test's source is to the defect's description, using the embedding model the review is already
-configured with. It then
+The review asks a model, for each defect and each candidate test, whether the
+test would catch the defect. A defect counts as covered as soon as one test is
+recorded as catching it, so once that has happened, asking about the defect's
+remaining tests cannot change how the defect is rated. The review should stop
+paying for those questions.
+
+Before asking, the review ranks each defect's candidate tests by how similar
+the test's source is to the defect's description, using embeddings. It then
 asks about a defect's tests in that ranked order, in groups sized to the way
 questions are already batched, and stops asking about a defect once the
 configured number of its tests have been recorded as catching it. That number
 defaults to one.
 
 A defect none of whose tests is recorded as catching it has every one of its
-tests asked about.
+tests asked about, exactly as today.
 
 A pair the review stops before asking about is not answered. The review records
 it as unjudged, with a cause naming the pair's rank and the tests that had

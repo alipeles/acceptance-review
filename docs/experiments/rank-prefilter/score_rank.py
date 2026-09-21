@@ -52,7 +52,7 @@ import corpus as corpus_module
 import corpus316
 import embeddings
 
-MODEL = "voyage-code-4"
+MODEL = "voyage-code-4"  # overridden by --model
 KS = [5, 10, 20, 40, 80]
 STOPS = [1, 2]
 
@@ -236,10 +236,17 @@ def main():
         action="store_true",
         help="send no input_type on either side, as build_embedding_request does",
     )
+    parser.add_argument(
+        "--model",
+        default="voyage-code-4",
+        help="Voyage model to embed both sides with (the product's default is voyage-3.5-lite)",
+    )
     args = parser.parse_args()
     _load_voyage_key()
+    global MODEL
+    MODEL = args.model
     types = (None, None) if args.symmetric else ("query", "document")
-    print(f"input_type: description={types[0]}, test={types[1]}")
+    print(f"model: {MODEL}; input_type: description={types[0]}, test={types[1]}")
 
     # ---- #314 ---------------------------------------------------------------
     c314 = corpus_module.load(_required("ACCEPTANCE_HEAD314", "a worktree at 2945551").resolve())

@@ -114,6 +114,30 @@ The share of judgements issued is over *all* pairs, so it includes the full
 sweeps of unkilled defects (29 of #314's 75, which is why #314 stays at 40%
 even at one kill).
 
+## The product's own embedding model is enough
+
+Everything above embeds with `voyage-code-4`. The product's configured
+embedding model is `voyage-3.5-lite` (`config.py::DEFAULT_EMBEDDING_MODEL`),
+which the linking stage already uses. Scored the same way, symmetric
+(`score_rank-symmetric-voyage-3.5-lite.log`, `--model voyage-3.5-lite`):
+
+| corpus | top-20 coverage, code-4 / 3.5-lite | stop after 1 kill: mean judgements per covered defect, code-4 / 3.5-lite |
+|---|---|---|
+| #314 | 97.8% / 100.0% | 3.7 / 2.8 |
+| #316 | 95.3% / 90.7% | 4.7 / 7.4 |
+| #340 | 94.1% / 92.6% | 7.5 / 7.6 |
+
+The general model ranks a little worse on #316 and no worse elsewhere, and
+under a one-kill stop rule it stays under 10 judgements per covered defect on
+all three corpora.
+
+**Coverage@k matters less here than it did for a cutoff.** A judge that walks
+the ranking until it records a kill asks about every test of a defect that has
+none. A worse ranking costs extra judgements; it cannot change a rating. So the
+model choice is a cost question, and on these corpora the cost difference is
+small. #348 ranks with the configured embedding model, and adds no setting
+for a second one.
+
 ## Caveats
 
 - The oracle for #314/#316/#340 rankings is the pair judge's own kills, noisy
