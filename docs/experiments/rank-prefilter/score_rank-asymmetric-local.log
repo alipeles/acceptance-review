@@ -1,0 +1,43 @@
+input_type: description=query, test=document
+
+== #314 (judge kills): 75 defects x ~166 tests, 127 kills over 46 killed defects ==
+kills per defect: {'0': 29, '1': 22, '2': 9, '3-5': 10, '6-10': 5}
+first-kill rank: median 1, p75 2, p90 5, max 75
+  top-5   defect-coverage  93.5%  kill-recall  44.1%  (judging 3% of killed-defect pairs)
+  top-10  defect-coverage  95.7%  kill-recall  53.5%  (judging 6% of killed-defect pairs)
+  top-20  defect-coverage  95.7%  kill-recall  63.0%  (judging 12% of killed-defect pairs)
+  top-40  defect-coverage  97.8%  kill-recall  85.8%  (judging 24% of killed-defect pairs)
+  top-80  defect-coverage 100.0%  kill-recall  93.7%  (judging 48% of killed-defect pairs)
+  stop after 1 kill(s): 5001 of 12450 judgements (40.2%); 46 defects stop early, mean 4.1 / median 1 judgements each
+  stop after 2 kill(s): 8785 of 12450 judgements (70.6%); 24 defects stop early, mean 13.3 / median 5 judgements each
+
+== #316 (judge kills): 48 defects x ~496 tests, 268 kills over 43 killed defects ==
+kills per defect: {'0': 5, '1': 4, '2': 7, '3-5': 14, '6-10': 10, '>10': 8}
+first-kill rank: median 1, p75 2, p90 6, max 116
+  top-5   defect-coverage  88.4%  kill-recall  28.7%  (judging 1% of killed-defect pairs)
+  top-10  defect-coverage  95.3%  kill-recall  38.1%  (judging 2% of killed-defect pairs)
+  top-20  defect-coverage  97.7%  kill-recall  53.0%  (judging 4% of killed-defect pairs)
+  top-40  defect-coverage  97.7%  kill-recall  64.2%  (judging 8% of killed-defect pairs)
+  top-80  defect-coverage  97.7%  kill-recall  78.7%  (judging 16% of killed-defect pairs)
+  stop after 1 kill(s): 2689 of 23808 judgements (11.3%); 43 defects stop early, mean 4.9 / median 1 judgements each
+  stop after 2 kill(s): 4810 of 23808 judgements (20.2%); 39 defects stop early, mean 8.9 / median 4 judgements each
+
+== #340 (judge kills): 72 defects x ~282 tests, 302 kills over 68 killed defects ==
+kills per defect: {'0': 4, '1': 10, '2': 14, '3-5': 24, '6-10': 17, '>10': 3}
+first-kill rank: median 3, p75 6, p90 13, max 149
+  top-5   defect-coverage  72.1%  kill-recall  28.1%  (judging 2% of killed-defect pairs)
+  top-10  defect-coverage  86.8%  kill-recall  40.1%  (judging 4% of killed-defect pairs)
+  top-20  defect-coverage  92.6%  kill-recall  51.3%  (judging 8% of killed-defect pairs)
+  top-40  defect-coverage  95.6%  kill-recall  66.6%  (judging 15% of killed-defect pairs)
+  top-80  defect-coverage  98.5%  kill-recall  77.5%  (judging 29% of killed-defect pairs)
+  stop after 1 kill(s): 1656 of 18410 judgements (9.0%); 68 defects stop early, mean 7.8 / median 3 judgements each
+  stop after 2 kill(s): 4849 of 18410 judgements (26.3%); 58 defects stop early, mean 20.2 / median 7 judgements each
+
+executed kills (all killed attempts): 13 defects; first-kill rank median 1, p90 7, max 37
+  top-5   defect-coverage  84.6%
+  top-10  defect-coverage  92.3%
+  top-20  defect-coverage  92.3%
+  top-40  defect-coverage 100.0%
+  top-80  defect-coverage 100.0%
+
+executed kills (verified only): no scoreable attempts

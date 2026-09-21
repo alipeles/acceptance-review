@@ -65,6 +65,55 @@ basis, and on these corpora most defects are killed, so most sweeps stop
 early. Options 1 and 2 stack on it for the unkilled minority if their cost
 still matters.
 
+## Re-score without `input_type` (#348's first task), 2026-09-21
+
+**The ranking holds without Voyage's `input_type`, so #348 builds on symmetric
+embeddings and `build_embedding_request` stays untouched.** The figures above
+used the asymmetric form (description as `query`, test as `document`), which
+the product's embedding request cannot send without moving its request key and
+orphaning the recorded linking transcripts (`pair-prefilter/FINDINGS.md` §5).
+
+`score_rank.py` was first ported off the cloud machine's paths and re-run in
+the asymmetric form on this machine. It reproduced every committed figure
+above exactly (`score_rank-asymmetric-local.log`), so the symmetric run
+(`score_rank-symmetric.log`, `--symmetric`) is compared like for like.
+
+| corpus | top-20 coverage, asymmetric | top-20 coverage, symmetric | difference |
+|---|---|---|---|
+| #314 | 95.7% | 97.8% | +2.1 |
+| #316 | 97.7% | 95.3% | −2.4 |
+| #340 | 92.6% | 94.1% | +1.5 |
+| #340 executed oracle | 92.3% | 92.3% | 0 |
+
+The bar was "within about two points". Two corpora improve and one falls by
+2.4, which on #316's 43 killed defects is exactly one defect (one in 43 is
+2.3 points). The mean moves by +0.4. First-kill median rank is unchanged on
+every corpus (1, 1, 3).
+
+## The two-kill stop rule does not meet #348's "under 10 judgements" bar
+
+The port added a measure the first run lacked: how many judgements a judge
+walking the ranking issues before it has seen `stop` kills for a defect, or the
+whole list if it never does. Symmetric figures (asymmetric in the log, and
+no better):
+
+| corpus | stop after 1 kill: judgements issued / mean per covered defect | stop after 2 kills: judgements issued / mean per covered defect |
+|---|---|---|
+| #314 | 40.0% / 3.7 (46 defects stop early) | 71.4% / 17.6 (24 stop early) |
+| #316 | 11.3% / 4.7 (43) | 20.5% / 10.4 (39) |
+| #340 | 8.9% / 7.5 (68) | 26.6% / 21.1 (58) |
+
+Two effects, and the first is the larger. **A defect with exactly one
+recorded kill never reaches a second, so under a two-kill rule it pays the full
+sweep** — 22 of #314's 46 killed defects, 10 of #340's 68. And the mean per
+covered defect is pulled up by a long tail: the medians at two kills are 4, 4
+and 7. With one kill, every killed defect stops early and the means fall to
+3.7 to 7.5.
+
+The share of judgements issued is over *all* pairs, so it includes the full
+sweeps of unkilled defects (29 of #314's 75, which is why #314 stays at 40%
+even at one kill).
+
 ## Caveats
 
 - The oracle for #314/#316/#340 rankings is the pair judge's own kills, noisy
