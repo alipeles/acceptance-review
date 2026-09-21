@@ -4,13 +4,13 @@ Run `a1c00b42b03c0fb7`, continuing `7be8d2eaf9d5acd6`. 12 live calls, $0.0463 �
 a third of run 1's cost, because 5 of the 7 requirements were carried and only 2
 were revised. Worktree `334-sample-candidate-edits` at `0b751b4`.
 
-**Superseded by run 3, and the acceptance below was withdrawn.** See the
-correction at the end: this run recorded 15 obligations and printed 14, so the
-breakdown reviewed at the gate was not the set the tool held.
+**Accepted, subject to the human's confirmation at the gate.** 14 obligations
+over 7 requirements. No duplicates, no invented obligations, none of the real
+requirements missing, zero open questions.
 
-**As judged at the time:** accepted, subject to the human's confirmation at the
-gate. 14 obligations over 7 requirements. No duplicates, no invented obligations,
-none of the real requirements missing, zero open questions.
+This acceptance was withdrawn for a few hours on 2026-09-21 and then reinstated.
+The correction at the end of this file explains why: the withdrawal rested on a
+misreading of the ledger, not on anything wrong with this run.
 
 ## What the rewrite changed
 
@@ -46,17 +46,28 @@ is the correct outcome under the gate's *implementation detail* case — it is a
 decision the builder makes — but it means run 2 provides no evidence either way
 about the decomposer's willingness to ask.
 
-## Correction, written while judging run 3
+## Correction — an alarm I raised and then withdrew
 
-The "14 obligations, no duplicates" above describes the **printed** breakdown.
-The decomposition ledger for this run holds **15**. The requirement on the
-compiled-form check recorded three obligations and printed two; the one never
-shown was `compiled-before-after-compare-compiled-forms`, *"Compile the code
-before and after the edit and compare the two compiled forms."*, marked
-`importance: critical`.
+While judging run 3 I noticed that this run's ledger lists **15** obligations
+under `derivations[].obligations` while the breakdown printed **14**, and
+concluded that the renderer was hiding one. That was wrong, and it cost the
+human a withdrawn confirmation.
 
-So this run did carry a third near-duplicate under that requirement, and the
-claim that it had no duplicates was wrong. Run 1 has the same shape: 25 in the
-ledger, 24 printed, `compiled-before-after-comparison` never shown.
+**The two numbers count different things.** `derivations[].obligations` records
+what each requirement *derived*, before linking. The breakdown renders what
+survived. This run's ledger holds exactly one `merge_decisions` entry, with
+`same_requirement: true`, and I recomputed its two fingerprints — sha256 over
+id, description and observable behaviour, per `ledger.py::obligation_fingerprint`
+— against every obligation in the run. They are `compiled-form-change-check` and
+`compiled-before-after-compare-compiled-forms`.
 
-Full detail and the queued filing are in `../334-gate1-run3/judgement.md`.
+So the pair was recognised as one obligation and merged, which is decomposition
+working. 14 is the true set. Run 3's report of "3 obligation(s) dropped" counts
+derivations, and is likewise correct.
+
+**What went wrong in the judging, for the next person.** I compared two counts,
+formed a hypothesis about the renderer, and reported it as a finding without
+reading the code behind either number. The hypothesis was labelled as unverified
+and still filed as a blocker. Reading `cli.py::_requirement_block` would have
+shown in a minute that it iterates the requirement map's dispositions rather
+than the obligation set, which rules the renderer out immediately.

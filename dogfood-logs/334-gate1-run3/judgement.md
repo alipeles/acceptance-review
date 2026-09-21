@@ -38,29 +38,47 @@ one obligation each.
 Every behaviour in the mandate appears exactly once. Nothing invented, nothing
 missing, zero open questions.
 
-## The display defect, found here
+## What "3 obligation(s) dropped" meant, and a false alarm I raised over it
 
-The ledger and the printed breakdown disagreed in runs 1 and 2:
+The count is right and the breakdown is right. I initially read them as
+contradicting each other and reported a defect that does not exist. Recorded
+here because the same trap is one command away for the next person.
 
-| run | ledger | printed | never printed |
+The two figures count different things:
+
+| run | `derivations[].obligations` | printed | merges recorded |
 |---|---|---|---|
-| 1 | 25 | 24 | `compiled-before-after-comparison` |
-| 2 | 15 | 14 | `compiled-before-after-compare-compiled-forms` |
-| 3 | 12 | 12 | — |
+| 1 | 25 | 24 | 1 |
+| 2 | 15 | 14 | 1 |
+| 3 | 12 | 12 | 0 |
 
-Both hidden obligations are `importance: critical` and carry their own source
-span. Both sit in the one requirement that also held near-duplicates; run 3,
-which had none, hid nothing. **Hypothesis, not verified:** the renderer suppresses
-one of a near-identical pair while the persisted set keeps both. The rendering
-code was not read.
+`derivations[].obligations` in the ledger is what each requirement **derived**,
+before linking. The breakdown renders what **survived**. A merged pair therefore
+shows as two in the ledger and one on screen, and the gap is the merge count.
 
-This is the reason run 2's judgement had to be corrected. It matters beyond this
-task: Gate 1 is the human confirming the breakdown, every later stage judges the
-persisted set rather than the printed one, and the two diverge precisely when
-duplicates are present. Queued as a filing.
+Verified for run 2 rather than assumed: its ledger holds one `merge_decisions`
+entry with `same_requirement: true`, and recomputing that entry's two
+fingerprints — sha256 over id, description and observable behaviour, per
+`ledger.py::obligation_fingerprint` — matches `compiled-form-change-check` and
+`compiled-before-after-compare-compiled-forms`. The near-duplicate was
+recognised and merged. That is the decomposer doing the thing #277, "one
+requirement yields two obligations stating the same property", says it fails to
+do.
+
+**The error, plainly.** I compared two counts, hypothesised that the renderer
+suppressed one of a near-identical pair, and filed it as a blocker while
+labelling the hypothesis unverified. A minute in `cli.py::_requirement_block`
+would have ruled the renderer out — it iterates the requirement map's
+dispositions, not the obligation set, so it cannot suppress anything. The human
+withdrew a Gate 1 confirmation on the strength of it.
+
+**What survives.** Run 1's `failed-candidate-set-aside` and `next-is-tried` still
+did not merge, and run 1 records only that one merge decision, so #277's
+underlying problem is real. The compiled-form pair is simply not an example of it.
 
 ## Method note
 
-Counts taken from `.acceptance/ledger/<run>.json`, field `derivations[].obligations`,
-against `grep -c '^    -> ' output.log`. The ledger is per-run local state and is
-not committed, so the figures above are the record.
+`.acceptance/ledger/<run>.json` is per-run local state and is not committed, so
+the figures above are the record. To compare like with like, count
+`derivations[].obligations` **minus** `merge_decisions` entries whose
+`same_requirement` is true, against `grep -c '^    -> ' output.log`.
