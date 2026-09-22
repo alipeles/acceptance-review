@@ -1,0 +1,11 @@
+review 82b29b53b, stop after 1 kill(s)
+  criteria: 33; evidence class, covered and unknown differ on 0
+  pairs the full sweep asked: 50540; the walk asked 9524 (18.8%), skipped 41016
+  rounds: 8, pairs per round [380, 360, 544, 768, 1472, 2176, 3584, 240]
+  defects: 95; covered 85, of which 85 stopped early; mean 49.5 judgements per covered defect
+  judgements per covered defect: median 4, p75 28, p90 124, max 508
+  policy stop exactly (1 per round)   mean   34.6, median 4, rounds to sweep 532: 532
+  policy fixed 4                      mean   36.4, median 4, rounds to sweep 532: 133
+  policy 4 then x1.5                  mean   44.0, median 4, rounds to sweep 532: 11
+  policy 4 then x2 (built)            mean   49.5, median 4, rounds to sweep 532: 8
+  first-kill rank (the least any walk could ask): mean 34.6, median 4, p90 90, max 452

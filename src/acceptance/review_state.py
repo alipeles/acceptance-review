@@ -271,7 +271,7 @@ class PairVerdict(_Model):
 
 
 class UnjudgedCause(str, Enum):
-    """Why a pair carries no verdict. Three causes, kept apart deliberately.
+    """Why a pair carries no verdict. The causes are kept apart deliberately.
 
     `MappingResult` draws the same distinction between `unmapped_obligation_ids`
     and `indeterminate_obligation_ids`, for the same reason: one is a decision we
@@ -280,9 +280,11 @@ class UnjudgedCause(str, Enum):
     job, and the remedies are opposite — a wrong `PREFILTERED` means fixing the
     filter, a rising `UNANSWERED` count means the batch is too large.
 
-    Only `PREFILTERED` is a claim about the pair. The other two are admissions
-    that nobody looked, and `defects/support.py` counts them towards a criterion's
-    `unknown` tally on that basis.
+    Only `PREFILTERED` is a claim about the pair. `UNANSWERED` and
+    `PASSED_UNDER_EDIT` are admissions that nobody looked, and
+    `defects/support.py` counts them towards a criterion's `unknown` tally on that
+    basis. `DEFECT_ALREADY_COVERED` is also an admission that nobody looked, but
+    about a defect whose rating no answer could move, so it is not counted.
     """
 
     PREFILTERED = "prefiltered"
@@ -305,6 +307,21 @@ class UnjudgedCause(str, Enum):
     nothing, so it skips nothing and every pair for that defect is asked.
     """
 
+    DEFECT_ALREADY_COVERED = "defect_already_covered"
+    """Ranked below tests already recorded as catching the defect, so not asked.
+
+    #348. The judge reads each defect's tests in order of similarity to the
+    defect's description and stops once enough of them are recorded as
+    catching it. A defect is covered at one kill (`defects/support.py`), so a
+    further answer cannot move its rating in either direction, and the question
+    is not worth paying for.
+
+    **The only cause that exists solely on a covered defect.** That is what
+    makes it sound to leave it out of the `unknown` tally, and it is enforced
+    rather than assumed: `UnjudgedPair` requires the killing tests to be named,
+    and `derive_support` refuses a review in which they are not in fact kills.
+    """
+
 
 class UnjudgedPair(_Model):
     """One pair left without a verdict, and why (#314).
@@ -319,6 +336,29 @@ class UnjudgedPair(_Model):
     test_id: str
     cause: UnjudgedCause
     reason: str
+    # Both set only for `DEFECT_ALREADY_COVERED` (#348), and required there: the
+    # pair's 1-based position in its defect's similarity ranking, and the tests
+    # already recorded as catching the defect when the judge stopped. Typed
+    # fields rather than words in `reason`, because `derive_support` checks the
+    # second against the verdicts and a sentence cannot be checked.
+    rank: int | None = Field(default=None, ge=1)
+    covered_by: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _ranked_stop_names_its_basis(self) -> UnjudgedPair:
+        if self.cause is UnjudgedCause.DEFECT_ALREADY_COVERED:
+            if self.rank is None or not self.covered_by:
+                raise ValueError(
+                    f"{self.defect_id} x {self.test_id}: a pair left unasked because its "
+                    "defect was already covered must name its rank and the tests that "
+                    "covered the defect"
+                )
+        elif self.rank is not None or self.covered_by:
+            raise ValueError(
+                f"{self.defect_id} x {self.test_id}: rank and covered_by belong only to "
+                f"{UnjudgedCause.DEFECT_ALREADY_COVERED.value}, not {self.cause.value}"
+            )
+        return self
 
 
 class RequiredEvidence(str, Enum):

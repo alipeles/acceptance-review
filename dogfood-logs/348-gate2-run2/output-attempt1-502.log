@@ -1,0 +1,90 @@
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+Traceback (most recent call last):
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpcore/_sync/http_proxy.py", line 297, in handle_request
+    raise ProxyError(msg)
+httpcore.ProxyError: 502 Bad Gateway
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/llms/custom_httpx/llm_http_handler.py", line 1073, in embedding
+    response = sync_httpx_client.post(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/llms/custom_httpx/http_handler.py", line 1453, in post
+    raise e
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/llms/custom_httpx/http_handler.py", line 1441, in post
+    response: Final = self.client.send(req, stream=stream)
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+  File "/Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/contextlib.py", line 153, in __exit__
+    self.gen.throw(typ, value, traceback)
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ProxyError: 502 Bad Gateway
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/main.py", line 6859, in embedding
+    response = base_llm_http_handler.embedding(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/llms/custom_httpx/llm_http_handler.py", line 1080, in embedding
+    raise self._handle_error(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/llms/custom_httpx/llm_http_handler.py", line 6076, in _handle_error
+    raise provider_error
+litellm.llms.voyage.embedding.transformation.VoyageError: 502 Bad Gateway
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/bin/acceptance", line 8, in <module>
+    sys.exit(main())
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/src/acceptance/cli.py", line 945, in main
+    review = run_check(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/src/acceptance/cli.py", line 194, in run_check
+    review = run_review(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/src/acceptance/pipeline.py", line 509, in run_review
+    pair_mapping = judge_pairs(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/src/acceptance/defects/pair_mapping.py", line 594, in judge_pairs
+    ranks = rank_pairs(judged + held_back, client, _STAGE) if stop_after_kills is not None else {}
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/src/acceptance/defects/pair_ranking.py", line 121, in rank_pairs
+    vector_of = dict(zip(texts, _embed(texts, client, stage)))
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/src/acceptance/defects/pair_ranking.py", line 100, in _embed
+    vectors.extend(client.embed(chunk, stage=stage))
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/src/acceptance/llm.py", line 725, in embed
+    record = self._persist_live_embedding(key, request)
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/src/acceptance/llm.py", line 797, in _persist_live_embedding
+    response = self._embedding_fn(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/src/acceptance/llm.py", line 247, in _default_embedding_fn
+    return litellm.embedding(**kwargs)
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/utils.py", line 1842, in wrapper
+    raise e
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/utils.py", line 1687, in wrapper
+    result = original_function(*args, **kwargs)
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/main.py", line 7171, in embedding
+    raise exception_type(
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 2673, in exception_type
+    raise e
+  File "/Users/alipeles1/acceptance-worktrees/348-rank-ordered-pair-judging/.venv/lib/python3.10/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 2646, in exception_type
+    raise APIConnectionError(
+litellm.exceptions.APIConnectionError: litellm.APIConnectionError: VoyageException - 502 Bad Gateway

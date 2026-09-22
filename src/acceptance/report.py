@@ -119,7 +119,7 @@ def render_report(review: Review) -> str:
     lines.append("")
 
     if review.defect_sets:
-        lines.extend(_defect_block(review.defect_sets))
+        lines.extend(_defect_block(review.defect_sets, review))
         lines.append("")
 
     # Only when there is something unjudged to disclose. The block used to run
@@ -264,9 +264,13 @@ def _pair_block(review: Review) -> list[str]:
         "Pairs left unjudged (a criterion's rating cannot account for these):",
     ]
     routed: dict[str, list[UnjudgedPair]] = {}
+    covered: dict[str, list[UnjudgedPair]] = {}
     for entry in review.unjudged_pairs:
         if entry.cause is UnjudgedCause.PASSED_UNDER_EDIT:
             routed.setdefault(entry.defect_id, []).append(entry)
+            continue
+        if entry.cause is UnjudgedCause.DEFECT_ALREADY_COVERED:
+            covered.setdefault(entry.defect_id, []).append(entry)
             continue
         lines.append(f"  [{entry.cause.value}] {entry.defect_id} x {entry.test_id}")
         lines.append(f"    {entry.reason}")
@@ -278,10 +282,47 @@ def _pair_block(review: Review) -> list[str]:
         # The reason once, not once per pair: it is the same sentence for every
         # pair of one defect, because it is a fact about that defect's edit.
         lines.append(f"    {entries[0].reason}")
+    # #348's skips, per defect for the same reason as #340's: a defect covered at
+    # rank 2 of 280 leaves 278 of them, and one line each would bury the report.
+    # The covering tests are named, because they are what the skip rests on.
+    for defect_id, entries in covered.items():
+        ranks = sorted(entry.rank or 0 for entry in entries)
+        lines.append(
+            f"  [{UnjudgedCause.DEFECT_ALREADY_COVERED.value}] {defect_id} "
+            f"x {len(entries)} candidate test(s), ranked {ranks[0]} to {ranks[-1]}"
+        )
+        lines.append(
+            "    not asked: the defect was already covered by " + ", ".join(entries[0].covered_by)
+        )
     return lines
 
 
-def _defect_block(defect_sets: list[DefectSet]) -> list[str]:
+def _pair_counts(review: Review, defect_id: str) -> tuple[int, int]:
+    """How many of a defect's pairs were put to the model, and how many were
+    skipped because it was already covered (#348).
+
+    Asked counts every pair the judge was offered, answered or not: a pair that
+    came back unanswered still cost the call. A verdict observed by running the
+    tests is not counted, because the model was never asked about it.
+    """
+    asked = sum(
+        1
+        for verdict in review.pair_verdicts
+        if verdict.defect_id == defect_id and verdict.tier is not EvidenceTier.DEFECT_KILLED
+    ) + sum(
+        1
+        for entry in review.unjudged_pairs
+        if entry.defect_id == defect_id and entry.cause is UnjudgedCause.UNANSWERED
+    )
+    skipped = sum(
+        1
+        for entry in review.unjudged_pairs
+        if entry.defect_id == defect_id and entry.cause is UnjudgedCause.DEFECT_ALREADY_COVERED
+    )
+    return asked, skipped
+
+
+def _defect_block(defect_sets: list[DefectSet], review: Review | None = None) -> list[str]:
     """The enumerated ways the change could fail each criterion (#313).
 
     **No longer advisory** (#316). While enumeration ran beside the old chain,
@@ -296,6 +337,11 @@ def _defect_block(defect_sets: list[DefectSet]) -> list[str]:
     current would overstate what this run examined.
     """
     lines = ["Ways the change could fail a criterion (what each rating is measured against):"]
+    # Per defect, how many pairs the model was asked and how many the early stop
+    # skipped (#348) — for EVERY defect, zeroes included, because "nothing was
+    # skipped" and "not reported" read the same otherwise. Only once pairs have
+    # been judged at all; a review that never reached that stage has no counts.
+    counted = review is not None and bool(review.pair_verdicts or review.unjudged_pairs)
     for entry in defect_sets:
         reused = "  (reused from an earlier run)" if entry.carried_from else ""
         lines.append("")
@@ -310,6 +356,12 @@ def _defect_block(defect_sets: list[DefectSet]) -> list[str]:
             lines.append(f"      {defect.description}")
             for ref in defect.code_refs:
                 lines.append(f"      {ref}")
+            if counted and review is not None:
+                asked, skipped = _pair_counts(review, defect.id)
+                lines.append(
+                    f"      pairs: {asked} put to the model, {skipped} skipped once the "
+                    "defect was covered"
+                )
     return lines
 
 
@@ -401,6 +453,7 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
         for entry in review.unjudged_pairs
         if entry.defect_id == defect_id and entry.cause is UnjudgedCause.PASSED_UNDER_EDIT
     )
+    _, skipped = _pair_counts(review, defect_id)
     # No early return on three zeroes. The criterion is that the report states
     # these counts for every defect the stage was asked about, and #340's own Gate
     # 2 raised exactly this: a `not_mutable` defect has no pairs of its own here,
@@ -410,7 +463,8 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
     return [
         (
             f"    pairs: {settled} settled by the run, {asked} put to the model, "
-            f"{dropped} dropped as not worth asking"
+            f"{dropped} dropped as not worth asking, {skipped} skipped once the defect "
+            "was covered"
         )
     ]
 

@@ -45,7 +45,7 @@ file (DR-293).
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Literal
 
@@ -53,6 +53,7 @@ from pydantic import BaseModel, Field
 
 from acceptance.carry import carry_key, decide
 from acceptance.concurrency import map_calls
+from acceptance.defects.pair_ranking import rank_pairs
 from acceptance.defects.reachability import Pair, form_pairs, prefilter
 from acceptance.evidence.discovery import DiscoveredTest
 from acceptance.llm import ModelClient, StrictResponseModel
@@ -546,8 +547,16 @@ def judge_pairs(
     prior: list[PairVerdict] | None = None,
     tests_per_batch: int = DEFAULT_TESTS_PER_BATCH,
     skipped: Mapping[tuple[str, str], str] | None = None,
+    stop_after_kills: int | None = None,
 ) -> PairMappingResult:
     """Judge every pair the prefilter does not prove unreachable.
+
+    With `stop_after_kills`, each defect's pairs are asked in order of
+    similarity between the test and the defect's description, in rounds, and a
+    defect is asked about no further once that many of its tests are recorded as
+    catching it (#348). The rest are returned as `DEFECT_ALREADY_COVERED`. A
+    defect that never reaches the number has every pair asked, as without it.
+    `None` asks every pair in one pass, which is how the stage ran before.
 
     With `prior`, a verdict whose defect content and test source are both
     unchanged is reused and no judgement is issued for it — so adding one test
@@ -579,6 +588,11 @@ def judge_pairs(
 
     prior_by_identity = {(entry.defect_text, entry.test_id): entry for entry in (prior or [])}
 
+    # Ranked once over every pair either pass could ask, so a pair's rank means
+    # the same thing in both and the recorded rank is its place among ALL of its
+    # defect's candidate tests, not among whichever subset one pass saw.
+    ranks = rank_pairs(judged + held_back, client, _STAGE) if stop_after_kills is not None else {}
+
     def _judge(offered: list[Pair]) -> tuple[list[PairVerdict], list[UnjudgedPair]]:
         """Carry what can be carried, ask about the rest, read the answers.
 
@@ -586,14 +600,15 @@ def judge_pairs(
         appends nothing to the enclosing lists, so the two passes cannot
         interleave their results by accident.
         """
-        return _carry_and_ask(
-            offered,
-            client,
-            prior_by_identity,
-            batch_size,
-            tests_per_batch,
-            unusable,
-        )
+
+        def ask(pairs: list[Pair]) -> tuple[list[PairVerdict], list[UnjudgedPair]]:
+            return _carry_and_ask(
+                pairs, client, prior_by_identity, batch_size, tests_per_batch, unusable
+            )
+
+        if stop_after_kills is None:
+            return ask(offered)
+        return _walk_ranked(offered, ranks, stop_after_kills, tests_per_batch, ask)
 
     verdicts, unanswered = _judge(judged)
     unjudged.extend(unanswered)
@@ -628,6 +643,85 @@ def judge_pairs(
         unjudged=sorted(unjudged, key=lambda entry: (entry.defect_id, entry.test_id)),
         unusable_answers=[],
     )
+
+
+def _walk_ranked(
+    offered: list[Pair],
+    ranks: Mapping[tuple[str, str], int],
+    stop_after_kills: int,
+    tests_per_batch: int,
+    ask: Callable[[list[Pair]], tuple[list[PairVerdict], list[UnjudgedPair]]],
+) -> tuple[list[PairVerdict], list[UnjudgedPair]]:
+    """Ask each defect's pairs best-ranked first, in rounds, until it is covered.
+
+    **Rounds grow.** The first asks each uncovered defect's top `tests_per_batch`
+    tests — one request's worth of tests — and every round after asks twice as
+    many as the one before. A covered defect stops after its first round or two,
+    where the measured first kill sits (median rank 1 to 3), and a defect with no
+    kill among several hundred tests is walked in about seven rounds rather than
+    a hundred. Rounds are sequential because each one depends on the kills the
+    last one found; the requests within a round are still issued concurrently.
+
+    **A pair not asked is recorded, never dropped** (DR-314): as
+    `DEFECT_ALREADY_COVERED`, naming its rank and the tests that covered the
+    defect. It can only be produced for a defect that reached `stop_after_kills`,
+    because a defect that did not has had every pair asked by the time its queue
+    runs out.
+    """
+    queues: dict[str, list[Pair]] = {}
+    for pair in offered:
+        queues.setdefault(pair.defect.id, []).append(pair)
+    for pairs in queues.values():
+        pairs.sort(key=lambda pair: (ranks[pair.key], pair.test.test_id))
+
+    kills: dict[str, list[str]] = {defect_id: [] for defect_id in queues}
+    asked_up_to = dict.fromkeys(queues, 0)
+    verdicts: list[PairVerdict] = []
+    unjudged: list[UnjudgedPair] = []
+
+    def open_defects() -> list[str]:
+        return sorted(
+            defect_id
+            for defect_id, pairs in queues.items()
+            if asked_up_to[defect_id] < len(pairs) and len(kills[defect_id]) < stop_after_kills
+        )
+
+    width = max(1, tests_per_batch)
+    while pending := open_defects():
+        round_pairs: list[Pair] = []
+        for defect_id in pending:
+            start = asked_up_to[defect_id]
+            round_pairs.extend(queues[defect_id][start : start + width])
+            asked_up_to[defect_id] = start + width
+        round_verdicts, round_unjudged = ask(round_pairs)
+        verdicts.extend(round_verdicts)
+        unjudged.extend(round_unjudged)
+        for verdict in round_verdicts:
+            if verdict.kills:
+                kills[verdict.defect_id].append(verdict.test_id)
+        width *= 2
+
+    for defect_id, pairs in queues.items():
+        remaining = pairs[asked_up_to[defect_id] :]
+        if not remaining:
+            continue
+        covered_by = sorted(kills[defect_id])
+        for pair in remaining:
+            rank = ranks[pair.key]
+            unjudged.append(
+                UnjudgedPair(
+                    defect_id=defect_id,
+                    test_id=pair.test.test_id,
+                    cause=UnjudgedCause.DEFECT_ALREADY_COVERED,
+                    reason=(
+                        f"not asked: ranked {rank} by similarity to the defect, below "
+                        f"{len(covered_by)} test(s) already recorded as catching it"
+                    ),
+                    rank=rank,
+                    covered_by=covered_by,
+                )
+            )
+    return verdicts, unjudged
 
 
 def _carry_and_ask(
