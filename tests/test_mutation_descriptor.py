@@ -374,3 +374,40 @@ class TestAskingAgainAfterARefusal:
             builder._unusable[key] = [key]
         builder.record_unusable(Log())
         assert recorded == [[("d1", 0)], [("d2", 0)], [("d2", 1)]]
+
+
+class TestTheLiveBuilderKeepsToTheProviderLimit:
+    def test_no_more_calls_are_in_flight_than_the_limit(self):
+        """The runner's pool is sized for cores, not for the provider, so the
+        builder has to cap its own calls."""
+        import threading
+        import time
+
+        from acceptance.mutation.descriptor import LiveDescriptorBuilder
+
+        state = {"now": 0, "peak": 0}
+        lock = threading.Lock()
+
+        class SlowClient(FakeClient):
+            def complete(self, *args, **kwargs):
+                with lock:
+                    state["now"] += 1
+                    state["peak"] = max(state["peak"], state["now"])
+                time.sleep(0.05)
+                with lock:
+                    state["now"] -= 1
+                return kwargs["parse_as"](**_edit())
+
+        builder = LiveDescriptorBuilder(SlowClient(), max_in_flight=3)
+        threads = [
+            threading.Thread(
+                target=builder,
+                args=(_defect(f"d{i}"), [_region()], {"loan.py": SOURCE}, ()),
+            )
+            for i in range(12)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        assert state["peak"] == 3

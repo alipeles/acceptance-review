@@ -1162,3 +1162,48 @@ class TestCandidateEditsThroughTheRealPipeline:
         assert "candidate edits: 3 asked for, 3 set aside, none used" in report
         assert report.count("set aside (changed_nothing)") == 3
         assert "# unchanged" in report
+
+
+class TestTheReportNamesTheCandidateUsed:
+    """Gate 2 run 1's recommendation for `which-candidate-it-used`: the only
+    report test was the all-refused case, so nothing showed that a defect with
+    a usable edit says which candidate it was."""
+
+    def test_a_first_candidate_that_passes_is_named(self, tmp_path):
+        report = render_report(_review(tmp_path, execution=ExecutionSettings(verify_edits=True)))
+        assert "candidate edits: 1 asked for, 0 set aside, used candidate 1" in report
+
+    def test_a_later_candidate_is_named_with_the_one_before_it(self):
+        from acceptance.mutation.attempt import (
+            MutationAttempt,
+            MutationDescriptor,
+            SetAsideCandidate,
+        )
+        from acceptance.report import _candidate_lines
+
+        edit = MutationDescriptor(
+            path="loan.py",
+            start_line=2,
+            end_line=2,
+            replacement="    payment = principal / months * 3\n",
+            region_label="loan.py#0",
+            original="    payment = principal / months\n",
+        )
+        attempt = MutationAttempt(
+            defect_id="d1",
+            outcome=MutationOutcomeKind.SURVIVED,
+            descriptor=edit,
+            tests_run=["t"],
+            candidates_asked=2,
+            set_aside_candidates=[
+                SetAsideCandidate(
+                    cause=CandidateCause.CHANGED_NOTHING,
+                    reason="identical to what it replaces",
+                    descriptor=edit.model_copy(update={"replacement": edit.original}),
+                )
+            ],
+            candidate_used=2,
+        )
+        lines = "\n".join(_candidate_lines(attempt))
+        assert "2 asked for, 1 set aside, used candidate 2" in lines
+        assert "1. set aside (changed_nothing): identical to what it replaces" in lines

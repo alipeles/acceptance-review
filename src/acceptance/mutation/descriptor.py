@@ -39,7 +39,7 @@ from collections.abc import Sequence
 from typing import Literal
 
 from acceptance.change.context import RetrievalResult
-from acceptance.concurrency import map_calls
+from acceptance.concurrency import DEFAULT_MAX_IN_FLIGHT, map_calls
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.mutation.attempt import (
     AlreadyDefective,
@@ -239,11 +239,22 @@ class LiveDescriptorBuilder:
     `build_descriptors` hands them back rather than recording them.
     """
 
-    def __init__(self, client: ModelClient, surrounding: RetrievalResult | None = None):
+    def __init__(
+        self,
+        client: ModelClient,
+        surrounding: RetrievalResult | None = None,
+        max_in_flight: int = DEFAULT_MAX_IN_FLIGHT,
+    ):
         self._client = client
         self._surrounding = surrounding
         self._unusable: dict[tuple[str, int], list[UnusableAnswer]] = {}
         self._lock = threading.Lock()
+        # The runner calls this from its injection pool, which is sized for
+        # cores (14 on a 16-core machine), not for the provider. Without a cap
+        # of its own, that many requests could reach the provider at once —
+        # above the limit every other stage keeps to, which is set for its
+        # rate allowance (`concurrency.py`).
+        self._in_flight = threading.BoundedSemaphore(max(1, max_in_flight))
 
     def __call__(
         self,
@@ -252,9 +263,10 @@ class LiveDescriptorBuilder:
         sources: dict[str, str],
         previous: Sequence[SetAsideCandidate] = (),
     ) -> DescriptorAnswer:
-        answer, unusable = _ask_about(
-            defect, list(regions), sources, self._client, self._surrounding, previous
-        )
+        with self._in_flight:
+            answer, unusable = _ask_about(
+                defect, list(regions), sources, self._client, self._surrounding, previous
+            )
         with self._lock:
             self._unusable[(defect.id, len(previous))] = unusable
         return answer
