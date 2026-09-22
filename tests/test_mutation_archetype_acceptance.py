@@ -111,7 +111,7 @@ def defect_sets(labels, change_set) -> list[DefectSet]:
     ]
 
 
-def _build(defect, regions, _sources) -> MutationDescriptor | None:
+def _build(defect, regions, _sources, _previous=()) -> MutationDescriptor | None:
     start, end, replacement = _EDITS[defect.id]
     return MutationDescriptor(
         path="loan.py",

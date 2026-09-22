@@ -9,7 +9,68 @@ and 8 changed; see *Revision* below.
 **Revised again:** 2026-09-16, during #45, on measurement. Decisions 1 and 3
 changed; see *Revision — 2026-09-16* below, and its later addendum on the tier
 gate, the breadth check and the verifier measurement.
+**Revised again:** 2026-09-22, for #334. Decisions 1 and 8 amended: the
+descriptor stage may ask several times per defect, and a defect whose every
+candidate was refused has its own outcome. See *Revision — 2026-09-22* below.
 **Status:** resolved. **M8.4 landed 2026-09-18**; see *Where M8.4 landed* below.
+
+## Revision — 2026-09-22: several candidate edits per defect (#334)
+
+**What changed.** The descriptor stage used to ask once per defect and use the
+answer. It now asks for up to `ExecutionSettings.max_candidates` candidate edits
+(default 3), runs each through the checks in `validity.py` and, if it passes
+those, through a test run and the run's own gates — the broken-edit rule and the
+breadth check — and uses the first that passes. Decision 1's "one call per
+defect" was never about this axis: `ONE_DEFECT_PER_CALL` is about how many
+*defects* share a call, and that stays one. What changes is how many calls one
+defect may take.
+
+**Why.** Measured on #45's review, about half the edits did not make their
+defect true, and one bad edit was the defect's whole answer. It is visible on
+every fresh review: on #361's Gate 2, six of eight edit-building calls produced
+an edit the gates refused, five of them identical to what they replaced.
+
+**Candidates come from asking again, not from sampling.** `ModelClient.complete`
+reads the recorded transcripts by a hash of the whole request, so repeating an
+identical request returns one recorded answer every time, and temperature is 0.
+Each later request therefore shows the earlier candidates and why each was
+refused, which makes every request different, so each records and replays on
+its own key, and two runs over the same input pick the same candidate. A
+defect's first request carries no such block and is byte-identical to the one
+before this revision, so every existing recording of it still replays.
+
+Rejected: a candidate number in the request's `partition` field. It varies the
+key without varying the question, so at temperature 0 it would return the same
+edit, and `partition.py` records that index and count were deliberately kept out
+of that field. Raising the temperature for this stage is #354, after this
+revision is measured, so the two changes can be told apart.
+
+**What the model is told about a refusal.** A mechanical refusal is shown with
+its own reason, which carries nothing from a test run. A refusal after the tests
+ran is shown as a fixed sentence that says only that it was refused once
+applied: its recorded reason is built from what the tests did under the edit,
+and that reaches no model (`tests/test_edit_results_never_reach_a_prompt.py`).
+
+**Decision 8, amended: a new outcome, `no_usable_edit`.** With one edit per
+defect, "this edit was refused" and "this defect got no mutant" were one event,
+and `not_mutable` recorded both. With several candidates they separate. A defect
+whose every candidate was set aside is now `no_usable_edit` — a statement about
+the candidates, since another try might succeed — and `not_mutable` is kept for
+a defect that cannot be turned into an edit here: no usable region, or the model
+declining that any single contiguous edit makes it true. Both are non-settling
+and both route the defect to the static judge exactly as before.
+
+Each attempt records `candidates_asked`, `set_aside_candidates` — one entry per
+refused candidate with its cause (`failed_check`, `changed_nothing`,
+`unusable_answer`, `refused_after_run`), reason and edit — and `candidate_used`.
+A decline or a claim that the code is already defective ends the loop: it is the
+model's considered answer about the defect, not a bad edit.
+
+**Not measured here.** Whether this raises the validity rate of the edits that
+get used is #334's Acceptance, measured on `docs/audit-protocol.md` against the
+same defects as audit v7 or v8. So is the share of passing edits that change no
+behaviour, which no mechanical check catches; if it is large, a better check is
+built before #334 closes.
 
 ## Where M8.4 landed, 2026-09-18
 

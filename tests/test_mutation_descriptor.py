@@ -277,3 +277,137 @@ class TestFromMapping:
     def test_a_defect_the_stage_never_saw_is_a_decline(self):
         build = from_mapping({})
         assert build(_defect("unknown"), [], {}) is None
+
+
+class TestAskingAgainAfterARefusal:
+    """#334. The live builder shows the model the candidates already refused,
+    and nothing about what the tests did under any of them."""
+
+    def _subject(self, client) -> str:
+        return "\n".join(str(message["content"]) for message in client.calls[-1]["messages"])
+
+    def _refused(self, cause, reason: str = "a reason"):
+        from acceptance.mutation.attempt import MutationDescriptor, SetAsideCandidate
+
+        return SetAsideCandidate(
+            cause=cause,
+            reason=reason,
+            descriptor=MutationDescriptor(
+                path="loan.py",
+                start_line=2,
+                end_line=2,
+                replacement="    payment = principal / months  # tweak\n",
+                region_label="loan.py#0",
+            ),
+        )
+
+    def test_a_first_request_is_unchanged_so_its_recordings_still_replay(self):
+        """No earlier candidates, no new block: the request, and so its key, is
+        exactly what it was before #334."""
+        from acceptance.mutation.descriptor import LiveDescriptorBuilder
+
+        old = FakeClient(_edit())
+        build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, old)
+        new = FakeClient(_edit())
+        LiveDescriptorBuilder(new)(_defect(), [_region()], {"loan.py": SOURCE}, ())
+        assert new.calls[0]["messages"] == old.calls[0]["messages"]
+        assert "Earlier edits" not in self._subject(new)
+
+    def test_a_later_request_shows_the_refused_edit_and_why(self):
+        from acceptance.mutation.attempt import CandidateCause
+        from acceptance.mutation.descriptor import LiveDescriptorBuilder
+
+        client = FakeClient(_edit())
+        previous = (self._refused(CandidateCause.CHANGED_NOTHING),)
+        LiveDescriptorBuilder(client)(_defect(), [_region()], {"loan.py": SOURCE}, previous)
+        subject = self._subject(client)
+        assert "Earlier edits for this defect" in subject
+        assert "# tweak" in subject
+        assert "changed nothing" in subject
+
+    def test_a_mechanical_refusal_is_shown_with_its_own_reason(self):
+        from acceptance.mutation.attempt import CandidateCause
+        from acceptance.mutation.descriptor import LiveDescriptorBuilder
+
+        client = FakeClient(_edit())
+        previous = (self._refused(CandidateCause.FAILED_CHECK, "falls outside the region"),)
+        LiveDescriptorBuilder(client)(_defect(), [_region()], {"loan.py": SOURCE}, previous)
+        assert "falls outside the region" in self._subject(client)
+
+    def test_a_refusal_after_the_tests_ran_says_nothing_about_the_tests(self):
+        """Its recorded reason is built from what the tests did under the edit,
+        and that may reach no model."""
+        from acceptance.mutation.attempt import CandidateCause
+        from acceptance.mutation.descriptor import LiveDescriptorBuilder
+
+        client = FakeClient(_edit())
+        leaked = "every one of the 7 tests that failed under the edit failed with NameError"
+        previous = (self._refused(CandidateCause.REFUSED_AFTER_RUN, leaked),)
+        LiveDescriptorBuilder(client)(_defect(), [_region()], {"loan.py": SOURCE}, previous)
+        subject = self._subject(client)
+        assert "Earlier edits for this defect" in subject
+        assert "NameError" not in subject
+        assert "7 tests" not in subject
+
+    def test_unusable_answers_are_recorded_in_a_fixed_order(self):
+        """Candidates are asked for from concurrent attempts, so recording as
+        they arrive would make two runs differ."""
+        from acceptance.mutation.descriptor import LiveDescriptorBuilder
+
+        recorded = []
+
+        class Log:
+            def record(self, answers):
+                recorded.append(answers)
+
+        builder = LiveDescriptorBuilder(FakeClient(_edit(), _edit(), _edit()))
+        # Asked in an order no sort would produce: d2's second candidate, then
+        # d1's first, then d2's first.
+        from acceptance.mutation.attempt import CandidateCause
+
+        earlier = (self._refused(CandidateCause.CHANGED_NOTHING),)
+        builder(_defect("d2"), [_region()], {"loan.py": SOURCE}, earlier)
+        builder(_defect("d1"), [_region()], {"loan.py": SOURCE}, ())
+        builder(_defect("d2"), [_region()], {"loan.py": SOURCE}, ())
+        # Tag each slot so the recording order is visible.
+        for key in builder._unusable:
+            builder._unusable[key] = [key]
+        builder.record_unusable(Log())
+        assert recorded == [[("d1", 0)], [("d2", 0)], [("d2", 1)]]
+
+
+class TestTheLiveBuilderKeepsToTheProviderLimit:
+    def test_no_more_calls_are_in_flight_than_the_limit(self):
+        """The runner's pool is sized for cores, not for the provider, so the
+        builder has to cap its own calls."""
+        import threading
+        import time
+
+        from acceptance.mutation.descriptor import LiveDescriptorBuilder
+
+        state = {"now": 0, "peak": 0}
+        lock = threading.Lock()
+
+        class SlowClient(FakeClient):
+            def complete(self, *args, **kwargs):
+                with lock:
+                    state["now"] += 1
+                    state["peak"] = max(state["peak"], state["now"])
+                time.sleep(0.05)
+                with lock:
+                    state["now"] -= 1
+                return kwargs["parse_as"](**_edit())
+
+        builder = LiveDescriptorBuilder(SlowClient(), max_in_flight=3)
+        threads = [
+            threading.Thread(
+                target=builder,
+                args=(_defect(f"d{i}"), [_region()], {"loan.py": SOURCE}, ()),
+            )
+            for i in range(12)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        assert state["peak"] == 3

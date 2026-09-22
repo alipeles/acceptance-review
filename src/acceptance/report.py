@@ -387,21 +387,12 @@ def _mutation_block(review: Review) -> list[str]:
         # standing on its own.
         mark = "" if attempt.verified or not attempt.observed else ", NOT COUNTED"
         lines.append(f"  [{attempt.outcome.value}{mark}] {attempt.defect_id}")
+        lines.extend(_candidate_lines(attempt))
         descriptor = attempt.descriptor
         if descriptor is not None:
             span = f"{descriptor.start_line}-{descriptor.end_line}"
             lines.append(f"    injected at {descriptor.path} lines {span}:")
-            # Removed lines, then added ones, as a diff reads. Without the
-            # removed side a deletion rendered as nothing at all. A descriptor
-            # stored before `original` existed falls back to the old rendering.
-            if descriptor.original:
-                lines.extend(f"      - {line}" for line in descriptor.original.splitlines())
-                lines.extend(f"      + {line}" for line in descriptor.replacement.splitlines())
-                if not descriptor.replacement:
-                    lines.append("      (lines deleted)")
-            else:
-                for line in descriptor.replacement.splitlines() or [""]:
-                    lines.append(f"      | {line}")
+            lines.extend(_edit_lines(descriptor, "      "))
         if attempt.killing_tests:
             lines.append(f"    caught by ({len(attempt.killing_tests)}):")
             lines.extend(f"      {test_id}" for test_id in attempt.killing_tests)
@@ -426,6 +417,50 @@ def _mutation_block(review: Review) -> list[str]:
         lines.extend(_pair_disposition(review, attempt.defect_id))
         if attempt.reason:
             lines.append(f"    {attempt.reason}")
+    return lines
+
+
+def _edit_lines(descriptor, indent: str) -> list[str]:
+    """One edit as a diff reads: removed lines, then added ones.
+
+    Without the removed side a deletion rendered as nothing at all. A
+    descriptor stored before `original` existed falls back to the old rendering.
+    """
+    if descriptor.original:
+        lines = [f"{indent}- {line}" for line in descriptor.original.splitlines()]
+        lines += [f"{indent}+ {line}" for line in descriptor.replacement.splitlines()]
+        if not descriptor.replacement:
+            lines.append(f"{indent}(lines deleted)")
+        return lines
+    return [f"{indent}| {line}" for line in descriptor.replacement.splitlines() or [""]]
+
+
+def _candidate_lines(attempt) -> list[str]:
+    """How many candidate edits were asked for, which were set aside and why,
+    and which was used (#334).
+
+    Every refused candidate is rendered with its edit, for the reason the used
+    edit is: a reader who thinks a refusal was wrong has to be able to see what
+    was refused. Omitted only for an attempt that asked for no candidate — no
+    region to edit, say — whose reason line already says why.
+    """
+    if not attempt.candidates_asked:
+        return []
+    used = (
+        f"used candidate {attempt.candidate_used}"
+        if attempt.candidate_used is not None
+        else "none used"
+    )
+    aside = len(attempt.set_aside_candidates)
+    lines = [
+        f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+    ]
+    for number, candidate in enumerate(attempt.set_aside_candidates, start=1):
+        lines.append(f"      {number}. set aside ({candidate.cause.value}): {candidate.reason}")
+        if candidate.descriptor is not None:
+            span = f"{candidate.descriptor.start_line}-{candidate.descriptor.end_line}"
+            lines.append(f"         at {candidate.descriptor.path} lines {span}:")
+            lines.extend(_edit_lines(candidate.descriptor, "           "))
     return lines
 
 

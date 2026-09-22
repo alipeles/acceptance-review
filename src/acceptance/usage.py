@@ -88,6 +88,11 @@ class StageUsage(BaseModel):
     cache_write_tokens: int = 0
     run_spend_usd: float = 0.0
     evidence_cost_usd: float = 0.0
+    # Summed provider time over this run's LIVE calls (#334), measured in
+    # memory and never written to a transcript. None when the stage made no
+    # live call. A sum, not elapsed time: calls in a stage run concurrently, so
+    # this is the model time the stage cost this run, not wall clock.
+    call_seconds: float | None = None
 
     # Cached-token accounting is kept over only the calls that REPORTED it, so a
     # provider that says nothing about caching cannot be mistaken for one
@@ -196,6 +201,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
             else:
                 setattr(stage, field, getattr(stage, field) + int(value))
 
+        seconds = call.get("seconds")
+        if isinstance(seconds, (int, float)) and from_provider:
+            stage.call_seconds = (stage.call_seconds or 0.0) + seconds
+
         cost = _number(usage, "cost_usd")
         if cost is not None:
             stage.evidence_cost_usd += cost
@@ -232,10 +241,21 @@ def render(usage: RunUsage) -> str:
             _share(stage.cached_prompt_share),
             f"${stage.run_spend_usd:.4f}",
             f"${stage.evidence_cost_usd:.4f}",
+            "—" if stage.call_seconds is None else f"{stage.call_seconds:.1f}s",
         )
         for stage in usage.stages
     ]
-    header = ("stage", "model", "calls", "prompt", "output", "cached", "this run", "recorded")
+    header = (
+        "stage",
+        "model",
+        "calls",
+        "prompt",
+        "output",
+        "cached",
+        "this run",
+        "recorded",
+        "time this run",
+    )
     widths = [max(len(row[i]) for row in (header, *rows)) for i in range(len(header))]
 
     def line(row: tuple[str, ...]) -> str:

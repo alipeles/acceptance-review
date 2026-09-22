@@ -267,9 +267,11 @@ def test_a_real_review_run_attributes_every_call_it_made(tmp_path):
     assert observed, "the pipeline ran but the client observed no calls at all"
     unattributed = [call for call in observed if call["stage"] == UNKNOWN_STAGE]
     assert not unattributed, f"{len(unattributed)} call(s) reported no stage: {unattributed}"
-    # And each observation carries the four fields the aggregate needs.
+    # And each observation carries the fields the aggregate needs — including
+    # `seconds`, the in-memory call time behind the footer's time column (#334),
+    # which is None for a replayed call and never reaches a transcript.
     for call in observed:
-        assert set(call) == {"stage", "key", "served_from", "model", "usage"}
+        assert set(call) == {"stage", "key", "served_from", "model", "usage", "seconds"}
         assert call["served_from"] in {"provider", "recording"}
 
 

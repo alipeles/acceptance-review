@@ -349,3 +349,45 @@ def test_recording_usage_fields_does_not_change_the_request_key():
     # The usage really did differ — otherwise this asserts nothing.
     assert "cached_tokens" not in plain.observed_calls[0]["usage"]
     assert detailed.observed_calls[0]["usage"]["cached_tokens"] == 1
+
+
+# --- how long the model calls took (#334) ----------------------------------------
+
+
+def _timed(stage, served_from, seconds):
+    return {**_call(stage, served_from, cost_usd=0.01), "seconds": seconds}
+
+
+def test_live_call_time_is_summed_per_stage():
+    usage = summarize(
+        [
+            _timed("mutation descriptor", SERVED_FROM_PROVIDER, 1.5),
+            _timed("mutation descriptor", SERVED_FROM_PROVIDER, 2.25),
+        ]
+    )
+    (stage,) = usage.stages
+    assert stage.call_seconds == 3.75
+    assert "3.8s" in render(usage)
+
+
+def test_a_replayed_call_took_no_time_this_run():
+    """The time column is about this run, like the spend column: a replayed
+    call made no provider request, so it adds nothing, and a stage served
+    wholly from recordings shows no time rather than zero."""
+    usage = summarize([_timed("mutation descriptor", SERVED_FROM_RECORDING, 9.0)])
+    (stage,) = usage.stages
+    assert stage.call_seconds is None
+    assert "—" in render(usage).splitlines()[3]
+
+
+def test_the_time_never_reaches_a_transcript(tmp_path):
+    """The M0.5 guard, restated for this field: a duration differs between two
+    recordings of the same input, so it may live only in memory."""
+    client = _client(SimpleNamespace(prompt_tokens=1), TranscriptStore(tmp_path))
+    client.complete(_MESSAGES, _Answer, stage="mutation descriptor")
+    (call,) = client.observed_calls
+    assert call["seconds"] is not None
+    written = list(tmp_path.rglob("*.json"))
+    assert written, "no transcript was written, so the check below is vacuous"
+    for path in written:
+        assert "seconds" not in path.read_text()

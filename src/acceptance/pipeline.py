@@ -58,7 +58,7 @@ from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
 from acceptance.mutation.attempt import MutationAttempt
 from acceptance.mutation.baseline import SetAsideTest, establish_baseline
-from acceptance.mutation.descriptor import build_descriptors, from_mapping
+from acceptance.mutation.descriptor import LiveDescriptorBuilder, from_mapping
 from acceptance.mutation.region import regions_for
 from acceptance.mutation.runner import run_mutations
 from acceptance.mutation.settings import ExecutionSettings, decide_execution
@@ -325,21 +325,25 @@ def _run_execution_tier(
     # M2.2's bounded retrieval, once for the change: each region's enclosing
     # definition and its in-repo callers. Both model calls in this tier read it.
     surrounding = retrieve_context(repo, change_set)
-    descriptors = build_descriptors(
-        defects, regions_by_defect, sources, client, unusable, surrounding
-    )
-
+    # Live rather than built up front (#334): a defect's second candidate is
+    # asked for with the first one's refusal shown, which exists only once the
+    # runner has checked it. Only defects with a region are ever asked about —
+    # the runner returns before building for one without — so no request is
+    # spent on an absence defect, as before.
+    builder = LiveDescriptorBuilder(client, surrounding)
     attempts = run_mutations(
         defect_sets,
         change_set,
         repo,
         baseline,
-        from_mapping(descriptors),
+        builder,
         execution.sandbox,
         execution.max_edit_lines,
         max_failing_fraction=execution.max_failing_fraction,
         breadth_floor=execution.breadth_floor,
+        max_candidates=execution.max_candidates,
     )
+    builder.record_unusable(unusable)
     # The tier gate's other half. Off by default: until the verifier is adopted,
     # no observed result is verified, so none reaches `DEFECT_KILLED` and every
     # defect still goes to the static judge (DR-171, revision of 2026-09-16).

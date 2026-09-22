@@ -27,6 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+import time
 from collections.abc import Callable, Mapping, Sequence
 from enum import Enum
 from pathlib import Path
@@ -530,7 +531,13 @@ class ModelClient:
         }
 
     def _observe_call(
-        self, stage: str | None, key: str, served_from: str, record: dict, model: str
+        self,
+        stage: str | None,
+        key: str,
+        served_from: str,
+        record: dict,
+        model: str,
+        seconds: float | None = None,
     ) -> None:
         """Note what one call cost and where its answer came from.
 
@@ -553,6 +560,12 @@ class ModelClient:
                 # model its transcript was recorded against.
                 "model": model,
                 "usage": dict(record.get("usage") or {}),
+                # How long a LIVE call took, for the footer's time column
+                # (#334). Kept here, in memory, and never in the transcript:
+                # transcripts must be byte-identical across recordings of the
+                # same input (M0.5), and a duration never is. None for a
+                # replayed call, which took no provider time this run.
+                "seconds": seconds,
             }
         )
 
@@ -659,13 +672,17 @@ class ModelClient:
                     "Recording makes live calls AND runs the assertions, so a prompt "
                     "that degrades quality fails rather than silently re-recording."
                 )
+            started = time.perf_counter()
             record = self._persist_live_call(key, request, parse_as or response_model)
+            seconds = time.perf_counter() - started
+        else:
+            seconds = None
 
         # Observed on both paths: a replayed run's reproducibility is exactly
         # that of the recording it replays, so a transcript recorded against a
         # provider that discarded a control must not replay as pinned.
         self._observed_controls.append(record.get("controls_applied"))
-        self._observe_call(stage, key, served_from, record, request["model"])
+        self._observe_call(stage, key, served_from, record, request["model"], seconds)
         if partition is not None:
             # `stage` is deliberately NOT in `build_request`: it names which
             # caller partitioned, which is provenance, not a determinism
@@ -722,14 +739,18 @@ class ModelClient:
                     "upstream stage rewords the obligations feeding it. Re-record "
                     "with --mode record."
                 )
+            started = time.perf_counter()
             record = self._persist_live_embedding(key, request)
+            seconds = time.perf_counter() - started
+        else:
+            seconds = None
 
         # An embedding is a model call and costs money, so it belongs in the same
         # spend total as a completion. It is reported under its caller's stage
         # rather than a stage of its own: what a reader wants to know is what
         # linking cost, not what linking's embeddings cost separately, and
         # splitting them would attribute one stage's spend to two rows.
-        self._observe_call(stage, key, served_from, record, request["model"])
+        self._observe_call(stage, key, served_from, record, request["model"], seconds)
         return self._validate_embeddings(record["response"], len(texts))
 
     def build_embedding_request(self, texts: Sequence[str]) -> dict:

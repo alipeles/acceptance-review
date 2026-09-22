@@ -31,23 +31,30 @@ from acceptance.execution.sandbox import SandboxConfig, run_tests
 from acceptance.mutation.attempt import (
     DECLINE_OUTCOMES,
     AlreadyDefective,
+    CandidateCause,
     DescriptorAnswer,
     DescriptorDecline,
     MutationAttempt,
     MutationDescriptor,
     MutationOutcomeKind,
     RepairCorroboration,
+    SetAsideCandidate,
 )
 from acceptance.mutation.baseline import Baseline
 from acceptance.mutation.injection import mutated_copy
 from acceptance.mutation.region import Region, regions_for
-from acceptance.mutation.validity import DEFAULT_MAX_EDIT_LINES, invalidity_reason
+from acceptance.mutation.validity import (
+    DEFAULT_MAX_EDIT_LINES,
+    changes_nothing,
+    invalidity_reason,
+)
 from acceptance.review_state import ChangeSet, Defect, DefectSet
 
 __all__ = [
     "BROKEN_EDIT_ERRORS",
     "DEFAULT_BREADTH_FLOOR",
     "DEFAULT_INJECTIONS_IN_FLIGHT",
+    "DEFAULT_MAX_CANDIDATES",
     "DEFAULT_MAX_FAILING_FRACTION",
     "DescriptorBuilder",
     "run_mutations",
@@ -95,11 +102,19 @@ DEFAULT_MAX_FAILING_FRACTION = 0.075
 #: small suite has been audited — so it errs toward keeping kills.
 DEFAULT_BREADTH_FLOOR = 10
 
-#: Given one defect, the regions it named, and the text of each of those files
-#: at head, produce the smallest edit that makes the defect true — or a typed
-#: decline saying why none does, or `None` when no usable answer came back.
+#: How many candidate edits to ask for per defect before giving up (#334). The
+#: first candidate that passes every check is used; each refusal is shown to
+#: the model when it is asked again, so the requests differ and each records
+#: and replays on its own. Configuration, not a measured value: the right number
+#: is what #334's audit is for, and it multiplies this stage's cost.
+DEFAULT_MAX_CANDIDATES = 3
+
+#: Given one defect, the regions it named, the text of each of those files at
+#: head, and the candidates already set aside for this defect with why, produce
+#: the smallest edit that makes the defect true — or a typed decline saying why
+#: none does, or `None` when no usable answer came back.
 DescriptorBuilder = Callable[
-    [Defect, Sequence[Region], dict[str, str]],
+    [Defect, Sequence[Region], dict[str, str], Sequence[SetAsideCandidate]],
     DescriptorAnswer,
 ]
 
@@ -115,6 +130,7 @@ def run_mutations(
     max_in_flight: int = DEFAULT_INJECTIONS_IN_FLIGHT,
     max_failing_fraction: float = DEFAULT_MAX_FAILING_FRACTION,
     breadth_floor: int = DEFAULT_BREADTH_FLOOR,
+    max_candidates: int = DEFAULT_MAX_CANDIDATES,
 ) -> list[MutationAttempt]:
     """One attempt per defect, sorted by defect id.
 
@@ -163,6 +179,7 @@ def run_mutations(
             config,
             max_edit_lines,
             _Breadth(max_failing_fraction, breadth_floor),
+            max(1, max_candidates),
         ),
         max_in_flight=max(1, max_in_flight),
     )
@@ -181,6 +198,7 @@ def _attempt(
     config: SandboxConfig | None,
     max_edit_lines: int,
     breadth: _Breadth,
+    max_candidates: int = DEFAULT_MAX_CANDIDATES,
 ) -> MutationAttempt:
     regions = regions_for(defect, change_set)
     if not regions:
@@ -202,48 +220,125 @@ def _attempt(
             defect, "none of the files the defect named exist in the project at head"
         )
 
-    descriptor = build_descriptor(defect, readable, sources)
-    if isinstance(descriptor, AlreadyDefective):
-        return _already_defective(
-            defect,
-            descriptor,
-            readable,
-            sources,
-            project_root,
-            tests,
-            config,
-            max_edit_lines,
-            breadth,
-        )
-    if isinstance(descriptor, DescriptorDecline):
-        return MutationAttempt(
-            defect_id=defect.id,
-            outcome=DECLINE_OUTCOMES[descriptor.kind],
-            reason=descriptor.reason,
-        )
-    if descriptor is None:
-        return _not_mutable(
-            defect, "no single contiguous edit was found that would make this defect true"
-        )
+    # #334. Ask, check, and on a refusal ask again with the refusal shown, up to
+    # `max_candidates` times. A decline or a claim that the code is already
+    # defective is the model's considered answer about the defect, not a bad
+    # edit, so it ends the loop rather than being retried.
+    set_aside: list[SetAsideCandidate] = []
+    for asked in range(1, max_candidates + 1):
+        answer = build_descriptor(defect, readable, sources, tuple(set_aside))
 
-    reason = invalidity_reason(
-        descriptor, readable, sources.get(descriptor.path, ""), max_edit_lines
+        if isinstance(answer, AlreadyDefective):
+            attempt = _already_defective(
+                defect,
+                answer,
+                readable,
+                sources,
+                project_root,
+                tests,
+                config,
+                max_edit_lines,
+                breadth,
+            )
+            return _with_candidates(attempt, asked, set_aside, used=None)
+        if isinstance(answer, DescriptorDecline):
+            attempt = MutationAttempt(
+                defect_id=defect.id,
+                outcome=DECLINE_OUTCOMES[answer.kind],
+                reason=answer.reason,
+            )
+            return _with_candidates(attempt, asked, set_aside, used=None)
+        if answer is None:
+            set_aside.append(
+                SetAsideCandidate(
+                    cause=CandidateCause.UNUSABLE_ANSWER,
+                    reason="the answer named no usable span to replace",
+                )
+            )
+            continue
+
+        source = sources.get(answer.path, "")
+        reason = invalidity_reason(answer, readable, source, max_edit_lines)
+        if reason is not None:
+            cause = (
+                CandidateCause.CHANGED_NOTHING
+                if changes_nothing(answer, source)
+                else CandidateCause.FAILED_CHECK
+            )
+            set_aside.append(SetAsideCandidate(cause=cause, reason=reason, descriptor=answer))
+            continue
+
+        try:
+            with mutated_copy(project_root, answer) as root:
+                result = run_tests(tests, root, config)
+        except OSError as error:
+            attempt = MutationAttempt(
+                defect_id=defect.id,
+                outcome=MutationOutcomeKind.NOT_ATTEMPTED,
+                descriptor=answer,
+                reason=f"the mutated copy could not be prepared: {error}",
+            )
+            return _with_candidates(attempt, asked, set_aside, used=asked)
+
+        attempt = _classify(defect, answer, tests, result, breadth)
+        # The run's own gates — a broken edit, or one far broader than its
+        # defect — refuse the edit, not the defect. Before #334 that was the
+        # whole answer; now it is one candidate set aside.
+        if attempt.outcome is MutationOutcomeKind.NOT_MUTABLE:
+            set_aside.append(
+                SetAsideCandidate(
+                    cause=CandidateCause.REFUSED_AFTER_RUN,
+                    reason=attempt.reason,
+                    descriptor=answer,
+                    tests_run=attempt.tests_run,
+                )
+            )
+            continue
+        return _with_candidates(attempt, asked, set_aside, used=asked)
+
+    # Built whole rather than through `_with_candidates`: its candidate record is
+    # what makes it valid, so it cannot exist for a moment without one.
+    return MutationAttempt(
+        defect_id=defect.id,
+        outcome=MutationOutcomeKind.NO_USABLE_EDIT,
+        reason=_why_no_usable_edit(set_aside),
+        candidates_asked=max_candidates,
+        set_aside_candidates=list(set_aside),
     )
-    if reason is not None:
-        return _not_mutable(defect, reason)
 
-    try:
-        with mutated_copy(project_root, descriptor) as root:
-            result = run_tests(tests, root, config)
-    except OSError as error:
-        return MutationAttempt(
-            defect_id=defect.id,
-            outcome=MutationOutcomeKind.NOT_ATTEMPTED,
-            descriptor=descriptor,
-            reason=f"the mutated copy could not be prepared: {error}",
-        )
 
-    return _classify(defect, descriptor, tests, result, breadth)
+def _with_candidates(
+    attempt: MutationAttempt,
+    asked: int,
+    set_aside: Sequence[SetAsideCandidate],
+    used: int | None,
+) -> MutationAttempt:
+    """`attempt` with its candidate record, validated as a whole.
+
+    Rebuilt through `model_validate` rather than `model_copy`, because
+    `model_copy(update=...)` skips the validators and the candidate record is
+    exactly what `_candidates_add_up` exists to check.
+    """
+    return MutationAttempt.model_validate(
+        {
+            **attempt.model_dump(),
+            "candidates_asked": asked,
+            "set_aside_candidates": [candidate.model_dump() for candidate in set_aside],
+            "candidate_used": used,
+        }
+    )
+
+
+def _why_no_usable_edit(set_aside: Sequence[SetAsideCandidate]) -> str:
+    counts: dict[str, int] = {}
+    for candidate in set_aside:
+        counts[candidate.cause.value] = counts.get(candidate.cause.value, 0) + 1
+    causes = ", ".join(f"{count} {cause}" for cause, count in sorted(counts.items()))
+    return (
+        f"all {len(set_aside)} candidate edit(s) asked for were set aside ({causes}). "
+        "That is a fact about these candidates, not about the defect, which goes to the "
+        "static judge like any defect with no usable edit."
+    )
 
 
 class _Breadth:
