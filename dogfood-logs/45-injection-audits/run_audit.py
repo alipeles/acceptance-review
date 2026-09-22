@@ -152,6 +152,22 @@ def render(
         # judging pass is the ground truth the verifier is measured against, so
         # it is written to the JSON only, never to the Markdown the judge reads.
         out.append("")
+        # The refused candidates' own diffs. The protocol requires judging
+        # whether each refusal was CORRECT — a refused edit that would have
+        # injected its defect is a cost of the check — and that cannot be done
+        # from the refusal's prose alone. Two judging passes on audit v9
+        # returned `null` for exactly this reason before it was added.
+        for index, candidate in enumerate(attempt.set_aside_candidates, start=1):
+            if candidate.descriptor is None:
+                continue
+            where = (
+                f"`{candidate.descriptor.path}` lines "
+                f"{candidate.descriptor.start_line}-{candidate.descriptor.end_line}"
+            )
+            out.append(f"**refused candidate {index}** — {where}")
+            out.append("")
+            out += _diff_lines(candidate.descriptor)
+            out.append("")
         if attempt.descriptor is not None:
             where = (
                 f"`{attempt.descriptor.path}` lines "
@@ -232,11 +248,46 @@ def main(argv: list[str] | None = None) -> int:
         help="resolve inputs and print what would be run, without a single model call",
     )
     parser.add_argument(
+        "--rerender",
+        type=Path,
+        help="rebuild the Markdown from a finished run's attempts JSON, with no run at all",
+    )
+    parser.add_argument(
         "--control-only",
         action="store_true",
         help="stop after the control run: exercises the test-running half, still no model call",
     )
     args = parser.parse_args(argv)
+
+    if args.rerender:
+        # The Markdown is a view of the attempts, so a rendering fix must not
+        # cost another run. Everything the judge reads comes from the JSON and
+        # the stored defect list; nothing here calls a model or runs a test.
+        doc = json.loads(args.rerender.read_text(encoding="utf-8"))
+        stored = {
+            defect.id: defect
+            for entry in load_defect_sets(args.defects, tuple(args.skip))
+            for defect in entry.defects
+        }
+        attempts = [MutationAttempt.from_dict(entry) for entry in doc["attempts"]]
+        args.out.write_text(
+            render(
+                attempts,
+                stored,
+                audit=doc["audit"],
+                head=doc["revision"],
+                note=(
+                    f"Audit v6's defects for {doc['criteria']} criteria. "
+                    f"Edits on {doc['descriptor_model']}, up to {doc['max_candidates']} "
+                    f"candidates each; verification "
+                    f"{'off' if not doc['verifier_model'] else 'on, ' + doc['verifier_model']}."
+                ),
+                usable_tests=doc["usable_tests"],
+            ),
+            encoding="utf-8",
+        )
+        print(f"re-rendered {len(attempts)} attempts into {args.out}")
+        return 0
 
     defect_sets = load_defect_sets(args.defects, tuple(args.skip))
     if args.limit:

@@ -1,0 +1,441 @@
+{
+  "audit": "v9",
+  "base": "61c5a3c",
+  "descriptor_model": "openai/gpt-5.4-mini",
+  "judged_by": "four parallel judging passes over 16 sections each, per judge_audit.md",
+  "labels": [
+    {
+      "changes_behaviour": true,
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/no-discriminate-report-not-wired",
+      "edit": "unrelated",
+      "outcome": "survived",
+      "reason": "The edit only adds a second call to _set_aside_block guarded by `not review.set_aside_tests` inside src/acceptance/report.py:131-133, printing an empty 'Candidate tests set aside' header (src/acceptance/report.py:312-316); the no-fail conclusion itself is still emitted by _mutation_block at src/acceptance/report.py:296-300, so the named behaviour is untouched."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/survival-classified-as-set-aside",
+      "edit": "backwards",
+      "outcome": "killed",
+      "reason": "src/acceptance/runner.py is at src/acceptance/mutation/runner.py:177-185, where head already routes a no-red-test run with unobserved outcomes to NOT_ATTEMPTED \u2014 the defect's `defective` behaviour \u2014 and the edit flips that to SURVIVED, the `expected` one, while the fully-observed no-fail path at src/acceptance/mutation/runner.py:187-192 already returned SURVIVED and is unchanged."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "candidate-tests-not-discriminate-when-none-fail/survival-not-propagated-to-review-state",
+      "edit": "injects",
+      "outcome": "killed",
+      "reason": "src/acceptance/pipeline.py:643 passed the computed `attempts` into Review.mutation_attempts (src/acceptance/review_state.py:1263) and now passes [], so survived attempts are computed but never reach the stored review or the report block at src/acceptance/report.py:131-133 \u2014 exactly the defective behaviour."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "carry-reason-for-non-settlement/baseline-set-aside-reason-defaults-to-generic-text",
+      "edit": "overbroad",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/baseline.py:145 only uses the canned text when `outcome.reason` is empty, so head never substitutes over a real reason; dropping the fallback leaves reason='' for those outcomes, which SetAsideTest's validator at src/acceptance/mutation/baseline.py:61-65 rejects with ValueError, so the 13 failures come from a crashed baseline read rather than from a misstated reason."
+    },
+    {
+      "defect_id": "carry-reason-for-non-settlement/not-attempted-missing-reason",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates target src/acceptance/mutation/attempt.py:114 and either repeat `reason: str = \"\"` verbatim or tighten it to `Field(min_length=1)`, which forbids an empty reason everywhere and leaves the `_reason_accompanies_every_unsettled_attempt` validator at lines 124-133 intact, so an unsettled attempt with an empty reason is still impossible.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "carry-reason-for-non-settlement/not-attempted-path-loses-reason",
+      "edit": "overbroad",
+      "outcome": "killed",
+      "reason": "MutationDescriptor declares only path/start_line/end_line/replacement/region_label (src/acceptance/mutation/attempt.py:76-80) under extra='forbid' (src/acceptance/model_base.py:16), so `reason=descriptor.reason` at src/acceptance/mutation/runner.py:179-185 raises AttributeError on every partially-observed run instead of storing a wrong reason."
+    },
+    {
+      "defect_id": "continue-with-set-aside-tests/allow-failing-tests-not-propagated",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates reproduce src/acceptance/cli.py:193-209 character for character \u2014 every keyword argument including `execution=execution` at line 209 survives \u2014 and only add a stray `)` that duplicates the existing line 210, so nothing is unwired.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "continue-with-set-aside-tests/failing-tests-not-listed-in-report",
+      "edit": "unrelated",
+      "outcome": "survived",
+      "reason": "The edit adds a blank line after _set_aside_block at src/acceptance/report.py:135-136 on top of the blank line already at src/acceptance/report.py:137; the block still names each test and its reason at src/acceptance/report.py:312-315, so only whitespace in the rendered report changes."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "continue-with-set-aside-tests/set-aside-tests-still-count-in-conclusions",
+      "edit": "unrelated",
+      "outcome": "killed",
+      "reason": "src/acceptance/pipeline.py:479 now drops the execution-derived verdicts from the rating inputs, which removes evidence rather than re-admitting set-aside tests; set-aside tests are excluded from `usable_tests` at src/acceptance/mutation/baseline.py:149-163 and never enter the verdicts on either side of the edit."
+    },
+    {
+      "defect_id": "does-not-run-first/execution-path-not-wired-into-review-flow",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates were set aside as identical replacements of the _run_execution_tier call at src/acceptance/pipeline.py:457-459; a replacement that matches the original cannot inject anything, so refusing them cost nothing.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "does-not-run-first/execution-tier-only-runs-when-explicitly-enabled",
+      "edit": "overbroad",
+      "outcome": "killed",
+      "reason": "Head already only runs the tier when the caller opts in (comment and gate at src/acceptance/pipeline.py:455-456 and 274-275), and passing None at src/acceptance/pipeline.py:457-459 makes _run_execution_tier return empty triples unconditionally, so the whole execution feature is switched off even for an enabled run \u2014 which is what the 16 failures catch."
+    },
+    {
+      "defect_id": "does-not-run-first/static-judgement-still-runs-before-execution",
+      "outcome": "no_usable_edit",
+      "reason": "Candidates 1 and 3 leave the original judge_pairs argument list at src/acceptance/pipeline.py:462-474 dangling and do not parse, and candidate 2's reorder reads `attempts` in `remaining_defect_sets(attempts, defect_sets)` before its only assignment (the `_run_execution_tier` call it moves below), so run_review raises UnboundLocalError and never reaches the code-reading judgement at all.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "execution-could-not-settle-defects/execution-disabled-skips-static-judgement",
+      "edit": "unrelated",
+      "outcome": "killed",
+      "reason": "Dropping `or not execution.enabled` at src/acceptance/pipeline.py:274-275 makes the tier run for ExecutionSettings(enabled=False) (src/acceptance/mutation/settings.py:38) \u2014 the opposite of gating it off \u2014 while the static judgement still receives every unsettled defect via remaining_defect_sets at src/acceptance/mutation/verdicts.py:85-87."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "execution-could-not-settle-defects/halted-baseline-prevents-static-fallback",
+      "edit": "backwards",
+      "outcome": "killed",
+      "reason": "Head raises ReviewHalted at src/acceptance/pipeline.py:284-285 and the CLI catches it at src/acceptance/cli.py:959 without producing a static judgement, which is the defect's `defective` behaviour; replacing the raise with `pass` lets the run reach judge_pairs at src/acceptance/pipeline.py:461, i.e. the `expected` behaviour."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "execution-could-not-settle-defects/not-attempted-defects-never-fed-to-static-judge",
+      "edit": "injects",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/verdicts.py:85-87 returned the full defect sets when nothing settled and now returns [], so defects that were not_mutable or not_attempted are handed to judge_pairs (src/acceptance/pipeline.py:461-465) as an empty set and never receive a code-reading conclusion."
+    },
+    {
+      "defect_id": "execution-could-not-settle-defects/unsettled-defects-dropped-from-review-state",
+      "outcome": "no_usable_edit",
+      "reason": "Candidate 3 rewrites src/acceptance/pipeline.py:643 to `mutation_attempts=[attempt for attempt in attempts if attempt.settled]`, which stores no unsettled attempt in the review state at all \u2014 exactly the `defective` behaviour \u2014 and it was thrown away only because 641..643 sits outside the region the defect named.",
+      "refusal_correct": false
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "injected-text-recorded-next-to-result/mutation-attempts-without-descriptor-cannot-record-injected-text",
+      "edit": "injects",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/attempt.py:149-156 held the validator that rejects a settled attempt with descriptor=None, and the edit reduces its body to `return self`, so a settled outcome with no injected text now constructs."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "injected-text-recorded-next-to-result/mutation-block-omits-injected-text-for-unsettled-attempts",
+      "edit": "unrelated",
+      "outcome": "survived",
+      "reason": "src/acceptance/report.py:288-292 already renders the descriptor's injected text for every attempt that has one, settled or not, and the edit only re-inserts a second copy of the `if attempt.killing_tests:` block that is already at 293-295, duplicating the 'caught by' lines for killed attempts."
+    },
+    {
+      "defect_id": "mechanical-validity-checks/containment-check-only-uses-resolved-regions",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates were byte-identical replacements of src/acceptance/mutation/validity.py:114-118 and 113-124 and src/acceptance/mutation/runner.py:104-111, so nothing would have been injected and every test would have 'survived' an absent defect.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "mechanical-validity-checks/descriptor-declines-are-not-mechanically-enforced",
+      "edit": "backwards",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/descriptor.py:199-201 already returned None on a decline and src/acceptance/mutation/runner.py:123-126 separately turned that into not_mutable \u2014 exactly the defective behaviour \u2014 so replacing the `return None` with a raise moves toward rejection at the descriptor boundary rather than injecting the defect (though it aborts the run instead of recording not_mutable)."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "mechanical-validity-checks/mechanical-checks-bypassable-through-execution-settings",
+      "edit": "unrelated",
+      "outcome": "killed",
+      "reason": "The edit deletes `if baseline.halted: raise ReviewHalted(baseline)` at src/acceptance/pipeline.py:283-284, which only controls whether a review aborts on an already-failing candidate test; descriptor validity is decided entirely in src/acceptance/mutation/validity.py:78-133, which the edit does not touch."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "mechanical-validity-checks/parse-check-applies-only-to-some-file-types",
+      "edit": "injects",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/validity.py:52-56 lists `.json: json.loads` and the edit removes it, so a mutated .json file that does have a parser is no longer re-parsed at validity.py:127-133 \u2014 the exact gap the comment at validity.py:41-48 says #45's Gate 2 found."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "no-edit-without-named-region/missing-region-not-reported-as-not-editable",
+      "edit": "unrelated",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/runner.py:105-111 already reports 'the defect names no changed region ... so there is no span to replace', and the edit only rewrites the second sentence (dropping the absence-defect explanation) while still naming the missing region, so the reported reason changes but the named behaviour does not."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "no-line-execution-recording/execution-tier-still-derives-line-coverage",
+      "edit": "unrelated",
+      "outcome": "killed",
+      "reason": "src/acceptance/pipeline.py:479 merges `executed_verdicts + pair_mapping.verdicts` and the edit drops the execution half; neither version records executed lines anywhere, so the edit removes the execution tier's contribution to the ledger and rating rather than making the code record line coverage."
+    },
+    {
+      "defect_id": "no-line-execution-recording/line-execution-recording-still-present",
+      "outcome": "no_usable_edit",
+      "reason": "One candidate was a byte-identical replacement of src/acceptance/report.py:270-303 and the other two made every failing test fail with NameError, i.e. the edited module no longer names something it references, which breaks loading rather than the line-recording behaviour; refusing all three was correct.",
+      "refusal_correct": true
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parse-failure-becomes-not-mutable",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates produced only NameError failures, meaning the edited module stopped resolving a name rather than changing how src/acceptance/mutation/validity.py:127-133 treats a missing parser, so the failures were not evidence about the named behaviour.",
+      "refusal_correct": true
+    },
+    {
+      "defect_id": "no-parser-not-invalid/parser-check-applies-to-all-files",
+      "outcome": "not_attempted",
+      "reason": "The edit adds `\".toml\": __import__(\"tomllib\").loads` to `_PARSERS` at src/acceptance/mutation/validity.py:52-56, which widens the parser table rather than narrowing it and, on this project's Python 3.10 (noted at lines 50-51), raises at import so the module never loads.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "no-parser-not-invalid/parserless-files-still-rejected",
+      "edit": "injects",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/validity.py:127-133 skips the parse check when `_parser_for` returns None, and the edit inverts it to `if parse is None: return \"... no parser is available\"`, so a parserless file is now reported invalid on that ground alone."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "no-whole-suite-run/baseline-control-run-uses-all-tests",
+      "edit": "unrelated",
+      "outcome": "killed",
+      "reason": "src/acceptance/pipeline.py:277 builds the baseline test ids from the discovered candidate tests and the edit truncates it to `tests[:1]`, which runs one test instead of the named candidates \u2014 fewer tests, not the whole-suite execution the defect names."
+    },
+    {
+      "changes_behaviour": false,
+      "defect_id": "no-whole-suite-run/whole-suite-execution-flag",
+      "edit": "unrelated",
+      "outcome": "survived",
+      "reason": "src/acceptance/mutation/runner.py:136-145 already carries exactly the `except OSError` handler the edit adds, so after the edit the try block has two identical OSError handlers and the second (original) one is unreachable; the test list passed to run_tests at runner.py:138 is unchanged."
+    },
+    {
+      "defect_id": "observation-not-prediction/execution-verdicts-not-marked-as-observed",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates were byte-identical replacements of src/acceptance/review_state.py:214-227, so nothing would have been injected and any 'survival' would have been of a defect that was never introduced.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "observation-not-prediction/prediction-language-still-used-in-recorded-conclusion",
+      "edit": "unrelated",
+      "outcome": "survived",
+      "reason": "src/acceptance/mutation/verdicts.py:109-112 returns past-tense observations and the edit only drops the word 'still' from two of them, so the recorded reason text differs but remains a report of what the tests did, not a forecast."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "parser-files-still-parse/parse-check-only-covers-python",
+      "edit": "injects",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/validity.py:52-56 lists .json beside .py/.pyi at head and _parser_for (138-142) feeds the parse check at 126-133, so removing the .json entry leaves a parseable file type unparsed, exactly the defective behaviour."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "parser-files-still-parse/parse-errors-treated-as-acceptance",
+      "edit": "injects",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/validity.py:130-133 returns the 'does not parse' reason at head; returning None from that except makes invalidity_reason report a syntactically broken mutant as valid."
+    },
+    {
+      "defect_id": "preserve-code-reading-judgement/execution-off-path-skips-static-judgement",
+      "outcome": "no_usable_edit",
+      "reason": "Candidates 1 and 2 repeat src/acceptance/pipeline.py:457-459 verbatim, and candidate 3 only swaps `remaining_defect_sets(attempts, defect_sets)` for `defect_sets` at line 465, so `judge_pairs` at line 461 still runs on the delivered path.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "preserve-code-reading-judgement/static-judgement-skipped-when-execution-runs",
+      "edit": "unrelated",
+      "outcome": "survived",
+      "reason": "src/acceptance/pipeline.py:479 only swaps the concatenation order; judge_pairs still runs over remaining_defect_sets at pipeline.py:461-474 and derive_support reduces the list order-independently (src/acceptance/defects/support.py:191-197,259), so the code-reading judgement is untouched and only the order of the stored Review.pair_verdicts (pipeline.py:641) moves."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/baseline-halt-changes-review-conclusions",
+      "edit": "backwards",
+      "outcome": "killed",
+      "reason": "src/acceptance/pipeline.py:284-285 already raises ReviewHalted whenever the control run found a red candidate test (src/acceptance/mutation/baseline.py:149-161), which is the stated defective behaviour; replacing the raise with pass lets the run fall through to run_mutations, where a halted baseline yields not_attempted for every defect (src/acceptance/mutation/runner.py:66-70) and the static judgement is preserved, and the failures are the pytest.raises(ReviewHalted) tests at tests/test_mutation_pipeline_wiring.py:342,365,378."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/execution-tier-overrides-static-when-run-is-unavailable",
+      "edit": "backwards",
+      "outcome": "killed",
+      "reason": "Same lines, src/acceptance/pipeline.py:284-285: head raises and so halts instead of preserving conclusions, while `return [], [], []` makes the execution tier contribute nothing so the full defect sets reach judge_pairs at pipeline.py:461-474 \u2014 the expected behaviour, and the failing tests are the ReviewHalted ones in tests/test_mutation_pipeline_wiring.py:342,365,378."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "preserve-current-review-conclusions-when-unrunnable/unrunnable-defects-return-not-attempted-instead-of-static",
+      "edit": "injects",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/runner.py:177-185 records a partly-observed run as NOT_ATTEMPTED, which is unsettled (src/acceptance/mutation/attempt.py:49,116-118) and so still reaches the static judge; SURVIVED settles it, emits executed verdicts (src/acceptance/mutation/verdicts.py:52-66) and removes the defect from judge_pairs, which is the defective behaviour, and the reason field stays legal because only unsettled attempts require one (attempt.py:124-133)."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "report-lists-set-aside-tests/report-omits-set-aside-tests",
+      "edit": "injects",
+      "outcome": "killed",
+      "reason": "src/acceptance/report.py:312-315 prints `[kind] test_id` for each set-aside test at head; the edit drops test_id from line 314, leaving the kind and reason with no test named."
+    },
+    {
+      "defect_id": "report-lists-set-aside-tests/set-aside-tests-never-populated",
+      "outcome": "no_usable_edit",
+      "reason": "The wiring is src/acceptance/pipeline.py:301 and 644 (set_aside=baseline.set_aside handed through to Review.set_aside_tests); one candidate was an identical replacement of line 644, and the other two made all 79 failing tests fail with NameError, i.e. the module no longer loads, which is a crash rather than the named defect.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": false,
+      "defect_id": "run-candidate-tests-on-altered-copy/baseline-halt-prevents-execution",
+      "edit": "unrelated",
+      "outcome": "survived",
+      "reason": "src/acceptance/pipeline.py:278-285 passes execution.allow_failing_tests into establish_baseline, and src/acceptance/mutation/baseline.py:149-161 sets halted only when failing tests were found and that flag is false, so `and not execution.allow_failing_tests` is true whenever baseline.halted is true and the added conjunct changes nothing; head already does the defective thing."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "run-candidate-tests-on-altered-copy/execution-flag-off-by-default",
+      "edit": "backwards",
+      "outcome": "killed",
+      "reason": "src/acceptance/pipeline.py:274-275 returns empty results unless execution.enabled is true, which is verbatim the defective behaviour; dropping `or not execution.enabled` makes the stage run whenever settings are supplied, i.e. toward the expected 'not only when an opt-in flag is set', so the one failing test is catching the repair."
+    },
+    {
+      "claim": "right",
+      "defect_id": "run-candidate-tests-on-altered-copy/no-tests-after-empty-baseline",
+      "outcome": "already_present",
+      "reason": "src/acceptance/mutation/runner.py:71-79 does short-circuit to _not_attempted when baseline.usable_tests is empty, so the claim holds, and the repair replaces that branch with the same _attempt call as lines 81-92 (signature matches runner.py:95-103), which removes the short-circuit the defect names.",
+      "repair": "repairs"
+    },
+    {
+      "claim": "right",
+      "defect_id": "run-candidate-tests-on-altered-copy/partial-run-treated-as-not-attempted",
+      "outcome": "already_present",
+      "reason": "src/acceptance/mutation/runner.py:177-185 classifies any run with unobserved outcomes as NOT_ATTEMPTED, so the claim holds; the repair returns SURVIVED, which is a settled outcome (src/acceptance/mutation/attempt.py:49) needing no reason (attempt.py:124-133), so the partly-observed run is recorded as having been executed.",
+      "repair": "repairs"
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/descriptor-allows-multi-file-edit",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates were identical replacements of the containment check at src/acceptance/mutation/validity.py:119-124, and an identical replacement injects nothing, so refusing them was right.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "single-continuous-edit-in-named-region/descriptor-response-shape-can-lose-span-bounds",
+      "edit": "unrelated",
+      "outcome": "survived",
+      "reason": "src/acceptance/mutation/descriptor.py:208-214 still returns one path, one start_line, one end_line and one replacement after the edit, so the single-span shape the defect names is intact; setting end_line=start_line only truncates every multi-line span to its first line, which is a wrong value, not a lost bound."
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/missing-region-rejected-as-mutable",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates were identical replacements of the no-region guard at src/acceptance/mutation/runner.py:104-111, which returns _not_mutable when regions_for finds nothing, so nothing would have been injected and refusing was right.",
+      "refusal_correct": true
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/region-containment-check-too-permissive",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates flip `if not any(region.contains(...))` to `if any(region.contains(...))` at src/acceptance/mutation/validity.py:119, which rejects contained spans and lets out-of-region spans fall through to the parse check and be accepted \u2014 the `defective` clause's reversed containment test, discarded only for failing 29 of 339 tests.",
+      "refusal_correct": false
+    },
+    {
+      "defect_id": "single-continuous-edit-in-named-region/span-validation-not-applied-before-injection",
+      "outcome": "no_usable_edit",
+      "reason": "All three replacements for src/acceptance/mutation/runner.py:130-134 were byte-identical to the invalidity_reason gate they replaced, so the gate would still run and nothing would be injected.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "smallest-edit-that-makes-defect-true/descriptor-can-return-non-minimal-edit",
+      "edit": "unrelated",
+      "outcome": "survived",
+      "reason": "src/acceptance/mutation/descriptor.py:50 drops the word SMALLEST from one directive, but the 'SMALLEST MEANS SMALLEST' section at descriptor.py:66-71 still demands the smallest edit and the acceptance path (runner.py:130-134's invalidity_reason plus max_edit_lines) is untouched, so only the request text and its hash move."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "smallest-edit-that-makes-defect-true/mutation-stage-not-invoked",
+      "edit": "backwards",
+      "outcome": "killed",
+      "reason": "src/acceptance/cli.py:951-953 becomes enabled=args.execute or True, which forces the mutation stage on for every run \u2014 the expected 'actually invoke the mutation stage', the opposite of the defect's 'execution left disabled' (pipeline.py:276 returns empty when not enabled)."
+    },
+    {
+      "defect_id": "smallest-edit-that-makes-defect-true/no-search-for-smaller-edit",
+      "outcome": "no_usable_edit",
+      "reason": "All three replacements for src/acceptance/mutation/descriptor.py:191-214 (_descriptor_from) were identical to the original, so no defect would have been introduced and every test would have 'survived' nothing.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "smallest-edit-that-makes-defect-true/region-bounds-can-overconstrain-minimality",
+      "edit": "unrelated",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/descriptor.py:127 asking = defects only removes the skip for defects with no resolved region (pipeline.py:288 gives every defect a key, so no KeyError); the offered regions and the region_label constraint at descriptor.py:170-172 are unchanged, so no edit outside a named region becomes possible, and the two failures are the call-cost tests at tests/test_mutation_descriptor.py:144-162."
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/baseline-failure-halts-before-discrimination",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates left src/acceptance/mutation/baseline.py unparsable at line 162, inside the halt branch at baseline.py:149-161, and a module that will not import fails every test for a reason unrelated to the named defect.",
+      "refusal_correct": true
+    },
+    {
+      "defect_id": "test-fails-discriminate-defect/killed-tests-not-marked-as-killing",
+      "outcome": "no_usable_edit",
+      "reason": "One candidate was an identical replacement of src/acceptance/review_state.py:214-227 (the PairVerdict.tier default block) and the other two left src/acceptance/mutation/verdicts.py unparsable near lines 68-69, so none would have injected the defect.",
+      "refusal_correct": true
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "test-fails-discriminate-defect/mutation-kill-not-recorded-as-discriminating",
+      "edit": "unrelated",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/verdicts.py:57-67 still appends a PairVerdict with kills=test_id in killing for every settled attempt; only tier moves from DEFECT_KILLED to STATIC, so the failing test is still recorded as discriminating, just at a weaker tier."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "test-fails-discriminate-defect/mutation-verdicts-dropped-from-review",
+      "edit": "injects",
+      "outcome": "killed",
+      "reason": "src/acceptance/pipeline.py:479 stops concatenating executed_verdicts, so the verdicts handed to ledger_sink (pipeline.py:489) and derive_support hold only the static pair judgements \u2014 exactly the defective behaviour."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "tests-candidate-selection/execution-tier-alters-candidate-selection",
+      "edit": "backwards",
+      "outcome": "killed",
+      "reason": "src/acceptance/pipeline.py:284-285 already raised ReviewHalted on a failing baseline \u2014 the behaviour the defect calls defective \u2014 and the edit replaces the raise with a return, removing the halt and moving toward the expected 'no new decision about candidate tests'."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "tests-candidate-selection/execution-tier-changes-test-run-eligibility",
+      "edit": "backwards",
+      "outcome": "killed",
+      "reason": "The edit deletes the `if baseline.halted: raise ReviewHalted(baseline)` at src/acceptance/pipeline.py:284-285, so the review no longer decides that tests may not run \u2014 the head code did the defective behaviour and this moves it toward the expected one."
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "weaker-tier-evidence/executed-verdicts-upgrade-support-tier",
+      "edit": "unrelated",
+      "outcome": "survived",
+      "reason": "src/acceptance/pipeline.py:479 only reorders the two lists; derive_support at src/acceptance/defects/support.py:191-197 takes min() of tiers and verdicts.py:85-98 removes settled defects from the static judge, so no tier or kill set changes and only the persisted verdict order moves."
+    },
+    {
+      "claim": "right",
+      "defect_id": "weaker-tier-evidence/mutation-attempt-tier-returns-stronger-evidence",
+      "outcome": "already_present",
+      "reason": "src/acceptance/mutation/attempt.py:60 reads `tier = EvidenceTier.DEFECT_KILLED if kind in SETTLING_KINDS else EvidenceTier.STATIC`, with the docstring at attempt.py:10-12 stating both settling outcomes reach DEFECT_KILLED, so the claim is right; the swap makes killed/survived attempts STATIC, which repairs the named path, although it also hands the non-settling outcomes the stronger tier.",
+      "repair": "repairs"
+    },
+    {
+      "changes_behaviour": true,
+      "defect_id": "weaker-tier-evidence/pair-verdict-tier-default-stays-static",
+      "edit": "backwards",
+      "outcome": "killed",
+      "reason": "src/acceptance/mutation/verdicts.py:64 emitted tier=EvidenceTier.DEFECT_KILLED, which is the behaviour the defect names as defective, and the edit sets it to STATIC \u2014 the expected 'every record stored at the weaker tier' \u2014 so the six failures are catching the repair."
+    },
+    {
+      "defect_id": "weaker-tier-evidence/report-shows-executed-verdicts-as-stronger-tier",
+      "outcome": "no_usable_edit",
+      "reason": "All three candidates replaced src/acceptance/report.py:283 (the mutation-block header line) with identical text, so nothing would have been injected.",
+      "refusal_correct": true
+    }
+  ],
+  "note": "Refusal correctness for 7 sections was re-judged after the renderer was fixed to show refused candidates diffs.",
+  "protocol": "docs/audit-protocol.md",
+  "revision": "518f876",
+  "source": "injection-audit-v9.md",
+  "verifier_model": "openai/gpt-5.4"
+}
