@@ -6468,3 +6468,53 @@ the record.
   > **Acceptance.** A revised requirement's obligations describe its new text; a
   > regression case pins it with this exclusion's two wordings.
 - **Status:** open
+
+### [2026-09-22] The gates refuse edits that would have injected their defect
+- **Kind:** filing
+- **Found during:** #334, the audit measuring the candidate loop
+- **Where:** `src/acceptance/mutation/validity.py:119` (region containment) and
+  the breadth refusal in `src/acceptance/mutation/runner.py`
+- **Severity:** should-fix
+- **What's wrong:** Injection audit v9 judged two refusals incorrect: both
+  threw away a candidate edit that would have made its named defect true. One
+  repeats a false refusal audit v8 already recorded on the same defect, so it is
+  systematic rather than chance.
+- **Why I didn't act:** out of scope for #334, which measures the candidate
+  loop rather than changing the gates, and a fix moves what every audit counts.
+- **Drafted fix:** file it, but **no umbrella covers the mutation stage** — the
+  six in CLAUDE.md are decomposition, discovery and mapping, evidence
+  judgement, determinism, findings and presentation, and the benchmark. It
+  either needs a seventh umbrella or should hang off #45. My recommendation is
+  a seventh, since defect injection now has as many moving parts as the areas
+  that have one. Body as it would be filed:
+
+  > **Two mechanical checks refuse edits that inject their defect**
+  >
+  > Measured in injection audit v9 (`dogfood-logs/45-injection-audits/`,
+  > with its judgement), 64 defects at `518f876`.
+  >
+  > **The containment check, on the defect that names it.** Every candidate for
+  > `single-continuous-edit-in-named-region/region-containment-check-too-permissive`
+  > inverts `if not any(region.contains(...))` at `mutation/validity.py:119`,
+  > which is that defect's defective behaviour word for word. All three were
+  > refused for failing 29 of 339 tests — which is exactly what a correct
+  > injection of this defect looks like, because every injected edit is checked
+  > by the code being inverted. **Audit v8 recorded the same false refusal on the
+  > same defect**, so a breadth threshold cannot separate them.
+  >
+  > **The containment check, on a span outside the named region.** Candidate 3
+  > for `execution-could-not-settle-defects/unsettled-defects-dropped-from-review-state`
+  > rewrites `pipeline.py:643` so no unsettled attempt is stored, which is that
+  > defect's defective clause. It was refused only because the span falls
+  > outside the region the defect named — the region is where the defect was
+  > *described*, not the only place its behaviour can be changed.
+  >
+  > Both refusals are invisible in the tool's own output: the review records
+  > that a candidate was set aside and why, but a refusal that cost a real
+  > injection looks exactly like one that saved a bad edit.
+  >
+  > **Acceptance.** A defect whose own code is the check being inverted can
+  > still be injected, or the review records that the check cannot judge it;
+  > and the two cases above are pinned as regression cases from the stored
+  > audit attempts.
+- **Status:** open
