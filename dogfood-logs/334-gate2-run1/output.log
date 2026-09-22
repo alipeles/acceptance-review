@@ -1,0 +1,1600 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) not fully implemented (no-candidate-test-execution-decision); 1 obligation(s) with non-discriminating test evidence (which-candidate-it-used).
+
+Obligations:
+
+  1. The review asks for several candidate edits instead of one.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/mutation/runner.py#@@ -115,6 +130,7 @@ def run_mutations(
+         1.2  src/acceptance/mutation/runner.py#@@ -163,6 +179,7 @@ def run_mutations(
+         1.3  src/acceptance/mutation/runner.py#@@ -181,6 +198,7 @@ def _attempt(
+         1.4  src/acceptance/mutation/runner.py#@@ -202,48 +220,125 @@ def _attempt(
+         1.5  src/acceptance/mutation/descriptor.py#@@ -52,7 +57,7 @@ from acceptance.request_blocks import Block, BlockKind, assemble
+         1.6  src/acceptance/mutation/descriptor.py#@@ -215,21 +220,64 @@ def from_mapping(descriptors: dict[str, DescriptorAnswer]):
+         1.7  src/acceptance/mutation/settings.py#@@ -32,7 +32,11 @@ from __future__ import annotations
+         1.8  tests/test_mutation_runner.py#@@ -601,3 +616,147 @@ class TestTheOriginalProjectIsNeverTouched:
+         1.9  tests/test_mutation_pipeline_wiring.py#@@ -1093,3 +1102,63 @@ class TestTheRunRoutesPairsThroughTheRealPipeline:
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         1.10  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+         1.11  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside
+         1.12  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_setting_reaches_the_runner
+         1.13  tests/test_mutation_runner.py::TestCandidateEdits::test_a_refused_first_candidate_is_followed_by_a_second
+         1.14  tests/test_mutation_runner.py::TestCandidateEdits::test_the_second_request_is_shown_the_first_refusal
+
+  2. Use the first candidate edit that passes the checks the review already applies to an edit.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/mutation/runner.py#@@ -202,48 +220,125 @@ def _attempt(
+         2.2  src/acceptance/mutation/runner.py#@@ -181,6 +198,7 @@ def _attempt(
+         2.3  tests/test_mutation_runner.py#@@ -601,3 +616,147 @@ class TestTheOriginalProjectIsNeverTouched:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         2.4  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+         2.5  tests/test_mutation_runner.py::TestCandidateEdits::test_a_first_candidate_that_passes_asks_for_no_more
+         2.6  tests/test_mutation_runner.py::TestCandidateEdits::test_the_second_request_is_shown_the_first_refusal
+         2.7  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+
+  3. The number of candidates the review asks for is configurable.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/mutation/settings.py#@@ -32,7 +32,11 @@ from __future__ import annotations
+         3.2  src/acceptance/mutation/runner.py#@@ -115,6 +130,7 @@ def run_mutations(
+         3.3  src/acceptance/mutation/runner.py#@@ -163,6 +179,7 @@ def run_mutations(
+         3.4  src/acceptance/pipeline.py#@@ -325,21 +325,25 @@ def _run_execution_tier(
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         3.5  tests/test_cli_execution.py::TestTheSettingsArrive::test_the_pipeline_is_given_settings_to_decide_with
+         3.6  tests/test_cli_pair_ranking.py::test_the_command_line_sets_the_stop_number
+         3.7  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+         3.8  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_setting_reaches_the_runner
+         3.9  tests/test_mutation_runner.py::TestCandidateEdits::test_a_refused_first_candidate_is_followed_by_a_second
+         3.10  tests/test_mutation_runner.py::TestCandidateEdits::test_the_limit_is_configurable
+         3.11  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_builder_with_no_usable_answer_ends_with_no_usable_edit
+
+  4. When no candidate passes, the review says that none of the candidates it asked for could be used.
+       requirements: task-01
+       code evidence: addressed
+         4.1  src/acceptance/mutation/attempt.py#@@ -59,17 +61,23 @@ class MutationOutcomeKind(str, Enum):
+         4.2  src/acceptance/mutation/runner.py#@@ -202,48 +220,125 @@ def _attempt(
+         4.3  src/acceptance/mutation/runner.py#@@ -181,6 +198,7 @@ def _attempt(
+         4.4  tests/test_mutation_runner.py#@@ -210,16 +211,23 @@ class TestEveryDefectIsAccountedFor:
+         4.5  tests/test_mutation_pipeline_wiring.py#@@ -451,8 +452,13 @@ class TestTheBreadthSettingsReachTheRunner:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         4.6  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside
+
+  5. Preserve the review's handling of a defect when no edit could be built for today.
+       requirements: task-01
+       code evidence: addressed
+         5.1  src/acceptance/mutation/runner.py#@@ -202,48 +220,125 @@ def _attempt(
+         5.2  tests/test_mutation_runner.py#@@ -210,16 +211,23 @@ class TestEveryDefectIsAccountedFor:
+         5.3  tests/test_mutation_runner.py#@@ -601,3 +616,147 @@ class TestTheOriginalProjectIsNeverTouched:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         5.4  tests/test_mutation_descriptor.py::TestAskingAgainAfterARefusal::test_a_first_request_is_unchanged_so_its_recordings_still_replay
+         5.5  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+         5.6  tests/test_mutation_pipeline_wiring.py::TestTheBreadthSettingsReachTheRunner::test_a_kill_too_broad_for_the_configured_threshold_is_not_a_kill
+
+  6. For each defect, the review records how many candidates it asked for.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/mutation/attempt.py#@@ -251,6 +289,14 @@ class MutationAttempt(_Model):
+         6.2  src/acceptance/mutation/attempt.py#@@ -291,6 +337,40 @@ class MutationAttempt(_Model):
+         6.3  src/acceptance/mutation/runner.py#@@ -202,48 +220,125 @@ def _attempt(
+         6.4  tests/test_mutation_runner.py#@@ -210,16 +211,23 @@ class TestEveryDefectIsAccountedFor:
+         6.5  tests/test_mutation_runner.py#@@ -601,3 +616,147 @@ class TestTheOriginalProjectIsNeverTouched:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         6.6  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside
+         6.7  tests/test_mutation_runner.py::TestCandidateEdits::test_a_refused_first_candidate_is_followed_by_a_second
+         6.8  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_builder_with_no_usable_answer_ends_with_no_usable_edit
+
+  7. Record how many candidates were set aside and why.
+       requirements: task-02
+       code evidence: addressed
+         7.1  src/acceptance/mutation/attempt.py#@@ -203,6 +211,36 @@ class RepairCorroboration(str, Enum):
+         7.2  src/acceptance/mutation/attempt.py#@@ -251,6 +289,14 @@ class MutationAttempt(_Model):
+         7.3  src/acceptance/mutation/attempt.py#@@ -291,6 +337,40 @@ class MutationAttempt(_Model):
+         7.4  src/acceptance/mutation/runner.py#@@ -202,48 +220,125 @@ def _attempt(
+         7.5  tests/test_mutation_runner.py#@@ -251,8 +259,10 @@ class TestEveryDefectIsAccountedFor:
+         7.6  tests/test_mutation_runner.py#@@ -269,8 +279,10 @@ class TestEveryDefectIsAccountedFor:
+         7.7  tests/test_mutation_runner.py#@@ -391,23 +403,25 @@ class TestAnEditThatUsesANameThatDoesNotExist:
+         7.8  tests/test_mutation_runner.py#@@ -521,7 +535,8 @@ class TestTheBreadthCheck:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         7.9  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside
+         7.10  tests/test_mutation_runner.py::TestCandidateEdits::test_no_usable_edit_is_not_the_same_outcome_as_not_mutable
+         7.11  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_builder_with_no_usable_answer_ends_with_no_usable_edit
+         7.12  tests/test_mutation_runner.py::TestTheBreadthCheck::test_the_reason_gives_the_count
+
+  8. Record which candidate it used for each defect review.
+       requirements: task-02
+       code evidence: addressed
+         8.1  src/acceptance/mutation/attempt.py#@@ -251,6 +289,14 @@ class MutationAttempt(_Model):
+         8.2  src/acceptance/mutation/attempt.py#@@ -291,6 +337,40 @@ class MutationAttempt(_Model):
+         8.3  src/acceptance/mutation/runner.py#@@ -202,48 +220,125 @@ def _attempt(
+         8.4  tests/test_mutation_runner.py#@@ -601,3 +616,147 @@ class TestTheOriginalProjectIsNeverTouched:
+       test evidence: partially supported — kills 2 of 3 enumerated defects (static prediction)  [tier: static]
+         8.5  tests/test_mutation_runner.py::TestCandidateEdits::test_a_first_candidate_that_passes_asks_for_no_more
+         recommended test: The review output includes the selected candidate for each defect.
+           inputs:  A review containing at least one mutation attempt that has a non-None descriptor and a non-None candidate_used value, plus at least one set_aside_candidates entry so the candidate-summary block is expected to render; use a defect whose final outcome is settled (for example a killed or no_usable_edit attempt) so the report is generated normally.
+           detects: The review output can omit the selected candidate for attempts that have a descriptor but no candidate summary block, so some defect reviews would not show which candidate was used.
+           full detail: acceptance recommendation --criterion which-candidate-it-used
+
+  9. The report states what building edits cost and how long they took.
+       requirements: task-02
+       code evidence: addressed
+         9.1  src/acceptance/report.py#@@ -387,21 +387,12 @@ def _mutation_block(review: Review) -> list[str]:
+         9.2  src/acceptance/report.py#@@ -429,6 +420,50 @@ def _mutation_block(review: Review) -> list[str]:
+         9.3  src/acceptance/usage.py#@@ -88,6 +88,11 @@ class StageUsage(BaseModel):
+         9.4  src/acceptance/usage.py#@@ -196,6 +201,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+         9.5  src/acceptance/usage.py#@@ -232,10 +241,21 @@ def render(usage: RunUsage) -> str:
+         9.6  src/acceptance/llm.py#@@ -530,7 +531,13 @@ class ModelClient:
+         9.7  src/acceptance/llm.py#@@ -553,6 +560,12 @@ class ModelClient:
+         9.8  tests/test_usage.py#@@ -349,3 +349,45 @@ def test_recording_usage_fields_does_not_change_the_request_key():
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         9.9  tests/test_stage_attribution.py::test_the_breakdown_never_reaches_the_rendered_report
+         9.10  tests/test_usage.py::test_live_call_time_is_summed_per_stage
+
+  10. Two runs over the same input pick the same candidate.
+       requirements: constraint-01
+       code evidence: addressed
+         10.1  src/acceptance/mutation/descriptor.py#@@ -215,21 +220,64 @@ def from_mapping(descriptors: dict[str, DescriptorAnswer]):
+         10.2  src/acceptance/mutation/descriptor.py#@@ -243,6 +291,8 @@ def _ask_about(
+         10.3  src/acceptance/mutation/descriptor.py#@@ -52,7 +57,7 @@ from acceptance.request_blocks import Block, BlockKind, assemble
+         10.4  tests/test_mutation_descriptor.py#@@ -277,3 +277,100 @@ class TestFromMapping:
+         10.5  tests/test_mutation_runner.py#@@ -601,3 +616,147 @@ class TestTheOriginalProjectIsNeverTouched:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         10.6  tests/test_mutation_descriptor.py::TestAskingAgainAfterARefusal::test_unusable_answers_are_recorded_in_a_fixed_order
+         10.7  tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+         10.8  tests/test_mutation_runner.py::TestCandidateEdits::test_a_refused_first_candidate_is_followed_by_a_second
+         10.9  tests/test_mutation_runner.py::TestCandidateEdits::test_the_limit_is_configurable
+
+  11. The review does not assess whether an edit that passes the checks really makes its named defect true.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 55 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about what the review does not judge, so the change is checked by inspecting the implementation rather than by a test.
+
+  12. The change does not alter which plausible defects are enumerated, and it does not alter which region of the code an edit is allowed to fall in.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 55 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not done, so the repository can settle it by inspection of the change itself.
+
+  13. The change does not include running the candidate tests or making any decision based on their results.
+       requirements: exclusion-03
+       code evidence: not addressed
+         13.1  src/acceptance/mutation/runner.py#@@ -202,48 +220,125 @@ def _attempt(
+         13.2  src/acceptance/mutation/attempt.py#@@ -203,6 +211,36 @@ class RepairCorroboration(str, Enum):
+         13.3  tests/test_mutation_runner.py#@@ -391,23 +403,25 @@ class TestAnEditThatUsesANameThatDoesNotExist:
+         13.4  tests/test_mutation_runner.py#@@ -521,7 +535,8 @@ class TestTheBreadthCheck:
+       test evidence: not required — This is a scope exclusion about work the change must not do, so it is checked by inspecting the change rather than by running tests.
+
+Mandate coverage: 6 of 6 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The report now includes per-attempt candidate details and edit renderings. The obligations require the report to state edit cost and duration, but they do not ask for exposing candidate refusal history or per-candidate diffs in the report output.
+       src/acceptance/report.py#@@ -387,21 +387,12 @@ def _mutation_block(review: Review) -> list[str]:
+       src/acceptance/report.py#@@ -429,6 +420,50 @@ def _mutation_block(review: Review) -> list[str]:
+  2. [in_service] `ExecutionSettings` gained a new public field `max_candidates`, and the runner/pipeline wiring now accepts and forwards it. The task asks for configurability, but this specific API expansion is broader than the minimum required by the obligations and changes the public settings surface.
+       src/acceptance/mutation/settings.py#@@ -32,7 +32,11 @@ from __future__ import annotations
+       src/acceptance/mutation/runner.py#@@ -95,11 +102,19 @@ DEFAULT_MAX_FAILING_FRACTION = 0.075
+       src/acceptance/mutation/runner.py#@@ -115,6 +130,7 @@ def run_mutations(
+       src/acceptance/mutation/runner.py#@@ -163,6 +179,7 @@ def run_mutations(
+       src/acceptance/pipeline.py#@@ -325,21 +325,25 @@ def _run_execution_tier(
+  3. [in_service] The mutation runner now loops over multiple candidate edits, records set-aside candidates, and introduces a new `NO_USABLE_EDIT` outcome. While multiple candidates and the none-used case are requested, the specific candidate bookkeeping model and new outcome shape go beyond the obligations' stated requirements and alter adjacent behavior and data flow.
+       src/acceptance/mutation/attempt.py#@@ -59,17 +61,23 @@ class MutationOutcomeKind(str, Enum):
+       src/acceptance/mutation/attempt.py#@@ -203,6 +211,36 @@ class RepairCorroboration(str, Enum):
+       src/acceptance/mutation/attempt.py#@@ -251,6 +289,14 @@ class MutationAttempt(_Model):
+       src/acceptance/mutation/attempt.py#@@ -291,6 +337,40 @@ class MutationAttempt(_Model):
+       src/acceptance/mutation/runner.py#@@ -181,6 +198,7 @@ def _attempt(
+       src/acceptance/mutation/runner.py#@@ -202,48 +220,125 @@ def _attempt(
+  4. [in_service] `changes_nothing` was added as a helper to classify refusals. The obligations require distinguishing candidate refusal reasons, but they do not call for this specific internal refactor/helper implementation.
+       src/acceptance/mutation/validity.py#@@ -41,6 +41,7 @@ __all__ = [
+       src/acceptance/mutation/validity.py#@@ -109,6 +110,29 @@ def comparable(path: str, text: str) -> list[str]:
+       src/acceptance/mutation/runner.py#@@ -31,23 +31,30 @@ from acceptance.execution.sandbox import SandboxConfig, run_tests
+       src/acceptance/mutation/runner.py#@@ -202,48 +220,125 @@ def _attempt(
+  5. [in_service] `ModelClient._observe_call` and the observed-call records now carry a `seconds` field, and usage aggregation/rendering gained a new time column. The obligations ask for the report to state how long edits took, but this specific API/data-shape change to observed calls and usage summaries is an unrequested interface expansion.
+       src/acceptance/llm.py#@@ -530,7 +531,13 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -553,6 +560,12 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -659,13 +672,17 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -722,14 +739,18 @@ class ModelClient:
+       src/acceptance/usage.py#@@ -88,6 +88,11 @@ class StageUsage(BaseModel):
+       src/acceptance/usage.py#@@ -196,6 +201,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+       src/acceptance/usage.py#@@ -232,10 +241,21 @@ def render(usage: RunUsage) -> str:
+       tests/test_stage_attribution.py#@@ -267,9 +267,11 @@ def test_a_real_review_run_attributes_every_call_it_made(tmp_path):
+       tests/test_usage.py#@@ -349,3 +349,45 @@ def test_recording_usage_fields_does_not_change_the_request_key():
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  multiple-candidate-edits
+    [not_wired] multiple-candidate-edits/max-candidates-never-reaches-runner
+      The new multi-candidate setting can exist in configuration, but the mutation runner may never receive or use it, so defect edits are still requested only once.
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#1
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/mutation/settings.py#1
+      src/acceptance/mutation/runner.py#1
+      src/acceptance/mutation/runner.py#2
+      src/acceptance/mutation/runner.py#3
+      src/acceptance/mutation/runner.py#4
+      src/acceptance/mutation/runner.py#5
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+    [scope_too_narrow] multiple-candidate-edits/descriptor-builder-still-single-shot
+      The live descriptor builder may still only ask once for defects that already have a usable first answer, so only refusal retries get multiple candidate edits while ordinary named defects do not.
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/descriptor.py#3
+      src/acceptance/mutation/descriptor.py#4
+      src/acceptance/mutation/descriptor.py#5
+      src/acceptance/mutation/runner.py#5
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [condition_inverted] multiple-candidate-edits/candidate-limit-off-by-one
+      The loop that asks for candidate edits may stop before actually making the configured number of requests, so the review does not really ask for several candidates.
+      src/acceptance/mutation/runner.py#2
+      src/acceptance/mutation/runner.py#3
+      src/acceptance/mutation/runner.py#4
+      src/acceptance/mutation/runner.py#5
+      pairs: 4 put to the model, 7 skipped once the defect was covered
+    [not_wired] multiple-candidate-edits/candidate-request-not-shown-to-model
+      The code may collect earlier refused candidates, but fail to include them in the next prompt, so later requests are still effectively single-shot.
+      src/acceptance/mutation/descriptor.py#4
+      src/acceptance/mutation/descriptor.py#5
+      src/acceptance/mutation/descriptor.py#6
+      src/acceptance/mutation/runner.py#5
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+
+  first-passing-candidate
+    [scope_too_narrow] first-passing-candidate/candidate-loop-stops-too-early
+      The retry loop can stop before it has checked all candidate edits, so a later candidate that would pass the existing edit checks is never reached.
+      src/acceptance/mutation/runner.py#5
+      pairs: 8 put to the model, 301 skipped once the defect was covered
+    [wrong_output_shape] first-passing-candidate/passing-candidate-marked-as-no-usable-edit
+      A candidate that passes the existing edit checks can still be reported as `no_usable_edit`, so the successful edit is not selected as the attempt's used candidate.
+      src/acceptance/mutation/attempt.py#2
+      src/acceptance/mutation/attempt.py#5
+      src/acceptance/mutation/runner.py#5
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+    [wrong_output_shape] first-passing-candidate/candidate-order-not-preserved-in-reporting
+      The candidate record can be rendered or stored in a way that does not preserve the earliest passing candidate as the one identified as used, making the review's selected edit ambiguous or misleading.
+      src/acceptance/mutation/attempt.py#4
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      pairs: 28 put to the model, 281 skipped once the defect was covered
+
+  candidate-count-configurable
+    [not_wired] candidate-count-configurable/default-candidate-count-not-threaded
+      The configurable candidate count is defined in settings, but the mutation path can still ignore it and always ask the default number of candidates.
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#1
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/mutation/runner.py#1
+      src/acceptance/mutation/runner.py#2
+      src/acceptance/mutation/runner.py#3
+      src/acceptance/mutation/runner.py#4
+      src/acceptance/mutation/runner.py#5
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+    [scope_too_narrow] candidate-count-configurable/runner-ignores-configured-count
+      The runner accepts a max_candidates parameter, but it could still clamp or override it so only some configured counts actually take effect.
+      src/acceptance/mutation/runner.py#1
+      src/acceptance/mutation/runner.py#2
+      src/acceptance/mutation/runner.py#3
+      src/acceptance/mutation/runner.py#4
+      src/acceptance/mutation/runner.py#5
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+    [not_wired] candidate-count-configurable/descriptor-builder-does-not-accept-previous-candidates
+      The live descriptor builder may exist, but the runner could still call a builder that never receives the already-refused candidates, so the number of candidates asked for is not actually configurable in the live edit-building loop.
+      src/acceptance/mutation/descriptor.py#3
+      src/acceptance/mutation/descriptor.py#4
+      src/acceptance/mutation/descriptor.py#5
+      src/acceptance/mutation/runner.py#1
+      src/acceptance/mutation/runner.py#2
+      src/acceptance/mutation/runner.py#3
+      src/acceptance/mutation/runner.py#4
+      src/acceptance/mutation/runner.py#5
+      pairs: 4 put to the model, 0 skipped once the defect was covered
+    [default_disagrees_with_docs] candidate-count-configurable/settings-default-not-propagated
+      The documented default candidate count could differ from the actual default used by ExecutionSettings or the runner.
+      docs/DR-171-mutation-targeting.md#0
+      src/acceptance/mutation/settings.py#0
+      src/acceptance/mutation/runner.py#1
+      src/acceptance/mutation/runner.py#2
+      pairs: 16 put to the model, 293 skipped once the defect was covered
+
+  none-of-candidates-could-be-used
+    [wrong_output_shape] none-of-candidates-could-be-used/failure-message-uses-count-summary-instead-of-none-of-the-requested-candidates
+      When every candidate is set aside, the review can report a count summary instead of the required failure message that none of the requested candidates could be used.
+      src/acceptance/mutation/runner.py#5
+      src/acceptance/report.py#1
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+    [wrong_output_shape] none-of-candidates-could-be-used/no-usable-edit-outcome-does-not-render-as-none-of-the-requested-candidates
+      The new no-usable-edit outcome can be turned into a different review message than the one the criterion asks for, so the failure text may not mention that none of the requested candidates could be used.
+      src/acceptance/mutation/attempt.py#2
+      src/acceptance/report.py#1
+      pairs: 4 put to the model, 0 skipped once the defect was covered
+
+  preserve-no-edit-built-fallback-handling
+    [scope_too_narrow] preserve-no-edit-built-fallback-handling/no-usable-edit-not-treated-like-no-edit-built
+      A defect that ends with every candidate set aside can now take the new `no_usable_edit` path instead of the old no-edit-built fallback path, so the review may no longer handle that case the same way it handled a defect when no edit could be built for today.
+      src/acceptance/mutation/attempt.py#2
+      src/acceptance/mutation/runner.py#5
+      src/acceptance/report.py#0
+      pairs: 4 put to the model, 2 skipped once the defect was covered
+    [old_input_rejected] preserve-no-edit-built-fallback-handling/old-no-edit-built-inputs-no-longer-replayed-as-before
+      Stored reviews from before the candidate-edit change may no longer round-trip through the new candidate fields cleanly, so a previously accepted no-edit-built review could fail to read back with the same fallback handling.
+      src/acceptance/mutation/attempt.py#4
+      src/acceptance/mutation/attempt.py#5
+      pairs: 12 put to the model, 297 skipped once the defect was covered
+
+  record-candidate-request-count
+    [scope_too_narrow] record-candidate-request-count/candidate-count-not-rendered-for-attempts-without-descriptor
+      The review output can omit the requested-candidate count for attempts that have no descriptor, so some defects never show how many candidates were asked for.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      pairs: 28 put to the model, 281 skipped once the defect was covered
+    [not_wired] record-candidate-request-count/candidate-count-not-populated-on-attempts
+      The attempt model carries `candidates_asked`, but the runner may fail to populate it on the paths that return a settled outcome, so the report has nothing to display.
+      src/acceptance/mutation/runner.py#4
+      src/acceptance/mutation/runner.py#5
+      src/acceptance/mutation/attempt.py#4
+      src/acceptance/report.py#1
+      pairs: 12 put to the model, 297 skipped once the defect was covered
+
+  set-aside-count-and-reasons
+    [not_wired] set-aside-count-and-reasons/candidate-summary-not-rendered-for-attempts-with-set-asides
+      The review report can omit the candidate set-aside summary even though attempts now record it, because the new rendering helper is only added in one report path and could be bypassed by the code that formats mutation results.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      pairs: 4 put to the model, 0 skipped once the defect was covered
+    [wrong_output_shape] set-aside-count-and-reasons/candidate-summary-shows-wrong-count-or-order
+      The candidate summary can be rendered in a form that does not match the recorded set-aside data, for example by reporting the wrong count or by presenting the reasons in a different structure than the underlying attempts record.
+      src/acceptance/report.py#1
+      src/acceptance/mutation/attempt.py#3
+      src/acceptance/mutation/attempt.py#4
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+    [missing_case] set-aside-count-and-reasons/no-usable-edit-summary-loses-reasons
+      A defect that ends with no usable edit can be summarized without exposing why each candidate was set aside, because the new outcome path records only the aggregate no-usable-edit reason and not the per-candidate causes needed by the criterion.
+      src/acceptance/mutation/runner.py#5
+      src/acceptance/report.py#1
+      src/acceptance/mutation/attempt.py#3
+      src/acceptance/mutation/attempt.py#4
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+
+  which-candidate-it-used
+    [scope_too_narrow] which-candidate-it-used/candidate-summary-not-rendered-for-all-attempts
+      The review output can omit the selected candidate for attempts that have a descriptor but no candidate summary block, so some defect reviews would not show which candidate was used.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      pairs: 309 put to the model, 0 skipped once the defect was covered
+    [not_wired] which-candidate-it-used/candidate-used-field-not-populated
+      The attempt record can be built without setting the field that identifies which candidate was used, so the report has nothing to print for the selected candidate.
+      src/acceptance/mutation/runner.py#5
+      src/acceptance/mutation/attempt.py#4
+      src/acceptance/mutation/attempt.py#5
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+    [wrong_output_shape] which-candidate-it-used/candidate-index-recorded-as-wrong-shape
+      The selected candidate is recorded as a 1-based integer in the attempt model, but the review output may render only a generic 'used candidate' phrase or otherwise fail to present the actual candidate selection in a directly readable form.
+      src/acceptance/report.py#1
+      src/acceptance/mutation/attempt.py#4
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+
+  report-captures-edit-cost-and-duration
+    [scope_too_narrow] report-captures-edit-cost-and-duration/cost-or-time-only-shown-for-live-calls
+      The report can omit edit cost or elapsed time for replayed or non-live edit-building calls, so the summary does not always state what building edits cost and how long they took.
+      src/acceptance/llm.py#2
+      src/acceptance/usage.py#0
+      src/acceptance/usage.py#1
+      src/acceptance/usage.py#2
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+    [not_wired] report-captures-edit-cost-and-duration/candidate-edit-cost-not-attributed-to-report
+      The new candidate-edit timing is recorded in memory, but the report path may never feed those per-call seconds into the usage summary that the report renders.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      src/acceptance/usage.py#1
+      src/acceptance/usage.py#2
+      src/acceptance/pipeline.py#0
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+
+  deterministic-candidate-selection
+    [other] deterministic-candidate-selection/candidate-selection-key-includes-request-order
+      The candidate choice can vary because the live descriptor requests are keyed by the full prompt text, and the prompt now includes earlier refused candidates; if the same input is reached through a different ordering of prior refusals, the request hash can change and replay a different recorded answer.
+      src/acceptance/mutation/descriptor.py#4
+      src/acceptance/mutation/descriptor.py#5
+      src/acceptance/llm.py#3
+      pairs: 4 put to the model, 0 skipped once the defect was covered
+    [other] deterministic-candidate-selection/candidate-history-order-not-stable
+      The refusal history is stored per defect and candidate index, but the recorded unusable answers are replayed into the next prompt in whatever order they were accumulated unless the builder's flush order is perfectly stable; if concurrent attempts interleave differently, the next candidate prompt can differ and pick a different candidate.
+      src/acceptance/mutation/descriptor.py#4
+      src/acceptance/mutation/descriptor.py#5
+      src/acceptance/mutation/runner.py#5
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+    [scope_too_narrow] deterministic-candidate-selection/max-candidates-truncates-before-stable-choice
+      The loop stops after a fixed maximum number of candidates, so if the first usable candidate appears later than that bound, two identical runs can both fail to reach the same eventual candidate and instead stop at different refusal histories or no usable edit.
+      src/acceptance/mutation/runner.py#2
+      src/acceptance/mutation/runner.py#4
+      src/acceptance/mutation/settings.py#0
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+
+  defect-truth-not-judged
+    [other] defect-truth-not-judged/candidate-refusal-still-uses-defect-truth
+      The runner can still treat a candidate that passes the mechanical checks and test run as evidence that the named defect is true, instead of only using it as a usable edit and leaving the truth of the defect to the later review step.
+      src/acceptance/mutation/runner.py#5
+      src/acceptance/mutation/attempt.py#2
+      docs/DR-171-mutation-targeting.md#0
+      pairs: 12 put to the model, 297 skipped once the defect was covered
+    [other] defect-truth-not-judged/reporting-candidate-success-as-defect-truth
+      The reporting path can present a successful edit as if it established the defect's truth, rather than merely showing that the edit passed the checks and was used.
+      src/acceptance/report.py#0
+      src/acceptance/report.py#1
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+
+  exclude-defect-enumeration-and-edit-region
+    [other] exclude-defect-enumeration-and-edit-region/descriptor-now-enumerates-multiple-candidates
+      The mutation descriptor path now asks for multiple candidate edits per defect instead of a single descriptor, so the set of plausible defects being enumerated can change as later candidates are shown earlier refusals and the runner may accept a later candidate that the old code would never have reached.
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/descriptor.py#3
+      src/acceptance/mutation/descriptor.py#4
+      src/acceptance/mutation/descriptor.py#5
+      src/acceptance/mutation/runner.py#1
+      src/acceptance/mutation/runner.py#2
+      src/acceptance/mutation/runner.py#3
+      src/acceptance/mutation/runner.py#4
+      src/acceptance/mutation/runner.py#5
+      src/acceptance/mutation/settings.py#0
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+    [other] exclude-defect-enumeration-and-edit-region/candidate-history-changes-edit-region
+      The prompt for later candidate edits now includes an "Earlier edits for this defect" section that can steer the model toward a different span than the original request, so the code-region restriction for candidate edits is no longer unchanged.
+      src/acceptance/mutation/descriptor.py#4
+      src/acceptance/mutation/descriptor.py#5
+      src/acceptance/mutation/descriptor.py#6
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+
+  no-candidate-test-execution-decision
+    [other] no-candidate-test-execution-decision/candidate-tests-now-run-and-select-the-edit
+      The mutation runner now executes tests for each candidate edit and uses the test outcome to decide whether to keep asking or accept the edit, so candidate test execution and test-result-based selection are present in the change.
+      src/acceptance/mutation/runner.py#5
+      src/acceptance/mutation/descriptor.py#4
+      src/acceptance/mutation/descriptor.py#5
+      src/acceptance/mutation/descriptor.py#6
+      pairs: 4 put to the model, 305 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [prefiltered] candidate-count-configurable/default-candidate-count-not-threaded x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/runner.py, src/acceptance/mutation/settings.py, src/acceptance/pipeline.py — no path to the defect exists
+  [prefiltered] candidate-count-configurable/descriptor-builder-does-not-accept-previous-candidates x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/descriptor.py, src/acceptance/mutation/runner.py — no path to the defect exists
+  [prefiltered] candidate-count-configurable/runner-ignores-configured-count x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/runner.py — no path to the defect exists
+  [prefiltered] candidate-count-configurable/settings-default-not-propagated x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in docs/DR-171-mutation-targeting.md, src/acceptance/mutation/runner.py, src/acceptance/mutation/settings.py — no path to the defect exists
+  [prefiltered] defect-truth-not-judged/candidate-refusal-still-uses-defect-truth x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in docs/DR-171-mutation-targeting.md, src/acceptance/mutation/attempt.py, src/acceptance/mutation/runner.py — no path to the defect exists
+  [prefiltered] defect-truth-not-judged/reporting-candidate-success-as-defect-truth x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py — no path to the defect exists
+  [prefiltered] deterministic-candidate-selection/candidate-history-order-not-stable x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/descriptor.py, src/acceptance/mutation/runner.py — no path to the defect exists
+  [prefiltered] deterministic-candidate-selection/candidate-selection-key-includes-request-order x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py, src/acceptance/mutation/descriptor.py — no path to the defect exists
+  [prefiltered] deterministic-candidate-selection/max-candidates-truncates-before-stable-choice x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/runner.py, src/acceptance/mutation/settings.py — no path to the defect exists
+  [prefiltered] exclude-defect-enumeration-and-edit-region/candidate-history-changes-edit-region x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/descriptor.py — no path to the defect exists
+  [prefiltered] exclude-defect-enumeration-and-edit-region/descriptor-now-enumerates-multiple-candidates x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/descriptor.py, src/acceptance/mutation/runner.py, src/acceptance/mutation/settings.py — no path to the defect exists
+  [prefiltered] first-passing-candidate/candidate-loop-stops-too-early x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/runner.py — no path to the defect exists
+  [prefiltered] first-passing-candidate/candidate-order-not-preserved-in-reporting x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/attempt.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] first-passing-candidate/passing-candidate-marked-as-no-usable-edit x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/attempt.py, src/acceptance/mutation/runner.py — no path to the defect exists
+  [prefiltered] multiple-candidate-edits/candidate-limit-off-by-one x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/runner.py — no path to the defect exists
+  [prefiltered] multiple-candidate-edits/candidate-request-not-shown-to-model x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/descriptor.py, src/acceptance/mutation/runner.py — no path to the defect exists
+  [prefiltered] multiple-candidate-edits/descriptor-builder-still-single-shot x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/descriptor.py, src/acceptance/mutation/runner.py — no path to the defect exists
+  [prefiltered] multiple-candidate-edits/max-candidates-never-reaches-runner x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/runner.py, src/acceptance/mutation/settings.py, src/acceptance/pipeline.py — no path to the defect exists
+  [prefiltered] no-candidate-test-execution-decision/candidate-tests-now-run-and-select-the-edit x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/descriptor.py, src/acceptance/mutation/runner.py — no path to the defect exists
+  [prefiltered] none-of-candidates-could-be-used/failure-message-uses-count-summary-instead-of-none-of-the-requested-candidates x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/runner.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] none-of-candidates-could-be-used/no-usable-edit-outcome-does-not-render-as-none-of-the-requested-candidates x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/attempt.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] preserve-no-edit-built-fallback-handling/no-usable-edit-not-treated-like-no-edit-built x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/attempt.py, src/acceptance/mutation/runner.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] preserve-no-edit-built-fallback-handling/old-no-edit-built-inputs-no-longer-replayed-as-before x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/attempt.py — no path to the defect exists
+  [prefiltered] record-candidate-request-count/candidate-count-not-populated-on-attempts x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/attempt.py, src/acceptance/mutation/runner.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] record-candidate-request-count/candidate-count-not-rendered-for-attempts-without-descriptor x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py — no path to the defect exists
+  [prefiltered] report-captures-edit-cost-and-duration/candidate-edit-cost-not-attributed-to-report x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py, src/acceptance/pipeline.py, src/acceptance/usage.py — no path to the defect exists
+  [prefiltered] report-captures-edit-cost-and-duration/cost-or-time-only-shown-for-live-calls x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py, src/acceptance/usage.py — no path to the defect exists
+  [prefiltered] set-aside-count-and-reasons/candidate-summary-not-rendered-for-attempts-with-set-asides x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py — no path to the defect exists
+  [prefiltered] set-aside-count-and-reasons/candidate-summary-shows-wrong-count-or-order x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/attempt.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] set-aside-count-and-reasons/no-usable-edit-summary-loses-reasons x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/attempt.py, src/acceptance/mutation/runner.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] which-candidate-it-used/candidate-index-recorded-as-wrong-shape x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/attempt.py, src/acceptance/report.py — no path to the defect exists
+  [prefiltered] which-candidate-it-used/candidate-summary-not-rendered-for-all-attempts x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/report.py — no path to the defect exists
+  [unanswered] which-candidate-it-used/candidate-summary-not-rendered-for-all-attempts x tests/test_mutation_runner.py::TestTheTwoOutcomesThatSettle::test_a_defect_the_test_does_notice_is_killed
+    offered to the judge and not answered; no verdict was produced
+  [prefiltered] which-candidate-it-used/candidate-used-field-not-populated x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/mutation/attempt.py, src/acceptance/mutation/runner.py — no path to the defect exists
+  [passed_under_edit] candidate-count-configurable/descriptor-builder-does-not-accept-previous-candidates x 305 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] deterministic-candidate-selection/candidate-selection-key-includes-request-order x 305 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] multiple-candidate-edits/candidate-limit-off-by-one x 298 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 8 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] multiple-candidate-edits/descriptor-builder-still-single-shot x 304 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] none-of-candidates-could-be-used/no-usable-edit-outcome-does-not-render-as-none-of-the-requested-candidates x 305 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] preserve-no-edit-built-fallback-handling/no-usable-edit-not-treated-like-no-edit-built x 303 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 3 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] set-aside-count-and-reasons/candidate-summary-not-rendered-for-attempts-with-set-asides x 305 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] candidate-count-configurable/default-candidate-count-not-threaded x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestCandidateEdits::test_a_refused_first_candidate_is_followed_by_a_second, tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_builder_with_no_usable_answer_ends_with_no_usable_edit
+  [defect_already_covered] candidate-count-configurable/runner-ignores-configured-count x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_cli_pair_ranking.py::test_the_command_line_sets_the_stop_number, tests/test_mutation_runner.py::TestCandidateEdits::test_the_limit_is_configurable
+  [defect_already_covered] candidate-count-configurable/settings-default-not-propagated x 293 candidate test(s), ranked 13 to 309
+    not asked: the defect was already covered by tests/test_cli_execution.py::TestTheSettingsArrive::test_the_pipeline_is_given_settings_to_decide_with, tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_setting_reaches_the_runner, tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_builder_with_no_usable_answer_ends_with_no_usable_edit
+  [defect_already_covered] defect-truth-not-judged/candidate-refusal-still-uses-defect-truth x 297 candidate test(s), ranked 13 to 309
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestTheTierRuns::test_the_enumerated_behaviours_reach_the_descriptor_request, tests/test_mutation_runner.py::TestCandidateEdits::test_no_usable_edit_is_not_the_same_outcome_as_not_mutable
+  [defect_already_covered] defect-truth-not-judged/reporting-candidate-success-as-defect-truth x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestAnUnverifiedEditIsNotEvidence::test_the_report_says_the_result_is_not_counted, tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_report_says_the_result_is_not_counted
+  [defect_already_covered] deterministic-candidate-selection/candidate-history-order-not-stable x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_descriptor.py::TestAskingAgainAfterARefusal::test_unusable_answers_are_recorded_in_a_fixed_order, tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+  [defect_already_covered] deterministic-candidate-selection/max-candidates-truncates-before-stable-choice x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestCandidateEdits::test_a_refused_first_candidate_is_followed_by_a_second, tests/test_mutation_runner.py::TestCandidateEdits::test_the_limit_is_configurable
+  [defect_already_covered] exclude-defect-enumeration-and-edit-region/candidate-history-changes-edit-region x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_descriptor.py::TestAskingAgainAfterARefusal::test_a_later_request_shows_the_refused_edit_and_why, tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown, tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_the_static_judge_is_told_nothing_about_the_edit
+  [defect_already_covered] exclude-defect-enumeration-and-edit-region/descriptor-now-enumerates-multiple-candidates x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown, tests/test_mutation_runner.py::TestCandidateEdits::test_a_decline_ends_the_loop_and_keeps_what_was_set_aside
+  [defect_already_covered] first-passing-candidate/candidate-loop-stops-too-early x 301 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+  [defect_already_covered] first-passing-candidate/candidate-order-not-preserved-in-reporting x 281 candidate test(s), ranked 29 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestCandidateEdits::test_a_first_candidate_that_passes_asks_for_no_more, tests/test_mutation_runner.py::TestCandidateEdits::test_the_second_request_is_shown_the_first_refusal
+  [defect_already_covered] first-passing-candidate/passing-candidate-marked-as-no-usable-edit x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+  [defect_already_covered] multiple-candidate-edits/candidate-limit-off-by-one x 7 candidate test(s), ranked 81 to 305
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown, tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside, tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_setting_reaches_the_runner
+  [defect_already_covered] multiple-candidate-edits/candidate-request-not-shown-to-model x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown, tests/test_mutation_runner.py::TestCandidateEdits::test_the_second_request_is_shown_the_first_refusal
+  [defect_already_covered] multiple-candidate-edits/descriptor-builder-still-single-shot x 1 candidate test(s), ranked 306 to 306
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+  [defect_already_covered] multiple-candidate-edits/max-candidates-never-reaches-runner x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestCandidateEdits::test_a_refused_first_candidate_is_followed_by_a_second
+  [defect_already_covered] no-candidate-test-execution-decision/candidate-tests-now-run-and-select-the-edit x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestCandidateEdits::test_a_refused_first_candidate_is_followed_by_a_second
+  [defect_already_covered] none-of-candidates-could-be-used/failure-message-uses-count-summary-instead-of-none-of-the-requested-candidates x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside
+  [defect_already_covered] preserve-no-edit-built-fallback-handling/no-usable-edit-not-treated-like-no-edit-built x 2 candidate test(s), ranked 306 to 308
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown, tests/test_mutation_pipeline_wiring.py::TestTheBreadthSettingsReachTheRunner::test_a_kill_too_broad_for_the_configured_threshold_is_not_a_kill
+  [defect_already_covered] preserve-no-edit-built-fallback-handling/old-no-edit-built-inputs-no-longer-replayed-as-before x 297 candidate test(s), ranked 13 to 309
+    not asked: the defect was already covered by tests/test_mutation_descriptor.py::TestAskingAgainAfterARefusal::test_a_first_request_is_unchanged_so_its_recordings_still_replay
+  [defect_already_covered] record-candidate-request-count/candidate-count-not-populated-on-attempts x 297 candidate test(s), ranked 13 to 309
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside, tests/test_mutation_runner.py::TestCandidateEdits::test_a_refused_first_candidate_is_followed_by_a_second, tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_builder_with_no_usable_answer_ends_with_no_usable_edit
+  [defect_already_covered] record-candidate-request-count/candidate-count-not-rendered-for-attempts-without-descriptor x 281 candidate test(s), ranked 29 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_builder_with_no_usable_answer_ends_with_no_usable_edit
+  [defect_already_covered] report-captures-edit-cost-and-duration/candidate-edit-cost-not-attributed-to-report x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_usage.py::test_live_call_time_is_summed_per_stage
+  [defect_already_covered] report-captures-edit-cost-and-duration/cost-or-time-only-shown-for-live-calls x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_stage_attribution.py::test_the_breakdown_never_reaches_the_rendered_report
+  [defect_already_covered] set-aside-count-and-reasons/candidate-summary-shows-wrong-count-or-order x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestTheBreadthCheck::test_the_reason_gives_the_count
+  [defect_already_covered] set-aside-count-and-reasons/no-usable-edit-summary-loses-reasons x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestCandidateEdits::test_no_usable_edit_is_not_the_same_outcome_as_not_mutable, tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_a_builder_with_no_usable_answer_ends_with_no_usable_edit
+  [defect_already_covered] which-candidate-it-used/candidate-index-recorded-as-wrong-shape x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestCandidateEdits::test_a_first_candidate_that_passes_asks_for_no_more
+  [defect_already_covered] which-candidate-it-used/candidate-used-field-not-populated x 305 candidate test(s), ranked 5 to 309
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestCandidateEdits::test_a_first_candidate_that_passes_asks_for_no_more
+
+Running the project's tests:
+  the project's tests were run: 33 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [not_attempted] candidate-count-configurable/default-candidate-count-not-threaded
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/mutation/runner.py lines 182-182:
+      -             max(1, max_candidates),
+      +             max_candidates,
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 104 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill, tests/test_mutation_runner.py::TestCandidateEdits::test_a_decline_ends_the_loop_and_keeps_what_was_set_aside and 99 more), so the tests cannot be called proven weak on this run
+
+  [killed, NOT COUNTED] candidate-count-configurable/descriptor-builder-does-not-accept-previous-candidates
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/mutation/runner.py lines 229-229:
+      -         answer = build_descriptor(defect, readable, sources, tuple(set_aside))
+      +         answer = build_descriptor(defect, readable, sources, ())
+    caught by (1):
+      tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 305 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [not_attempted] candidate-count-configurable/runner-ignores-configured-count
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/mutation/runner.py lines 182-182:
+      -             max(1, max_candidates),
+      +             max_candidates,
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 104 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill, tests/test_mutation_runner.py::TestCandidateEdits::test_a_decline_ends_the_loop_and_keeps_what_was_set_aside and 99 more), so the tests cannot be called proven weak on this run
+
+  [killed, NOT COUNTED] candidate-count-configurable/settings-default-not-propagated
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/mutation/runner.py lines 110-110:
+      - DEFAULT_MAX_CANDIDATES = 3
+      + DEFAULT_MAX_CANDIDATES = 4
+    caught by (1):
+      tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 16 put to the model, 0 dropped as not worth asking, 293 skipped once the defect was covered
+
+  [not_attempted] defect-truth-not-judged/candidate-refusal-still-uses-defect-truth
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/mutation/runner.py lines 283..297 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/runner.py lines 283-297:
+           -         attempt = _classify(defect, answer, tests, result, breadth)
+           -         # The run's own gates — a broken edit, or one far broader than its
+           -         # defect — refuse the edit, not the defect. Before #334 that was the
+           -         # whole answer; now it is one candidate set aside.
+           -         if attempt.outcome is MutationOutcomeKind.NOT_MUTABLE:
+           -             set_aside.append(
+           -                 SetAsideCandidate(
+           -                     cause=CandidateCause.REFUSED_AFTER_RUN,
+           -                     reason=attempt.reason,
+           -                     descriptor=answer,
+           -                     tests_run=attempt.tests_run,
+           -                 )
+           -             )
+           -             continue
+           -         return _with_candidates(attempt, asked, set_aside, used=asked)
+           +         attempt = _classify(defect, answer, tests, result, breadth)
+           +         # The run's own gates — a broken edit, or one far broader than its
+           +         # defect — refuse the edit, not the defect. Before #334 that was the
+           +         # whole answer; now it is one candidate set aside.
+           +         if attempt.outcome is MutationOutcomeKind.NOT_MUTABLE:
+           +             set_aside.append(
+           +                 SetAsideCandidate(
+           +                     cause=CandidateCause.REFUSED_AFTER_RUN,
+           +                     reason=attempt.reason,
+           +                     descriptor=answer,
+           +                     tests_run=attempt.tests_run,
+           +                 )
+           +             )
+           +             continue
+           +         return _with_candidates(attempt, asked, set_aside, used=asked)
+    injected at src/acceptance/mutation/runner.py lines 297-297:
+      -         return _with_candidates(attempt, asked, set_aside, used=asked)
+      +         return _with_candidates(attempt, asked, set_aside, used=None)
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 297 skipped once the defect was covered
+    no test went red, but 105 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill and 100 more), so the tests cannot be called proven weak on this run
+
+  [no_usable_edit] defect-truth-not-judged/reporting-candidate-success-as-defect-truth
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 409..409 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 409-409:
+           -                 lines.append("    edit verified to make the defect true; tier: defect-killed")
+           +                 lines.append("    edit verified to make the defect true; tier: defect-killed")
+      2. set aside (failed_check): the span 409..409 falls outside the region(s) the defect named in src/acceptance/report.py (387..398, 420..469)
+         at src/acceptance/report.py lines 409-409:
+           -                 lines.append("    edit verified to make the defect true; tier: defect-killed")
+           +                 lines.append("    edit verified to pass the checks; tier: defect-killed")
+      3. set aside (failed_check): the span 409..409 falls outside the region(s) the defect named in src/acceptance/report.py (387..398, 420..469)
+         at src/acceptance/report.py lines 409-409:
+           -                 lines.append("    edit verified to make the defect true; tier: defect-killed")
+           +                 lines.append("    edit verified to pass the checks; tier: defect-killed")
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [not_attempted] deterministic-candidate-selection/candidate-history-order-not-stable
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/mutation/descriptor.py lines 294-295:
+      -     if previous:
+      -         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+      +     if previous:
+      +         subject = f"{subject}\n\n{_earlier_candidates(sorted(previous, key=lambda candidate: candidate.reason))}"
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 105 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill and 100 more), so the tests cannot be called proven weak on this run
+
+  [killed, NOT COUNTED] deterministic-candidate-selection/candidate-selection-key-includes-request-order
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/mutation/descriptor.py lines 294-295:
+      -     if previous:
+      -         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+      +     if previous:
+      +         subject = f"{subject}\n\n{_earlier_candidates(previous[:1])}"
+    caught by (1):
+      tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 305 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [not_attempted] deterministic-candidate-selection/max-candidates-truncates-before-stable-choice
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (failed_check): the span 228..228 falls outside the region(s) the defect named in src/acceptance/mutation/runner.py (130..136, 198..204)
+         at src/acceptance/mutation/runner.py lines 228-228:
+           -     for asked in range(1, max_candidates + 1):
+           +     for asked in range(1, max_candidates + 2):
+      2. set aside (changed_nothing): the replacement for src/acceptance/mutation/runner.py lines 133..133 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/runner.py lines 133-133:
+           -     max_candidates: int = DEFAULT_MAX_CANDIDATES,
+           +     max_candidates: int = DEFAULT_MAX_CANDIDATES,
+    injected at src/acceptance/mutation/runner.py lines 133-133:
+      -     max_candidates: int = DEFAULT_MAX_CANDIDATES,
+      +     max_candidates: int = DEFAULT_MAX_CANDIDATES + 1,
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 106 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_it_is_not_counted_as_a_kill, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill and 101 more), so the tests cannot be called proven weak on this run
+
+  [no_usable_edit] exclude-defect-enumeration-and-edit-region/candidate-history-changes-edit-region
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/mutation/descriptor.py lines 294..295 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/descriptor.py lines 294-295:
+           -     if previous:
+           -         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+           +     if previous:
+           +         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+      2. set aside (changed_nothing): the replacement for src/acceptance/mutation/descriptor.py lines 294..295 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/descriptor.py lines 294-295:
+           -     if previous:
+           -         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+           +     if previous:
+           +         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+      3. set aside (changed_nothing): the replacement for src/acceptance/mutation/descriptor.py lines 294..295 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/descriptor.py lines 294-295:
+           -     if previous:
+           -         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+           +     if previous:
+           +         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [already_present] exclude-defect-enumeration-and-edit-region/descriptor-now-enumerates-multiple-candidates
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    Lines 223-229 already implement the defective retry loop over up to max_candidates requests. Replacing that contiguous run with a single one-shot descriptor request removes the loop and makes the expected behavior true. (the repair was refused: the mutated src/acceptance/mutation/runner.py does not parse: unexpected indent (<unknown>, line 230))
+
+  [killed, NOT COUNTED] first-passing-candidate/candidate-loop-stops-too-early
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/mutation/runner.py lines 244-250:
+      -         if isinstance(answer, DescriptorDecline):
+      -             attempt = MutationAttempt(
+      -                 defect_id=defect.id,
+      -                 outcome=DECLINE_OUTCOMES[answer.kind],
+      -                 reason=answer.reason,
+      -             )
+      -             return _with_candidates(attempt, asked, set_aside, used=None)
+      +         if isinstance(answer, DescriptorDecline):
+      +             attempt = MutationAttempt(
+      +                 defect_id=defect.id,
+      +                 outcome=DECLINE_OUTCOMES[answer.kind],
+      +                 reason=answer.reason,
+      +             )
+      +             set_aside.append(
+      +                 SetAsideCandidate(
+      +                     cause=CandidateCause.FAILED_CHECK,
+      +                     reason=answer.reason,
+      +                 )
+      +             )
+      +             continue
+    caught by (1):
+      tests/test_mutation_pipeline_wiring.py::TestTheStaticJudgeSeesOnlyTheRemainder::test_the_unsettled_defect_is_recorded_with_its_reason
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 8 put to the model, 0 dropped as not worth asking, 301 skipped once the defect was covered
+
+  [no_usable_edit] first-passing-candidate/candidate-order-not-preserved-in-reporting
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/report.py does not parse: unmatched ']' (<unknown>, line 458)
+         at src/acceptance/report.py lines 449-456:
+           -     used = (
+           -         f"used candidate {attempt.candidate_used}"
+           -         if attempt.candidate_used is not None
+           -         else "none used"
+           -     )
+           -     aside = len(attempt.set_aside_candidates)
+           -     lines = [
+           -         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+           +     used = (
+           +         f"used candidate {attempt.candidate_used}"
+           +         if attempt.candidate_used is not None
+           +         else "none used"
+           +     )
+           +     aside = len(attempt.set_aside_candidates)
+           +     lines = [
+           +         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+           +     ]
+      2. set aside (failed_check): the mutated src/acceptance/report.py does not parse: unmatched ']' (<unknown>, line 458)
+         at src/acceptance/report.py lines 449-456:
+           -     used = (
+           -         f"used candidate {attempt.candidate_used}"
+           -         if attempt.candidate_used is not None
+           -         else "none used"
+           -     )
+           -     aside = len(attempt.set_aside_candidates)
+           -     lines = [
+           -         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+           +     used = (
+           +         f"used candidate {attempt.candidate_used}"
+           +         if attempt.candidate_used is not None
+           +         else "none used"
+           +     )
+           +     aside = len(attempt.set_aside_candidates)
+           +     lines = [
+           +         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+           +     ]
+      3. set aside (failed_check): the mutated src/acceptance/report.py does not parse: unmatched ']' (<unknown>, line 458)
+         at src/acceptance/report.py lines 449-456:
+           -     used = (
+           -         f"used candidate {attempt.candidate_used}"
+           -         if attempt.candidate_used is not None
+           -         else "none used"
+           -     )
+           -     aside = len(attempt.set_aside_candidates)
+           -     lines = [
+           -         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+           +     used = (
+           +         f"used candidate {attempt.candidate_used}"
+           +         if attempt.candidate_used is not None
+           +         else "none used"
+           +     )
+           +     aside = len(attempt.set_aside_candidates)
+           +     lines = [
+           +         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+           +     ]
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 281 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [not_attempted] first-passing-candidate/passing-candidate-marked-as-no-usable-edit
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/mutation/runner.py lines 297..297 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/runner.py lines 297-297:
+           -         return _with_candidates(attempt, asked, set_aside, used=asked)
+           +         return _with_candidates(attempt, asked, set_aside, used=asked)
+      2. set aside (refused_after_run): 56 of the 307 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/mutation/runner.py lines 297-297:
+           -         return _with_candidates(attempt, asked, set_aside, used=asked)
+           +         return _with_candidates(attempt, asked, set_aside, used=asked - 1)
+    injected at src/acceptance/mutation/runner.py lines 297-297:
+      -         return _with_candidates(attempt, asked, set_aside, used=asked)
+      +         return _with_candidates(attempt, asked, set_aside, used=None)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 105 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill and 100 more), so the tests cannot be called proven weak on this run
+
+  [killed, NOT COUNTED] multiple-candidate-edits/candidate-limit-off-by-one
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/mutation/runner.py lines 228-228:
+      -     for asked in range(1, max_candidates + 1):
+      +     for asked in range(1, max_candidates):
+    caught by (8):
+      tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+      tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside
+      tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_setting_reaches_the_runner
+      tests/test_mutation_pipeline_wiring.py::TestTheBreadthSettingsReachTheRunner::test_a_kill_too_broad_for_the_configured_threshold_is_not_a_kill
+      tests/test_mutation_pipeline_wiring.py::TestWhatIsPersistedAndRendered::test_a_deletion_shows_the_lines_it_removed
+      tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_it_is_not_counted_as_a_kill
+      tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded
+      tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 298 dropped as not worth asking, 7 skipped once the defect was covered
+
+  [no_usable_edit] multiple-candidate-edits/candidate-request-not-shown-to-model
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/mutation/descriptor.py lines 294..295 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/descriptor.py lines 294-295:
+           -     if previous:
+           -         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+           +     if previous:
+           +         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+      2. set aside (changed_nothing): the replacement for src/acceptance/mutation/descriptor.py lines 294..295 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/descriptor.py lines 294-295:
+           -     if previous:
+           -         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+           +     if previous:
+           +         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+      3. set aside (changed_nothing): the replacement for src/acceptance/mutation/descriptor.py lines 294..295 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/descriptor.py lines 294-295:
+           -     if previous:
+           -         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+           +     if previous:
+           +         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] multiple-candidate-edits/descriptor-builder-still-single-shot
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/mutation/descriptor.py lines 294..295 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/descriptor.py lines 294-295:
+           -     if previous:
+           -         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+           +     if previous:
+           +         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+    injected at src/acceptance/mutation/descriptor.py lines 294-295:
+      -     if previous:
+      -         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+      +     if previous or True:
+      +         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+    caught by (2):
+      tests/test_mutation_descriptor.py::TestAskingAgainAfterARefusal::test_a_first_request_is_unchanged_so_its_recordings_still_replay
+      tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 304 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [no_usable_edit] multiple-candidate-edits/max-candidates-never-reaches-runner
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/pipeline.py does not parse: unmatched ')' (<unknown>, line 345)
+         at src/acceptance/pipeline.py lines 334-344:
+           -     attempts = run_mutations(
+           -         defect_sets,
+           -         change_set,
+           -         repo,
+           -         baseline,
+           -         builder,
+           -         execution.sandbox,
+           -         execution.max_edit_lines,
+           -         max_failing_fraction=execution.max_failing_fraction,
+           -         breadth_floor=execution.breadth_floor,
+           -         max_candidates=execution.max_candidates,
+           +     attempts = run_mutations(
+           +         defect_sets,
+           +         change_set,
+           +         repo,
+           +         baseline,
+           +         builder,
+           +         execution.sandbox,
+           +         execution.max_edit_lines,
+           +         max_failing_fraction=execution.max_failing_fraction,
+           +         breadth_floor=execution.breadth_floor,
+           +     )
+      2. set aside (failed_check): the mutated src/acceptance/pipeline.py does not parse: unmatched ')' (<unknown>, line 345)
+         at src/acceptance/pipeline.py lines 334-344:
+           -     attempts = run_mutations(
+           -         defect_sets,
+           -         change_set,
+           -         repo,
+           -         baseline,
+           -         builder,
+           -         execution.sandbox,
+           -         execution.max_edit_lines,
+           -         max_failing_fraction=execution.max_failing_fraction,
+           -         breadth_floor=execution.breadth_floor,
+           -         max_candidates=execution.max_candidates,
+           +     attempts = run_mutations(
+           +         defect_sets,
+           +         change_set,
+           +         repo,
+           +         baseline,
+           +         builder,
+           +         execution.sandbox,
+           +         execution.max_edit_lines,
+           +         max_failing_fraction=execution.max_failing_fraction,
+           +         breadth_floor=execution.breadth_floor,
+           +     )
+      3. set aside (failed_check): the mutated src/acceptance/pipeline.py does not parse: unmatched ')' (<unknown>, line 345)
+         at src/acceptance/pipeline.py lines 334-344:
+           -     attempts = run_mutations(
+           -         defect_sets,
+           -         change_set,
+           -         repo,
+           -         baseline,
+           -         builder,
+           -         execution.sandbox,
+           -         execution.max_edit_lines,
+           -         max_failing_fraction=execution.max_failing_fraction,
+           -         breadth_floor=execution.breadth_floor,
+           -         max_candidates=execution.max_candidates,
+           +     attempts = run_mutations(
+           +         defect_sets,
+           +         change_set,
+           +         repo,
+           +         baseline,
+           +         builder,
+           +         execution.sandbox,
+           +         execution.max_edit_lines,
+           +         max_failing_fraction=execution.max_failing_fraction,
+           +         breadth_floor=execution.breadth_floor,
+           +     )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] no-candidate-test-execution-decision/candidate-tests-now-run-and-select-the-edit
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the edit replaces 27 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/mutation/runner.py lines 271-297:
+           -         try:
+           -             with mutated_copy(project_root, answer) as root:
+           -                 result = run_tests(tests, root, config)
+           -         except OSError as error:
+           -             attempt = MutationAttempt(
+           -                 defect_id=defect.id,
+           -                 outcome=MutationOutcomeKind.NOT_ATTEMPTED,
+           -                 descriptor=answer,
+           -                 reason=f"the mutated copy could not be prepared: {error}",
+           -             )
+           -             return _with_candidates(attempt, asked, set_aside, used=asked)
+           - 
+           -         attempt = _classify(defect, answer, tests, result, breadth)
+           -         # The run's own gates — a broken edit, or one far broader than its
+           -         # defect — refuse the edit, not the defect. Before #334 that was the
+           -         # whole answer; now it is one candidate set aside.
+           -         if attempt.outcome is MutationOutcomeKind.NOT_MUTABLE:
+           -             set_aside.append(
+           -                 SetAsideCandidate(
+           -                     cause=CandidateCause.REFUSED_AFTER_RUN,
+           -                     reason=attempt.reason,
+           -                     descriptor=answer,
+           -                     tests_run=attempt.tests_run,
+           -                 )
+           -             )
+           -             continue
+           -         return _with_candidates(attempt, asked, set_aside, used=asked)
+           +         return _with_candidates(
+           +             MutationAttempt(
+           +                 defect_id=defect.id,
+           +                 outcome=MutationOutcomeKind.NO_USABLE_EDIT,
+           +                 reason=_why_no_usable_edit(set_aside),
+           +             ),
+           +             asked,
+           +             set_aside,
+           +             used=None,
+           +         )
+      2. set aside (failed_check): the edit replaces 27 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/mutation/runner.py lines 271-297:
+           -         try:
+           -             with mutated_copy(project_root, answer) as root:
+           -                 result = run_tests(tests, root, config)
+           -         except OSError as error:
+           -             attempt = MutationAttempt(
+           -                 defect_id=defect.id,
+           -                 outcome=MutationOutcomeKind.NOT_ATTEMPTED,
+           -                 descriptor=answer,
+           -                 reason=f"the mutated copy could not be prepared: {error}",
+           -             )
+           -             return _with_candidates(attempt, asked, set_aside, used=asked)
+           - 
+           -         attempt = _classify(defect, answer, tests, result, breadth)
+           -         # The run's own gates — a broken edit, or one far broader than its
+           -         # defect — refuse the edit, not the defect. Before #334 that was the
+           -         # whole answer; now it is one candidate set aside.
+           -         if attempt.outcome is MutationOutcomeKind.NOT_MUTABLE:
+           -             set_aside.append(
+           -                 SetAsideCandidate(
+           -                     cause=CandidateCause.REFUSED_AFTER_RUN,
+           -                     reason=attempt.reason,
+           -                     descriptor=answer,
+           -                     tests_run=attempt.tests_run,
+           -                 )
+           -             )
+           -             continue
+           -         return _with_candidates(attempt, asked, set_aside, used=asked)
+           +         return _with_candidates(
+           +             MutationAttempt(
+           +                 defect_id=defect.id,
+           +                 outcome=MutationOutcomeKind.NO_USABLE_EDIT,
+           +                 reason=_why_no_usable_edit(set_aside),
+           +             ),
+           +             asked,
+           +             set_aside,
+           +             used=None,
+           +         )
+      3. set aside (failed_check): the edit replaces 27 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/mutation/runner.py lines 271-297:
+           -         try:
+           -             with mutated_copy(project_root, answer) as root:
+           -                 result = run_tests(tests, root, config)
+           -         except OSError as error:
+           -             attempt = MutationAttempt(
+           -                 defect_id=defect.id,
+           -                 outcome=MutationOutcomeKind.NOT_ATTEMPTED,
+           -                 descriptor=answer,
+           -                 reason=f"the mutated copy could not be prepared: {error}",
+           -             )
+           -             return _with_candidates(attempt, asked, set_aside, used=asked)
+           - 
+           -         attempt = _classify(defect, answer, tests, result, breadth)
+           -         # The run's own gates — a broken edit, or one far broader than its
+           -         # defect — refuse the edit, not the defect. Before #334 that was the
+           -         # whole answer; now it is one candidate set aside.
+           -         if attempt.outcome is MutationOutcomeKind.NOT_MUTABLE:
+           -             set_aside.append(
+           -                 SetAsideCandidate(
+           -                     cause=CandidateCause.REFUSED_AFTER_RUN,
+           -                     reason=attempt.reason,
+           -                     descriptor=answer,
+           -                     tests_run=attempt.tests_run,
+           -                 )
+           -             )
+           -             continue
+           -         return _with_candidates(attempt, asked, set_aside, used=asked)
+           +         return _with_candidates(
+           +             MutationAttempt(
+           +                 defect_id=defect.id,
+           +                 outcome=MutationOutcomeKind.NO_USABLE_EDIT,
+           +                 reason=_why_no_usable_edit(set_aside),
+           +             ),
+           +             asked,
+           +             set_aside,
+           +             used=None,
+           +         )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [not_attempted] none-of-candidates-could-be-used/failure-message-uses-count-summary-instead-of-none-of-the-requested-candidates
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (failed_check): the mutated src/acceptance/mutation/runner.py does not parse: unmatched ')' (<unknown>, line 342)
+         at src/acceptance/mutation/runner.py lines 337-340:
+           -     return (
+           -         f"all {len(set_aside)} candidate edit(s) asked for were set aside ({causes}). "
+           -         "That is a fact about these candidates, not about the defect, which goes to the "
+           -         "static judge like any defect with no usable edit."
+           +     return (
+           +         f"none of the requested candidates could be used; all {len(set_aside)} candidate edit(s) asked for were set aside ({causes}). "
+           +         "That is a fact about these candidates, not about the defect, which goes to the "
+           +         "static judge like any defect with no usable edit."
+           +     )
+    injected at src/acceptance/mutation/runner.py lines 337-341:
+      -     return (
+      -         f"all {len(set_aside)} candidate edit(s) asked for were set aside ({causes}). "
+      -         "That is a fact about these candidates, not about the defect, which goes to the "
+      -         "static judge like any defect with no usable edit."
+      -     )
+      +     return (
+      +         f"none of the requested candidates could be used; all {len(set_aside)} candidate edit(s) asked for were set aside ({causes}). "
+      +         "That is a fact about these candidates, not about the defect, which goes to the "
+      +         "static judge like any defect with no usable edit."
+      +     )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 104 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill, tests/test_mutation_runner.py::TestCandidateEdits::test_a_decline_ends_the_loop_and_keeps_what_was_set_aside and 99 more), so the tests cannot be called proven weak on this run
+
+  [killed, NOT COUNTED] none-of-candidates-could-be-used/no-usable-edit-outcome-does-not-render-as-none-of-the-requested-candidates
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (failed_check): the span 411..413 falls outside the region(s) the defect named in src/acceptance/report.py (420..469)
+         at src/acceptance/report.py lines 411-413:
+           -                 lines.append(
+           -                     "    edit NOT verified to make the defect true, so this result is not "
+           -                     "counted; tier: static, and the defect went to the static judge"
+           +                 lines.append(
+           +                     "    edit NOT verified to make the defect true, so this result is not "
+           +                     "counted; tier: static, and none of the requested candidates could be used"
+           +                 )
+      2. set aside (failed_check): the span 411..413 falls outside the region(s) the defect named in src/acceptance/report.py (420..469)
+         at src/acceptance/report.py lines 411-413:
+           -                 lines.append(
+           -                     "    edit NOT verified to make the defect true, so this result is not "
+           -                     "counted; tier: static, and the defect went to the static judge"
+           +                 lines.append(
+           +                     "    edit NOT verified to make the defect true, so this result is not "
+           +                     "counted; tier: static, and none of the requested candidates could be used"
+           +                 )
+    injected at src/acceptance/report.py lines 447-453:
+      -     if not attempt.candidates_asked:
+      -         return []
+      -     used = (
+      -         f"used candidate {attempt.candidate_used}"
+      -         if attempt.candidate_used is not None
+      -         else "none used"
+      -     )
+      +     if not attempt.candidates_asked:
+      +         return []
+      +     used = (
+      +         f"used candidate {attempt.candidate_used}"
+      +         if attempt.candidate_used is not None
+      +         else "none of the requested candidates could be used"
+      +     )
+      +     aside = len(attempt.set_aside_candidates)
+      +     lines = [
+      +         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+      +     ]
+    caught by (1):
+      tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 305 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] preserve-no-edit-built-fallback-handling/no-usable-edit-not-treated-like-no-edit-built
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/mutation/runner.py lines 301..307 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/runner.py lines 301-307:
+           -     return MutationAttempt(
+           -         defect_id=defect.id,
+           -         outcome=MutationOutcomeKind.NO_USABLE_EDIT,
+           -         reason=_why_no_usable_edit(set_aside),
+           -         candidates_asked=max_candidates,
+           -         set_aside_candidates=list(set_aside),
+           -     )
+           +     return MutationAttempt(
+           +         defect_id=defect.id,
+           +         outcome=MutationOutcomeKind.NO_USABLE_EDIT,
+           +         reason=_why_no_usable_edit(set_aside),
+           +         candidates_asked=max_candidates,
+           +         set_aside_candidates=list(set_aside),
+           +     )
+    injected at src/acceptance/mutation/runner.py lines 301-307:
+      -     return MutationAttempt(
+      -         defect_id=defect.id,
+      -         outcome=MutationOutcomeKind.NO_USABLE_EDIT,
+      -         reason=_why_no_usable_edit(set_aside),
+      -         candidates_asked=max_candidates,
+      -         set_aside_candidates=list(set_aside),
+      -     )
+      +     return MutationAttempt(
+      +         defect_id=defect.id,
+      +         outcome=MutationOutcomeKind.NOT_MUTABLE,
+      +         reason=_why_no_usable_edit(set_aside),
+      +         candidates_asked=max_candidates,
+      +         set_aside_candidates=list(set_aside),
+      +     )
+    caught by (3):
+      tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown
+      tests/test_mutation_pipeline_wiring.py::TestTheBreadthSettingsReachTheRunner::test_a_kill_too_broad_for_the_configured_threshold_is_not_a_kill
+      tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_it_is_not_counted_as_a_kill
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 303 dropped as not worth asking, 2 skipped once the defect was covered
+
+  [not_attempted] preserve-no-edit-built-fallback-handling/old-no-edit-built-inputs-no-longer-replayed-as-before
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/mutation/attempt.py lines 362-367:
+      -         if self.outcome is MutationOutcomeKind.NO_USABLE_EDIT:
+      -             if self.candidates_asked < 1 or aside != self.candidates_asked:
+      -                 raise ValueError(
+      -                     f"defect {self.defect_id!r} has no usable edit but set aside {aside} of "
+      -                     f"{self.candidates_asked} candidate(s); every one asked for must be shown"
+      -                 )
+      +         if self.outcome is MutationOutcomeKind.NO_USABLE_EDIT:
+      +             if self.candidates_asked < 1 or aside != self.candidates_asked:
+      +                 raise ValueError(
+      +                     f"defect {self.defect_id!r} has no usable edit but set aside {aside} of "
+      +                     f"{self.candidates_asked} candidate(s); every one asked for must be shown"
+      +                 )
+      +             if self.candidate_used is not None:
+      +                 raise ValueError(
+      +                     f"defect {self.defect_id!r} has no usable edit and names a candidate as used"
+      +                 )
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 297 skipped once the defect was covered
+    no test went red, but 104 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill, tests/test_mutation_runner.py::TestCandidateEdits::test_a_decline_ends_the_loop_and_keeps_what_was_set_aside and 99 more), so the tests cannot be called proven weak on this run
+
+  [not_attempted] record-candidate-request-count/candidate-count-not-populated-on-attempts
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/mutation/runner.py lines 205..210 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/runner.py lines 205-210:
+           -         return _not_mutable(
+           -             defect,
+           -             "the defect names no changed region with text at head, so there is no span to "
+           -             "replace. This is the shape of an absence defect, where the implicated lines are "
+           -             "where behavior should be and is not.",
+           -         )
+           +         return _not_mutable(
+           +             defect,
+           +             "the defect names no changed region with text at head, so there is no span to "
+           +             "replace. This is the shape of an absence defect, where the implicated lines are "
+           +             "where behavior should be and is not.",
+           +         )
+    injected at src/acceptance/mutation/runner.py lines 301-307:
+      -     return MutationAttempt(
+      -         defect_id=defect.id,
+      -         outcome=MutationOutcomeKind.NO_USABLE_EDIT,
+      -         reason=_why_no_usable_edit(set_aside),
+      -         candidates_asked=max_candidates,
+      -         set_aside_candidates=list(set_aside),
+      -     )
+      +     return MutationAttempt(
+      +         defect_id=defect.id,
+      +         outcome=MutationOutcomeKind.NO_USABLE_EDIT,
+      +         reason=_why_no_usable_edit(set_aside),
+      +         candidates_asked=asked,
+      +         set_aside_candidates=list(set_aside),
+      +     )
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 297 skipped once the defect was covered
+    no test went red, but 104 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill, tests/test_mutation_runner.py::TestCandidateEdits::test_a_decline_ends_the_loop_and_keeps_what_was_set_aside and 99 more), so the tests cannot be called proven weak on this run
+
+  [not_attempted] record-candidate-request-count/candidate-count-not-rendered-for-attempts-without-descriptor
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/report.py lines 447-448:
+      -     if not attempt.candidates_asked:
+      -         return []
+      +     if False:
+      +         return []
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 281 skipped once the defect was covered
+    no test went red, but 104 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill, tests/test_mutation_runner.py::TestCandidateEdits::test_a_decline_ends_the_loop_and_keeps_what_was_set_aside and 99 more), so the tests cannot be called proven weak on this run
+
+  [no_usable_edit] report-captures-edit-cost-and-duration/candidate-edit-cost-not-attributed-to-report
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/usage.py does not parse: unmatched ')' (<unknown>, line 260)
+         at src/acceptance/usage.py lines 248-257:
+           -     header = (
+           -         "stage",
+           -         "model",
+           -         "calls",
+           -         "prompt",
+           -         "output",
+           -         "cached",
+           -         "this run",
+           -         "recorded",
+           -         "time this run",
+           +     header = (
+           +         "stage",
+           +         "model",
+           +         "calls",
+           +         "prompt",
+           +         "output",
+           +         "cached",
+           +         "this run",
+           +         "recorded",
+           +         "edit time",
+           +         "time this run",
+           +     )
+      2. set aside (failed_check): the mutated src/acceptance/usage.py does not parse: unmatched ')' (<unknown>, line 259)
+         at src/acceptance/usage.py lines 248-257:
+           -     header = (
+           -         "stage",
+           -         "model",
+           -         "calls",
+           -         "prompt",
+           -         "output",
+           -         "cached",
+           -         "this run",
+           -         "recorded",
+           -         "time this run",
+           +     header = (
+           +         "stage",
+           +         "model",
+           +         "calls",
+           +         "prompt",
+           +         "output",
+           +         "cached",
+           +         "this run",
+           +         "recorded",
+           +         "time this run",
+           +     )
+      3. set aside (failed_check): the mutated src/acceptance/usage.py does not parse: unmatched ')' (<unknown>, line 260)
+         at src/acceptance/usage.py lines 248-257:
+           -     header = (
+           -         "stage",
+           -         "model",
+           -         "calls",
+           -         "prompt",
+           -         "output",
+           -         "cached",
+           -         "this run",
+           -         "recorded",
+           -         "time this run",
+           +     header = (
+           +         "stage",
+           +         "model",
+           +         "calls",
+           +         "prompt",
+           +         "output",
+           +         "cached",
+           +         "this run",
+           +         "recorded",
+           +         "edit time",
+           +         "time this run",
+           +     )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [not_attempted] report-captures-edit-cost-and-duration/cost-or-time-only-shown-for-live-calls
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 204-206:
+      -         seconds = call.get("seconds")
+      -         if isinstance(seconds, (int, float)) and from_provider:
+      -             stage.call_seconds = (stage.call_seconds or 0.0) + seconds
+      +         seconds = call.get("seconds")
+      +         if isinstance(seconds, (int, float)):
+      +             stage.call_seconds = (stage.call_seconds or 0.0) + seconds
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 105 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill and 100 more), so the tests cannot be called proven weak on this run
+
+  [killed, NOT COUNTED] set-aside-count-and-reasons/candidate-summary-not-rendered-for-attempts-with-set-asides
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 390..390 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 390-390:
+           -         lines.extend(_candidate_lines(attempt))
+           +         lines.extend(_candidate_lines(attempt))
+    injected at src/acceptance/report.py lines 390-390:
+      -         lines.extend(_candidate_lines(attempt))
+      +         lines.extend(_candidate_lines(attempt))
+      +         if attempt.set_aside_candidates:
+      +             lines.append("    candidate set-aside summary:")
+      +             for number, candidate in enumerate(attempt.set_aside_candidates, start=1):
+      +                 lines.append(f"      {number}. set aside ({candidate.cause.value}): {candidate.reason}")
+    caught by (1):
+      tests/test_mutation_pipeline_wiring.py::TestCandidateEditsThroughTheRealPipeline::test_the_report_shows_every_candidate_and_why_it_was_set_aside
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 305 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [not_attempted] set-aside-count-and-reasons/candidate-summary-shows-wrong-count-or-order
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (failed_check): the mutated src/acceptance/report.py does not parse: unmatched ']' (<unknown>, line 458)
+         at src/acceptance/report.py lines 454-456:
+           -     aside = len(attempt.set_aside_candidates)
+           -     lines = [
+           -         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+           +     aside = len(attempt.set_aside_candidates)
+           +     lines = [
+           +         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+           +     ]
+    injected at src/acceptance/report.py lines 454-459:
+      -     aside = len(attempt.set_aside_candidates)
+      -     lines = [
+      -         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+      -     ]
+      -     for number, candidate in enumerate(attempt.set_aside_candidates, start=1):
+      -         lines.append(f"      {number}. set aside ({candidate.cause.value}): {candidate.reason}")
+      +     aside = len(attempt.set_aside_candidates)
+      +     lines = [
+      +         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+      +     ]
+      +     for number, candidate in enumerate(attempt.set_aside_candidates, start=1):
+      +         lines.append(f"      {number}. set aside ({candidate.cause.value}): {candidate.reason}")
+      +         if candidate.descriptor is not None:
+      +             span = f"{candidate.descriptor.start_line}-{candidate.descriptor.end_line}"
+      +             lines.append(f"         at {candidate.descriptor.path} lines {span}:")
+      +             lines.extend(_edit_lines(candidate.descriptor, "           "))
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 105 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill and 100 more), so the tests cannot be called proven weak on this run
+
+  [not_attempted] set-aside-count-and-reasons/no-usable-edit-summary-loses-reasons
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 458..464 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 458-464:
+           -     for number, candidate in enumerate(attempt.set_aside_candidates, start=1):
+           -         lines.append(f"      {number}. set aside ({candidate.cause.value}): {candidate.reason}")
+           -         if candidate.descriptor is not None:
+           -             span = f"{candidate.descriptor.start_line}-{candidate.descriptor.end_line}"
+           -             lines.append(f"         at {candidate.descriptor.path} lines {span}:")
+           -             lines.extend(_edit_lines(candidate.descriptor, "           "))
+           -     return lines
+           +     for number, candidate in enumerate(attempt.set_aside_candidates, start=1):
+           +         lines.append(f"      {number}. set aside ({candidate.cause.value}): {candidate.reason}")
+           +         if candidate.descriptor is not None:
+           +             span = f"{candidate.descriptor.start_line}-{candidate.descriptor.end_line}"
+           +             lines.append(f"         at {candidate.descriptor.path} lines {span}:")
+           +             lines.extend(_edit_lines(candidate.descriptor, "           "))
+           +     return lines
+    injected at src/acceptance/report.py lines 454-464:
+      -     aside = len(attempt.set_aside_candidates)
+      -     lines = [
+      -         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+      -     ]
+      -     for number, candidate in enumerate(attempt.set_aside_candidates, start=1):
+      -         lines.append(f"      {number}. set aside ({candidate.cause.value}): {candidate.reason}")
+      -         if candidate.descriptor is not None:
+      -             span = f"{candidate.descriptor.start_line}-{candidate.descriptor.end_line}"
+      -             lines.append(f"         at {candidate.descriptor.path} lines {span}:")
+      -             lines.extend(_edit_lines(candidate.descriptor, "           "))
+      -     return lines
+      +     aside = len(attempt.set_aside_candidates)
+      +     lines = [
+      +         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+      +     ]
+      +     if aside:
+      +         lines.append("      set aside candidates:")
+      +     for number, candidate in enumerate(attempt.set_aside_candidates, start=1):
+      +         lines.append(f"        {number}. set aside ({candidate.cause.value}): {candidate.reason}")
+      +         if candidate.descriptor is not None:
+      +             span = f"{candidate.descriptor.start_line}-{candidate.descriptor.end_line}"
+      +             lines.append(f"           at {candidate.descriptor.path} lines {span}:")
+      +             lines.extend(_edit_lines(candidate.descriptor, "             "))
+      +     return lines
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 105 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill and 100 more), so the tests cannot be called proven weak on this run
+
+  [not_attempted] which-candidate-it-used/candidate-index-recorded-as-wrong-shape
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (failed_check): the mutated src/acceptance/report.py does not parse: unmatched ']' (<unknown>, line 458)
+         at src/acceptance/report.py lines 449-456:
+           -     used = (
+           -         f"used candidate {attempt.candidate_used}"
+           -         if attempt.candidate_used is not None
+           -         else "none used"
+           -     )
+           -     aside = len(attempt.set_aside_candidates)
+           -     lines = [
+           -         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+           +     used = (
+           +         f"used candidate {attempt.candidate_used + 1}"
+           +         if attempt.candidate_used is not None
+           +         else "none used"
+           +     )
+           +     aside = len(attempt.set_aside_candidates)
+           +     lines = [
+           +         f"    candidate edits: {attempt.candidates_asked} asked for, {aside} set aside, {used}"
+           +     ]
+    injected at src/acceptance/report.py lines 449-453:
+      -     used = (
+      -         f"used candidate {attempt.candidate_used}"
+      -         if attempt.candidate_used is not None
+      -         else "none used"
+      -     )
+      +     used = (
+      +         f"used candidate {attempt.candidate_used + 1}"
+      +         if attempt.candidate_used is not None
+      +         else "none used"
+      +     )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 105 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill and 100 more), so the tests cannot be called proven weak on this run
+
+  [not_attempted] which-candidate-it-used/candidate-summary-not-rendered-for-all-attempts
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/report.py lines 391-395:
+      -         descriptor = attempt.descriptor
+      -         if descriptor is not None:
+      -             span = f"{descriptor.start_line}-{descriptor.end_line}"
+      -             lines.append(f"    injected at {descriptor.path} lines {span}:")
+      -             lines.extend(_edit_lines(descriptor, "      "))
+      +         descriptor = attempt.descriptor
+      +         if descriptor is not None:
+      +             span = f"{descriptor.start_line}-{descriptor.end_line}"
+      +             lines.append(f"    injected at {descriptor.path} lines {span}:")
+      +             lines.extend(_edit_lines(descriptor, "      "))
+      +             lines.extend(_candidate_lines(attempt))
+    pairs: 0 settled by the run, 308 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    no test went red, but 105 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_one_assertion_among_name_errors_is_a_kill and 100 more), so the tests cannot be called proven weak on this run
+
+  [not_attempted] which-candidate-it-used/candidate-used-field-not-populated
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/mutation/runner.py lines 297..297 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/runner.py lines 297-297:
+           -         return _with_candidates(attempt, asked, set_aside, used=asked)
+           +         return _with_candidates(attempt, asked, set_aside, used=asked)
+      2. set aside (changed_nothing): the replacement for src/acceptance/mutation/runner.py lines 297..297 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/mutation/runner.py lines 297-297:
+           -         return _with_candidates(attempt, asked, set_aside, used=asked)
+           +         return _with_candidates(attempt, asked, set_aside, used=asked)
+    injected at src/acceptance/mutation/runner.py lines 297-297:
+      -         return _with_candidates(attempt, asked, set_aside, used=asked)
+      +         return _with_candidates(attempt, asked, set_aside, used=None)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+    no test went red, but 106 of 307 did not complete under the mutant (tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_it_is_not_counted_as_a_kill, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_edit_and_the_tests_run_are_still_recorded, tests/test_mutation_runner.py::TestAnEditThatUsesANameThatDoesNotExist::test_the_reason_names_the_exception, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_all_name_errors_is_not_a_kill, tests/test_mutation_runner.py::TestBrokenEditRuleNeedsEveryFailure::test_an_unknown_exception_type_is_a_kill and 101 more), so the tests cannot be called proven weak on this run
+
+Defects the delivered code already has, as asserted by the model (static tier; needs human review):
+  exclude-defect-enumeration-and-edit-region/descriptor-now-enumerates-multiple-candidates
+    Lines 223-229 already implement the defective retry loop over up to max_candidates requests. Replacing that contiguous run with a single one-shot descriptor request removes the loop and makes the expected behavior true. (the repair was refused: the mutated src/acceptance/mutation/runner.py does not parse: unexpected indent (<unknown>, line 230))
+    no test run supports or contradicts this claim
+    repair at src/acceptance/mutation/runner.py lines 223-229:
+      -     # #334. Ask, check, and on a refusal ask again with the refusal shown, up to
+      -     # `max_candidates` times. A decline or a claim that the code is already
+      -     # defective is the model's considered answer about the defect, not a bad
+      -     # edit, so it ends the loop rather than being retried.
+      -     set_aside: list[SetAsideCandidate] = []
+      -     for asked in range(1, max_candidates + 1):
+      -         answer = build_descriptor(defect, readable, sources, tuple(set_aside))
+      +     # #334. Ask once, then check the answer; a decline or a claim that the code
+      +     # is already defective is the model's considered answer about the defect, not
+      +     # a bad edit.
+      +     set_aside: list[SetAsideCandidate] = []
+      +     asked = 1
+      +     answer = build_descriptor(defect, readable, sources, tuple(set_aside))
+
+Candidate tests set aside (no conclusion rests on these):
+  [not_started] tests/fixtures/archetypes/08-unrequested-change-separable/head/test_report.py::test_low_stock_report_filters_by_threshold
+    the project's own pytest does not collect this test, so asking it to run would make the whole run fail without running anything. Test discovery found the file; pytest declines it.
+  [not_started] tests/fixtures/archetypes/08-unrequested-change-test-support/base/test_pricing.py::test_line_total_multiplies_quantity_by_price
+    the project's own pytest does not collect this test, so asking it to run would make the whole run fail without running anything. Test discovery found the file; pytest declines it.
+  [not_started] tests/fixtures/archetypes/08-unrequested-change-test-support/base/test_pricing.py::test_line_total_of_a_single_item
+    the project's own pytest does not collect this test, so asking it to run would make the whole run fail without running anything. Test discovery found the file; pytest declines it.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 096837e2e11808db
+  continuing f1594dbe2bba8c92
+  continue this run with: --continue 096837e2e11808db
+Model usage by stage:
+  stage                         model                                                              calls   prompt  output  cached  this run  recorded  time this run
+  ----------------------------  -------------------------------------------  ---------------------------  -------  ------  ------  --------  --------  -------------
+  obligation linking            voyage/voyage-3.5-lite                           1 (0 live / 1 replayed)      412       0       —   $0.0000   $0.0000              —
+  defect enumeration            openai/gpt-5.4-mini                            13 (13 live / 0 replayed)  157,225   5,891    0.0%   $0.1444   $0.1444          95.5s
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini  146 (146 live / 0 replayed)  219,986  30,444    0.0%   $0.2704   $0.2704         268.1s
+  coverage classification       openai/gpt-5.4-mini                              1 (1 live / 0 replayed)   19,312   1,335    0.0%   $0.0205   $0.0205           8.5s
+  unrequested-change detection  openai/gpt-5.4-mini                              1 (1 live / 0 replayed)   18,706     663    0.0%   $0.0170   $0.0170           4.7s
+  test recommendation           openai/gpt-5.4-mini                              1 (1 live / 0 replayed)   17,748     374    0.0%   $0.0150   $0.0150           3.6s
+  mutation descriptor           openai/gpt-5.4-mini                            64 (64 live / 0 replayed)  331,829   8,539   45.0%   $0.1866   $0.1866         110.7s
+  this run spent $0.6539 on 226 live call(s); the evidence cost $0.6539 to record (1 call(s) replayed at no cost to this run)
+

@@ -1,0 +1,67 @@
+run d39591e2b11c3da4
+  requirements: 6 derived, 0 carried, 0 revised; 15 decompose call(s)
+  continue this run with: --continue d39591e2b11c3da4
+Model usage by stage:
+  stage               model                                      calls  prompt  output  cached  this run  recorded  time this run
+  ------------------  ----------------------  ------------------------  ------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini     13 (8 live / 5 replayed)  70,804   1,838    7.6%   $0.0343   $0.0577          31.2s
+  decompose-summary   openai/gpt-5.4           2 (2 live / 0 replayed)   1,892   1,193    0.0%   $0.0226   $0.0226          12.1s
+  obligation linking  voyage/voyage-3.5-lite   1 (1 live / 0 replayed)     440       0       —   $0.0000   $0.0000           0.3s
+  this run spent $0.0569 on 11 live call(s); the evidence cost $0.0804 to record (5 call(s) replayed at no cost to this run)
+Requirements: 6   with obligations: 6
+
+[task-01] When the review builds an edit for a named plausible defect, it asks for
+    several candidate edits instead of one and uses the first that passes the checks the
+    review already applies to an edit. How many candidates it asks for is configurable.
+    When no candidate passes, the review says that none of the candidates it asked for
+    could be used, rather than that the defect cannot be turned into an edit, and
+    otherwise handles the defect the way it handles one no edit could be built for
+    today.
+    -> multiple-candidate-edits  [functional/explicit]
+       The review asks for several candidate edits instead of one.
+    -> first-passing-candidate  [functional/explicit]
+       Use the first candidate edit that passes the checks the review already applies to
+       an edit.
+    -> candidate-count-configurable  [docs_config/explicit]
+       The number of candidates the review asks for is configurable.
+    -> none-of-candidates-could-be-used  [functional/explicit]
+       When no candidate passes, the review says that none of the candidates it asked
+       for could be used.
+    -> preserve-no-edit-built-fallback-handling  [compatibility/explicit]
+       Preserve the review's handling of a defect when no edit could be built for today.
+
+[task-02] For each defect, the review records how many candidates it asked for, how many
+    it set aside and why, and which candidate it used. Its report says what building
+    edits cost and how long it took, since asking for several candidates multiplies
+    both.
+    -> candidate-count-recorded  [functional/explicit]
+       The review records how many candidates it asked for.
+    -> set-aside-count-and-reasons  [functional/explicit]
+       Record how many candidates were set aside and why.
+    -> which-candidate-it-used  [functional/explicit]
+       Record which candidate it used for each defect review.
+    -> report-build-edit-cost-and-duration  [functional/explicit]
+       The report states what building edits cost and how long they took.
+
+[constraint-01] Two runs over the same input pick the same candidate.
+    -> deterministic-candidate-selection  [invariant/explicit]
+       Two runs over the same input pick the same candidate.
+
+[exclusion-01] Whether an edit that passes the checks really makes its named defect
+    true.
+    -> edit-passes-checks-defect-true  [compatibility/explicit]
+       The change does not alter whether an edit that passes the checks really makes its
+       named defect true.
+
+[exclusion-02] Which plausible defects are enumerated, and which region of the code an
+    edit is allowed to fall in.
+    -> exclude-plausible-defects-and-region  [docs_config/explicit]
+       The change does not alter which plausible defects are enumerated or which region
+       of the code an edit is allowed to fall in.
+
+[exclusion-03] Which tests are candidates, how the project's tests are run, and how the
+    result of a run is read.
+    -> exclude-test-candidate-selection-and-run-flow  [docs_config/explicit]
+       The change does not alter which tests are candidates, how the project's tests are
+       run, or how the result of a run is read.
+

@@ -6429,3 +6429,42 @@ the record.
   > **Acceptance:** re-running #348's Gate 2 with `--continue` from run 2 gives
   > the `review_state.py` hunks run 2's classification.
 - **Status:** filed as #359 (sub-issue of #185), approved at #348 Gate 2, 2026-09-21
+
+### [2026-09-22] A revised requirement comes back with its old obligation, word for word
+- **Kind:** filing
+- **Found during:** #334, Gate 1, run 5
+- **Where:** `src/acceptance/requirement/` (decomposition's revise path);
+  `dogfood-logs/334-gate1-run5/`, run `635a306672ff17b2`
+- **Severity:** should-fix
+- **What's wrong:** Scope exclusion 3 was reworded from *"Running the candidate
+  tests, and anything decided from what they did"* to *"Which tests are
+  candidates, how the project's tests are run, and how the result of a run is
+  read."* Continuing the previous run, decomposition marked it `revised`, recorded
+  the old text as its `revision_reason`, and made one fresh model call — which
+  returned the old obligation unchanged: *"The change does not include running the
+  candidate tests or making any decision based on their results."* The type moved
+  from `regression` to `docs_config`, so it was re-derived rather than carried.
+  A fresh run with no prior derived the right obligation from the same text.
+- **Why I didn't act:** decomposition is outside #334.
+- **Drafted fix:** file as a sub-issue of #181, the decomposition umbrella:
+
+  > **A revised requirement can be re-derived into its old obligation**
+  >
+  > Observed at #334's Gate 1, run `635a306672ff17b2`
+  > (`dogfood-logs/334-gate1-run5/`). The requirement's text changed, the run
+  > recognised the change and re-derived it — and the one call it made reproduced
+  > the previous obligation word for word, describing text the requirement no
+  > longer contains. A fresh run on the same task file got it right.
+  >
+  > This defeats the point of rewording at a gate: the sanctioned fix for a weak
+  > requirement is to reword it, and `--continue` is the recommended way to
+  > re-run, so the combination silently keeps the wording the human just
+  > corrected. It looks like the revise call is shown the prior derivation and
+  > anchors on it; I have not read that code to confirm.
+  >
+  > Related: #294 (a requirement carried forward on its own text alone) and #269
+  > (carry-forward), which is where the revise path lives.
+  >
+  > **Acceptance.** A revised requirement's obligations describe its new text; a
+  > regression case pins it with this exclusion's two wordings.
+- **Status:** open
