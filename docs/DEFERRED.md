@@ -5936,3 +5936,508 @@ the record.
   run to run makes every execution-tier figure non-comparable between runs, which
   is a determinism problem and not only a flakiness one.
 - **Status:** open
+
+### [2026-09-21] A requirement saying what a check asks is decomposed as a claim that the answer is always yes, and the refusal sentence is dropped
+- **Kind:** filing
+- **Found during:** #335, Gate 1, runs 1 and 2
+- **Where:** `src/acceptance/requirement/obligations.py` (decomposition)
+- **Severity:** should-fix
+- **What's wrong:** The input (run 2, `task-03`) is *"Only an edit that does
+  change behaviour reaches the second question, which asks whether the changed
+  behaviour matches the defect's defective behaviour. An edit whose changed
+  behaviour does not match is refused."* It yields
+  `changed-behaviour-matches-defect-behaviour`: *"The changed behaviour matches
+  the defect's defective behaviour."* That is a claim about every edit, which no
+  implementation can satisfy; the requirement was that the software *asks* and
+  *refuses* on a no. The third sentence, the refusal, produces no obligation at
+  all. Run 1 phrased it as a question and got the same obligation, so rewording
+  did not change it.
+- **Why I didn't act:** decomposition is outside #335; belongs under #181, the
+  decomposition umbrella.
+- **Drafted fix:** file as a sub-issue of #181:
+
+  > **A requirement describing a check is decomposed as the check always passing**
+  >
+  > A requirement stating that the software asks a question and refuses on a
+  > negative answer is decomposed into an obligation asserting the answer is
+  > positive, and the refusal is lost. Observed at #335's Gate 1
+  > (`dogfood-logs/335-gate1-run2/`, `task-03` →
+  > `changed-behaviour-matches-defect-behaviour`), stable across a rewording
+  > (`335-gate1-run1`, `task-04` → `defective-behaviour-match`), and again in
+  > runs 3 and 4 after the sentence was restated a third time. Run 3 shows the
+  > same shape a second way: *"An edit that fails either half is refused,
+  > including one that repairs a defect the code already had"* yielded
+  > `repairs-existing-defect`, *"The change includes an edit that repairs a
+  > defect the code already had."*
+  >
+  > Related, not the same: #342 (a prohibition keeps its verb and loses its
+  > negation) and #343 (a condition dropped from the second of two conjuncts).
+  > All three lose the operator — negation, condition, interrogative — and keep
+  > the content.
+  >
+  > **Acceptance.** The `task-03` input above decomposes to obligations a correct
+  > implementation satisfies — the check asks, and refuses a non-matching edit —
+  > and a regression case pins it.
+- **Status:** **filed 2026-09-21 as #352**, sub-issue of #181, on the human's
+  approval.
+
+### [2026-09-21] A plain Constraints prohibition yields an open question instead of an obligation
+- **Kind:** filing
+- **Found during:** #335, Gate 1, run 1 (carried unchanged into run 2)
+- **Where:** `src/acceptance/requirement/obligations.py` (decomposition)
+- **Severity:** should-fix
+- **What's wrong:** The constraint *"Neither question is shown the tests, or what
+  the tests did under the edit."* produced no obligation and the open question
+  `constraint-01-open-1`: *"What specific check or behavior should be preserved
+  or changed regarding whether the two questions are shown the tests, or what the
+  tests did under the edit?"* The constraint answers it, and "the two questions"
+  is defined in the Task section above it. The human ruled it a wrong question at
+  the gate and chose to continue with the missing obligation carried by hand.
+- **Why I didn't act:** decomposition is outside #335.
+- **Drafted fix:** file as a sub-issue of #181, the decomposition umbrella:
+
+  > **A prohibition in Constraints is turned into an open question the
+  > prohibition itself answers**
+  >
+  > Observed at #335's Gate 1 (`dogfood-logs/335-gate1-run1/`, `constraint-01`).
+  > The constraint is a complete prohibition; the decomposer derived no
+  > obligation and asked what should be "preserved or changed". Its referent,
+  > "the two questions", is defined in the Task section, so this may be #178
+  > (open questions about terms another section defines); it may instead be a
+  > prohibition-handling failure related to #342. The run does not separate the
+  > two. Carried unchanged by `--continue` into run 2, so reproduced once only.
+  >
+  > **Acceptance.** The constraint above yields an obligation that a verifier
+  > shown neither the tests nor their results satisfies, and no open question;
+  > a regression case pins it.
+- **Status:** **filed 2026-09-21 as #353**, sub-issue of #181, on the human's
+  approval.
+
+### [2026-09-21] A suite test compares whole pytest summary lines, so a stray warning fails it
+- **Kind:** defect
+- **Found during:** setting up the #348 and #335 worktrees
+- **Where:** `tests/test_suite_shape_without_root_task_file.py:172`
+- **Severity:** should-fix
+- **What's wrong:** `test_the_affected_tests_have_the_same_outcome_with_and_without_it`
+  runs pytest twice as subprocesses, with and without the root task file, and
+  asserts the two summary lines are equal as strings. Any warning emitted in one
+  subprocess and not the other fails it regardless of what the product did.
+  Observed running the full suite concurrently in two worktrees: the assertion
+  failed as `'62 passed' == '62 passed, 1 warning'`. Re-run alone in the same
+  worktree the file passes, 3 passed in 32s, so the cause is concurrent load and
+  not the change under review. The other worktree's suite was green at the same
+  revision.
+- **Why I didn't act:** it is nobody's current task, and the fix needs a decision
+  about which parts of the summary are load-bearing rather than a quick edit.
+- **Drafted fix:** compare the passed / failed / skipped / xfailed counts the two
+  runs report, not the rendered summary line — the test's stated question is
+  whether the same tests reach the same outcomes, and the warning count is not
+  part of that. Keep the existing guards that the run was not vacuous.
+- **Related:** may be the same underlying sensitivity to load as the entry on
+  candidate tests being set aside nondeterministically, queued against #184, the
+  determinism umbrella. Also worth checking against the open investigation into
+  a local `pytest` run collecting ten fewer tests than CI does on the same
+  commit, since both are about the suite behaving differently by environment.
+- **Status:** open
+
+### [2026-09-21] main fails both lint gates on a committed experiment script
+- **Kind:** defect
+- **Found during:** #335, implementation
+- **Where:** `docs/experiments/rank-prefilter/score_rank.py`, committed to main
+  in `b6ef92f` ("Commit the ranking measurement that #348 rests on")
+- **Severity:** blocker (for every branch's CI, not for #335's code)
+- **What's wrong:** `ruff check .` reports I001 (unsorted imports, line 23) and
+  `ruff format --check .` would reformat the file. CI runs both, so every branch
+  cut from main after `b6ef92f` fails lint until this is fixed. #335's own files
+  pass both.
+- **Why I didn't act:** another task's file, landed by #348's session.
+- **Drafted fix:** `.venv/bin/ruff check --fix` and `.venv/bin/ruff format` on
+  that one file, committed straight to main. Or add `docs/experiments/` to
+  ruff's `extend-exclude`, if experiment scripts are not meant to be held to the
+  gate; that is #348's call.
+- **Status:** **fixed on main 2026-09-21**, on the human's instruction, by
+  running `ruff check --fix` and `ruff format` on the file. The only lint-rule
+  change was reordering three imports that already sit below the
+  `sys.path.insert`, so the script's behaviour is unchanged.
+
+### [2026-09-21] #334's stated reason for the bytecode check does not hold
+- **Kind:** filing
+- **Found during:** #334, Gate 1
+- **Where:** issue #334 (sample several candidate edits per defect), the Why and
+  Deliverable sections
+- **Severity:** should-fix
+- **What's wrong:** #334 proposes compiling a module before and after an edit and
+  comparing the code objects, because a text comparison "misses an added
+  condition that is always true, a value the callee ignores, and a reordering
+  with no effect". Measured on the project's own interpreter, all three compile
+  to *different* code, so the proposed check lets all three through exactly as
+  the text check does. What it does catch is edits differing only in formatting,
+  comments or line position — a real gap, since the existing check in
+  `mutation/validity.py` is byte equality. Evidence and method:
+  `docs/experiments/334-bytecode-equivalence/`.
+- **Why I didn't act:** it changes what #334 delivers, which is a change to the
+  plan and therefore the human's call.
+- **Drafted fix:** comment on #334:
+
+  > **The bytecode comparison catches a different class than this issue
+  > describes.**
+  >
+  > Measured 2026-09-21 on python 3.10.11, the interpreter the project runs
+  > (`docs/experiments/334-bytecode-equivalence/probe.py`). "Equal" means the
+  > check refuses the edit:
+  >
+  > | edit | code objects equal | instruction stream equal |
+  > |---|---|---|
+  > | always-true condition, `if True:` | no | no |
+  > | always-true condition, `if i is not None or True:` | no | no |
+  > | value the caller ignores | no | no |
+  > | reordering with no effect | no | no |
+  > | blank line only | no | **yes** |
+  > | comment only | **yes** | **yes** |
+  >
+  > The three cases this issue names all change the compiled form: an always-true
+  > condition emits a test and a jump, an ignored assignment emits a store, a
+  > reordering emits the same instructions in a different order. None changes
+  > behaviour, which is a different question. Those three are what #335's first
+  > question — does the edit change the code's behaviour at all — is for.
+  >
+  > Two consequences for this issue. The rationale should be restated as catching
+  > formatting-, comment- and position-only edits, which the byte-equality check
+  > in `mutation/validity.py` accepts today. And the comparison must be on the
+  > instruction stream, not on whole code objects: whole-object equality reports
+  > the blank-line case as different, because line-number tables differ, so the
+  > wording "compare the code objects" describes the comparison that misses the
+  > one case it fixes.
+  >
+  > The Acceptance item "shown to reject at least one edit the text comparison
+  > accepts" stays reachable — a whitespace-only edit is one.
+- **Status:** open
+
+### [2026-09-21] Decision: raise the temperature for edit building only, after #334 is measured
+- **Kind:** decision
+- **Found during:** #334, Gate 1
+- **Where:** `src/acceptance/config.py:144` (`temperature: float = 0.0`),
+  `src/acceptance/llm.py:506` (`model_for`), `llm.py::controls_in_force`
+- **Severity:** should-fix
+- **What's wrong:** nothing is broken; the question is whether the edit-building
+  stage should sample at a temperature above zero so its candidates vary. The
+  human raised it: we want the model to get creative on this stage.
+- **Why I didn't act:** it changes the determinism strategy CLAUDE.md states, and
+  folding it into #334 would make #334's own measurement unattributable — the
+  candidate loop and the temperature would move together.
+- **Recommendation:** build #334 at temperature zero with the sequential re-ask,
+  take its validity measurement, then raise the temperature for that stage alone
+  and re-run the same audit. One variable, one comparison. File as its own issue
+  with a Decision Record.
+
+  What it costs, verified in the code: replay is unaffected, since a replayed run
+  reads a transcript and samples nothing. What weakens is the narrower claim that
+  two *recorded* runs over the same input are byte-identical. Temperature is a
+  single client-wide value hashed into every request, so a per-stage override is
+  new machinery — though `model_for(stage)` already resolves a per-stage model
+  and falls back to the run's, so the shape exists. And `controls_in_force`
+  reports a control as pinned only if every call agrees, so one stage at a higher
+  temperature makes the **whole run** stop reporting itself as temperature-pinned;
+  its docstring says that is deliberate, "a run is only as pinned as its
+  least-pinned call". Changing it also orphans the edit-building stage's
+  recordings once — a one-lane cost, since it is that stage's own control.
+- **Alternative rejected:** raise it as part of #334. Cheaper in wall clock and
+  worthless as evidence.
+- **Status:** open
+
+### [2026-09-21] A subordinate clause becomes an obligation that contradicts an exclusion from the same run
+- **Kind:** filing
+- **Found during:** #334, Gate 1, run 1
+- **Where:** `src/acceptance/requirement/obligations.py` (decomposition);
+  `dogfood-logs/334-gate1-run1/`, run `7be8d2eaf9d5acd6`
+- **Severity:** should-fix
+- **What's wrong:** the task file's first sentence opened *"When the review needs
+  an edit that makes a named plausible defect true, it asks for several candidate
+  edits instead of one…"*. The opening clause states the condition under which
+  the requirement applies. Decomposition turned it into its own obligation,
+  `candidate-edit-makes-defect-true`, described as *"The review needs an edit
+  that makes a named plausible defect true"* and tagged `human_review` — which
+  under the gate rules is a mandatory pause. The same run derived
+  `defect-truth-not-judged` from Scope exclusion 1, *"Whether an edit that passes
+  the checks really makes its named defect true"*. So one run produced an
+  obligation and its own exclusion, and put the pause flag on the invented one.
+- **Why I didn't act:** decomposition is outside #334.
+- **Drafted fix:** file as a sub-issue of #181, the decomposition umbrella:
+
+  > **A "when X" condition becomes an obligation, and contradicts a Scope
+  > exclusion derived in the same run**
+  >
+  > Observed at #334's Gate 1, run `7be8d2eaf9d5acd6`
+  > (`dogfood-logs/334-gate1-run1/`). A sentence of the form "When <condition>,
+  > the system does <requirement>" yielded an obligation asserting the condition
+  > as a thing the system needs, alongside the real obligations from the main
+  > clause. It was tagged `human_review`, so it would have forced a gate pause on
+  > a question the task file never asked.
+  >
+  > The contradiction is the sharper signal: Scope exclusion 1 said this exact
+  > property is out of scope, the run derived that exclusion correctly, and the
+  > two coexist in one obligation set with nothing flagging the conflict.
+  >
+  > Rewording the clause to *"When the review builds an edit for a named
+  > plausible defect"* removed it on run 2, so it is sensitive to phrasing rather
+  > than unconditional.
+  >
+  > **Acceptance.** A requirement of the form "When <condition>, <requirement>"
+  > yields obligations for the requirement and none for the condition; and an
+  > obligation that asserts what a Scope exclusion excludes is reported rather
+  > than emitted silently. A regression case pins both.
+- **Status:** open
+
+### [2026-09-21] One clause yields two near-identical obligations that never merge, with no diagnostic
+- **Kind:** filing
+- **Found during:** #334, Gate 1, run 1
+- **Where:** `src/acceptance/requirement/linking.py`;
+  `dogfood-logs/334-gate1-run1/`, run `7be8d2eaf9d5acd6`
+- **Severity:** should-fix
+- **What's wrong:** the clause *"A candidate that fails a check is set aside and
+  the next is tried"* appears once in the task file and produced two obligations:
+  `failed-candidate-set-aside`, *"A candidate that fails a check is set aside and
+  the next candidate is tried."*, and `next-is-tried`, *"A failed candidate edit
+  is set aside and the next candidate is tried."* They differ only in word order.
+  Neither merged, and the run printed **no diagnostic** — no `Unreconciled
+  linking answers` line anywhere in the log.
+- **Why I didn't act:** decomposition is outside #334.
+- **Drafted fix:** file as a sub-issue of #181, the decomposition umbrella:
+
+  > **Two obligations from one clause, differing only in word order, are left
+  > unmerged and nothing says so**
+  >
+  > Observed at #334's Gate 1, run `7be8d2eaf9d5acd6`
+  > (`dogfood-logs/334-gate1-run1/`), on a clause written once in the task file,
+  > so the redundancy is not authored.
+  >
+  > Distinct from #242, where a cluster containing one denied pair refuses to
+  > merge and reports that it did: this run's log has no such line, so the pair
+  > was not recognised as a candidate for merging at all. Related to #304, twin
+  > Constraint/Completion obligations left unmerged with no diagnostic, but the
+  > twins here are inside a single requirement rather than across two sections.
+  >
+  > Redundancy is not cosmetic: every downstream stage judges the obligation set,
+  > so a duplicated obligation is rated twice, recommended for twice and counted
+  > twice.
+  >
+  > **Note.** Run 2's rewrite deleted the clause, so the behaviour is untested
+  > rather than shown fixed.
+  >
+  > **Acceptance.** Two obligations derived from one clause whose descriptions
+  > differ only in word order either merge, or the run reports why they did not.
+  > A regression case pins it.
+- **Status:** open
+
+### [2026-09-21] WITHDRAWN — the breakdown was not hiding an obligation; it was showing a merge
+- **Kind:** filing
+- **Found during:** #334, Gate 1
+- **Severity:** none — the claim was wrong
+- **What I claimed:** that `decompose` printed fewer obligations than it
+  recorded, in two of three runs, hiding two obligations marked
+  `importance: critical`; and that Gate 1's confirmation was therefore given
+  against a set the human never saw. Filed as a blocker against #185, the
+  umbrella for findings model, verdict and presentation.
+- **Why it was wrong:** the ledger's `derivations[].obligations` records what
+  each requirement **derived**, before linking; the breakdown renders what
+  **survived** merging. A merged pair is two in the ledger and one on screen.
+  Run 2's ledger holds exactly one `merge_decisions` entry with
+  `same_requirement: true`, and recomputing its two fingerprints — sha256 over
+  id, description and observable behaviour, per
+  `ledger.py::obligation_fingerprint` — matches `compiled-form-change-check`
+  and `compiled-before-after-compare-compiled-forms`, the pair I said was
+  hidden. The near-duplicate was recognised and merged. The decomposer was
+  working.
+- **How the error was made:** two counts were compared, a hypothesis about the
+  renderer was formed, and it was reported as a finding without reading the code
+  behind either number. `cli.py::_requirement_block` iterates the requirement
+  map's dispositions rather than the obligation set, so it cannot suppress
+  anything; reading it would have ended the question immediately. The hypothesis
+  was labelled unverified and filed as a blocker anyway, and the human withdrew a
+  Gate 1 confirmation over it.
+- **What survives:** run 1's `failed-candidate-set-aside` and `next-is-tried`
+  still did not merge, and run 1 records only one merge decision, so #277 — one
+  requirement yielding two obligations stating the same property — is real. The
+  compiled-form pair is not an example of it, and the comment left on #277 has
+  been corrected.
+- **Status:** **withdrawn 2026-09-21**, nothing filed.
+
+### [2026-09-21] An enumerated "defect" whose defective behaviour is the requirement, confirmed as already present
+- **Kind:** filing
+- **Found during:** #348, Gate 2 run 1
+- **Where:** defect enumeration (`src/acceptance/defects/enumeration.py`) and the
+  already-present judgement in the mutation descriptor stage
+- **Severity:** should-fix
+- **What's wrong:** For the obligation "for each defect, report how many of its
+  pairs were asked about", the enumerator produced
+  `pairs-asked-about-count-per-defect/asked-count-excludes-unanswered-pairs`:
+  the asked count "underreports" because it leaves out pairs skipped as already
+  covered. The requirement it belongs to asks for asked and skipped as two
+  separate counts, and a skipped pair is by definition not asked — so the
+  "defective behaviour" is the required behaviour. The mutation stage then
+  marked it `[already_present]`: "Lines 308-316 currently exclude
+  `DEFECT_ALREADY_COVERED` pairs from `asked` ... The smallest repair is to count
+  all unjudged pairs for the defect in `asked`." Following that repair would
+  break the requirement. It moved no rating, but it is a lead telling a reader
+  correct code is wrong. `dogfood-logs/348-gate2-run1/`.
+- **Why I didn't act:** out of scope for #348; the enumeration and the
+  already-present check are other stages.
+- **Drafted fix:** file as a sub-issue of #183, the evidence-judgement umbrella:
+
+  > **Title:** A defect whose defective behaviour satisfies its own criterion is
+  > enumerated, and then confirmed as already present
+  >
+  > At #348's Gate 2 (`dogfood-logs/348-gate2-run1/`) the enumerator produced a
+  > defect for "report how many of its pairs were asked about" whose defective
+  > behaviour — the asked count excludes pairs skipped once the defect was
+  > covered — is what the requirement asks for, since it asks for asked and
+  > skipped as separate counts. The mutation stage then reported it
+  > `[already_present]` and recommended "counting all unjudged pairs in
+  > `asked`", which would break the requirement.
+  >
+  > Two checks are missing. The enumerator does not test a defect against the
+  > criterion's own text (a defect must violate it), and the already-present
+  > judgement does not either, so it confirmed a "defect" the criterion
+  > requires. Related to the 2026-08-19 queue entry "A prescription's `detects`
+  > names a defect that would not violate the obligation", which is the same
+  > failure at the recommendation stage.
+  >
+  > **Deliverable:** an enumerated defect whose defective behaviour the
+  > criterion requires is refused, or at least never reported as already
+  > present.
+  >
+  > **Acceptance:** replaying #348's Gate 2 run 1 no longer reports
+  > `asked-count-excludes-unanswered-pairs` as already present.
+- **Status:** filed as #357 (sub-issue of #183), approved at #348 Gate 2, 2026-09-21
+
+### [2026-09-21] One transient provider error aborts a whole review, with a raw traceback
+- **Kind:** filing
+- **Found during:** #348, Gate 2 run 2
+- **Where:** src/acceptance/llm.py — `_persist_live_call` and `_persist_live_embedding`
+- **Severity:** blocker
+- **What's wrong:** No provider call is retried, completion or embedding, and a
+  provider exception is not converted to `LLMError`, so the CLI's
+  `acceptance: model error:` path never sees it. At #348's Gate 2 a single
+  `VoyageException - 502 Bad Gateway` during pair ranking ended the run with a
+  Python traceback, after enumeration and every injected-edit test run had
+  finished. Per-call recording limited the money lost — the rerun replayed 74
+  calls — but the wall-clock time, including the test runs under injected
+  edits, was lost, and every review is exposed to it. #348 adds several
+  embedding requests per review, so the exposure has grown.
+- **Why I didn't act:** out of scope for #348, and it is the shared model
+  client, which every stage goes through.
+- **Drafted fix:** file as a sub-issue of #184, the determinism and
+  reproducibility umbrella:
+
+  > **Title:** One transient provider error aborts a whole review
+  >
+  > `llm.py` retries nothing. A 502, a timeout or a rate-limit response from
+  > any provider, on any of a review's ~500 calls, raises out of the pipeline
+  > and discards the run; the CLI prints a raw traceback because provider
+  > exceptions are not converted to `LLMError`. Observed at #348's Gate 2
+  > (`dogfood-logs/348-gate2-run2/output-attempt1-502.log`): a Voyage 502 in
+  > pair ranking, after enumeration and all injected-edit test runs had
+  > completed.
+  >
+  > Recording is per call, so a rerun replays what finished and the money lost
+  > is small. The time is not, and neither is the reliability: the chance a
+  > review survives falls with every call it makes.
+  >
+  > **Deliverable:** live provider calls — completion and embedding — retry
+  > transient failures (connection errors, 5xx, 429) with bounded backoff
+  > before failing, and a call that still fails raises `LLMError` naming the
+  > stage, the provider and the status, so the CLI reports it in one line.
+  > A retry changes nothing that is recorded: only a successful response is
+  > persisted, as now, so request keys and replay are unaffected.
+  >
+  > **Acceptance:** a completion and an embedding call whose provider fails
+  > transiently once and then succeeds are recorded exactly as a call that
+  > succeeded first time; one that keeps failing surfaces as a single-line
+  > `acceptance: model error:` naming the stage.
+- **Status:** filed as #356 (sub-issue of #184), approved at #348 Gate 2, 2026-09-21
+
+### [2026-09-21] The reachability prefilter "proves" no path from a test that reads its subject from disk
+- **Kind:** filing
+- **Found during:** #348, Gate 2 run 3
+- **Where:** src/acceptance/defects/reachability.py (the `PREFILTERED` reason)
+- **Severity:** should-fix
+- **What's wrong:** `tests/test_rank_prefilter_findings.py` opens
+  `docs/experiments/rank-prefilter/FINDINGS.md` and the replay logs by path and
+  asserts on their content. Every pair between it and the two defects enumerated
+  for the findings criterion was marked `[prefiltered]`: "the test's module
+  imports no first-party module, the test takes no fixture, and it references no
+  name defined in docs/experiments/rank-prefilter/FINDINGS.md — no path to the
+  defect exists". A path exists; the prefilter looks only for imports, fixtures
+  and Python names. Because `PREFILTERED` counts as an established survival, the
+  criterion was rated `unsupported` (0 of 2), where run 2 — before the test
+  existed — had it `indeterminate`. The prefilter's contract is that it
+  excludes only what it can prove, and here it proved something false.
+  `tests/test_decision_records.py` was excluded the same way. Any criterion
+  about a document, a config file or a fixture read from disk is exposed.
+- **Why I didn't act:** out of scope for #348; the prefilter belongs to the pair
+  stage's candidate reachability.
+- **Drafted fix:** file as a sub-issue of #182, the test discovery and mapping
+  umbrella:
+
+  > **Title:** The reachability prefilter proves "no path" from a test that
+  > reads its subject from disk
+  >
+  > At #348's Gate 2 (`dogfood-logs/348-gate2-run3/`), a test that reads
+  > `FINDINGS.md` by path and asserts on its text was prefiltered against both
+  > defects of the criterion about that file, with the reason "no path to the
+  > defect exists". The criterion was rated `unsupported`, because a prefiltered
+  > pair is treated as a proven survival.
+  >
+  > The prefilter follows imports, fixtures and Python names. A non-Python
+  > implicated file has none of those, so every test is "proved" unreachable
+  > from it — including the tests that read it.
+  >
+  > **Deliverable:** the prefilter proves no path only where it can: a defect
+  > whose implicated files are not Python modules is not prefiltered on import
+  > evidence (its pairs go to the judge), or a test whose source names the
+  > implicated file's path counts as reaching it.
+  >
+  > **Acceptance:** replaying #348's Gate 2 run 3, no pair between
+  > `tests/test_rank_prefilter_findings.py` and a defect implicating
+  > `FINDINGS.md` is `prefiltered`.
+- **Status:** filed as #358 (sub-issue of #182), approved at #348 Gate 2, 2026-09-21
+
+### [2026-09-21] The same unchanged hunk is `in_service` in one run and `separable` in the next
+- **Kind:** filing
+- **Found during:** #348, Gate 2 run 3
+- **Where:** unrequested-change detection (`src/acceptance/coverage/unrequested.py`)
+- **Severity:** should-fix
+- **What's wrong:** The `review_state.py` hunks that add `DEFECT_ALREADY_COVERED`
+  and rewrite the `UnjudgedCause` docstring to describe it were identical in
+  runs 2 and 3. Run 2 classed them `in_service` ("The cause itself is requested,
+  but the exact schema/validation machinery is an internal implementation
+  choice"). Run 3 split out the docstring rewrite as `[separable]`
+  ("documentation/internal commentary change not required by the functional
+  obligations"). The docstring had to change: it said "Three causes" and that
+  every cause but one counts as unknown, both false once the fourth cause
+  exists. A `separable` flag is a Gate 2 stop, so a flag that appears and
+  disappears on an unchanged diff stops or passes a gate at random.
+- **Why I didn't act:** out of scope for #348.
+- **Drafted fix:** file as a sub-issue of #185, the findings, verdict and
+  presentation umbrella:
+
+  > **Title:** An unchanged hunk flips between `in_service` and `separable`
+  > across runs
+  >
+  > #348's Gate 2 runs 2 and 3 (`dogfood-logs/348-gate2-run{2,3}/`) reviewed the
+  > same `review_state.py` hunks. Run 2 called them `in_service`; run 3 split the
+  > docstring part out as `separable`, calling a docstring kept accurate after
+  > a requested change "not required by the functional obligations".
+  >
+  > Two defects, separable: the classification of an unchanged hunk is not
+  > carried between continued runs, so it is re-derived and can flip; and a
+  > comment or docstring edit that keeps existing documentation true of a
+  > requested change is judged unrequested.
+  >
+  > **Deliverable:** a continued run carries an unchanged hunk's classification
+  > rather than re-deriving it, and documentation that describes a requested
+  > change is `in_service`.
+  >
+  > **Acceptance:** re-running #348's Gate 2 with `--continue` from run 2 gives
+  > the `review_state.py` hunks run 2's classification.
+- **Status:** filed as #359 (sub-issue of #185), approved at #348 Gate 2, 2026-09-21

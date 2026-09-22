@@ -12,8 +12,8 @@ being considered.
 
 Only an edit that does change behaviour reaches the second question, which asks
 whether the code had the defect's expected behaviour before the edit and has its
-defective behaviour after it. An edit that fails either half is refused. An
-edit to code that already had the defective behaviour fails the first half.
+defective behaviour after it. An edit that fails either half is refused,
+including one that repairs a defect the code already had.
 
 An edit is verified only when it passes both. When an edit is refused, the review
 records which of the two questions refused it and why, so that the two can be

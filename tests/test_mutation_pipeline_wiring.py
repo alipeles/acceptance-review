@@ -26,7 +26,11 @@ from typing import ClassVar
 from acceptance.change.diff import extract_change_set
 from acceptance.evidence_tier import EvidenceTier
 from acceptance.execution.sandbox import SandboxConfig
-from acceptance.mutation.attempt import MutationOutcomeKind, RepairCorroboration
+from acceptance.mutation.attempt import (
+    MutationOutcomeKind,
+    RepairCorroboration,
+    VerificationStep,
+)
 from acceptance.mutation.settings import ExecutionSettings
 from acceptance.pipeline import run_review
 from acceptance.report import render_report
@@ -280,7 +284,7 @@ class TestVerification:
         **_JUDGMENTS,
         "_Verification": {
             "before_does": "expected",
-            "after_does": "unchanged",
+            "after_does": "other",
             "reason": "the edit changes nothing the defect names",
         },
     }
@@ -369,6 +373,61 @@ class TestVerification:
         (prompt,) = [c["prompt"] for c in capture if c["schema"] == "_Verification"]
         assert "function amortize — loan.py lines 1-3" in prompt
 
+    _NO_CHANGE: ClassVar[dict] = {
+        **_JUDGMENTS,
+        "_BehaviourChange": {
+            "changes_behaviour": "no_change",
+            "reason": "tripling is cancelled further down",
+        },
+    }
+
+    def test_an_edit_that_changes_nothing_is_refused_by_the_first_question(self, tmp_path):
+        """#335: the first question's refusal is recorded as its own, and the
+        second question is never asked about that edit."""
+        capture: list = []
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(verify_edits=True),
+            capture=capture,
+            judgments=self._NO_CHANGE,
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.verified is False
+        assert attempt.refused_by is VerificationStep.BEHAVIOUR_CHANGE
+        assert "tripling is cancelled further down" in attempt.verification_reason
+        assert "_BehaviourChange" in _schemas(capture)
+        assert "_Verification" not in _schemas(capture)
+        assert "_PairVerdicts" in _schemas(capture)
+
+    def test_an_edit_that_changes_the_wrong_thing_is_refused_by_the_second(self, tmp_path):
+        review = _review(
+            tmp_path, execution=ExecutionSettings(verify_edits=True), judgments=self._REFUSED
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.refused_by is VerificationStep.DEFECT_MATCH
+
+    def test_a_verified_edit_carries_no_refusing_question(self, tmp_path):
+        review = _review(
+            tmp_path, execution=ExecutionSettings(verify_edits=True), judgments=self._VERIFIED
+        )
+        (attempt,) = review.mutation_attempts
+        assert attempt.verified is True
+        assert attempt.refused_by is None
+
+    def test_the_first_question_is_shown_neither_the_tests_nor_the_defect(self, tmp_path):
+        capture: list = []
+        _review(
+            tmp_path,
+            execution=ExecutionSettings(verify_edits=True),
+            capture=capture,
+            judgments=self._VERIFIED,
+        )
+        (prompt,) = [c["prompt"] for c in capture if c["schema"] == "_BehaviourChange"]
+        assert "payment = principal / months * 3" in prompt
+        assert "test_returns_a_payment_for_each_month" not in prompt
+        assert "test_loan.py" not in prompt
+        assert "The payment amount is wrong" not in prompt
+
 
 class TestTheBreadthSettingsReachTheRunner:
     def test_a_kill_too_broad_for_the_configured_threshold_is_not_a_kill(self, tmp_path):
@@ -400,7 +459,7 @@ _REFUSED_VERIFICATION = {
     **_JUDGMENTS,
     "_Verification": {
         "before_does": "expected",
-        "after_does": "unchanged",
+        "after_does": "other",
         "reason": "the edit changes nothing the defect names",
     },
 }
@@ -588,7 +647,8 @@ class TestAnAlreadyPresentDefect:
         # after the execution tier: the static pair judgement, which an
         # unverified result still reaches, or the ordinary rest of the review.
         next_call = schemas[schemas.index("_Descriptor") + 1]
-        assert next_call in {"_Verification", "_PairVerdicts", "_Coverage"}, (
+        # Verification's first question comes first when verification is on (#335).
+        assert next_call in {"_BehaviourChange", "_PairVerdicts", "_Coverage"}, (
             "a model call was made between proposing the mutant and recording its "
             f"outcome: {next_call}"
         )

@@ -43,6 +43,7 @@ __all__ = [
     "MutationDescriptor",
     "MutationOutcomeKind",
     "RepairCorroboration",
+    "VerificationStep",
     "tier_for",
 ]
 
@@ -202,6 +203,21 @@ class RepairCorroboration(str, Enum):
     NOT_RUN = "not_run"
 
 
+class VerificationStep(str, Enum):
+    """Which of verification's two questions refused an edit.
+
+    Kept apart so refusals can be counted per question: an edit that changes
+    nothing and an edit that changes the wrong thing are different failures of
+    the edit-building step, and one number for both hides which is which.
+    """
+
+    # The edit does not change the code's behaviour at all.
+    BEHAVIOUR_CHANGE = "behaviour_change"
+    # The edit changes behaviour, but not from the defect's expected behaviour
+    # to its defective one.
+    DEFECT_MATCH = "defect_match"
+
+
 class MutationAttempt(_Model):
     """One defect's trip through the mutation stage, whatever became of it.
 
@@ -227,6 +243,9 @@ class MutationAttempt(_Model):
     # Why the edit was or was not accepted as making the defect true. Empty
     # while no verification has run.
     verification_reason: str = ""
+    # Which question refused the edit. Empty while no verification has run, and
+    # for a verified edit.
+    refused_by: VerificationStep | None = None
     # For `already_present` only: the edit that would make the code do the
     # EXPECTED behaviour, what the tests did on it, and which tests failed.
     repair: MutationDescriptor | None = None
@@ -278,6 +297,11 @@ class MutationAttempt(_Model):
             raise ValueError(
                 f"defect {self.defect_id!r} is {self.outcome.value} and marked verified; "
                 "only an edit whose tests were run can be verified"
+            )
+        if self.verified and self.refused_by is not None:
+            raise ValueError(
+                f"defect {self.defect_id!r} is marked verified and refused by "
+                f"{self.refused_by.value}; an edit is one or the other"
             )
         return self
 

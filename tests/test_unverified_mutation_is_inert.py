@@ -271,7 +271,7 @@ _JUDGMENTS = {
     # when verification is off.
     "_Verification": {
         "before_does": "expected",
-        "after_does": "unchanged",
+        "after_does": "other",
         "reason": "the edit changes nothing the defect names",
     },
     "_Coverage": {

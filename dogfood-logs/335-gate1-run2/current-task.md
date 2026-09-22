@@ -11,9 +11,8 @@ An edit that changes no behaviour is refused at this step, without the defect
 being considered.
 
 Only an edit that does change behaviour reaches the second question, which asks
-whether the code had the defect's expected behaviour before the edit and has its
-defective behaviour after it. An edit that fails either half is refused. An
-edit to code that already had the defective behaviour fails the first half.
+whether the changed behaviour matches the defect's defective behaviour. An edit
+whose changed behaviour does not match is refused.
 
 An edit is verified only when it passes both. When an edit is refused, the review
 records which of the two questions refused it and why, so that the two can be
