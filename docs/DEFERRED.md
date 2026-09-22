@@ -6517,4 +6517,4 @@ the record.
   > still be injected, or the review records that the check cannot judge it;
   > and the two cases above are pinned as regression cases from the stored
   > audit attempts.
-- **Status:** open
+- **Status:** **filed 2026-09-22 as #364**, approved at the gate, unparented because no umbrella covers the mutation stage. Closed here.
