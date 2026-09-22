@@ -6099,7 +6099,7 @@ the record.
   > one edit the text comparison accepts" no longer applies. The remaining
   > Acceptance — the survivor set's validity rate against audit v7 or v8's
   > defects, and `k` and cost per defect recorded — stands.
-- **Status:** open
+- **Status:** **resolved 2026-09-22** by rewriting #334's body rather than commenting on it, on the human's instruction. The new body records the Gate 1 decisions and adds an Acceptance item: report the share of passing edits that change no behaviour, and if it is large, build a better check before closing.
 
 ### [2026-09-21] Decision: raise the temperature for edit building only, after #334 is measured
 - **Kind:** decision
