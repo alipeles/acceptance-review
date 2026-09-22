@@ -7,7 +7,13 @@ questions per observed edit, asked in sequence (#335).
 1. **Behaviour change.** Does the edit change what the code does at all? Both
    versions are first compared with comments and whitespace removed; an edit
    that differs in nothing else is refused with no model call, since no answer
-   could be in doubt. Otherwise a model is asked, shown the code without its
+   could be in doubt. **In a pipeline run nothing reaches that early return any
+   more** — `validity.py` applies the same comparison to every candidate,
+   whether or not verification is on, so such an edit is already `not_mutable`.
+   It is kept because `verify_edits` is callable on an edit that did not come
+   through the gates, and it calls `validity.comparable` rather than its own
+   copy so the two cannot disagree. Otherwise a model is asked, shown the code
+   without its
    comments and NOT shown the defect. An edit it says changes nothing is refused
    here; one it cannot decide about goes on to the second question rather than
    being refused for want of an answer.
@@ -45,7 +51,7 @@ from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.model_base import PersistableModel as _Model
 from acceptance.mutation.attempt import MutationAttempt, MutationDescriptor, VerificationStep
 from acceptance.mutation.surrounding import contexts_for, render_contexts
-from acceptance.mutation.validity import apply_span
+from acceptance.mutation.validity import PYTHON_SUFFIXES, apply_span, comparable
 from acceptance.partition import partition
 from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import Defect
@@ -58,9 +64,6 @@ _MATCH_STAGE = "mutation verification: defect match"
 #: Lines of unchanged code shown on each side of the edit. Enough to see the
 #: enclosing function in most code, without shipping whole files per call.
 CONTEXT_LINES = 30
-
-#: Files whose comments are known and can be removed before comparing.
-_PYTHON = (".py", ".pyi")
 
 _CHANGE_PROMPT = """You check whether ONE edit to a codebase changes what the \
 code does.
@@ -206,7 +209,7 @@ def _ask(
     surrounding: RetrievalResult | None = None,
 ) -> EditVerdict:
     after = apply_span(source, descriptor)
-    if _comparable(descriptor.path, source) == _comparable(descriptor.path, after):
+    if comparable(descriptor.path, source) == comparable(descriptor.path, after):
         return EditVerdict(
             verified=False,
             refused_by=VerificationStep.BEHAVIOUR_CHANGE,
@@ -314,7 +317,7 @@ def _lines(path: str, text: str, *, stripped: bool) -> list[str]:
     lines = text.splitlines()
     if not stripped:
         return lines
-    if path.endswith(_PYTHON):
+    if path.endswith(PYTHON_SUFFIXES):
         try:
             cut = list(lines)
             for token in tokenize.generate_tokens(io.StringIO(text).readline):
@@ -325,30 +328,6 @@ def _lines(path: str, text: str, *, stripped: bool) -> list[str]:
         except (tokenize.TokenError, SyntaxError):
             pass
     return [line.rstrip() for line in lines]
-
-
-def _comparable(path: str, text: str) -> list[str]:
-    """`text` with comments and whitespace removed, for deciding whether an edit
-    changed anything but those.
-
-    For Python the token stream, minus comments and blank lines, with indentation
-    kept as structure rather than width: moving a statement out of a block
-    changes behaviour, re-indenting a whole block by the same amount does not.
-    Anything else, or Python that does not tokenize, compares as its words.
-    """
-    if path.endswith(_PYTHON):
-        try:
-            return [
-                tokenize.tok_name[token.type] if token.type in _LAYOUT else token.string
-                for token in tokenize.generate_tokens(io.StringIO(text).readline)
-                if token.type not in (tokenize.COMMENT, tokenize.NL)
-            ]
-        except (tokenize.TokenError, SyntaxError):
-            pass
-    return text.split()
-
-
-_LAYOUT = {tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT, tokenize.ENDMARKER}
 
 
 def _window(lines: list[str], start: int, end: int, skip_blank: bool = False) -> str:

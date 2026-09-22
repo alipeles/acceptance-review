@@ -12,7 +12,7 @@ import pytest
 
 from acceptance.mutation.attempt import MutationDescriptor
 from acceptance.mutation.region import Region, regions_for
-from acceptance.mutation.validity import apply_span, invalidity_reason
+from acceptance.mutation.validity import apply_span, comparable, invalidity_reason
 from acceptance.review_state import ChangeSet, Defect, DefectType, DiffHunk, FileChange
 
 PY_SOURCE = "def total(items):\n    return sum(items)\n\n\ndef half(value):\n    return value / 2\n"
@@ -125,6 +125,120 @@ class TestValidity:
         )
         assert reason is not None
         assert "does not parse" in reason
+
+
+class TestAnEditThatChangesOnlyCommentsOrWhitespace:
+    """The check moved out of `verification.py`, where it ran only with edit
+    verification switched on, and that is off by default.
+
+    An edit that changes nothing injects nothing, so every candidate test
+    "survives" a defect that was never introduced. That is a false finding
+    against the builder, and it does not become a true one because nobody asked
+    to have edits verified.
+    """
+
+    def test_an_added_comment_is_refused(self):
+        reason = invalidity_reason(
+            _descriptor(replacement="    return sum(items)  # add them up\n"),
+            [_region("src.py", 1, 3)],
+            PY_SOURCE,
+        )
+        assert reason is not None
+        assert "only in comments or whitespace" in reason
+
+    def test_extra_spacing_inside_a_line_is_refused(self):
+        reason = invalidity_reason(
+            _descriptor(replacement="    return  sum( items )\n"),
+            [_region("src.py", 1, 3)],
+            PY_SOURCE,
+        )
+        assert reason is not None
+        assert "only in comments or whitespace" in reason
+
+    def test_a_blank_line_is_refused(self):
+        reason = invalidity_reason(
+            _descriptor(replacement="\n    return sum(items)\n"),
+            [_region("src.py", 1, 3)],
+            PY_SOURCE,
+        )
+        assert reason is not None
+        assert "only in comments or whitespace" in reason
+
+    def test_a_byte_identical_edit_keeps_its_own_more_specific_reason(self):
+        """Ordering: check 5 runs first, so the reason names the sharper fault."""
+        reason = invalidity_reason(
+            _descriptor(replacement="    return sum(items)\n"),
+            [_region("src.py", 1, 3)],
+            PY_SOURCE,
+        )
+        assert reason is not None
+        assert "identical to what it replaces" in reason
+
+    def test_a_real_edit_is_still_allowed(self):
+        """The check must not swallow the mutants the stage exists to build."""
+        assert invalidity_reason(_descriptor(), [_region("src.py", 1, 3)], PY_SOURCE) is None
+
+    def test_moving_a_statement_out_of_a_block_is_a_change(self):
+        """Indentation is compared as block structure, not as width. Re-indenting
+        a whole block changes nothing; taking a statement out of one changes what
+        runs, and that edit must survive the check."""
+        source = "def f(flag, items):\n    if flag:\n        items.pop()\n    return items\n"
+        reason = invalidity_reason(
+            MutationDescriptor(
+                path="src.py",
+                start_line=2,
+                end_line=3,
+                replacement="    if flag:\n        pass\n    items.pop()\n",
+                region_label="src.py#0",
+            ),
+            [_region("src.py", 1, 4)],
+            source,
+        )
+        assert reason is None
+
+    def test_a_file_with_no_python_parser_compares_as_words(self):
+        """`comparable` falls back to words, so reflowing prose is still refused
+        while an edit that changes a word is not."""
+        source = "The report names   every defect.\nOne line per defect.\n"
+        reflowed = invalidity_reason(
+            MutationDescriptor(
+                path="README.md",
+                start_line=1,
+                end_line=1,
+                replacement="The report names every defect.\n",
+                region_label="README.md#0",
+            ),
+            [_region("README.md", 1, 2, label="README.md#0")],
+            source,
+        )
+        assert reflowed is not None
+        assert "only in comments or whitespace" in reflowed
+
+        changed = invalidity_reason(
+            MutationDescriptor(
+                path="README.md",
+                start_line=1,
+                end_line=1,
+                replacement="The report names no defect.\n",
+                region_label="README.md#0",
+            ),
+            [_region("README.md", 1, 2, label="README.md#0")],
+            source,
+        )
+        assert changed is None
+
+
+class TestTheVerifierAndTheGateAgree:
+    """`verification.py` kept its own early return, so the two must not drift.
+
+    They cannot, because both call `validity.comparable` — this pins that they
+    do, rather than trusting that nobody copies it back.
+    """
+
+    def test_the_verifier_uses_the_shared_comparison(self):
+        from acceptance.mutation import verification
+
+        assert verification.comparable is comparable
 
 
 class TestFilesWithoutAParser:

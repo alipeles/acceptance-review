@@ -1,37 +1,18 @@
 # Task
 
-Before an injected edit's result is allowed to count as evidence, the review
-checks that the edit really makes its named defect true. That check asks two
-questions, in sequence.
+The review refuses an edit that differs from the text it replaced only in
+comments or whitespace. It refuses it always, not only when the review is also
+checking whether an edit really makes its named defect true.
 
-The first asks whether the edit changes the code's behaviour at all. Both
-versions of the code are compared with comments and whitespace removed, so an
-edit that only reformats or re-comments the code is not mistaken for a change.
-An edit that changes no behaviour is refused at this step, without the defect
-being considered.
-
-Only an edit that does change behaviour reaches the second question, which asks
-whether the code had the defect's expected behaviour before the edit and has its
-defective behaviour after it. An edit that fails either half is refused. An
-edit to code that already had the defective behaviour fails the first half.
-
-An edit is verified only when it passes both. When an edit is refused, the review
-records which of the two questions refused it and why, so that the two can be
-told apart wherever refusals are counted.
-
-Verification is on by default.
+The refusal is recorded as one of the review's own mechanical checks, not as a
+judgement about what the edit does, so that counts of what each judgement refused
+are not inflated by edits no judgement was asked about.
 
 ## Constraints
-- Neither question is shown the tests, or what the tests did under the edit.
-
-## Completion expectations
-- Implementation
-- Documentation update: the mutation-targeting decision record states the
-  measured refusal rates that justify turning verification on by default.
+- The refusal is reached without asking a model.
 
 ## Scope exclusions
-- Building an edit, choosing the region it falls in, or the mechanical checks
-  that decide whether it is valid.
-- Which tests are candidates, and running them.
-- What a verified or unverified result does downstream once the check has
-  decided.
+- The questions the review asks about an edit's behaviour, and whether they run
+  at all.
+- Building an edit, or choosing the region of the code it falls in.
+- Running the project's tests.

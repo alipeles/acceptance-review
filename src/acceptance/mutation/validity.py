@@ -1,4 +1,4 @@
-"""The four mechanical checks that decide whether a mutant may be injected.
+"""The five mechanical checks that decide whether a mutant may be injected.
 
 DR-171 Decision 3, as revised 2026-09-14. Deliberately *mechanical*: no second
 model call confirms that the edit really violates the obligation. Such a call
@@ -13,22 +13,37 @@ writing the check in terms of Python. A span replacement is text, and a
 requirement stated in prose can be broken in prose — the tests that read that
 prose are exactly the ones that catch it.
 
-For a file with no parser the other three checks carry validity on their own,
-and the containment check does the load-bearing work: the span must lie inside a
-region the defect itself named, so a mutant cannot wander into an unrelated
-file.
+For a file with no parser the other checks carry validity on their own, and the
+containment check does the load-bearing work: the span must lie inside a region
+the defect itself named, so a mutant cannot wander into an unrelated file.
+
+The comments-and-whitespace check arrived later, and it is a *move* rather than
+a new idea: `verification.py` already refused such an edit with no model call,
+but only when `ExecutionSettings.verify_edits` was on, and that is off by
+default. An edit that changes nothing is not a mutant whether or not anyone
+asked to have edits verified, so the check belongs with the other mechanical
+ones, which always run. `comparable` lives here and `verification.py` imports
+it, so the two cannot answer the question differently.
 """
 
 from __future__ import annotations
 
 import ast
+import io
 import json
+import tokenize
 from collections.abc import Sequence
 
 from acceptance.mutation.attempt import MutationDescriptor
 from acceptance.mutation.region import Region
 
-__all__ = ["DEFAULT_MAX_EDIT_LINES", "apply_span", "invalidity_reason"]
+__all__ = [
+    "DEFAULT_MAX_EDIT_LINES",
+    "PYTHON_SUFFIXES",
+    "apply_span",
+    "comparable",
+    "invalidity_reason",
+]
 
 #: How many lines one mutant may replace. Conservative by intent: the descriptor
 #: is asked for the *smallest* edit that makes the named defect true, and a large
@@ -60,6 +75,38 @@ _PARSERS = {
 #: being reported as an invalid mutant — which would silently refuse every edit
 #: to that file type and look like the mutation stage working.
 _PARSE_ERRORS = (SyntaxError, ValueError)
+
+#: Files whose comments are known and can be removed before comparing.
+PYTHON_SUFFIXES = (".py", ".pyi")
+
+#: Token types that carry a statement's place in the block structure rather than
+#: its text. Kept in the comparison as their names, so re-indenting a whole block
+#: by the same amount compares equal while moving a statement out of a block does
+#: not — the second changes behaviour and the first does not.
+_LAYOUT = {tokenize.NEWLINE, tokenize.INDENT, tokenize.DEDENT, tokenize.ENDMARKER}
+
+
+def comparable(path: str, text: str) -> list[str]:
+    """`text` with comments and whitespace removed, for deciding whether an edit
+    changed anything but those.
+
+    For Python the token stream, minus comments and blank lines, with indentation
+    kept as structure rather than width. Anything else, or Python that does not
+    tokenize, compares as its words.
+
+    Moved here from `verification.py` so the always-on gate and the verifier
+    cannot disagree about what "changes nothing" means.
+    """
+    if path.endswith(PYTHON_SUFFIXES):
+        try:
+            return [
+                tokenize.tok_name[token.type] if token.type in _LAYOUT else token.string
+                for token in tokenize.generate_tokens(io.StringIO(text).readline)
+                if token.type not in (tokenize.COMMENT, tokenize.NL)
+            ]
+        except (tokenize.TokenError, SyntaxError):
+            pass
+    return text.split()
 
 
 def apply_span(source: str, descriptor: MutationDescriptor) -> str:
@@ -117,6 +164,26 @@ def invalidity_reason(
             f"the replacement for {descriptor.path} lines {descriptor.start_line}.."
             f"{descriptor.end_line} is identical to what it replaces, so nothing would be "
             "injected and every test would 'survive' a defect that was never introduced"
+        )
+
+    # Check 6 — it changes something a reader would call a change. Check 5
+    # catches only byte equality, so an edit that adds a comment, reflows a
+    # line or re-indents a whole block passes it and injects nothing. The
+    # consequence is check 5's, exactly: every candidate test "survives" a
+    # defect that was never introduced, and the criterion is recorded as having
+    # tests that do not discriminate — a false finding against the builder, and
+    # a silent one.
+    #
+    # Ordered after check 5 so a byte-identical edit keeps its own, more
+    # specific reason.
+    if comparable(descriptor.path, source) == comparable(
+        descriptor.path, apply_span(source, descriptor)
+    ):
+        return (
+            f"the replacement for {descriptor.path} lines {descriptor.start_line}.."
+            f"{descriptor.end_line} differs from what it replaces only in comments or "
+            "whitespace, so nothing would be injected and every test would 'survive' a "
+            "defect that was never introduced"
         )
 
     # Check 4 — the edit is bounded. Checked before the parse so an enormous
