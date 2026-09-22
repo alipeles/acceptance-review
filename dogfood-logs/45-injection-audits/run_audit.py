@@ -32,7 +32,7 @@ from acceptance.change.context import retrieve_context
 from acceptance.change.diff import extract_change_set
 from acceptance.config import RunConfig
 from acceptance.evidence.discovery import discover_tests
-from acceptance.llm import Mode
+from acceptance.llm import SERVED_FROM_PROVIDER, Mode
 from acceptance.mutation.attempt import MutationAttempt
 from acceptance.mutation.baseline import establish_baseline
 from acceptance.mutation.descriptor import LiveDescriptorBuilder
@@ -189,7 +189,10 @@ def spend(client) -> dict:
         )
         row["calls"] += 1
         row["cost_usd"] += float(call["usage"].get("cost_usd") or 0.0)
-        if call["served_from"] == "live":
+        # The constant, not the string "live": `llm.py` says `provider` and
+        # `recording`, and comparing against a word it never emits reported a
+        # live run as fully replayed — a bill of $0.00 on a run that spent.
+        if call["served_from"] == SERVED_FROM_PROVIDER:
             row["live"] += 1
             row["seconds"] += float(call["seconds"] or 0.0)
     return per_stage
