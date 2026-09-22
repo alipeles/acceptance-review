@@ -22,13 +22,14 @@ from acceptance.evidence_tier import EvidenceTier
 from acceptance.execution.outcome import SandboxRunResult, TestOutcome, TestOutcomeKind
 from acceptance.execution.sandbox import SandboxConfig
 from acceptance.mutation.attempt import (
+    CandidateCause,
     DeclineKind,
     DescriptorDecline,
     MutationDescriptor,
     MutationOutcomeKind,
 )
 from acceptance.mutation.baseline import Baseline, SetAsideTest, establish_baseline
-from acceptance.mutation.runner import run_mutations
+from acceptance.mutation.runner import DEFAULT_MAX_CANDIDATES, run_mutations
 from acceptance.review_state import ChangeSet, Defect, DefectSet, DefectType, DiffHunk, FileChange
 
 LOAN = '''def amortize(principal, months):
@@ -100,7 +101,7 @@ def _sets(*defects: Defect) -> list[DefectSet]:
 
 
 def _builder(replacement: str, *, start: int = 3, end: int = 3):
-    def build(_defect, _regions, _sources):
+    def build(_defect, _regions, _sources, _previous=()):
         return MutationDescriptor(
             path="loan.py",
             start_line=start,
@@ -153,7 +154,7 @@ class TestTheTwoOutcomesThatSettle:
         """A runner that reported survival for everything would pass the first
         case and fail here, which is why #45's Acceptance needs both."""
 
-        def build(defect, _regions, _sources):
+        def build(defect, _regions, _sources, _previous=()):
             if defect.id == "d-one-short":
                 return MutationDescriptor(
                     path="loan.py",
@@ -210,16 +211,23 @@ class TestEveryDefectIsAccountedFor:
         assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE
         assert "absence defect" in attempt.reason
 
-    def test_a_descriptor_the_builder_declines_is_not_mutable(self, project, change_set, green):
+    def test_a_builder_with_no_usable_answer_ends_with_no_usable_edit(
+        self, project, change_set, green
+    ):
+        """#334. An answer naming no span is one candidate set aside, not the
+        defect's whole answer; the stage asks again until the limit."""
         attempts = run_mutations(
             _sets(_defect("d1")),
             change_set,
             project,
             green,
-            lambda _d, _r, _s: None,
+            lambda _d, _r, _s, _p=(): None,
         )
-        assert attempts[0].outcome is MutationOutcomeKind.NOT_MUTABLE
-        assert "no single contiguous edit" in attempts[0].reason
+        assert attempts[0].outcome is MutationOutcomeKind.NO_USABLE_EDIT
+        assert attempts[0].candidates_asked == DEFAULT_MAX_CANDIDATES
+        assert {c.cause for c in attempts[0].set_aside_candidates} == {
+            CandidateCause.UNUSABLE_ANSWER
+        }
 
     @pytest.mark.parametrize(
         ("kind", "outcome"),
@@ -234,7 +242,7 @@ class TestEveryDefectIsAccountedFor:
     ):
         decline = DescriptorDecline(kind=kind, reason="the model's own words")
         attempts = run_mutations(
-            _sets(_defect("d1")), change_set, project, green, lambda _d, _r, _s: decline
+            _sets(_defect("d1")), change_set, project, green, lambda _d, _r, _s, _p=(): decline
         )
         assert attempts[0].outcome is outcome
         assert attempts[0].reason == "the model's own words"
@@ -251,8 +259,10 @@ class TestEveryDefectIsAccountedFor:
             green,
             _builder("x = 1\n", start=9, end=9),
         )
-        assert attempts[0].outcome is MutationOutcomeKind.NOT_MUTABLE
-        assert attempts[0].reason
+        assert attempts[0].outcome is MutationOutcomeKind.NO_USABLE_EDIT
+        (first, *_) = attempts[0].set_aside_candidates
+        assert first.cause is CandidateCause.FAILED_CHECK
+        assert first.reason
 
     def test_an_edit_changing_only_comments_is_not_mutable(self, project, change_set, green):
         """The wiring for the check moved out of `verification.py`.
@@ -269,8 +279,10 @@ class TestEveryDefectIsAccountedFor:
             green,
             _builder("    payment = principal / months  # split it evenly\n"),
         )
-        assert attempts[0].outcome is MutationOutcomeKind.NOT_MUTABLE
-        assert "only in comments or whitespace" in attempts[0].reason
+        assert attempts[0].outcome is MutationOutcomeKind.NO_USABLE_EDIT
+        (first, *_) = attempts[0].set_aside_candidates
+        assert first.cause is CandidateCause.CHANGED_NOTHING
+        assert "only in comments or whitespace" in first.reason
 
     def test_an_edit_that_really_changes_the_code_still_runs(self, project, change_set, green):
         """The companion to the case above: the check must not refuse a mutant."""
@@ -391,23 +403,25 @@ class TestAnEditThatUsesANameThatDoesNotExist:
         (attempt,) = run_mutations(
             _sets(_defect("d-undefined")), change_set, project, green, self._undefined_name()
         )
-        assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE
+        assert attempt.outcome is MutationOutcomeKind.NO_USABLE_EDIT
         assert attempt.killing_tests == []
         assert attempt.tier is EvidenceTier.STATIC
+        assert attempt.set_aside_candidates[0].cause is CandidateCause.REFUSED_AFTER_RUN
 
     def test_the_reason_names_the_exception(self, project, change_set, green):
         (attempt,) = run_mutations(
             _sets(_defect("d-undefined")), change_set, project, green, self._undefined_name()
         )
-        assert "NameError" in attempt.reason
+        assert "NameError" in attempt.set_aside_candidates[0].reason
 
     def test_the_edit_and_the_tests_run_are_still_recorded(self, project, change_set, green):
         """So a reader can see what the broken edit was."""
         (attempt,) = run_mutations(
             _sets(_defect("d-undefined")), change_set, project, green, self._undefined_name()
         )
-        assert attempt.descriptor is not None
-        assert attempt.tests_run == [TEST_ID]
+        refused = attempt.set_aside_candidates[0]
+        assert refused.descriptor is not None
+        assert refused.tests_run == [TEST_ID]
 
 
 class TestTheFailureTypeIsRecorded:
@@ -521,7 +535,8 @@ class TestTheBreadthCheck:
             max_failing_fraction=0.5,
             breadth_floor=0,
         )
-        assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE
+        assert attempt.outcome is MutationOutcomeKind.NO_USABLE_EDIT
+        assert attempt.set_aside_candidates[0].cause is CandidateCause.REFUSED_AFTER_RUN
 
 
 class TestWhenTheProjectsTestsCannotBeRun:
@@ -583,7 +598,7 @@ class TestWhenTheProjectsTestsCannotBeRun:
         observe."""
         asked = []
 
-        def build(defect, _regions, _sources):
+        def build(defect, _regions, _sources, _previous=()):
             asked.append(defect.id)
 
         baseline = establish_baseline([TEST_ID], project, self.BROKEN)
@@ -601,3 +616,147 @@ class TestTheOriginalProjectIsNeverTouched:
             _builder("    payment = principal / months * 3\n"),
         )
         assert (project / "loan.py").read_text(encoding="utf-8") == LOAN
+
+
+class TestCandidateEdits:
+    """#334. The stage asks for several candidate edits per defect and uses the
+    first that passes every check, showing each refusal when it asks again."""
+
+    def _sequence(self, *replacements: str, seen: list | None = None):
+        """A builder that answers with each replacement in turn, recording the
+        earlier candidates it was shown each time."""
+        answers = iter(replacements)
+
+        def build(_defect, _regions, _sources, previous=()):
+            if seen is not None:
+                seen.append(list(previous))
+            return MutationDescriptor(
+                path="loan.py",
+                start_line=4,
+                end_line=4,
+                replacement=next(answers),
+                region_label="loan.py#0",
+            )
+
+        return build
+
+    UNCHANGED = "    return [payment for _ in range(months)]\n"
+    ONE_SHORT = "    return [payment for _ in range(months - 1)]\n"
+
+    def test_a_refused_first_candidate_is_followed_by_a_second(self, project, change_set, green):
+        (attempt,) = run_mutations(
+            _sets(_defect("d1")),
+            change_set,
+            project,
+            green,
+            self._sequence(self.UNCHANGED, self.ONE_SHORT),
+        )
+        assert attempt.outcome is MutationOutcomeKind.KILLED
+        assert attempt.candidates_asked == 2
+        assert attempt.candidate_used == 2
+        assert [c.cause for c in attempt.set_aside_candidates] == [CandidateCause.CHANGED_NOTHING]
+        assert attempt.descriptor is not None
+        assert "months - 1" in attempt.descriptor.replacement
+
+    def test_the_second_request_is_shown_the_first_refusal(self, project, change_set, green):
+        seen: list = []
+        run_mutations(
+            _sets(_defect("d1")),
+            change_set,
+            project,
+            green,
+            self._sequence(self.UNCHANGED, self.ONE_SHORT, seen=seen),
+        )
+        assert seen[0] == []
+        (earlier,) = seen[1]
+        assert earlier.cause is CandidateCause.CHANGED_NOTHING
+        assert earlier.descriptor.replacement == self.UNCHANGED
+
+    def test_a_first_candidate_that_passes_asks_for_no_more(self, project, change_set, green):
+        seen: list = []
+        (attempt,) = run_mutations(
+            _sets(_defect("d1")),
+            change_set,
+            project,
+            green,
+            self._sequence(self.ONE_SHORT, seen=seen),
+        )
+        assert len(seen) == 1
+        assert attempt.candidates_asked == 1
+        assert attempt.candidate_used == 1
+        assert attempt.set_aside_candidates == []
+
+    def test_the_limit_is_configurable(self, project, change_set, green):
+        seen: list = []
+        (attempt,) = run_mutations(
+            _sets(_defect("d1")),
+            change_set,
+            project,
+            green,
+            self._sequence(self.UNCHANGED, self.ONE_SHORT, seen=seen),
+            max_candidates=1,
+        )
+        assert len(seen) == 1
+        assert attempt.outcome is MutationOutcomeKind.NO_USABLE_EDIT
+        assert attempt.candidates_asked == 1
+
+    def test_no_usable_edit_is_not_the_same_outcome_as_not_mutable(
+        self, project, change_set, green
+    ):
+        """Gate 1 run 4's caveat: the obligation's description lost the words
+        that make this a new outcome rather than `not_mutable` relabelled. A
+        defect whose candidates were all refused says that about the
+        candidates; one that named no region still says it cannot be mutated."""
+        refused, no_region = run_mutations(
+            _sets(_defect("d-refused"), _defect("d-unnamed", refs=[])),
+            change_set,
+            project,
+            green,
+            self._sequence(self.UNCHANGED, self.UNCHANGED, self.UNCHANGED),
+        )
+        assert refused.outcome is MutationOutcomeKind.NO_USABLE_EDIT
+        assert no_region.outcome is MutationOutcomeKind.NOT_MUTABLE
+        assert refused.outcome is not no_region.outcome
+        assert "candidate" in refused.reason
+        assert no_region.candidates_asked == 0
+
+    def test_a_decline_ends_the_loop_and_keeps_what_was_set_aside(self, project, change_set, green):
+        """A decline is the model's considered answer about the defect, not a
+        bad edit, so it is not retried."""
+        calls = []
+
+        def build(_defect, _regions, _sources, previous=()):
+            calls.append(len(previous))
+            if not previous:
+                return MutationDescriptor(
+                    path="loan.py",
+                    start_line=4,
+                    end_line=4,
+                    replacement=self.UNCHANGED,
+                    region_label="loan.py#0",
+                )
+            return DescriptorDecline(kind=DeclineKind.NOT_A_CODE_PROPERTY, reason="not code")
+
+        (attempt,) = run_mutations(_sets(_defect("d1")), change_set, project, green, build)
+        assert calls == [0, 1]
+        assert attempt.outcome is MutationOutcomeKind.NOT_A_CODE_PROPERTY
+        assert attempt.candidates_asked == 2
+        assert len(attempt.set_aside_candidates) == 1
+        assert attempt.candidate_used is None
+
+    def test_two_runs_over_the_same_input_pick_the_same_candidate(self, project, change_set, green):
+        first = run_mutations(
+            _sets(_defect("d1")),
+            change_set,
+            project,
+            green,
+            self._sequence(self.UNCHANGED, self.ONE_SHORT),
+        )
+        second = run_mutations(
+            _sets(_defect("d1")),
+            change_set,
+            project,
+            green,
+            self._sequence(self.UNCHANGED, self.ONE_SHORT),
+        )
+        assert first[0].model_dump() == second[0].model_dump()

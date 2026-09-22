@@ -27,6 +27,7 @@ from acceptance.change.diff import extract_change_set
 from acceptance.evidence_tier import EvidenceTier
 from acceptance.execution.sandbox import SandboxConfig
 from acceptance.mutation.attempt import (
+    CandidateCause,
     MutationOutcomeKind,
     RepairCorroboration,
     VerificationStep,
@@ -451,8 +452,13 @@ class TestTheBreadthSettingsReachTheRunner:
             judgments=killing,
         )
         (attempt,) = review.mutation_attempts
-        assert attempt.outcome is MutationOutcomeKind.NOT_MUTABLE
-        assert "candidate tests failed under the edit" in attempt.reason
+        # Since #334 a refused edit is one candidate set aside, not the
+        # defect's whole answer; the canned answer repeats, so every candidate
+        # is refused the same way.
+        assert attempt.outcome is MutationOutcomeKind.NO_USABLE_EDIT
+        refused = attempt.set_aside_candidates[0]
+        assert refused.cause is CandidateCause.REFUSED_AFTER_RUN
+        assert "candidate tests failed under the edit" in refused.reason
 
 
 _REFUSED_VERIFICATION = {
@@ -750,14 +756,17 @@ class TestTheControlRunComesFirst:
             order.append("control run")
             return real_baseline(*args, **kwargs)
 
-        real_descriptors = pipeline.build_descriptors
+        # Since #334 descriptors are asked for live, one candidate at a time,
+        # so the first request is the moment to record.
+        real_builder = pipeline.LiveDescriptorBuilder
 
-        def recording_descriptors(*args, **kwargs):
-            order.append("descriptor")
-            return real_descriptors(*args, **kwargs)
+        class RecordingBuilder(real_builder):
+            def __call__(self, *args, **kwargs):
+                order.append("descriptor")
+                return super().__call__(*args, **kwargs)
 
         monkeypatch.setattr(pipeline, "establish_baseline", recording_baseline)
-        monkeypatch.setattr(pipeline, "build_descriptors", recording_descriptors)
+        monkeypatch.setattr(pipeline, "LiveDescriptorBuilder", RecordingBuilder)
 
         _review(tmp_path, execution=ExecutionSettings(verify_edits=True))
 
@@ -1093,3 +1102,63 @@ class TestTheRunRoutesPairsThroughTheRealPipeline:
         assert killing_pair, "the red test's pair must still carry a judged verdict"
         assert all(v.tier is EvidenceTier.STATIC for v in killing_pair)
         assert all(v.reason == "it pins the amount" for v in killing_pair)
+
+
+#: A descriptor that only adds a comment, so every candidate is refused as
+#: changing nothing and the loop runs to its limit.
+_COMMENT_ONLY = {
+    **_JUDGMENTS,
+    "_Descriptor": {
+        **_JUDGMENTS["_Descriptor"],
+        "replacement": "    payment = principal / months  # unchanged\n",
+    },
+}
+
+
+class TestCandidateEditsThroughTheRealPipeline:
+    """#334's wiring. The unit tests drive the runner with a stub builder; this
+    is the pipeline's own builder, asking the model again with each refusal
+    shown, and the result stored on the review."""
+
+    def test_a_refused_candidate_is_asked_about_again_with_the_refusal_shown(self, tmp_path):
+        capture: list = []
+        review = _review(
+            tmp_path,
+            execution=ExecutionSettings(verify_edits=True),
+            capture=capture,
+            judgments=_COMMENT_ONLY,
+        )
+        asked = [call["prompt"] for call in capture if call["schema"] == "_Descriptor"]
+        assert len(asked) == ExecutionSettings().max_candidates
+        assert "Earlier edits for this defect" not in asked[0]
+        assert all("Earlier edits for this defect" in prompt for prompt in asked[1:])
+        # Each request differs from the last, so each records and replays on
+        # its own key rather than returning one recorded answer every time.
+        assert len(set(asked)) == len(asked)
+
+        (attempt,) = review.mutation_attempts
+        assert attempt.outcome is MutationOutcomeKind.NO_USABLE_EDIT
+        assert attempt.candidates_asked == len(asked)
+        assert {c.cause for c in attempt.set_aside_candidates} == {CandidateCause.CHANGED_NOTHING}
+
+    def test_the_setting_reaches_the_runner(self, tmp_path):
+        capture: list = []
+        _review(
+            tmp_path,
+            execution=ExecutionSettings(verify_edits=True, max_candidates=1),
+            capture=capture,
+            judgments=_COMMENT_ONLY,
+        )
+        assert _schemas(capture).count("_Descriptor") == 1
+
+    def test_the_report_shows_every_candidate_and_why_it_was_set_aside(self, tmp_path):
+        report = render_report(
+            _review(
+                tmp_path,
+                execution=ExecutionSettings(verify_edits=True),
+                judgments=_COMMENT_ONLY,
+            )
+        )
+        assert "candidate edits: 3 asked for, 3 set aside, none used" in report
+        assert report.count("set aside (changed_nothing)") == 3
+        assert "# unchanged" in report

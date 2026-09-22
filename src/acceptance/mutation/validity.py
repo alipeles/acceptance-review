@@ -41,6 +41,7 @@ __all__ = [
     "DEFAULT_MAX_EDIT_LINES",
     "PYTHON_SUFFIXES",
     "apply_span",
+    "changes_nothing",
     "comparable",
     "invalidity_reason",
 ]
@@ -107,6 +108,29 @@ def comparable(path: str, text: str) -> list[str]:
         except (tokenize.TokenError, SyntaxError):
             pass
     return text.split()
+
+
+def changes_nothing(descriptor: MutationDescriptor, source: str) -> bool:
+    """Whether the edit is identical to what it replaces, or differs only in
+    comments or whitespace — checks 5 and 6 of `invalidity_reason` together.
+
+    Separate so a caller can tell *which kind* of refusal it got without
+    parsing the reason text: #334 records an edit that changed nothing apart
+    from one that failed any other check.
+
+    A span running past the end of the file is not "nothing changed" — it fails
+    check 1 — and is answered `False` so it is never counted as both.
+    """
+    if descriptor.end_line > len(source.splitlines()):
+        return False
+    replaced = "".join(
+        source.splitlines(keepends=True)[descriptor.start_line - 1 : descriptor.end_line]
+    )
+    if replaced == descriptor.replacement:
+        return True
+    return comparable(descriptor.path, source) == comparable(
+        descriptor.path, apply_span(source, descriptor)
+    )
 
 
 def apply_span(source: str, descriptor: MutationDescriptor) -> str:

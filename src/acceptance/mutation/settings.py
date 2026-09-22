@@ -32,7 +32,11 @@ from __future__ import annotations
 
 from acceptance.execution.sandbox import SandboxConfig
 from acceptance.model_base import PersistableModel as _Model
-from acceptance.mutation.runner import DEFAULT_BREADTH_FLOOR, DEFAULT_MAX_FAILING_FRACTION
+from acceptance.mutation.runner import (
+    DEFAULT_BREADTH_FLOOR,
+    DEFAULT_MAX_CANDIDATES,
+    DEFAULT_MAX_FAILING_FRACTION,
+)
 from acceptance.mutation.validity import DEFAULT_MAX_EDIT_LINES
 from acceptance.review_state import ExecutionDecision
 
@@ -52,6 +56,11 @@ class ExecutionSettings(_Model):
     # See `runner.py` for the calibration and its limits.
     max_failing_fraction: float = DEFAULT_MAX_FAILING_FRACTION
     breadth_floor: int = DEFAULT_BREADTH_FLOOR
+    # How many candidate edits to ask for per defect before recording that no
+    # usable edit came out of them (#334). One restores the behaviour before
+    # #334, for comparison; each extra candidate costs a model call and, if it
+    # passes the checks, a test run.
+    max_candidates: int = DEFAULT_MAX_CANDIDATES
     # Whether a model call checks that each observed edit really makes its
     # defect true. Off: measured on #45's review it refused 77% of bad edits but
     # also 26% of good ones, and about a quarter of what it let through would

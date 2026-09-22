@@ -36,6 +36,7 @@ __all__ = [
     "DECLINE_OUTCOMES",
     "SETTLING_KINDS",
     "AlreadyDefective",
+    "CandidateCause",
     "DeclineKind",
     "DescriptorAnswer",
     "DescriptorDecline",
@@ -43,6 +44,7 @@ __all__ = [
     "MutationDescriptor",
     "MutationOutcomeKind",
     "RepairCorroboration",
+    "SetAsideCandidate",
     "VerificationStep",
     "tier_for",
 ]
@@ -59,17 +61,23 @@ class MutationOutcomeKind(str, Enum):
       wrong, not that the tests are thin, so it is shown as needing human review.
     - `not_a_code_property`: the defect is not about what any span of code or
       text does — a question about the process, say — so no edit could settle it.
-    - `not_mutable`: the defect is about code, but no single valid contiguous
-      edit could be built for it. Also the outcome when a mechanical check
-      refuses the edit, or the defect named no usable region.
+    - `not_mutable`: the defect cannot be turned into an edit here — it named no
+      usable region, or the model said no single contiguous edit makes it true.
+    - `no_usable_edit`: the stage asked for several candidate edits and set
+      every one aside (#334). That is a fact about the candidates, not about
+      the defect: another try might produce a usable edit. Before #334 a
+      refused edit was recorded as `not_mutable`, because one edit per defect
+      made "this edit was refused" and "this defect got no mutant" the same
+      event.
 
-    All three are routed to the static judge exactly as before; none moves a
+    All of these are routed to the static judge exactly as before; none moves a
     rating.
     """
 
     KILLED = "killed"
     SURVIVED = "survived"
     NOT_MUTABLE = "not_mutable"
+    NO_USABLE_EDIT = "no_usable_edit"
     ALREADY_PRESENT = "already_present"
     NOT_A_CODE_PROPERTY = "not_a_code_property"
     NOT_ATTEMPTED = "not_attempted"
@@ -203,6 +211,36 @@ class RepairCorroboration(str, Enum):
     NOT_RUN = "not_run"
 
 
+class CandidateCause(str, Enum):
+    """Why one candidate edit was set aside and the next one asked for (#334)."""
+
+    # A mechanical check refused it: past the end of the file, over the size
+    # bound, outside the named region, or the file no longer parses.
+    FAILED_CHECK = "failed_check"
+    # It is identical to what it replaces, or differs only in comments or
+    # whitespace, so it would inject nothing.
+    CHANGED_NOTHING = "changed_nothing"
+    # The answer named no usable span at all.
+    UNUSABLE_ANSWER = "unusable_answer"
+    # It passed the mechanical checks, but running the tests against it showed
+    # it broke the program rather than injecting the defect.
+    REFUSED_AFTER_RUN = "refused_after_run"
+
+
+class SetAsideCandidate(_Model):
+    """One candidate edit the stage asked for and did not use, and why.
+
+    `descriptor` is kept so a reader can see what was refused; it is empty when
+    the answer named no usable span. `tests_run` names the tests run against it,
+    and is empty unless it was refused after a run.
+    """
+
+    cause: CandidateCause
+    reason: str
+    descriptor: MutationDescriptor | None = None
+    tests_run: list[str] = Field(default_factory=list)
+
+
 class VerificationStep(str, Enum):
     """Which of verification's two questions refused an edit.
 
@@ -251,6 +289,14 @@ class MutationAttempt(_Model):
     repair: MutationDescriptor | None = None
     repair_corroboration: RepairCorroboration | None = None
     repair_failing_tests: list[str] = Field(default_factory=list)
+    # #334. How many candidate edits the stage asked the model for, which ones it
+    # set aside and why, and the 1-based position of the one it used. Zero, empty
+    # and None when no candidate was asked for — a defect with no region, say —
+    # and for every attempt recorded before candidates existed, so an old stored
+    # review reads back unchanged.
+    candidates_asked: int = 0
+    set_aside_candidates: list[SetAsideCandidate] = Field(default_factory=list)
+    candidate_used: int | None = None
 
     @property
     def observed(self) -> bool:
@@ -289,6 +335,40 @@ class MutationAttempt(_Model):
                 f"defect {self.defect_id!r} names tests that failed on its repair, but "
                 "its corroboration does not say a test asserts the defective behaviour"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _candidates_add_up(self) -> MutationAttempt:
+        """The candidate record cannot claim more than was asked for, and a
+        defect with no usable edit must show every candidate it set aside."""
+        aside = len(self.set_aside_candidates)
+        if aside > self.candidates_asked:
+            raise ValueError(
+                f"defect {self.defect_id!r} set aside {aside} candidate(s) but asked for "
+                f"only {self.candidates_asked}"
+            )
+        if self.candidate_used is not None:
+            if self.candidate_used != aside + 1 or self.candidate_used > self.candidates_asked:
+                raise ValueError(
+                    f"defect {self.defect_id!r} used candidate {self.candidate_used} after "
+                    f"setting aside {aside} of {self.candidates_asked}; the one used must "
+                    "be the first that was not set aside"
+                )
+            if self.descriptor is None:
+                raise ValueError(
+                    f"defect {self.defect_id!r} names candidate {self.candidate_used} as "
+                    "used but records no edit"
+                )
+        if self.outcome is MutationOutcomeKind.NO_USABLE_EDIT:
+            if self.candidates_asked < 1 or aside != self.candidates_asked:
+                raise ValueError(
+                    f"defect {self.defect_id!r} has no usable edit but set aside {aside} of "
+                    f"{self.candidates_asked} candidate(s); every one asked for must be shown"
+                )
+            if self.candidate_used is not None:
+                raise ValueError(
+                    f"defect {self.defect_id!r} has no usable edit and names a candidate as used"
+                )
         return self
 
     @model_validator(mode="after")

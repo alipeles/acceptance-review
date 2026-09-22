@@ -1,7 +1,9 @@
 """Turns one named plausible defect into an actual edit at actual lines.
 
-The only part of the mutation stage that calls a model, and it is deliberately
-one call per defect (DR-171 Decision 1). Folding this into defect enumeration
+The only part of the mutation stage that calls a model. Each call is about one
+defect (DR-171 Decision 1); since #334 a defect may take several calls, one per
+candidate edit, each shown the candidates already refused (DR-171, revision of
+2026-09-22). Folding this into defect enumeration
 was rejected there for a reason worth restating: the enumerator is blind to the
 tests so its denominator cannot drift toward what is already covered, and asking
 the same call to also produce a working patch would reintroduce the drift from
@@ -32,6 +34,7 @@ and a survival that means nothing.
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Sequence
 from typing import Literal
 
@@ -40,10 +43,12 @@ from acceptance.concurrency import map_calls
 from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.mutation.attempt import (
     AlreadyDefective,
+    CandidateCause,
     DeclineKind,
     DescriptorAnswer,
     DescriptorDecline,
     MutationDescriptor,
+    SetAsideCandidate,
 )
 from acceptance.mutation.region import Region
 from acceptance.mutation.surrounding import contexts_for, region_spans, render_contexts
@@ -52,7 +57,7 @@ from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import Defect
 from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
 
-__all__ = ["ONE_DEFECT_PER_CALL", "build_descriptors", "from_mapping"]
+__all__ = ["ONE_DEFECT_PER_CALL", "LiveDescriptorBuilder", "build_descriptors", "from_mapping"]
 
 _STAGE = "mutation descriptor"
 
@@ -215,10 +220,48 @@ def from_mapping(descriptors: dict[str, DescriptorAnswer]):
     the reason the runner never has to know that a model was involved.
     """
 
-    def build(defect: Defect, _regions, _sources) -> DescriptorAnswer:
+    def build(defect: Defect, _regions, _sources, _previous=()) -> DescriptorAnswer:
         return descriptors.get(defect.id)
 
     return build
+
+
+class LiveDescriptorBuilder:
+    """The runner's descriptor builder, asking the model as each candidate is
+    needed rather than all at once beforehand (#334).
+
+    It has to be live: the second candidate's request shows the first one's
+    refusal, which only exists once the runner has checked it.
+
+    Calls happen inside the runner's concurrent attempts, so unusable answers
+    are held per (defect, candidate) and recorded afterwards in sorted order by
+    `record_unusable` — `concurrency.py` rule 2, the same reason
+    `build_descriptors` hands them back rather than recording them.
+    """
+
+    def __init__(self, client: ModelClient, surrounding: RetrievalResult | None = None):
+        self._client = client
+        self._surrounding = surrounding
+        self._unusable: dict[tuple[str, int], list[UnusableAnswer]] = {}
+        self._lock = threading.Lock()
+
+    def __call__(
+        self,
+        defect: Defect,
+        regions: Sequence[Region],
+        sources: dict[str, str],
+        previous: Sequence[SetAsideCandidate] = (),
+    ) -> DescriptorAnswer:
+        answer, unusable = _ask_about(
+            defect, list(regions), sources, self._client, self._surrounding, previous
+        )
+        with self._lock:
+            self._unusable[(defect.id, len(previous))] = unusable
+        return answer
+
+    def record_unusable(self, log: UnusableAnswerLog) -> None:
+        for key in sorted(self._unusable):
+            log.record(self._unusable[key])
 
 
 def _ask_about(
@@ -227,8 +270,13 @@ def _ask_about(
     sources: dict[str, str],
     client: ModelClient,
     surrounding: RetrievalResult | None = None,
+    previous: Sequence[SetAsideCandidate] = (),
 ) -> tuple[DescriptorAnswer, list[UnusableAnswer]]:
     """One call, about `defect` alone.
+
+    `previous` holds the candidates already set aside for this defect. They are
+    shown only when there are some, so a defect's first request is exactly what
+    it was before #334 and every recording of one still replays.
 
     **Records nothing.** Calls are issued concurrently, so anything appended to
     shared state here would land in completion order and two runs over the same
@@ -243,6 +291,8 @@ def _ask_about(
     context = render_contexts(contexts_for(region_spans(offered), surrounding))
     if context:
         subject = f"{subject}\n\n{context}"
+    if previous:
+        subject = f"{subject}\n\n{_earlier_candidates(previous)}"
     messages = assemble(
         [
             Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
@@ -348,6 +398,58 @@ def _subject(defect: Defect, regions: Sequence[Region], sources: dict[str, str])
             f"### [{region.label}] {region.path} lines {region.start_line}-{region.end_line}"
         )
         lines.append(_numbered(sources[region.path], region))
+    return "\n".join(lines)
+
+
+#: What the model is told about each kind of refusal. Fixed sentences, not the
+#: recorded reason, for one kind in particular: an edit refused after the tests
+#: ran against it was refused on what those tests did, and nothing about what
+#: the tests did under an edit may reach a model
+#: (`tests/test_edit_results_never_reach_a_prompt.py`). The mechanical checks'
+#: own reasons carry nothing from a test run and are shown as they are.
+_REFUSED_AFTER_RUN = (
+    "it passed the checks on the edit's text but was refused once it was applied; "
+    "try a different, smaller edit that changes only the behaviour the defect names"
+)
+_CHANGED_NOTHING = (
+    "it changed nothing: it was identical to the lines it replaced, or differed only "
+    "in comments or whitespace. The edit must change what the code does"
+)
+_UNUSABLE = "the answer named no usable span to replace"
+
+
+def _earlier_candidates(previous: Sequence[SetAsideCandidate]) -> str:
+    """The candidates already set aside for this defect, and why, so the next
+    answer is a different edit rather than the same one again."""
+    lines = [
+        "## Earlier edits for this defect, all refused",
+        "",
+        (
+            "Each edit below was refused for the reason given. Give a different edit "
+            "that avoids the problem, or decline if no single contiguous edit makes the "
+            "defect true."
+        ),
+    ]
+    for number, candidate in enumerate(previous, start=1):
+        lines.append("")
+        if candidate.cause is CandidateCause.REFUSED_AFTER_RUN:
+            why = _REFUSED_AFTER_RUN
+        elif candidate.cause is CandidateCause.CHANGED_NOTHING:
+            why = _CHANGED_NOTHING
+        elif candidate.cause is CandidateCause.UNUSABLE_ANSWER:
+            why = _UNUSABLE
+        else:
+            why = candidate.reason
+        edit = candidate.descriptor
+        if edit is None:
+            lines.append(f"### Earlier edit {number}: refused because {why}")
+            continue
+        lines.append(
+            f"### Earlier edit {number}: {edit.path} lines {edit.start_line}-{edit.end_line}, "
+            f"refused because {why}"
+        )
+        lines.append("Replacement it gave:")
+        lines.append(edit.replacement.rstrip("\n") or "(empty — it deleted the lines)")
     return "\n".join(lines)
 
 
