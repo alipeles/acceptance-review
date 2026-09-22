@@ -20,4 +20,5 @@ both.
 - Whether an edit that passes the checks really makes its named defect true.
 - Which plausible defects are enumerated, and which region of the code an edit is
   allowed to fall in.
-- Running the candidate tests, and anything decided from what they did.
+- Which tests are candidates, how the project's tests are run, and how the result
+  of a run is read.
