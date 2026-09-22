@@ -1,0 +1,52 @@
+run af4321d0ce826ec8
+  requirements: 6 derived, 0 carried, 0 revised; 11 decompose call(s)
+  continue this run with: --continue af4321d0ce826ec8
+Model usage by stage:
+  stage               model                                                          calls  prompt  output  cached  this run  recorded
+  ------------------  -------------------------------------------  -----------------------  ------  ------  ------  --------  --------
+  decompose           openai/gpt-5.4-mini                          9 (0 live / 9 replayed)  48,716   1,223    0.0%   $0.0000   $0.0420
+  decompose-summary   openai/gpt-5.4                               2 (0 live / 2 replayed)   1,704     590    0.0%   $0.0000   $0.0131
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini  2 (2 live / 0 replayed)   1,081      88    0.0%   $0.0010   $0.0010
+  this run spent $0.0010 on 2 live call(s); the evidence cost $0.0561 to record (11 call(s) replayed at no cost to this run)
+Requirements: 6   with obligations: 5   deliberately none: 1
+
+[task-01] An edit that differs from the text it replaced only in comments or whitespace
+    changes nothing, and the review refuses it. It refuses it always, not only when the
+    review is also checking whether an edit really makes its named defect true.
+    -> comments-or-whitespace-only-no-change  [invariant/explicit]
+       An edit that differs from the text it replaced only in comments or whitespace
+       changes nothing.
+    -> review-refuses-comment-or-whitespace-only-edit  [functional/explicit]
+       The review refuses an edit that differs from the text it replaced only in
+       comments or whitespace.
+
+[task-02] The refusal is recorded as one of the review's own mechanical checks, not as a
+    judgement about what the edit does, so that counts of what each judgement refused
+    are not inflated by edits no judgement was asked about.
+    -> refusal-recorded-as-mechanical-check  [invariant/explicit]
+       The refusal is recorded as one of the review's own mechanical checks, not as a
+       judgement about what the edit does.
+    -> refusal-counts-not-inflated-by-unasked-edits  [invariant/explicit]
+       Counts of what each judgement refused are not inflated by edits no judgement was
+       asked about.
+
+[constraint-01] No model is asked.
+    -- no obligation, deliberately
+       The requirement explicitly says no model is asked, so it imposes nothing
+       checkable on the delivered change.
+
+[exclusion-01] The questions the review asks about an edit's behaviour, and whether they
+    run at all.
+    -> no-behavior-questions-or-execution  [functional/explicit]
+       The change does not alter the questions the review asks about an edit's
+       behaviour, or whether those questions run at all.
+
+[exclusion-02] Building an edit, or choosing the region of the code it falls in.
+    -> no-edit-construction-or-region-selection  [functional/explicit]
+       The change does not involve building an edit or choosing the region of the code
+       it falls in.
+
+[exclusion-03] Running the project's tests.
+    -> no-project-tests-run  [functional/explicit]
+       The change does not run the project's tests.
+

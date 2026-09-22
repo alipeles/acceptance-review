@@ -6060,57 +6060,45 @@ the record.
   change was reordering three imports that already sit below the
   `sys.path.insert`, so the script's behaviour is unchanged.
 
-### [2026-09-21] #334's stated reason for the bytecode check does not hold
+### [2026-09-21] #334's body still asks for a bytecode check that is now out of its scope
 - **Kind:** filing
 - **Found during:** #334, Gate 1
-- **Where:** issue #334 (sample several candidate edits per defect), the Why and
-  Deliverable sections
+- **Where:** issue #334 (sample several candidate edits per defect), the Why,
+  Deliverable and Acceptance sections
 - **Severity:** should-fix
-- **What's wrong:** #334 proposes compiling a module before and after an edit and
-  comparing the code objects, because a text comparison "misses an added
-  condition that is always true, a value the callee ignores, and a reordering
-  with no effect". Measured on the project's own interpreter, all three compile
-  to *different* code, so the proposed check lets all three through exactly as
-  the text check does. What it does catch is edits differing only in formatting,
-  comments or line position — a real gap, since the existing check in
-  `mutation/validity.py` is byte equality. Evidence and method:
-  `docs/experiments/334-bytecode-equivalence/`.
-- **Why I didn't act:** it changes what #334 delivers, which is a change to the
-  plan and therefore the human's call.
+- **What's wrong:** #334 asks for a comparison of compiled forms before and after
+  an edit, because a text comparison "misses an added condition that is always
+  true, a value the callee ignores, and a reordering with no effect". Measured on
+  the project's interpreter, all three compile to *different* code, so the check
+  catches none of them (`docs/experiments/334-bytecode-equivalence/`). What it
+  does catch — comment-, whitespace- and position-only edits — is now refused by
+  the always-on comment-and-whitespace gate in `mutation/validity.py`, built on
+  its own branch. At Gate 1 the human dropped the bytecode check from #334, so
+  the issue body and the mandate now disagree.
+- **Why I didn't act:** a change to the issue is a change to the plan.
 - **Drafted fix:** comment on #334:
 
-  > **The bytecode comparison catches a different class than this issue
-  > describes.**
+  > **The bytecode check is out of this issue's scope, decided at Gate 1 on
+  > 2026-09-21.** The mandate this issue is being built against covers the
+  > candidate loop only.
   >
-  > Measured 2026-09-21 on python 3.10.11, the interpreter the project runs
-  > (`docs/experiments/334-bytecode-equivalence/probe.py`). "Equal" means the
-  > check refuses the edit:
+  > Two reasons. First, the check does not catch the three cases this issue
+  > names. Measured on python 3.10.11
+  > (`docs/experiments/334-bytecode-equivalence/probe.py`): an always-true
+  > condition emits a test and a jump, an ignored assignment emits a store, and a
+  > reordering emits the same instructions in a different order, so all three
+  > compile differently while behaving the same. Catching those needs a judgement
+  > about behaviour, which is what #335's first question asks.
   >
-  > | edit | code objects equal | instruction stream equal |
-  > |---|---|---|
-  > | always-true condition, `if True:` | no | no |
-  > | always-true condition, `if i is not None or True:` | no | no |
-  > | value the caller ignores | no | no |
-  > | reordering with no effect | no | no |
-  > | blank line only | no | **yes** |
-  > | comment only | **yes** | **yes** |
+  > Second, the class it does catch — edits differing only in comments,
+  > whitespace or line position — is now refused by an always-on gate in
+  > `mutation/validity.py`, which moved the comment-and-whitespace comparison out
+  > of the verifier, where it only ran with `verify_edits` switched on.
   >
-  > The three cases this issue names all change the compiled form: an always-true
-  > condition emits a test and a jump, an ignored assignment emits a store, a
-  > reordering emits the same instructions in a different order. None changes
-  > behaviour, which is a different question. Those three are what #335's first
-  > question — does the edit change the code's behaviour at all — is for.
-  >
-  > Two consequences for this issue. The rationale should be restated as catching
-  > formatting-, comment- and position-only edits, which the byte-equality check
-  > in `mutation/validity.py` accepts today. And the comparison must be on the
-  > instruction stream, not on whole code objects: whole-object equality reports
-  > the blank-line case as different, because line-number tables differ, so the
-  > wording "compare the code objects" describes the comparison that misses the
-  > one case it fixes.
-  >
-  > The Acceptance item "shown to reject at least one edit the text comparison
-  > accepts" stays reachable — a whitespace-only edit is one.
+  > So the Acceptance item "the bytecode comparison is shown to reject at least
+  > one edit the text comparison accepts" no longer applies. The remaining
+  > Acceptance — the survivor set's validity rate against audit v7 or v8's
+  > defects, and `k` and cost per defect recorded — stands.
 - **Status:** open
 
 ### [2026-09-21] Decision: raise the temperature for edit building only, after #334 is measured
@@ -6143,7 +6131,7 @@ the record.
   recordings once — a one-lane cost, since it is that stage's own control.
 - **Alternative rejected:** raise it as part of #334. Cheaper in wall clock and
   worthless as evidence.
-- **Status:** open
+- **Status:** **filed as #354** on 2026-09-21, sequenced after #334 is measured.
 
 ### [2026-09-21] A subordinate clause becomes an obligation that contradicts an exclusion from the same run
 - **Kind:** filing
@@ -6186,7 +6174,7 @@ the record.
   > yields obligations for the requirement and none for the condition; and an
   > obligation that asserts what a Scope exclusion excludes is reported rather
   > than emitted silently. A regression case pins both.
-- **Status:** open
+- **Status:** **filed as a comment on #212** on 2026-09-21, cross-referencing #196.
 
 ### [2026-09-21] One clause yields two near-identical obligations that never merge, with no diagnostic
 - **Kind:** filing
@@ -6227,7 +6215,7 @@ the record.
   > **Acceptance.** Two obligations derived from one clause whose descriptions
   > differ only in word order either merge, or the run reports why they did not.
   > A regression case pins it.
-- **Status:** open
+- **Status:** **filed as a comment on #277** on 2026-09-21.
 
 ### [2026-09-21] WITHDRAWN — the breakdown was not hiding an obligation; it was showing a merge
 - **Kind:** filing

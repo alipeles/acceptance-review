@@ -1,0 +1,243 @@
+Task completion: NO-MATERIAL-GAPS
+
+4 obligation(s) addressed and strongly supported by discriminating tests; 3 boundary obligation(s) confirmed from code evidence, which is the only kind that applies to them.
+
+Obligations:
+
+  1. The review refuses an edit that differs from the text it replaced only in comments or whitespace.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/mutation/validity.py#@@ -61,6 +76,38 @@ _PARSERS = {
+         1.2  src/acceptance/mutation/validity.py#@@ -119,6 +166,26 @@ def invalidity_reason(
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         1.3  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+
+  2. The refusal is recorded as one of the review's own mechanical checks.
+       requirements: task-02
+       code evidence: addressed
+         2.1  src/acceptance/mutation/validity.py#@@ -119,6 +166,26 @@ def invalidity_reason(
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         2.2  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+
+  3. The review's counts of what each judgement refused are not inflated by edits no judgement was asked about.
+       requirements: task-02
+       code evidence: addressed
+         3.1  src/acceptance/mutation/validity.py#@@ -119,6 +166,26 @@ def invalidity_reason(
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         3.2  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+
+  4. The refusal is reached without asking a model.
+       requirements: constraint-01
+       code evidence: addressed
+         4.1  src/acceptance/mutation/validity.py#@@ -61,6 +76,38 @@ _PARSERS = {
+         4.2  src/acceptance/mutation/validity.py#@@ -119,6 +166,26 @@ def invalidity_reason(
+         4.3  src/acceptance/mutation/verification.py#@@ -7,7 +7,13 @@ questions per observed edit, asked in sequence (#335).
+         4.4  src/acceptance/mutation/verification.py#@@ -206,7 +209,7 @@ def _ask(
+         4.5  src/acceptance/mutation/verification.py#@@ -327,30 +330,6 @@ def _lines(path: str, text: str, *, stripped: bool) -> list[str]:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         4.6  tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+
+  5. The change does not alter the questions the review asks about an edit's behaviour, or whether those questions run at all.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 13 changes across 4 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion, so the repository can settle it by inspection of the change itself rather than by tests.
+
+  6. The change does not involve building an edit or choosing the region of the code it falls in.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 13 changes across 4 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the absence of that work in the change itself, which a reader can verify directly from the diff and review artifacts.
+
+  7. The change does not run the project's tests.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 13 changes across 4 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not done, which is settled by inspecting the change rather than by a test.
+
+Mandate coverage: 6 of 6 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] `validity.py` now exports a new public helper `comparable`, and `verification.py` imports it from there. None of the obligations ask for a new exported symbol or API move; they only require the refusal to happen without a model and to be recorded as a mechanical check.
+       src/acceptance/mutation/validity.py#@@ -61,6 +76,38 @@ _PARSERS = {
+       src/acceptance/mutation/verification.py#@@ -45,7 +51,7 @@ from acceptance.llm import ModelClient, StrictResponseModel
+       src/acceptance/mutation/verification.py#@@ -206,7 +209,7 @@ def _ask(
+       src/acceptance/mutation/verification.py#@@ -327,30 +330,6 @@ def _lines(path: str, text: str, *, stripped: bool) -> list[str]:
+       tests/test_mutation_validity.py#@@ -12,7 +12,7 @@ import pytest
+  2. [in_service] The change moves the comments/whitespace comparison from `verification.py` into the always-on validity gate, which alters when the refusal happens and makes `verify_edits` no longer the place where that check runs. The obligations require refusing such edits without a model and recording that refusal as a mechanical check, but they do not ask to change the behavior of the behavior-verification path or to make the gate itself reject more edits.
+       src/acceptance/mutation/validity.py#@@ -13,22 +13,37 @@ writing the check in terms of Python. A span replacement is text, and a
+       src/acceptance/mutation/validity.py#@@ -61,6 +76,38 @@ _PARSERS = {
+       src/acceptance/mutation/validity.py#@@ -119,6 +166,26 @@ def invalidity_reason(
+       src/acceptance/mutation/verification.py#@@ -7,7 +7,13 @@ questions per observed edit, asked in sequence (#335).
+       src/acceptance/mutation/verification.py#@@ -45,7 +51,7 @@ from acceptance.llm import ModelClient, StrictResponseModel
+       src/acceptance/mutation/verification.py#@@ -59,9 +65,6 @@ _MATCH_STAGE = "mutation verification: defect match"
+       src/acceptance/mutation/verification.py#@@ -206,7 +209,7 @@ def _ask(
+       src/acceptance/mutation/verification.py#@@ -314,7 +317,7 @@ def _lines(path: str, text: str, *, stripped: bool) -> list[str]:
+       src/acceptance/mutation/verification.py#@@ -327,30 +330,6 @@ def _lines(path: str, text: str, *, stripped: bool) -> list[str]:
+       tests/test_mutation_runner.py#@@ -254,6 +254,35 @@ class TestEveryDefectIsAccountedFor:
+       tests/test_mutation_validity.py#@@ -127,6 +127,120 @@ class TestValidity:
+  3. [in_service] The new `comparable` helper and the related token/whitespace logic are a refactor of comparison internals, including moving `_LAYOUT` and the Python suffix constant between modules. The obligations do not require this internal restructuring; they only require the refusal outcome and its accounting.
+       src/acceptance/mutation/validity.py#@@ -61,6 +76,38 @@ _PARSERS = {
+       src/acceptance/mutation/verification.py#@@ -45,7 +51,7 @@ from acceptance.llm import ModelClient, StrictResponseModel
+       src/acceptance/mutation/verification.py#@@ -59,9 +65,6 @@ _MATCH_STAGE = "mutation verification: defect match"
+       src/acceptance/mutation/verification.py#@@ -314,7 +317,7 @@ def _lines(path: str, text: str, *, stripped: bool) -> list[str]:
+       src/acceptance/mutation/verification.py#@@ -327,30 +330,6 @@ def _lines(path: str, text: str, *, stripped: bool) -> list[str]:
+       tests/test_mutation_validity.py#@@ -12,7 +12,7 @@ import pytest
+       tests/test_mutation_validity.py#@@ -127,6 +127,120 @@ class TestValidity:
+  4. [separable] The added tests and docstrings go beyond the requested obligations by asserting the new placement of the check, the shared helper identity, and specific fallback/comparison details. The task asked for the refusal behavior and its accounting, not for these extra explanatory or structural tests.
+       tests/test_mutation_runner.py#@@ -254,6 +254,35 @@ class TestEveryDefectIsAccountedFor:
+       tests/test_mutation_validity.py#@@ -12,7 +12,7 @@ import pytest
+       tests/test_mutation_validity.py#@@ -127,6 +127,120 @@ class TestValidity:
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  reject-comment-or-whitespace-only-edits
+    [not_wired] reject-comment-or-whitespace-only-edits/comment-or-whitespace-check-only-runs-in-verification
+      The comment-or-whitespace comparison exists in the validity helper, but the review path can still bypass it for edits that are only checked by verification settings rather than by the always-on mutation gate.
+      src/acceptance/mutation/validity.py#3
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/mutation/verification.py#3
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+
+  refusal-recorded-as-mechanical-check
+    [not_wired] refusal-recorded-as-mechanical-check/mechanical-check-not-added-to-review-output
+      The new refusal reason is computed in validity.py, but the review output path can still classify the refusal as a judgment about the edit because the mechanical-check label is not propagated into the review result.
+      src/acceptance/mutation/validity.py#3
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/mutation/verification.py#3
+      pairs: 12 put to the model, 85 skipped once the defect was covered
+
+  counts-not-inflated-by-unasked-edits
+    [scope_too_narrow] counts-not-inflated-by-unasked-edits/counting-verification-only-edits
+      The review counts can still include edits that were only checked by the verifier and never went through a judgement request, because the new comparison is only used to refuse edits and does not obviously exclude verifier-only edits from the counting path.
+      src/acceptance/mutation/validity.py#3
+      src/acceptance/mutation/verification.py#0
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [unenforced_on_one_path] counts-not-inflated-by-unasked-edits/counting-path-bypasses-new-gate
+      The new always-on comparison is added in validity, but the code still keeps a separate verification path that can refuse an edit after it has already been counted, so counts could be inflated by edits that were not actually asked about on that route.
+      src/acceptance/mutation/validity.py#3
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/mutation/verification.py#3
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+
+  no-model-in-refusal
+    [not_wired] no-model-in-refusal/mechanical-refusal-not-called-from-review-path
+      The new mechanical comparison exists in `validity.py`, but the review path can still bypass it and reach the model-based refusal logic instead of rejecting the edit mechanically.
+      src/acceptance/mutation/validity.py#3
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/mutation/verification.py#3
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [not_wired] no-model-in-refusal/verification-still-asks-model-after-early-comparison
+      `verification.py` still contains the early comparison, but the surrounding control flow could ignore its refusal result and continue on to model-based judgment anyway.
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/mutation/verification.py#3
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+
+  no-behavior-questions-or-execution
+    [other] no-behavior-questions-or-execution/verification-early-return-removed
+      The verification path no longer stops asking the behaviour question when an edit differs only in comments or whitespace, so the review can now run that question on edits that should have been refused without a model call.
+      src/acceptance/mutation/verification.py#0
+      src/acceptance/mutation/verification.py#3
+      src/acceptance/mutation/verification.py#5
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [other] no-behavior-questions-or-execution/validity-and-verification-disagree-on-comparable
+      The comparison used to decide whether an edit changes behaviour was moved into validity, but verification still has its own behaviour-question gate; if the two copies diverge, the review can ask the behaviour question in one path and skip it in the other.
+      src/acceptance/mutation/validity.py#2
+      src/acceptance/mutation/validity.py#3
+      src/acceptance/mutation/verification.py#1
+      src/acceptance/mutation/verification.py#3
+      src/acceptance/mutation/verification.py#5
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+
+  no-project-tests-run
+    none enumerated: The diff only moves and reuses comparison helpers inside mutation validity/verification code; it does not add any test-running path, subprocess invocation, or project-test execution hook. There is no plausible static defect in the shown changes that would make the change run the project's tests.
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [defect_already_covered] counts-not-inflated-by-unasked-edits/counting-path-bypasses-new-gate x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+  [defect_already_covered] counts-not-inflated-by-unasked-edits/counting-verification-only-edits x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+  [defect_already_covered] no-behavior-questions-or-execution/validity-and-verification-disagree-on-comparable x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable, tests/test_mutation_validity.py::TestTheVerifierAndTheGateAgree::test_the_verifier_uses_the_shared_comparison
+  [defect_already_covered] no-behavior-questions-or-execution/verification-early-return-removed x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+  [defect_already_covered] no-model-in-refusal/mechanical-refusal-not-called-from-review-path x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+  [defect_already_covered] no-model-in-refusal/verification-still-asks-model-after-early-comparison x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+  [defect_already_covered] refusal-recorded-as-mechanical-check/mechanical-check-not-added-to-review-output x 85 candidate test(s), ranked 13 to 97
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+  [defect_already_covered] reject-comment-or-whitespace-only-edits/comment-or-whitespace-check-only-runs-in-verification x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/test_mutation_runner.py::TestEveryDefectIsAccountedFor::test_an_edit_changing_only_comments_is_not_mutable
+
+Running the project's tests:
+  the project's tests were run: 8 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [not_mutable] counts-not-inflated-by-unasked-edits/counting-path-bypasses-new-gate
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    the replacement for src/acceptance/mutation/verification.py lines 212..218 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+
+  [survived, NOT COUNTED] counts-not-inflated-by-unasked-edits/counting-verification-only-edits
+    injected at src/acceptance/mutation/verification.py lines 11-12:
+      -    more** — `validity.py` applies the same comparison to every candidate,
+      -    whether or not verification is on, so such an edit is already `not_mutable`.
+      + 11 |    more — `validity.py` applies the same comparison to every candidate,
+      + 12 |    whether or not verification is on, so such an edit is already `not_mutable`.
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+
+  [not_mutable] no-behavior-questions-or-execution/validity-and-verification-disagree-on-comparable
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    the replacement for src/acceptance/mutation/verification.py lines 212..212 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+
+  [survived, NOT COUNTED] no-behavior-questions-or-execution/verification-early-return-removed
+    injected at src/acceptance/mutation/verification.py lines 17-19:
+      -    comments and NOT shown the defect. An edit it says changes nothing is refused
+      -    here; one it cannot decide about goes on to the second question rather than
+      -    being refused for want of an answer.
+      +     comments and whitespace removed; an edit
+      +     that differs in nothing else is refused with no model call, since no answer
+      +     could be in doubt. Otherwise a model is asked, shown the code without its
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+
+  [not_mutable] no-model-in-refusal/mechanical-refusal-not-called-from-review-path
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    the replacement for src/acceptance/mutation/verification.py lines 212..218 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+
+  [not_mutable] no-model-in-refusal/verification-still-asks-model-after-early-comparison
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    the replacement for src/acceptance/mutation/verification.py lines 212..218 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+
+  [not_mutable] refusal-recorded-as-mechanical-check/mechanical-check-not-added-to-review-output
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 85 skipped once the defect was covered
+    the span 213..218 falls outside the region(s) the defect named in src/acceptance/mutation/verification.py (7..19, 209..215)
+
+  [not_mutable] reject-comment-or-whitespace-only-edits/comment-or-whitespace-check-only-runs-in-verification
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    the replacement for src/acceptance/mutation/verification.py lines 7..19 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+
+Evidence limitations:
+  1. No material gaps found at the achievable evidence tier — not proof of correctness. The full application was not independently executed (§3.7).
+
+Recommended next instruction: (none)run 18699ec2fcdac462
+  continue this run with: --continue 18699ec2fcdac462
+Model usage by stage:
+  stage                         model                                                            calls  prompt  output  cached  this run  recorded
+  ----------------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------
+  decompose                     openai/gpt-5.4-mini                           10 (6 live / 4 replayed)  53,993   1,448    0.0%   $0.0283   $0.0470
+  decompose-summary             openai/gpt-5.4                                 2 (2 live / 0 replayed)   1,751     700    0.0%   $0.0149   $0.0149
+  obligation linking            voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)   1,654     288    0.0%   $0.0023   $0.0023
+  defect enumeration            openai/gpt-5.4-mini                            6 (6 live / 0 replayed)  21,718   1,519    0.0%   $0.0231   $0.0231
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini  15 (15 live / 0 replayed)  27,386   2,354    0.0%   $0.0221   $0.0221
+  coverage classification       openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   5,643     639    0.0%   $0.0071   $0.0071
+  unrequested-change detection  openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   5,079     642    0.0%   $0.0067   $0.0067
+  disposition judgment          openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   2,726      95    0.0%   $0.0025   $0.0025
+  mutation descriptor           openai/gpt-5.4-mini                            8 (8 live / 0 replayed)  30,586   1,176    0.0%   $0.0282   $0.0282
+  this run spent $0.1353 on 42 live call(s); the evidence cost $0.1539 to record (4 call(s) replayed at no cost to this run)
+
