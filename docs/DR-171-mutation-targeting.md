@@ -66,11 +66,51 @@ refused candidate with its cause (`failed_check`, `changed_nothing`,
 A decline or a claim that the code is already defective ends the loop: it is the
 model's considered answer about the defect, not a bad edit.
 
-**Not measured here.** Whether this raises the validity rate of the edits that
-get used is #334's Acceptance, measured on `docs/audit-protocol.md` against the
-same defects as audit v7 or v8. So is the share of passing edits that change no
-behaviour, which no mechanical check catches; if it is large, a better check is
-built before #334 closes.
+### Measured, 2026-09-22 (audits v9 and v10)
+
+Two arms over v6's 64 defects and 22 criteria at `518f876`, the inputs v7 and v8
+used. `dogfood-logs/45-injection-audits/injection-audit-v{9,10}-judgement.md`
+carry the judgements; `run_audit.py` and `score_audit.py` beside them reproduce
+the runs and the rates, which no earlier audit could.
+
+**Audit v10 holds the model at `openai/gpt-5.4` and changes only this revision,
+so it is the arm that attributes anything.** Against v8:
+
+| | v8 (one candidate) | v10 (up to three) |
+|---|---|---|
+| defects with no usable edit | 7 | **0** |
+| edits that inject, per defect asked about | 25 of 64 | **31 of 64** |
+| the same, of the edits that passed the gates | 25 of 48 (52%) | 31 of 52 (60%) |
+| real kills | 21 of 39 (54%) | 25 of 38 (66%) |
+
+**The refusal result is the solid one: 7 to 0.** Every defect got a usable edit,
+which is the failure this revision set out to remove, and the move is far larger
+than one run per arm can produce by chance. The validity move is 52% to 60%,
+eight points, which `docs/audit-protocol.md` warns is near the edge of what a
+single run separates from noise; the sturdier form is that six more defects got
+a genuine injection and none lost one.
+
+**It is nearly free on this model.** 72 candidate edits for 64 defects — 46 used
+their first, 5 their second, 1 their third — at $1.5952 for edit building,
+$0.0249 per defect, and $2.4834 and 1182 seconds for the whole run.
+
+**Audit v9 is the same revision with edits on `openai/gpt-5.4-mini`.** It gets
+24% valid edits and leaves 19 of 64 defects with no usable edit, buying 117
+candidates because its refused candidates so often repeat themselves verbatim at
+temperature 0. It is 2.8 times cheaper per defect and worth less than half as
+much. It also supports #354, the issue on raising this stage's temperature: the
+refusal text shown in a later request did not move that model's answer.
+
+**The share of passing edits that change no behaviour is 4 of 52 (8%) on v10**,
+and 2 of 41 on v9. None is reachable by a text comparison: an added conjunct at
+`pipeline.py:284` that is always true, two `_parser_for` rewrites at
+`validity.py:138-142` that compute the same result, and a filter at
+`pipeline.py:509` comparing a string against a list of `SetAsideTest` models so
+it matches nothing. **Three of the four survived**, and a survival is the finding
+that the builder's tests are weak — so such an edit does not merely waste a
+slot, it manufactures a false accusation against the tests. Whether 8% requires
+the better check #334 contemplates is the human's call on this figure and is
+open.
 
 ## Where M8.4 landed, 2026-09-18
 
@@ -148,6 +188,22 @@ code either side of the edit, before and after, never the tests) and measured on
 |---|---|---|
 | bad edits it refused (catch rate) | 27 of 35 | 77% |
 | good edits it refused (false alarms) | 8 of 31 | 26% |
+
+**Re-measured 2026-09-22 on audit v10's fresh labels, after #335 split it into
+two questions and #334 improved the edits: still below the bar.** 16 of 21 bad
+edits refused (76%, bar 80%) and 5 of 31 good edits refused (16%, bar under
+10%). Every refusal came from the defect-match question; the behaviour-change
+question refused nothing at all. On audit v9's arm, whose edits come from the
+smaller model and are wrong in more obvious ways, the same verifier scores 94%
+and 0% — the two arms disagree because refusing an obviously bad edit is an
+easier task, and v10 is the arm whose edits are worth keeping. So the bar is not
+met and `verify_edits` stays false.
+
+**The behaviour-change question does not do the job it was added for.** Of the
+six edits the judging passes found to change no behaviour across both arms, it
+refused one; on v10 it refused none of the four and positively verified one of
+them. That is the check #334's Acceptance contemplates needing, and the existing
+question is not it.
 
 About a quarter of what it would verify is still a bad edit, so it is **not
 adopted**; it sits behind `ExecutionSettings.verify_edits`, off. Five of its eight
