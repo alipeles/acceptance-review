@@ -1,24 +1,24 @@
 # Task
 
-When the review builds an edit for a named plausible defect, it asks for several
-candidate edits instead of one and uses the first that passes the checks the
-review already applies to an edit. How many candidates it asks for is
-configurable. When no candidate passes, the review says that none of the
-candidates it asked for could be used, rather than that the defect cannot be
-turned into an edit, and otherwise handles the defect the way it handles one no
-edit could be built for today.
+A review can be configured to run individual stages with a reasoning effort, the
+same way it can already give an individual stage its own model. The setting maps
+a stage's label to an effort value. A stage not in the map runs exactly as it
+does today, and with nothing configured every request the review sends is
+unchanged, so every response recorded before this change still replays.
+Configuring one stage changes only that stage's requests.
 
-For each defect, the review records how many candidates it asked for, how many it
-set aside and why, and which candidate it used. Its report says what building
-edits cost and how long it took, since asking for several candidates multiplies
-both.
+A run never quietly goes without the reasoning it was configured to use. If the
+provider would discard the requested effort for a stage's model, the run stops
+before calling it, with an error naming the stage and the model.
 
-## Constraints
-- Two runs over the same input pick the same candidate.
+For each stage, the review's provenance records the reasoning effort in force.
+It also records, for each stage, the temperature and seed that actually reached
+the provider for that stage's calls, rather than the ones that were asked for,
+since a provider may refuse a temperature on a reasoning call. Each call's usage records its reasoning tokens, so the cost the
+report shows includes them.
 
 ## Scope exclusions
-- Whether an edit that passes the checks really makes its named defect true.
-- Which plausible defects are enumerated, and which region of the code an edit is
-  allowed to fall in.
-- Which tests are candidates, how the project's tests are run, and how the result
-  of a run is read.
+- Which stages should use reasoning, and at what effort. No stage's default
+  changes.
+- A command-line option for the setting.
+- Changing any stage's temperature.
