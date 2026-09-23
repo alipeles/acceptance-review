@@ -6528,3 +6528,13 @@ the record.
 - **Why I didn't act:** Decided at #366's Gate 1 (human, 2026-09-23): accept the refusal for now, because every measurement #366 enables runs on OpenAI.
 - **Drafted fix:** Filing, sub-issue of #184 (determinism and reproducibility). Title: "Check whether LiteLLM honours a reasoning effort on Anthropic models under another name". Body: #366 stops a run when LiteLLM reports a requested reasoning effort as dropped. For `anthropic/claude-sonnet-5` it reports exactly that, offline. Find out whether LiteLLM maps the effort to Anthropic's thinking parameter; if it does, teach the check to recognise the translated form, and record the translated value in provenance. Acceptance: a stage configured with an effort on an Anthropic model either runs with thinking applied and recorded, or is refused with evidence that the provider would not have applied it.
 - **Status:** open
+
+### [2026-09-23] The review's copy of the repo cannot resolve old commits, so a test that reads history is set aside
+- **Kind:** filing
+- **Found during:** #366, Gate 2 run 1 (`dogfood-logs/366-gate2-run1/output.log`, "Candidate tests set aside")
+- **Where:** the execution sandbox's repository copy; test `tests/benchmark/test_rating_regression.py::test_scoring_goes_through_the_shared_benchmark_path`
+- **Severity:** should-fix
+- **What's wrong:** The test passes in the repo but fails in the unmodified copy the review runs tests in, with `UnresolvableRevisionError: case '163-gate2-run1' names revision '4d13ba1', which this repository no longer resolves`. The revision resolves in the real repo, so the copy is missing history. Every review therefore sets this test aside, and any obligation it could evidence loses it. Unrelated to #366's change.
+- **Why I didn't act:** Outside #366's scope, which is `llm.py`, `config.py` and the provenance.
+- **Drafted fix:** Filing, unparented like #364 because no umbrella covers the execution sandbox. Title: "The review's repository copy lacks history, so tests that resolve old commits are set aside". Body: as above, with the log excerpt. Find how the sandbox copy is made (a shallow clone or a working-tree copy) and give it the objects a benchmark case's pinned revision needs, or classify the failure as an environment limitation rather than a failing test. Acceptance: the test named above runs in the sandbox copy and is not set aside, or is set aside with a reason naming missing history rather than as a failure.
+- **Status:** open
