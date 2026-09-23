@@ -1,0 +1,74 @@
+run ed55dde4b2bce366
+  continuing 9ee9b55ca53a9814
+  requirements: 0 derived, 5 carried, 1 revised; 5 decompose call(s)
+  continue this run with: --continue ed55dde4b2bce366
+Model usage by stage:
+  stage                        model                                                          calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  -------------------------------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    openai/gpt-5.4-mini                          4 (4 live / 0 replayed)  21,610     687   45.0%   $0.0127   $0.0127           7.3s
+  decompose-summary            openai/gpt-5.4                               1 (1 live / 0 replayed)     831     345    0.0%   $0.0073   $0.0073           3.5s
+  obligation linking           voyage/voyage-3.5-lite, openai/gpt-5.4-mini  2 (2 live / 0 replayed)   1,259      88    0.0%   $0.0010   $0.0010           1.5s
+  requirement carry alignment  openai/gpt-5.4-mini                          1 (1 live / 0 replayed)     393      24    0.0%   $0.0004   $0.0004           5.6s
+  this run spent $0.0214 on 8 live call(s); the evidence cost $0.0214 to record (0 call(s) replayed at no cost to this run)
+Requirements: 6   with obligations: 5   deliberately none: 1
+
+[task-01] A review can be configured to run individual stages with a reasoning effort,
+    the same way it can already give an individual stage its own model. The setting maps
+    a stage's label to an effort value. A stage not in the map runs exactly as it does
+    today, and with nothing configured every request the review sends is unchanged, so
+    every response recorded before this change still replays. Configuring one stage
+    changes only that stage's requests.
+    -> stage-reasoning-effort-configurable  [functional/explicit]
+       A review can be configured to run individual stages with a reasoning effort.
+    -> stage-label-to-effort-map  [functional/explicit]
+       The setting maps a stage's label to an effort value.
+    -> preserve-unchanged-requests-with-empty-config  [compatibility/explicit]
+       With no stage-effort configuration set, every request the review sends remains
+       unchanged.
+    -> replay-existing-recordings  [compatibility/explicit]
+       Preserve replayability of every response recorded before this change.
+    -> stage-config-affects-only-that-stage-requests  [invariant/explicit]
+       Configuring one stage changes only that stage's requests.
+
+[task-02] A run never quietly goes without the reasoning it was configured to use. If
+    the provider would discard the requested effort for a stage's model, the run stops
+    before calling it, with an error naming the stage and the model.
+    -> reasoning-configured-use-is-preserved  [invariant/explicit]
+       A run never quietly goes without the reasoning it was configured to use.
+    -> stop-before-discarded-effort-call  [error_handling/explicit]
+       If the provider would discard the requested effort for a stage's model, the run
+       stops before calling that model.
+    -> error-identifies-stage-and-model  [explanation_observability/explicit]
+       If the provider would discard the requested effort for a stage's model, the
+       resulting error names the stage and the model.
+
+[task-03] For each stage, the review's provenance records the reasoning effort in force.
+    It also records, for each stage, the temperature and seed that actually reached the
+    provider for that stage's calls, rather than the ones that were asked for, since a
+    provider may refuse a temperature on a reasoning call. Each call's usage records its
+    reasoning tokens, so the cost the report shows includes them.
+    -> reasoning-effort-in-provenance  [explanation_observability/explicit]
+       The review's provenance records the reasoning effort in force for each stage.
+    -> stage-provider-actual-temperature-and-seed  [explanation_observability/explicit]
+       For each stage, record the temperature and seed that actually reached the
+       provider for that stage's calls.
+    -> call-usage-records-reasoning-tokens  [invariant/explicit]
+       Each call's usage records its reasoning tokens.
+    -> include-reasoning-tokens-in-reported-cost  [functional/explicit]
+       The report's displayed cost includes reasoning tokens recorded in each call's
+       usage.
+
+[exclusion-01] Which stages should use reasoning, and at what effort. No stage's default
+    changes.
+    -> no-stage-default-changes  [compatibility/explicit]
+       The change does not alter any stage's default reasoning behavior.
+
+[exclusion-02] A command-line option for the setting.
+    -- no obligation, deliberately
+       This is a scope exclusion naming work that must not be added: a command-line
+       option for the setting.
+
+[exclusion-03] Changing any stage's temperature.
+    -> preserve-stage-temperatures  [invariant/explicit]
+       The change does not alter any stage's temperature.
+

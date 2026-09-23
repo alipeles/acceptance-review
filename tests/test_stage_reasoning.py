@@ -197,13 +197,23 @@ def test_a_dropped_effort_on_another_stage_does_not_stop_a_stage_without_one(sto
 
 def test_litellm_itself_is_what_stops_a_model_that_takes_no_effort(store):
     """The real offline answer, not a stand-in: `gpt-4o` takes no reasoning
-    effort, and LiteLLM's `drop_params` would discard it without a word. The
-    run is refused before any network call, so this test makes none."""
+    effort, and LiteLLM's `drop_params` would discard it without a word.
+
+    The completion function is a tripwire carrying LiteLLM's real reporter,
+    rather than the default one, so that if the check ever stops working this
+    test fails instead of making a live, billed call."""
+    from acceptance.llm import _litellm_effective_controls
+
+    def tripwire(**kwargs):
+        raise AssertionError("the call was made; the effort check did not stop it")
+
+    tripwire.effective_controls = _litellm_effective_controls
     client = ModelClient(
         model="openai/gpt-4o",
         mode=Mode.RECORD,
         store=store,
         seed=7,
+        completion_fn=tripwire,
         stage_reasoning={DESCRIPTOR: "low"},
     )
 

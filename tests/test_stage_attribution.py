@@ -270,9 +270,13 @@ def test_a_real_review_run_attributes_every_call_it_made(tmp_path):
     # And each observation carries the fields the aggregate needs — including
     # `seconds`, the in-memory call time behind the footer's time column (#334),
     # which is None for a replayed call and never reaches a transcript.
+    # A completion call also carries the controls it ran under, for the
+    # per-stage provenance (#366); an embedding sends none and carries none.
+    fields = {"stage", "key", "served_from", "model", "usage", "seconds"}
     for call in observed:
-        assert set(call) == {"stage", "key", "served_from", "model", "usage", "seconds"}
+        assert set(call) in (fields, fields | {"controls"})
         assert call["served_from"] in {"provider", "recording"}
+    assert any("controls" in call for call in observed)
 
 
 # Fragments that would betray the breakdown if it leaked into a persisted review

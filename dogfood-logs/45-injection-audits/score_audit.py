@@ -108,6 +108,13 @@ def main(argv: list[str] | None = None) -> int:
         per_defect = edit_spend["cost_usd"] / len(asked) if asked else 0.0
         print(f"- edit building: ${edit_spend['cost_usd']:.4f}, {edit_spend['seconds']:.0f}s live")
         print(f"- cost per defect asked about: ${per_defect:.4f}")
+    # Attempts files written before #366 carry neither field; both default to
+    # "none", which is what those runs used.
+    reasoning = attempts_doc.get("stage_reasoning") or {}
+    print(f"- reasoning effort: {reasoning or 'none'}")
+    for stage, row in sorted(spend.items()):
+        if row.get("reasoning_tokens"):
+            print(f"- {stage}: {row['reasoning_tokens']:,} reasoning tokens")
     print(f"- wall clock for the whole run: {attempts_doc['wall_clock_seconds']:.0f}s")
 
     # --- #335: each verification question, against the judged labels --------
