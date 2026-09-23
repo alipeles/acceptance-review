@@ -1,0 +1,1947 @@
+Task completion: NO-MATERIAL-GAPS
+
+12 obligation(s) addressed and strongly supported by discriminating tests; 2 boundary obligation(s) confirmed from code evidence, which is the only kind that applies to them.
+
+Obligations:
+
+  1. A review can be configured to run individual stages with a reasoning effort.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/config.py#@@ -141,6 +152,12 @@ class RunConfig(BaseModel):
+         1.2  src/acceptance/config.py#@@ -194,6 +211,7 @@ class RunConfig(BaseModel):
+         1.3  src/acceptance/llm.py#@@ -450,6 +484,7 @@ class ModelClient:
+         1.4  src/acceptance/llm.py#@@ -464,6 +499,12 @@ class ModelClient:
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         1.5  tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under
+         1.6  tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+         1.7  tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one
+         1.8  tests/test_stage_reasoning.py::test_the_effort_is_sent_to_the_provider
+
+  2. The setting maps a stage's label to an effort value.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/config.py#@@ -141,6 +152,12 @@ class RunConfig(BaseModel):
+         2.2  src/acceptance/llm.py#@@ -464,6 +499,12 @@ class ModelClient:
+         2.3  src/acceptance/llm.py#@@ -625,6 +677,15 @@ class ModelClient:
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         2.4  tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call
+         2.5  tests/test_stage_reasoning.py::test_configuring_one_stage_moves_its_key_and_no_other_stage_key
+         2.6  tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one
+         2.7  tests/test_stage_reasoning.py::test_the_effort_is_sent_to_the_provider
+         2.8  tests/test_stage_reasoning.py::test_two_efforts_on_one_stage_are_two_different_requests
+
+  3. With no stage-effort configuration set, every request the review sends remains unchanged.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/config.py#@@ -141,6 +152,12 @@ class RunConfig(BaseModel):
+         3.2  src/acceptance/llm.py#@@ -625,6 +677,15 @@ class ModelClient:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         3.3  tests/requirement/test_decompose_partitioning.py::test_changing_the_partition_size_changes_the_request_key
+         3.4  tests/test_stage_attribution.py::test_a_real_review_run_attributes_every_call_it_made
+         3.5  tests/test_stage_reasoning.py::test_a_recording_with_no_controls_known_claims_none
+
+  4. Preserve replayability of every response recorded before this change.
+       requirements: task-01
+       code evidence: addressed
+         4.1  src/acceptance/llm.py#@@ -625,6 +677,15 @@ class ModelClient:
+         4.2  tests/test_stage_reasoning.py#@@ -0,0 +1,371 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         4.3  tests/test_stage_attribution.py::test_a_real_review_run_attributes_every_call_it_made
+         4.4  tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under
+
+  5. Configuring one stage changes only that stage's requests.
+       requirements: task-01
+       code evidence: addressed
+         5.1  src/acceptance/llm.py#@@ -508,6 +549,10 @@ class ModelClient:
+         5.2  src/acceptance/llm.py#@@ -625,6 +677,15 @@ class ModelClient:
+         5.3  tests/test_stage_reasoning.py#@@ -0,0 +1,371 @@
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         5.4  tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+         5.5  tests/test_stage_reasoning.py::test_run_config_reaches_the_client
+         5.6  tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one
+         5.7  tests/test_stage_reasoning.py::test_the_effort_is_sent_to_the_provider
+
+  6. A run never quietly goes without the reasoning it was configured to use.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/llm.py#@@ -91,6 +102,18 @@ class TranscriptNotFoundError(LLMError):
+         6.2  src/acceptance/llm.py#@@ -916,15 +1024,33 @@ class ModelClient:
+         6.3  tests/test_stage_reasoning.py#@@ -0,0 +1,371 @@
+       test evidence: strongly supported — kills 6 of 6 enumerated defects (static prediction)  [tier: static]
+         6.4  tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call
+         6.5  tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under
+         6.6  tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+         6.7  tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one
+         6.8  tests/test_stage_reasoning.py::test_the_footer_shows_reasoning_tokens_only_when_a_stage_reasoned
+
+  7. If the provider would discard the requested effort for a stage's model, the run stops before calling that model.
+       requirements: task-02
+       code evidence: addressed
+         7.1  src/acceptance/llm.py#@@ -916,15 +1024,33 @@ class ModelClient:
+         7.2  tests/test_stage_reasoning.py#@@ -0,0 +1,371 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         7.3  tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call
+         7.4  tests/test_stage_reasoning.py::test_litellm_itself_is_what_stops_a_model_that_takes_no_effort
+
+  8. If the provider would discard the requested effort for a stage's model, the resulting error names the stage and the model.
+       requirements: task-02
+       code evidence: addressed
+         8.1  src/acceptance/llm.py#@@ -916,15 +1024,33 @@ class ModelClient:
+         8.2  tests/test_stage_reasoning.py#@@ -0,0 +1,371 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         8.3  tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call
+
+  9. The review's provenance records the reasoning effort in force for each stage.
+       requirements: task-03
+       code evidence: addressed
+         9.1  src/acceptance/config.py#@@ -218,5 +236,9 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+         9.2  src/acceptance/review_state.py#@@ -1147,6 +1147,25 @@ class DeterminismControls(_Model):
+         9.3  src/acceptance/review_state.py#@@ -1217,6 +1236,11 @@ class ReviewProvenance(_Model):
+         9.4  src/acceptance/llm.py#@@ -902,7 +971,46 @@ class ModelClient:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         9.5  tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+         9.6  tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+
+  10. For each stage, record the temperature and seed that actually reached the provider for that stage's calls.
+       requirements: task-03
+       code evidence: addressed
+         10.1  src/acceptance/llm.py#@@ -548,26 +594,32 @@ class ModelClient:
+         10.2  src/acceptance/llm.py#@@ -902,7 +971,46 @@ class ModelClient:
+         10.3  src/acceptance/config.py#@@ -218,5 +236,9 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+         10.4  src/acceptance/review_state.py#@@ -1147,6 +1147,25 @@ class DeterminismControls(_Model):
+         10.5  src/acceptance/review_state.py#@@ -1217,6 +1236,11 @@ class ReviewProvenance(_Model):
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         10.6  tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+         10.7  tests/test_llm.py::test_a_client_reports_the_controls_the_provider_honoured
+         10.8  tests/test_stage_reasoning.py::test_a_recording_with_no_controls_known_claims_none
+
+  11. Each call's usage records its reasoning tokens.
+       requirements: task-03
+       code evidence: addressed
+         11.1  src/acceptance/llm.py#@@ -397,6 +420,17 @@ def _extract_usage(response: Any) -> dict:
+         11.2  src/acceptance/usage.py#@@ -66,6 +66,7 @@ _TOKEN_FIELDS = (
+         11.3  src/acceptance/usage.py#@@ -100,6 +101,10 @@ class StageUsage(BaseModel):
+         11.4  src/acceptance/usage.py#@@ -198,6 +203,8 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         11.5  tests/test_stage_reasoning.py::test_a_call_records_its_reasoning_tokens
+         11.6  tests/test_stage_reasoning.py::test_the_footer_shows_reasoning_tokens_only_when_a_stage_reasoned
+
+  12. The report's displayed cost includes reasoning tokens recorded in each call's usage.
+       requirements: task-03
+       code evidence: addressed
+         12.1  src/acceptance/usage.py#@@ -228,8 +235,14 @@ def render(usage: RunUsage) -> str:
+         12.2  tests/test_stage_reasoning.py#@@ -0,0 +1,371 @@
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         12.3  tests/test_stage_reasoning.py::test_the_cost_of_a_reasoning_call_includes_its_reasoning_tokens
+
+  13. The change does not alter any stage's default reasoning behavior.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 31 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about preserving existing default behavior, which is settled by the change itself rather than by a test.
+
+  14. The change does not alter any stage's temperature.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 31 changes across 9 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, so the repository itself is sufficient to verify it.
+
+Mandate coverage: 5 of 6 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] exclusion-02: A command-line option for the setting.
+       reason: This is a scope exclusion naming work that must not be added: a command-line option for the setting.
+
+Unrequested changes:
+  1. [in_service] Adds a new exported `ReasoningEffort` type alias in `acceptance.llm` and threads a new `stage_reasoning` parameter through `RunConfig`/`ModelClient` APIs. The obligations require configurable stage reasoning, but they do not require exposing a new public symbol or changing these constructor signatures beyond what is necessary to support the feature.
+       src/acceptance/llm.py#@@ -31,7 +31,7 @@ import time
+       src/acceptance/llm.py#@@ -50,6 +50,17 @@ UNKNOWN_STAGE = "unknown"
+       src/acceptance/llm.py#@@ -450,6 +484,7 @@ class ModelClient:
+       src/acceptance/config.py#@@ -24,8 +24,19 @@ from pydantic import BaseModel, ConfigDict, Field
+       src/acceptance/config.py#@@ -141,6 +152,12 @@ class RunConfig(BaseModel):
+       src/acceptance/config.py#@@ -194,6 +211,7 @@ class RunConfig(BaseModel):
+  2. [in_service] Adds `reasoning_tokens` extraction from provider usage and includes it in usage summaries/rendering and cost calculations. The obligations ask to record reasoning tokens and include them in reported cost, but they do not require changing the usage-reporting UI or the internal aggregation model beyond what is needed for cost accounting.
+       src/acceptance/llm.py#@@ -397,6 +420,17 @@ def _extract_usage(response: Any) -> dict:
+       src/acceptance/usage.py#@@ -66,6 +66,7 @@ _TOKEN_FIELDS = (
+       src/acceptance/usage.py#@@ -100,6 +101,10 @@ class StageUsage(BaseModel):
+       src/acceptance/usage.py#@@ -198,6 +203,8 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+       src/acceptance/usage.py#@@ -228,8 +235,14 @@ def render(usage: RunUsage) -> str:
+  3. [in_service] Sets `LITELLM_LOCAL_MODEL_COST_MAP` in test setup to alter LiteLLM's runtime behavior. No obligation calls for changing test-environment dependency/configuration; this is ancillary to the feature.
+       tests/conftest.py#@@ -1,8 +1,17 @@
+  4. [in_service] Introduces `stage_controls` into provenance and computes per-stage actual temperature/seed/reasoning from observed calls. The obligations require provenance to record reasoning effort and actual temperature/seed, but the new per-stage aggregation logic and its handling of embeddings/replayed calls go beyond the explicitly requested provenance fields.
+       src/acceptance/llm.py#@@ -548,26 +594,32 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -682,7 +743,15 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -902,7 +971,46 @@ class ModelClient:
+       src/acceptance/review_state.py#@@ -1147,6 +1147,25 @@ class DeterminismControls(_Model):
+       src/acceptance/review_state.py#@@ -1217,6 +1236,11 @@ class ReviewProvenance(_Model):
+       src/acceptance/config.py#@@ -218,5 +236,9 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
+       tests/test_cli.py#@@ -146,6 +146,18 @@ def test_check_records_determinism_flags_in_provenance(
+       tests/test_stage_attribution.py#@@ -270,9 +270,13 @@ def test_a_real_review_run_attributes_every_call_it_made(tmp_path):
+       tests/test_stage_reasoning.py#@@ -0,0 +1,371 @@
+  5. [in_service] Adds a new test file with extensive scenario coverage, including request-key stability, provider-drop handling, provenance, replay, embeddings, and pricing. The obligations require the feature, but they do not specifically call for this breadth of new test coverage or these particular test cases.
+       tests/test_stage_reasoning.py#@@ -0,0 +1,371 @@
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  stage-reasoning-effort-configurable  (reused from an earlier run)
+    [not_wired] stage-reasoning-effort-configurable/reasoning-effort-not-passed-from-config
+      The review configuration can store per-stage reasoning effort, but the configured value is never forwarded into the model client used for stage execution.
+      src/acceptance/config.py#1
+      src/acceptance/config.py#2
+      pairs: 12 put to the model, 246 skipped once the defect was covered
+    [not_wired] stage-reasoning-effort-configurable/reasoning-effort-not-added-to-request
+      The model client knows about per-stage reasoning effort, but the request-building path does not include it when a stage runs.
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#5
+      src/acceptance/llm.py#9
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [not_wired] stage-reasoning-effort-configurable/reasoning-effort-dropped-before-live-call
+      The live-call path can compute whether a reasoning effort would be honored, but the computed value is not actually used when the provider call is made.
+      src/acceptance/llm.py#13
+      src/acceptance/llm.py#14
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [other] stage-reasoning-effort-configurable/reasoning-effort-not-reflected-in-provenance
+      The code records stage controls in provenance, but the provenance path could omit reasoning effort or serialize it in a way that loses the configured stage-level value.
+      src/acceptance/config.py#3
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+
+  stage-label-to-effort-map  (reused from an earlier run)
+    [not_wired] stage-label-to-effort-map/stage-effort-not-threaded-into-request
+      A configured stage effort can be stored on the run config but never reach the request builder, so requests are built without the configured reasoning effort.
+      src/acceptance/config.py#1
+      src/acceptance/config.py#2
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#6
+      src/acceptance/llm.py#9
+      pairs: 4 put to the model, 6 skipped once the defect was covered
+    [missing_case] stage-label-to-effort-map/stage-label-lookup-uses-wrong-key
+      The stage-effort lookup can miss configured stages if the code looks up the wrong label form, so some configured stage labels never resolve to their effort values.
+      src/acceptance/llm.py#5
+      src/acceptance/llm.py#6
+      src/acceptance/llm.py#9
+      pairs: 12 put to the model, 246 skipped once the defect was covered
+    [not_wired] stage-label-to-effort-map/effort-not-added-to-request-hash
+      The configured effort may be read but not included in the hashed request, so the request builder does not actually distinguish requests by stage effort.
+      src/acceptance/llm.py#9
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [wrong_output_shape] stage-label-to-effort-map/effort-value-shape-does-not-match-request
+      The configured effort is carried through in the wrong shape, so the request does not contain the effort value in the form the request builder expects.
+      src/acceptance/config.py#1
+      src/acceptance/llm.py#9
+      pairs: 6 put to the model, 252 skipped once the defect was covered
+
+  preserve-unchanged-requests-with-empty-config  (reused from an earlier run)
+    [scope_too_narrow] preserve-unchanged-requests-with-empty-config/empty-config-still-adds-reasoning-field
+      Requests built with an otherwise empty configuration can still gain a new `reasoning_effort` field when a stage is configured with reasoning, so not every request remains identical to the pre-change request shape.
+      src/acceptance/llm.py#9
+      src/acceptance/config.py#1
+      pairs: 28 put to the model, 230 skipped once the defect was covered
+    [other] preserve-unchanged-requests-with-empty-config/empty-config-stage-controls-propagated-into-provenance
+      The new provenance plumbing can record per-stage controls even when the run was meant to have no stage-effort configuration, which means the delivered path is no longer preserving the old request shape everywhere it is observed.
+      src/acceptance/config.py#3
+      src/acceptance/llm.py#12
+      src/acceptance/review_state.py#1
+      pairs: 15 put to the model, 243 skipped once the defect was covered
+
+  replay-existing-recordings  (reused from an earlier run)
+    [scope_too_narrow] replay-existing-recordings/reasoning-effort-added-to-request-key
+      Recorded requests from before this change can stop matching because the request hash now includes a reasoning_effort field for some stages, so old transcripts for those stages no longer replay.
+      src/acceptance/llm.py#9
+      src/acceptance/config.py#1
+      pairs: 12 put to the model, 246 skipped once the defect was covered
+    [other] replay-existing-recordings/stage-controls-in-provenance-breaks-replay-metadata
+      Previously recorded provenance data may become unreadable if the new stage_controls structure is required or interpreted in a way that older recordings do not provide.
+      src/acceptance/config.py#3
+      src/acceptance/review_state.py#1
+      src/acceptance/llm.py#12
+      pairs: 12 put to the model, 246 skipped once the defect was covered
+
+  stage-config-affects-only-that-stage-requests  (reused from an earlier run)
+    [scope_too_narrow] stage-config-affects-only-that-stage-requests/stage-reasoning-applied-to-all-requests
+      The new reasoning-effort request field could be added for every request instead of only for the configured stage, so configuring one stage would change other stages' payloads too.
+      src/acceptance/llm.py#9
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [established_not_maintained] stage-config-affects-only-that-stage-requests/stage-controls-leak-into-unrelated-stages
+      The observed stage-controls bookkeeping could be computed from all calls in a way that makes one stage's configured controls appear on other stages' provenance, which would indicate the stage-specific separation is not preserved after requests are made.
+      src/acceptance/llm.py#12
+      src/acceptance/config.py#3
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [not_wired] stage-config-affects-only-that-stage-requests/reasoning-setting-not-threaded-into-client
+      The new stage_reasoning configuration could be defined on RunConfig but never passed into ModelClient, so configuring a stage would have no effect on any request payloads.
+      src/acceptance/config.py#2
+      src/acceptance/config.py#1
+      src/acceptance/llm.py#4
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  reasoning-configured-use-is-preserved  (reused from an earlier run)
+    [established_not_maintained] reasoning-configured-use-is-preserved/reasoning-effort-not-in-request-key
+      A stage can be configured with reasoning effort, but the request key may not include that setting, so a run can replay or proceed as if the configured reasoning were never part of the request.
+      src/acceptance/llm.py#9
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [unenforced_on_one_path] reasoning-configured-use-is-preserved/reasoning-effort-not-blocked-before-call
+      A live completion path can still send a reasoning effort that the provider will drop, and the run may continue instead of failing before the call.
+      src/acceptance/llm.py#13
+      src/acceptance/llm.py#14
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [established_not_maintained] reasoning-configured-use-is-preserved/reasoning-controls-not-recorded-per-stage
+      The code can observe completion calls without preserving the reasoning control that was actually used, so provenance can no longer show which stage ran with which reasoning setting.
+      src/acceptance/llm.py#8
+      src/acceptance/llm.py#12
+      src/acceptance/config.py#3
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+      pairs: 4 put to the model, 0 skipped once the defect was covered
+    [not_wired] reasoning-configured-use-is-preserved/reasoning-stage-controls-not-propagated-to-provenance
+      Stage-level reasoning controls may be computed in the client but never make it into the provenance object returned by the config layer.
+      src/acceptance/config.py#3
+      pairs: 3 put to the model, 0 skipped once the defect was covered
+    [not_wired] reasoning-configured-use-is-preserved/reasoning-usage-not-summarized
+      Reasoning-token usage can be extracted from calls but never accumulated into the run usage summary, so a run that reasoned can still be reported as if it did not.
+      src/acceptance/usage.py#0
+      src/acceptance/usage.py#2
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] reasoning-configured-use-is-preserved/reasoning-column-hidden-on-some-reasoning-runs
+      The usage table only shows the reasoning column when the summed reasoning token count is truthy, so a run that reasoned but reported zero reasoning tokens would hide the column and look like no reasoning was used.
+      src/acceptance/usage.py#3
+      pairs: 12 put to the model, 246 skipped once the defect was covered
+
+  stop-before-discarded-effort-call  (reused from an earlier run)
+    [scope_too_narrow] stop-before-discarded-effort-call/effort-check-only-on-completions
+      The pre-call stop is only applied on completion requests, so a stage that requests reasoning effort on a non-completion path could still invoke its model even though the provider would discard the effort.
+      src/acceptance/llm.py#13
+      src/acceptance/llm.py#10
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [wrong_error_surfaced] stop-before-discarded-effort-call/wrong-error-for-discarded-effort
+      The run may stop, but it reports the failure as the provider refusing the control rather than as the specific discarded-effort stop the criterion requires.
+      src/acceptance/llm.py#13
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+
+  error-identifies-stage-and-model  (reused from an earlier run)
+    [explanation_absent] error-identifies-stage-and-model/missing-stage-or-model-in-error-text
+      The discarded-effort error is raised without including both the stage and the model in the message, so the caller cannot tell which stage/model pair failed.
+      src/acceptance/llm.py#13
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [explanation_states_wrong_cause] error-identifies-stage-and-model/wrong-stage-or-model-mentioned
+      The discarded-effort error names the wrong stage or the wrong model, so the message points at a different call than the one that actually failed.
+      src/acceptance/llm.py#13
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+
+  reasoning-effort-in-provenance  (reused from an earlier run)
+    [not_wired] reasoning-effort-in-provenance/stage-controls-not-populated-from-live-calls
+      The provenance builder can emit stage_controls, but live completion calls may never record the controls needed to populate it, so the provenance output omits the reasoning effort for stages that actually ran.
+      src/acceptance/llm.py#8
+      src/acceptance/llm.py#11
+      src/acceptance/llm.py#12
+      src/acceptance/config.py#3
+      pairs: 4 put to the model, 2 skipped once the defect was covered
+    [scope_too_narrow] reasoning-effort-in-provenance/embedding-calls-pollute-stage-controls
+      The provenance logic only includes stages that have a controls entry, so if non-completion calls are mixed in or a stage has incomplete control observations, the reasoning effort for that stage can be dropped from the provenance output.
+      src/acceptance/llm.py#8
+      src/acceptance/llm.py#12
+      src/acceptance/config.py#3
+      pairs: 12 put to the model, 246 skipped once the defect was covered
+    [not_wired] reasoning-effort-in-provenance/stage-controls-field-not-rendered-in-provenance-model
+      The ReviewProvenance model has a stage_controls field, but the provenance path may fail to serialize or expose it in the actual review output, so the reasoning effort never appears in the provenance artifact.
+      src/acceptance/review_state.py#1
+      src/acceptance/config.py#3
+      pairs: 3 put to the model, 0 skipped once the defect was covered
+
+  stage-provider-actual-temperature-and-seed  (reused from an earlier run)
+    [scope_too_narrow] stage-provider-actual-temperature-and-seed/stage-controls-omit-provider-values-for-replayed-calls
+      The provenance builder only records per-stage controls from observed completion calls, so stages whose calls were replayed or otherwise lacked a live provider response can end up with no temperature/seed entry even though the criterion asks for each stage.
+      src/acceptance/llm.py#12
+      src/acceptance/config.py#3
+      pairs: 6 put to the model, 252 skipped once the defect was covered
+    [scope_too_narrow] stage-provider-actual-temperature-and-seed/embedding-calls-can-mask-stage-controls
+      The stage-level control summary is built only from calls that have a `controls` field, and embeddings are explicitly excluded from that field; if a stage makes only embeddings or a mix where the completion call is absent, the provenance can miss the actual provider-received temperature and seed for that stage.
+      src/acceptance/llm.py#8
+      src/acceptance/llm.py#12
+      src/acceptance/config.py#3
+      pairs: 14 put to the model, 244 skipped once the defect was covered
+
+  call-usage-records-reasoning-tokens  (reused from an earlier run)
+    [scope_too_narrow] call-usage-records-reasoning-tokens/reasoning-tokens-not-summarized-for-calls
+      Call usage summaries can omit reasoning token counts for some calls, so the recorded usage data is incomplete for those calls.
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#8
+      src/acceptance/usage.py#0
+      src/acceptance/usage.py#1
+      src/acceptance/usage.py#2
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [other] call-usage-records-reasoning-tokens/reasoning-tokens-not-added-to-rendered-usage
+      The usage pipeline can record reasoning tokens internally but fail to expose them in the call usage data that is returned or rendered.
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#8
+      src/acceptance/usage.py#1
+      src/acceptance/usage.py#2
+      src/acceptance/usage.py#3
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  include-reasoning-tokens-in-reported-cost  (reused from an earlier run)
+    [other] include-reasoning-tokens-in-reported-cost/reasoning-tokens-not-added-to-cost-summary
+      The usage summarizer can track reasoning_tokens separately, but the reported cost fields may still be computed from completion_tokens alone, so reasoning tokens present in call usage records would not change the displayed cost.
+      src/acceptance/usage.py#0
+      src/acceptance/usage.py#1
+      src/acceptance/usage.py#2
+      src/acceptance/usage.py#3
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+
+  no-stage-default-changes  (reused from an earlier run)
+    [scope_too_narrow] no-stage-default-changes/default-reasoning-added-to-all-stages
+      Stages that are absent from the new reasoning-effort map can still have their request shape changed by the new reasoning plumbing, so the default behaviour is no longer preserved for every unmapped stage.
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#6
+      src/acceptance/llm.py#9
+      src/acceptance/llm.py#12
+      src/acceptance/config.py#1
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+    [other] no-stage-default-changes/reasoning-controls-leak-into-default-provenance
+      The new provenance and usage tracking can record reasoning-control state for stages that never opted into the map, changing what the system reports about their default behaviour even when their request path should be unchanged.
+      src/acceptance/llm.py#8
+      src/acceptance/llm.py#12
+      src/acceptance/config.py#3
+      src/acceptance/review_state.py#0
+      src/acceptance/review_state.py#1
+      src/acceptance/usage.py#1
+      src/acceptance/usage.py#3
+      pairs: 7 put to the model, 251 skipped once the defect was covered
+
+  preserve-stage-temperatures  (reused from an earlier run)
+    [scope_too_narrow] preserve-stage-temperatures/reasoning-stage-drops-temperature
+      A stage that is configured with reasoning effort can end up running without its temperature setting, so the change alters that stage's temperature behavior.
+      src/acceptance/llm.py#9
+      src/acceptance/llm.py#13
+      src/acceptance/review_state.py#0
+      src/acceptance/config.py#1
+      pairs: 4 put to the model, 3 skipped once the defect was covered
+    [other] preserve-stage-temperatures/temperature-summary-misreports-stage-controls
+      The new stage-controls plumbing can record or report a stage as having no temperature even when the stage actually ran with one, so the change can alter the observed stage temperature state.
+      src/acceptance/llm.py#8
+      src/acceptance/llm.py#12
+      src/acceptance/config.py#3
+      src/acceptance/review_state.py#0
+      pairs: 4 put to the model, 254 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [prefiltered] call-usage-records-reasoning-tokens/reasoning-tokens-not-added-to-rendered-usage x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py, src/acceptance/usage.py — no path to the defect exists
+  [prefiltered] call-usage-records-reasoning-tokens/reasoning-tokens-not-summarized-for-calls x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py, src/acceptance/usage.py — no path to the defect exists
+  [prefiltered] error-identifies-stage-and-model/missing-stage-or-model-in-error-text x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] error-identifies-stage-and-model/wrong-stage-or-model-mentioned x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] include-reasoning-tokens-in-reported-cost/reasoning-tokens-not-added-to-cost-summary x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/usage.py — no path to the defect exists
+  [prefiltered] no-stage-default-changes/default-reasoning-added-to-all-stages x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] no-stage-default-changes/reasoning-controls-leak-into-default-provenance x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py, src/acceptance/review_state.py, src/acceptance/usage.py — no path to the defect exists
+  [prefiltered] preserve-stage-temperatures/reasoning-stage-drops-temperature x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] preserve-stage-temperatures/temperature-summary-misreports-stage-controls x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] preserve-unchanged-requests-with-empty-config/empty-config-stage-controls-propagated-into-provenance x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] preserve-unchanged-requests-with-empty-config/empty-config-still-adds-reasoning-field x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] reasoning-configured-use-is-preserved/reasoning-column-hidden-on-some-reasoning-runs x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/usage.py — no path to the defect exists
+  [prefiltered] reasoning-configured-use-is-preserved/reasoning-controls-not-recorded-per-stage x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] reasoning-configured-use-is-preserved/reasoning-effort-not-blocked-before-call x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] reasoning-configured-use-is-preserved/reasoning-effort-not-in-request-key x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] reasoning-configured-use-is-preserved/reasoning-stage-controls-not-propagated-to-provenance x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py — no path to the defect exists
+  [prefiltered] reasoning-configured-use-is-preserved/reasoning-usage-not-summarized x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/usage.py — no path to the defect exists
+  [prefiltered] reasoning-effort-in-provenance/embedding-calls-pollute-stage-controls x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] reasoning-effort-in-provenance/stage-controls-field-not-rendered-in-provenance-model x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] reasoning-effort-in-provenance/stage-controls-not-populated-from-live-calls x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] replay-existing-recordings/reasoning-effort-added-to-request-key x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] replay-existing-recordings/stage-controls-in-provenance-breaks-replay-metadata x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] stage-config-affects-only-that-stage-requests/reasoning-setting-not-threaded-into-client x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-config-affects-only-that-stage-requests/stage-controls-leak-into-unrelated-stages x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-config-affects-only-that-stage-requests/stage-reasoning-applied-to-all-requests x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-label-to-effort-map/effort-not-added-to-request-hash x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-label-to-effort-map/effort-value-shape-does-not-match-request x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-label-to-effort-map/stage-effort-not-threaded-into-request x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-label-to-effort-map/stage-label-lookup-uses-wrong-key x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-provider-actual-temperature-and-seed/embedding-calls-can-mask-stage-controls x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-provider-actual-temperature-and-seed/stage-controls-omit-provider-values-for-replayed-calls x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-reasoning-effort-configurable/reasoning-effort-dropped-before-live-call x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-reasoning-effort-configurable/reasoning-effort-not-added-to-request x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stage-reasoning-effort-configurable/reasoning-effort-not-passed-from-config x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py — no path to the defect exists
+  [prefiltered] stage-reasoning-effort-configurable/reasoning-effort-not-reflected-in-provenance x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/config.py, src/acceptance/review_state.py — no path to the defect exists
+  [prefiltered] stop-before-discarded-effort-call/effort-check-only-on-completions x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] stop-before-discarded-effort-call/wrong-error-for-discarded-effort x tests/test_decision_records.py::test_dr_202_records_the_three_disposition_set_and_parse_time_completeness
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [passed_under_edit] call-usage-records-reasoning-tokens/reasoning-tokens-not-added-to-rendered-usage x 256 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] preserve-stage-temperatures/reasoning-stage-drops-temperature x 251 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 6 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] reasoning-configured-use-is-preserved/reasoning-controls-not-recorded-per-stage x 254 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 3 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] reasoning-configured-use-is-preserved/reasoning-stage-controls-not-propagated-to-provenance x 255 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] reasoning-configured-use-is-preserved/reasoning-usage-not-summarized x 256 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] reasoning-effort-in-provenance/stage-controls-field-not-rendered-in-provenance-model x 255 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] reasoning-effort-in-provenance/stage-controls-not-populated-from-live-calls x 252 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 5 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] stage-config-affects-only-that-stage-requests/reasoning-setting-not-threaded-into-client x 256 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] stage-label-to-effort-map/stage-effort-not-threaded-into-request x 248 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 9 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] call-usage-records-reasoning-tokens/reasoning-tokens-not-summarized-for-calls x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_call_records_its_reasoning_tokens
+  [defect_already_covered] error-identifies-stage-and-model/missing-stage-or-model-in-error-text x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call
+  [defect_already_covered] error-identifies-stage-and-model/wrong-stage-or-model-mentioned x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call
+  [defect_already_covered] include-reasoning-tokens-in-reported-cost/reasoning-tokens-not-added-to-cost-summary x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_the_cost_of_a_reasoning_call_includes_its_reasoning_tokens
+  [defect_already_covered] no-stage-default-changes/default-reasoning-added-to-all-stages x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one
+  [defect_already_covered] no-stage-default-changes/reasoning-controls-leak-into-default-provenance x 251 candidate test(s), ranked 6 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_with_no_stage_configured_every_key_is_the_one_recorded_before_the_setting
+  [defect_already_covered] preserve-stage-temperatures/reasoning-stage-drops-temperature x 3 candidate test(s), ranked 85 to 104
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under, tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+  [defect_already_covered] preserve-stage-temperatures/temperature-summary-misreports-stage-controls x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under, tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+  [defect_already_covered] preserve-unchanged-requests-with-empty-config/empty-config-stage-controls-propagated-into-provenance x 243 candidate test(s), ranked 15 to 258
+    not asked: the defect was already covered by tests/test_stage_attribution.py::test_a_real_review_run_attributes_every_call_it_made
+  [defect_already_covered] preserve-unchanged-requests-with-empty-config/empty-config-still-adds-reasoning-field x 230 candidate test(s), ranked 29 to 258
+    not asked: the defect was already covered by tests/requirement/test_decompose_partitioning.py::test_changing_the_partition_size_changes_the_request_key, tests/test_stage_reasoning.py::test_a_recording_with_no_controls_known_claims_none
+  [defect_already_covered] reasoning-configured-use-is-preserved/reasoning-column-hidden-on-some-reasoning-runs x 246 candidate test(s), ranked 13 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_the_footer_shows_reasoning_tokens_only_when_a_stage_reasoned
+  [defect_already_covered] reasoning-configured-use-is-preserved/reasoning-effort-not-blocked-before-call x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call
+  [defect_already_covered] reasoning-configured-use-is-preserved/reasoning-effort-not-in-request-key x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one
+  [defect_already_covered] reasoning-effort-in-provenance/embedding-calls-pollute-stage-controls x 246 candidate test(s), ranked 13 to 258
+    not asked: the defect was already covered by tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+  [defect_already_covered] reasoning-effort-in-provenance/stage-controls-not-populated-from-live-calls x 2 candidate test(s), ranked 16 to 178
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+  [defect_already_covered] replay-existing-recordings/reasoning-effort-added-to-request-key x 246 candidate test(s), ranked 13 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under
+  [defect_already_covered] replay-existing-recordings/stage-controls-in-provenance-breaks-replay-metadata x 246 candidate test(s), ranked 13 to 258
+    not asked: the defect was already covered by tests/test_stage_attribution.py::test_a_real_review_run_attributes_every_call_it_made
+  [defect_already_covered] stage-config-affects-only-that-stage-requests/stage-controls-leak-into-unrelated-stages x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+  [defect_already_covered] stage-config-affects-only-that-stage-requests/stage-reasoning-applied-to-all-requests x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one, tests/test_stage_reasoning.py::test_the_effort_is_sent_to_the_provider
+  [defect_already_covered] stage-label-to-effort-map/effort-not-added-to-request-hash x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_two_efforts_on_one_stage_are_two_different_requests
+  [defect_already_covered] stage-label-to-effort-map/effort-value-shape-does-not-match-request x 252 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one, tests/test_stage_reasoning.py::test_the_effort_is_sent_to_the_provider
+  [defect_already_covered] stage-label-to-effort-map/stage-effort-not-threaded-into-request x 6 candidate test(s), ranked 8 to 92
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call, tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one, tests/test_stage_reasoning.py::test_the_effort_is_sent_to_the_provider
+  [defect_already_covered] stage-label-to-effort-map/stage-label-lookup-uses-wrong-key x 246 candidate test(s), ranked 13 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_configuring_one_stage_moves_its_key_and_no_other_stage_key
+  [defect_already_covered] stage-provider-actual-temperature-and-seed/embedding-calls-can-mask-stage-controls x 244 candidate test(s), ranked 14 to 258
+    not asked: the defect was already covered by tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+  [defect_already_covered] stage-provider-actual-temperature-and-seed/stage-controls-omit-provider-values-for-replayed-calls x 252 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_llm.py::test_a_client_reports_the_controls_the_provider_honoured, tests/test_stage_reasoning.py::test_a_recording_with_no_controls_known_claims_none
+  [defect_already_covered] stage-reasoning-effort-configurable/reasoning-effort-dropped-before-live-call x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_the_effort_is_sent_to_the_provider
+  [defect_already_covered] stage-reasoning-effort-configurable/reasoning-effort-not-added-to-request x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one
+  [defect_already_covered] stage-reasoning-effort-configurable/reasoning-effort-not-passed-from-config x 246 candidate test(s), ranked 13 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under, tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+  [defect_already_covered] stage-reasoning-effort-configurable/reasoning-effort-not-reflected-in-provenance x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+  [defect_already_covered] stop-before-discarded-effort-call/effort-check-only-on-completions x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call, tests/test_stage_reasoning.py::test_litellm_itself_is_what_stops_a_model_that_takes_no_effort
+  [defect_already_covered] stop-before-discarded-effort-call/wrong-error-for-discarded-effort x 254 candidate test(s), ranked 5 to 258
+    not asked: the defect was already covered by tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call
+
+Running the project's tests:
+  the project's tests were run: 37 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [killed, NOT COUNTED] call-usage-records-reasoning-tokens/reasoning-tokens-not-added-to-rendered-usage
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/usage.py lines 255..256 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/usage.py lines 255-256:
+           -         if show_reasoning:
+           -             cells.append("—" if stage.reasoning_tokens is None else f"{stage.reasoning_tokens:,}")
+           +         if show_reasoning:
+           +             cells.append("—" if stage.reasoning_tokens is None else f"{stage.reasoning_tokens:,}")
+      2. set aside (changed_nothing): the replacement for src/acceptance/usage.py lines 255..256 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/usage.py lines 255-256:
+           -         if show_reasoning:
+           -             cells.append("—" if stage.reasoning_tokens is None else f"{stage.reasoning_tokens:,}")
+           +         if show_reasoning:
+           +             cells.append("—" if stage.reasoning_tokens is None else f"{stage.reasoning_tokens:,}")
+    injected at src/acceptance/usage.py lines 242-242:
+      -     show_reasoning = any(stage.reasoning_tokens for stage in usage.stages)
+      +     show_reasoning = True
+    caught by (1):
+      tests/test_stage_reasoning.py::test_the_footer_shows_reasoning_tokens_only_when_a_stage_reasoned
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 256 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] call-usage-records-reasoning-tokens/reasoning-tokens-not-summarized-for-calls
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 428..432 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 428-432:
+           -         output_details = _usage_field(raw, "completion_tokens_details")
+           -         if output_details is not None:
+           -             value = _usage_field(output_details, "reasoning_tokens")
+           -             if value is not None:
+           -                 usage["reasoning_tokens"] = value
+           +         output_details = _usage_field(raw, "completion_tokens_details")
+           +         if output_details is not None:
+           +             value = _usage_field(output_details, "reasoning_tokens")
+           +             if value is not None:
+           +                 usage["reasoning_tokens"] = value
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 428..432 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 428-432:
+           -         output_details = _usage_field(raw, "completion_tokens_details")
+           -         if output_details is not None:
+           -             value = _usage_field(output_details, "reasoning_tokens")
+           -             if value is not None:
+           -                 usage["reasoning_tokens"] = value
+           +         output_details = _usage_field(raw, "completion_tokens_details")
+           +         if output_details is not None:
+           +             value = _usage_field(output_details, "reasoning_tokens")
+           +             if value is not None:
+           +                 usage["reasoning_tokens"] = value
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 428..432 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 428-432:
+           -         output_details = _usage_field(raw, "completion_tokens_details")
+           -         if output_details is not None:
+           -             value = _usage_field(output_details, "reasoning_tokens")
+           -             if value is not None:
+           -                 usage["reasoning_tokens"] = value
+           +         output_details = _usage_field(raw, "completion_tokens_details")
+           +         if output_details is not None:
+           +             value = _usage_field(output_details, "reasoning_tokens")
+           +             if value is not None:
+           +                 usage["reasoning_tokens"] = value
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] error-identifies-stage-and-model/missing-stage-or-model-in-error-text
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1053)
+         at src/acceptance/llm.py lines 1047-1052:
+           -             raise ControlNotHonouredError(
+           -                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           -                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           -                 "receive it: the provider's controls discard it, so the call would run "
+           -                 "without reasoning. Remove the effort for this stage or move the stage "
+           -                 "to a model that accepts one."
+           +             raise ControlNotHonouredError(
+           +                 f"stage {stage or UNKNOWN_STAGE!r} with model {request['model']!r} is configured with reasoning effort "
+           +                 f"{requested['reasoning_effort']!r}, but would not receive it: the provider's controls discard it, so the call would run "
+           +                 "without reasoning. Remove the effort for this stage or move the stage "
+           +                 "to a model that accepts one."
+           +             )
+      2. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1054)
+         at src/acceptance/llm.py lines 1047-1052:
+           -             raise ControlNotHonouredError(
+           -                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           -                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           -                 "receive it: the provider's controls discard it, so the call would run "
+           -                 "without reasoning. Remove the effort for this stage or move the stage "
+           -                 "to a model that accepts one."
+           +             raise ControlNotHonouredError(
+           +                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           +                 f"{requested['reasoning_effort']!r}, but {request['model']!r} would not "
+           +                 "receive it: the provider's controls discard it, so the call would run "
+           +                 "without reasoning. Remove the effort for this stage or move the stage "
+           +                 "to a model that accepts one."
+           +             )
+      3. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1054)
+         at src/acceptance/llm.py lines 1047-1052:
+           -             raise ControlNotHonouredError(
+           -                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           -                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           -                 "receive it: the provider's controls discard it, so the call would run "
+           -                 "without reasoning. Remove the effort for this stage or move the stage "
+           -                 "to a model that accepts one."
+           +             raise ControlNotHonouredError(
+           +                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           +                 f"{requested['reasoning_effort']!r}, but {request['model']!r} would not "
+           +                 "receive it: the provider's controls discard it, so the call would run "
+           +                 "without reasoning. Remove the effort for this stage or move the stage "
+           +                 "to a model that accepts one."
+           +             )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] error-identifies-stage-and-model/wrong-stage-or-model-mentioned
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1048..1052 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1048-1052:
+           -                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           -                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           -                 "receive it: the provider's controls discard it, so the call would run "
+           -                 "without reasoning. Remove the effort for this stage or move the stage "
+           -                 "to a model that accepts one."
+           +                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           +                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           +                 "receive it: the provider's controls discard it, so the call would run "
+           +                 "without reasoning. Remove the effort for this stage or move the stage "
+           +                 "to a model that accepts one."
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1048..1052 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1048-1052:
+           -                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           -                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           -                 "receive it: the provider's controls discard it, so the call would run "
+           -                 "without reasoning. Remove the effort for this stage or move the stage "
+           -                 "to a model that accepts one."
+           +                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           +                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           +                 "receive it: the provider's controls discard it, so the call would run "
+           +                 "without reasoning. Remove the effort for this stage or move the stage "
+           +                 "to a model that accepts one."
+    injected at src/acceptance/llm.py lines 1048-1052:
+      -                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+      -                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+      -                 "receive it: the provider's controls discard it, so the call would run "
+      -                 "without reasoning. Remove the effort for this stage or move the stage "
+      -                 "to a model that accepts one."
+      +                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+      +                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+      +                 "receive it: the provider's controls discard it, so the call would run "
+      +                 "without reasoning. Remove the effort for this model or move the model "
+      +                 "to a stage that accepts one."
+    no test caught it; 258 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+
+  [survived, NOT COUNTED] include-reasoning-tokens-in-reported-cost/reasoning-tokens-not-added-to-cost-summary
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (failed_check): the span 255..260 falls outside the region(s) the defect named in src/acceptance/usage.py (66..72, 101..110, 203..210, 235..248)
+         at src/acceptance/usage.py lines 255-260:
+           -         if show_reasoning:
+           -             cells.append("—" if stage.reasoning_tokens is None else f"{stage.reasoning_tokens:,}")
+           -         cells += [
+           -             _share(stage.cached_prompt_share),
+           -             f"${stage.run_spend_usd:.4f}",
+           -             f"${stage.evidence_cost_usd:.4f}",
+           +         if show_reasoning:
+           +             cells.append("—" if stage.reasoning_tokens is None else f"{stage.reasoning_tokens:,}")
+           +         billed_output_tokens = stage.completion_tokens + (stage.reasoning_tokens or 0)
+           +         cells += [
+           +             _share(stage.cached_prompt_share),
+           +             f"${stage.run_spend_usd:.4f}",
+           +             f"${stage.evidence_cost_usd:.4f}",
+           +             "—" if stage.call_seconds is None else f"{stage.call_seconds:.1f}s",
+           +         ]
+    injected at src/acceptance/usage.py lines 206-207:
+      -             elif field == "reasoning_tokens":
+      -                 stage.reasoning_tokens = (stage.reasoning_tokens or 0) + int(value)
+      +             elif field == "reasoning_tokens":
+      +                 stage.reasoning_tokens = (stage.reasoning_tokens or 0) + int(value)
+      +                 stage.completion_tokens += int(value)
+    no test caught it; 258 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+
+  [no_usable_edit] no-stage-default-changes/default-reasoning-added-to-all-stages
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 502..507 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 502-507:
+           -         # Stages that run with a reasoning effort (#366), shaped like the map
+           -         # above. A stage absent from it sends no effort at all, which is not the
+           -         # same request as one sending `none`: the provider's default is `none`
+           -         # today, but only the absent form leaves every recording made before
+           -         # this setting existed still replaying.
+           -         self._stage_reasoning = dict(stage_reasoning or {})
+           +         # Stages that run with a reasoning effort (#366), shaped like the map
+           +         # above. A stage absent from it sends no effort at all, which is not the
+           +         # same request as one sending `none`: the provider's default is `none`
+           +         # today, but only the absent form leaves every recording made before
+           +         # this setting existed still replaying.
+           +         self._stage_reasoning = dict(stage_reasoning or {})
+      2. set aside (refused_after_run): 141 of the 258 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/llm.py lines 552-554:
+           -     def reasoning_for(self, stage: str | None) -> ReasoningEffort | None:
+           -         """The reasoning effort this stage asks for, or None if it asks for none."""
+           -         return self._stage_reasoning.get(stage or UNKNOWN_STAGE)
+           +     def reasoning_for(self, stage: str | None) -> ReasoningEffort | None:
+           +         """The reasoning effort this stage asks for, or None if it asks for none."""
+           +         return self._stage_reasoning.get(stage or UNKNOWN_STAGE, ReasoningEffort.NONE)
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] no-stage-default-changes/reasoning-controls-leak-into-default-provenance
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 239-242:
+      -         stage_controls={
+      -             stage: StageControls(**controls)
+      -             for stage, controls in client.stage_controls_in_force.items()
+      -         },
+      +         stage_controls={
+      +             stage: StageControls(**controls)
+      +             for stage, controls in client.stage_controls_in_force.items()
+      +             if controls.get("reasoning_effort") is not None
+      +         },
+    caught by (2):
+      tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+      tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 7 put to the model, 0 dropped as not worth asking, 251 skipped once the defect was covered
+
+  [killed, NOT COUNTED] preserve-stage-temperatures/reasoning-stage-drops-temperature
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1033..1037 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1033-1037:
+           -         requested = {"temperature": request["temperature"]}
+           -         if "seed" in request:
+           -             requested["seed"] = request["seed"]
+           -         if "reasoning_effort" in request:
+           -             requested["reasoning_effort"] = request["reasoning_effort"]
+           +         requested = {"temperature": request["temperature"]}
+           +         if "seed" in request:
+           +             requested["seed"] = request["seed"]
+           +         if "reasoning_effort" in request:
+           +             requested["reasoning_effort"] = request["reasoning_effort"]
+    injected at src/acceptance/llm.py lines 1033-1037:
+      -         requested = {"temperature": request["temperature"]}
+      -         if "seed" in request:
+      -             requested["seed"] = request["seed"]
+      -         if "reasoning_effort" in request:
+      -             requested["reasoning_effort"] = request["reasoning_effort"]
+      +         requested = {}
+      +         if "seed" in request:
+      +             requested["seed"] = request["seed"]
+      +         if "reasoning_effort" in request:
+      +             requested["reasoning_effort"] = request["reasoning_effort"]
+    caught by (6):
+      tests/test_cli.py::test_a_default_cli_run_is_seeded
+      tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+      tests/test_llm.py::test_a_run_is_only_as_pinned_as_its_least_pinned_call
+      tests/test_llm.py::test_a_transcript_records_which_determinism_controls_actually_applied
+      tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under
+      tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 251 dropped as not worth asking, 3 skipped once the defect was covered
+
+  [no_usable_edit] preserve-stage-temperatures/temperature-summary-misreports-stage-controls
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/config.py does not parse: closing parenthesis '}' does not match opening parenthesis '(' on line 232 (<unknown>, line 244)
+         at src/acceptance/config.py lines 239-241:
+           -         stage_controls={
+           -             stage: StageControls(**controls)
+           -             for stage, controls in client.stage_controls_in_force.items()
+           +         stage_controls={
+           +             stage: StageControls(**controls)
+           +             for stage, controls in client.stage_controls_in_force.items()
+           +             if controls.get("temperature") is not None
+           +         },
+      2. set aside (failed_check): the mutated src/acceptance/config.py does not parse: closing parenthesis '}' does not match opening parenthesis '(' on line 232 (<unknown>, line 243)
+         at src/acceptance/config.py lines 239-241:
+           -         stage_controls={
+           -             stage: StageControls(**controls)
+           -             for stage, controls in client.stage_controls_in_force.items()
+           +         stage_controls={
+           +             stage: StageControls(**controls)
+           +             for stage, controls in client.stage_controls_in_force.items()
+           +         },
+      3. set aside (failed_check): the mutated src/acceptance/config.py does not parse: closing parenthesis '}' does not match opening parenthesis '(' on line 232 (<unknown>, line 243)
+         at src/acceptance/config.py lines 239-241:
+           -         stage_controls={
+           -             stage: StageControls(**controls)
+           -             for stage, controls in client.stage_controls_in_force.items()
+           +         stage_controls={
+           +             stage: StageControls(temperature=None, seed=controls.get("seed"), reasoning_effort=controls.get("reasoning_effort"))
+           +             for stage, controls in client.stage_controls_in_force.items()
+           +         },
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] preserve-unchanged-requests-with-empty-config/empty-config-stage-controls-propagated-into-provenance
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 239-242:
+      -         stage_controls={
+      -             stage: StageControls(**controls)
+      -             for stage, controls in client.stage_controls_in_force.items()
+      -         },
+      +         stage_controls={},
+    caught by (2):
+      tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+      tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 15 put to the model, 0 dropped as not worth asking, 243 skipped once the defect was covered
+
+  [no_usable_edit] preserve-unchanged-requests-with-empty-config/empty-config-still-adds-reasoning-field
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 681..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 681-688:
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 681..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 681-688:
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 681..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 681-688:
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 230 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] reasoning-configured-use-is-preserved/reasoning-column-hidden-on-some-reasoning-runs
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 242-242:
+      -     show_reasoning = any(stage.reasoning_tokens for stage in usage.stages)
+      +     show_reasoning = any(stage.reasoning_tokens is not None for stage in usage.stages)
+    no test caught it; 258 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 246 skipped once the defect was covered
+
+  [killed, NOT COUNTED] reasoning-configured-use-is-preserved/reasoning-controls-not-recorded-per-stage
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 620..621 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 620-621:
+           -         if controls is not _NOT_A_COMPLETION:
+           -             observed["controls"] = None if controls is None else dict(controls)  # type: ignore[arg-type]
+           +         if controls is not _NOT_A_COMPLETION:
+           +             observed["controls"] = None if controls is None else dict(controls)  # type: ignore[arg-type]
+    injected at src/acceptance/llm.py lines 620-621:
+      -         if controls is not _NOT_A_COMPLETION:
+      -             observed["controls"] = None if controls is None else dict(controls)  # type: ignore[arg-type]
+      +         if controls is not _NOT_A_COMPLETION:
+      +             observed["controls"] = None
+    caught by (3):
+      tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+      tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under
+      tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 254 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] reasoning-configured-use-is-preserved/reasoning-effort-not-blocked-before-call
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1043..1053 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1043-1053:
+           -         applied = self._effective_controls(request["model"], requested)
+           -         if "reasoning_effort" in requested and (
+           -             applied.get("reasoning_effort") != requested["reasoning_effort"]
+           -         ):
+           -             raise ControlNotHonouredError(
+           -                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           -                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           -                 "receive it: the provider's controls discard it, so the call would run "
+           -                 "without reasoning. Remove the effort for this stage or move the stage "
+           -                 "to a model that accepts one."
+           -             )
+           +         applied = self._effective_controls(request["model"], requested)
+           +         if "reasoning_effort" in requested and (
+           +             applied.get("reasoning_effort") != requested["reasoning_effort"]
+           +         ):
+           +             raise ControlNotHonouredError(
+           +                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           +                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           +                 "receive it: the provider's controls discard it, so the call would run "
+           +                 "without reasoning. Remove the effort for this stage or move the stage "
+           +                 "to a model that accepts one."
+           +             )
+      2. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1045)
+         at src/acceptance/llm.py lines 1043-1045:
+           -         applied = self._effective_controls(request["model"], requested)
+           -         if "reasoning_effort" in requested and (
+           -             applied.get("reasoning_effort") != requested["reasoning_effort"]
+           +         applied = self._effective_controls(request["model"], requested)
+           +         if False:
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1044..1046 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1044-1046:
+           -         if "reasoning_effort" in requested and (
+           -             applied.get("reasoning_effort") != requested["reasoning_effort"]
+           -         ):
+           +         if "reasoning_effort" in requested and (
+           +             applied.get("reasoning_effort") != requested["reasoning_effort"]
+           +         ):
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] reasoning-configured-use-is-preserved/reasoning-effort-not-in-request-key
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] reasoning-configured-use-is-preserved/reasoning-stage-controls-not-propagated-to-provenance
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 239-242:
+      -         stage_controls={
+      -             stage: StageControls(**controls)
+      -             for stage, controls in client.stage_controls_in_force.items()
+      -         },
+      +         stage_controls={},
+    caught by (2):
+      tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+      tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 3 put to the model, 255 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] reasoning-configured-use-is-preserved/reasoning-usage-not-summarized
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/usage.py lines 206..207 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/usage.py lines 206-207:
+           -             elif field == "reasoning_tokens":
+           -                 stage.reasoning_tokens = (stage.reasoning_tokens or 0) + int(value)
+           +             elif field == "reasoning_tokens":
+           +                 stage.reasoning_tokens = (stage.reasoning_tokens or 0) + int(value)
+    injected at src/acceptance/usage.py lines 206-207:
+      -             elif field == "reasoning_tokens":
+      -                 stage.reasoning_tokens = (stage.reasoning_tokens or 0) + int(value)
+      +             elif field == "reasoning_tokens":
+      +                 continue
+    caught by (1):
+      tests/test_stage_reasoning.py::test_the_footer_shows_reasoning_tokens_only_when_a_stage_reasoned
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 256 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] reasoning-effort-in-provenance/embedding-calls-pollute-stage-controls
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 992-994:
+      -         for call in self._observed_calls:
+      -             if "controls" in call:
+      -                 by_stage.setdefault(call["stage"], []).append(call["controls"])
+      +         for call in self._observed_calls:
+      +             if "controls" in call or call.get("served_from") == "completion":
+      +                 by_stage.setdefault(call["stage"], []).append(call.get("controls"))
+    no test caught it; 258 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 246 skipped once the defect was covered
+
+  [killed, NOT COUNTED] reasoning-effort-in-provenance/stage-controls-field-not-rendered-in-provenance-model
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/config.py lines 239..242 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/config.py lines 239-242:
+           -         stage_controls={
+           -             stage: StageControls(**controls)
+           -             for stage, controls in client.stage_controls_in_force.items()
+           -         },
+           +         stage_controls={
+           +             stage: StageControls(**controls)
+           +             for stage, controls in client.stage_controls_in_force.items()
+           +         },
+    injected at src/acceptance/config.py lines 239-242:
+      -         stage_controls={
+      -             stage: StageControls(**controls)
+      -             for stage, controls in client.stage_controls_in_force.items()
+      -         },
+      +         stage_controls={},
+    caught by (2):
+      tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+      tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 3 put to the model, 255 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] reasoning-effort-in-provenance/stage-controls-not-populated-from-live-calls
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 753..753 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 753-753:
+           -             controls=record.get("controls_applied"),
+           +             controls=record.get("controls_applied"),
+    injected at src/acceptance/llm.py lines 753-753:
+      -             controls=record.get("controls_applied"),
+      +             controls=_NOT_A_COMPLETION,
+    caught by (5):
+      tests/test_cli.py::test_check_records_determinism_flags_in_provenance
+      tests/test_stage_attribution.py::test_a_real_review_run_attributes_every_call_it_made
+      tests/test_stage_reasoning.py::test_a_recording_with_no_controls_known_claims_none
+      tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under
+      tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 252 dropped as not worth asking, 2 skipped once the defect was covered
+
+  [no_usable_edit] replay-existing-recordings/reasoning-effort-added-to-request-key
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 681..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 681-688:
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 681..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 681-688:
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 246 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] replay-existing-recordings/stage-controls-in-provenance-breaks-replay-metadata
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/review_state.py lines 1243..1243 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/review_state.py lines 1243-1243:
+           -     stage_controls: dict[str, StageControls] = Field(default_factory=dict)
+           +     stage_controls: dict[str, StageControls] = Field(default_factory=dict)
+    injected at src/acceptance/config.py lines 239-242:
+      -         stage_controls={
+      -             stage: StageControls(**controls)
+      -             for stage, controls in client.stage_controls_in_force.items()
+      -         },
+      +         stage_controls={
+      +             stage: StageControls(**controls)
+      +             for stage, controls in client.stage_controls_in_force.items()
+      +             if controls is not None
+      +         },
+    no test caught it; 258 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 246 skipped once the defect was covered
+
+  [killed, NOT COUNTED] stage-config-affects-only-that-stage-requests/reasoning-setting-not-threaded-into-client
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/config.py lines 214..214 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/config.py lines 214-214:
+           -             stage_reasoning=self.stage_reasoning,
+           +             stage_reasoning=self.stage_reasoning,
+    injected at src/acceptance/config.py lines 214-214:
+      -             stage_reasoning=self.stage_reasoning,
+      +             stage_reasoning=None,
+    caught by (1):
+      tests/test_stage_reasoning.py::test_run_config_reaches_the_client
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 256 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] stage-config-affects-only-that-stage-requests/stage-controls-leak-into-unrelated-stages
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 996-1004:
+      -         for stage, observed in sorted(by_stage.items()):
+      -             per_call = [controls or {} for controls in observed]
+      -             known = all(controls is not None for controls in observed)
+      -             stage_controls: dict[str, Any] = {}
+      -             for name in ("temperature", "seed", "reasoning_effort"):
+      -                 values = [controls.get(name) for controls in per_call]
+      -                 agreed = known and all(value == values[0] for value in values)
+      -                 stage_controls[name] = values[0] if agreed else None
+      -             in_force[stage] = stage_controls
+      +         for stage, observed in sorted(by_stage.items()):
+      +             per_call = [controls or {} for controls in observed]
+      +             known = all(controls is not None for controls in observed)
+      +             stage_controls: dict[str, Any] = {}
+      +             for name in ("temperature", "seed", "reasoning_effort"):
+      +                 values = [controls.get(name) for controls in per_call]
+      +                 agreed = known and all(value == values[0] for value in values)
+      +                 stage_controls[name] = values[0] if agreed else None
+      +             in_force[stage] = stage_controls
+      +         return in_force
+    no test caught it; 258 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+
+  [no_usable_edit] stage-config-affects-only-that-stage-requests/stage-reasoning-applied-to-all-requests
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] stage-label-to-effort-map/effort-not-added-to-request-hash
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] stage-label-to-effort-map/effort-value-shape-does-not-match-request
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 160-160:
+      -     stage_reasoning: dict[str, ReasoningEffort] = Field(default_factory=dict)
+      +     stage_reasoning: dict[str, dict[str, ReasoningEffort]] = Field(default_factory=dict)
+    caught by (1):
+      tests/test_stage_reasoning.py::test_run_config_reaches_the_client
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 6 put to the model, 0 dropped as not worth asking, 252 skipped once the defect was covered
+
+  [killed, NOT COUNTED] stage-label-to-effort-map/stage-effort-not-threaded-into-request
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+    injected at src/acceptance/llm.py lines 680-688:
+      -         effort = self.reasoning_for(stage)
+      -         if effort is not None:
+      -             # Inside the hash, and only when set, exactly as the seed and the
+      -             # partition are (#366). Reasoning changes the answer, so a stage's
+      -             # recordings made without it must not replay for it. Added only when
+      -             # set so that a stage with none — every stage by default — keeps the
+      -             # key it had before this setting existed, and configuring one stage
+      -             # orphans that stage's recordings and no other's.
+      -             request["reasoning_effort"] = effort
+      +         effort = self.reasoning_for(stage)
+      +         if effort is not None:
+      +             # Inside the hash, and only when set, exactly as the seed and the
+      +             # partition are (#366). Reasoning changes the answer, so a stage's
+      +             # recordings made without it must not replay for it. Added only when
+      +             # set so that a stage with none — every stage by default — keeps the
+      +             # key it had before this setting existed, and configuring one stage
+      +             # orphans that stage's recordings and no other's.
+      +             request["reasoning_effort"] = effort.value
+    caught by (9):
+      tests/test_stage_reasoning.py::test_a_call_records_its_reasoning_tokens
+      tests/test_stage_reasoning.py::test_a_dropped_effort_stops_the_run_before_the_call
+      tests/test_stage_reasoning.py::test_a_replayed_stage_reports_the_controls_its_recording_ran_under
+      tests/test_stage_reasoning.py::test_configuring_one_stage_moves_its_key_and_no_other_stage_key
+      tests/test_stage_reasoning.py::test_litellm_itself_is_what_stops_a_model_that_takes_no_effort
+      tests/test_stage_reasoning.py::test_provenance_records_each_stage_controls_as_honoured
+      tests/test_stage_reasoning.py::test_the_effort_is_in_the_request_only_when_its_stage_sets_one
+      tests/test_stage_reasoning.py::test_the_effort_is_sent_to_the_provider
+      tests/test_stage_reasoning.py::test_two_efforts_on_one_stage_are_two_different_requests
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 248 dropped as not worth asking, 6 skipped once the defect was covered
+
+  [survived, NOT COUNTED] stage-label-to-effort-map/stage-label-lookup-uses-wrong-key
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 554..554 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 554-554:
+           -         return self._stage_reasoning.get(stage or UNKNOWN_STAGE)
+           +         return self._stage_reasoning.get(stage or UNKNOWN_STAGE)
+    injected at src/acceptance/llm.py lines 554-554:
+      -         return self._stage_reasoning.get(stage or UNKNOWN_STAGE)
+      +         return self._stage_reasoning.get((stage or UNKNOWN_STAGE).lower())
+    no test caught it; 258 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 246 skipped once the defect was covered
+
+  [killed, NOT COUNTED] stage-provider-actual-temperature-and-seed/embedding-calls-can-mask-stage-controls
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 992-994:
+      -         for call in self._observed_calls:
+      -             if "controls" in call:
+      -                 by_stage.setdefault(call["stage"], []).append(call["controls"])
+      +         for call in self._observed_calls:
+      +             by_stage.setdefault(call["stage"], []).append(call.get("controls"))
+    caught by (1):
+      tests/test_stage_reasoning.py::test_an_embedding_is_not_a_stage_that_dropped_its_controls
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 14 put to the model, 0 dropped as not worth asking, 244 skipped once the defect was covered
+
+  [killed, NOT COUNTED] stage-provider-actual-temperature-and-seed/stage-controls-omit-provider-values-for-replayed-calls
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 992..994 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 992-994:
+           -         for call in self._observed_calls:
+           -             if "controls" in call:
+           -                 by_stage.setdefault(call["stage"], []).append(call["controls"])
+           +         for call in self._observed_calls:
+           +             if "controls" in call:
+           +                 by_stage.setdefault(call["stage"], []).append(call["controls"])
+    injected at src/acceptance/llm.py lines 992-994:
+      -         for call in self._observed_calls:
+      -             if "controls" in call:
+      -                 by_stage.setdefault(call["stage"], []).append(call["controls"])
+      +         for call in self._observed_calls:
+      +             by_stage.setdefault(call["stage"], []).append(call.get("controls"))
+    caught by (1):
+      tests/test_stage_reasoning.py::test_an_embedding_is_not_a_stage_that_dropped_its_controls
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 6 put to the model, 0 dropped as not worth asking, 252 skipped once the defect was covered
+
+  [no_usable_edit] stage-reasoning-effort-configurable/reasoning-effort-dropped-before-live-call
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the edit replaces 26 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/llm.py lines 1055-1080:
+           -         response = self._completion_fn(
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           +         response = self._completion_fn(
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +         )
+      2. set aside (failed_check): the edit replaces 26 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/llm.py lines 1055-1080:
+           -         response = self._completion_fn(
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           +         response = self._completion_fn(
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +         )
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1033..1037 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1033-1037:
+           -         requested = {"temperature": request["temperature"]}
+           -         if "seed" in request:
+           -             requested["seed"] = request["seed"]
+           -         if "reasoning_effort" in request:
+           -             requested["reasoning_effort"] = request["reasoning_effort"]
+           +         requested = {"temperature": request["temperature"]}
+           +         if "seed" in request:
+           +             requested["seed"] = request["seed"]
+           +         if "reasoning_effort" in request:
+           +             requested["reasoning_effort"] = request["reasoning_effort"]
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] stage-reasoning-effort-configurable/reasoning-effort-not-added-to-request
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 680..688 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 680-688:
+           -         effort = self.reasoning_for(stage)
+           -         if effort is not None:
+           -             # Inside the hash, and only when set, exactly as the seed and the
+           -             # partition are (#366). Reasoning changes the answer, so a stage's
+           -             # recordings made without it must not replay for it. Added only when
+           -             # set so that a stage with none — every stage by default — keeps the
+           -             # key it had before this setting existed, and configuring one stage
+           -             # orphans that stage's recordings and no other's.
+           -             request["reasoning_effort"] = effort
+           +         effort = self.reasoning_for(stage)
+           +         if effort is not None:
+           +             # Inside the hash, and only when set, exactly as the seed and the
+           +             # partition are (#366). Reasoning changes the answer, so a stage's
+           +             # recordings made without it must not replay for it. Added only when
+           +             # set so that a stage with none — every stage by default — keeps the
+           +             # key it had before this setting existed, and configuring one stage
+           +             # orphans that stage's recordings and no other's.
+           +             request["reasoning_effort"] = effort
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] stage-reasoning-effort-configurable/reasoning-effort-not-passed-from-config
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the span 205..215 falls outside the region(s) the defect named in src/acceptance/config.py (152..163, 211..217)
+         at src/acceptance/config.py lines 205-215:
+           -         return ModelClient(
+           -             model=self.model,
+           -             mode=self.mode,
+           -             store=TranscriptStore(self.transcript_root),
+           -             temperature=self.temperature,
+           -             seed=self.seed,
+           -             completion_fn=completion_fn,
+           -             embedding_model=self.embedding_model,
+           -             stage_models=self.stage_models,
+           -             stage_reasoning=self.stage_reasoning,
+           -         )
+           +         return ModelClient(
+           +             model=self.model,
+           +             mode=self.mode,
+           +             store=TranscriptStore(self.transcript_root),
+           +             temperature=self.temperature,
+           +             seed=self.seed,
+           +             completion_fn=completion_fn,
+           +             embedding_model=self.embedding_model,
+           +             stage_models=self.stage_models,
+           +         )
+      2. set aside (failed_check): the mutated src/acceptance/config.py does not parse: unmatched ')' (<unknown>, line 215)
+         at src/acceptance/config.py lines 211-214:
+           -             completion_fn=completion_fn,
+           -             embedding_model=self.embedding_model,
+           -             stage_models=self.stage_models,
+           -             stage_reasoning=self.stage_reasoning,
+           +             completion_fn=completion_fn,
+           +             embedding_model=self.embedding_model,
+           +             stage_models=self.stage_models,
+           +         )
+      3. set aside (failed_check): the mutated src/acceptance/config.py does not parse: unmatched ')' (<unknown>, line 215)
+         at src/acceptance/config.py lines 211-214:
+           -             completion_fn=completion_fn,
+           -             embedding_model=self.embedding_model,
+           -             stage_models=self.stage_models,
+           -             stage_reasoning=self.stage_reasoning,
+           +             completion_fn=completion_fn,
+           +             embedding_model=self.embedding_model,
+           +             stage_models=self.stage_models,
+           +         )
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 246 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] stage-reasoning-effort-configurable/reasoning-effort-not-reflected-in-provenance
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/config.py lines 239..242 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/config.py lines 239-242:
+           -         stage_controls={
+           -             stage: StageControls(**controls)
+           -             for stage, controls in client.stage_controls_in_force.items()
+           -         },
+           +         stage_controls={
+           +             stage: StageControls(**controls)
+           +             for stage, controls in client.stage_controls_in_force.items()
+           +         },
+    injected at src/acceptance/config.py lines 239-242:
+      -         stage_controls={
+      -             stage: StageControls(**controls)
+      -             for stage, controls in client.stage_controls_in_force.items()
+      -         },
+      +         stage_controls={
+      +             stage: StageControls(
+      +                 temperature=controls.get("temperature"),
+      +                 seed=controls.get("seed"),
+      +                 reasoning_effort=controls.get("reasoning_effort"),
+      +             )
+      +             for stage, controls in client.stage_controls_in_force.items()
+      +         },
+    no test caught it; 258 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+
+  [no_usable_edit] stop-before-discarded-effort-call/effort-check-only-on-completions
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 736..737 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 736-737:
+           -             started = time.perf_counter()
+           -             record = self._persist_live_call(key, request, parse_as or response_model, stage)
+           +             started = time.perf_counter()
+           +             record = self._persist_live_call(key, request, parse_as or response_model, stage)
+      2. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unexpected indent (<unknown>, line 1054)
+         at src/acceptance/llm.py lines 1039-1047:
+           -         # Asked BEFORE the call rather than after it (#366). The answer is
+           -         # computed offline, so asking first costs nothing, and it is the only
+           -         # moment a dropped effort can still stop the run instead of being
+           -         # recorded as having happened.
+           -         applied = self._effective_controls(request["model"], requested)
+           -         if "reasoning_effort" in requested and (
+           -             applied.get("reasoning_effort") != requested["reasoning_effort"]
+           -         ):
+           -             raise ControlNotHonouredError(
+           +         # Asked BEFORE the call rather than after it (#366). The answer is
+           +         # computed offline, so asking first costs nothing, and it is the only
+           +         # moment a dropped effort can still stop the run instead of being
+           +         # recorded as having happened.
+           +         applied = self._effective_controls(request["model"], requested)
+           +         if "reasoning_effort" in requested and (
+           +             applied.get("reasoning_effort") != requested["reasoning_effort"]
+           +         ):
+           +             raise ControlNotHonouredError(
+           +                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           +                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           +                 "receive it: the provider's controls discard it, so the call would run "
+           +                 "without reasoning. Remove the effort for this stage or move the stage "
+           +                 "to a model that accepts one."
+           +             )
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 736..737 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 736-737:
+           -             started = time.perf_counter()
+           -             record = self._persist_live_call(key, request, parse_as or response_model, stage)
+           +             started = time.perf_counter()
+           +             record = self._persist_live_call(key, request, parse_as or response_model, stage)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] stop-before-discarded-effort-call/wrong-error-for-discarded-effort
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1054)
+         at src/acceptance/llm.py lines 1047-1052:
+           -             raise ControlNotHonouredError(
+           -                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           -                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           -                 "receive it: the provider's controls discard it, so the call would run "
+           -                 "without reasoning. Remove the effort for this stage or move the stage "
+           -                 "to a model that accepts one."
+           +             raise ControlNotHonouredError(
+           +                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           +                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           +                 "receive it: the provider's controls discard it, so the call would run "
+           +                 "without reasoning. Remove the effort for this stage or move the stage "
+           +                 "to a model that accepts one."
+           +             )
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1047..1053 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1047-1053:
+           -             raise ControlNotHonouredError(
+           -                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           -                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           -                 "receive it: the provider's controls discard it, so the call would run "
+           -                 "without reasoning. Remove the effort for this stage or move the stage "
+           -                 "to a model that accepts one."
+           -             )
+           +             raise ControlNotHonouredError(
+           +                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           +                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           +                 "receive it: the provider's controls discard it, so the call would run "
+           +                 "without reasoning. Remove the effort for this stage or move the stage "
+           +                 "to a model that accepts one."
+           +             )
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1047..1053 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1047-1053:
+           -             raise ControlNotHonouredError(
+           -                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           -                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           -                 "receive it: the provider's controls discard it, so the call would run "
+           -                 "without reasoning. Remove the effort for this stage or move the stage "
+           -                 "to a model that accepts one."
+           -             )
+           +             raise ControlNotHonouredError(
+           +                 f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+           +                 f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+           +                 "receive it: the provider's controls discard it, so the call would run "
+           +                 "without reasoning. Remove the effort for this stage or move the stage "
+           +                 "to a model that accepts one."
+           +             )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 254 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+Candidate tests set aside (no conclusion rests on these):
+  [failed: UnresolvableRevisionError] tests/benchmark/test_rating_regression.py::test_scoring_goes_through_the_shared_benchmark_path
+    the test passes in the project but not in an unmodified copy of it, so a failure under an injected defect could not be attributed to the defect. In the copy it was: failed
+    it failed with: acceptance.benchmark.corpus.UnresolvableRevisionError: case '163-gate2-run1' names revision '4d13ba1', which this repository no longer resolves. The corpus cases are pinned to real history; a rewritten or pruned commit breaks them by design rather than shrinking the suite silently.
+
+Changes since d66be1a8:
+  no obligation changed status.
+
+Evidence limitations:
+  1. No material gaps found at the achievable evidence tier — not proof of correctness. The full application was not independently executed (§3.7).
+
+Recommended next instruction: (none)run 55d63b47ff0318fc
+  continuing c07948e3cd161d42
+  continue this run with: --continue 55d63b47ff0318fc
+Model usage by stage:
+  stage                         model                                                            calls   prompt  output  cached  this run  recorded  time this run
+  ----------------------------  -------------------------------------------  -------------------------  -------  ------  ------  --------  --------  -------------
+  obligation linking            voyage/voyage-3.5-lite                         1 (0 live / 1 replayed)      487       0       —   $0.0000   $0.0000              —
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini    5 (2 live / 3 replayed)   50,494     215    0.0%   $0.0026   $0.0036          13.8s
+  coverage classification       openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   11,994   1,175    0.0%   $0.0143   $0.0143           6.7s
+  unrequested-change detection  openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   11,367     614    0.0%   $0.0113   $0.0113           4.5s
+  mutation descriptor           openai/gpt-5.4-mini                          83 (0 live / 83 replayed)  404,609  13,612   50.7%   $0.0000   $0.2261              —
+  this run spent $0.0282 on 4 live call(s); the evidence cost $0.2553 to record (87 call(s) replayed at no cost to this run)
+
