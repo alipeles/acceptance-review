@@ -24,8 +24,19 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from acceptance.defects.pair_mapping import DEFAULT_PAIR_BATCH_SIZE, DEFAULT_TESTS_PER_BATCH
 from acceptance.defects.pair_ranking import DEFAULT_STOP_AFTER_KILLS
-from acceptance.llm import DEFAULT_TRANSCRIPT_ROOT, Mode, ModelClient, TranscriptStore
-from acceptance.review_state import DeterminismControls, LinkPrefilter, ReviewProvenance
+from acceptance.llm import (
+    DEFAULT_TRANSCRIPT_ROOT,
+    Mode,
+    ModelClient,
+    ReasoningEffort,
+    TranscriptStore,
+)
+from acceptance.review_state import (
+    DeterminismControls,
+    LinkPrefilter,
+    ReviewProvenance,
+    StageControls,
+)
 
 # LiteLLM model string. Provider-agnostic: swap freely via --model / RunConfig.
 DEFAULT_MODEL = "openai/gpt-5.4-mini"
@@ -141,6 +152,12 @@ class RunConfig(BaseModel):
     # request the same way, through the model in the hash, so moving a stage onto
     # a different model invalidates that stage's recordings and no others.
     stage_models: dict[str, str] = Field(default_factory=lambda: dict(DEFAULT_STAGE_MODELS))
+    # Per-stage reasoning effort (#366), shaped like `stage_models`. Empty by
+    # default, so no stage reasons and no request key moves. A stage named here
+    # sends its effort inside its hashed request, which orphans that stage's
+    # recordings and no others, and a run whose provider would discard the
+    # effort stops before the call rather than running without it.
+    stage_reasoning: dict[str, ReasoningEffort] = Field(default_factory=dict)
     mode: Mode = Mode.REPLAY
     temperature: float = 0.0
     seed: int | None = DEFAULT_SEED
@@ -194,6 +211,7 @@ class RunConfig(BaseModel):
             completion_fn=completion_fn,
             embedding_model=self.embedding_model,
             stage_models=self.stage_models,
+            stage_reasoning=self.stage_reasoning,
         )
 
 
@@ -218,5 +236,9 @@ def provenance_for(client: ModelClient) -> ReviewProvenance:
         controls_in_force=(None if in_force is None else DeterminismControls(**in_force)),
         request_partition_sizes=client.partition_sizes_in_force,
         stage_models=client.stage_models_in_force,
+        stage_controls={
+            stage: StageControls(**controls)
+            for stage, controls in client.stage_controls_in_force.items()
+        },
         link_prefilter=(None if prefilter is None else LinkPrefilter(**prefilter)),
     )

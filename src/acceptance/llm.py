@@ -31,7 +31,7 @@ import time
 from collections.abc import Callable, Mapping, Sequence
 from enum import Enum
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -49,6 +49,17 @@ UNKNOWN_STAGE = "unknown"
 # Where a call's answer came from. `PROVIDER` is the only one this run paid for.
 SERVED_FROM_PROVIDER = "provider"
 SERVED_FROM_RECORDING = "recording"
+
+# Marks an observed call that sent no determinism controls at all — an
+# embedding — as distinct from a completion whose transcript recorded none.
+_NOT_A_COMPLETION = object()
+
+# The reasoning efforts a stage may ask for (#366). A fixed list rather than any
+# string, so a misspelt effort fails when the configuration is built instead of
+# being discarded by the provider — which `drop_params` would do silently, and
+# which the pre-call check would then report as the provider's refusal rather
+# than as the typo it is. These are OpenAI's values, as LiteLLM passes them on.
+ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
 
 ResponseModelT = TypeVar("ResponseModelT", bound=BaseModel)
 
@@ -89,6 +100,18 @@ class SchemaValidationError(LLMError):
 
 class TranscriptNotFoundError(LLMError):
     """REPLAY mode found no recorded transcript for a request."""
+
+
+class ControlNotHonouredError(LLMError):
+    """The provider would discard a control the run cannot go without (#366).
+
+    Raised before the call, so nothing is billed and nothing is recorded. A
+    seed or a temperature the provider drops is recorded and the run goes on,
+    because the review is still the review, only less reproducible. A reasoning
+    effort is different: it is the thing a stage was configured to measure, and
+    a run that silently went without it would report a result for a setting it
+    never used.
+    """
 
 
 def request_key(request: dict) -> str:
@@ -397,6 +420,17 @@ def _extract_usage(response: Any) -> dict:
                 if value is not None:
                     usage[name] = value
 
+        # The tokens a reasoning call spent working before it answered (#366).
+        # They are already inside `completion_tokens` and priced with them, so
+        # this does not change a cost; it says how much of the cost was
+        # reasoning, which is the figure a reasoning measurement is judged on.
+        # Omitted when unreported, for the reason given for the cache split.
+        output_details = _usage_field(raw, "completion_tokens_details")
+        if output_details is not None:
+            value = _usage_field(output_details, "reasoning_tokens")
+            if value is not None:
+                usage["reasoning_tokens"] = value
+
     # Only price a response LiteLLM itself produced. Looking the module up in
     # sys.modules rather than importing it keeps callers that inject their own
     # completion_fn — tests, fixtures — free of the provider stack entirely.
@@ -450,6 +484,7 @@ class ModelClient:
         embedding_model: str | None = None,
         embedding_fn: Callable[..., Any] | None = None,
         stage_models: Mapping[str, str] | None = None,
+        stage_reasoning: Mapping[str, ReasoningEffort] | None = None,
     ) -> None:
         self.model = model
         # Stages that name their own model (#317). A stage absent from this map
@@ -464,6 +499,12 @@ class ModelClient:
         # orphans that stage's recordings and no others, which is the correct
         # consequence: a different judge is a different answer.
         self._stage_models = dict(stage_models or {})
+        # Stages that run with a reasoning effort (#366), shaped like the map
+        # above. A stage absent from it sends no effort at all, which is not the
+        # same request as one sending `none`: the provider's default is `none`
+        # today, but only the absent form leaves every recording made before
+        # this setting existed still replaying.
+        self._stage_reasoning = dict(stage_reasoning or {})
         self.mode = mode
         self.store = store if store is not None else TranscriptStore()
         self.temperature = temperature
@@ -508,6 +549,10 @@ class ModelClient:
         """The model this stage runs on: its own if it names one, else the run's."""
         return self._stage_models.get(stage or UNKNOWN_STAGE, self.model)
 
+    def reasoning_for(self, stage: str | None) -> ReasoningEffort | None:
+        """The reasoning effort this stage asks for, or None if it asks for none."""
+        return self._stage_reasoning.get(stage or UNKNOWN_STAGE)
+
     @property
     def stage_models_in_force(self) -> dict[str, str]:
         """Which model each stage's calls actually ran on, observed not configured.
@@ -538,6 +583,7 @@ class ModelClient:
         record: dict,
         model: str,
         seconds: float | None = None,
+        controls: dict[str, Any] | None | object = _NOT_A_COMPLETION,
     ) -> None:
         """Note what one call cost and where its answer came from.
 
@@ -548,26 +594,32 @@ class ModelClient:
         calls here would leave the second unanswerable; adding their cost to the
         first would invent a bill nobody paid. `served_from` is what keeps them
         separable downstream.
+
+        `controls` is what a completion call ran under, from its transcript, and
+        is left out for an embedding: an embedding sends no temperature, seed or
+        effort, so recording `None` for it would read as a provider having
+        dropped all three and mark the stage that embedded as unpinned.
         """
-        self._observed_calls.append(
-            {
-                "stage": stage or UNKNOWN_STAGE,
-                "key": key,
-                "served_from": served_from,
-                # The model this call actually went to, which is not always the
-                # run's: a stage may name its own (#317). Read off the request
-                # rather than off `self.model`, so a replayed call reports the
-                # model its transcript was recorded against.
-                "model": model,
-                "usage": dict(record.get("usage") or {}),
-                # How long a LIVE call took, for the footer's time column
-                # (#334). Kept here, in memory, and never in the transcript:
-                # transcripts must be byte-identical across recordings of the
-                # same input (M0.5), and a duration never is. None for a
-                # replayed call, which took no provider time this run.
-                "seconds": seconds,
-            }
-        )
+        observed: dict[str, Any] = {
+            "stage": stage or UNKNOWN_STAGE,
+            "key": key,
+            "served_from": served_from,
+            # The model this call actually went to, which is not always the
+            # run's: a stage may name its own (#317). Read off the request
+            # rather than off `self.model`, so a replayed call reports the
+            # model its transcript was recorded against.
+            "model": model,
+            "usage": dict(record.get("usage") or {}),
+            # How long a LIVE call took, for the footer's time column
+            # (#334). Kept here, in memory, and never in the transcript:
+            # transcripts must be byte-identical across recordings of the
+            # same input (M0.5), and a duration never is. None for a
+            # replayed call, which took no provider time this run.
+            "seconds": seconds,
+        }
+        if controls is not _NOT_A_COMPLETION:
+            observed["controls"] = None if controls is None else dict(controls)  # type: ignore[arg-type]
+        self._observed_calls.append(observed)
 
     @property
     def observed_calls(self) -> list[dict[str, Any]]:
@@ -625,6 +677,15 @@ class ModelClient:
             # batch happens to come out the same. Hashing it keeps a moved
             # control from replaying as though nothing moved.
             request["stage_controls"] = stage_controls
+        effort = self.reasoning_for(stage)
+        if effort is not None:
+            # Inside the hash, and only when set, exactly as the seed and the
+            # partition are (#366). Reasoning changes the answer, so a stage's
+            # recordings made without it must not replay for it. Added only when
+            # set so that a stage with none — every stage by default — keeps the
+            # key it had before this setting existed, and configuring one stage
+            # orphans that stage's recordings and no other's.
+            request["reasoning_effort"] = effort
         return request
 
     def complete(
@@ -673,7 +734,7 @@ class ModelClient:
                     "that degrades quality fails rather than silently re-recording."
                 )
             started = time.perf_counter()
-            record = self._persist_live_call(key, request, parse_as or response_model)
+            record = self._persist_live_call(key, request, parse_as or response_model, stage)
             seconds = time.perf_counter() - started
         else:
             seconds = None
@@ -682,7 +743,15 @@ class ModelClient:
         # that of the recording it replays, so a transcript recorded against a
         # provider that discarded a control must not replay as pinned.
         self._observed_controls.append(record.get("controls_applied"))
-        self._observe_call(stage, key, served_from, record, request["model"], seconds)
+        self._observe_call(
+            stage,
+            key,
+            served_from,
+            record,
+            request["model"],
+            seconds,
+            controls=record.get("controls_applied"),
+        )
         if partition is not None:
             # `stage` is deliberately NOT in `build_request`: it names which
             # caller partitioned, which is provenance, not a determinism
@@ -902,7 +971,46 @@ class ModelClient:
             if len(sizes) == 1 and isinstance(next(iter(sizes)), int)
         }
 
-    def _persist_live_call(self, key: str, request: dict, response_model: type[BaseModel]) -> dict:
+    @property
+    def stage_controls_in_force(self) -> dict[str, dict[str, Any]]:
+        """Per stage, the temperature, seed and reasoning effort its calls ran under.
+
+        Observed from the transcripts, not configured, for the reason
+        `controls_in_force` gives — and per stage because the run-level figure
+        cannot say where a control was lost (#366). A reasoning call on OpenAI
+        does not accept a temperature, so a run with one reasoning stage has
+        every other stage at temperature 0 and that one at none; the run-level
+        answer is `None`, true but unattributable.
+
+        Every stage that made a completion call appears. Each control follows
+        `controls_in_force`'s rule within the stage: its value if every call
+        agrees on it, else `None`. A call whose transcript recorded no controls
+        — one made before they were tracked — counts as disagreeing, since
+        nothing is known about it.
+        """
+        by_stage: dict[str, list[dict[str, Any] | None]] = {}
+        for call in self._observed_calls:
+            if "controls" in call:
+                by_stage.setdefault(call["stage"], []).append(call["controls"])
+        in_force: dict[str, dict[str, Any]] = {}
+        for stage, observed in sorted(by_stage.items()):
+            per_call = [controls or {} for controls in observed]
+            known = all(controls is not None for controls in observed)
+            stage_controls: dict[str, Any] = {}
+            for name in ("temperature", "seed", "reasoning_effort"):
+                values = [controls.get(name) for controls in per_call]
+                agreed = known and all(value == values[0] for value in values)
+                stage_controls[name] = values[0] if agreed else None
+            in_force[stage] = stage_controls
+        return in_force
+
+    def _persist_live_call(
+        self,
+        key: str,
+        request: dict,
+        response_model: type[BaseModel],
+        stage: str | None = None,
+    ) -> dict:
         """Make the call, validate the reply, and only then keep the transcript.
 
         Validating first matters because structured output is best-effort on some
@@ -916,15 +1024,33 @@ class ModelClient:
         replies that prove a provider ignores it, and would make RECORD and
         REPLAY disagree about the same response (#163).
         """
-        record = self._live_call(key, request)
+        record = self._live_call(key, request, stage)
         self._validate(record["response"], response_model)
         self.store.write(key, record)
         return record
 
-    def _live_call(self, key: str, request: dict) -> dict:
+    def _live_call(self, key: str, request: dict, stage: str | None = None) -> dict:
         requested = {"temperature": request["temperature"]}
         if "seed" in request:
             requested["seed"] = request["seed"]
+        if "reasoning_effort" in request:
+            requested["reasoning_effort"] = request["reasoning_effort"]
+
+        # Asked BEFORE the call rather than after it (#366). The answer is
+        # computed offline, so asking first costs nothing, and it is the only
+        # moment a dropped effort can still stop the run instead of being
+        # recorded as having happened.
+        applied = self._effective_controls(request["model"], requested)
+        if "reasoning_effort" in requested and (
+            applied.get("reasoning_effort") != requested["reasoning_effort"]
+        ):
+            raise ControlNotHonouredError(
+                f"stage {stage or UNKNOWN_STAGE!r} is configured with reasoning effort "
+                f"{requested['reasoning_effort']!r}, but {request['model']} would not "
+                "receive it: the provider's controls discard it, so the call would run "
+                "without reasoning. Remove the effort for this stage or move the stage "
+                "to a model that accepts one."
+            )
 
         response = self._completion_fn(
             model=request["model"],
@@ -966,7 +1092,7 @@ class ModelClient:
             # Recorded so a transcript never implies a determinism control that
             # was silently dropped; absent for injected completion functions,
             # which have no provider to drop anything.
-            "controls_applied": self._effective_controls(request["model"], requested),
+            "controls_applied": applied,
         }
         return record
 
