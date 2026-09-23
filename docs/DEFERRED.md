@@ -6518,3 +6518,13 @@ the record.
   > and the two cases above are pinned as regression cases from the stored
   > audit attempts.
 - **Status:** **filed 2026-09-22 as #364**, approved at the gate, unparented because no umbrella covers the mutation stage. Closed here.
+
+### [2026-09-23] The reasoning-effort check may refuse Anthropic models that would have honoured it
+- **Kind:** filing
+- **Found during:** #366, Gate 1
+- **Where:** src/acceptance/llm.py, `_litellm_effective_controls`
+- **Severity:** nice-to-have
+- **What's wrong:** Asked offline which controls it keeps, LiteLLM reports `reasoning_effort` as dropped for `anthropic/claude-sonnet-5`. It may instead translate the effort into Anthropic's own thinking parameter under another name, in which case #366's pre-call check refuses a request that would have worked. Unverified.
+- **Why I didn't act:** Decided at #366's Gate 1 (human, 2026-09-23): accept the refusal for now, because every measurement #366 enables runs on OpenAI.
+- **Drafted fix:** Filing, sub-issue of #184 (determinism and reproducibility). Title: "Check whether LiteLLM honours a reasoning effort on Anthropic models under another name". Body: #366 stops a run when LiteLLM reports a requested reasoning effort as dropped. For `anthropic/claude-sonnet-5` it reports exactly that, offline. Find out whether LiteLLM maps the effort to Anthropic's thinking parameter; if it does, teach the check to recognise the translated form, and record the translated value in provenance. Acceptance: a stage configured with an effort on an Anthropic model either runs with thinking applied and recorded, or is refused with evidence that the provider would not have applied it.
+- **Status:** open
