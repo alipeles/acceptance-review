@@ -242,14 +242,20 @@ class SetAsideCandidate(_Model):
 
 
 class VerificationStep(str, Enum):
-    """Which of verification's two questions refused an edit.
+    """What refused an edit during verification.
 
-    Kept apart so refusals can be counted per question: an edit that changes
+    Kept apart so refusals can be counted separately: an edit that changes
     nothing and an edit that changes the wrong thing are different failures of
     the edit-building step, and one number for both hides which is which.
+
+    `BEHAVIOUR_CHANGE` was once a model call of its own, asking whether the edit
+    changed behaviour at all. That call was removed on 2026-09-23 after audit
+    v10 measured it refusing none of 52 edits (DR-171). What remains under this
+    name is the mechanical comparison, which makes no call.
     """
 
-    # The edit does not change the code's behaviour at all.
+    # The edit's code is identical once comments and whitespace are removed, so
+    # it changes nothing the defect could be about.
     BEHAVIOUR_CHANGE = "behaviour_change"
     # The edit changes behaviour, but not from the defect's expected behaviour
     # to its defective one.

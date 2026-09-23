@@ -820,10 +820,6 @@ _EMPTY_BY_SCHEMA = {
     # exist. Named `_PairVerdicts` rather than `_Verdicts` because linking
     # already owns that name and this table is keyed by schema name.
     "_PairVerdicts": {"tests": []},
-    # Edit verification's first question (#335). "changes" passes every edit on
-    # to the second question, `_Verification`, so a fixture that answers only
-    # that one decides the outcome exactly as it did before the split.
-    "_BehaviourChange": {"changes_behaviour": "changes", "reason": "the edit changes behaviour"},
     "_Mappings": {"mappings": []},
     "_Discrimination": {"discriminations": []},
     "_Coverage": {"classifications": []},

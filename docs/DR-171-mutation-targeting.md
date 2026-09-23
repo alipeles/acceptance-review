@@ -205,6 +205,22 @@ refused one; on v10 it refused none of the four and positively verified one of
 them. That is the check #334's Acceptance contemplates needing, and the existing
 question is not it.
 
+**So the question was removed, 2026-09-23, on the human's decision.**
+Verification is one model call again — the defect-match question — plus the
+mechanical comparison that refuses an edit whose code is identical once comments
+and whitespace are removed, which costs nothing and fired zero times on v10.
+The removal cannot move the rates above: a question that refused nothing cannot
+have changed any edit's outcome. The rates were **not** re-measured afterwards,
+deliberately, because nothing is being adopted on them — `verify_edits` stays
+false either way, and whoever next tries to adopt verification must measure on
+labels of their own. One caveat for that person: the defect-match prompt lost
+the sentence saying the edit was already known to change behaviour, so audit
+v10's recorded answers no longer replay for that stage.
+
+`VerificationStep` survives, with `BEHAVIOUR_CHANGE` now naming the mechanical
+comparison rather than a call. What #335 bought, in the end, was the measurement
+that showed the split was not worth keeping.
+
 About a quarter of what it would verify is still a bad edit, so it is **not
 adopted**; it sits behind `ExecutionSettings.verify_edits`, off. Five of its eight
 false alarms answered "cannot tell" on the 30-line window (first recorded here as
