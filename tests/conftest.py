@@ -1,7 +1,16 @@
+import os
 import subprocess
 from pathlib import Path
 
 import pytest
+
+# LiteLLM downloads its model price table from GitHub the first time it is used,
+# unless told to use the copy it ships with. The tests that ask LiteLLM an
+# offline question — which controls a model keeps, what a call costs — would
+# otherwise reach the network, and the review's own sandbox refuses them for it
+# (#366's Gate 2 set four aside). Set before any test imports LiteLLM, which
+# reads it once, at import.
+os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
 
 def _git(repo: Path, *args: str) -> None:

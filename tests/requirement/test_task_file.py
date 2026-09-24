@@ -108,8 +108,12 @@ def test_parses_every_committed_task_file(path: Path):
     parsed = parse_task_file(path.read_text())
 
     assert parsed.behavior
-    assert parsed.constraints  # every committed task file lists constraints
 
+    # Constraints are not asserted to be present either, for the same reason as
+    # the completion expectations below: CLAUDE.md's style asks for Constraints
+    # "only where they add content the narrative does not carry", and #366's
+    # task file has none because its narrative carries everything.
+    #
     # Completion expectations are deliberately NOT asserted to be present.
     # CLAUDE.md's task-file style makes the section optional — "if the section
     # appears, keep it at the spec §7.1 example's grain" — because re-listing

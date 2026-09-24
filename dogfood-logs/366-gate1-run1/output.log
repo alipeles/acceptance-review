@@ -1,0 +1,71 @@
+run 9ee9b55ca53a9814
+  requirements: 6 derived, 0 carried, 0 revised; 17 decompose call(s)
+  continue this run with: --continue 9ee9b55ca53a9814
+Model usage by stage:
+  stage               model                                       calls  prompt  output  cached  this run  recorded  time this run
+  ------------------  ----------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini     14 (14 live / 0 replayed)  75,966   1,962    0.0%   $0.0658   $0.0658          51.9s
+  decompose-summary   openai/gpt-5.4            3 (3 live / 0 replayed)   2,464   1,136    0.0%   $0.0232   $0.0232          12.8s
+  obligation linking  voyage/voyage-3.5-lite    1 (1 live / 0 replayed)     431       0       —   $0.0000   $0.0000           0.5s
+  this run spent $0.0890 on 18 live call(s); the evidence cost $0.0890 to record (0 call(s) replayed at no cost to this run)
+Requirements: 6   with obligations: 5   deliberately none: 1
+
+[task-01] A review can be configured to run individual stages with a reasoning effort,
+    the same way it can already give an individual stage its own model. The setting maps
+    a stage's label to an effort value. A stage not in the map runs exactly as it does
+    today, and with nothing configured every request the review sends is unchanged, so
+    every response recorded before this change still replays. Configuring one stage
+    changes only that stage's requests.
+    -> stage-reasoning-effort-configurable  [functional/explicit]
+       A review can be configured to run individual stages with a reasoning effort.
+    -> stage-label-to-effort-map  [functional/explicit]
+       The setting maps a stage's label to an effort value.
+    -> preserve-unchanged-requests-with-empty-config  [compatibility/explicit]
+       With no stage-effort configuration set, every request the review sends remains
+       unchanged.
+    -> replay-existing-recordings  [compatibility/explicit]
+       Preserve replayability of every response recorded before this change.
+    -> stage-config-affects-only-that-stage-requests  [invariant/explicit]
+       Configuring one stage changes only that stage's requests.
+
+[task-02] A run never quietly goes without the reasoning it was configured to use. If
+    the provider would discard the requested effort for a stage's model, the run stops
+    before calling it, with an error naming the stage and the model.
+    -> reasoning-configured-use-is-preserved  [invariant/explicit]
+       A run never quietly goes without the reasoning it was configured to use.
+    -> stop-before-discarded-effort-call  [error_handling/explicit]
+       If the provider would discard the requested effort for a stage's model, the run
+       stops before calling that model.
+    -> error-identifies-stage-and-model  [explanation_observability/explicit]
+       If the provider would discard the requested effort for a stage's model, the
+       resulting error names the stage and the model.
+
+[task-03] The review's provenance records, for each stage, the reasoning effort in force
+    and the temperature and seed that actually reached the provider rather than the ones
+    that were asked for, since a provider may refuse a temperature on a reasoning call.
+    Each call's usage records its reasoning tokens, so the cost the report shows
+    includes them.
+    -> reasoning-effort-per-stage  [explanation_observability/explicit]
+       For each stage, record the reasoning effort in force.
+    -> actual-provider-temperature-and-seed  [explanation_observability/explicit]
+       Record the temperature and seed values that actually reached the provider.
+    -> usage-records-reasoning-tokens  [functional/explicit]
+       Each call's usage records its reasoning tokens.
+    -> reasoning-tokens-included-in-reported-cost  [functional/explicit]
+       The report's displayed cost includes reasoning tokens recorded in each call's
+       usage.
+
+[exclusion-01] Which stages should use reasoning, and at what effort. No stage's default
+    changes.
+    -> no-stage-default-changes  [compatibility/explicit]
+       The change does not alter any stage's default reasoning behavior.
+
+[exclusion-02] A command-line option for the setting.
+    -- no obligation, deliberately
+       This is a scope exclusion naming work that must not be added: a command-line
+       option for the setting.
+
+[exclusion-03] Changing any stage's temperature.
+    -> preserve-stage-temperatures  [invariant/explicit]
+       The change does not alter any stage's temperature.
+

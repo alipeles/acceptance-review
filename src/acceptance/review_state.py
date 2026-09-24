@@ -1147,6 +1147,25 @@ class DeterminismControls(_Model):
     seed: int | None = None
 
 
+class StageControls(_Model):
+    """The controls one stage's calls actually ran under (#366).
+
+    Honoured values, never requested ones, with `DeterminismControls`' meaning
+    of `None`: not in force. That matters most for temperature, which OpenAI
+    does not accept on a reasoning call — a stage configured with an effort
+    asked for temperature 0 and ran without one, and this is where that shows.
+    `reasoning_effort` is `None` both for a stage that asked for none and for
+    one whose calls disagreed; the run is stopped before a call whose effort
+    would be dropped, so a dropped effort never reaches here.
+    """
+
+    temperature: float | None = None
+    seed: int | None = None
+    # A string, not the harness's literal type, so the data model stays
+    # independent of the LLM harness — the same reason `determinism_mode` is.
+    reasoning_effort: str | None = None
+
+
 class LinkPrefilter(_Model):
     """What a stage excluded from its own work before asking the model (#259).
 
@@ -1217,6 +1236,11 @@ class ReviewProvenance(_Model):
     # than reported at a model only some of them used. Empty on a run that made
     # no model call at all.
     stage_models: dict[str, str] = Field(default_factory=dict)
+    # The controls each stage's calls ran under, observed (#366). The run-level
+    # `controls_in_force` stays the answer to "is this review reproducible"; this
+    # answers which stage made it not so, and which stages reasoned. Empty on a
+    # run that made no completion call.
+    stage_controls: dict[str, StageControls] = Field(default_factory=dict)
     # What obligation linking declined to ask about, and why (#259). `None` is
     # the positive claim that every admissible pair was asked — see
     # `LinkPrefilter` for why the zero case is not the same thing.

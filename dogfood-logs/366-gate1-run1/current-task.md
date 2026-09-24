@@ -11,10 +11,10 @@ A run never quietly goes without the reasoning it was configured to use. If the
 provider would discard the requested effort for a stage's model, the run stops
 before calling it, with an error naming the stage and the model.
 
-For each stage, the review's provenance records the reasoning effort in force.
-It also records, for each stage, the temperature and seed that actually reached
-the provider for that stage's calls, rather than the ones that were asked for,
-since a provider may refuse a temperature on a reasoning call. Each call's usage records its reasoning tokens, so the cost the
+The review's provenance records, for each stage, the reasoning effort in force
+and the temperature and seed that actually reached the provider rather than the
+ones that were asked for, since a provider may refuse a temperature on a
+reasoning call. Each call's usage records its reasoning tokens, so the cost the
 report shows includes them.
 
 ## Scope exclusions

@@ -152,7 +152,7 @@ class FakeClient:
         {
             "stage": "mutation descriptor",
             "served_from": SERVED_FROM_PROVIDER,
-            "usage": {"cost_usd": 0.02},
+            "usage": {"cost_usd": 0.02, "reasoning_tokens": 40},
             "seconds": 3.0,
         },
         {
@@ -175,7 +175,15 @@ assert rows["mutation descriptor"]["calls"] == 2
 assert rows["mutation descriptor"]["live"] == 1
 assert abs(rows["mutation descriptor"]["cost_usd"] - 0.03) < 1e-9
 assert rows["mutation descriptor"]["seconds"] == 3.0
-print("spend: ok, replayed calls counted but not timed")
+assert rows["mutation descriptor"]["reasoning_tokens"] == 40
+assert rows["mutation verification: defect match"]["reasoning_tokens"] == 0
+print("spend: ok, replayed calls counted but not timed, reasoning tokens summed")
+
+assert run_audit.parse_reasoning(["mutation descriptor=low", "a=b=high"]) == {
+    "mutation descriptor": "low",
+    "a=b": "high",
+}
+print("parse_reasoning: ok")
 
 attempts_doc = {
     "audit": "vTEST",

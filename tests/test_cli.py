@@ -146,6 +146,18 @@ def test_check_records_determinism_flags_in_provenance(
             "decompose-summary": "openai/gpt-5",
             "unrequested-change detection": "openai/gpt-5",
         },
+        # The controls each stage ran under (#366). Every stage honoured both
+        # here and none reasoned: the stub's completion function has no provider
+        # to drop anything, and no stage is configured with an effort.
+        "stage_controls": {
+            stage: {"temperature": 0.4, "seed": 7, "reasoning_effort": None}
+            for stage in (
+                "coverage classification",
+                "decompose",
+                "decompose-summary",
+                "unrequested-change detection",
+            )
+        },
         # None, not a zero-valued record: this stub finds no obligations at
         # all, so linking returns before it prefilters anything and the honest
         # claim is that no filter ran (#259). A run that filtered and excluded

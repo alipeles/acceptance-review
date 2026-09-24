@@ -66,6 +66,7 @@ _TOKEN_FIELDS = (
     "cached_tokens",
     "cache_creation_tokens",
     "cache_write_tokens",
+    "reasoning_tokens",
 )
 
 
@@ -100,6 +101,10 @@ class StageUsage(BaseModel):
     # stage reported anything.
     cached_tokens: int | None = None
     measured_prompt_tokens: int = 0
+    # Output tokens spent reasoning (#366), part of `completion_tokens` and
+    # already priced there. None when no call reported the figure, for the
+    # reason `cached_tokens` gives.
+    reasoning_tokens: int | None = None
 
     @property
     def calls(self) -> int:
@@ -198,6 +203,8 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
                 prompt = _number(usage, "prompt_tokens")
                 if prompt is not None:
                     stage.measured_prompt_tokens += int(prompt)
+            elif field == "reasoning_tokens":
+                stage.reasoning_tokens = (stage.reasoning_tokens or 0) + int(value)
             else:
                 setattr(stage, field, getattr(stage, field) + int(value))
 
@@ -228,8 +235,14 @@ def render(usage: RunUsage) -> str:
     if not usage.stages:
         return "Model usage: no model call was made."
 
-    rows = [
-        (
+    # The reasoning column appears only when some stage reasoned (#366). No
+    # stage does by default, and a column of dashes on every ordinary run would
+    # be noise; on a run where one stage reasons, every stage shows the column,
+    # so the stages that did not are visibly "—" rather than missing.
+    show_reasoning = any(stage.reasoning_tokens for stage in usage.stages)
+
+    def row(stage: StageUsage) -> tuple[str, ...]:
+        cells = [
             stage.stage,
             # Which model answered for this stage. A stage may name its own
             # (#317), so a footer showing only the run's model would misreport
@@ -238,19 +251,27 @@ def render(usage: RunUsage) -> str:
             f"{stage.calls} ({stage.provider_calls} live / {stage.replayed_calls} replayed)",
             f"{stage.prompt_tokens:,}",
             f"{stage.completion_tokens:,}",
+        ]
+        if show_reasoning:
+            cells.append("—" if stage.reasoning_tokens is None else f"{stage.reasoning_tokens:,}")
+        cells += [
             _share(stage.cached_prompt_share),
             f"${stage.run_spend_usd:.4f}",
             f"${stage.evidence_cost_usd:.4f}",
             "—" if stage.call_seconds is None else f"{stage.call_seconds:.1f}s",
-        )
-        for stage in usage.stages
-    ]
+        ]
+        return tuple(cells)
+
+    rows = [row(stage) for stage in usage.stages]
     header = (
         "stage",
         "model",
         "calls",
         "prompt",
         "output",
+        # Part of "output", not added to it: reasoning tokens are billed as
+        # output, and the money columns already include them.
+        *(("reasoning",) if show_reasoning else ()),
         "cached",
         "this run",
         "recorded",

@@ -201,10 +201,14 @@ def spend(client) -> dict:
     per_stage: dict[str, dict] = {}
     for call in client.observed_calls:
         row = per_stage.setdefault(
-            call["stage"], {"calls": 0, "live": 0, "cost_usd": 0.0, "seconds": 0.0}
+            call["stage"],
+            {"calls": 0, "live": 0, "cost_usd": 0.0, "seconds": 0.0, "reasoning_tokens": 0},
         )
         row["calls"] += 1
         row["cost_usd"] += float(call["usage"].get("cost_usd") or 0.0)
+        # Already inside the cost above (#366): reasoning is billed as output.
+        # Reported so a reasoning arm says how much of its bill was reasoning.
+        row["reasoning_tokens"] += int(call["usage"].get("reasoning_tokens") or 0)
         # The constant, not the string "live": `llm.py` says `provider` and
         # `recording`, and comparing against a word it never emits reported a
         # live run as fully replayed — a bill of $0.00 on a run that spent.
@@ -212,6 +216,22 @@ def spend(client) -> dict:
             row["live"] += 1
             row["seconds"] += float(call["seconds"] or 0.0)
     return per_stage
+
+
+def parse_reasoning(pairs: list[str]) -> dict[str, str]:
+    """`STAGE=EFFORT` arguments as the map `RunConfig.stage_reasoning` takes.
+
+    Split on the LAST `=`, since a stage label may itself contain one and an
+    effort never does. The effort is not checked here: `RunConfig` refuses one
+    that is not an effort, which keeps the list of efforts in one place.
+    """
+    reasoning = {}
+    for pair in pairs:
+        stage, sep, effort = pair.rpartition("=")
+        if not sep or not stage:
+            raise SystemExit(f"--reasoning takes STAGE=EFFORT, got {pair!r}")
+        reasoning[stage] = effort
+    return reasoning
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -236,6 +256,16 @@ def main(argv: list[str] | None = None) -> int:
         "--verifier-model",
         default="openai/gpt-5.4",
         help="runs verification's two questions; 'same' uses --model",
+    )
+    parser.add_argument(
+        "--reasoning",
+        action="append",
+        default=[],
+        metavar="STAGE=EFFORT",
+        help=(
+            "run STAGE with a reasoning effort, e.g. 'mutation descriptor=low'; "
+            "repeat for more stages. Unset stages send none, as a review does."
+        ),
     )
     parser.add_argument("--max-candidates", type=int, default=3)
     parser.add_argument("--no-verify", action="store_true")
@@ -311,9 +341,11 @@ def main(argv: list[str] | None = None) -> int:
     stage_models = {}
     if not args.no_verify and args.verifier_model != "same":
         stage_models = {stage: args.verifier_model for stage in VERIFY_STAGES}
+    stage_reasoning = parse_reasoning(args.reasoning)
     config = RunConfig(
         model=args.model,
         stage_models=stage_models,
+        stage_reasoning=stage_reasoning,
         mode=Mode.RECORD if args.mode == "record" else Mode.REPLAY,
     )
     client = config.build_client()
@@ -361,7 +393,8 @@ def main(argv: list[str] | None = None) -> int:
         f"Audit v6's defects for {len(defect_sets)} criteria "
         f"(left out: {', '.join(args.skip) if args.skip else 'none'}). "
         f"Edits on {args.model}, up to {args.max_candidates} candidates each; "
-        f"verification {'off' if args.no_verify else 'on, ' + (args.model if args.verifier_model == 'same' else args.verifier_model)}."
+        f"verification {'off' if args.no_verify else 'on, ' + (args.model if args.verifier_model == 'same' else args.verifier_model)}. "
+        f"Reasoning: {', '.join(f'{stage} {effort}' for stage, effort in sorted(stage_reasoning.items())) or 'none'}."
     )
     args.out.write_text(
         render(
@@ -385,6 +418,7 @@ def main(argv: list[str] | None = None) -> int:
                 "descriptor_model": args.model,
                 "verifier_model": None if args.no_verify else args.verifier_model,
                 "max_candidates": args.max_candidates,
+                "stage_reasoning": stage_reasoning,
                 "criteria": len(defect_sets),
                 "usable_tests": len(baseline.usable_tests),
                 "wall_clock_seconds": round(elapsed, 1),
@@ -402,7 +436,8 @@ def main(argv: list[str] | None = None) -> int:
     for stage, row in sorted(spend(client).items()):
         print(
             f"  {stage}: {row['calls']} calls ({row['live']} live), "
-            f"${row['cost_usd']:.4f}, {row['seconds']:.0f}s"
+            f"${row['cost_usd']:.4f}, {row['seconds']:.0f}s, "
+            f"{row['reasoning_tokens']:,} reasoning tokens"
         )
     print(f"wall clock: {elapsed:.0f}s")
     return 0

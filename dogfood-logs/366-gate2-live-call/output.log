@@ -1,0 +1,12 @@
+served from: provider
+usage: {"cached_tokens": 0, "completion_tokens": 86, "cost_usd": 0.0015025, "prompt_tokens": 85, "reasoning_tokens": 37, "total_tokens": 171}
+controls applied: {"reasoning_effort": "low", "seed": 0, "temperature": null}
+provenance stage_controls: {'mutation verification: defect match': {'temperature': None, 'seed': 0, 'reasoning_effort': 'low'}}
+determinism: unpinned
+parsed reply: {'divides_evenly': False, 'reason': 'No; 1,234,567 ÷ 7 leaves a remainder of 5, so it does not divide evenly.'}
+
+Model usage by stage:
+  stage                                model                             calls  prompt  output  reasoning  cached  this run  recorded  time this run
+  -----------------------------------  --------------  -----------------------  ------  ------  ---------  ------  --------  --------  -------------
+  mutation verification: defect match  openai/gpt-5.4  1 (1 live / 0 replayed)      85      86         37    0.0%   $0.0015   $0.0015           9.2s
+  this run spent $0.0015 on 1 live call(s); the evidence cost $0.0015 to record (0 call(s) replayed at no cost to this run)
