@@ -221,6 +221,39 @@ v10's recorded answers no longer replay for that stage.
 comparison rather than a call. What #335 bought, in the end, was the measurement
 that showed the split was not worth keeping.
 
+### Re-measured 2026-09-24, and reasoning does not help it
+
+Both figures the paragraph above left open are now measured, over **audit v10's
+52 observed edits held fixed** — no edit rebuilt, no test re-run, nothing
+re-judged, so `labels/v10.json` still applies and only the verifier moves. That
+makes this the first single-variable arm on this stage. `reverify.py` runs it and
+a rerun is free; detail in `verifier-reasoning-measurement.md`.
+
+| | bad edits refused (bar ≥80%) | good edits refused (bar <10%) | cost |
+|---|---|---|---|
+| two questions, as v10 recorded | 16 of 21 (76%) | 5 of 31 (16%) | — |
+| one question, no reasoning | 16 of 21 (76%) | 6 of 31 (19%) | $0.5009 |
+| one question, reasoning `high` | 16 of 21 (76%) | 7 of 31 (23%) | $1.5779 |
+
+**Removing the behaviour-change question cost nothing**, as predicted: the catch
+rate is unchanged and the false-alarm figure moves by one edit, which is inside
+this stage's noise — the no-reasoning arm moved 3 of 52 verdicts against v10's
+own recording on an all-but-identical request.
+
+**Reasoning at `high` changes nothing that matters.** The catch rate is
+identical, 70,572 reasoning tokens recovered none of the five bad edits every
+version misses, and it costs three times as much. All three versions miss the
+*same five*, which says the verifier's weakness is its input rather than its
+effort: it sees the defect's two behaviours and 30 lines either side, and never
+the tests. **So the next attempt on this stage should change what the question is
+given, not how hard it is thought about.** Raising effort here is now measured
+and spent.
+
+This also lowers the prior on reasoning for the edit-building stage. A three-defect
+probe on `openai/gpt-5.4-mini` at `high` cost $0.0699 a call against $0.0048,
+about fifteen times, at 103 seconds a call; if reasoning does nothing for judging
+an edit, writing one at that price needs its own argument.
+
 About a quarter of what it would verify is still a bad edit, so it is **not
 adopted**; it sits behind `ExecutionSettings.verify_edits`, off. Five of its eight
 false alarms answered "cannot tell" on the 30-line window (first recorded here as
