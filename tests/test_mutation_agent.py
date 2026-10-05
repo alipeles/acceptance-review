@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
+from typing import ClassVar
 
 import pytest
 
@@ -502,6 +503,55 @@ class TestCostPerDefect:
         calls = [{"stage": DESCRIPTOR_STAGE, "label": "d1", "served_from": "provider",
                   "usage": {"cost_usd": 0.01}, "seconds": 2.0}]  # fmt: skip
         assert render_per_label(calls, (DESCRIPTOR_STAGE, AGENT_STAGE), only_with=AGENT_STAGE) == ""
+
+
+class TestTheCliReportsCostPerDefect:
+    """Through the CLI's own reporting function, not only the formatter: a
+    formatter nothing calls would pass the tests above."""
+
+    class _Client:
+        def __init__(self, calls):
+            self.observed_calls = calls
+
+    _ORDINARY: ClassVar[dict] = {
+        "stage": "decompose",
+        "served_from": "provider",
+        "usage": {"cost_usd": 0.01},
+    }
+    _ONE_CALL: ClassVar[dict] = {
+        "stage": DESCRIPTOR_STAGE,
+        "label": "d1",
+        "served_from": "provider",
+        "usage": {"cost_usd": 0.02},
+        "seconds": 3.0,
+    }
+    _AGENT: ClassVar[dict] = {
+        "stage": AGENT_STAGE,
+        "label": "d1",
+        "served_from": "provider",
+        "usage": {"cost_usd": 0.5},
+        "seconds": 60.0,
+    }
+
+    def _stderr(self, capsys, calls):
+        from acceptance.cli import _report_usage
+
+        _report_usage(self._Client(calls))
+        return capsys.readouterr().err
+
+    def test_an_unconfigured_review_prints_only_the_usage_summary(self, capsys):
+        """The one-call builder's calls are labelled on every review now; with no
+        agent call the output must be what it was before."""
+        err = self._stderr(capsys, [self._ORDINARY, self._ONE_CALL])
+        assert "Model usage by stage:" in err
+        assert "Edit-building cost by defect" not in err
+
+    def test_a_defect_that_reached_the_agent_shows_both_builders(self, capsys):
+        err = self._stderr(capsys, [self._ORDINARY, self._ONE_CALL, self._AGENT])
+        table = err.split("Edit-building cost by defect:", 1)[1]
+        (row,) = [line for line in table.splitlines() if line.strip().startswith("d1")]
+        assert "$0.0200" in row and "3.0s" in row
+        assert "$0.5000" in row and "60.0s" in row
 
 
 class TestAgentsAreAdapters:
