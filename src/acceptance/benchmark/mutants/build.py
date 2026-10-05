@@ -72,7 +72,13 @@ def build(
             result.skipped_bugs.append(SkippedBug(bug=key, reason=reason))
             continue
         log(f"build {key}")
-        _build_bug(bug, pins, paths, result, runner, baseline, collector)
+        # Never in place. The checkout lives inside this repository, and a
+        # project with no pytest config of its own would otherwise have pytest
+        # climb to OUR pyproject.toml: our rootdir, so every node id it reports
+        # carries a `.acceptance/...` prefix and matches nothing, and our
+        # addopts. That skipped 86 of 87 bugs on the first real build.
+        with copied_project(paths.checkout(bug), prefix="acceptance-label-bug-") as root:
+            _build_bug(bug, root, pins, paths, result, runner, baseline, collector)
 
     result.cases.sort(key=lambda c: c.case_id)
     result.set_aside_tests.sort(key=lambda t: (t.project, t.bug_id, t.test_id))
@@ -100,6 +106,7 @@ def _missing(bug: BugInfo, paths: LabelPaths) -> str | None:
 
 def _build_bug(
     bug: BugInfo,
+    root: Path,
     pins: PinnedBugs,
     paths: LabelPaths,
     result: MutantLabelSet,
@@ -107,7 +114,6 @@ def _build_bug(
     baseline: Callable[[list[str], Path, SandboxConfig], Baseline],
     collector: Callable[[list[str], Path, SandboxConfig], set[str]],
 ) -> None:
-    root = paths.checkout(bug)
     config = SandboxConfig(interpreter=str(paths.interpreter(bug.project).absolute()))
 
     test_path = root / bug.test_file

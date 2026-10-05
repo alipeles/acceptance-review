@@ -330,8 +330,8 @@ class FakeSandbox:
             ]
         )
 
-    @staticmethod
-    def baseline(tests, root, config):
+    def baseline(self, tests, root, config):
+        self.runs.append((list(tests), root))
         red = [t for t in tests if t.endswith("test_red")]
         return Baseline(
             usable_tests=[t for t in tests if t not in red],
@@ -340,8 +340,8 @@ class FakeSandbox:
             ],
         )
 
-    @staticmethod
-    def collect(tests, root, config):
+    def collect(self, tests, root, config):
+        self.runs.append((list(tests), root))
         return set(tests)
 
 
@@ -377,11 +377,20 @@ def test_the_build_labels_every_usable_test_against_every_mutant(tmp_path):
         assert case.killed is case.test_id.endswith("test_positive")
         assert case.requirement_text == "Treat zero as not positive"
         assert case.implementation_hunk == "def positive(x):\n    return x > 0"
-    # Each mutant ran in its own copy, never in the prepared checkout itself.
-    assert all(
-        root.name == "demo-1" and "acceptance-mutant-label-" in str(root)
-        for _tests, root in sandbox.runs
-    )
+
+
+def test_nothing_runs_inside_the_prepared_checkout(tmp_path):
+    """The checkout lives inside this repository, where pytest would climb to
+    our own pyproject.toml and report every test under a prefixed id. Every
+    collection, control run and mutant run must happen in a copy elsewhere."""
+    labels, sandbox, paths = _build(tmp_path)
+
+    assert labels.cases
+    roots = [root.resolve() for _tests, root in sandbox.runs]
+    assert len(roots) == 1 + 1 + 3  # collect, control run, three mutants
+    for root in roots:
+        assert root.name == "demo-1"
+        assert not root.is_relative_to(paths.projects.resolve())
 
 
 def test_a_red_test_is_set_aside_and_never_labelled(tmp_path):
