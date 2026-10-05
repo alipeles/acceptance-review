@@ -111,9 +111,10 @@ class SetAsideTestRecord(PersistableModel):
     kind: str
     reason: str
     # What actually happened to THIS test. `reason` is one sentence shared by
-    # every red test; without these, 45 tests set aside on the first full build
-    # all read "failed against the code as delivered", and that they were really
-    # thefuck's conftest calling a pytest API removed in pytest 4 was invisible.
+    # every red test; without these, every test set aside on the first full
+    # build read "failed against the code as delivered", hiding that they were
+    # version clashes (an API removed in pytest 4, another removed in Python
+    # 3.9) rather than red tests.
     error_type: str | None = None
     detail: str | None = None
 
