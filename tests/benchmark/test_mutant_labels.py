@@ -282,8 +282,9 @@ def _project(tmp_path: Path) -> tuple[PinnedBugs, LabelPaths]:
     (checkout / "demo" / "core.py").write_text("def positive(x):\n    return x > 0\n")
     (checkout / "tests" / "test_core.py").write_text(
         "def test_positive():\n    assert positive(1)\n\n\n"
+        "def test_large():\n    assert positive(10**9)\n\n\n"
         "def test_unrelated():\n    assert True\n\n\n"
-        "def test_red():\n    assert False\n"
+        "def test_red():\n    assert positive(-1)\n"
     )
     paths.message(_bug("demo", 1)).parent.mkdir(parents=True)
     paths.message(_bug("demo", 1)).write_text("Treat zero as not positive\n")
@@ -360,7 +361,7 @@ def _build(tmp_path):
 
 
 def test_the_build_labels_every_usable_test_against_every_mutant(tmp_path):
-    labels, sandbox, _paths = _build(tmp_path)
+    labels, _sandbox, _paths = _build(tmp_path)
 
     # The fix changed line 2, `return x > 0`: three operators apply there.
     assert {c.edit.replacement for c in labels.cases} == {
@@ -369,9 +370,11 @@ def test_the_build_labels_every_usable_test_against_every_mutant(tmp_path):
         "    return None",
     }
     assert len(labels.cases) == 3 * 2
+    # The trigger test, plus the one usable extra that calls `positive`.
+    # `test_unrelated` never names the edited function, so it is never chosen.
     assert {c.test_id for c in labels.cases} == {
         "tests/test_core.py::test_positive",
-        "tests/test_core.py::test_unrelated",
+        "tests/test_core.py::test_large",
     }
     for case in labels.cases:
         assert case.killed is case.test_id.endswith("test_positive")

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import ast
 import random
+import re
 from collections.abc import Callable
 from pathlib import Path
 
@@ -129,7 +130,9 @@ def _build_bug(
         )
         return
 
-    selected = _select_tests(bug, sorted(admitted), pins.tests_per_bug)
+    selected = _select_tests(
+        bug, sorted(admitted), pins.tests_per_bug, test_text, _edited_names(bug, root)
+    )
     control = baseline(selected, root, config)
     for test in control.set_aside:
         result.set_aside_tests.append(
@@ -208,13 +211,66 @@ def _run_mutant(
         return runner(tests, copy, config)
 
 
-def _select_tests(bug: BugInfo, admitted: list[str], limit: int) -> list[str]:
-    """The bug's own trigger tests first, then others from the file, seeded."""
+def _select_tests(
+    bug: BugInfo, admitted: list[str], limit: int, test_text: str, edited: set[str]
+) -> list[str]:
+    """The bug's own trigger tests first, then RELATED tests from the file, seeded.
+
+    A related test is one whose source names a function the fix changed. Extras
+    used to be drawn from the whole file, and on the first full build those were
+    killed 17 times in 419 (4%), against 114 in 171 for the trigger tests: most
+    never ran the edited code, so their survival was trivially true and dragged
+    the killed share to 22%. A survivor worth having is a test that runs near
+    the edit and still misses it — the non-discriminating test #371's judge has
+    to recognise. Decided by the human, 2026-10-05.
+    """
     triggers = [t for t in dict.fromkeys(_bare(t) for t in trigger_test_ids(bug.run_test))]
     chosen = [t for t in triggers if t in admitted][:limit]
-    rest = [t for t in admitted if t not in chosen]
-    random.Random(f"{bug.key}/tests").shuffle(rest)
-    return chosen + rest[: limit - len(chosen)]
+    related = [
+        t for t in admitted if t not in chosen and _names_any(source_of_test(test_text, t), edited)
+    ]
+    random.Random(f"{bug.key}/tests").shuffle(related)
+    return chosen + related[: limit - len(chosen)]
+
+
+def _edited_names(bug: BugInfo, root: Path) -> set[str]:
+    """The innermost function holding each line the fix changed.
+
+    A constructor or other dunder is never named by a test, so its class name
+    stands in for it.
+    """
+    names: set[str] = set()
+    for path, lines in fix_lines(bug.patch).items():
+        file = root / path
+        if not file.is_file():
+            continue
+        try:
+            tree = ast.parse(file.read_text(encoding="utf-8"))
+        except (SyntaxError, UnicodeDecodeError, ValueError):
+            continue
+        for line in lines:
+            name = _innermost(tree, line)
+            if name:
+                names.add(name)
+    return names
+
+
+def _innermost(tree: ast.AST, line: int) -> str | None:
+    chain: list[ast.AST] = []
+    for node in ast.walk(tree):
+        if isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+        ) and node.lineno <= line <= (node.end_lineno or node.lineno):
+            chain.append(node)
+    chain.sort(key=lambda n: n.lineno)
+    for node in reversed(chain):
+        if not (node.name.startswith("__") and node.name.endswith("__")):
+            return node.name
+    return None
+
+
+def _names_any(source: str, names: set[str]) -> bool:
+    return any(re.search(rf"\b{re.escape(name)}\b", source) for name in names)
 
 
 def _select_mutants(bug: BugInfo, root: Path, limit: int) -> list[Mutant]:
