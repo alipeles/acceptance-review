@@ -18,6 +18,7 @@ from __future__ import annotations
 import email
 import io
 import shutil
+import ssl
 import subprocess
 import tarfile
 import urllib.request
@@ -149,5 +150,20 @@ def commit_message(patch: str) -> str:
 
 def _get(url: str) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
-    with urllib.request.urlopen(request, timeout=120) as response:
+    with urllib.request.urlopen(request, timeout=120, context=_tls()) as response:
         return response.read()
+
+
+def _tls() -> ssl.SSLContext:
+    """Verify against certifi's CA bundle when it is installed.
+
+    A python.org macOS interpreter ships with no root certificates until its
+    "Install Certificates" step is run, so the default context fails every
+    HTTPS fetch with CERTIFICATE_VERIFY_FAILED. certifi arrives with this
+    repo's dependencies; verification stays on either way.
+    """
+    try:
+        import certifi
+    except ImportError:
+        return ssl.create_default_context()
+    return ssl.create_default_context(cafile=certifi.where())
