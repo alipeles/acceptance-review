@@ -44,7 +44,7 @@ rebuilt under the gitignored `.acceptance/mutant-labels/`:
 .venv/bin/python -m acceptance.benchmark.mutants report    # counts only
 ```
 
-Two builds from the same pins gave byte-identical files (SHA-256 `3349d30d…`).
+Two builds from the same pins gave byte-identical files (SHA-256 `23d52972…`).
 
 ## Traps
 
