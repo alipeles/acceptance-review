@@ -6598,3 +6598,44 @@ the record.
 - **Why I didn't act:** Known defect (#212), outside #372's scope.
 - **Drafted fix:** A comment on #212 quoting both sentences and both obligations, with the run directories. Its point: making the sentence a subordinate "because" clause does not stop it becoming an obligation.
 - **Status:** **filed 2026-10-05** as a comment on #212, approved at #372's Gate 1.
+
+### [2026-10-05] A runtime behaviour with tests is ruled "test evidence not required"
+- **Kind:** filing
+- **Found during:** #338, Gate 2 run 1 (`dogfood-logs/338-gate2-run1/output.log`, obligations 12 and 13)
+- **Where:** the evidence-requirement judgement; likely fed by the obligation's type (#196)
+- **Severity:** should-fix
+- **What's wrong:** `test-files-removed` ("The copy the agent works in has the project's test files removed") got "test evidence: not required — a repository-state constraint that is satisfied by the working copy itself". `cannot-read-test-files` got "not required — a task-environment constraint, not behavior the delivered code can implement or a test in the repository can demonstrate". Both are behaviors of the delivered code, `agent_copy`, and `tests/test_mutation_agent.py::TestTheAgentCannotSeeTheTests` tests the first directly. A planted fault that left the tests in the copy failed two of those tests. The first obligation was typed `docs_config` at Gate 1, which is #196, and is the likely cause. The obligation that matters most for #338's stated risk was therefore never rated against its tests.
+- **Why I didn't act:** Tool defect.
+- **Drafted fix:** Filing, sub-issue of #183 (evidence judgement). Title: "A testable behaviour of the delivered code is ruled 'test evidence not required'". Body: the two quotations above, the test names, the planted-fault result, and the link to #196's mistyping. Acceptance: an obligation describing something the delivered code does is rated against the tests that exercise it, whatever its type; a 'not required' ruling names why no test in the repository could bear on it.
+- **Status:** open
+
+### [2026-10-05] Evidence for #272: an exclusion naming existing behaviour became a prohibition, then was half-failed on a misreading
+- **Kind:** filing
+- **Found during:** #338, Gate 2 run 1 (obligation 23, `existing-builder-prompt-and-candidate-count-unchanged`)
+- **Where:** decomposition of scope exclusions; the coverage classification of the resulting prohibition
+- **Severity:** should-fix
+- **What's wrong:** The exclusion "Changing the existing builder's prompt or the number of candidates it is asked for" became "The change does not alter ...", and coverage rated it partially addressed. One of its two reasons is wrong: "the existing one-call builder now tags its requests with a defect label, so the recorded request shape ... is no longer unchanged". The label goes only into the usage record, and `tests/test_mutation_agent.py::TestCostPerDefect::test_a_label_does_not_change_the_request_key` shows the key is unchanged. The other reason is literally true but misses the point: the recorded `candidates_asked` now counts the agent's candidate, while the one-call builder is still asked `max_candidates` times. That makes this the only obligation reported "not fully implemented".
+- **Why I didn't act:** Tool defect, tracked as #272 (a scope exclusion naming existing behaviour is derived as a prohibition on it).
+- **Drafted fix:** Comment on #272: "Reproduced at #338's Gate 2 (`dogfood-logs/338-gate2-run1/`). [the exclusion, the obligation, the two failure ways as quoted above]. The prohibition was then rated partially addressed. One of its two reasons misreads the code: a usage-only label read as a change to the request. This is the only reason the review's verdict is 'not fully implemented'."
+- **Status:** open
+
+### [2026-10-05] An optional keyword that an obligation needs is rated a risky unrequested change
+- **Kind:** filing
+- **Found during:** #338, Gate 2 run 1 (Unrequested changes, item 1)
+- **Where:** unrequested-change detection, `src/acceptance/coverage/`
+- **Severity:** nice-to-have
+- **What's wrong:** "[risky] `ModelClient.complete` now accepts an extra `label` parameter, changing a public API used by callers and tests. The obligations require recording per-defect cost, but do not require widening the completion API itself." The parameter is optional, so every existing caller is unaffected. It is also the mechanism obligation 19 (one-call builder cost per defect) is delivered by: without it the one-call builder's calls cannot be attributed to a defect. Five structurally identical changes in the same review, such as the new `fallback` parameter on `run_mutations`, were rated `in_service`.
+- **Why I didn't act:** Tool defect; the change was approved at #338's Gate 1 (DR-338 Decision 5).
+- **Drafted fix:** Filing, sub-issue of #185 (findings model, verdict and presentation). Title: "A backward-compatible parameter that delivers an obligation is rated a risky unrequested change".
+  Reproduced in Gate 2 run 2 with new wording: "gained an optional `label` parameter, changing a public method signature beyond the requested behavior". Add that to the body. Body: the quotation, the parallel `in_service` items, and why the label is necessary. Acceptance: a change the review can trace to an obligation it serves is rated `in_service`; `risky` names a concrete way existing callers could break.
+- **Status:** open
+
+### [2026-10-05] A test file the review cites as evidence is also reported as a separable change
+- **Kind:** filing
+- **Found during:** #338, Gate 2 run 2 (`dogfood-logs/338-gate2-run2/output.log`, unrequested change 11 and obligation 11)
+- **Where:** unrequested-change detection, `src/acceptance/coverage/`
+- **Severity:** should-fix
+- **What's wrong:** "[separable] `tests/test_unverified_mutation_is_inert_with_agent.py` adds a new parallel test module ... but not this specific duplication strategy." The same report lists `tests/test_unverified_mutation_is_inert_with_agent.py::TestThroughTheWholeReviewWithTheAgent::test_the_edit_came_from_the_agent` as evidence 11.5 for obligation 11 ("An unverified agent edit carries no more weight in the review than any other unverified edit"). A test is evidence, not a deliverable to be justified. A file the review itself relies on cannot also be a change that could be split off. Run 1 over nearly the same change did not report it, so the rating is also unstable.
+- **Why I didn't act:** Tool defect; the file is DR-338 Decision 2, approved at #338's Gate 1.
+- **Drafted fix:** Filing, sub-issue of #185 (findings model, verdict and presentation). Title: "A test file cited as evidence for an obligation is reported as a separable unrequested change". Body: the quotation, the evidence line, and the run 1 to run 2 flip. Acceptance: a changed test file that the same review cites as evidence for an obligation is not reported as unrequested; a test file is reported only when no obligation's evidence draws on it.
+- **Status:** open
