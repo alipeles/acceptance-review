@@ -6607,7 +6607,7 @@ the record.
 - **What's wrong:** `test-files-removed` ("The copy the agent works in has the project's test files removed") got "test evidence: not required — a repository-state constraint that is satisfied by the working copy itself". `cannot-read-test-files` got "not required — a task-environment constraint, not behavior the delivered code can implement or a test in the repository can demonstrate". Both are behaviors of the delivered code, `agent_copy`, and `tests/test_mutation_agent.py::TestTheAgentCannotSeeTheTests` tests the first directly. A planted fault that left the tests in the copy failed two of those tests. The first obligation was typed `docs_config` at Gate 1, which is #196, and is the likely cause. The obligation that matters most for #338's stated risk was therefore never rated against its tests.
 - **Why I didn't act:** Tool defect.
 - **Drafted fix:** Filing, sub-issue of #183 (evidence judgement). Title: "A testable behaviour of the delivered code is ruled 'test evidence not required'". Body: the two quotations above, the test names, the planted-fault result, and the link to #196's mistyping. Acceptance: an obligation describing something the delivered code does is rated against the tests that exercise it, whatever its type; a 'not required' ruling names why no test in the repository could bear on it.
-- **Status:** open
+- **Status:** **filed 2026-10-05 as #374**, sub-issue of #183, approved at #338's Gate 2.
 
 ### [2026-10-05] Evidence for #272: an exclusion naming existing behaviour became a prohibition, then was half-failed on a misreading
 - **Kind:** filing
@@ -6617,7 +6617,7 @@ the record.
 - **What's wrong:** The exclusion "Changing the existing builder's prompt or the number of candidates it is asked for" became "The change does not alter ...", and coverage rated it partially addressed. One of its two reasons is wrong: "the existing one-call builder now tags its requests with a defect label, so the recorded request shape ... is no longer unchanged". The label goes only into the usage record, and `tests/test_mutation_agent.py::TestCostPerDefect::test_a_label_does_not_change_the_request_key` shows the key is unchanged. The other reason is literally true but misses the point: the recorded `candidates_asked` now counts the agent's candidate, while the one-call builder is still asked `max_candidates` times. That makes this the only obligation reported "not fully implemented".
 - **Why I didn't act:** Tool defect, tracked as #272 (a scope exclusion naming existing behaviour is derived as a prohibition on it).
 - **Drafted fix:** Comment on #272: "Reproduced at #338's Gate 2 (`dogfood-logs/338-gate2-run1/`). [the exclusion, the obligation, the two failure ways as quoted above]. The prohibition was then rated partially addressed. One of its two reasons misreads the code: a usage-only label read as a change to the request. This is the only reason the review's verdict is 'not fully implemented'."
-- **Status:** open
+- **Status:** **filed 2026-10-05 as a comment on #272**, approved at #338's Gate 2.
 
 ### [2026-10-05] An optional keyword that an obligation needs is rated a risky unrequested change
 - **Kind:** filing
@@ -6628,7 +6628,7 @@ the record.
 - **Why I didn't act:** Tool defect; the change was approved at #338's Gate 1 (DR-338 Decision 5).
 - **Drafted fix:** Filing, sub-issue of #185 (findings model, verdict and presentation). Title: "A backward-compatible parameter that delivers an obligation is rated a risky unrequested change".
   Reproduced in Gate 2 run 2 with new wording: "gained an optional `label` parameter, changing a public method signature beyond the requested behavior". Add that to the body. Body: the quotation, the parallel `in_service` items, and why the label is necessary. Acceptance: a change the review can trace to an obligation it serves is rated `in_service`; `risky` names a concrete way existing callers could break.
-- **Status:** open
+- **Status:** **filed 2026-10-05 as #375**, sub-issue of #185, approved at #338's Gate 2.
 
 ### [2026-10-05] A test file the review cites as evidence is also reported as a separable change
 - **Kind:** filing
@@ -6638,4 +6638,26 @@ the record.
 - **What's wrong:** "[separable] `tests/test_unverified_mutation_is_inert_with_agent.py` adds a new parallel test module ... but not this specific duplication strategy." The same report lists `tests/test_unverified_mutation_is_inert_with_agent.py::TestThroughTheWholeReviewWithTheAgent::test_the_edit_came_from_the_agent` as evidence 11.5 for obligation 11 ("An unverified agent edit carries no more weight in the review than any other unverified edit"). A test is evidence, not a deliverable to be justified. A file the review itself relies on cannot also be a change that could be split off. Run 1 over nearly the same change did not report it, so the rating is also unstable.
 - **Why I didn't act:** Tool defect; the file is DR-338 Decision 2, approved at #338's Gate 1.
 - **Drafted fix:** Filing, sub-issue of #185 (findings model, verdict and presentation). Title: "A test file cited as evidence for an obligation is reported as a separable unrequested change". Body: the quotation, the evidence line, and the run 1 to run 2 flip. Acceptance: a changed test file that the same review cites as evidence for an obligation is not reported as unrequested; a test file is reported only when no obligation's evidence draws on it.
+- **Status:** **filed 2026-10-05 as #376**, sub-issue of #185, approved at #338's Gate 2.
+
+### [2026-10-05] Decision: the agent is routed on a trigger that no longer fires
+- **Kind:** decision
+- **Found during:** #338, audit v11 (`dogfood-logs/45-injection-audits/injection-audit-v11-judgement.md`)
+- **Where:** `src/acceptance/mutation/runner.py::_attempt`, the routing #338 asked for
+- **Severity:** should-fix
+- **What's wrong:** #338 sends a defect to the coding agent only when every one-call candidate fails the mechanical checks. After #334's three candidates, that happened to none of v10's 64 defects, so the agent as routed would never run. The edits the one-call builder actually gets wrong (21 of 52 in v10) pass every check. They show up only when the edit verifier (#335) or a judge reads them. On those 21, the agent asked directly planted the defect in 6 of 9 usable edits and correctly made no change in 10 more, against v10's 0 of 21 (one unchecked Claude judging pass).
+- **Why I didn't act:** Changing the trigger changes #338's specified design; it is the human's call.
+- **Recommendation:** File a follow-up that also routes a defect to the agent when the edit verifier refuses the one-call edit, once verification is adopted (#335). Hand-check a sample of `labels/v11.json` first, since the rate rests on one Claude pass judging a Claude-built arm.
+- **Rejected:** making the agent the first builder. At about 7 times the cost per defect, it should go only where the cheap builder has failed.
+- **Status:** open
+
+### [2026-10-05] Decision: the agent cannot report that the code already has the defect
+- **Kind:** decision
+- **Found during:** #338, audit v11
+- **Where:** `src/acceptance/mutation/agent.py::AgentDescriptorBuilder` (DR-338 Decision 1)
+- **Severity:** nice-to-have
+- **What's wrong:** In 7 of the 21 v11 defects the code already did the defective behaviour, the judge found, and the agent correctly made no change. The one-call builder records that case as `already_present`, a finding with a repair edit that is tested. The agent's "no change" is recorded as plain "no usable edit", so the finding is lost.
+- **Why I didn't act:** DR-338 Decision 1 deliberately gives the agent no typed answers, so its prose is never treated as evidence.
+- **Recommendation:** Let the agent declare one typed answer, by writing a fixed small JSON file (`already_defective` plus the lines), which the builder validates like a schema answer, and route its repair through the existing `already_present` path. Its edit, not its words, would still be what is tested.
+- **Rejected:** parsing the agent's final reply text, which would make its account evidence.
 - **Status:** open
