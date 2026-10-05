@@ -135,6 +135,12 @@ class MutantLabelSet(PersistableModel):
 
     bugsinpy_commit: str
     bugs: list[str]
+    # Each project environment's installed packages, `name==version`, sorted.
+    # The pins name packages and a resolution date, which should give the same
+    # versions — but nothing proved it. Recording them makes a rebuild in a
+    # different environment produce a visibly different file instead of
+    # silently different outcomes.
+    environments: dict[str, list[str]] = Field(default_factory=dict)
     cases: list[MutantCase] = Field(default_factory=list)
     set_aside_tests: list[SetAsideTestRecord] = Field(default_factory=list)
     set_aside_mutants: list[SetAsideMutant] = Field(default_factory=list)

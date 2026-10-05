@@ -21,6 +21,7 @@ from __future__ import annotations
 import ast
 import random
 import re
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 
@@ -58,10 +59,16 @@ def build(
     runner: Runner = run_tests,
     baseline: Callable[[list[str], Path, SandboxConfig], Baseline] = establish_baseline,
     collector: Callable[[list[str], Path, SandboxConfig], set[str]] = collect_tests,
+    freezer: Callable[[Path], list[str]] | None = None,
 ) -> MutantLabelSet:
-    """Build the whole set. The three callables exist so tests can stand in a
-    fake sandbox; a real build uses the defaults."""
+    """Build the whole set. The callables exist so tests can stand in a fake
+    sandbox and environment; a real build uses the defaults."""
+    freezer = freezer or installed_packages
     result = MutantLabelSet(bugsinpy_commit=pins.bugsinpy_commit, bugs=list(pins.bugs))
+    for project in sorted(pins.projects):
+        interpreter = paths.interpreter(project)
+        if interpreter.exists():
+            result.environments[project] = freezer(interpreter)
     for key in pins.bugs:
         try:
             bug = read_bug(paths.dataset, key)
@@ -88,6 +95,29 @@ def build(
     )
     result.skipped_bugs.sort(key=lambda s: s.bug)
     return result
+
+
+_LIST_PACKAGES = (
+    "import importlib.metadata as m; "
+    "print('\\n'.join(sorted({f\"{d.metadata['Name'].lower()}=={d.version}\" "
+    "for d in m.distributions()})))"
+)
+
+
+def installed_packages(interpreter: Path) -> list[str]:
+    """`name==version` for every package an environment holds, sorted.
+
+    Read through the environment's own interpreter, since a `uv` environment
+    carries no pip.
+    """
+    completed = subprocess.run(
+        [str(interpreter), "-c", _LIST_PACKAGES],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=True,
+    )
+    return [line for line in completed.stdout.splitlines() if line]
 
 
 def write_labels(labels: MutantLabelSet, path: Path) -> None:

@@ -8,6 +8,7 @@ source, and a fake sandbox standing in for the test runs.
 from __future__ import annotations
 
 import ast
+import inspect
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -33,7 +34,8 @@ from acceptance.benchmark.mutants.operators import generate_mutants, implementat
 from acceptance.benchmark.mutants.prepare import LabelPaths, commit_message
 from acceptance.benchmark.mutants.survivors import draw_survivor_sample, summarise
 from acceptance.execution.outcome import SandboxRunResult, TestOutcome, TestOutcomeKind
-from acceptance.mutation.baseline import Baseline, SetAsideTest
+from acceptance.execution.sandbox import collect_tests, run_tests
+from acceptance.mutation.baseline import Baseline, SetAsideTest, establish_baseline
 
 FIXTURE = Path(__file__).parent.parent / "fixtures" / "mutant-labels" / "labels.json"
 
@@ -310,25 +312,25 @@ def _bug(project, number):
 class FakeSandbox:
     """Kills a mutant exactly when `test_positive` runs against changed source."""
 
-    def __init__(self, original: str):
+    def __init__(self, original: str, never_completes: frozenset[str] = frozenset()):
         self.original = original
+        self.never_completes = never_completes
         self.runs: list[tuple[list[str], Path]] = []
 
     def run(self, tests, root, config):
         self.runs.append((list(tests), root))
         mutated = (root / "demo" / "core.py").read_text() != self.original
-        return SandboxRunResult(
-            outcomes=[
-                TestOutcome(
-                    test_id=t,
-                    kind=(
-                        TestOutcomeKind.FAILED
-                        if mutated and t.endswith("test_positive")
-                        else TestOutcomeKind.PASSED
-                    ),
-                )
-                for t in tests
-            ]
+        return SandboxRunResult(outcomes=[self._outcome(t, mutated) for t in tests])
+
+    def _outcome(self, test_id, mutated):
+        name = test_id.rsplit("::", 1)[-1]
+        if mutated and name in self.never_completes:
+            return TestOutcome(
+                test_id=test_id, kind=TestOutcomeKind.TIMED_OUT, reason="ran past its budget"
+            )
+        failed = mutated and name == "test_positive"
+        return TestOutcome(
+            test_id=test_id, kind=TestOutcomeKind.FAILED if failed else TestOutcomeKind.PASSED
         )
 
     def baseline(self, tests, root, config):
@@ -353,9 +355,14 @@ class FakeSandbox:
         return set(tests)
 
 
-def _build(tmp_path):
+PACKAGES = ["pytest==7.4.4"]
+
+
+def _build(tmp_path, never_completes=frozenset(), packages=PACKAGES, patch=None):
     pins, paths = _project(tmp_path)
-    sandbox = FakeSandbox("def positive(x):\n    return x > 0\n")
+    if patch is not None:
+        (paths.dataset / "projects" / "demo" / "bugs" / "1" / "bug_patch.txt").write_text(patch)
+    sandbox = FakeSandbox("def positive(x):\n    return x > 0\n", frozenset(never_completes))
     labels = build(
         pins,
         paths,
@@ -363,6 +370,7 @@ def _build(tmp_path):
         runner=sandbox.run,
         baseline=sandbox.baseline,
         collector=sandbox.collect,
+        freezer=lambda _interpreter: list(packages),
     )
     return labels, sandbox, paths
 
@@ -418,10 +426,67 @@ def test_a_bug_that_was_not_prepared_is_skipped_with_a_reason(tmp_path):
     pins, paths = _project(tmp_path)
     paths.message(_bug("demo", 1)).unlink()
 
-    labels = build(pins, paths, log=lambda _line: None)
+    labels = build(pins, paths, log=lambda _line: None, freezer=lambda _i: PACKAGES)
 
     assert labels.cases == []
     assert labels.skipped_bugs[0].reason.startswith("fix commit message not fetched")
+
+
+def test_killed_is_true_exactly_when_the_test_failed_with_the_edit_in_place(tmp_path):
+    labels, _sandbox, _paths = _build(tmp_path)
+
+    by_test = {}
+    for case in labels.cases:
+        by_test.setdefault(case.test_id.rsplit("::", 1)[-1], set()).add(case.killed)
+    # The fake fails `test_positive` under every edit and passes `test_large`.
+    assert by_test == {"test_positive": {True}, "test_large": {False}}
+
+
+def test_a_run_that_never_completes_is_never_turned_into_a_label(tmp_path):
+    labels, _sandbox, _paths = _build(tmp_path, never_completes={"test_large"})
+
+    assert {c.test_id for c in labels.cases} == {"tests/test_core.py::test_positive"}
+    # Each edit says how many of its pairs went unlabelled, and why.
+    assert len(labels.set_aside_mutants) == 3
+    for mutant in labels.set_aside_mutants:
+        assert mutant.reason.startswith("1 of 2 tests did not complete (timed_out)")
+
+
+def test_a_fix_to_a_test_file_or_a_non_python_file_is_never_mutated(tmp_path):
+    patch = (
+        "--- a/demo/core.py\n+++ b/demo/core.py\n@@ -1,2 +1,2 @@\n"
+        " def positive(x):\n-    return x >= 0\n+    return x > 0\n"
+        "--- a/tests/test_core.py\n+++ b/tests/test_core.py\n@@ -1,2 +1,2 @@\n"
+        " def test_positive():\n-    assert positive(2)\n+    assert positive(1)\n"
+        "--- a/README.md\n+++ b/README.md\n@@ -1,1 +1,1 @@\n-old\n+new\n"
+    )
+
+    labels, _sandbox, _paths = _build(tmp_path, patch=patch)
+
+    assert labels.cases
+    assert {c.edit.path for c in labels.cases} == {"demo/core.py"}
+
+
+def test_a_real_build_runs_every_test_through_the_existing_sandbox():
+    """Every other build test stands in a fake; this pins that the defaults a
+    real build uses are the sandbox's own runner, collector and control run."""
+    defaults = {
+        name: parameter.default for name, parameter in inspect.signature(build).parameters.items()
+    }
+
+    assert defaults["runner"] is run_tests
+    assert defaults["collector"] is collect_tests
+    assert defaults["baseline"] is establish_baseline
+
+
+def test_each_environment_s_packages_are_recorded_and_change_the_file(tmp_path):
+    first, _s, _p = _build(tmp_path / "a", packages=["pytest==7.4.4"])
+    second, _s2, _p2 = _build(tmp_path / "b", packages=["pytest==8.0.0"])
+
+    assert first.environments == {"demo": ["pytest==7.4.4"]}
+    write_labels(first, tmp_path / "one.json")
+    write_labels(second, tmp_path / "two.json")
+    assert (tmp_path / "one.json").read_bytes() != (tmp_path / "two.json").read_bytes()
 
 
 def test_rebuilding_from_the_same_pins_writes_the_same_bytes(tmp_path):
