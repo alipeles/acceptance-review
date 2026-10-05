@@ -1,0 +1,23 @@
+[
+  "carry-reason-for-non-settlement/not-attempted-missing-reason",
+  "continue-with-set-aside-tests/allow-failing-tests-not-propagated",
+  "continue-with-set-aside-tests/set-aside-tests-still-count-in-conclusions",
+  "does-not-run-first/static-judgement-still-runs-before-execution",
+  "execution-could-not-settle-defects/execution-disabled-skips-static-judgement",
+  "execution-could-not-settle-defects/unsettled-defects-dropped-from-review-state",
+  "mechanical-validity-checks/containment-check-only-uses-resolved-regions",
+  "mechanical-validity-checks/mechanical-checks-bypassable-through-execution-settings",
+  "mechanical-validity-checks/parse-check-applies-only-to-some-file-types",
+  "no-line-execution-recording/execution-tier-still-derives-line-coverage",
+  "no-parser-not-invalid/parser-check-applies-to-all-files",
+  "no-whole-suite-run/baseline-control-run-uses-all-tests",
+  "no-whole-suite-run/whole-suite-execution-flag",
+  "preserve-code-reading-judgement/static-judgement-skipped-when-execution-runs",
+  "preserve-current-review-conclusions-when-unrunnable/execution-tier-overrides-static-when-run-is-unavailable",
+  "run-candidate-tests-on-altered-copy/baseline-halt-prevents-execution",
+  "run-candidate-tests-on-altered-copy/no-tests-after-empty-baseline",
+  "run-candidate-tests-on-altered-copy/partial-run-treated-as-not-attempted",
+  "single-continuous-edit-in-named-region/missing-region-rejected-as-mutable",
+  "weaker-tier-evidence/executed-verdicts-upgrade-support-tier",
+  "weaker-tier-evidence/report-shows-executed-verdicts-as-stronger-tier"
+]

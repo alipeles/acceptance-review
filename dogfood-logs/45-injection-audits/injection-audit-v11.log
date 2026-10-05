@@ -1,0 +1,34 @@
+criteria: 13
+defects: 21 (21 with a region)
+tests discovered: 341
+control run: 339 usable, 2 set aside
+  set aside: tests/fixtures/archetypes/08-unrequested-change-separable/head/test_report.py::test_low_stock_report_filters_by_threshold — not_started
+  set aside: tests/benchmark/test_rating_regression.py::test_every_scored_rating_is_the_arithmetic_over_that_case_s_own_verdicts — failed
+wrote dogfood-logs/45-injection-audits/injection-audit-v11.md and dogfood-logs/45-injection-audits/injection-audit-v11.attempts.json
+  mutation agent: 21 calls (21 live), $3.5247, 1142s, 0 reasoning tokens
+  mutation verification: defect match: 9 calls (9 live), $0.0740, 66s, 0 reasoning tokens
+Edit-building cost by defect:
+  defect                                                                                                       mutation descriptor $  mutation descriptor time  mutation agent $  mutation agent time
+  -----------------------------------------------------------------------------------------------------------  ---------------------  ------------------------  ----------------  -------------------
+  carry-reason-for-non-settlement/not-attempted-missing-reason                                                                     —                         —           $0.1142                31.9s
+  continue-with-set-aside-tests/allow-failing-tests-not-propagated                                                                 —                         —           $0.1324                24.7s
+  continue-with-set-aside-tests/set-aside-tests-still-count-in-conclusions                                                         —                         —           $0.4413                67.4s
+  does-not-run-first/static-judgement-still-runs-before-execution                                                                  —                         —           $0.3657                35.0s
+  execution-could-not-settle-defects/execution-disabled-skips-static-judgement                                                     —                         —           $0.1195                42.1s
+  execution-could-not-settle-defects/unsettled-defects-dropped-from-review-state                                                   —                         —           $0.1359                86.5s
+  mechanical-validity-checks/containment-check-only-uses-resolved-regions                                                          —                         —           $0.1465                75.6s
+  mechanical-validity-checks/mechanical-checks-bypassable-through-execution-settings                                               —                         —           $0.1323                91.7s
+  mechanical-validity-checks/parse-check-applies-only-to-some-file-types                                                           —                         —           $0.0975                80.8s
+  no-line-execution-recording/execution-tier-still-derives-line-coverage                                                           —                         —           $0.0973                66.0s
+  no-parser-not-invalid/parser-check-applies-to-all-files                                                                          —                         —           $0.1188                82.0s
+  no-whole-suite-run/baseline-control-run-uses-all-tests                                                                           —                         —           $0.1415                52.3s
+  no-whole-suite-run/whole-suite-execution-flag                                                                                    —                         —           $0.1682                58.4s
+  preserve-code-reading-judgement/static-judgement-skipped-when-execution-runs                                                     —                         —           $0.1020                16.0s
+  preserve-current-review-conclusions-when-unrunnable/execution-tier-overrides-static-when-run-is-unavailable                      —                         —           $0.1384                52.6s
+  run-candidate-tests-on-altered-copy/baseline-halt-prevents-execution                                                             —                         —           $0.1112                43.7s
+  run-candidate-tests-on-altered-copy/no-tests-after-empty-baseline                                                                —                         —           $0.2838                 8.4s
+  run-candidate-tests-on-altered-copy/partial-run-treated-as-not-attempted                                                         —                         —           $0.2834                 7.8s
+  single-continuous-edit-in-named-region/missing-region-rejected-as-mutable                                                        —                         —           $0.1522                78.1s
+  weaker-tier-evidence/executed-verdicts-upgrade-support-tier                                                                      —                         —           $0.1284                65.5s
+  weaker-tier-evidence/report-shows-executed-verdicts-as-stronger-tier                                                             —                         —           $0.1141                75.3s
+wall clock: 501s

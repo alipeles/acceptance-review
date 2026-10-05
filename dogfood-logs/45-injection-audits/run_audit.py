@@ -284,6 +284,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--agent-model", help="the agent's model; unset uses its default")
     parser.add_argument("--agent-timeout", type=float, default=900.0, help="seconds per run")
+    parser.add_argument(
+        "--agent-only",
+        action="store_true",
+        help="ask only the agent, once per defect, with no one-call candidate first",
+    )
+    parser.add_argument(
+        "--only", type=Path, help="a JSON list of defect ids: audit only these defects"
+    )
     parser.add_argument("--no-verify", action="store_true")
     parser.add_argument("--mode", choices=["record", "replay"], default="replay")
     parser.add_argument("--out", type=Path, required=True, help="the audit Markdown")
@@ -304,6 +312,8 @@ def main(argv: list[str] | None = None) -> int:
         help="stop after the control run: exercises the test-running half, still no model call",
     )
     args = parser.parse_args(argv)
+    if args.agent_only and not args.agent:
+        parser.error("--agent-only needs --agent")
 
     if args.rerender:
         # The Markdown is a view of the attempts, so a rendering fix must not
@@ -338,6 +348,13 @@ def main(argv: list[str] | None = None) -> int:
     defect_sets = load_defect_sets(args.defects, tuple(args.skip))
     if args.limit:
         defect_sets = _first(defect_sets, args.limit)
+    if args.only:
+        wanted = set(json.loads(args.only.read_text(encoding="utf-8")))
+        defect_sets = [
+            entry.model_copy(update={"defects": [d for d in entry.defects if d.id in wanted]})
+            for entry in defect_sets
+        ]
+        defect_sets = [entry for entry in defect_sets if entry.defects]
     defects = {defect.id: defect for entry in defect_sets for defect in entry.defects}
     change_set = extract_change_set(args.repo, args.base, args.head)
     discovered = discover_tests(args.repo, change_set)
@@ -403,6 +420,12 @@ def main(argv: list[str] | None = None) -> int:
             timeout_seconds=agent_settings.timeout_seconds,
             max_in_flight=agent_settings.max_in_flight,
         )
+    max_candidates = execution.max_candidates
+    if args.agent_only:
+        # The agent as the only builder, once per defect (#338's audit v11):
+        # routing never reaches it on v10's defects, so it is asked directly
+        # about the ones whose one-call edit was judged wrong.
+        builder, fallback, max_candidates = fallback, None, 1
     attempts = run_mutations(
         defect_sets,
         change_set,
@@ -413,7 +436,7 @@ def main(argv: list[str] | None = None) -> int:
         execution.max_edit_lines,
         max_failing_fraction=execution.max_failing_fraction,
         breadth_floor=execution.breadth_floor,
-        max_candidates=execution.max_candidates,
+        max_candidates=max_candidates,
         fallback=fallback,
     )
     if execution.verify_edits:
