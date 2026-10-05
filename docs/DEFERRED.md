@@ -6558,3 +6558,43 @@ the record.
 - **Why I didn't act:** Tool defect; #196 (decomposer types automatable obligations `human_review`) is the nearest issue.
 - **Drafted fix:** Comment on #196: "Same failure with a second wrong value. At #338's Gate 1, `test-files-removed` ('The copy the agent works in has the project's test files removed') was typed `docs_config` on three of three runs, and run 2 typed a set-aside rule `human_review`. Evidence: `dogfood-logs/338-gate1-run{1,2,3}/output.log`."
 - **Status:** **filed 2026-10-02 as a comment on #196**, approved at #338's Gate 1.
+
+### [2026-10-05] A bullet list directly under the Task heading is not read as any requirement
+- **Kind:** filing
+- **Found during:** #372, Gate 1 (`dogfood-logs/372-gate1-run1/`)
+- **Where:** src/acceptance/requirement/task_file.py:135 (`_list_target`)
+- **Severity:** should-fix
+- **What's wrong:** Paragraphs under `# Task` go into `behavior`, but `_list_target` has branches only for Constraints, Completion expectations and Scope exclusions. So a bullet list under `# Task` goes to `unclaimed`, and the decomposer never sees it. In #372's task file, the two bullets naming the two label sources (BugsInPy mutants and the #45 audit edits) produced no obligation. The CLI does warn (`!! NOT READ AS ANY REQUIREMENT: 2 block(s)`), so the loss is visible rather than silent. But the warning's advice, "move them under a recognised heading", is wrong here, because they already sit under one.
+- **Why I didn't act:** Out of #372's scope. It changes what the decomposer is given, so it would orphan every recorded decompose transcript for task files with Task bullets.
+- **Drafted fix:** Filing, sub-issue of #181 (decomposition). Title: "A bullet list under the Task heading is not read as any requirement". Body: as above, with the two unread blocks from `dogfood-logs/372-gate1-run1/output.log`. Fix: add `if section in _TASK: return result.behavior` to `_list_target`. Each item then becomes its own requirement, the same way Constraints bullets do. Related: #227, which asks how flexible the parser should be about task files it does not recognise; this case is narrower, because the heading *is* recognised. Acceptance: a task file whose Task section holds a paragraph and a bullet list yields a requirement for each item, and `unread_source` is empty.
+- **Status:** **filed 2026-10-05 as #373**, sub-issue of #181, approved at #372's Gate 1.
+
+### [2026-10-05] Decision: #372's second label source was judged by helper agents, not by a person
+- **Kind:** decision
+- **Found during:** #372, Gate 1
+- **Where:** #372's Deliverable, item 2; `dogfood-logs/45-injection-audits/`
+- **Severity:** blocker (for that source only)
+- **What's wrong:** #372 says a person marked each #45 injection valid or invalid. The audit judgements say otherwise. v6 to v8 were "judged … by a helper agent" with a few hand spot-checks, and v9 to v10 used "four parallel judging passes". So "only the valid ones are used" filters on a model's verdict, and #372's premise is that no model is in the loop. The audit records also lack the obligation text, the test source and the implementation hunk. They hold only file:line references and the base revisions (`61c5a3c`, `518f876`), so those fields would have to be rebuilt from git. The valid edits are about 26 to 33 per audit version, and they repeat the same defects across versions.
+- **Why I didn't act:** It changes what #372 delivers, which is your call.
+- **Recommendation:** Keep the source, but have a person re-judge the edits the agents called valid in v10, the latest audit (31 edits), before they count. Record the result as a person-confirmed label. The source is small either way, so this is roughly an hour of reading. **Rejected alternative:** drop the source. That is cheaper, but it loses the only cases shaped like what the checker actually produces, which is the reason #372 gives for including them. A third option is to keep the agent verdicts and label the source "agent-judged". That is honest, but it puts a model back into labels that #371, the Jev experiment, scores against.
+- **Status:** **resolved 2026-10-05 — human decision: drop the source.** BugsInPy is the only source for #372. The #45 edits can be vetted and added in an issue of their own if they are ever needed. A sample showed the source could not meet the 30%-survived rule in any case: of the 31 edits called valid in v10, 25 were killed and 6 survived. The edit to #372's body is queued below.
+
+### [2026-10-05] Amend #372's body: drop the #45 audit source
+- **Kind:** filing
+- **Found during:** #372, Gate 1
+- **Where:** #372's issue body
+- **Severity:** should-fix
+- **What's wrong:** The body still lists the #45 audit edits as a second label source, describes them as judged by a person, says they may be committed, and counts the 200 / 30% / 30% rule per source. The human dropped the source on 2026-10-05.
+- **Why I didn't act:** Editing an issue body changes the plan, so it needs approval first.
+- **Drafted fix:** Edit the body; no new issue. Replace Deliverable item 2 with: "*(Dropped 2026-10-05.)* The #45 injection-audit edits were planned as a second source. They were judged valid by helper agents, not by a person, so they would put a model back into the labels. A sample also showed they cannot meet the survived share: of 31 valid edits in v10, 25 were killed and 6 survived. They can be vetted and added in an issue of their own if needed." Drop the sentence "The labels from the #45 audits come from this repo, so they may be committed." In Acceptance, change "counted per source" to "over the whole set". Change "32 hand-written `killed_by` entries" to 38.
+- **Status:** **done 2026-10-05**: #372's body was edited as drafted, approved at #372's Gate 1. It also records the Gate 1 decision on requirement text (the fix commit message).
+
+### [2026-10-05] #212 gains an instance: a reason clause becomes an obligation after a rewrite meant to avoid it
+- **Kind:** filing
+- **Found during:** #372, Gate 1 (`dogfood-logs/372-gate1-run1/` and `-run2/`)
+- **Where:** decomposition
+- **Severity:** nice-to-have
+- **What's wrong:** Run 1 turned the background sentence "Survivors include edits that change no behaviour." into the obligation `survivors-include-no-behaviour-change-edits`. The sentence was then rewritten as a reason for the spot-check that follows it: "Because an edit can change no behaviour at all, some survivors are not evidence of a weak test. The build draws a random sample of survivors for a person to check…". Run 2 still yields `survivors-not-evidence-of-weak-test` [invariant], "Some survivors are not evidence of a weak test." That is a fact about the world, not something the code can satisfy.
+- **Why I didn't act:** Known defect (#212), outside #372's scope.
+- **Drafted fix:** A comment on #212 quoting both sentences and both obligations, with the run directories. Its point: making the sentence a subordinate "because" clause does not stop it becoming an obligation.
+- **Status:** **filed 2026-10-05** as a comment on #212, approved at #372's Gate 1.

@@ -1,0 +1,108 @@
+run 9a1225e794aaffef
+  continuing 2f202a31d78db8e1
+  requirements: 0 derived, 6 carried, 3 revised; 18 decompose call(s)
+  continue this run with: --continue 9a1225e794aaffef
+Model usage by stage:
+  stage                        model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    openai/gpt-5.4-mini                          15 (15 live / 0 replayed)  80,546   2,100    0.0%   $0.0699   $0.0699          28.4s
+  decompose-summary            openai/gpt-5.4                                 3 (3 live / 0 replayed)   2,939   1,572    0.0%   $0.0309   $0.0309          24.5s
+  obligation linking           voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)   1,592      96    0.0%   $0.0010   $0.0010           1.9s
+  requirement carry alignment  openai/gpt-5.4-mini                            1 (1 live / 0 replayed)     592      48    0.0%   $0.0007   $0.0007           6.1s
+  this run spent $0.1025 on 21 live call(s); the evidence cost $0.1025 to record (0 call(s) replayed at no cost to this run)
+Requirements: 9   with obligations: 9
+
+[task-01] Build a set of labelled cases for the judgement "would this test fail if this
+    defect were present?", where every label comes from actually running the test
+    against the defect rather than from a model.
+    -> labelled-cases-for-test-failure-judgement  [test_demand/explicit]
+       Build a set of labelled cases for the judgement "would this test fail if this
+       defect were present?"
+    -> labels-from-running-tests  [functional/explicit]
+       Every label comes from actually running the test against the defect rather than
+       from a model.
+
+[task-02] The defects are fixed-operator mutants on BugsInPy projects: each is one small
+    mechanical edit, such as flipping a comparison or changing a constant, so the edit
+    is the defect and can never misdescribe what was injected. Each case holds the
+    requirement text the test is meant to check, the test's source, the implementation
+    hunk the defect was injected into, a text description of the defect, the exact edit
+    applied, and whether the test failed with the edit in place.
+    -> fixed-operator-mutants-on-bugsinpy-projects  [invariant/explicit]
+       The defects are fixed-operator mutants on BugsInPy projects.
+    -> mechanical-edit-defect  [invariant/explicit]
+       The defect is represented as one small mechanical edit, such as flipping a
+       comparison or changing a constant, and that edit is the defect itself.
+    -> defect-description-matches-edit  [invariant/explicit]
+       The defect description cannot misdescribe what was injected; it must match the
+       exact edit applied.
+    -> case-holds-requirement-text  [invariant/explicit]
+       Each case holds the requirement text the test is meant to check.
+    -> test-source  [docs_config/explicit]
+       The test's source is included as the required content for this requirement.
+    -> implementation-hunk-present  [functional/explicit]
+       The response includes the implementation hunk the defect was injected into.
+    -> defect-text-description  [docs_config/explicit]
+       Provide a text description of the defect.
+    -> exact-edit-applied  [docs_config/explicit]
+       State the exact edit applied.
+    -> test-failure-status-recorded  [functional/explicit]
+       Record whether the test failed with the edit in place.
+
+[task-03] Tests run in the existing sandbox (`src/acceptance/execution/sandbox.py`). A
+    test that already fails on the unmutated code is set aside rather than labelled, as
+    `src/acceptance/mutation/baseline.py` does.
+    -> sandbox-tests-run-in-existing-sandbox  [functional/explicit]
+       Tests run in the existing sandbox (`src/acceptance/execution/sandbox.py`).
+    -> baseline-failing-test-set-aside  [regression/explicit]
+       A test that already fails on the unmutated code is set aside rather than
+       labelled.
+
+[task-04] Because an edit can change no behaviour at all, some survivors are not
+    evidence of a weak test. The build draws a random sample of survivors for a person
+    to check, and its report gives the sample size and the share found to change no
+    behaviour.
+    -> survivors-not-evidence-of-weak-test  [invariant/explicit]
+       Some survivors are not evidence of a weak test.
+    -> random-survivor-sample-for-human-check  [human_review/explicit]
+       The build draws a random sample of survivors for a person to check.
+    -> report-gives-sample-size  [functional/explicit]
+       The report gives the sample size.
+    -> share-found-to-change-no-behaviour  [functional/explicit]
+       The report includes the share found to change no behaviour.
+
+[task-05] The set holds at least 200 cases, at least 30% of them killed and at least 30%
+    survived.
+    -> at-least-200-cases  [invariant/explicit]
+       The set holds at least 200 cases.
+    -> killed-cases-at-least-30-percent  [invariant/explicit]
+       At least 30% of the cases are killed.
+    -> at-least-30-percent-survived  [invariant/explicit]
+       At least 30% of the cases in the set survived.
+
+[constraint-01] BugsInPy declares no license and this repository is public. Cases
+    derived from BugsInPy are written only to a gitignored local directory and never
+    committed; only aggregate counts and rates may be committed. The build reruns from a
+    pinned list of BugsInPy bug ids, and rebuilding from the same pinned inputs produces
+    the same file.
+    -> bugs-in-py-license-and-local-derivation  [docs_config/explicit]
+       Cases derived from BugsInPy are written only to a gitignored local directory and
+       are never committed; only aggregate counts and rates may be committed.
+    -> bugs-in-py-pinned-rebuild-determinism  [invariant/explicit]
+       The build reruns from a pinned list of BugsInPy bug ids, and rebuilding from the
+       same pinned inputs produces the same file.
+
+[constraint-02] The cases load through a typed loader in `src/acceptance/benchmark/`,
+    the same way `GroundTruthLabels` loads.
+    -> typed-loader-for-cases  [functional/explicit]
+       The cases load through a typed loader in `src/acceptance/benchmark/`, the same
+       way `GroundTruthLabels` loads.
+
+[exclusion-01] Improving how the checker's mutation tier writes its own edits.
+    -> mutation-tier-writes-its-own-edits  [functional/explicit]
+       The change does not alter how the checker's mutation tier writes its own edits.
+
+[exclusion-02] Using the cases to score any judge.
+    -> no-judge-scoring  [functional/explicit]
+       The change does not use the cases to score any judge.
+

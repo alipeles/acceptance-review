@@ -36,6 +36,11 @@ htmlcov/
 # does not take it — DR-259 lost two runs that way. Losing it costs re-derivation
 # and nothing else: carry-forward defaults to fresh.
 .acceptance/ledger/
+# Mutant kill/survive labels built from BugsInPy (#372), and the project
+# checkouts and environments they are built in. BugsInPy declares no license and
+# this repo is public, so per DR-168 nothing derived from it is ever committed;
+# only aggregate counts and rates are. Rebuild from the pinned bug list.
+.acceptance/mutant-labels/
 *.local
 
 # OS / editor
