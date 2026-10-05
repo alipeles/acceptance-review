@@ -142,6 +142,8 @@ def _build_bug(
                 test_id=test.test_id,
                 kind=test.kind.value,
                 reason=test.reason,
+                error_type=test.error_type,
+                detail=test.detail,
             )
         )
     usable = sorted(control.usable_tests)

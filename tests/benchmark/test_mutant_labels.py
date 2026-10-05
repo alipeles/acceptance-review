@@ -337,7 +337,14 @@ class FakeSandbox:
         return Baseline(
             usable_tests=[t for t in tests if t not in red],
             set_aside=[
-                SetAsideTest(test_id=t, kind=TestOutcomeKind.FAILED, reason="red") for t in red
+                SetAsideTest(
+                    test_id=t,
+                    kind=TestOutcomeKind.FAILED,
+                    reason="red",
+                    error_type="AttributeError",
+                    detail="'Function' object has no attribute 'get_marker'",
+                )
+                for t in red
             ],
         )
 
@@ -400,6 +407,10 @@ def test_a_red_test_is_set_aside_and_never_labelled(tmp_path):
     labels, _sandbox, _paths = _build(tmp_path)
 
     assert [t.test_id for t in labels.set_aside_tests] == ["tests/test_core.py::test_red"]
+    # What actually went wrong survives into the label file, not just the
+    # sentence every red test shares.
+    assert labels.set_aside_tests[0].error_type == "AttributeError"
+    assert "get_marker" in labels.set_aside_tests[0].detail
     assert not any(c.test_id.endswith("test_red") for c in labels.cases)
 
 
