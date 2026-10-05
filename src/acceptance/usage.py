@@ -295,3 +295,82 @@ def render(usage: RunUsage) -> str:
         f"({usage.replayed_calls} call(s) replayed at no cost to this run)"
     )
     return "\n".join(lines)
+
+
+class LabelUsage(BaseModel):
+    """What one stage spent on one labelled subject — a defect, for the mutation
+    stages (#338).
+
+    `cost_usd` is the recorded cost, live or replayed, because the comparison it
+    serves is between what two ways of building an edit cost to produce. Seconds
+    are summed over live calls only and are None when none was live; a defect's
+    calls in one stage run one after another, so the sum is that stage's wall
+    clock for the defect.
+    """
+
+    label: str
+    stage: str
+    calls: int = 0
+    cost_usd: float = 0.0
+    seconds: float | None = None
+
+
+def per_label(calls: Iterable[Mapping[str, Any]], stages: Iterable[str]) -> list[LabelUsage]:
+    """Cost and time per (label, stage), for calls in `stages` that carry a label.
+
+    Sorted by label then stage, never by arrival, for `summarize`'s reason.
+    """
+    wanted = set(stages)
+    rows: dict[tuple[str, str], LabelUsage] = {}
+    for call in calls:
+        stage, label = call.get("stage"), call.get("label")
+        if stage not in wanted or not isinstance(label, str):
+            continue
+        row = rows.setdefault((label, stage), LabelUsage(label=label, stage=stage))
+        row.calls += 1
+        cost = _number(call.get("usage") or {}, "cost_usd")
+        if cost is not None:
+            row.cost_usd += cost
+        seconds = call.get("seconds")
+        if isinstance(seconds, (int, float)) and call.get("served_from") == SERVED_FROM_PROVIDER:
+            row.seconds = (row.seconds or 0.0) + seconds
+    return [rows[key] for key in sorted(rows)]
+
+
+def render_per_label(
+    calls: Iterable[Mapping[str, Any]], stages: tuple[str, ...], only_with: str
+) -> str:
+    """One row per label, one cost and time pair per stage — or "" when no call in
+    `only_with` was made, so a run that never used that stage prints nothing new.
+
+    Every label any of `stages` touched is shown, not only those `only_with`
+    reached, so the comparison has its baseline beside it.
+    """
+    usage = per_label(calls, stages)
+    if not any(row.stage == only_with for row in usage):
+        return ""
+    by_label: dict[str, dict[str, LabelUsage]] = {}
+    for row in usage:
+        by_label.setdefault(row.label, {})[row.stage] = row
+    header = ("defect", *(f"{stage} {part}" for stage in stages for part in ("$", "time")))
+    rows = []
+    for label, by_stage in sorted(by_label.items()):
+        cells = [label]
+        for stage in stages:
+            row = by_stage.get(stage)
+            if row is None:
+                cells += ["—", "—"]
+                continue
+            cells.append(f"${row.cost_usd:.4f}")
+            cells.append("—" if row.seconds is None else f"{row.seconds:.1f}s")
+        rows.append(tuple(cells))
+    widths = [max(len(row[i]) for row in (header, *rows)) for i in range(len(header))]
+
+    def line(row: tuple[str, ...]) -> str:
+        cells = [row[0].ljust(widths[0])]
+        cells += [row[i].rjust(widths[i]) for i in range(1, len(row))]
+        return "  " + "  ".join(cells).rstrip()
+
+    lines = ["Edit-building cost by defect:", line(header), line(tuple("-" * w for w in widths))]
+    lines.extend(line(row) for row in rows)
+    return "\n".join(lines)

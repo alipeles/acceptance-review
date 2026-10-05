@@ -56,6 +56,7 @@ from acceptance.evidence.discovery import discover_tests
 from acceptance.evidence.extraction import extract_test_evidence
 from acceptance.evidence_tier import Component, EvidenceTier
 from acceptance.llm import ModelClient
+from acceptance.mutation.agent import AgentDescriptorBuilder, make_agent
 from acceptance.mutation.attempt import MutationAttempt
 from acceptance.mutation.baseline import SetAsideTest, establish_baseline
 from acceptance.mutation.descriptor import LiveDescriptorBuilder, from_mapping
@@ -331,6 +332,18 @@ def _run_execution_tier(
     # the runner returns before building for one without — so no request is
     # spent on an absence defect, as before.
     builder = LiveDescriptorBuilder(client, surrounding)
+    # #338. Asked only after every one-call candidate for a defect was set
+    # aside, and only when configured; unconfigured, no agent is built and the
+    # runner is called exactly as before.
+    fallback = None
+    if execution.agent is not None:
+        fallback = AgentDescriptorBuilder(
+            make_agent(execution.agent),
+            client,
+            repo,
+            timeout_seconds=execution.agent.timeout_seconds,
+            max_in_flight=execution.agent.max_in_flight,
+        )
     attempts = run_mutations(
         defect_sets,
         change_set,
@@ -342,6 +355,7 @@ def _run_execution_tier(
         max_failing_fraction=execution.max_failing_fraction,
         breadth_floor=execution.breadth_floor,
         max_candidates=execution.max_candidates,
+        fallback=fallback,
     )
     builder.record_unusable(unusable)
     # The tier gate's other half. Off by default: until the verifier is adopted,

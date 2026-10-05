@@ -26,7 +26,7 @@ class FakeClient:
         self._answers = list(answers)
         self.calls = []
 
-    def complete(self, messages, constrained, partition, parse_as, stage):
+    def complete(self, messages, constrained, partition, parse_as, stage, label=None):
         self.calls.append(
             {
                 "messages": messages,
