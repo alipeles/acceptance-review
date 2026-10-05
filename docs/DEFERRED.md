@@ -6538,3 +6538,23 @@ the record.
 - **Why I didn't act:** Outside #366's scope, which is `llm.py`, `config.py` and the provenance.
 - **Drafted fix:** Filing, unparented like #364 because no umbrella covers the execution sandbox. Title: "The review's repository copy lacks history, so tests that resolve old commits are set aside". Body: as above, with the log excerpt. Find how the sandbox copy is made (a shallow clone or a working-tree copy) and give it the objects a benchmark case's pinned revision needs, or classify the failure as an environment limitation rather than a failing test. Acceptance: the test named above runs in the sandbox copy and is not set aside, or is set aside with a reason naming missing history rather than as a failure.
 - **Status:** **filed 2026-09-24 as #369**, unparented, approved at #366's Gate 2.
+
+### [2026-10-02] Evidence for #310: an exclusion inverted on three runs across two wordings
+- **Kind:** filing
+- **Found during:** #338, Gate 1 runs 1-3 (`dogfood-logs/338-gate1-run{1,2,3}/output.log`, `exclusion-01`)
+- **Where:** decomposition of scope exclusions, `src/acceptance/requirement/`
+- **Severity:** should-fix
+- **What's wrong:** The exclusion "A Codex adapter. Only Claude Code is driven in this change." became `codex-adapter-only-claude-code-driven`, "The change is limited to adding a Codex adapter". Reworded to "An adapter for Codex or for any agent other than Claude Code.", it became "The change adds an adapter for Codex ...". The other three exclusions in the same file were derived correctly as negations.
+- **Why I didn't act:** Tool defect, already tracked as #310 (a scope exclusion yields a positive obligation that coverage then reports not addressed).
+- **Drafted fix:** Comment on #310: "Reproduced at #338's Gate 1, three runs, two wordings (`dogfood-logs/338-gate1-run{1,2,3}/`). Exclusion text: [both wordings above]. Derived: [both obligations above]. Three sibling exclusions in the same file came out correctly negated, so the failure is per-item, not per-section. Expect #338's Gate 2 to report this obligation not addressed."
+- **Status:** **filed 2026-10-02 as a comment on #310**, approved at #338's Gate 1.
+
+### [2026-10-02] Evidence for #196: a code property typed `docs_config`
+- **Kind:** filing
+- **Found during:** #338, Gate 1 runs 1-3 (`test-files-removed`)
+- **Where:** obligation typing, `src/acceptance/requirement/`
+- **Severity:** nice-to-have
+- **What's wrong:** "The copy the agent works in has the project's test files removed" is typed `docs_config` on all three runs; it is a property of code. Run 2 also typed `set-aside-when-edit-is-not-contiguous-within-region` as `human_review`, which is the case #196 already names.
+- **Why I didn't act:** Tool defect; #196 (decomposer types automatable obligations `human_review`) is the nearest issue.
+- **Drafted fix:** Comment on #196: "Same failure with a second wrong value. At #338's Gate 1, `test-files-removed` ('The copy the agent works in has the project's test files removed') was typed `docs_config` on three of three runs, and run 2 typed a set-aside rule `human_review`. Evidence: `dogfood-logs/338-gate1-run{1,2,3}/output.log`."
+- **Status:** **filed 2026-10-02 as a comment on #196**, approved at #338's Gate 1.
