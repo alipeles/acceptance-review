@@ -512,6 +512,12 @@ def test_the_survivor_sample_takes_one_case_per_edit_and_is_seeded(tmp_path):
 
     assert sample.population == len(survivors_per_edit)
     assert len(sample.checks) == len(survivors_per_edit)
+    # Every sampled id is a case the build produced from a run, and it survived.
+    built = {c.case_id: c for c in labels.cases}
+    assert any(c.killed for c in labels.cases)  # killed cases existed to be wrongly drawn
+    for check in sample.checks:
+        assert check.case_id in built
+        assert built[check.case_id].killed is False
     assert draw_survivor_sample(labels, size=2, seed=1) == draw_survivor_sample(
         labels, size=2, seed=1
     )
