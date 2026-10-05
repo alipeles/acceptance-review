@@ -1,0 +1,51 @@
+{
+  "bugsinpy_commit": "0000000000000000000000000000000000000000",
+  "bugs": ["demo/1"],
+  "cases": [
+    {
+      "case_id": "demo/1/m0/tests/test_core.py::test_positive",
+      "source": "bugsinpy-operator",
+      "project": "demo",
+      "bug_id": 1,
+      "fixed_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "requirement_text": "Fix sign check for zero\n\nZero is not positive.",
+      "test_id": "tests/test_core.py::test_positive",
+      "test_source": "def test_positive():\n    assert positive(1)\n    assert not positive(0)",
+      "implementation_hunk": "def positive(x):\n    return x > 0",
+      "defect_description": "At demo/core.py:2, in `positive`, the comparison `x > 0` is inverted to `x <= 0`, so it holds exactly where the original did not.",
+      "edit": {
+        "path": "demo/core.py",
+        "start_line": 2,
+        "end_line": 2,
+        "original": "    return x > 0",
+        "replacement": "    return x <= 0",
+        "operator": "compare_flip"
+      },
+      "killed": true
+    },
+    {
+      "case_id": "demo/1/m0/tests/test_core.py::test_unrelated",
+      "source": "bugsinpy-operator",
+      "project": "demo",
+      "bug_id": 1,
+      "fixed_commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "requirement_text": "Fix sign check for zero\n\nZero is not positive.",
+      "test_id": "tests/test_core.py::test_unrelated",
+      "test_source": "def test_unrelated():\n    assert True",
+      "implementation_hunk": "def positive(x):\n    return x > 0",
+      "defect_description": "At demo/core.py:2, in `positive`, the comparison `x > 0` is inverted to `x <= 0`, so it holds exactly where the original did not.",
+      "edit": {
+        "path": "demo/core.py",
+        "start_line": 2,
+        "end_line": 2,
+        "original": "    return x > 0",
+        "replacement": "    return x <= 0",
+        "operator": "compare_flip"
+      },
+      "killed": false
+    }
+  ],
+  "set_aside_tests": [],
+  "set_aside_mutants": [],
+  "skipped_bugs": []
+}
