@@ -33,14 +33,23 @@ from acceptance.change.diff import extract_change_set
 from acceptance.config import RunConfig
 from acceptance.evidence.discovery import discover_tests
 from acceptance.llm import SERVED_FROM_PROVIDER, Mode
+from acceptance.mutation.agent import (
+    AGENT_STAGE,
+    AGENTS,
+    AgentDescriptorBuilder,
+    AgentSettings,
+    make_agent,
+)
 from acceptance.mutation.attempt import MutationAttempt
 from acceptance.mutation.baseline import establish_baseline
+from acceptance.mutation.descriptor import STAGE as DESCRIPTOR_STAGE
 from acceptance.mutation.descriptor import LiveDescriptorBuilder
 from acceptance.mutation.region import regions_for
 from acceptance.mutation.runner import run_mutations
 from acceptance.mutation.settings import ExecutionSettings
 from acceptance.mutation.verification import verify_attempts
 from acceptance.review_state import Defect, DefectSet
+from acceptance.usage import per_label, render_per_label
 
 #: The three criteria left out of v7 and v8 while they were under human
 #: adjudication. Kept here so a fresh audit uses the same 22 as v7/v8 by
@@ -268,6 +277,13 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--max-candidates", type=int, default=3)
+    parser.add_argument(
+        "--agent",
+        choices=sorted(AGENTS),
+        help="ask this coding agent for one more candidate when every one-call one was set aside",
+    )
+    parser.add_argument("--agent-model", help="the agent's model; unset uses its default")
+    parser.add_argument("--agent-timeout", type=float, default=900.0, help="seconds per run")
     parser.add_argument("--no-verify", action="store_true")
     parser.add_argument("--mode", choices=["record", "replay"], default="replay")
     parser.add_argument("--out", type=Path, required=True, help="the audit Markdown")
@@ -335,8 +351,13 @@ def main(argv: list[str] | None = None) -> int:
         print("dry run: no control run, no model call")
         return 0
 
+    agent_settings = None
+    if args.agent:
+        agent_settings = AgentSettings(
+            agent=args.agent, model=args.agent_model, timeout_seconds=args.agent_timeout
+        )
     execution = ExecutionSettings(
-        verify_edits=not args.no_verify, max_candidates=args.max_candidates
+        verify_edits=not args.no_verify, max_candidates=args.max_candidates, agent=agent_settings
     )
     stage_models = {}
     if not args.no_verify and args.verifier_model != "same":
@@ -373,6 +394,15 @@ def main(argv: list[str] | None = None) -> int:
     surrounding = retrieve_context(args.repo, change_set)
 
     builder = LiveDescriptorBuilder(client, surrounding)
+    fallback = None
+    if agent_settings is not None:
+        fallback = AgentDescriptorBuilder(
+            make_agent(agent_settings),
+            client,
+            args.repo,
+            timeout_seconds=agent_settings.timeout_seconds,
+            max_in_flight=agent_settings.max_in_flight,
+        )
     attempts = run_mutations(
         defect_sets,
         change_set,
@@ -384,6 +414,7 @@ def main(argv: list[str] | None = None) -> int:
         max_failing_fraction=execution.max_failing_fraction,
         breadth_floor=execution.breadth_floor,
         max_candidates=execution.max_candidates,
+        fallback=fallback,
     )
     if execution.verify_edits:
         attempts = verify_attempts(attempts, list(defects.values()), sources, client, surrounding)
@@ -423,6 +454,13 @@ def main(argv: list[str] | None = None) -> int:
                 "usable_tests": len(baseline.usable_tests),
                 "wall_clock_seconds": round(elapsed, 1),
                 "spend": spend(client),
+                "agent": None if agent_settings is None else agent_settings.to_dict(),
+                # Both builders' cost and time per defect (#338), so the
+                # agent's can be read beside the one-call builder's.
+                "per_defect": [
+                    row.model_dump()
+                    for row in per_label(client.observed_calls, (DESCRIPTOR_STAGE, AGENT_STAGE))
+                ],
                 "attempts": [attempt.to_dict() for attempt in attempts],
             },
             indent=2,
@@ -439,6 +477,11 @@ def main(argv: list[str] | None = None) -> int:
             f"${row['cost_usd']:.4f}, {row['seconds']:.0f}s, "
             f"{row['reasoning_tokens']:,} reasoning tokens"
         )
+    by_defect = render_per_label(
+        client.observed_calls, (DESCRIPTOR_STAGE, AGENT_STAGE), only_with=AGENT_STAGE
+    )
+    if by_defect:
+        print(by_defect)
     print(f"wall clock: {elapsed:.0f}s")
     return 0
 
