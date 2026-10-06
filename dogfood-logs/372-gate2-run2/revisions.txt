@@ -1,0 +1,5 @@
+base 217ed900466eec8fa3de8e7a9d2cc9cb65cb97eb
+head 6a3a205c3063ccd39bbc616ac4325a2d76ad10c2
+continue 34601fedf98e6a6d
+note: .acceptance/mutant-labels/ was moved out of the repo for this run, because
+of the discovery defect queued 2026-10-05 (discovery walks gitignored folders).

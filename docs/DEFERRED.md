@@ -6661,3 +6661,58 @@ the record.
 - **Recommendation:** Let the agent declare one typed answer, by writing a fixed small JSON file (`already_defective` plus the lines), which the builder validates like a schema answer, and route its repair through the existing `already_present` path. Its edit, not its words, would still be what is tested.
 - **Rejected:** parsing the agent's final reply text, which would make its account evidence.
 - **Status:** open
+
+### [2026-10-05] Test discovery walks gitignored directories and offers their tests as candidates
+- **Kind:** filing
+- **Found during:** #372, Gate 2 run 1 (`dogfood-logs/372-gate2-run1/`)
+- **Where:** src/acceptance/evidence/discovery.py:43 (`_EXCLUDED_DIRS`) and its tree walk
+- **Severity:** should-fix
+- **What's wrong:** Discovery finds existing test files by walking the working tree, skipping only a fixed list of folder names (`.venv`, `.git`, `build` and so on). It reads neither `.gitignore` nor the repo's own `.acceptance/ignore`, which `change/diff.py` already honours. In #372's Gate 2 the gitignored `.acceptance/mutant-labels/projects/` held 87 BugsInPy project checkouts. Their own tests (thefuck's, youtube-dl's) became candidate evidence for this change: 202 of the run's 207 unjudged pairs name one of them, the execution stage set dozens of them aside, and the mapping stage was handed hundreds of foreign tests. The run cost $1.04, and every mapping-based rating in it is suspect.
+- **Why I didn't act:** Outside #372's scope. It changes candidate sets, so it moves mapping transcripts.
+- **Drafted fix:** Filing, sub-issue of #182 (test discovery & mapping). Title: "Test discovery walks gitignored directories and offers their tests as candidates". Body: as above, with the counts from `dogfood-logs/372-gate2-run1/output.log`. Fix: build the candidate file list from `git ls-files --cached --others --exclude-standard`, so git's own ignore rules apply, then filter it through `.acceptance/ignore` with the same `pathspec` helper `change/diff.py` uses. Keep `_EXCLUDED_DIRS` for non-git trees. Acceptance: a test file under a gitignored directory, or under a path in `.acceptance/ignore`, is never a candidate, and a test for that runs through `discover_tests`, not a helper.
+- **Status:** **filed 2026-10-06 as #377**, sub-issue of #182, approved at #372's Gate 2.
+
+### [2026-10-05] #283 gains three instances: recommendations that test something the requirement never asked for
+- **Kind:** filing
+- **Found during:** #372, Gate 2 run 1
+- **Where:** test recommendation stage
+- **Severity:** nice-to-have
+- **What's wrong:** Three recommendations in one run prescribe a test for a defect that would not violate its obligation:
+  1. `sandbox-tests-run-in-existing-sandbox`: it asks to prove that the `sample` and `report` commands run tests in the sandbox. They run no tests at all.
+  2. `test-failure-status-recorded` ("Record whether the test failed with the edit in place"): it wants a failure status "not equivalent to a simple killed/survived boolean". Whether a test failed is a boolean.
+  3. `bugs-in-py-pinned-rebuild-determinism` ("rebuilding from the same pinned inputs produces the same file"): it asks to change the inputs between two builds and check that the output varies.
+  4. (run 2) `test-failure-status-recorded` again: "the case record has no field for the edit-in-place test-failure status". `killed` is that field.
+  5. (run 2) `baseline-failing-test-set-aside` ("a test that already fails on the unmutated code is set aside rather than labelled"): it says a red test "not among those selected tests" could still be labelled. Only selected tests are ever run, so only they can be labelled.
+- **Why I didn't act:** Known defect (#283), outside #372's scope.
+- **Drafted fix:** A comment on #283 quoting the three obligations and their `detects` lines from `dogfood-logs/372-gate2-run1/output.log`, with one sentence each on why the named defect does not violate the obligation.
+- **Status:** **filed 2026-10-06** as a comment on #283 (all five instances), approved at #372's Gate 2.
+
+### [2026-10-05] #325 gains an instance: a `test_demand` obligation is indeterminate on two runs
+- **Kind:** filing
+- **Found during:** #372, Gate 2 runs 1 and 2
+- **Where:** defect enumeration
+- **Severity:** nice-to-have
+- **What's wrong:** `labelled-cases-for-test-failure-judgement` ("Build a set of labelled cases for the judgement 'would this test fail if this defect were present?'") is typed `test_demand`. On both runs it reads "indeterminate — no way this change could fail the criterion was enumerated for it", with no mapped test, so its rating cannot be reached.
+- **Why I didn't act:** Known defect (#325).
+- **Drafted fix:** A comment on #325 quoting the obligation and its rating from `dogfood-logs/372-gate2-run{1,2}/output.log`.
+- **Status:** **filed 2026-10-06** as a comment on #325, approved at #372's Gate 2.
+
+### [2026-10-05] #196 has a downstream cost: an obligation typed `human_review` gets no defect, so its rating cannot be reached
+- **Kind:** filing
+- **Found during:** #372, Gate 1 run 2 and Gate 2 runs 1 and 2
+- **Where:** decomposition typing, then defect enumeration
+- **Severity:** should-fix
+- **What's wrong:** Gate 1 typed `random-survivor-sample-for-human-check` ("The build draws a random sample of survivors for a person to check") as `human_review`. The person checks the sample, but drawing it is plain code. On both Gate 2 runs it is "indeterminate — no way this change could fail the criterion was enumerated", with no mapped test, although `test_the_survivor_sample_takes_one_case_per_edit_and_is_seeded` covers it. So the wrong type in #196 does not just mislabel the obligation; it blocks it from ever being rated.
+- **Why I didn't act:** Known defect (#196).
+- **Drafted fix:** A comment on #196 with the Gate 1 typing and both Gate 2 ratings.
+- **Status:** **filed 2026-10-06** as a comment on #196, approved at #372's Gate 2.
+
+### [2026-10-05] #359 gains an instance: an unchanged packaging hunk flips from `in_service` to `separable`
+- **Kind:** filing
+- **Found during:** #372, Gate 2 runs 1 and 2
+- **Where:** unrequested-change disposition
+- **Severity:** nice-to-have
+- **What's wrong:** The `pyproject.toml` hunk adding `pinned_bugs.json` as package data is byte-identical in both runs. Run 1 rated it `in_service`; run 2 rated it `separable`.
+- **Why I didn't act:** Known defect (#359).
+- **Drafted fix:** A comment on #359 quoting both dispositions from `dogfood-logs/372-gate2-run{1,2}/output.log`.
+- **Status:** **filed 2026-10-06** as a comment on #359, approved at #372's Gate 2.
