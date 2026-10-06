@@ -46,6 +46,7 @@ tool does not use it, only these experiments do.
 | `265-prompt-cache-baseline/`, `265-cache-key-scope/` | What the transcript corpus was actually caching, and what a request key's scope should be. | #265; the per-stage key behaviour in `llm.py`. |
 | `317-over-answering/` | Whether the judge answers about pairs it was not offered. | #317. |
 | `191-discrimination-partition/` | Rating instability under partitioning of the discrimination stage. | #191. |
+| `372-mutant-labels/` | Executed kill/survive labels from BugsInPy mutants, for #371's judge comparison. 231 cases, 58% killed. The labels themselves are rebuilt locally, never committed. | #372; the code is `benchmark/mutants/`. |
 
 ## Adding one
 
