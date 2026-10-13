@@ -1,0 +1,209 @@
+{
+ "cases": 17,
+ "categories": {
+  "smarter-model": 15,
+  "uncited": 2
+ },
+ "no_tools_cost_usd": 0.89,
+ "rows": [
+  {
+   "case_id": "PySnooper/1/m0/tests/test_chinese.py::test_chinese",
+   "killed": false,
+   "operator": "negate_condition",
+   "jev_p": 0.66,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.12,
+   "agent_turns": 4,
+   "outside_locations": [],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "PySnooper/1/m1/tests/test_chinese.py::test_chinese",
+   "killed": false,
+   "operator": "constant_change",
+   "jev_p": 0.75,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.08,
+   "agent_turns": 4,
+   "outside_locations": [
+    "pysnooper/tracer.py:190"
+   ],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "thefuck/24/m0/tests/test_types.py::TestCorrectedCommand::test_equality",
+   "killed": false,
+   "operator": "constant_change",
+   "jev_p": 0.92,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.03,
+   "agent_turns": 3,
+   "outside_locations": [],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "thefuck/24/m0/tests/test_types.py::TestCorrectedCommand::test_hashable",
+   "killed": false,
+   "operator": "constant_change",
+   "jev_p": 0.73,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.03,
+   "agent_turns": 5,
+   "outside_locations": [
+    "tests/utils.py"
+   ],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "thefuck/24/m1/tests/test_types.py::TestCorrectedCommand::test_equality",
+   "killed": false,
+   "operator": "return_none",
+   "jev_p": 0.85,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.04,
+   "agent_turns": 3,
+   "outside_locations": [],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "thefuck/30/m0/tests/rules/test_fix_file.py::test_not_file",
+   "killed": false,
+   "operator": "compare_flip",
+   "jev_p": 0.54,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.02,
+   "agent_turns": 3,
+   "outside_locations": [],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "thefuck/30/m2/tests/rules/test_fix_file.py::test_not_file",
+   "killed": false,
+   "operator": "constant_change",
+   "jev_p": 0.9,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.03,
+   "agent_turns": 3,
+   "outside_locations": [],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "tqdm/2/m0/tqdm/tests/tests_tqdm.py::test_format_meter",
+   "killed": false,
+   "operator": "negate_condition",
+   "jev_p": 0.87,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.15,
+   "agent_turns": 4,
+   "outside_locations": [],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "tqdm/2/m1/tqdm/tests/tests_tqdm.py::test_format_meter",
+   "killed": false,
+   "operator": "return_none",
+   "jev_p": 0.96,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.15,
+   "agent_turns": 5,
+   "outside_locations": [
+    "tqdm/utils.py"
+   ],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "youtube-dl/14/m0/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters",
+   "killed": false,
+   "operator": "constant_change",
+   "jev_p": 0.71,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.01,
+   "agent_turns": 4,
+   "outside_locations": [
+    "youtube_dl/extractor/youtube.py:1711"
+   ],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "youtube-dl/14/m3/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters",
+   "killed": false,
+   "operator": "compare_flip",
+   "jev_p": 0.83,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.02,
+   "agent_turns": 3,
+   "outside_locations": [
+    "youtube_dl/extractor/youtube.py:1711"
+   ],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "youtube-dl/18/m3/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent",
+   "killed": true,
+   "operator": "constant_change",
+   "jev_p": 0.47,
+   "no_tools_verdict": true,
+   "no_tools_p": 0.96,
+   "agent_turns": 6,
+   "outside_locations": [],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "youtube-dl/19/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_prepare_filename",
+   "killed": false,
+   "operator": "constant_change",
+   "jev_p": 0.66,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.03,
+   "agent_turns": 3,
+   "outside_locations": [],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "youtube-dl/21/m3/test/test_utils.py::TestUtil::test_urljoin",
+   "killed": false,
+   "operator": "constant_change",
+   "jev_p": 0.74,
+   "no_tools_verdict": true,
+   "no_tools_p": 0.55,
+   "agent_turns": 3,
+   "outside_locations": [],
+   "category": "uncited"
+  },
+  {
+   "case_id": "youtube-dl/25/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "killed": false,
+   "operator": "constant_change",
+   "jev_p": 0.64,
+   "no_tools_verdict": true,
+   "no_tools_p": 0.6,
+   "agent_turns": 3,
+   "outside_locations": [],
+   "category": "uncited"
+  },
+  {
+   "case_id": "youtube-dl/39/m0/test/test_utils.py::TestUtil::test_limit_length",
+   "killed": false,
+   "operator": "constant_change",
+   "jev_p": 0.52,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.01,
+   "agent_turns": 2,
+   "outside_locations": [
+    "test/test_utils.py:4"
+   ],
+   "category": "smarter-model"
+  },
+  {
+   "case_id": "youtube-dl/41/m1/test/test_utils.py::TestUtil::test_unified_dates",
+   "killed": false,
+   "operator": "constant_change",
+   "jev_p": 0.83,
+   "no_tools_verdict": false,
+   "no_tools_p": 0.04,
+   "agent_turns": 3,
+   "outside_locations": [],
+   "category": "smarter-model"
+  }
+ ]
+}
