@@ -6829,7 +6829,7 @@ the record.
   > - Replay of a recorded review is byte-identical, with no live call.
   > - The benchmark's mutant cases from #372 score at least as well as the experiment's held-out figure, within its range (77–92%).
   > - A real review is priced: the number of defect-test pairs it asks about, and the cost of judging them.
-- **Status:** open
+- **Status:** **filed 2026-10-13 as #385**
 
 ### [2026-10-13] A listed item in a requirement gets no obligation; its id carries a duplicate of another obligation's text
 - **Kind:** filing
