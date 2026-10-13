@@ -2,7 +2,14 @@
 
 Judged 2026-10-05 by one Claude judging pass, following `judge_audit.md` and
 `docs/audit-protocol.md`, against the source at `518f876`. Labels are in
-`labels/v11.json`. **Not yet hand-checked.** The protocol asks for a larger
+`labels/v11.json`.
+
+**Hand-checked on six examples, 2026-10-13: see `v11-hand-check.md`.** The
+owner overturned one "plants it" (5 planted, not 6 of 9) and ruled two of the
+bug descriptions unplantable as written. Those two should count for neither
+builder. The figures below are the judge's and are not corrected.
+
+Not hand-checked on the remaining 15. The protocol asks for a larger
 hand-checked sample when the builder is a Claude model, because the judge is a
 Claude model too. This arm is Claude-built, so its figures are provisional until
 a human checks a sample.

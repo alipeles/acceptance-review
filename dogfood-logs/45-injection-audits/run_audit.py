@@ -443,10 +443,20 @@ def main(argv: list[str] | None = None) -> int:
         attempts = verify_attempts(attempts, list(defects.values()), sources, client, surrounding)
     elapsed = time.monotonic() - started
 
+    agent_name = f"{args.agent} ({args.agent_model or 'its default model'})"
+    if args.agent_only:
+        builders = f"Edits by {agent_name}, the agent only, one run per defect; "
+    elif args.agent:
+        builders = (
+            f"Edits on {args.model}, up to {args.max_candidates} candidates each, "
+            f"then {agent_name} once; "
+        )
+    else:
+        builders = f"Edits on {args.model}, up to {args.max_candidates} candidates each; "
     note = (
         f"Audit v6's defects for {len(defect_sets)} criteria "
         f"(left out: {', '.join(args.skip) if args.skip else 'none'}). "
-        f"Edits on {args.model}, up to {args.max_candidates} candidates each; "
+        f"{builders}"
         f"verification {'off' if args.no_verify else 'on, ' + (args.model if args.verifier_model == 'same' else args.verifier_model)}. "
         f"Reasoning: {', '.join(f'{stage} {effort}' for stage, effort in sorted(stage_reasoning.items())) or 'none'}."
     )

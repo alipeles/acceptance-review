@@ -1,6 +1,6 @@
 # Defect injection audit v11 — #45, head 518f876
 
-Audit v6's defects for 13 criteria (left out: candidate-tests-run-once-before-changes, recorded-at-strongest-evidence-tier, stop-review-on-failing-candidate-test). Edits on openai/gpt-5.4, up to 3 candidates each; verification on, openai/gpt-5.4. Reasoning: none.
+Audit v6's defects for 13 criteria (left out: candidate-tests-run-once-before-changes, recorded-at-strongest-evidence-tier, stop-review-on-failing-candidate-test). Edits by claude-code (claude-sonnet-5-5), the agent only, one run per defect; verification on, openai/gpt-5.4. (Header corrected by hand 2026-10-13: the script wrote the one-call builder's settings here.) Reasoning: none.
 
 21 defects, 339 usable candidate tests.
 
