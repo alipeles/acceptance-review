@@ -37,8 +37,30 @@ shape the harness uses.
   proves nothing, but it is the kind of confident wrong answer approach C's
   threshold has to catch.
 
+## Jev
+
+Run 2026-10-13 with `probe_jev.py`: the same toy question as one yes/no
+("noul") question, test source and defect as a structured `state`. The request
+shape is from https://docs.typesafe.ai/api.md (`questions` is a map keyed by
+question id; the answer is `answers[id].noul`, the probability of yes).
+
+```
+status: 200  elapsed_ms: 585
+model: jev-1.13.0   answers.fails.noul: 0.75   usage: 366 input, 20 output tokens
+```
+
+Jev leans the same wrong way as Mini but less confidently (0.75 against 0.92).
+
+**`api.typesafe.ai` is not reachable from the sandbox.** The call timed out
+waiting for the sandbox's network proxy, twice, while OpenAI calls through the
+same proxy worked. It succeeded with the sandbox off. Jev runs need the host
+allowed in the sandbox settings, or they each stop for a permission prompt.
+
 ## Files
 
 - `probe_mini_logprobs.py`: first pass, through LiteLLM.
 - `probe_mini_logprobs_raw.py`: second pass, OpenAI SDK directly.
 - `probe-output.txt`: output of the second pass.
+- `probe_jev.py`: the Jev call.
+- `keys.py`: reads a provider key from the environment or the worktree's env
+  file, never printing it.
