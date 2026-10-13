@@ -6819,3 +6819,52 @@ the record.
 - **Recommendation:** Jev first, then Opus. Jev uses the targeted prompt: the function holding the planted bug, the test with its helpers, and the code the test calls. Jev says "the test fails" at a probability of 0.80 or more and "it survives" at 0.14 or less; everything in between goes to Opus. It nearly matches Opus alone for about half the cost. Before adopting it: (1) price a real review, since how many defect-test pairs a review asks about decides whether $0.027 each is affordable, and the shipped judge's own cost per judgement was never measured; (2) add Jev as a provider in `llm.py`, record-and-replay like any other; (3) re-fit the two cut-offs on more labelled cases, since 92 cannot separate this from Opus alone.
 - **Rejected:** keeping GPT-5.4 Mini (28 points behind Opus). Opus alone (most accurate, but about twice the cost for one point the held-out set cannot confirm). Jev alone (80%: it calls "fails" on tests that never run the edited line). The cheaper Jev-then-Opus rule aimed at 95% (it fell to 90.2% on held-out, at $0.008).
 - **Status:** open
+
+### [2026-10-13] A listed item in a requirement gets no obligation; its id carries a duplicate of another obligation's text
+- **Kind:** filing
+- **Found during:** #381, Gate 1 run 1 (`dogfood-logs/381-gate1-run1/`)
+- **Where:** decomposition, `src/acceptance/requirement/obligations.py`
+- **Severity:** should-fix
+- **What's wrong:** `task-02` lists three things the project list pins: source, licence and bug-fix commits. Source and commits each became an obligation. The licence did not. The obligation `project-licence`, whose id names it, says instead "Include the project's licence text beside committed audit outputs…", which is another sentence of the same requirement and is already `audit-outputs-carry-licence-text`.
+- **Why I didn't act:** out of scope for #381; decomposition is #181's area.
+- **Drafted fix:** Child of #181 (the decomposition umbrella). Title: "A listed item in a requirement gets no obligation, and its id carries a duplicate of another obligation's text". Body:
+  > Found in #381's Gate 1, run 1 (`dogfood-logs/381-gate1-run1/`).
+  >
+  > `task-02`: *"The list pins, for each project, where its source comes from, its licence, and the bug-fix commits used. … Committed audit outputs that quote the project's code carry the project's licence text beside them."*
+  >
+  > | obligation | description |
+  > |---|---|
+  > | `source-origin-per-project` | For each project, specify where its source comes from. |
+  > | `project-licence` | Include the project's licence text beside committed audit outputs that quote the project's code. |
+  > | `bug-fix-commits-used` | The list includes the bug-fix commits used. |
+  > | `audit-outputs-carry-licence-text` | Committed audit outputs that quote the project's code include the project's licence text beside the quoted code. |
+  >
+  > "The list records each project's licence" has no obligation. The obligation whose id names it states a different sentence, which already has its own obligation. A review over this breakdown would never ask for evidence that the list records the licence, and would ask twice for the licence text beside outputs.
+  >
+  > **Not task-file wording:** the same sentence's other two list items each produced their own obligation.
+  >
+  > **Distinct from #277** (one requirement yields two obligations stating the same property, differing only in voice): there the duplicate is redundant; here it takes the place of a real property, so a requirement is lost, not just repeated. **Distinct from #223** (a requirement dispositioned `yielded` onto an obligation that does not state it): that is a whole requirement; this is one item inside a requirement that did yield.
+  >
+  > **Acceptance:** each item of a listed sentence yields an obligation stating it; an obligation's description states what its id names; #195's decompose-regression suite carries this case.
+- **Status:** open
+
+### [2026-10-13] Split #381: labels, scoring by difficulty, targets and the owner's review
+- **Kind:** filing
+- **Found during:** #381, planning before Gate 1. The owner chose to split #381 into two tasks.
+- **Severity:** should-fix
+- **Drafted fix:** Child of #186 (the benchmark umbrella); depends on #381. #381 keeps Part 1 (fetch ffn at pinned commits, build defects from its real bug-fix commits, run the audit in ffn's own environment, report planting per commit). Title: "Label planted bugs by priority, difficulty and bad description, and score the ffn audit by them". Body:
+  > Second half of #381 (the business-codebase benchmark), split off at the owner's request because the whole did not fit one session. #381 makes the audit run on ffn; this issue makes its result readable.
+  >
+  > ## Why
+  > One blended planting rate hides different facts (#381, Part 2). Give each bug three separate labels:
+  > - **Priority:** core business behaviour, or a supporting requirement. Obligations already carry `importance` (`critical`/`normal`); defects do not.
+  > - **Difficulty:** one obvious change, or subtle and spread across places.
+  > - **Bad description:** the bug as written is wrong or muddled. A broken input, not a hard bug; it must not drag down the difficulty score.
+  >
+  > Labels are set from the bug description alone, before planting is attempted, so the tool can't excuse its own failures by calling them hard. A person sets or checks them.
+  >
+  > ## Acceptance
+  > - At least one audit run on ffn, reporting the planting rate per difficulty class, with bad descriptions counted separately.
+  > - Per-class targets recorded, for example all clear-cut bugs and three quarters of subtle ones.
+  > - The owner's review of a sample of its planted edits.
+- **Status:** open
