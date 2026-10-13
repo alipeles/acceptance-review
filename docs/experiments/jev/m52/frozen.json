@@ -1,0 +1,62 @@
+{
+ "tuning_cases": 137,
+ "primary": "jev_then_opus/targeted/0.978",
+ "designs": {
+  "A": {
+   "what": "shipped judge, gpt-5.4-mini batched"
+  },
+  "opus": {
+   "what": "no-tools Opus 5.5, context+description prompt"
+  },
+  "jev_targeted": {
+   "what": "Jev alone, targeted fails prompt",
+   "rule": {
+    "hi": 0.5
+   }
+  },
+  "jev_then_opus/targeted/0.978": {
+   "what": "Jev (targeted prompts) then Opus, rule fit on tuning aiming 0.978",
+   "rule": {
+    "reach_cut": 0.0,
+    "lo": 0.14,
+    "hi": 0.8
+   },
+   "tuning_accuracy": 0.978,
+   "tuning_cost_per_case": 0.0261,
+   "tuning_escalated_share": 0.518
+  },
+  "jev_then_opus/targeted/0.95": {
+   "what": "Jev (targeted prompts) then Opus, rule fit on tuning aiming 0.95",
+   "rule": {
+    "reach_cut": 0.25,
+    "lo": 0.14,
+    "hi": 0.48
+   },
+   "tuning_accuracy": 0.956,
+   "tuning_cost_per_case": 0.0106,
+   "tuning_escalated_share": 0.197
+  },
+  "jev_then_opus/hunk/0.978": {
+   "what": "Jev (hunk prompts) then Opus, rule fit on tuning aiming 0.978",
+   "rule": {
+    "reach_cut": 0.2,
+    "lo": 0.16,
+    "hi": 0.9
+   },
+   "tuning_accuracy": 0.978,
+   "tuning_cost_per_case": 0.0279,
+   "tuning_escalated_share": 0.555
+  },
+  "jev_then_opus/hunk/0.95": {
+   "what": "Jev (hunk prompts) then Opus, rule fit on tuning aiming 0.95",
+   "rule": {
+    "reach_cut": 0.2,
+    "lo": 0.16,
+    "hi": 0.8
+   },
+   "tuning_accuracy": 0.956,
+   "tuning_cost_per_case": 0.0195,
+   "tuning_escalated_share": 0.38
+  }
+ }
+}
