@@ -51,20 +51,8 @@ def _mutant_id(case_id: str) -> str:
     return case_id.split("/")[2]
 
 
-def main() -> int:
-    replay = "--replay" in sys.argv
-    client = RunConfig(mode=Mode.REPLAY if replay else Mode.RECORD).build_client()
-    tuning = set(load_split()["tuning"])
-    usable = []
-    for c in cases():
-        if c.case_id not in tuning:
-            continue
-        try:
-            prompts.mutated_hunk(c)  # same 137 cases as the other approaches
-        except prompts.CannotBuild:
-            continue
-        usable.append(c)
-
+def judge_all(usable, client) -> tuple[dict[str, bool | None], list[tuple[int, float]]]:
+    """A's verdict per case id (None: no verdict), and (pairs, ms) per call."""
     by_bug = defaultdict(list)
     for c in usable:
         by_bug[(c.project, c.bug_id)].append(c)
@@ -114,6 +102,23 @@ def main() -> int:
         for out, c in pool.map(judge_bug, by_bug.values()):
             verdicts.update(out)
             calls += c
+    return verdicts, calls
+
+
+def main() -> int:
+    replay = "--replay" in sys.argv
+    client = RunConfig(mode=Mode.REPLAY if replay else Mode.RECORD).build_client()
+    tuning = set(load_split()["tuning"])
+    usable = []
+    for c in cases():
+        if c.case_id not in tuning:
+            continue
+        try:
+            prompts.mutated_hunk(c)  # same 137 cases as the other approaches
+        except prompts.CannotBuild:
+            continue
+        usable.append(c)
+    verdicts, calls = judge_all(usable, client)
 
     label = {c.case_id: c.killed for c in usable}
     judged = {k: v for k, v in verdicts.items() if v is not None}
