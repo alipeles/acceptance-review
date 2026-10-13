@@ -1,0 +1,45 @@
+{
+ "cases": 137,
+ "thresholds": {
+  "lo": 0.47,
+  "hi": 0.84
+ },
+ "opus_alone": {
+  "accuracy": 0.978,
+  "precision_fails": 0.975,
+  "wrong": 3,
+  "brier": 0.014,
+  "log_loss": 0.067,
+  "auc": 0.998,
+  "mean_p_killed": 0.954,
+  "mean_p_survived": 0.05,
+  "ece": 0.025,
+  "mean_cost_usd": 0.048
+ },
+ "jev_alone": {
+  "accuracy": 0.876,
+  "precision_fails": 0.83,
+  "wrong": 17
+ },
+ "jev_then_opus": {
+  "accuracy": 0.934,
+  "precision_fails": 0.917,
+  "wrong": 9
+ },
+ "jev_then_current_judge": {
+  "accuracy": 0.788,
+  "precision_fails": 0.891,
+  "wrong": 29
+ },
+ "current_judge_alone": {
+  "accuracy": 0.737,
+  "precision_fails": 0.891,
+  "wrong": 36
+ },
+ "opus_wrong": [
+  "thefuck/24/m0/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_remove_duplicates",
+  "youtube-dl/21/m3/test/test_utils.py::TestUtil::test_urljoin",
+  "youtube-dl/25/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld"
+ ],
+ "total_cost_usd": 6.56
+}
