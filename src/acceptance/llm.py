@@ -584,6 +584,7 @@ class ModelClient:
         model: str,
         seconds: float | None = None,
         controls: dict[str, Any] | None | object = _NOT_A_COMPLETION,
+        label: str | None = None,
     ) -> None:
         """Note what one call cost and where its answer came from.
 
@@ -619,6 +620,12 @@ class ModelClient:
         }
         if controls is not _NOT_A_COMPLETION:
             observed["controls"] = None if controls is None else dict(controls)  # type: ignore[arg-type]
+        if label is not None:
+            # What the call was about, as the caller names it — a defect id for
+            # the mutation stages (#338), so cost can be read per defect. Only
+            # here, never in the request: it cannot change an answer, and in
+            # the key it would re-key the stage's every recording.
+            observed["label"] = label
         self._observed_calls.append(observed)
 
     @property
@@ -696,8 +703,12 @@ class ModelClient:
         parse_as: type[BaseModel] | None = None,
         stage: str | None = None,
         stage_controls: dict[str, Any] | None = None,
+        label: str | None = None,
     ) -> ResponseModelT:
         """Return a validated response, from a live call or a transcript.
+
+        `label` names what the call was about, for the usage record only — see
+        `_observe_call`. It never reaches the request or its key.
 
         `response_model` is what we *ask* for — it is the schema sent to the
         provider and hashed into the request key. `parse_as` is what we *accept*,
@@ -751,6 +762,7 @@ class ModelClient:
             request["model"],
             seconds,
             controls=record.get("controls_applied"),
+            label=label,
         )
         if partition is not None:
             # `stage` is deliberately NOT in `build_request`: it names which
@@ -834,6 +846,51 @@ class ModelClient:
             "model": self.embedding_model,
             "input": list(texts),
         }
+
+    def replay_or_run(
+        self,
+        request: dict,
+        run: Callable[[], dict],
+        stage: str,
+        label: str | None = None,
+    ) -> Any:
+        """The response to `request`, from a recording or by calling `run` once.
+
+        For work that is not a completion but must replay like one: a coding
+        agent's edit (#338). `run` returns `{"response": ..., "usage": {...}}`
+        and is called only when nothing is recorded and the mode allows it; what
+        it returns is kept, so a replayed review never repeats the work. The
+        request needs a `kind` of its own so it cannot collide with a completion
+        or an embedding in the store, and `model` if it has one.
+
+        Observed exactly as a completion is, so its cost and time reach the same
+        usage summary under `stage`.
+        """
+        key = request_key(request)
+        record = self.store.read(key)
+        served_from = SERVED_FROM_RECORDING if record is not None else SERVED_FROM_PROVIDER
+        if record is None:
+            if self.mode is Mode.REPLAY:
+                raise TranscriptNotFoundError(
+                    f"no recording for {request.get('kind', 'request')} {key} "
+                    f"(stage={stage!r}); REPLAY mode does not run it live. "
+                    "Re-record with --mode record."
+                )
+            started = time.perf_counter()
+            produced = run()
+            seconds = time.perf_counter() - started
+            record = {
+                "request": request,
+                "response": produced["response"],
+                "usage": dict(produced.get("usage") or {}),
+            }
+            self.store.write(key, record)
+        else:
+            seconds = None
+        self._observe_call(
+            stage, key, served_from, record, str(request.get("model")), seconds, label=label
+        )
+        return record["response"]
 
     def observe_prefilter(self, stage: str, record: dict[str, Any]) -> None:
         """Record that a stage narrowed its own work before asking (#259).

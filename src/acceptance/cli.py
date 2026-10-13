@@ -40,6 +40,8 @@ from acceptance.coverage.open_questions import (
 )
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.llm import LLMError, Mode, ModelClient
+from acceptance.mutation.agent import AGENT_STAGE
+from acceptance.mutation.descriptor import STAGE as DESCRIPTOR_STAGE
 from acceptance.mutation.settings import ExecutionSettings
 from acceptance.pipeline import run_review
 from acceptance.recommendation import lookup as lookup_recommendation
@@ -59,6 +61,7 @@ from acceptance.review_state import ChangeSet, OpenQuestion, Review
 from acceptance.review_store import ReviewStore
 from acceptance.supplied_ids import UnusableAnswerLog
 from acceptance.usage import render as render_usage
+from acceptance.usage import render_per_label
 from acceptance.usage import summarize as summarize_usage
 
 
@@ -324,6 +327,13 @@ def _report_usage(client: ModelClient) -> None:
     §16 report and the persisted review never see this (#264).
     """
     print(render_usage(summarize_usage(client.observed_calls)), file=sys.stderr)
+    # Per defect, beside the one-call builder's, only when a defect reached the
+    # coding agent (#338): what the fallback costs is the question it answers.
+    by_defect = render_per_label(
+        client.observed_calls, (DESCRIPTOR_STAGE, AGENT_STAGE), only_with=AGENT_STAGE
+    )
+    if by_defect:
+        print(by_defect, file=sys.stderr)
 
 
 def _report_run(run_id: str, continued_from: str | None, result: Decomposition) -> None:

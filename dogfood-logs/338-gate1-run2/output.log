@@ -1,0 +1,122 @@
+run 8d4503eee4e98ff8
+  continuing 450939fd50f3f9d9
+  requirements: 0 derived, 7 carried, 3 revised; 13 decompose call(s)
+  continue this run with: --continue 8d4503eee4e98ff8
+Model usage by stage:
+  stage                        model                                       calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  ----------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    openai/gpt-5.4-mini     11 (11 live / 0 replayed)  59,851   1,683    0.0%   $0.0525   $0.0525          17.8s
+  decompose-summary            openai/gpt-5.4            2 (2 live / 0 replayed)   1,849   1,037    0.0%   $0.0202   $0.0202          12.2s
+  obligation linking           voyage/voyage-3.5-lite    1 (1 live / 0 replayed)     988       0       —   $0.0000   $0.0000           3.6s
+  requirement carry alignment  openai/gpt-5.4-mini       1 (1 live / 0 replayed)     558      48    0.0%   $0.0006   $0.0006           5.4s
+  this run spent $0.0733 on 15 live call(s); the evidence cost $0.0733 to record (0 call(s) replayed at no cost to this run)
+Requirements: 10   with obligations: 10
+
+[task-01] Add a third way of building a mutation edit: drive a headless coding agent
+    over a copy of the project and ask it for what the one-call builder is asked for —
+    the smallest edit that makes one named defect true. Claude Code is the first agent
+    it can drive. The agent is chosen by a setting, and supporting another agent, such
+    as Codex, means adding that agent's adapter without changing the builder.
+    -> headless-coding-agent-mutation-edit  [functional/explicit]
+       Add a third way of building a mutation edit by driving a headless coding agent
+       over a copy of the project and asking it for the smallest edit that makes one
+       named defect true.
+    -> claude-code-first-agent  [functional/explicit]
+       Claude Code is the first agent it can drive.
+    -> agent-chosen-by-setting  [functional/explicit]
+       The agent is selected by a setting.
+    -> adapter-added-without-builder-change  [compatibility/explicit]
+       Supporting another agent, such as Codex, is accomplished by adding that agent's
+       adapter without changing the builder.
+
+[task-02] The agent builder is a fallback, never the first attempt. It is asked about a
+    defect only when every candidate the existing builder produced for that defect was
+    set aside, and only when it has been configured; with nothing configured a review
+    behaves exactly as it does today.
+    -> existing-builder-candidates-exhausted  [functional/explicit]
+       The agent builder is asked about a defect only after every candidate the existing
+       builder produced for that defect has been set aside.
+    -> configured-agent-builder-gating  [functional/explicit]
+       The agent builder is used only when it has been configured.
+    -> preserve-current-review-behavior-when-unconfigured  [compatibility/explicit]
+       Preserve the current review behavior when nothing is configured.
+
+[task-03] What the agent changed in the copy is reduced to one span replacement in one
+    file and then goes through the same checks as any other candidate: the text checks,
+    the test run against the usable tests, the breadth refusal and the broken-edit
+    check. If what it changed is not a single contiguous edit inside a region the defect
+    names, the candidate is set aside rather than repaired. An unverified agent edit
+    carries no more weight in the review than any other unverified edit.
+    -> single-span-replacement-in-one-file  [invariant/explicit]
+       The agent's change is reduced to one span replacement in one file.
+    -> same-checks-as-any-other-candidate  [functional/explicit]
+       The candidate goes through the same checks as any other candidate.
+    -> text-checks  [functional/explicit]
+       The text checks are satisfied.
+    -> test-run-against-usable-tests  [test_demand/explicit]
+       Run the test suite against the usable tests.
+    -> breadth-refusal  [functional/explicit]
+       The breadth refusal is performed for the candidate edit.
+    -> broken-edit-check  [functional/explicit]
+       Perform the broken-edit check.
+    -> single-contiguous-edit-within-named-region  [invariant/explicit]
+       The change is a single contiguous edit inside the region named by the defect.
+    -> set-aside-when-edit-is-not-contiguous-within-region  [human_review/explicit]
+       The candidate is set aside rather than repaired when the change is not a single
+       contiguous edit inside the region named by the defect.
+    -> unverified-agent-edit-no-extra-weight  [invariant/explicit]
+       An unverified agent edit carries no more weight in the review than any other
+       unverified edit.
+
+[task-04] The copy the agent works in has the project's test files removed, so it cannot
+    read them whatever it is told or decides to do.
+    -> test-files-removed  [docs_config/explicit]
+       The copy the agent works in has the project's test files removed.
+    -> cannot-read-test-files  [invariant/explicit]
+       The agent cannot read the project's test files, whatever it is told or decides to
+       do.
+
+[task-05] What a run records is the agent's diff, not its transcript. A replayed review
+    reuses the recorded diff without starting the agent, and two replays of the same
+    input are byte-identical. A run that exceeds its time limit, fails, or changes
+    nothing yields no usable answer.
+    -> record-agent-diff  [functional/explicit]
+       Record the agent's diff, not its transcript.
+    -> replayed-review-reuses-recorded-diff  [functional/explicit]
+       A replayed review reuses the recorded diff without starting the agent.
+    -> byte-identical-replays  [invariant/explicit]
+       Two replays of the same input are byte-identical.
+    -> no-usable-answer-on-timeout-failure-or-no-change  [functional/explicit]
+       A run that exceeds its time limit, fails, or changes nothing yields no usable
+       answer.
+
+[task-06] Each defect sent to the agent records what the attempt cost in dollars and how
+    long it took on the wall clock, next to the same figures for the one-call builder's
+    attempts at that defect, so the two can be compared.
+    -> defect-attempt-cost-and-duration-recorded  [functional/explicit]
+       Each defect sent to the agent records the attempt cost in dollars and the wall-
+       clock duration.
+    -> one-call-builder-attempt-figures  [functional/explicit]
+       Record the one-call builder's attempt cost in dollars and wall-clock duration
+       next to the same figures for the defect so the two sets of figures can be
+       compared.
+
+[exclusion-01] An adapter for Codex or for any agent other than Claude Code.
+    -> codex-adapter-only-claude-code-driven  [compatibility/explicit]
+       The change adds an adapter for Codex or another non-Claude-Code agent, while
+       Claude Code remains the first supported agent.
+
+[exclusion-02] Making the agent builder the first attempt or the default.
+    -> agent-builder-not-first-or-default  [functional/explicit]
+       The change does not make the agent builder the first attempt or the default.
+
+[exclusion-03] A command-line option for the setting.
+    -> no-command-line-option-for-setting  [docs_config/explicit]
+       The change does not add a command-line option for the setting.
+
+[exclusion-04] Changing the existing builder's prompt or the number of candidates it is
+    asked for.
+    -> existing-builder-prompt-and-candidate-count-unchanged  [compatibility/explicit]
+       The change does not alter the existing builder's prompt or the number of
+       candidates it is asked for.
+

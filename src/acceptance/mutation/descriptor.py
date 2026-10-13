@@ -57,9 +57,18 @@ from acceptance.request_blocks import Block, BlockKind, assemble
 from acceptance.review_state import Defect
 from acceptance.supplied_ids import UnusableAnswer, UnusableAnswerLog, constrain, scan
 
-__all__ = ["ONE_DEFECT_PER_CALL", "LiveDescriptorBuilder", "build_descriptors", "from_mapping"]
+__all__ = [
+    "ONE_DEFECT_PER_CALL",
+    "STAGE",
+    "LiveDescriptorBuilder",
+    "build_descriptors",
+    "from_mapping",
+]
 
 _STAGE = "mutation descriptor"
+#: The stage name this builder's calls are recorded under, for callers that
+#: read usage per stage (#338's per-defect cost table).
+STAGE = _STAGE
 
 #: One defect per call. The same reasoning as defect enumeration's: a call shown
 #: several units and asked about one answers for the others (#317), and a
@@ -318,6 +327,7 @@ def _ask_about(
         batch.request_partition(),
         parse_as=_Descriptor,
         stage=_STAGE,
+        label=defect.id,
     )
     return _descriptor_from(result, offered, sources), scan(result, allowed, _STAGE)
 

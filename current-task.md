@@ -1,38 +1,37 @@
 # Task
 
-Build a set of labelled cases for the judgement "would this test fail if this
-defect were present?", where every label comes from actually running the test
-against the defect rather than from a model.
+Add a third way of building a mutation edit: drive a headless coding agent over a
+copy of the project and ask it for what the one-call builder is asked for — the
+smallest edit that makes one named defect true. Claude Code is the first agent it
+can drive. The agent is chosen by a setting, and supporting another agent, such
+as Codex, means adding that agent's adapter without changing the builder.
 
-The defects are fixed-operator mutants on BugsInPy projects: each is one small
-mechanical edit, such as flipping a comparison or changing a constant, so the
-edit is the defect and can never misdescribe what was injected. Each case holds
-the requirement text the test is meant to check, the test's source, the
-implementation hunk the defect was injected into, a text description of the
-defect, the exact edit applied, and whether the test failed with the edit in
-place.
+The agent builder is a fallback, never the first attempt. It is asked about a
+defect only when every candidate the existing builder produced for that defect
+was set aside, and only when it has been configured; with nothing configured a
+review behaves exactly as it does today.
 
-Tests run in the existing sandbox (`src/acceptance/execution/sandbox.py`). A
-test that already fails on the unmutated code is set aside rather than
-labelled, as `src/acceptance/mutation/baseline.py` does.
+What the agent changed in the copy is reduced to one span replacement in one
+file and then goes through every check any other candidate goes through, before
+and after it is run against the tests. If what it changed is not a single
+contiguous edit inside a region the defect names, the candidate is set aside
+rather than repaired. An unverified agent edit carries no more weight in the
+review than any other unverified edit.
 
-Because an edit can change no behaviour at all, some survivors are not evidence
-of a weak test. The build draws a random sample of survivors for a person to
-check, and its report gives the sample size and the share found to change no
-behaviour.
+The copy the agent works in has the project's test files removed, so it cannot
+read them whatever it is told or decides to do.
 
-The set holds at least 200 cases, at least 30% of them killed and at least 30%
-survived.
+What a run records is the agent's diff, not its transcript. A replayed review
+reuses the recorded diff without starting the agent, and two replays of the same
+input are byte-identical. A run that exceeds its time limit, fails, or changes
+nothing yields no usable answer.
 
-## Constraints
-- BugsInPy declares no license and this repository is public. Cases derived
-  from BugsInPy are written only to a gitignored local directory and never
-  committed; only aggregate counts and rates may be committed. The build reruns
-  from a pinned list of BugsInPy bug ids, and rebuilding from the same pinned
-  inputs produces the same file.
-- The cases load through a typed loader in `src/acceptance/benchmark/`, the
-  same way `GroundTruthLabels` loads.
+Each defect sent to the agent records what the attempt cost in dollars and how
+long it took on the wall clock, next to the same figures for the one-call
+builder's attempts at that defect, so the two can be compared.
 
 ## Scope exclusions
-- Improving how the checker's mutation tier writes its own edits.
-- Using the cases to score any judge.
+- An adapter for Codex or for any agent other than Claude Code.
+- Making the agent builder the first attempt or the default.
+- A command-line option for the setting.
+- Changing the existing builder's prompt or the number of candidates it is asked for.

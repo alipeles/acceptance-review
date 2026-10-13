@@ -32,6 +32,7 @@ from __future__ import annotations
 
 from acceptance.execution.sandbox import SandboxConfig
 from acceptance.model_base import PersistableModel as _Model
+from acceptance.mutation.agent import AgentSettings
 from acceptance.mutation.runner import (
     DEFAULT_BREADTH_FLOOR,
     DEFAULT_MAX_CANDIDATES,
@@ -74,6 +75,10 @@ class ExecutionSettings(_Model):
     # 3 — and this is the only consumer of the run that pays for itself today.
     # Off runs the review the way it ran before, for comparison.
     route_pairs: bool = True
+    # A coding agent asked for one more candidate when every one-call candidate
+    # for a defect was set aside (#338). None, the default, never starts one,
+    # and a review then sends exactly the requests it sent before.
+    agent: AgentSettings | None = None
     sandbox: SandboxConfig = SandboxConfig()
 
 

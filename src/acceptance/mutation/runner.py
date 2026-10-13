@@ -131,6 +131,7 @@ def run_mutations(
     max_failing_fraction: float = DEFAULT_MAX_FAILING_FRACTION,
     breadth_floor: int = DEFAULT_BREADTH_FLOOR,
     max_candidates: int = DEFAULT_MAX_CANDIDATES,
+    fallback: DescriptorBuilder | None = None,
 ) -> list[MutationAttempt]:
     """One attempt per defect, sorted by defect id.
 
@@ -138,6 +139,10 @@ def run_mutations(
     done with. A defect missing from this list would be indistinguishable from
     one that survived, which is the failure `MutationAttempt`'s validators exist
     to prevent.
+
+    `fallback` is asked for one more candidate when all `max_candidates` from
+    `build_descriptor` were set aside (#338's coding agent), and its answer is
+    handled by exactly the same code as theirs.
     """
     defects = [defect for defect_set in defect_sets for defect in defect_set.defects]
 
@@ -180,6 +185,7 @@ def run_mutations(
             max_edit_lines,
             _Breadth(max_failing_fraction, breadth_floor),
             max(1, max_candidates),
+            fallback,
         ),
         max_in_flight=max(1, max_in_flight),
     )
@@ -199,6 +205,7 @@ def _attempt(
     max_edit_lines: int,
     breadth: _Breadth,
     max_candidates: int = DEFAULT_MAX_CANDIDATES,
+    fallback: DescriptorBuilder | None = None,
 ) -> MutationAttempt:
     regions = regions_for(defect, change_set)
     if not regions:
@@ -224,9 +231,15 @@ def _attempt(
     # `max_candidates` times. A decline or a claim that the code is already
     # defective is the model's considered answer about the defect, not a bad
     # edit, so it ends the loop rather than being retried.
+    #
+    # #338. The fallback, when there is one, is simply the last builder in the
+    # sequence: reached only once every earlier candidate was set aside, and
+    # its answer runs through this same loop body, so it meets every check the
+    # others did and counts as one more candidate asked.
+    builders = [build_descriptor] * max_candidates + ([fallback] if fallback else [])
     set_aside: list[SetAsideCandidate] = []
-    for asked in range(1, max_candidates + 1):
-        answer = build_descriptor(defect, readable, sources, tuple(set_aside))
+    for asked, builder in enumerate(builders, start=1):
+        answer = builder(defect, readable, sources, tuple(set_aside))
 
         if isinstance(answer, AlreadyDefective):
             attempt = _already_defective(
@@ -302,7 +315,7 @@ def _attempt(
         defect_id=defect.id,
         outcome=MutationOutcomeKind.NO_USABLE_EDIT,
         reason=_why_no_usable_edit(set_aside),
-        candidates_asked=max_candidates,
+        candidates_asked=len(builders),
         set_aside_candidates=list(set_aside),
     )
 
