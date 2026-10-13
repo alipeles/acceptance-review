@@ -51,6 +51,31 @@
    },
    "jev_cost_per_case": 4.77e-05
   },
+  "framed+mutant": {
+   "n": 137,
+   "accuracy": 0.876,
+   "brier": 0.102,
+   "log_loss": 0.342,
+   "auc": 0.929,
+   "mean_p_killed": 0.748,
+   "mean_p_survived": 0.225,
+   "ece": 0.102,
+   "false_fails": 8,
+   "missed_kills": 9,
+   "of_16_false_positives_now_below_0.5": 9,
+   "clears_survivors": {
+    "lowest_kill_p": 0.18,
+    "survivors_cleared": 39,
+    "survivors_total": 58
+   },
+   "survivors_cleared_then_opus": {
+    "lo": 0.16999999999999998,
+    "accuracy": 0.978,
+    "escalated_share": 0.723,
+    "cost_per_case": 0.0353
+   },
+   "jev_cost_per_case": 5.49e-05
+  },
   "two-pass": {
    "n": 137,
    "accuracy": 0.766,

@@ -109,6 +109,21 @@ def body(case, questions) -> dict:
     return {"model": "jev-latest", "state": state, "questions": questions}
 
 
+# The framed prompt over the "context + mutant" content: the mutated code (the
+# original hunk with the edit applied) in place of the one-line description.
+SITUATION_MUTANT = SITUATION.replace(
+    "The change request, the original code, the test, and the edit are shown.",
+    "The change request, the original code, the test, and the mutated code (the original "
+    "code with the edit applied) are shown.",
+)
+
+
+def body_mutant(case) -> dict:
+    state = {"situation": SITUATION_MUTANT}
+    state.update(prompts.parts(case, "context+mutant"))
+    return {"model": "jev-latest", "state": state, "questions": ONE_QUESTION}
+
+
 def answers(record) -> dict[str, float]:
     return {k: float(v["noul"]) for k, v in record["response"]["answers"].items()}
 
@@ -161,7 +176,8 @@ def main() -> int:
         one = recorder.jev(body(c, ONE_QUESTION))
         two = recorder.jev(body(c, TWO_QUESTIONS))
         base = recorder.jev(prompts.jev_body(c, BASE), replay_only=True)
-        return c.case_id, one, two, base
+        mut = recorder.jev(body_mutant(c))
+        return c.case_id, one, two, base, mut
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         results = list(pool.map(run, usable))
@@ -171,16 +187,27 @@ def main() -> int:
         o = no_tools(c)
         opus[c.case_id], opus_cost[c.case_id] = o["verdict"], o["cost_usd"]
 
-    probs: dict[str, dict[str, float]] = {"before": {}, "framed": {}, "two-pass": {}}
+    probs: dict[str, dict[str, float]] = {
+        "before": {},
+        "framed": {},
+        "framed+mutant": {},
+        "two-pass": {},
+    }
     costs: dict[str, dict[str, float]] = {k: {} for k in probs}
     reach, fail_if = {}, {}
-    for cid, one, two, base in results:
+    for cid, one, two, base, mut in results:
         probs["before"][cid] = recorder.jev_p_yes(base)
         probs["framed"][cid] = answers(one)["fails"]
+        probs["framed+mutant"][cid] = answers(mut)["fails"]
         a = answers(two)
         reach[cid], fail_if[cid] = a["reaches"], a["fails_if_reached"]
         probs["two-pass"][cid] = a["reaches"] * a["fails_if_reached"]
-        for name, rec in (("before", base), ("framed", one), ("two-pass", two)):
+        for name, rec in (
+            ("before", base),
+            ("framed", one),
+            ("framed+mutant", mut),
+            ("two-pass", two),
+        ):
             costs[name][cid] = rec["response"]["usage"]["input_tokens"] * JEV_PER_TOKEN
 
     report: dict = {"cases": len(label), "variants": {}}
