@@ -6649,7 +6649,7 @@ the record.
 - **Why I didn't act:** Changing the trigger changes #338's specified design; it is the human's call.
 - **Recommendation:** File a follow-up that also routes a defect to the agent when the edit verifier refuses the one-call edit, once verification is adopted (#335). Hand-check a sample of `labels/v11.json` first, since the rate rests on one Claude pass judging a Claude-built arm.
 - **Rejected:** making the agent the first builder. At about 7 times the cost per defect, it should go only where the cheap builder has failed.
-- **Status:** open
+- **Status:** superseded 2026-10-13 by the filing drafted below
 
 ### [2026-10-05] Decision: the agent cannot report that the code already has the defect
 - **Kind:** decision
@@ -6660,7 +6660,7 @@ the record.
 - **Why I didn't act:** DR-338 Decision 1 deliberately gives the agent no typed answers, so its prose is never treated as evidence.
 - **Recommendation:** Let the agent declare one typed answer, by writing a fixed small JSON file (`already_defective` plus the lines), which the builder validates like a schema answer, and route its repair through the existing `already_present` path. Its edit, not its words, would still be what is tested.
 - **Rejected:** parsing the agent's final reply text, which would make its account evidence.
-- **Status:** open
+- **Status:** superseded 2026-10-13 by the filing drafted below
 
 ### [2026-10-05] Test discovery walks gitignored directories and offers their tests as candidates
 - **Kind:** filing
@@ -6716,3 +6716,95 @@ the record.
 - **Why I didn't act:** Known defect (#359).
 - **Drafted fix:** A comment on #359 quoting both dispositions from `dogfood-logs/372-gate2-run{1,2}/output.log`.
 - **Status:** **filed 2026-10-06** as a comment on #359, approved at #372's Gate 2.
+
+### [2026-10-13] Measure the planted-bug stage on an ordinary business codebase, not this tool's history
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** should-fix
+- **Drafted fix:** Sub-issue of #186 (benchmark). Title: "Measure the planted-bug stage on an ordinary business codebase, not this tool's history". Body:
+  > Every injection audit so far (v1–v11) plants bugs in this tool's own #45 change. That code is subtle and close to the tool's own subject, and it is not the main use case, which is business functionality. Several of v11's hardest bugs turned out to be muddled or about supporting requirements rather than core behaviour.
+  >
+  > Choose an MIT- or similarly-licensed Python project with a pytest suite, real commit history with bug fixes, business logic at its core (finance preferred: cash flows, amortisation, payment waterfalls), and tests that run fast with no network or database. Build audit tasks from its real commits. Choosing it involves redistributing third-party code, so the owner picks from a verified short list.
+  >
+  > Dogfood logs remain the place tool defects are found; rates and targets come from the new benchmark.
+  >
+  > **Acceptance:** a chosen project with its licence confirmed from the licence file, at least one audit run on it, and the owner's review of a sample of its planted edits.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Label each bug by testing priority, by difficulty, and as a bad description
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** should-fix
+- **Drafted fix:** Sub-issue of #186 (benchmark). Title: "Label each bug by testing priority, by difficulty, and as a bad description". Body:
+  > One blended planting rate hides two different facts. In v11 the planted-bug approach did well on clear-cut bugs and struggled on subtle ones, and some bug descriptions were simply wrong. Being good at easy and moderate cases first is an acceptable early outcome, and it should be measurable as such.
+  >
+  > Three separate labels: **priority** (core business behaviour vs a supporting requirement; requirements already carry an importance rating, bugs do not); **difficulty** (one obvious change vs subtle or spread across places); **bad description** (the bug as written is wrong or muddled, e.g. a requirement that lost its condition when split out). A bad description is a broken input, not a hard bug, and must not drag down the difficulty score.
+  >
+  > The labels are set from the bug description alone, before planting is attempted, so the tool cannot excuse its own failures by calling them hard. On a benchmark, a person sets or checks them.
+  >
+  > **Acceptance:** audits report the planting rate per difficulty class, with bad descriptions counted separately, and per-class targets are recorded (for example: all clear-cut bugs, three quarters of subtle ones).
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Drop the plausibility rule for planted edits; require exactly the described behaviour
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** should-fix
+- **Drafted fix:** Unparented, like #364, since no umbrella covers the mutation stage. Title: "Drop the plausibility rule for planted edits; require exactly the described behaviour". Body:
+  > The edit builder is told to break code "the way a careless implementation would", and the audit protocol defines a good edit as "a plausible small mistake". The real question is only whether the tests catch the described behaviour, which depends on what the code does after the edit, not how a person would have produced it. Plausibility is a separate, possibly heavy burden and may be steering builders toward edits that change a neighbouring behaviour instead. Unmeasured.
+  >
+  > What matters is that the edit produces exactly the described behaviour and nothing broader. A too-broad edit still matters, because each failing test is credited with catching that specific bug.
+  >
+  > Changes the one-call builder's prompt (its recordings re-record) and `docs/audit-protocol.md`'s definition.
+  >
+  > **Acceptance:** builder instructions and protocol use the exact-and-nothing-broader rule; an audit on the same defects compares planting rates before and after.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Allow a planted edit to be a few separate small changes within the size limit
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** should-fix
+- **Drafted fix:** Unparented; a decision, because it changes the stored record. Title: "Allow a planted edit to be a few separate small changes within the size limit". Body:
+  > A planted edit must be one block of consecutive lines. In v11, two bugs could only be planted by small changes in two places: a case guarded by two deliberately duplicated checks, and a reordering of two steps. Both builders were stopped by the rule, not by the bug. Duplicated checks are not always wrong, and the tool should be able to plant through them.
+  >
+  > Allow up to a small number of separate changes, together within the existing line limit, each inside an area the bug names.
+  >
+  > **This changes the stored shape of a planted edit** (today a single span), which later work reads, so the design needs the owner's sign-off before implementation.
+  >
+  > **Acceptance:** an edit of two separate small changes is accepted and checked change by change; the two v11 cases are pinned as regression cases.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Settle some bugs by reading the code instead of planting them and running tests
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** nice-to-have
+- **Drafted fix:** Unparented; related to #327 (bugs listed for requirements owed no test). Title: "Settle some bugs by reading the code instead of planting them and running tests". Body:
+  > Some requirements are clearer and cheaper to confirm by reading the code than by planting a bug and running the suite. Example from v11: "the test-running stage goes first, then the code-reading judgement" is visible at a glance, and planting a bug there needs a contorted edit.
+  >
+  > Distinct from #327, where no test is owed at all: here a test may be owed, but code evidence is the better and cheaper evidence for this particular bug. Pairs naturally with the priority label (low-priority requirements accept code evidence).
+  >
+  > **Acceptance:** a bug can be marked "settle by reading", is not sent to planting, and its rating says what kind of evidence settled it.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Also ask the coding agent when the edit verifier refuses a one-call edit
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** should-fix
+- **Drafted fix:** Unparented; depends on #335 (the edit verifier). Title: "Also ask the coding agent when the edit verifier refuses a one-call edit". Body:
+  > #338 asks the agent only when every one-call candidate fails the mechanical checks. After #334's three candidates, that happened to none of v10's 64 bugs, so as routed the agent never runs. The one-call builder's real failures (21 of 52 edits in v10) pass every check. They are caught only by the edit verifier or a judge.
+  >
+  > On those 21, asked directly, the agent planted 5 bugs (owner-corrected from the judge's 6) and correctly made no change in most of the rest (audit v11, one Claude judge plus the owner's check of six). About 7 times the one-call cost per bug.
+  >
+  > **Acceptance:** when the verifier refuses an edit, the agent is asked once; an audit shows its planting rate on those bugs against the refused edits.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Let the coding agent report that the code already has the bug
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** nice-to-have
+- **Drafted fix:** Unparented. Title: "Let the coding agent report that the code already has the bug". Body:
+  > When the code already does the "broken" behaviour, the agent's only option is to make no change, which is recorded as "no usable edit". The one-call builder records the same situation as a finding, with a repair edit that is tested. In v11 the judge found this in 7 of 21 bugs, all lost as plain "no usable edit".
+  >
+  > Let the agent declare it through a fixed, small JSON file (already-broken plus the lines), validated like a schema answer, with its repair going through the existing already-present path. Its edit, not its words, would still be what is tested. Parsing its reply text was rejected: that would make its own account evidence.
+  >
+  > **Acceptance:** an agent run declaring the bug already present produces an already-present finding with a tested repair.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
