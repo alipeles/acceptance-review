@@ -1,0 +1,113 @@
+run 2f202a31d78db8e1
+  requirements: 9 derived, 0 carried, 0 revised; 29 decompose call(s)
+  continue this run with: --continue 2f202a31d78db8e1
+Model usage by stage:
+  stage               model                                       calls   prompt  output  cached  this run  recorded  time this run
+  ------------------  ----------------------  -------------------------  -------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini     24 (24 live / 0 replayed)  130,465   3,567    0.0%   $0.1139   $0.1139          69.3s
+  decompose-summary   openai/gpt-5.4            5 (5 live / 0 replayed)    4,835   2,225    0.0%   $0.0455   $0.0455          36.4s
+  obligation linking  voyage/voyage-3.5-lite    1 (1 live / 0 replayed)      771       0       —   $0.0000   $0.0000           1.0s
+  this run spent $0.1594 on 30 live call(s); the evidence cost $0.1594 to record (0 call(s) replayed at no cost to this run)
+Requirements: 9   with obligations: 9
+
+[task-01] Build a set of labelled cases for the judgement "would this test fail if this
+    defect were present?", where every label comes from actually running the test
+    against the defect rather than from a model.
+    -> labelled-cases-for-test-failure-judgement  [test_demand/explicit]
+       Build a set of labelled cases for the judgement "would this test fail if this
+       defect were present?"
+    -> labels-from-running-tests  [functional/explicit]
+       Every label comes from actually running the test against the defect rather than
+       from a model.
+
+[task-02] Each case holds the requirement text the test is meant to check, the test's
+    source, the implementation hunk the defect was injected into, a text description of
+    the defect, the exact edit applied, and whether the test failed with the edit in
+    place. Cases come from two sources, and each case records which one, so the two can
+    be scored separately:
+    -> case-holds-requirement-text  [functional/explicit]
+       Each case holds the requirement text the test is meant to check.
+    -> test-source  [docs_config/explicit]
+       The test's source is recorded.
+    -> implementation-hunk-the-defect-was-injected-into  [human_review/explicit]
+       Identify and use the implementation hunk that the defect was injected into.
+    -> describe-defect  [docs_config/explicit]
+       Provide a text description of the defect.
+    -> exact-edit-applied  [docs_config/explicit]
+       Report the exact edit applied.
+    -> test-failure-with-edit-in-place  [functional/explicit]
+       Whether the test failed with the edit in place is recorded.
+    -> cases-come-from-two-sources  [functional/explicit]
+       Cases come from two sources.
+    -> case-records-source  [functional/explicit]
+       Each case records which source it came from.
+    -> separate-scoring-by-source  [functional/explicit]
+       The case records which of the two sources it came from so the two can be scored
+       separately.
+
+[task-03] Tests run in the existing sandbox (`src/acceptance/execution/sandbox.py`). A
+    test that already fails on the unmutated code is set aside rather than labelled, as
+    `src/acceptance/mutation/baseline.py` does.
+    -> sandbox-tests-run-in-existing-sandbox  [functional/explicit]
+       Tests run in the existing sandbox (`src/acceptance/execution/sandbox.py`).
+    -> baseline-failing-test-set-aside  [regression/explicit]
+       A test that already fails on the unmutated code is set aside rather than
+       labelled.
+
+[task-04] Survivors include edits that change no behaviour. The build draws a random
+    sample of survivors for a person to check, and its report gives the sample size and
+    the share found to change no behaviour.
+    -> survivors-include-no-behaviour-change-edits  [invariant/explicit]
+       Survivors include edits that change no behaviour.
+    -> random-sample-of-survivors  [functional/explicit]
+       The build draws a random sample of survivors for a person to check.
+    -> report-gives-sample-size  [functional/explicit]
+       The report gives the sample size.
+    -> share-found-to-change-no-behaviour  [functional/explicit]
+       Report the share found to change no behaviour.
+
+[task-05] The set holds at least 200 cases in all, and within each source at least 30%
+    of cases are killed and at least 30% survived.
+    -> at-least-200-cases  [invariant/explicit]
+       The set holds at least 200 cases in all.
+    -> killed-cases-minimum-per-source  [invariant/explicit]
+       Within each source, at least 30% of cases are killed.
+    -> at-least-30-percent-survived  [invariant/explicit]
+       Within each source, at least 30% of cases survived.
+
+[constraint-01] BugsInPy declares no license and this repository is public. Cases
+    derived from BugsInPy are written only to a gitignored local directory and never
+    committed; only aggregate counts and rates may be committed. The build reruns from a
+    pinned list of BugsInPy bug ids, and rebuilding from the same pinned inputs produces
+    the same file.
+    -> bugs-in-py-license-and-local-derivation  [docs_config/explicit]
+       Cases derived from BugsInPy are written only to a gitignored local directory and
+       are never committed; only aggregate counts and rates may be committed.
+    -> bugs-in-py-pinned-rebuild-determinism  [invariant/explicit]
+       The build reruns from a pinned list of BugsInPy bug ids, and rebuilding from the
+       same pinned inputs produces the same file.
+
+[constraint-02] The cases load through a typed loader in `src/acceptance/benchmark/`,
+    the same way `GroundTruthLabels` loads.
+    -> typed-loader-for-cases  [functional/explicit]
+       The cases load through a typed loader in `src/acceptance/benchmark/`, the same
+       way `GroundTruthLabels` loads.
+
+[exclusion-01] Improving how the checker's mutation tier writes its own edits.
+    -> mutation-tier-writes-its-own-edits  [functional/explicit]
+       The change does not alter how the checker's mutation tier writes its own edits.
+
+[exclusion-02] Using the cases to score any judge.
+    -> no-judge-scoring  [functional/explicit]
+       The change does not use the cases to score any judge.
+
+!! NOT READ AS ANY REQUIREMENT: 2 block(s) of the task file
+   These were parsed but matched no §7.1 section, so the decomposer
+   never saw them. Move them under a recognised heading if they state
+   a requirement.
+     - Fixed-operator mutants on BugsInPy projects, the main source. A mutant is one
+       small mechanical edit, such as flipping a comparison or changing a constant, so
+       the edit is the defect and can never misdescribe what was injected.
+     - Model-written defects from the injection audits in `dogfood-logs/45-injection-
+       audits/`, limited to the edits the audits judged to inject the named defect.
+

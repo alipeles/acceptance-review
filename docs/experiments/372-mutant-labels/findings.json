@@ -1,0 +1,52 @@
+{
+  "bugsinpy_commit": "11c5f1eea954a42132cfd06bf257766a7963e0fd",
+  "pinned_bugs": 87,
+  "bugs_with_cases": 52,
+  "skipped_bugs": 35,
+  "edits": 168,
+  "cases": 231,
+  "killed": 133,
+  "survived": 98,
+  "killed_share": 0.5758,
+  "survived_share": 0.4242,
+  "per_project": {
+    "PySnooper": {
+      "cases": 4,
+      "killed": 2,
+      "survived": 2
+    },
+    "thefuck": {
+      "cases": 56,
+      "killed": 39,
+      "survived": 17
+    },
+    "tqdm": {
+      "cases": 35,
+      "killed": 4,
+      "survived": 31
+    },
+    "youtube-dl": {
+      "cases": 136,
+      "killed": 88,
+      "survived": 48
+    }
+  },
+  "operators": {
+    "arith_swap": 3,
+    "boolop_swap": 2,
+    "compare_flip": 19,
+    "constant_change": 140,
+    "negate_condition": 43,
+    "remove_not": 4,
+    "return_none": 20
+  },
+  "set_aside_tests": 26,
+  "set_aside_mutants": 0,
+  "survivor_check": {
+    "population": 65,
+    "sample_size": 20,
+    "checked": 20,
+    "no_behaviour_change": 0,
+    "no_behaviour_change_share": 0.0
+  }
+}

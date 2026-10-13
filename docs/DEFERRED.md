@@ -6538,3 +6538,273 @@ the record.
 - **Why I didn't act:** Outside #366's scope, which is `llm.py`, `config.py` and the provenance.
 - **Drafted fix:** Filing, unparented like #364 because no umbrella covers the execution sandbox. Title: "The review's repository copy lacks history, so tests that resolve old commits are set aside". Body: as above, with the log excerpt. Find how the sandbox copy is made (a shallow clone or a working-tree copy) and give it the objects a benchmark case's pinned revision needs, or classify the failure as an environment limitation rather than a failing test. Acceptance: the test named above runs in the sandbox copy and is not set aside, or is set aside with a reason naming missing history rather than as a failure.
 - **Status:** **filed 2026-09-24 as #369**, unparented, approved at #366's Gate 2.
+
+### [2026-10-02] Evidence for #310: an exclusion inverted on three runs across two wordings
+- **Kind:** filing
+- **Found during:** #338, Gate 1 runs 1-3 (`dogfood-logs/338-gate1-run{1,2,3}/output.log`, `exclusion-01`)
+- **Where:** decomposition of scope exclusions, `src/acceptance/requirement/`
+- **Severity:** should-fix
+- **What's wrong:** The exclusion "A Codex adapter. Only Claude Code is driven in this change." became `codex-adapter-only-claude-code-driven`, "The change is limited to adding a Codex adapter". Reworded to "An adapter for Codex or for any agent other than Claude Code.", it became "The change adds an adapter for Codex ...". The other three exclusions in the same file were derived correctly as negations.
+- **Why I didn't act:** Tool defect, already tracked as #310 (a scope exclusion yields a positive obligation that coverage then reports not addressed).
+- **Drafted fix:** Comment on #310: "Reproduced at #338's Gate 1, three runs, two wordings (`dogfood-logs/338-gate1-run{1,2,3}/`). Exclusion text: [both wordings above]. Derived: [both obligations above]. Three sibling exclusions in the same file came out correctly negated, so the failure is per-item, not per-section. Expect #338's Gate 2 to report this obligation not addressed."
+- **Status:** **filed 2026-10-02 as a comment on #310**, approved at #338's Gate 1.
+
+### [2026-10-02] Evidence for #196: a code property typed `docs_config`
+- **Kind:** filing
+- **Found during:** #338, Gate 1 runs 1-3 (`test-files-removed`)
+- **Where:** obligation typing, `src/acceptance/requirement/`
+- **Severity:** nice-to-have
+- **What's wrong:** "The copy the agent works in has the project's test files removed" is typed `docs_config` on all three runs; it is a property of code. Run 2 also typed `set-aside-when-edit-is-not-contiguous-within-region` as `human_review`, which is the case #196 already names.
+- **Why I didn't act:** Tool defect; #196 (decomposer types automatable obligations `human_review`) is the nearest issue.
+- **Drafted fix:** Comment on #196: "Same failure with a second wrong value. At #338's Gate 1, `test-files-removed` ('The copy the agent works in has the project's test files removed') was typed `docs_config` on three of three runs, and run 2 typed a set-aside rule `human_review`. Evidence: `dogfood-logs/338-gate1-run{1,2,3}/output.log`."
+- **Status:** **filed 2026-10-02 as a comment on #196**, approved at #338's Gate 1.
+
+### [2026-10-05] A bullet list directly under the Task heading is not read as any requirement
+- **Kind:** filing
+- **Found during:** #372, Gate 1 (`dogfood-logs/372-gate1-run1/`)
+- **Where:** src/acceptance/requirement/task_file.py:135 (`_list_target`)
+- **Severity:** should-fix
+- **What's wrong:** Paragraphs under `# Task` go into `behavior`, but `_list_target` has branches only for Constraints, Completion expectations and Scope exclusions. So a bullet list under `# Task` goes to `unclaimed`, and the decomposer never sees it. In #372's task file, the two bullets naming the two label sources (BugsInPy mutants and the #45 audit edits) produced no obligation. The CLI does warn (`!! NOT READ AS ANY REQUIREMENT: 2 block(s)`), so the loss is visible rather than silent. But the warning's advice, "move them under a recognised heading", is wrong here, because they already sit under one.
+- **Why I didn't act:** Out of #372's scope. It changes what the decomposer is given, so it would orphan every recorded decompose transcript for task files with Task bullets.
+- **Drafted fix:** Filing, sub-issue of #181 (decomposition). Title: "A bullet list under the Task heading is not read as any requirement". Body: as above, with the two unread blocks from `dogfood-logs/372-gate1-run1/output.log`. Fix: add `if section in _TASK: return result.behavior` to `_list_target`. Each item then becomes its own requirement, the same way Constraints bullets do. Related: #227, which asks how flexible the parser should be about task files it does not recognise; this case is narrower, because the heading *is* recognised. Acceptance: a task file whose Task section holds a paragraph and a bullet list yields a requirement for each item, and `unread_source` is empty.
+- **Status:** **filed 2026-10-05 as #373**, sub-issue of #181, approved at #372's Gate 1.
+
+### [2026-10-05] Decision: #372's second label source was judged by helper agents, not by a person
+- **Kind:** decision
+- **Found during:** #372, Gate 1
+- **Where:** #372's Deliverable, item 2; `dogfood-logs/45-injection-audits/`
+- **Severity:** blocker (for that source only)
+- **What's wrong:** #372 says a person marked each #45 injection valid or invalid. The audit judgements say otherwise. v6 to v8 were "judged … by a helper agent" with a few hand spot-checks, and v9 to v10 used "four parallel judging passes". So "only the valid ones are used" filters on a model's verdict, and #372's premise is that no model is in the loop. The audit records also lack the obligation text, the test source and the implementation hunk. They hold only file:line references and the base revisions (`61c5a3c`, `518f876`), so those fields would have to be rebuilt from git. The valid edits are about 26 to 33 per audit version, and they repeat the same defects across versions.
+- **Why I didn't act:** It changes what #372 delivers, which is your call.
+- **Recommendation:** Keep the source, but have a person re-judge the edits the agents called valid in v10, the latest audit (31 edits), before they count. Record the result as a person-confirmed label. The source is small either way, so this is roughly an hour of reading. **Rejected alternative:** drop the source. That is cheaper, but it loses the only cases shaped like what the checker actually produces, which is the reason #372 gives for including them. A third option is to keep the agent verdicts and label the source "agent-judged". That is honest, but it puts a model back into labels that #371, the Jev experiment, scores against.
+- **Status:** **resolved 2026-10-05 — human decision: drop the source.** BugsInPy is the only source for #372. The #45 edits can be vetted and added in an issue of their own if they are ever needed. A sample showed the source could not meet the 30%-survived rule in any case: of the 31 edits called valid in v10, 25 were killed and 6 survived. The edit to #372's body is queued below.
+
+### [2026-10-05] Amend #372's body: drop the #45 audit source
+- **Kind:** filing
+- **Found during:** #372, Gate 1
+- **Where:** #372's issue body
+- **Severity:** should-fix
+- **What's wrong:** The body still lists the #45 audit edits as a second label source, describes them as judged by a person, says they may be committed, and counts the 200 / 30% / 30% rule per source. The human dropped the source on 2026-10-05.
+- **Why I didn't act:** Editing an issue body changes the plan, so it needs approval first.
+- **Drafted fix:** Edit the body; no new issue. Replace Deliverable item 2 with: "*(Dropped 2026-10-05.)* The #45 injection-audit edits were planned as a second source. They were judged valid by helper agents, not by a person, so they would put a model back into the labels. A sample also showed they cannot meet the survived share: of 31 valid edits in v10, 25 were killed and 6 survived. They can be vetted and added in an issue of their own if needed." Drop the sentence "The labels from the #45 audits come from this repo, so they may be committed." In Acceptance, change "counted per source" to "over the whole set". Change "32 hand-written `killed_by` entries" to 38.
+- **Status:** **done 2026-10-05**: #372's body was edited as drafted, approved at #372's Gate 1. It also records the Gate 1 decision on requirement text (the fix commit message).
+
+### [2026-10-05] #212 gains an instance: a reason clause becomes an obligation after a rewrite meant to avoid it
+- **Kind:** filing
+- **Found during:** #372, Gate 1 (`dogfood-logs/372-gate1-run1/` and `-run2/`)
+- **Where:** decomposition
+- **Severity:** nice-to-have
+- **What's wrong:** Run 1 turned the background sentence "Survivors include edits that change no behaviour." into the obligation `survivors-include-no-behaviour-change-edits`. The sentence was then rewritten as a reason for the spot-check that follows it: "Because an edit can change no behaviour at all, some survivors are not evidence of a weak test. The build draws a random sample of survivors for a person to check…". Run 2 still yields `survivors-not-evidence-of-weak-test` [invariant], "Some survivors are not evidence of a weak test." That is a fact about the world, not something the code can satisfy.
+- **Why I didn't act:** Known defect (#212), outside #372's scope.
+- **Drafted fix:** A comment on #212 quoting both sentences and both obligations, with the run directories. Its point: making the sentence a subordinate "because" clause does not stop it becoming an obligation.
+- **Status:** **filed 2026-10-05** as a comment on #212, approved at #372's Gate 1.
+
+### [2026-10-05] A runtime behaviour with tests is ruled "test evidence not required"
+- **Kind:** filing
+- **Found during:** #338, Gate 2 run 1 (`dogfood-logs/338-gate2-run1/output.log`, obligations 12 and 13)
+- **Where:** the evidence-requirement judgement; likely fed by the obligation's type (#196)
+- **Severity:** should-fix
+- **What's wrong:** `test-files-removed` ("The copy the agent works in has the project's test files removed") got "test evidence: not required — a repository-state constraint that is satisfied by the working copy itself". `cannot-read-test-files` got "not required — a task-environment constraint, not behavior the delivered code can implement or a test in the repository can demonstrate". Both are behaviors of the delivered code, `agent_copy`, and `tests/test_mutation_agent.py::TestTheAgentCannotSeeTheTests` tests the first directly. A planted fault that left the tests in the copy failed two of those tests. The first obligation was typed `docs_config` at Gate 1, which is #196, and is the likely cause. The obligation that matters most for #338's stated risk was therefore never rated against its tests.
+- **Why I didn't act:** Tool defect.
+- **Drafted fix:** Filing, sub-issue of #183 (evidence judgement). Title: "A testable behaviour of the delivered code is ruled 'test evidence not required'". Body: the two quotations above, the test names, the planted-fault result, and the link to #196's mistyping. Acceptance: an obligation describing something the delivered code does is rated against the tests that exercise it, whatever its type; a 'not required' ruling names why no test in the repository could bear on it.
+- **Status:** **filed 2026-10-05 as #374**, sub-issue of #183, approved at #338's Gate 2.
+
+### [2026-10-05] Evidence for #272: an exclusion naming existing behaviour became a prohibition, then was half-failed on a misreading
+- **Kind:** filing
+- **Found during:** #338, Gate 2 run 1 (obligation 23, `existing-builder-prompt-and-candidate-count-unchanged`)
+- **Where:** decomposition of scope exclusions; the coverage classification of the resulting prohibition
+- **Severity:** should-fix
+- **What's wrong:** The exclusion "Changing the existing builder's prompt or the number of candidates it is asked for" became "The change does not alter ...", and coverage rated it partially addressed. One of its two reasons is wrong: "the existing one-call builder now tags its requests with a defect label, so the recorded request shape ... is no longer unchanged". The label goes only into the usage record, and `tests/test_mutation_agent.py::TestCostPerDefect::test_a_label_does_not_change_the_request_key` shows the key is unchanged. The other reason is literally true but misses the point: the recorded `candidates_asked` now counts the agent's candidate, while the one-call builder is still asked `max_candidates` times. That makes this the only obligation reported "not fully implemented".
+- **Why I didn't act:** Tool defect, tracked as #272 (a scope exclusion naming existing behaviour is derived as a prohibition on it).
+- **Drafted fix:** Comment on #272: "Reproduced at #338's Gate 2 (`dogfood-logs/338-gate2-run1/`). [the exclusion, the obligation, the two failure ways as quoted above]. The prohibition was then rated partially addressed. One of its two reasons misreads the code: a usage-only label read as a change to the request. This is the only reason the review's verdict is 'not fully implemented'."
+- **Status:** **filed 2026-10-05 as a comment on #272**, approved at #338's Gate 2.
+
+### [2026-10-05] An optional keyword that an obligation needs is rated a risky unrequested change
+- **Kind:** filing
+- **Found during:** #338, Gate 2 run 1 (Unrequested changes, item 1)
+- **Where:** unrequested-change detection, `src/acceptance/coverage/`
+- **Severity:** nice-to-have
+- **What's wrong:** "[risky] `ModelClient.complete` now accepts an extra `label` parameter, changing a public API used by callers and tests. The obligations require recording per-defect cost, but do not require widening the completion API itself." The parameter is optional, so every existing caller is unaffected. It is also the mechanism obligation 19 (one-call builder cost per defect) is delivered by: without it the one-call builder's calls cannot be attributed to a defect. Five structurally identical changes in the same review, such as the new `fallback` parameter on `run_mutations`, were rated `in_service`.
+- **Why I didn't act:** Tool defect; the change was approved at #338's Gate 1 (DR-338 Decision 5).
+- **Drafted fix:** Filing, sub-issue of #185 (findings model, verdict and presentation). Title: "A backward-compatible parameter that delivers an obligation is rated a risky unrequested change".
+  Reproduced in Gate 2 run 2 with new wording: "gained an optional `label` parameter, changing a public method signature beyond the requested behavior". Add that to the body. Body: the quotation, the parallel `in_service` items, and why the label is necessary. Acceptance: a change the review can trace to an obligation it serves is rated `in_service`; `risky` names a concrete way existing callers could break.
+- **Status:** **filed 2026-10-05 as #375**, sub-issue of #185, approved at #338's Gate 2.
+
+### [2026-10-05] A test file the review cites as evidence is also reported as a separable change
+- **Kind:** filing
+- **Found during:** #338, Gate 2 run 2 (`dogfood-logs/338-gate2-run2/output.log`, unrequested change 11 and obligation 11)
+- **Where:** unrequested-change detection, `src/acceptance/coverage/`
+- **Severity:** should-fix
+- **What's wrong:** "[separable] `tests/test_unverified_mutation_is_inert_with_agent.py` adds a new parallel test module ... but not this specific duplication strategy." The same report lists `tests/test_unverified_mutation_is_inert_with_agent.py::TestThroughTheWholeReviewWithTheAgent::test_the_edit_came_from_the_agent` as evidence 11.5 for obligation 11 ("An unverified agent edit carries no more weight in the review than any other unverified edit"). A test is evidence, not a deliverable to be justified. A file the review itself relies on cannot also be a change that could be split off. Run 1 over nearly the same change did not report it, so the rating is also unstable.
+- **Why I didn't act:** Tool defect; the file is DR-338 Decision 2, approved at #338's Gate 1.
+- **Drafted fix:** Filing, sub-issue of #185 (findings model, verdict and presentation). Title: "A test file cited as evidence for an obligation is reported as a separable unrequested change". Body: the quotation, the evidence line, and the run 1 to run 2 flip. Acceptance: a changed test file that the same review cites as evidence for an obligation is not reported as unrequested; a test file is reported only when no obligation's evidence draws on it.
+- **Status:** **filed 2026-10-05 as #376**, sub-issue of #185, approved at #338's Gate 2.
+
+### [2026-10-05] Decision: the agent is routed on a trigger that no longer fires
+- **Kind:** decision
+- **Found during:** #338, audit v11 (`dogfood-logs/45-injection-audits/injection-audit-v11-judgement.md`)
+- **Where:** `src/acceptance/mutation/runner.py::_attempt`, the routing #338 asked for
+- **Severity:** should-fix
+- **What's wrong:** #338 sends a defect to the coding agent only when every one-call candidate fails the mechanical checks. After #334's three candidates, that happened to none of v10's 64 defects, so the agent as routed would never run. The edits the one-call builder actually gets wrong (21 of 52 in v10) pass every check. They show up only when the edit verifier (#335) or a judge reads them. On those 21, the agent asked directly planted the defect in 6 of 9 usable edits and correctly made no change in 10 more, against v10's 0 of 21 (one unchecked Claude judging pass).
+- **Why I didn't act:** Changing the trigger changes #338's specified design; it is the human's call.
+- **Recommendation:** File a follow-up that also routes a defect to the agent when the edit verifier refuses the one-call edit, once verification is adopted (#335). Hand-check a sample of `labels/v11.json` first, since the rate rests on one Claude pass judging a Claude-built arm.
+- **Rejected:** making the agent the first builder. At about 7 times the cost per defect, it should go only where the cheap builder has failed.
+- **Status:** superseded 2026-10-13 by the filing drafted below
+
+### [2026-10-05] Decision: the agent cannot report that the code already has the defect
+- **Kind:** decision
+- **Found during:** #338, audit v11
+- **Where:** `src/acceptance/mutation/agent.py::AgentDescriptorBuilder` (DR-338 Decision 1)
+- **Severity:** nice-to-have
+- **What's wrong:** In 7 of the 21 v11 defects the code already did the defective behaviour, the judge found, and the agent correctly made no change. The one-call builder records that case as `already_present`, a finding with a repair edit that is tested. The agent's "no change" is recorded as plain "no usable edit", so the finding is lost.
+- **Why I didn't act:** DR-338 Decision 1 deliberately gives the agent no typed answers, so its prose is never treated as evidence.
+- **Recommendation:** Let the agent declare one typed answer, by writing a fixed small JSON file (`already_defective` plus the lines), which the builder validates like a schema answer, and route its repair through the existing `already_present` path. Its edit, not its words, would still be what is tested.
+- **Rejected:** parsing the agent's final reply text, which would make its account evidence.
+- **Status:** superseded 2026-10-13 by the filing drafted below
+
+### [2026-10-05] Test discovery walks gitignored directories and offers their tests as candidates
+- **Kind:** filing
+- **Found during:** #372, Gate 2 run 1 (`dogfood-logs/372-gate2-run1/`)
+- **Where:** src/acceptance/evidence/discovery.py:43 (`_EXCLUDED_DIRS`) and its tree walk
+- **Severity:** should-fix
+- **What's wrong:** Discovery finds existing test files by walking the working tree, skipping only a fixed list of folder names (`.venv`, `.git`, `build` and so on). It reads neither `.gitignore` nor the repo's own `.acceptance/ignore`, which `change/diff.py` already honours. In #372's Gate 2 the gitignored `.acceptance/mutant-labels/projects/` held 87 BugsInPy project checkouts. Their own tests (thefuck's, youtube-dl's) became candidate evidence for this change: 202 of the run's 207 unjudged pairs name one of them, the execution stage set dozens of them aside, and the mapping stage was handed hundreds of foreign tests. The run cost $1.04, and every mapping-based rating in it is suspect.
+- **Why I didn't act:** Outside #372's scope. It changes candidate sets, so it moves mapping transcripts.
+- **Drafted fix:** Filing, sub-issue of #182 (test discovery & mapping). Title: "Test discovery walks gitignored directories and offers their tests as candidates". Body: as above, with the counts from `dogfood-logs/372-gate2-run1/output.log`. Fix: build the candidate file list from `git ls-files --cached --others --exclude-standard`, so git's own ignore rules apply, then filter it through `.acceptance/ignore` with the same `pathspec` helper `change/diff.py` uses. Keep `_EXCLUDED_DIRS` for non-git trees. Acceptance: a test file under a gitignored directory, or under a path in `.acceptance/ignore`, is never a candidate, and a test for that runs through `discover_tests`, not a helper.
+- **Status:** **filed 2026-10-06 as #377**, sub-issue of #182, approved at #372's Gate 2.
+
+### [2026-10-05] #283 gains three instances: recommendations that test something the requirement never asked for
+- **Kind:** filing
+- **Found during:** #372, Gate 2 run 1
+- **Where:** test recommendation stage
+- **Severity:** nice-to-have
+- **What's wrong:** Three recommendations in one run prescribe a test for a defect that would not violate its obligation:
+  1. `sandbox-tests-run-in-existing-sandbox`: it asks to prove that the `sample` and `report` commands run tests in the sandbox. They run no tests at all.
+  2. `test-failure-status-recorded` ("Record whether the test failed with the edit in place"): it wants a failure status "not equivalent to a simple killed/survived boolean". Whether a test failed is a boolean.
+  3. `bugs-in-py-pinned-rebuild-determinism` ("rebuilding from the same pinned inputs produces the same file"): it asks to change the inputs between two builds and check that the output varies.
+  4. (run 2) `test-failure-status-recorded` again: "the case record has no field for the edit-in-place test-failure status". `killed` is that field.
+  5. (run 2) `baseline-failing-test-set-aside` ("a test that already fails on the unmutated code is set aside rather than labelled"): it says a red test "not among those selected tests" could still be labelled. Only selected tests are ever run, so only they can be labelled.
+- **Why I didn't act:** Known defect (#283), outside #372's scope.
+- **Drafted fix:** A comment on #283 quoting the three obligations and their `detects` lines from `dogfood-logs/372-gate2-run1/output.log`, with one sentence each on why the named defect does not violate the obligation.
+- **Status:** **filed 2026-10-06** as a comment on #283 (all five instances), approved at #372's Gate 2.
+
+### [2026-10-05] #325 gains an instance: a `test_demand` obligation is indeterminate on two runs
+- **Kind:** filing
+- **Found during:** #372, Gate 2 runs 1 and 2
+- **Where:** defect enumeration
+- **Severity:** nice-to-have
+- **What's wrong:** `labelled-cases-for-test-failure-judgement` ("Build a set of labelled cases for the judgement 'would this test fail if this defect were present?'") is typed `test_demand`. On both runs it reads "indeterminate — no way this change could fail the criterion was enumerated for it", with no mapped test, so its rating cannot be reached.
+- **Why I didn't act:** Known defect (#325).
+- **Drafted fix:** A comment on #325 quoting the obligation and its rating from `dogfood-logs/372-gate2-run{1,2}/output.log`.
+- **Status:** **filed 2026-10-06** as a comment on #325, approved at #372's Gate 2.
+
+### [2026-10-05] #196 has a downstream cost: an obligation typed `human_review` gets no defect, so its rating cannot be reached
+- **Kind:** filing
+- **Found during:** #372, Gate 1 run 2 and Gate 2 runs 1 and 2
+- **Where:** decomposition typing, then defect enumeration
+- **Severity:** should-fix
+- **What's wrong:** Gate 1 typed `random-survivor-sample-for-human-check` ("The build draws a random sample of survivors for a person to check") as `human_review`. The person checks the sample, but drawing it is plain code. On both Gate 2 runs it is "indeterminate — no way this change could fail the criterion was enumerated", with no mapped test, although `test_the_survivor_sample_takes_one_case_per_edit_and_is_seeded` covers it. So the wrong type in #196 does not just mislabel the obligation; it blocks it from ever being rated.
+- **Why I didn't act:** Known defect (#196).
+- **Drafted fix:** A comment on #196 with the Gate 1 typing and both Gate 2 ratings.
+- **Status:** **filed 2026-10-06** as a comment on #196, approved at #372's Gate 2.
+
+### [2026-10-05] #359 gains an instance: an unchanged packaging hunk flips from `in_service` to `separable`
+- **Kind:** filing
+- **Found during:** #372, Gate 2 runs 1 and 2
+- **Where:** unrequested-change disposition
+- **Severity:** nice-to-have
+- **What's wrong:** The `pyproject.toml` hunk adding `pinned_bugs.json` as package data is byte-identical in both runs. Run 1 rated it `in_service`; run 2 rated it `separable`.
+- **Why I didn't act:** Known defect (#359).
+- **Drafted fix:** A comment on #359 quoting both dispositions from `dogfood-logs/372-gate2-run{1,2}/output.log`.
+- **Status:** **filed 2026-10-06** as a comment on #359, approved at #372's Gate 2.
+
+### [2026-10-13] Measure the planted-bug stage on an ordinary business codebase, not this tool's history
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** should-fix
+- **Drafted fix:** Sub-issue of #186 (benchmark). Title: "Measure the planted-bug stage on an ordinary business codebase, not this tool's history". Body:
+  > Every injection audit so far (v1–v11) plants bugs in this tool's own #45 change. That code is subtle and close to the tool's own subject, and it is not the main use case, which is business functionality. Several of v11's hardest bugs turned out to be muddled or about supporting requirements rather than core behaviour.
+  >
+  > Choose an MIT- or similarly-licensed Python project with a pytest suite, real commit history with bug fixes, business logic at its core (finance preferred: cash flows, amortisation, payment waterfalls), and tests that run fast with no network or database. Build audit tasks from its real commits. Choosing it involves redistributing third-party code, so the owner picks from a verified short list.
+  >
+  > Dogfood logs remain the place tool defects are found; rates and targets come from the new benchmark.
+  >
+  > **Acceptance:** a chosen project with its licence confirmed from the licence file, at least one audit run on it, and the owner's review of a sample of its planted edits.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Label each bug by testing priority, by difficulty, and as a bad description
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** should-fix
+- **Drafted fix:** Sub-issue of #186 (benchmark). Title: "Label each bug by testing priority, by difficulty, and as a bad description". Body:
+  > One blended planting rate hides two different facts. In v11 the planted-bug approach did well on clear-cut bugs and struggled on subtle ones, and some bug descriptions were simply wrong. Being good at easy and moderate cases first is an acceptable early outcome, and it should be measurable as such.
+  >
+  > Three separate labels: **priority** (core business behaviour vs a supporting requirement; requirements already carry an importance rating, bugs do not); **difficulty** (one obvious change vs subtle or spread across places); **bad description** (the bug as written is wrong or muddled, e.g. a requirement that lost its condition when split out). A bad description is a broken input, not a hard bug, and must not drag down the difficulty score.
+  >
+  > The labels are set from the bug description alone, before planting is attempted, so the tool cannot excuse its own failures by calling them hard. On a benchmark, a person sets or checks them.
+  >
+  > **Acceptance:** audits report the planting rate per difficulty class, with bad descriptions counted separately, and per-class targets are recorded (for example: all clear-cut bugs, three quarters of subtle ones).
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Drop the plausibility rule for planted edits; require exactly the described behaviour
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** should-fix
+- **Drafted fix:** Unparented, like #364, since no umbrella covers the mutation stage. Title: "Drop the plausibility rule for planted edits; require exactly the described behaviour". Body:
+  > The edit builder is told to break code "the way a careless implementation would", and the audit protocol defines a good edit as "a plausible small mistake". The real question is only whether the tests catch the described behaviour, which depends on what the code does after the edit, not how a person would have produced it. Plausibility is a separate, possibly heavy burden and may be steering builders toward edits that change a neighbouring behaviour instead. Unmeasured.
+  >
+  > What matters is that the edit produces exactly the described behaviour and nothing broader. A too-broad edit still matters, because each failing test is credited with catching that specific bug.
+  >
+  > Changes the one-call builder's prompt (its recordings re-record) and `docs/audit-protocol.md`'s definition.
+  >
+  > **Acceptance:** builder instructions and protocol use the exact-and-nothing-broader rule; an audit on the same defects compares planting rates before and after.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Allow a planted edit to be a few separate small changes within the size limit
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** should-fix
+- **Drafted fix:** Unparented; a decision, because it changes the stored record. Title: "Allow a planted edit to be a few separate small changes within the size limit". Body:
+  > A planted edit must be one block of consecutive lines. In v11, two bugs could only be planted by small changes in two places: a case guarded by two deliberately duplicated checks, and a reordering of two steps. Both builders were stopped by the rule, not by the bug. Duplicated checks are not always wrong, and the tool should be able to plant through them.
+  >
+  > Allow up to a small number of separate changes, together within the existing line limit, each inside an area the bug names.
+  >
+  > **This changes the stored shape of a planted edit** (today a single span), which later work reads, so the design needs the owner's sign-off before implementation.
+  >
+  > **Acceptance:** an edit of two separate small changes is accepted and checked change by change; the two v11 cases are pinned as regression cases.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Settle some bugs by reading the code instead of planting them and running tests
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** nice-to-have
+- **Drafted fix:** Unparented; related to #327 (bugs listed for requirements owed no test). Title: "Settle some bugs by reading the code instead of planting them and running tests". Body:
+  > Some requirements are clearer and cheaper to confirm by reading the code than by planting a bug and running the suite. Example from v11: "the test-running stage goes first, then the code-reading judgement" is visible at a glance, and planting a bug there needs a contorted edit.
+  >
+  > Distinct from #327, where no test is owed at all: here a test may be owed, but code evidence is the better and cheaper evidence for this particular bug. Pairs naturally with the priority label (low-priority requirements accept code evidence).
+  >
+  > **Acceptance:** a bug can be marked "settle by reading", is not sent to planting, and its rating says what kind of evidence settled it.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Also ask the coding agent when the edit verifier refuses a one-call edit
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** should-fix
+- **Drafted fix:** Unparented; depends on #335 (the edit verifier). Title: "Also ask the coding agent when the edit verifier refuses a one-call edit". Body:
+  > #338 asks the agent only when every one-call candidate fails the mechanical checks. After #334's three candidates, that happened to none of v10's 64 bugs, so as routed the agent never runs. The one-call builder's real failures (21 of 52 edits in v10) pass every check. They are caught only by the edit verifier or a judge.
+  >
+  > On those 21, asked directly, the agent planted 5 bugs (owner-corrected from the judge's 6) and correctly made no change in most of the rest (audit v11, one Claude judge plus the owner's check of six). About 7 times the one-call cost per bug.
+  >
+  > **Acceptance:** when the verifier refuses an edit, the agent is asked once; an audit shows its planting rate on those bugs against the refused edits.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+
+### [2026-10-13] Let the coding agent report that the code already has the bug
+- **Kind:** filing
+- **Found during:** #338, the owner's hand check of audit v11 (`dogfood-logs/45-injection-audits/v11-hand-check.md`, "Human verdicts")
+- **Severity:** nice-to-have
+- **Drafted fix:** Unparented. Title: "Let the coding agent report that the code already has the bug". Body:
+  > When the code already does the "broken" behaviour, the agent's only option is to make no change, which is recorded as "no usable edit". The one-call builder records the same situation as a finding, with a repair edit that is tested. In v11 the judge found this in 7 of 21 bugs, all lost as plain "no usable edit".
+  >
+  > Let the agent declare it through a fixed, small JSON file (already-broken plus the lines), validated like a schema answer, with its repair going through the existing already-present path. Its edit, not its words, would still be what is tested. Parsing its reply text was rejected: that would make its own account evidence.
+  >
+  > **Acceptance:** an agent run declaring the bug already present produces an already-present finding with a tested repair.
+- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval

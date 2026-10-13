@@ -24,6 +24,10 @@ acceptance = "acceptance.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# #372's pinned BugsInPy bug list: ids and a dataset commit, not derived content.
+"acceptance.benchmark.mutants" = ["pinned_bugs.json"]
+
 [tool.ruff]
 target-version = "py310"
 line-length = 100

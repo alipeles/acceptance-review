@@ -1,0 +1,2048 @@
+Task completion: INCOMPLETE
+
+3 obligation(s) with non-discriminating test evidence (labels-from-running-tests, test-failure-status-recorded, baseline-failing-test-set-aside).
+
+Obligations:
+
+  1. Build a set of labelled cases for the judgement "would this test fail if this defect were present?"
+       requirements: task-01
+       code evidence: not required — The requirement asks for a test-oriented labelled case set, so the obligation is satisfied by the presence of the test cases themselves rather than by source code behavior.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  2. Every label comes from actually running the test against the defect rather than from a model.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+         2.2  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+         2.3  src/acceptance/benchmark/mutants/__main__.py#@@ -0,0 +1,69 @@
+       test evidence: partially supported — kills 1 of 2 enumerated defects (static prediction)  [tier: static]
+         2.4  tests/benchmark/test_mutant_labels.py::test_the_build_labels_every_usable_test_against_every_mutant
+         recommended test: The labelled cases are produced by executing the test against the defect, and each label is grounded in that run rather than model-generated.
+           inputs:  Build a synthetic label set with multiple surviving cases from distinct edits, then draw a survivor sample and verify that the sample page and sample JSON preserve the exact `case_id`s of surviving cases that were actually produced by the build. Use at least one survivor whose `case_id` can be traced back to a concrete case in `labels.cases` and one killed case that must never be sampled.
+           detects: The survivor spot-check can be populated from surviving cases without preserving the fact that each label came from an actual test run, so the sample page may present labels that are not tied back to execution evidence.
+           full detail: acceptance recommendation --criterion labels-from-running-tests
+
+  3. The defects are fixed-operator mutants on BugsInPy projects.
+       requirements: task-02
+       code evidence: addressed
+         3.1  src/acceptance/benchmark/mutants/pinned_bugs.json#@@ -0,0 +1,119 @@
+         3.2  src/acceptance/benchmark/mutants/bugsinpy.py#@@ -0,0 +1,170 @@
+         3.3  src/acceptance/benchmark/mutants/operators.py#@@ -0,0 +1,304 @@
+         3.4  src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         3.5  tests/benchmark/test_mutant_labels.py::test_every_operator_edits_only_the_requested_lines_and_still_parses
+         3.6  tests/benchmark/test_mutant_labels.py::test_the_build_labels_every_usable_test_against_every_mutant
+         3.7  tests/benchmark/test_mutant_labels.py::test_the_committed_pin_names_bugs_and_a_dataset_commit
+
+  4. The defect is represented as one small mechanical edit, such as flipping a comparison or changing a constant, and that edit is the defect itself.
+       requirements: task-02
+       code evidence: addressed
+         4.1  src/acceptance/benchmark/mutants/operators.py#@@ -0,0 +1,304 @@
+         4.2  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         4.3  tests/benchmark/test_mutant_labels.py::test_every_operator_edits_only_the_requested_lines_and_still_parses
+         4.4  tests/benchmark/test_mutant_labels.py::test_the_description_quotes_the_exact_edit
+
+  5. The defect description cannot misdescribe what was injected; it must match the exact edit applied.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/benchmark/mutants/operators.py#@@ -0,0 +1,304 @@
+         5.2  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         5.3  tests/benchmark/test_mutant_labels.py::test_the_description_quotes_the_exact_edit
+
+  6. Each case holds the requirement text the test is meant to check.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+         6.2  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+         6.3  src/acceptance/benchmark/mutants/prepare.py#@@ -0,0 +1,169 @@
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         6.4  tests/benchmark/test_mutant_labels.py::test_the_build_labels_every_usable_test_against_every_mutant
+         6.5  tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+
+  7. The test's source is included as the required content for this requirement.
+       requirements: task-02
+       code evidence: addressed
+         7.1  src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+         7.2  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+       test evidence: not required — This requirement is about including a specific source field in the output, which is settled by the produced data rather than by runtime behavior or a separate test.
+
+  8. The response includes the implementation hunk the defect was injected into.
+       requirements: task-02
+       code evidence: addressed
+         8.1  src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+         8.2  src/acceptance/benchmark/mutants/operators.py#@@ -0,0 +1,304 @@
+         8.3  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  9. Provide a text description of the defect.
+       requirements: task-02
+       code evidence: addressed
+         9.1  src/acceptance/benchmark/mutants/operators.py#@@ -0,0 +1,304 @@
+         9.2  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+       test evidence: not required — This requirement is satisfied by the presence of the defect description text itself; no runtime or test evidence is needed.
+
+  10. State the exact edit applied.
+       requirements: task-02
+       code evidence: addressed
+         10.1  src/acceptance/benchmark/mutants/operators.py#@@ -0,0 +1,304 @@
+         10.2  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+       test evidence: not required — This requirement is satisfied by the presence of the exact edit text itself; no test can independently demonstrate that the edit was recorded correctly.
+
+  11. Record whether the test failed with the edit in place.
+       requirements: task-02
+       code evidence: addressed
+         11.1  src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+         11.2  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+         11.3  src/acceptance/benchmark/mutants/survivors.py#@@ -0,0 +1,128 @@
+       test evidence: partially supported — kills 2 of 3 enumerated defects (static prediction)  [tier: static]
+         11.4  tests/benchmark/test_mutant_labels.py::test_killed_is_true_exactly_when_the_test_failed_with_the_edit_in_place
+         11.5  tests/benchmark/test_mutant_labels.py::test_the_build_labels_every_usable_test_against_every_mutant
+         recommended test: The case includes a test-failure status for the edit-in-place run.
+           inputs:  Use a synthetic build where one selected test fails in the baseline/control run and another selected test passes, so the resulting label set must distinguish failure status per test. The fixture should exercise the record path that stores set-aside test metadata and the case path that stores successful edit-in-place outcomes.
+           detects: The case record has no field for the edit-in-place test-failure status, so the build cannot record whether that run failed.
+           full detail: acceptance recommendation --criterion test-failure-status-recorded
+
+  12. Tests run in the existing sandbox (`src/acceptance/execution/sandbox.py`).
+       requirements: task-03
+       code evidence: addressed
+         12.1  src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+         12.2  src/acceptance/benchmark/mutants/__main__.py#@@ -0,0 +1,69 @@
+         12.3  tests/benchmark/test_mutant_labels.py#@@ -0,0 +1,551 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         12.4  tests/benchmark/test_mutant_labels.py::test_nothing_runs_inside_the_prepared_checkout
+
+  13. A test that already fails on the unmutated code is set aside rather than labelled.
+       requirements: task-03
+       code evidence: addressed
+         13.1  src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+         13.2  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+         13.3  tests/benchmark/test_mutant_labels.py#@@ -0,0 +1,551 @@
+       test evidence: partially supported — kills 1 of 2 enumerated defects (static prediction)  [tier: static]
+         13.4  tests/benchmark/test_mutant_labels.py::test_a_red_test_is_set_aside_and_never_labelled
+         recommended test: A baseline-failing test is excluded from the labelled set and treated as set aside.
+           inputs:  Use a synthetic bug/build fixture with at least two selected tests where one test is intentionally baseline-red but is not in the trigger-tests subset returned by the bug metadata. Ensure the bug has enough admitted tests that the selected set includes both a trigger test and a non-trigger test, and make the non-trigger test fail only in the untouched baseline run.
+           detects: The baseline check is only applied to the tests selected for a bug, so any baseline-failing test that is not among those selected tests is never discovered and can still be labelled.
+           full detail: acceptance recommendation --criterion baseline-failing-test-set-aside
+
+  14. Some survivors are not evidence of a weak test.
+       requirements: task-04
+       code evidence: not required — This is a judgment about how to interpret survivors in context, which the repository alone cannot settle.
+       test evidence: not required — This is a judgment about how to interpret survivors in context, which the repository alone cannot settle.
+
+  15. The build draws a random sample of survivors for a person to check.
+       requirements: task-04
+       code evidence: addressed
+         15.1  src/acceptance/benchmark/mutants/survivors.py#@@ -0,0 +1,128 @@
+         15.2  src/acceptance/benchmark/mutants/__main__.py#@@ -0,0 +1,69 @@
+         15.3  docs/experiments/372-mutant-labels/README.md#@@ -0,0 +1,70 @@
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  16. The report gives the sample size.
+       requirements: task-04
+       code evidence: addressed
+         16.1  src/acceptance/benchmark/mutants/survivors.py#@@ -0,0 +1,128 @@
+         16.2  docs/experiments/372-mutant-labels/FINDINGS.md#@@ -0,0 +1,33 @@
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  17. The report includes the share found to change no behaviour.
+       requirements: task-04
+       code evidence: addressed
+         17.1  src/acceptance/benchmark/mutants/survivors.py#@@ -0,0 +1,128 @@
+         17.2  docs/experiments/372-mutant-labels/FINDINGS.md#@@ -0,0 +1,33 @@
+         17.3  docs/experiments/372-mutant-labels/findings.json#@@ -0,0 +1,52 @@
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  18. The set holds at least 200 cases.
+       requirements: task-05
+       code evidence: addressed
+         18.1  docs/experiments/372-mutant-labels/FINDINGS.md#@@ -0,0 +1,33 @@
+         18.2  docs/experiments/372-mutant-labels/findings.json#@@ -0,0 +1,52 @@
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  19. At least 30% of the cases are killed.
+       requirements: task-05
+       code evidence: addressed
+         19.1  docs/experiments/372-mutant-labels/FINDINGS.md#@@ -0,0 +1,33 @@
+         19.2  docs/experiments/372-mutant-labels/findings.json#@@ -0,0 +1,52 @@
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  20. At least 30% of the cases in the set survived.
+       requirements: task-05
+       code evidence: addressed
+         20.1  docs/experiments/372-mutant-labels/FINDINGS.md#@@ -0,0 +1,33 @@
+         20.2  docs/experiments/372-mutant-labels/findings.json#@@ -0,0 +1,52 @@
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  21. Cases derived from BugsInPy are written only to a gitignored local directory and are never committed; only aggregate counts and rates may be committed.
+       requirements: constraint-01
+       code evidence: addressed
+         21.1  docs/experiments/372-mutant-labels/README.md#@@ -0,0 +1,70 @@
+         21.2  docs/experiments/372-mutant-labels/FINDINGS.md#@@ -0,0 +1,33 @@
+         21.3  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+         21.4  src/acceptance/benchmark/mutants/survivors.py#@@ -0,0 +1,128 @@
+         21.5  docs/experiments/README.md#@@ -46,6 +46,7 @@ tool does not use it, only these experiments do.
+       test evidence: not required — This is a repository policy about where derived cases may be written and what may be committed, so it is checked by the source layout and committed files rather than by runtime behavior.
+
+  22. The build reruns from a pinned list of BugsInPy bug ids, and rebuilding from the same pinned inputs produces the same file.
+       requirements: constraint-01
+       code evidence: addressed
+         22.1  src/acceptance/benchmark/mutants/pinned_bugs.json#@@ -0,0 +1,119 @@
+         22.2  src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+         22.3  src/acceptance/benchmark/mutants/__main__.py#@@ -0,0 +1,69 @@
+         22.4  docs/experiments/372-mutant-labels/README.md#@@ -0,0 +1,70 @@
+         22.5  docs/experiments/372-mutant-labels/FINDINGS.md#@@ -0,0 +1,33 @@
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         22.6  tests/benchmark/test_mutant_labels.py::test_each_environment_s_packages_are_recorded_and_change_the_file
+         22.7  tests/benchmark/test_mutant_labels.py::test_generation_is_deterministic
+         22.8  tests/benchmark/test_mutant_labels.py::test_rebuilding_from_the_same_pins_writes_the_same_bytes
+         22.9  tests/benchmark/test_mutant_labels.py::test_the_survivor_sample_takes_one_case_per_edit_and_is_seeded
+
+  23. The cases load through a typed loader in `src/acceptance/benchmark/`, the same way `GroundTruthLabels` loads.
+       requirements: constraint-02
+       code evidence: addressed
+         23.1  src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+         23.2  tests/benchmark/test_mutant_labels.py#@@ -0,0 +1,551 @@
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         23.3  tests/benchmark/test_mutant_labels.py::test_loader_reads_the_synthetic_fixture_into_typed_cases
+         23.4  tests/benchmark/test_mutant_labels.py::test_loader_rejects_a_case_with_a_field_it_does_not_know
+
+  24. The change does not alter how the checker's mutation tier writes its own edits.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 16 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, and a reader can verify it directly from the source diff without a test.
+
+  25. The change does not use the cases to score any judge.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 16 changes across 16 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, and it is settled by inspecting the source rather than by a test.
+
+Mandate coverage: 9 of 9 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The new `prepare` command fetches project checkouts and commit messages, and the build now depends on those fetched artifacts being present. None of the obligations ask for a networked preparation step or for fetching BugsInPy sources/messages; they only require the labelled cases and the local rebuild of them.
+       src/acceptance/benchmark/mutants/prepare.py#@@ -0,0 +1,169 @@
+       src/acceptance/benchmark/mutants/__main__.py#@@ -0,0 +1,69 @@
+       docs/experiments/372-mutant-labels/README.md#@@ -0,0 +1,70 @@
+  2. [separable] `pyproject.toml` now packages `acceptance.benchmark.mutants.pinned_bugs.json` as package data. The obligations require a pinned list and deterministic rebuilds, but they do not call for changing packaging/configuration to ship that file.
+       pyproject.toml#@@ -24,6 +24,10 @@ acceptance = "acceptance.cli:main"
+  3. [in_service] The build now records installed environment packages in the output label file and the report includes them indirectly via the persisted model. The obligations require typed loading, labels, and deterministic rebuilds, but not environment provenance in the committed artifact.
+       src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+       src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+       tests/benchmark/test_mutant_labels.py#@@ -0,0 +1,551 @@
+  4. [in_service] The survivor sample/report machinery was extended to track `changes_behaviour` and to render a human-check page. The obligations ask for a random survivor sample and a report with sample size and no-behaviour-change share, but not for a new human-review page or the extra per-check field in the persisted sample model.
+       src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+       src/acceptance/benchmark/mutants/survivors.py#@@ -0,0 +1,128 @@
+       src/acceptance/benchmark/mutants/__main__.py#@@ -0,0 +1,69 @@
+       tests/benchmark/test_mutant_labels.py#@@ -0,0 +1,551 @@
+  5. [in_service] `build.py` now selects tests by preferring trigger tests and then related tests whose source names edited functions, instead of simply running the tests named by BugsInPy plus same-file tests. The obligations require running tests against mutants and setting aside baseline failures, but they do not require this specific test-selection heuristic.
+       src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+       docs/experiments/372-mutant-labels/README.md#@@ -0,0 +1,70 @@
+  6. [in_service] `build.py` now records set-aside mutants when some mutant/test pairs do not complete, and the label schema persists those records. The obligations require recording baseline-failing tests, but they do not ask for a separate set-aside-mutant artifact or for labelling incomplete mutant runs.
+       src/acceptance/benchmark/mutants/build.py#@@ -0,0 +1,386 @@
+       src/acceptance/benchmark/mutants/labels.py#@@ -0,0 +1,187 @@
+       tests/benchmark/test_mutant_labels.py#@@ -0,0 +1,551 @@
+  7. [in_service] The experiment README and findings add detailed narrative claims about constant changes dominating, tqdm survivor behavior, and specific trap counts/version clashes. The obligations require the labelled-case set and aggregate counts/rates, but not these extra analytical findings.
+       docs/experiments/372-mutant-labels/README.md#@@ -0,0 +1,70 @@
+       docs/experiments/372-mutant-labels/FINDINGS.md#@@ -0,0 +1,33 @@
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  labels-from-running-tests
+    [other] labels-from-running-tests/labels-not-grounded-in-run
+      The build can emit labels without actually executing the test against the mutant, so a case may be recorded from metadata or a derived heuristic instead of from the run itself.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+    [other] labels-from-running-tests/survivor-sample-not-run-based
+      The survivor spot-check can be populated from surviving cases without preserving the fact that each label came from an actual test run, so the sample page may present labels that are not tied back to execution evidence.
+      src/acceptance/benchmark/mutants/survivors.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      pairs: 106 put to the model, 0 skipped once the defect was covered
+
+  fixed-operator-mutants-on-bugsinpy-projects
+    [other] fixed-operator-mutants-on-bugsinpy-projects/mutant-generation-includes-non-fixed-operator-edits
+      The build can emit defect cases that are not fixed-operator mutants, because the mutant generator accepts any single-line AST rewrite it knows about rather than restricting cases to the fixed operator set described by the criterion.
+      src/acceptance/benchmark/mutants/operators.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+    [scope_too_narrow] fixed-operator-mutants-on-bugsinpy-projects/mutants-not-limited-to-bugsinpy-projects
+      The pinned bug list can include bugs outside the BugsInPy projects named by the criterion, so the produced cases are not limited to BugsInPy projects.
+      src/acceptance/benchmark/mutants/pinned_bugs.json#0
+      src/acceptance/benchmark/mutants/bugsinpy.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+
+  mechanical-edit-defect
+    [other] mechanical-edit-defect/description-does-not-match-edit
+      The defect description can be generated from a different source than the exact edit, so the prose can describe one mechanical change while the stored edit records another.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/operators.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+    [other] mechanical-edit-defect/mutant-description-not-tied-to-single-edit
+      The mutant generator can emit a description that summarizes a broader transformation than the single-line replacement recorded in the edit, so the label text and the edit are not the same small mechanical change.
+      src/acceptance/benchmark/mutants/operators.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+
+  defect-description-matches-edit
+    [other] defect-description-matches-edit/description-uses-implementation-hunk-instead-of-edit-text
+      The case record can describe the injected edit using the surrounding implementation hunk rather than the exact edit text, so the description may mention code that was not actually changed or omit the precise replacement that was injected.
+      src/acceptance/benchmark/mutants/operators.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+    [other] defect-description-matches-edit/description-can-drift-from-mutant-when-edit-text-is-normalized
+      The stored defect description can drift from the injected edit because the code normalizes or rewrites the mutant text before describing it, so the description may not match the exact replacement that was applied.
+      src/acceptance/benchmark/mutants/operators.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+
+  case-holds-requirement-text
+    [scope_too_narrow] case-holds-requirement-text/requirement-text-left-empty-for-some-cases
+      Some cases can be built without a requirement text, so the case records do not always include the text the test is meant to check.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+    [not_wired] case-holds-requirement-text/requirement-text-not-populated-when-writing-cases
+      The build path can compute the requirement text but fail to attach it to the case objects that are written out.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [established_not_maintained] case-holds-requirement-text/requirement-text-lost-on-later-case-construction
+      The requirement text may be set during case creation but then dropped or overwritten before the final label file is produced.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  test-source
+    [not_wired] test-source/test-source-not-included-in-rendered-sample
+      The survivor spot-check page is rendered without the test source, so the delivered output for this requirement can omit the required content even though the label data stores it.
+      src/acceptance/benchmark/mutants/survivors.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      pairs: 106 put to the model, 0 skipped once the defect was covered
+    [not_wired] test-source/test-source-not-present-in-case-output
+      The case model carries a test_source field, but the reporting path could still serialize or print cases without using it, so the delivered output may not include the test's source.
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      pairs: 106 put to the model, 0 skipped once the defect was covered
+
+  implementation-hunk-present
+    none enumerated: The delivered code is shaped so that every emitted mutant case carries an implementation hunk: `build.py` always computes `implementation_hunk(...)` for each completed case, stores it in `MutantCase.implementation_hunk`, and `survivors.render_sample()` prints that field in the sample page. The report path only summarizes counts, but the criterion is about the task output containing the hunk associated with the injected defect, and the code path that produces the defect-bearing output already includes it by construction.
+
+  defect-text-description  (reused from an earlier run)
+    none enumerated: The criterion only asks that the task file include a textual defect description. In the delivered change, the task-facing files (`README.md`, `FINDINGS.md`, and the generated label/report code) all contain explicit prose descriptions of defects, and there is no separate code path that could omit such text from the task file. This is satisfied by construction, so no static defect candidate is plausible.
+
+  exact-edit-applied
+    [other] exact-edit-applied/task-file-omits-exact-edit-text
+      The delivered task file can describe the defect in prose without including the exact edit text that was applied, so the case does not actually state the edit itself.
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/survivors.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      pairs: 12 put to the model, 94 skipped once the defect was covered
+    [other] exact-edit-applied/sample-page-does-not-show-edit-splice
+      The survivor sample page can show only the surrounding hunk and a diff header, while omitting the exact applied splice in the task file output, so the delivered task file would not include the exact edit applied.
+      src/acceptance/benchmark/mutants/survivors.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      pairs: 12 put to the model, 94 skipped once the defect was covered
+
+  test-failure-status-recorded
+    [missing_case] test-failure-status-recorded/missing-test-failure-status-field
+      The case record has no field for the edit-in-place test-failure status, so the build cannot record whether that run failed.
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      pairs: 106 put to the model, 0 skipped once the defect was covered
+    [not_wired] test-failure-status-recorded/status-never-populated-from-run
+      The build runs the mutant test outcomes but never wires the failure/pass result into the case record.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+    [wrong_output_shape] test-failure-status-recorded/status-encoded-as-killed-only
+      The only recorded outcome is the `killed` boolean, which is not the same shape as an explicit test-failure status for the edit-in-place run.
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+
+  sandbox-tests-run-in-existing-sandbox
+    [not_wired] sandbox-tests-run-in-existing-sandbox/build-uses-runner-directly-instead-of-sandbox
+      The build path can bypass the sandbox implementation and call the injected runner directly, so acceptance tests would not necessarily execute through `src/acceptance/execution/sandbox.py`.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+    [not_wired] sandbox-tests-run-in-existing-sandbox/collector-or-baseline-bypasses-sandbox-path
+      The test collection and baseline steps can be wired to helpers other than the sandbox implementation, so the delivered path may never actually execute tests through `src/acceptance/execution/sandbox.py`.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+
+  baseline-failing-test-set-aside
+    [scope_too_narrow] baseline-failing-test-set-aside/baseline-failures-not-recorded-as-set-aside
+      Baseline-failing tests are not always excluded from the labelled set because the build only records set-aside tests from the baseline run for the selected tests, and any test that fails later in the mutant run can still be emitted as a labelled case if it was not filtered out earlier.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+    [scope_too_narrow] baseline-failing-test-set-aside/baseline-run-not-applied-to-all-selected-tests
+      The baseline check is only applied to the tests selected for a bug, so any baseline-failing test that is not among those selected tests is never discovered and can still be labelled.
+      src/acceptance/benchmark/mutants/build.py#0
+      pairs: 106 put to the model, 0 skipped once the defect was covered
+
+  survivors-not-evidence-of-weak-test
+    [other] survivors-not-evidence-of-weak-test/sample-marks-equivalent-edits-as-weak-tests
+      The survivor spot-check can record an equivalent edit as evidence that the test is weak, because the sample page and data model only ask whether the edit changes behaviour and do not encode that a survivor with no behaviour change should be treated as compatible with a strong test.
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/survivors.py#0
+      docs/experiments/372-mutant-labels/README.md#0
+      docs/experiments/372-mutant-labels/FINDINGS.md#0
+      pairs: 106 put to the model, 0 skipped once the defect was covered
+    [other] survivors-not-evidence-of-weak-test/reporting-does-not-separate-equivalent-survivors
+      The aggregate reporting path can still present survivors as a weakness signal because the summary only counts survivors and the sample summary only reports how many checked edits changed no behaviour, without any explicit separation that says equivalent edits are compatible with a strong test.
+      src/acceptance/benchmark/mutants/survivors.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      docs/experiments/372-mutant-labels/FINDINGS.md#0
+      pairs: 30 put to the model, 76 skipped once the defect was covered
+
+  report-gives-sample-size  (reused from an earlier run)
+    none enumerated: The report path already includes the sample size in the summary object: `survivors.summarise()` always adds `survivor_check.sample_size` when a sample is present, and `__main__.py report` prints that summary. The criterion is therefore satisfied by the delivered shape, with no plausible static defect in the changed code that would make the report omit the sample size.
+
+  share-found-to-change-no-behaviour  (reused from an earlier run)
+    none enumerated: The report path already includes the survivor-check share in `summarise()` and `__main__.py` prints that summary for the `report` command. The added report text and JSON both expose `no_behaviour_change_share`, so there is no plausible static defect in the changed code that would make the report omit the share entirely.
+
+  at-least-200-cases  (reused from an earlier run)
+    none enumerated: The delivered code does not contain the case-set construction logic itself, only reporting and packaging around it. The observable count in the added findings is a static artifact, and there is no changed code path here that could make the task's case set contain fewer than 200 cases.
+
+  killed-cases-at-least-30-percent  (reused from an earlier run)
+    none enumerated: No plausible static defect in the delivered change can make the reported killed-case share fall below 30% while still producing the shown label set: the criterion is about the built output, and the changed code only computes and reports counts from already-built cases. The build logic does not enforce or derive the 30% threshold, but that is not a failure of this criterion because the criterion is satisfied by the produced data itself, not by a runtime guard.
+
+  at-least-30-percent-survived  (reused from an earlier run)
+    none enumerated: The criterion is about the reported summary’s survived count/share, and the delivered code computes that directly from the full case list in `survivors.summarise()` as `survived = len(cases) - killed` with `killed` counted from `case.killed`. There is no separate enforcement step or alternate path that could make the reported survived count fall below 30% while still reporting the same cases, so no concrete static defect in the shown changes plausibly targets this invariant.
+
+  bugs-in-py-license-and-local-derivation
+    [other] bugs-in-py-license-and-local-derivation/package-data-commits-pinned-bugs
+      The package configuration includes `pinned_bugs.json` in installed package data, so a BugsInPy-derived artifact is shipped as part of the built distribution instead of staying only in the gitignored local build tree.
+      pyproject.toml#0
+      pairs: 106 put to the model, 0 skipped once the defect was covered
+    [other] bugs-in-py-license-and-local-derivation/build-output-path-not-gitignored
+      The command-line default root for mutant labels is a hidden `.acceptance/mutant-labels` directory, but the code does not itself verify that this path is gitignored, so the derived cases could be written somewhere that is not actually excluded from version control.
+      src/acceptance/benchmark/mutants/__main__.py#0
+      src/acceptance/benchmark/mutants/prepare.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      pairs: 106 put to the model, 0 skipped once the defect was covered
+    [other] bugs-in-py-license-and-local-derivation/labels-file-committable
+      The build writes the full label set to `labels.json` under the local root, and that file contains per-case data; if that file were ever added to the repository, the criterion would be violated because it is not limited to aggregate counts and rates.
+      src/acceptance/benchmark/mutants/__main__.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/survivors.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+
+  bugs-in-py-pinned-rebuild-determinism
+    [other] bugs-in-py-pinned-rebuild-determinism/noncanonical-environment-order
+      The rebuild can write the same logical data in a different order because the recorded environment package lists are taken from the interpreter and only sorted within each project, while the overall file content also depends on iteration over project and bug collections that must stay canonical everywhere to preserve byte-for-byte determinism.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/survivors.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+    [other] bugs-in-py-pinned-rebuild-determinism/random-sample-not-fully-seeded
+      The survivor sampling and mutant/test selection rely on seeded randomness, but any unseeded random choice or iteration-order dependence in those selection paths would make the rebuilt file differ between runs from the same pins.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/survivors.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+    [other] bugs-in-py-pinned-rebuild-determinism/environment-recording-varies-by-machine
+      The build records installed packages from the local interpreter environment, so rebuilding on a different machine or after dependency drift can change the serialized file even when the pinned bug ids are the same.
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/prepare.py#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  typed-loader-for-cases
+    [not_wired] typed-loader-for-cases/not-wired-to-typed-loader
+      The new mutant label files are loaded with ad hoc `load_*` helpers instead of through the typed loader path used by `GroundTruthLabels`, so the cases do not actually go through the benchmark package's typed loader mechanism.
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+
+  mutation-tier-writes-its-own-edits
+    [other] mutation-tier-writes-its-own-edits/mutation-tier-code-added
+      The delivered change adds a new mutation-labeling pipeline under `acceptance.benchmark.mutants` that generates and writes its own edits, so the checker’s mutation tier now has new code paths that can alter how its own edits are written.
+      src/acceptance/benchmark/mutants/__init__.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      src/acceptance/benchmark/mutants/build.py#0
+      src/acceptance/benchmark/mutants/operators.py#0
+      src/acceptance/benchmark/mutants/labels.py#0
+      src/acceptance/benchmark/mutants/prepare.py#0
+      src/acceptance/benchmark/mutants/survivors.py#0
+      src/acceptance/benchmark/mutants/bugsinpy.py#0
+      pyproject.toml#0
+      pairs: 12 put to the model, 94 skipped once the defect was covered
+
+  no-judge-scoring  (reused from an earlier run)
+    [other] no-judge-scoring/report-uses-cases-to-score
+      The new reporting path can score the judge from the built cases by computing killed and survived counts and rates from `labels.cases`, so judge-scoring logic based on the cases is present in the change.
+      src/acceptance/benchmark/mutants/survivors.py#0
+      src/acceptance/benchmark/mutants/__main__.py#0
+      pairs: 4 put to the model, 102 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [passed_under_edit] bugs-in-py-pinned-rebuild-determinism/environment-recording-varies-by-machine x 104 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] case-holds-requirement-text/requirement-text-lost-on-later-case-construction x 104 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] case-holds-requirement-text/requirement-text-not-populated-when-writing-cases x 104 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] baseline-failing-test-set-aside/baseline-failures-not-recorded-as-set-aside x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_a_red_test_is_set_aside_and_never_labelled
+  [defect_already_covered] bugs-in-py-license-and-local-derivation/labels-file-committable x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_each_environment_s_packages_are_recorded_and_change_the_file
+  [defect_already_covered] bugs-in-py-pinned-rebuild-determinism/noncanonical-environment-order x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_rebuilding_from_the_same_pins_writes_the_same_bytes
+  [defect_already_covered] bugs-in-py-pinned-rebuild-determinism/random-sample-not-fully-seeded x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_generation_is_deterministic, tests/benchmark/test_mutant_labels.py::test_the_survivor_sample_takes_one_case_per_edit_and_is_seeded
+  [defect_already_covered] case-holds-requirement-text/requirement-text-left-empty-for-some-cases x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/test_cli.py::test_a_requirement_that_yielded_nothing_is_visible_in_the_report
+  [defect_already_covered] defect-description-matches-edit/description-can-drift-from-mutant-when-edit-text-is-normalized x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_the_description_quotes_the_exact_edit
+  [defect_already_covered] defect-description-matches-edit/description-uses-implementation-hunk-instead-of-edit-text x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_the_description_quotes_the_exact_edit
+  [defect_already_covered] exact-edit-applied/sample-page-does-not-show-edit-splice x 94 candidate test(s), ranked 13 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_the_description_quotes_the_exact_edit
+  [defect_already_covered] exact-edit-applied/task-file-omits-exact-edit-text x 94 candidate test(s), ranked 13 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_loader_reads_the_synthetic_fixture_into_typed_cases
+  [defect_already_covered] fixed-operator-mutants-on-bugsinpy-projects/mutant-generation-includes-non-fixed-operator-edits x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_every_operator_edits_only_the_requested_lines_and_still_parses, tests/benchmark/test_mutant_labels.py::test_the_build_labels_every_usable_test_against_every_mutant
+  [defect_already_covered] fixed-operator-mutants-on-bugsinpy-projects/mutants-not-limited-to-bugsinpy-projects x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_the_committed_pin_names_bugs_and_a_dataset_commit
+  [defect_already_covered] labels-from-running-tests/labels-not-grounded-in-run x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_the_build_labels_every_usable_test_against_every_mutant
+  [defect_already_covered] mechanical-edit-defect/description-does-not-match-edit x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_the_description_quotes_the_exact_edit
+  [defect_already_covered] mechanical-edit-defect/mutant-description-not-tied-to-single-edit x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_every_operator_edits_only_the_requested_lines_and_still_parses, tests/benchmark/test_mutant_labels.py::test_the_description_quotes_the_exact_edit
+  [defect_already_covered] mutation-tier-writes-its-own-edits/mutation-tier-code-added x 94 candidate test(s), ranked 13 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_a_run_that_never_completes_is_never_turned_into_a_label
+  [defect_already_covered] no-judge-scoring/report-uses-cases-to-score x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_the_report_holds_counts_and_the_spot_check_share_only
+  [defect_already_covered] sandbox-tests-run-in-existing-sandbox/build-uses-runner-directly-instead-of-sandbox x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_nothing_runs_inside_the_prepared_checkout
+  [defect_already_covered] sandbox-tests-run-in-existing-sandbox/collector-or-baseline-bypasses-sandbox-path x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_nothing_runs_inside_the_prepared_checkout
+  [defect_already_covered] survivors-not-evidence-of-weak-test/reporting-does-not-separate-equivalent-survivors x 76 candidate test(s), ranked 30 to 106
+    not asked: the defect was already covered by tests/test_cli.py::test_retrieval_without_a_revision_uses_the_newest_stored_review
+  [defect_already_covered] test-failure-status-recorded/status-encoded-as-killed-only x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_killed_is_true_exactly_when_the_test_failed_with_the_edit_in_place
+  [defect_already_covered] test-failure-status-recorded/status-never-populated-from-run x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_the_build_labels_every_usable_test_against_every_mutant
+  [defect_already_covered] typed-loader-for-cases/not-wired-to-typed-loader x 102 candidate test(s), ranked 5 to 106
+    not asked: the defect was already covered by tests/benchmark/test_mutant_labels.py::test_loader_reads_the_synthetic_fixture_into_typed_cases, tests/benchmark/test_mutant_labels.py::test_loader_rejects_a_case_with_a_field_it_does_not_know
+
+Running the project's tests:
+  the project's tests were run: 33 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [no_usable_edit] baseline-failing-test-set-aside/baseline-failures-not-recorded-as-set-aside
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the edit replaces 13 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/build.py lines 167-179:
+           -     for test in control.set_aside:
+           -         result.set_aside_tests.append(
+           -             SetAsideTestRecord(
+           -                 project=bug.project,
+           -                 bug_id=bug.bug_id,
+           -                 test_id=test.test_id,
+           -                 kind=test.kind.value,
+           -                 reason=test.reason,
+           -                 error_type=test.error_type,
+           -                 detail=test.detail,
+           -             )
+           -         )
+           -     usable = sorted(control.usable_tests)
+           +     usable = sorted(control.usable_tests)
+           +     if not usable:
+           +         result.skipped_bugs.append(
+           +             SkippedBug(bug=bug.key, reason="every selected test was set aside by the control run")
+           +         )
+           +         return
+      2. set aside (failed_check): the edit replaces 13 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/build.py lines 167-179:
+           -     for test in control.set_aside:
+           -         result.set_aside_tests.append(
+           -             SetAsideTestRecord(
+           -                 project=bug.project,
+           -                 bug_id=bug.bug_id,
+           -                 test_id=test.test_id,
+           -                 kind=test.kind.value,
+           -                 reason=test.reason,
+           -                 error_type=test.error_type,
+           -                 detail=test.detail,
+           -             )
+           -         )
+           -     usable = sorted(control.usable_tests)
+           +     usable = sorted(control.usable_tests)
+           +     if not usable:
+           +         result.skipped_bugs.append(
+           +             SkippedBug(bug=bug.key, reason="every selected test was set aside by the control run")
+           +         )
+           +         return
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 179..179 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 179-179:
+           -     usable = sorted(control.usable_tests)
+           +     usable = sorted(control.usable_tests)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] baseline-failing-test-set-aside/baseline-run-not-applied-to-all-selected-tests
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/mutants/build.py lines 166-166:
+      -     control = baseline(selected, root, config)
+      +     control = baseline(admitted, root, config)
+    caught by (3):
+      tests/benchmark/test_mutant_labels.py::test_a_run_that_never_completes_is_never_turned_into_a_label
+      tests/benchmark/test_mutant_labels.py::test_killed_is_true_exactly_when_the_test_failed_with_the_edit_in_place
+      tests/benchmark/test_mutant_labels.py::test_the_build_labels_every_usable_test_against_every_mutant
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 106 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] bugs-in-py-license-and-local-derivation/build-output-path-not-gitignored
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 123..125 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 123-125:
+           - def write_labels(labels: MutantLabelSet, path: Path) -> None:
+           -     path.parent.mkdir(parents=True, exist_ok=True)
+           -     path.write_text(canonical_json(labels.to_dict()) + "\n", encoding="utf-8")
+           + def write_labels(labels: MutantLabelSet, path: Path) -> None:
+           +     path.parent.mkdir(parents=True, exist_ok=True)
+           +     path.write_text(canonical_json(labels.to_dict()) + "\n", encoding="utf-8")
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 123..125 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 123-125:
+           - def write_labels(labels: MutantLabelSet, path: Path) -> None:
+           -     path.parent.mkdir(parents=True, exist_ok=True)
+           -     path.write_text(canonical_json(labels.to_dict()) + "\n", encoding="utf-8")
+           + def write_labels(labels: MutantLabelSet, path: Path) -> None:
+           +     path.parent.mkdir(parents=True, exist_ok=True)
+           +     path.write_text(canonical_json(labels.to_dict()) + "\n", encoding="utf-8")
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 123..125 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 123-125:
+           - def write_labels(labels: MutantLabelSet, path: Path) -> None:
+           -     path.parent.mkdir(parents=True, exist_ok=True)
+           -     path.write_text(canonical_json(labels.to_dict()) + "\n", encoding="utf-8")
+           + def write_labels(labels: MutantLabelSet, path: Path) -> None:
+           +     path.parent.mkdir(parents=True, exist_ok=True)
+           +     path.write_text(canonical_json(labels.to_dict()) + "\n", encoding="utf-8")
+    pairs: 0 settled by the run, 106 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] bugs-in-py-license-and-local-derivation/labels-file-committable
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/mutants/__main__.py lines 47-47:
+      -         write_labels(labels, paths.labels)
+      +         write_labels(labels, paths.root / "labels.json")
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+
+  [survived, NOT COUNTED] bugs-in-py-license-and-local-derivation/package-data-commits-pinned-bugs
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 29-29:
+      - "acceptance.benchmark.mutants" = ["pinned_bugs.json"]
+      + "acceptance.benchmark.mutants" = []
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 106 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] bugs-in-py-pinned-rebuild-determinism/environment-recording-varies-by-machine
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/labels.py lines 138..143 differs from what it replaces only in comments or whitespace, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/labels.py lines 138-143:
+           -     # Each project environment's installed packages, `name==version`, sorted.
+           -     # The pins name packages and a resolution date, which should give the same
+           -     # versions — but nothing proved it. Recording them makes a rebuild in a
+           -     # different environment produce a visibly different file instead of
+           -     # silently different outcomes.
+           -     environments: dict[str, list[str]] = Field(default_factory=dict)
+           +     # Each project environment's installed packages, `name==version`, sorted.
+           +     environments: dict[str, list[str]] = Field(default_factory=dict)
+    injected at src/acceptance/benchmark/mutants/build.py lines 67-71:
+      -     result = MutantLabelSet(bugsinpy_commit=pins.bugsinpy_commit, bugs=list(pins.bugs))
+      -     for project in sorted(pins.projects):
+      -         interpreter = paths.interpreter(project)
+      -         if interpreter.exists():
+      -             result.environments[project] = freezer(interpreter)
+      +     result = MutantLabelSet(bugsinpy_commit=pins.bugsinpy_commit, bugs=list(pins.bugs))
+    caught by (1):
+      tests/benchmark/test_mutant_labels.py::test_each_environment_s_packages_are_recorded_and_change_the_file
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 104 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] bugs-in-py-pinned-rebuild-determinism/noncanonical-environment-order
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/mutants/build.py lines 68-68:
+      -     for project in sorted(pins.projects):
+      +     for project in pins.projects:
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+
+  [survived, NOT COUNTED] bugs-in-py-pinned-rebuild-determinism/random-sample-not-fully-seeded
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 264..264 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 264-264:
+           -     random.Random(f"{bug.key}/tests").shuffle(related)
+           +     random.Random(f"{bug.key}/tests").shuffle(related)
+    injected at src/acceptance/benchmark/mutants/build.py lines 320-320:
+      -     picked = random.Random(f"{bug.key}/mutants").sample(range(len(candidates)), limit)
+      +     picked = random.Random(f"{bug.key}/mutants").sample(sorted(range(len(candidates))), limit)
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+
+  [survived, NOT COUNTED] case-holds-requirement-text/requirement-text-left-empty-for-some-cases
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 193..193 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 193-193:
+           -     requirement = paths.message(bug).read_text(encoding="utf-8").strip()
+           +     requirement = paths.message(bug).read_text(encoding="utf-8").strip()
+    injected at src/acceptance/benchmark/mutants/build.py lines 193-193:
+      -     requirement = paths.message(bug).read_text(encoding="utf-8").strip()
+      +     requirement = paths.message(bug).read_text(encoding="utf-8").strip() if paths.message(bug).read_text(encoding="utf-8").strip() else ""
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+
+  [killed, NOT COUNTED] case-holds-requirement-text/requirement-text-lost-on-later-case-construction
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 227..227 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 227-227:
+           -                     requirement_text=requirement,
+           +                     requirement_text=requirement,
+    injected at src/acceptance/benchmark/mutants/build.py lines 193-193:
+      -     requirement = paths.message(bug).read_text(encoding="utf-8").strip()
+      +     requirement = paths.message(bug).read_text(encoding="utf-8").strip().lower()
+    caught by (1):
+      tests/benchmark/test_mutant_labels.py::test_the_build_labels_every_usable_test_against_every_mutant
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 104 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] case-holds-requirement-text/requirement-text-not-populated-when-writing-cases
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/mutants/build.py lines 227-227:
+      -                     requirement_text=requirement,
+      +                     requirement_text="",
+    caught by (1):
+      tests/benchmark/test_mutant_labels.py::test_the_build_labels_every_usable_test_against_every_mutant
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 104 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] defect-description-matches-edit/description-can-drift-from-mutant-when-edit-text-is-normalized
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/operators.py lines 115..115 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/operators.py lines 115-115:
+           -                     description=f"At {location}, {app.explain(old_text, new_text)}",
+           +                     description=f"At {location}, {app.explain(old_text, new_text)}",
+    injected at src/acceptance/benchmark/mutants/operators.py lines 115-115:
+      -                     description=f"At {location}, {app.explain(old_text, new_text)}",
+      +                     description=f"At {location}, {app.explain(old_text, new_text)} (replacement `{new_text}`)",
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+
+  [survived, NOT COUNTED] defect-description-matches-edit/description-uses-implementation-hunk-instead-of-edit-text
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (failed_check): the edit replaces 16 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/build.py lines 216-231:
+           -         hunk = implementation_hunk(
+           -             (root / mutant.edit.path).read_text(encoding="utf-8"), mutant.edit.start_line
+           -         )
+           -         for outcome in completed:
+           -             result.cases.append(
+           -                 MutantCase(
+           -                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           -                     source="bugsinpy-operator",
+           -                     project=bug.project,
+           -                     bug_id=bug.bug_id,
+           -                     fixed_commit=bug.fixed_commit,
+           -                     requirement_text=requirement,
+           -                     test_id=outcome.test_id,
+           -                     test_source=sources.get(outcome.test_id, ""),
+           -                     implementation_hunk=hunk,
+           -                     defect_description=mutant.description,
+           +         hunk = implementation_hunk(
+           +             (root / mutant.edit.path).read_text(encoding="utf-8"), mutant.edit.start_line
+           +         )
+           +         for outcome in completed:
+           +             result.cases.append(
+           +                 MutantCase(
+           +                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           +                     source="bugsinpy-operator",
+           +                     project=bug.project,
+           +                     bug_id=bug.bug_id,
+           +                     fixed_commit=bug.fixed_commit,
+           +                     requirement_text=requirement,
+           +                     test_id=outcome.test_id,
+           +                     test_source=sources.get(outcome.test_id, ""),
+           +                     implementation_hunk=hunk,
+           +                     defect_description=mutant.edit.original,
+           +                     edit=mutant.edit,
+           +                     killed=outcome.kind is TestOutcomeKind.FAILED,
+           +                 )
+           +             )
+      2. set aside (failed_check): the edit replaces 16 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/build.py lines 216-231:
+           -         hunk = implementation_hunk(
+           -             (root / mutant.edit.path).read_text(encoding="utf-8"), mutant.edit.start_line
+           -         )
+           -         for outcome in completed:
+           -             result.cases.append(
+           -                 MutantCase(
+           -                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           -                     source="bugsinpy-operator",
+           -                     project=bug.project,
+           -                     bug_id=bug.bug_id,
+           -                     fixed_commit=bug.fixed_commit,
+           -                     requirement_text=requirement,
+           -                     test_id=outcome.test_id,
+           -                     test_source=sources.get(outcome.test_id, ""),
+           -                     implementation_hunk=hunk,
+           -                     defect_description=mutant.description,
+           +         hunk = implementation_hunk(
+           +             (root / mutant.edit.path).read_text(encoding="utf-8"), mutant.edit.start_line
+           +         )
+           +         for outcome in completed:
+           +             result.cases.append(
+           +                 MutantCase(
+           +                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           +                     source="bugsinpy-operator",
+           +                     project=bug.project,
+           +                     bug_id=bug.bug_id,
+           +                     fixed_commit=bug.fixed_commit,
+           +                     requirement_text=requirement,
+           +                     test_id=outcome.test_id,
+           +                     test_source=sources.get(outcome.test_id, ""),
+           +                     implementation_hunk=hunk,
+           +                     defect_description=mutant.edit.original,
+           +                     edit=mutant.edit,
+           +                     killed=outcome.kind is TestOutcomeKind.FAILED,
+           +                 )
+           +             )
+    injected at src/acceptance/benchmark/mutants/build.py lines 231-231:
+      -                     defect_description=mutant.description,
+      +                     defect_description=hunk,
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+
+  [survived, NOT COUNTED] exact-edit-applied/sample-page-does-not-show-edit-splice
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/survivors.py lines 67..70 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/survivors.py lines 67-70:
+           -             "```diff",
+           -             f"- {case.edit.original}",
+           -             f"+ {case.edit.replacement}",
+           -             "```",
+           +             "```diff",
+           +             f"- {case.edit.original}",
+           +             f"+ {case.edit.replacement}",
+           +             "```",
+    injected at src/acceptance/benchmark/mutants/survivors.py lines 67-70:
+      -             "```diff",
+      -             f"- {case.edit.original}",
+      -             f"+ {case.edit.replacement}",
+      -             "```",
+      +             "```diff",
+      +             f"- {case.edit.original}",
+      +             f"+ {case.edit.replacement}",
+      +             f"  exact edit: {case.edit.original} -> {case.edit.replacement}",
+      +             "```",
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 94 skipped once the defect was covered
+
+  [survived, NOT COUNTED] exact-edit-applied/task-file-omits-exact-edit-text
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/labels.py lines 11..14 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/labels.py lines 11-14:
+           - One case is one (edit, test) pair. The fields are the ones #371's experiment
+           - hands a judge: the requirement the test is meant to check, the test's source,
+           - the implementation hunk the edit landed in, the edit's description and exact
+           - text, and the observed outcome.
+           + One case is one (edit, test) pair. The fields are the ones #371's experiment
+           + hands a judge: the requirement the test is meant to check, the test's source,
+           + the implementation hunk the edit landed in, the edit's description and exact
+           + text, and the observed outcome.
+    injected at src/acceptance/benchmark/mutants/labels.py lines 11-14:
+      - One case is one (edit, test) pair. The fields are the ones #371's experiment
+      - hands a judge: the requirement the test is meant to check, the test's source,
+      - the implementation hunk the edit landed in, the edit's description and exact
+      - text, and the observed outcome.
+      + One case is one (edit, test) pair. The fields are the ones #371's experiment
+      + hands a judge: the requirement the test is meant to check, the test's source,
+      + the implementation hunk the edit landed in, the edit's description, and the
+      + observed outcome.
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 94 skipped once the defect was covered
+
+  [no_usable_edit] fixed-operator-mutants-on-bugsinpy-projects/mutant-generation-includes-non-fixed-operator-edits
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/operators.py lines 68..120 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/operators.py lines 68-120:
+           - def generate_mutants(source: str, path: str, lines: set[int]) -> list[Mutant]:
+           -     """Every operator application whose node lies on one of `lines`.
+           - 
+           -     Mutants that do not parse, or that parse to the same tree as the original,
+           -     are dropped here: neither is a defect.
+           -     """
+           -     tree = ast.parse(source)
+           -     original_dump = ast.dump(tree)
+           -     source_lines = source.splitlines(keepends=True)
+           -     skipped_constants = _docstring_ids(tree)
+           - 
+           -     seen: set[str] = set()
+           -     mutants: list[Mutant] = []
+           -     for node in ast.walk(tree):
+           -         for app in _applications(node, skipped_constants):
+           -             line = app.node.lineno
+           -             if line not in lines or line > len(source_lines):
+           -                 continue
+           -             raw = source_lines[line - 1]
+           -             encoded = raw.encode("utf-8")
+           -             start, end = app.node.col_offset, app.node.end_col_offset or 0
+           -             old_text = encoded[start:end].decode("utf-8")
+           -             new_text = app.rewrite(old_text)
+           -             if new_text is None or new_text == old_text:
+           -                 continue
+           -             new_line = (encoded[:start] + new_text.encode("utf-8") + encoded[end:]).decode("utf-8")
+           -             mutated = "".join(source_lines[: line - 1]) + new_line + "".join(source_lines[line:])
+           -             if mutated in seen:
+           -                 continue
+           -             try:
+           -                 if ast.dump(ast.parse(mutated)) == original_dump:
+           -                     continue
+           -             except SyntaxError:
+           -                 continue
+           -             seen.add(mutated)
+           -             where = _enclosing_name(tree, line)
+           -             location = f"{path}:{line}" + (f", in `{where}`" if where else "")
+           -             mutants.append(
+           -                 Mutant(
+           -                     edit=MutantEdit(
+           -                         path=path,
+           -                         start_line=line,
+           -                         end_line=line,
+           -                         original=raw.rstrip("\r\n"),
+           -                         replacement=new_line.rstrip("\r\n"),
+           -                         operator=app.operator,
+           -                     ),
+           -                     description=f"At {location}, {app.explain(old_text, new_text)}",
+           -                     mutated_source=mutated,
+           -                 )
+           -             )
+           -     mutants.sort(key=lambda m: (m.edit.start_line, m.edit.operator, m.edit.replacement))
+           -     return mutants
+           + def generate_mutants(source: str, path: str, lines: set[int]) -> list[Mutant]:
+           +     """Every operator application whose node lies on one of `lines`.
+           + 
+           +     Mutants that do not parse, or that parse to the same tree as the original,
+           +     are dropped here: neither is a defect.
+           +     """
+           +     tree = ast.parse(source)
+           +     original_dump = ast.dump(tree)
+           +     source_lines = source.splitlines(keepends=True)
+           +     skipped_constants = _docstring_ids(tree)
+           + 
+           +     seen: set[str] = set()
+           +     mutants: list[Mutant] = []
+           +     for node in ast.walk(tree):
+           +         for app in _applications(node, skipped_constants):
+           +             line = app.node.lineno
+           +             if line not in lines or line > len(source_lines):
+           +                 continue
+           +             raw = source_lines[line - 1]
+           +             encoded = raw.encode("utf-8")
+           +             start, end = app.node.col_offset, app.node.end_col_offset or 0
+           +             old_text = encoded[start:end].decode("utf-8")
+           +             new_text = app.rewrite(old_text)
+           +             if new_text is None or new_text == old_text:
+           +                 continue
+           +             new_line = (encoded[:start] + new_text.encode("utf-8") + encoded[end:]).decode("utf-8")
+           +             mutated = "".join(source_lines[: line - 1]) + new_line + "".join(source_lines[line:])
+           +             if mutated in seen:
+           +                 continue
+           +             try:
+           +                 if ast.dump(ast.parse(mutated)) == original_dump:
+           +                     continue
+           +             except SyntaxError:
+           +                 continue
+           +             seen.add(mutated)
+           +             where = _enclosing_name(tree, line)
+           +             location = f"{path}:{line}" + (f", in `{where}`" if where else "")
+           +             mutants.append(
+           +                 Mutant(
+           +                     edit=MutantEdit(
+           +                         path=path,
+           +                         start_line=line,
+           +                         end_line=line,
+           +                         original=raw.rstrip("\r\n"),
+           +                         replacement=new_line.rstrip("\r\n"),
+           +                         operator=app.operator,
+           +                     ),
+           +                     description=f"At {location}, {app.explain(old_text, new_text)}",
+           +                     mutated_source=mutated,
+           +                 )
+           +             )
+           +     mutants.sort(key=lambda m: (m.edit.start_line, m.edit.operator, m.edit.replacement))
+           +     return mutants
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/operators.py lines 197..217 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/operators.py lines 197-217:
+           -     if (
+           -         isinstance(node, ast.Return)
+           -         and node.value is not None
+           -         and not (isinstance(node.value, ast.Constant) and node.value.value is None)
+           -         and _one_line(node.value)
+           -     ):
+           -         yield _Application(
+           -             "return_none",
+           -             node.value,
+           -             lambda _old: "None",
+           -             lambda o, n: f"the returned value `{o}` is replaced by `None`.",
+           -         )
+           -     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not) and _one_line(node):
+           -         operand = node.operand
+           -         offset = operand.col_offset - node.col_offset
+           -         yield _Application(
+           -             "remove_not",
+           -             node,
+           -             lambda old, offset=offset: _bytes_from(old, offset),
+           -             lambda o, n: f"the negation is removed, so `{o}` becomes `{n}`.",
+           -         )
+           +     if (
+           +         isinstance(node, ast.Return)
+           +         and node.value is not None
+           +         and not (isinstance(node.value, ast.Constant) and node.value.value is None)
+           +         and _one_line(node.value)
+           +     ):
+           +         yield _Application(
+           +             "return_none",
+           +             node.value,
+           +             lambda _old: "None",
+           +             lambda o, n: f"the returned value `{o}` is replaced by `None`.",
+           +         )
+           +     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not) and _one_line(node):
+           +         operand = node.operand
+           +         offset = operand.col_offset - node.col_offset
+           +         yield _Application(
+           +             "remove_not",
+           +             node,
+           +             lambda old, offset=offset: _bytes_from(old, offset),
+           +             lambda o, n: f"the negation is removed, so `{o}` becomes `{n}`.",
+           +         )
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/operators.py lines 141..217 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/operators.py lines 141-217:
+           - def _applications(node: ast.AST, skipped_constants: set[int]) -> Iterator[_Application]:
+           -     if isinstance(node, ast.Compare) and len(node.ops) == 1 and _one_line(node):
+           -         gap = _gap(node, node.left, node.comparators[0])
+           -         if gap:
+           -             yield _Application(
+           -                 "compare_flip",
+           -                 node,
+           -                 _swap_in_gap(gap, _flip_comparison),
+           -                 lambda o, n: (
+           -                     f"the comparison `{o}` is inverted to `{n}`, so it holds exactly where "
+           -                     "the original did not."
+           -                 ),
+           -             )
+           -     if isinstance(node, ast.BoolOp) and len(node.values) == 2 and _one_line(node):
+           -         gap = _gap(node, node.values[0], node.values[1])
+           -         if gap:
+           -             old, new = ("and", "or") if isinstance(node.op, ast.And) else ("or", "and")
+           -             yield _Application(
+           -                 "boolop_swap",
+           -                 node,
+           -                 _swap_in_gap(gap, _word_swap(old, new)),
+           -                 lambda o, n, old=old, new=new: (
+           -                     f"`{old}` is replaced by `{new}`, so `{o}` becomes `{n}`."
+           -                 ),
+           -             )
+           -     if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub)) and _one_line(node):
+           -         gap = _gap(node, node.left, node.right)
+           -         if gap:
+           -             old, new = ("+", "-") if isinstance(node.op, ast.Add) else ("-", "+")
+           -             yield _Application(
+           -                 "arith_swap",
+           -                 node,
+           -                 _swap_in_gap(gap, _symbol_swap(old, new)),
+           -                 lambda o, n, old=old, new=new: (
+           -                     f"`{old}` is replaced by `{new}`, so `{o}` becomes `{n}`."
+           -                 ),
+           -             )
+           -     if isinstance(node, ast.Constant) and _one_line(node) and id(node) not in skipped_constants:
+           -         replacement = _changed_constant(node.value)
+           -         if replacement is not None:
+           -             yield _Application(
+           -                 "constant_change",
+           -                 node,
+           -                 lambda _old, r=replacement: r,
+           -                 lambda o, n: f"the constant `{o}` is changed to `{n}`.",
+           -             )
+           -     if isinstance(node, (ast.If, ast.While, ast.IfExp)) and _one_line(node.test):
+           -         yield _Application(
+           -             "negate_condition",
+           -             node.test,
+           -             lambda old: f"not ({old})",
+           -             lambda o, n: (
+           -                 f"the condition `{o}` is negated to `{n}`, so the branch is taken exactly "
+           -                 "when it previously was not."
+           -             ),
+           -         )
+           -     if (
+           -         isinstance(node, ast.Return)
+           -         and node.value is not None
+           -         and not (isinstance(node.value, ast.Constant) and node.value.value is None)
+           -         and _one_line(node.value)
+           -     ):
+           -         yield _Application(
+           -             "return_none",
+           -             node.value,
+           -             lambda _old: "None",
+           -             lambda o, n: f"the returned value `{o}` is replaced by `None`.",
+           -         )
+           -     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not) and _one_line(node):
+           -         operand = node.operand
+           -         offset = operand.col_offset - node.col_offset
+           -         yield _Application(
+           -             "remove_not",
+           -             node,
+           -             lambda old, offset=offset: _bytes_from(old, offset),
+           -             lambda o, n: f"the negation is removed, so `{o}` becomes `{n}`.",
+           -         )
+           + def _applications(node: ast.AST, skipped_constants: set[int]) -> Iterator[_Application]:
+           +     if isinstance(node, ast.Compare) and len(node.ops) == 1 and _one_line(node):
+           +         gap = _gap(node, node.left, node.comparators[0])
+           +         if gap:
+           +             yield _Application(
+           +                 "compare_flip",
+           +                 node,
+           +                 _swap_in_gap(gap, _flip_comparison),
+           +                 lambda o, n: (
+           +                     f"the comparison `{o}` is inverted to `{n}`, so it holds exactly where "
+           +                     "the original did not."
+           +                 ),
+           +             )
+           +     if isinstance(node, ast.BoolOp) and len(node.values) == 2 and _one_line(node):
+           +         gap = _gap(node, node.values[0], node.values[1])
+           +         if gap:
+           +             old, new = ("and", "or") if isinstance(node.op, ast.And) else ("or", "and")
+           +             yield _Application(
+           +                 "boolop_swap",
+           +                 node,
+           +                 _swap_in_gap(gap, _word_swap(old, new)),
+           +                 lambda o, n, old=old, new=new: (
+           +                     f"`{old}` is replaced by `{new}`, so `{o}` becomes `{n}`."
+           +                 ),
+           +             )
+           +     if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub)) and _one_line(node):
+           +         gap = _gap(node, node.left, node.right)
+           +         if gap:
+           +             old, new = ("+", "-") if isinstance(node.op, ast.Add) else ("-", "+")
+           +             yield _Application(
+           +                 "arith_swap",
+           +                 node,
+           +                 _swap_in_gap(gap, _symbol_swap(old, new)),
+           +                 lambda o, n, old=old, new=new: (
+           +                     f"`{old}` is replaced by `{new}`, so `{o}` becomes `{n}`."
+           +                 ),
+           +             )
+           +     if isinstance(node, ast.Constant) and _one_line(node) and id(node) not in skipped_constants:
+           +         replacement = _changed_constant(node.value)
+           +         if replacement is not None:
+           +             yield _Application(
+           +                 "constant_change",
+           +                 node,
+           +                 lambda _old, r=replacement: r,
+           +                 lambda o, n: f"the constant `{o}` is changed to `{n}`.",
+           +             )
+           +     if isinstance(node, (ast.If, ast.While, ast.IfExp)) and _one_line(node.test):
+           +         yield _Application(
+           +             "negate_condition",
+           +             node.test,
+           +             lambda old: f"not ({old})",
+           +             lambda o, n: (
+           +                 f"the condition `{o}` is negated to `{n}`, so the branch is taken exactly "
+           +                 "when it previously was not."
+           +             ),
+           +         )
+           +     if (
+           +         isinstance(node, ast.Return)
+           +         and node.value is not None
+           +         and not (isinstance(node.value, ast.Constant) and node.value.value is None)
+           +         and _one_line(node.value)
+           +     ):
+           +         yield _Application(
+           +             "return_none",
+           +             node.value,
+           +             lambda _old: "None",
+           +             lambda o, n: f"the returned value `{o}` is replaced by `None`.",
+           +         )
+           +     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not) and _one_line(node):
+           +         operand = node.operand
+           +         offset = operand.col_offset - node.col_offset
+           +         yield _Application(
+           +             "remove_not",
+           +             node,
+           +             lambda old, offset=offset: _bytes_from(old, offset),
+           +             lambda o, n: f"the negation is removed, so `{o}` becomes `{n}`.",
+           +         )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] fixed-operator-mutants-on-bugsinpy-projects/mutants-not-limited-to-bugsinpy-projects
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/pinned_bugs.json lines 7..29 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/pinned_bugs.json lines 7-29:
+           -   "projects": {
+           -     "PySnooper": [
+           -       "pytest==7.4.4",
+           -       "python-toolbox"
+           -     ],
+           -     "thefuck": [
+           -       "pytest==7.4.4",
+           -       "colorama",
+           -       "decorator",
+           -       "psutil",
+           -       "pyte",
+           -       "six",
+           -       "mock",
+           -       "pytest-mock"
+           -     ],
+           -     "tqdm": [
+           -       "pytest==7.4.4",
+           -       "nose"
+           -     ],
+           -     "youtube-dl": [
+           -       "pytest==7.4.4"
+           -     ]
+           -   },
+           +   "projects": {
+           +     "PySnooper": [
+           +       "pytest==7.4.4",
+           +       "python-toolbox"
+           +     ],
+           +     "thefuck": [
+           +       "pytest==7.4.4",
+           +       "colorama",
+           +       "decorator",
+           +       "psutil",
+           +       "pyte",
+           +       "six",
+           +       "mock",
+           +       "pytest-mock"
+           +     ],
+           +     "tqdm": [
+           +       "pytest==7.4.4",
+           +       "nose"
+           +     ],
+           +     "youtube-dl": [
+           +       "pytest==7.4.4"
+           +     ]
+           +   },
+      2. set aside (failed_check): the edit replaces 23 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/pinned_bugs.json lines 7-29:
+           -   "projects": {
+           -     "PySnooper": [
+           -       "pytest==7.4.4",
+           -       "python-toolbox"
+           -     ],
+           -     "thefuck": [
+           -       "pytest==7.4.4",
+           -       "colorama",
+           -       "decorator",
+           -       "psutil",
+           -       "pyte",
+           -       "six",
+           -       "mock",
+           -       "pytest-mock"
+           -     ],
+           -     "tqdm": [
+           -       "pytest==7.4.4",
+           -       "nose"
+           -     ],
+           -     "youtube-dl": [
+           -       "pytest==7.4.4"
+           -     ]
+           -   },
+           +   "projects": {
+           +     "PySnooper": [
+           +       "pytest==7.4.4",
+           +       "python-toolbox"
+           +     ],
+           +     "thefuck": [
+           +       "pytest==7.4.4",
+           +       "colorama",
+           +       "decorator",
+           +       "psutil",
+           +       "pyte",
+           +       "six",
+           +       "mock",
+           +       "pytest-mock"
+           +     ],
+           +     "tqdm": [
+           +       "pytest==7.4.4",
+           +       "nose"
+           +     ]
+           +   },
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/pinned_bugs.json lines 26..28 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/pinned_bugs.json lines 26-28:
+           -     "youtube-dl": [
+           -       "pytest==7.4.4"
+           -     ]
+           +     "youtube-dl": [
+           +       "pytest==7.4.4"
+           +     ]
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] labels-from-running-tests/labels-not-grounded-in-run
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the edit replaces 15 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/build.py lines 220-234:
+           -             result.cases.append(
+           -                 MutantCase(
+           -                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           -                     source="bugsinpy-operator",
+           -                     project=bug.project,
+           -                     bug_id=bug.bug_id,
+           -                     fixed_commit=bug.fixed_commit,
+           -                     requirement_text=requirement,
+           -                     test_id=outcome.test_id,
+           -                     test_source=sources.get(outcome.test_id, ""),
+           -                     implementation_hunk=hunk,
+           -                     defect_description=mutant.description,
+           -                     edit=mutant.edit,
+           -                     killed=outcome.kind is TestOutcomeKind.FAILED,
+           -                 )
+           +             result.cases.append(
+           +                 MutantCase(
+           +                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           +                     source="bugsinpy-operator",
+           +                     project=bug.project,
+           +                     bug_id=bug.bug_id,
+           +                     fixed_commit=bug.fixed_commit,
+           +                     requirement_text=requirement,
+           +                     test_id=outcome.test_id,
+           +                     test_source=sources.get(outcome.test_id, ""),
+           +                     implementation_hunk=hunk,
+           +                     defect_description=mutant.description,
+           +                     edit=mutant.edit,
+           +                     killed=outcome.kind is TestOutcomeKind.FAILED,
+           +                 )
+           +             )
+      2. set aside (failed_check): the edit replaces 16 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/build.py lines 219-234:
+           -         for outcome in completed:
+           -             result.cases.append(
+           -                 MutantCase(
+           -                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           -                     source="bugsinpy-operator",
+           -                     project=bug.project,
+           -                     bug_id=bug.bug_id,
+           -                     fixed_commit=bug.fixed_commit,
+           -                     requirement_text=requirement,
+           -                     test_id=outcome.test_id,
+           -                     test_source=sources.get(outcome.test_id, ""),
+           -                     implementation_hunk=hunk,
+           -                     defect_description=mutant.description,
+           -                     edit=mutant.edit,
+           -                     killed=outcome.kind is TestOutcomeKind.FAILED,
+           -                 )
+           +         for outcome in completed:
+           +             result.cases.append(
+           +                 MutantCase(
+           +                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           +                     source="bugsinpy-operator",
+           +                     project=bug.project,
+           +                     bug_id=bug.bug_id,
+           +                     fixed_commit=bug.fixed_commit,
+           +                     requirement_text=requirement,
+           +                     test_id=outcome.test_id,
+           +                     test_source=sources.get(outcome.test_id, ""),
+           +                     implementation_hunk=hunk,
+           +                     defect_description=mutant.description,
+           +                     edit=mutant.edit,
+           +                     killed=outcome.kind is TestOutcomeKind.PASSED,
+           +                 )
+           +             )
+      3. set aside (failed_check): the edit replaces 16 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/build.py lines 219-234:
+           -         for outcome in completed:
+           -             result.cases.append(
+           -                 MutantCase(
+           -                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           -                     source="bugsinpy-operator",
+           -                     project=bug.project,
+           -                     bug_id=bug.bug_id,
+           -                     fixed_commit=bug.fixed_commit,
+           -                     requirement_text=requirement,
+           -                     test_id=outcome.test_id,
+           -                     test_source=sources.get(outcome.test_id, ""),
+           -                     implementation_hunk=hunk,
+           -                     defect_description=mutant.description,
+           -                     edit=mutant.edit,
+           -                     killed=outcome.kind is TestOutcomeKind.FAILED,
+           -                 )
+           +         for outcome in completed:
+           +             result.cases.append(
+           +                 MutantCase(
+           +                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           +                     source="bugsinpy-operator",
+           +                     project=bug.project,
+           +                     bug_id=bug.bug_id,
+           +                     fixed_commit=bug.fixed_commit,
+           +                     requirement_text=requirement,
+           +                     test_id=outcome.test_id,
+           +                     test_source=sources.get(outcome.test_id, ""),
+           +                     implementation_hunk=hunk,
+           +                     defect_description=mutant.description,
+           +                     edit=mutant.edit,
+           +                     killed=outcome.kind is TestOutcomeKind.PASSED,
+           +                 )
+           +             )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] labels-from-running-tests/survivor-sample-not-run-based
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/mutants/survivors.py lines 44-44:
+      -         checks=[SurvivorCheck(case_id=c.case_id) for c in sorted(chosen, key=lambda c: c.case_id)],
+      +         checks=[SurvivorCheck(case_id=c.case_id, changes_behaviour=True) for c in sorted(chosen, key=lambda c: c.case_id)],
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 106 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] mechanical-edit-defect/description-does-not-match-edit
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/mutants/build.py lines 231-231:
+      -                     defect_description=mutant.description,
+      +                     defect_description=mutant.edit.replacement,
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+
+  [no_usable_edit] mechanical-edit-defect/mutant-description-not-tied-to-single-edit
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/operators.py lines 115..115 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/operators.py lines 115-115:
+           -                     description=f"At {location}, {app.explain(old_text, new_text)}",
+           +                     description=f"At {location}, {app.explain(old_text, new_text)}",
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/operators.py lines 115..115 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/operators.py lines 115-115:
+           -                     description=f"At {location}, {app.explain(old_text, new_text)}",
+           +                     description=f"At {location}, {app.explain(old_text, new_text)}",
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/operators.py lines 115..115 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/operators.py lines 115-115:
+           -                     description=f"At {location}, {app.explain(old_text, new_text)}",
+           +                     description=f"At {location}, {app.explain(old_text, new_text)}",
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] mutation-tier-writes-its-own-edits/mutation-tier-code-added
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/mutants/__main__.py lines 45-48:
+      -     if args.command == "build":
+      -         labels = build(pins, paths)
+      -         write_labels(labels, paths.labels)
+      -         print(json.dumps(summarise(labels), indent=2))
+      +     if args.command == "build":
+      +         labels = build(pins, paths)
+      +         print(json.dumps(summarise(labels), indent=2))
+      +         return 0
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 94 skipped once the defect was covered
+
+  [no_usable_edit] no-judge-scoring/report-uses-cases-to-score
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/survivors.py lines 110..119 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/survivors.py lines 110-119:
+           -     if sample is not None:
+           -         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           -         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           -         summary["survivor_check"] = {
+           -             "population": sample.population,
+           -             "sample_size": len(sample.checks),
+           -             "checked": len(judged),
+           -             "no_behaviour_change": unchanged,
+           -             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           -         }
+           +     if sample is not None:
+           +         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           +         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           +         summary["survivor_check"] = {
+           +             "population": sample.population,
+           +             "sample_size": len(sample.checks),
+           +             "checked": len(judged),
+           +             "no_behaviour_change": unchanged,
+           +             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           +         }
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/survivors.py lines 110..119 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/survivors.py lines 110-119:
+           -     if sample is not None:
+           -         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           -         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           -         summary["survivor_check"] = {
+           -             "population": sample.population,
+           -             "sample_size": len(sample.checks),
+           -             "checked": len(judged),
+           -             "no_behaviour_change": unchanged,
+           -             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           -         }
+           +     if sample is not None:
+           +         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           +         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           +         summary["survivor_check"] = {
+           +             "population": sample.population,
+           +             "sample_size": len(sample.checks),
+           +             "checked": len(judged),
+           +             "no_behaviour_change": unchanged,
+           +             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           +         }
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/survivors.py lines 110..119 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/survivors.py lines 110-119:
+           -     if sample is not None:
+           -         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           -         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           -         summary["survivor_check"] = {
+           -             "population": sample.population,
+           -             "sample_size": len(sample.checks),
+           -             "checked": len(judged),
+           -             "no_behaviour_change": unchanged,
+           -             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           -         }
+           +     if sample is not None:
+           +         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           +         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           +         summary["survivor_check"] = {
+           +             "population": sample.population,
+           +             "sample_size": len(sample.checks),
+           +             "checked": len(judged),
+           +             "no_behaviour_change": unchanged,
+           +             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           +         }
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] sandbox-tests-run-in-existing-sandbox/build-uses-runner-directly-instead-of-sandbox
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 59..59 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 59-59:
+           -     runner: Runner = run_tests,
+           +     runner: Runner = run_tests,
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 45..45 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 45-45:
+           - from acceptance.execution.sandbox import SandboxConfig, collect_tests, run_tests
+           + from acceptance.execution.sandbox import SandboxConfig, collect_tests, run_tests
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 45..45 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 45-45:
+           - from acceptance.execution.sandbox import SandboxConfig, collect_tests, run_tests
+           + from acceptance.execution.sandbox import SandboxConfig, collect_tests, run_tests
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] sandbox-tests-run-in-existing-sandbox/collector-or-baseline-bypasses-sandbox-path
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 60..61 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 60-61:
+           -     baseline: Callable[[list[str], Path, SandboxConfig], Baseline] = establish_baseline,
+           -     collector: Callable[[list[str], Path, SandboxConfig], set[str]] = collect_tests,
+           +     baseline: Callable[[list[str], Path, SandboxConfig], Baseline] = establish_baseline,
+           +     collector: Callable[[list[str], Path, SandboxConfig], set[str]] = collect_tests,
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 60..61 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 60-61:
+           -     baseline: Callable[[list[str], Path, SandboxConfig], Baseline] = establish_baseline,
+           -     collector: Callable[[list[str], Path, SandboxConfig], set[str]] = collect_tests,
+           +     baseline: Callable[[list[str], Path, SandboxConfig], Baseline] = establish_baseline,
+           +     collector: Callable[[list[str], Path, SandboxConfig], set[str]] = collect_tests,
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/build.py lines 60..61 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/build.py lines 60-61:
+           -     baseline: Callable[[list[str], Path, SandboxConfig], Baseline] = establish_baseline,
+           -     collector: Callable[[list[str], Path, SandboxConfig], set[str]] = collect_tests,
+           +     baseline: Callable[[list[str], Path, SandboxConfig], Baseline] = establish_baseline,
+           +     collector: Callable[[list[str], Path, SandboxConfig], set[str]] = collect_tests,
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] survivors-not-evidence-of-weak-test/reporting-does-not-separate-equivalent-survivors
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (failed_check): the edit replaces 17 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/survivors.py lines 102-118:
+           -         "survived": len(cases) - killed,
+           -         "killed_share": _share(killed, len(cases)),
+           -         "survived_share": _share(len(cases) - killed, len(cases)),
+           -         "per_project": per_project,
+           -         "operators": dict(sorted(Counter(c.edit.operator for c in cases).items())),
+           -         "set_aside_tests": len(labels.set_aside_tests),
+           -         "set_aside_mutants": len(labels.set_aside_mutants),
+           -     }
+           -     if sample is not None:
+           -         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           -         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           -         summary["survivor_check"] = {
+           -             "population": sample.population,
+           -             "sample_size": len(sample.checks),
+           -             "checked": len(judged),
+           -             "no_behaviour_change": unchanged,
+           -             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           +         "survived": len(cases) - killed,
+           +         "killed_share": _share(killed, len(cases)),
+           +         "survived_share": _share(len(cases) - killed, len(cases)),
+           +         "per_project": per_project,
+           +         "operators": dict(sorted(Counter(c.edit.operator for c in cases).items())),
+           +         "set_aside_tests": len(labels.set_aside_tests),
+           +         "set_aside_mutants": len(labels.set_aside_mutants),
+           +     }
+           +     if sample is not None:
+           +         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           +         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           +         summary["survivor_check"] = {
+           +             "population": sample.population,
+           +             "sample_size": len(sample.checks),
+           +             "checked": len(judged),
+           +             "equivalent": unchanged,
+           +             "equivalent_share": _share(unchanged, len(judged)),
+           +         }
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/survivors.py lines 113..119 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/survivors.py lines 113-119:
+           -         summary["survivor_check"] = {
+           -             "population": sample.population,
+           -             "sample_size": len(sample.checks),
+           -             "checked": len(judged),
+           -             "no_behaviour_change": unchanged,
+           -             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           -         }
+           +         summary["survivor_check"] = {
+           +             "population": sample.population,
+           +             "sample_size": len(sample.checks),
+           +             "checked": len(judged),
+           +             "no_behaviour_change": unchanged,
+           +             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           +         }
+    injected at src/acceptance/benchmark/mutants/survivors.py lines 113-119:
+      -         summary["survivor_check"] = {
+      -             "population": sample.population,
+      -             "sample_size": len(sample.checks),
+      -             "checked": len(judged),
+      -             "no_behaviour_change": unchanged,
+      -             "no_behaviour_change_share": _share(unchanged, len(judged)),
+      -         }
+      +         summary["survivor_check"] = {
+      +             "population": sample.population,
+      +             "sample_size": len(sample.checks),
+      +             "checked": len(judged),
+      +             "equivalent": unchanged,
+      +             "equivalent_share": _share(unchanged, len(judged)),
+      +         }
+    caught by (1):
+      tests/benchmark/test_mutant_labels.py::test_the_report_holds_counts_and_the_spot_check_share_only
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 30 put to the model, 0 dropped as not worth asking, 76 skipped once the defect was covered
+
+  [no_usable_edit] survivors-not-evidence-of-weak-test/sample-marks-equivalent-edits-as-weak-tests
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/benchmark/mutants/survivors.py does not parse: unmatched '}' (<unknown>, line 120)
+         at src/acceptance/benchmark/mutants/survivors.py lines 111-118:
+           -         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           -         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           -         summary["survivor_check"] = {
+           -             "population": sample.population,
+           -             "sample_size": len(sample.checks),
+           -             "checked": len(judged),
+           -             "no_behaviour_change": unchanged,
+           -             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           +         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           +         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           +         summary["survivor_check"] = {
+           +             "population": sample.population,
+           +             "sample_size": len(sample.checks),
+           +             "checked": len(judged),
+           +             "no_behaviour_change": unchanged,
+           +             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           +         }
+      2. set aside (failed_check): the mutated src/acceptance/benchmark/mutants/survivors.py does not parse: unmatched '}' (<unknown>, line 120)
+         at src/acceptance/benchmark/mutants/survivors.py lines 111-118:
+           -         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           -         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           -         summary["survivor_check"] = {
+           -             "population": sample.population,
+           -             "sample_size": len(sample.checks),
+           -             "checked": len(judged),
+           -             "no_behaviour_change": unchanged,
+           -             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           +         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           +         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           +         summary["survivor_check"] = {
+           +             "population": sample.population,
+           +             "sample_size": len(sample.checks),
+           +             "checked": len(judged),
+           +             "no_behaviour_change": unchanged,
+           +             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           +         }
+      3. set aside (failed_check): the mutated src/acceptance/benchmark/mutants/survivors.py does not parse: unmatched '}' (<unknown>, line 120)
+         at src/acceptance/benchmark/mutants/survivors.py lines 111-118:
+           -         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           -         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           -         summary["survivor_check"] = {
+           -             "population": sample.population,
+           -             "sample_size": len(sample.checks),
+           -             "checked": len(judged),
+           -             "no_behaviour_change": unchanged,
+           -             "no_behaviour_change_share": _share(unchanged, len(judged)),
+           +         judged = [c for c in sample.checks if c.changes_behaviour is not None]
+           +         unchanged = sum(1 for c in judged if c.changes_behaviour is False)
+           +         summary["survivor_check"] = {
+           +             "population": sample.population,
+           +             "sample_size": len(sample.checks),
+           +             "checked": len(judged),
+           +             "weak_test_signal": unchanged,
+           +             "weak_test_signal_share": _share(unchanged, len(judged)),
+           +         }
+    pairs: 0 settled by the run, 106 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] test-failure-status-recorded/missing-test-failure-status-field
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/labels.py lines 75..89 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/labels.py lines 75-89:
+           - class MutantCase(PersistableModel):
+           -     """One test observed against one injected edit."""
+           - 
+           -     case_id: str
+           -     source: CaseSource
+           -     project: str
+           -     bug_id: int
+           -     fixed_commit: str
+           -     requirement_text: str
+           -     test_id: str
+           -     test_source: str
+           -     implementation_hunk: str
+           -     defect_description: str
+           -     edit: MutantEdit
+           -     killed: bool
+           + class MutantCase(PersistableModel):
+           +     """One test observed against one injected edit."""
+           + 
+           +     case_id: str
+           +     source: CaseSource
+           +     project: str
+           +     bug_id: int
+           +     fixed_commit: str
+           +     requirement_text: str
+           +     test_id: str
+           +     test_source: str
+           +     implementation_hunk: str
+           +     defect_description: str
+           +     edit: MutantEdit
+           +     killed: bool
+      2. set aside (failed_check): the edit replaces 15 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/labels.py lines 75-89:
+           - class MutantCase(PersistableModel):
+           -     """One test observed against one injected edit."""
+           - 
+           -     case_id: str
+           -     source: CaseSource
+           -     project: str
+           -     bug_id: int
+           -     fixed_commit: str
+           -     requirement_text: str
+           -     test_id: str
+           -     test_source: str
+           -     implementation_hunk: str
+           -     defect_description: str
+           -     edit: MutantEdit
+           -     killed: bool
+           + class MutantCase(PersistableModel):
+           +     """One test observed against one injected edit."""
+           + 
+           +     case_id: str
+           +     source: CaseSource
+           +     project: str
+           +     bug_id: int
+           +     fixed_commit: str
+           +     requirement_text: str
+           +     test_id: str
+           +     test_source: str
+           +     implementation_hunk: str
+           +     defect_description: str
+           +     edit: MutantEdit
+           +     killed: bool
+           +     test_failed: bool
+      3. set aside (failed_check): the edit replaces 15 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/labels.py lines 75-89:
+           - class MutantCase(PersistableModel):
+           -     """One test observed against one injected edit."""
+           - 
+           -     case_id: str
+           -     source: CaseSource
+           -     project: str
+           -     bug_id: int
+           -     fixed_commit: str
+           -     requirement_text: str
+           -     test_id: str
+           -     test_source: str
+           -     implementation_hunk: str
+           -     defect_description: str
+           -     edit: MutantEdit
+           -     killed: bool
+           + class MutantCase(PersistableModel):
+           +     """One test observed against one injected edit."""
+           + 
+           +     case_id: str
+           +     source: CaseSource
+           +     project: str
+           +     bug_id: int
+           +     fixed_commit: str
+           +     requirement_text: str
+           +     test_id: str
+           +     test_source: str
+           +     implementation_hunk: str
+           +     defect_description: str
+           +     edit: MutantEdit
+           +     killed: bool
+           +     test_failed: bool
+    pairs: 0 settled by the run, 106 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] test-failure-status-recorded/status-encoded-as-killed-only
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/labels.py lines 89..89 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/labels.py lines 89-89:
+           -     killed: bool
+           +     killed: bool
+      2. set aside (refused_after_run): 12 of the 105 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/benchmark/mutants/labels.py lines 89-89:
+           -     killed: bool
+           +     failure_status: str
+      3. set aside (refused_after_run): 12 of the 105 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/benchmark/mutants/labels.py lines 89-89:
+           -     killed: bool
+           +     killed: bool
+           +     failure_status: str
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] test-failure-status-recorded/status-never-populated-from-run
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the edit replaces 15 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/build.py lines 220-234:
+           -             result.cases.append(
+           -                 MutantCase(
+           -                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           -                     source="bugsinpy-operator",
+           -                     project=bug.project,
+           -                     bug_id=bug.bug_id,
+           -                     fixed_commit=bug.fixed_commit,
+           -                     requirement_text=requirement,
+           -                     test_id=outcome.test_id,
+           -                     test_source=sources.get(outcome.test_id, ""),
+           -                     implementation_hunk=hunk,
+           -                     defect_description=mutant.description,
+           -                     edit=mutant.edit,
+           -                     killed=outcome.kind is TestOutcomeKind.FAILED,
+           -                 )
+           +                 MutantCase(
+           +                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           +                     source="bugsinpy-operator",
+           +                     project=bug.project,
+           +                     bug_id=bug.bug_id,
+           +                     fixed_commit=bug.fixed_commit,
+           +                     requirement_text=requirement,
+           +                     test_id=outcome.test_id,
+           +                     test_source=sources.get(outcome.test_id, ""),
+           +                     implementation_hunk=hunk,
+           +                     defect_description=mutant.description,
+           +                     edit=mutant.edit,
+           +                     killed=outcome.kind is TestOutcomeKind.FAILED,
+           +                 )
+      2. set aside (failed_check): the edit replaces 15 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/mutants/build.py lines 220-234:
+           -             result.cases.append(
+           -                 MutantCase(
+           -                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           -                     source="bugsinpy-operator",
+           -                     project=bug.project,
+           -                     bug_id=bug.bug_id,
+           -                     fixed_commit=bug.fixed_commit,
+           -                     requirement_text=requirement,
+           -                     test_id=outcome.test_id,
+           -                     test_source=sources.get(outcome.test_id, ""),
+           -                     implementation_hunk=hunk,
+           -                     defect_description=mutant.description,
+           -                     edit=mutant.edit,
+           -                     killed=outcome.kind is TestOutcomeKind.FAILED,
+           -                 )
+           +                 MutantCase(
+           +                     case_id=f"{bug.key}/m{index}/{outcome.test_id}",
+           +                     source="bugsinpy-operator",
+           +                     project=bug.project,
+           +                     bug_id=bug.bug_id,
+           +                     fixed_commit=bug.fixed_commit,
+           +                     requirement_text=requirement,
+           +                     test_id=outcome.test_id,
+           +                     test_source=sources.get(outcome.test_id, ""),
+           +                     implementation_hunk=hunk,
+           +                     defect_description=mutant.description,
+           +                     edit=mutant.edit,
+           +                     killed=outcome.kind is TestOutcomeKind.FAILED,
+           +                 )
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/labels.py lines 75..89 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/labels.py lines 75-89:
+           - class MutantCase(PersistableModel):
+           -     """One test observed against one injected edit."""
+           - 
+           -     case_id: str
+           -     source: CaseSource
+           -     project: str
+           -     bug_id: int
+           -     fixed_commit: str
+           -     requirement_text: str
+           -     test_id: str
+           -     test_source: str
+           -     implementation_hunk: str
+           -     defect_description: str
+           -     edit: MutantEdit
+           -     killed: bool
+           + class MutantCase(PersistableModel):
+           +     """One test observed against one injected edit."""
+           + 
+           +     case_id: str
+           +     source: CaseSource
+           +     project: str
+           +     bug_id: int
+           +     fixed_commit: str
+           +     requirement_text: str
+           +     test_id: str
+           +     test_source: str
+           +     implementation_hunk: str
+           +     defect_description: str
+           +     edit: MutantEdit
+           +     killed: bool
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] test-source/test-source-not-included-in-rendered-sample
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/mutants/survivors.py lines 72-76:
+      -             "The code it sits in:",
+      -             "",
+      -             "```python",
+      -             case.implementation_hunk,
+      -             "```",
+      +             "The code it sits in:",
+      +             "",
+      +             "```python",
+      +             case.implementation_hunk,
+      +             "```",
+      +             "",
+      +             "The test source:",
+      +             "",
+      +             "```python",
+      +             case.test_source,
+      +             "```",
+      +             "",
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 106 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] test-source/test-source-not-present-in-case-output
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/labels.py lines 85..85 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/labels.py lines 85-85:
+           -     test_source: str
+           +     test_source: str
+    injected at src/acceptance/benchmark/mutants/build.py lines 229-230:
+      -                     test_source=sources.get(outcome.test_id, ""),
+      -                     implementation_hunk=hunk,
+      +                     test_source="",
+      +                     implementation_hunk=hunk,
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 106 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] typed-loader-for-cases/not-wired-to-typed-loader
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/mutants/__main__.py lines 51..51 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/mutants/__main__.py lines 51-51:
+           -     labels = load_mutant_labels(paths.labels)
+           +     labels = load_mutant_labels(paths.labels)
+    injected at src/acceptance/benchmark/mutants/__main__.py lines 51-51:
+      -     labels = load_mutant_labels(paths.labels)
+      +     labels = MutantLabelSet.from_dict(json.loads(paths.labels.read_text(encoding="utf-8")))
+    no test caught it; 105 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 102 skipped once the defect was covered
+
+Candidate tests set aside (no conclusion rests on these):
+  [not_started] tests/fixtures/archetypes/08-unrequested-change/head/test_cart.py::test_checkout_default_unchanged
+    the project's own pytest does not collect this test, so asking it to run would make the whole run fail without running anything. Test discovery found the file; pytest declines it.
+
+Changes since a84626c7:
+  closed:
+    - The defects are fixed-operator mutants on BugsInPy projects.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - Tests run in the existing sandbox (`src/acceptance/execution/sandbox.py`).
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - The build reruns from a pinned list of BugsInPy bug ids, and rebuilding from the same pinned inputs produces the same file.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - The cases load through a typed loader in `src/acceptance/benchmark/`, the same way `GroundTruthLabels` loads.
+        code evidence: addressed -> addressed
+        test evidence: indeterminate -> strongly supported
+  moved:
+    - The response includes the implementation hunk the defect was injected into.
+        test evidence: strongly supported -> no plausible defect
+    - Record whether the test failed with the edit in place.
+        test evidence: indeterminate -> partially supported
+    - A test that already fails on the unmutated code is set aside rather than labelled.
+        test evidence: strongly supported -> partially supported
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run a1d1d5b6a27911c3
+  continuing 34601fedf98e6a6d
+  continue this run with: --continue a1d1d5b6a27911c3
+Model usage by stage:
+  stage                         model                                                              calls   prompt  output  cached  this run  recorded  time this run
+  ----------------------------  -------------------------------------------  ---------------------------  -------  ------  ------  --------  --------  -------------
+  obligation linking            voyage/voyage-3.5-lite                           1 (0 live / 1 replayed)      831       0       —   $0.0000   $0.0000              —
+  defect enumeration            openai/gpt-5.4-mini                            16 (16 live / 0 replayed)  309,414   5,787    0.0%   $0.2581   $0.2581          97.6s
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini  230 (230 live / 0 replayed)  296,571  40,699    0.0%   $0.3924   $0.3924         324.3s
+  coverage classification       openai/gpt-5.4-mini                              1 (1 live / 0 replayed)   26,473   2,066    0.0%   $0.0292   $0.0292           9.7s
+  unrequested-change detection  openai/gpt-5.4-mini                              1 (1 live / 0 replayed)   25,853     795    0.0%   $0.0230   $0.0230           5.6s
+  disposition judgment          openai/gpt-5.4-mini                              1 (1 live / 0 replayed)    1,645      76    0.0%   $0.0016   $0.0016           1.0s
+  test recommendation           openai/gpt-5.4-mini                              1 (1 live / 0 replayed)   25,191     992    0.0%   $0.0234   $0.0234           6.6s
+  mutation descriptor           openai/gpt-5.4-mini                            72 (72 live / 0 replayed)  636,024  11,330   49.5%   $0.3155   $0.3155         104.0s
+  this run spent $1.0430 on 322 live call(s); the evidence cost $1.0430 to record (1 call(s) replayed at no cost to this run)
+
