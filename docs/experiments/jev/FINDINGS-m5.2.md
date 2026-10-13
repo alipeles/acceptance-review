@@ -8,11 +8,12 @@ committed.
 
 ## The answer
 
-The shipped judge is the weak link, not the model that could replace it. On
-the held-out cases, GPT-5.4 Mini as the shipped judge calls it was right 66% of
-the time. Jev alone was right 80%. No-tools Opus 5.5 was right 95%. Jev first,
-with Opus deciding the cases Jev is unsure of, was right 93.5% at about half of
-Opus's cost.
+The shipped judge is the weak link. On the held-out cases, GPT-5.4 Mini as the
+shipped judge calls it was right 66% of the time. Jev first, with Mini asked one
+case at a time for the cases Jev is unsure of, was right 85.9% at about a sixth
+of the shipped judge's cost; that is the design adopted (`docs/DR-379-jev-m5.2.md`).
+No-tools Opus 5.5 was right 95%, and Jev first with Opus for the unsure cases
+93.5%, but at about 45 times the shipped judge's cost.
 
 ## Cases
 
@@ -30,7 +31,7 @@ Every rule was fitted on the tuning cases and committed (`m52/frozen.json`,
 
 | design | accuracy | precision on "fails" | recall on "fails" | precision on "survives" | recall on "survives" | cost per case | sent to Opus |
 |---|---|---|---|---|---|---|---|
-| shipped judge (Mini, batched) | 66.3% (56–75) | 0.789 (0.64–0.89) | 0.566 | 0.574 | 0.795 | not measured | — |
+| shipped judge (Mini, batched) | 66.3% (56–75) | 0.789 (0.64–0.89) | 0.566 | 0.574 | 0.795 | $0.0007 | — |
 | Jev alone, at 0.5 | 80.4% (71–87) | 0.857 | 0.792 | 0.744 | 0.821 | $0.0001 | — |
 | Opus alone, no tools | 94.6% (88–98) | 0.929 (0.83–0.97) | 0.981 | 0.972 | 0.897 | $0.050 | 100% |
 | Jev then Opus, aiming 97.8% | 93.5% (87–97) | 0.912 (0.81–0.96) | 0.981 | 0.971 | 0.872 | $0.027 | 52% |
@@ -51,6 +52,33 @@ wrong. Jev's own confident calls added one error.
 The tuning figures were higher for every design (Opus alone 97.8%, Jev then
 Opus 97.8% by construction). The held-out set cannot tell Jev-then-Opus and Opus
 alone apart: their ranges overlap almost entirely.
+
+The shipped judge's cost comes from the `usage.cost_usd` its recorded
+transcripts carry: $0.057 for the 92 held-out cases over 52 calls.
+
+## The cheap designs (`m52/jev_mini.py`, `m52/jev-mini.json`)
+
+Tried after the scoring above, because Jev then Opus costs about 45 times the
+shipped judge. The held-out set had therefore already been looked at once; the
+rules were still fitted on tuning cases only.
+
+| design | held-out accuracy | precision on "fails" | cost per case | sent to the second model |
+|---|---|---|---|---|
+| Jev alone, cut-off 0.38 fitted on tuning | 83.7% | — | $0.0001 | — |
+| Mini alone, one call per case | 82.6% (74–89) | 0.785 | $0.0006 | — |
+| Jev then the shipped judge | 84.8% (76–91) | 0.855 | $0.0001 | 4% |
+| **Jev then Mini, one call per case (adopted)** | **85.9% (77–92)** | **0.845** | **$0.0001** | **3%** |
+
+"Mini, one call per case" asks Mini about one case with the requirement text,
+the original code and the defect description: the prompt Opus was given. The
+same model asked that way scores 16 points above the shipped judge, so most of
+the shipped judge's weakness is how it asks, not the model.
+
+Jev then Mini sends cases between 0.24 and 0.34 to Mini, the pair with the
+highest tuning accuracy (91.2%). Mini is no better than Jev on the cases Jev
+finds hard, so the fit keeps that band narrow; most of the gain over Jev at
+0.5 comes from moving Jev's cut-off down. Sending Mini the same 52% Opus got
+scored 88.3% on tuning and 87.0% on held-out, a difference of one case.
 
 ## What the tuning experiments showed
 
