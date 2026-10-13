@@ -6857,7 +6857,7 @@ the record.
   > **Distinct from #277** (one requirement yields two obligations stating the same property, differing only in voice): there the duplicate is redundant; here it takes the place of a real property, so a requirement is lost, not just repeated. **Distinct from #223** (a requirement dispositioned `yielded` onto an obligation that does not state it): that is a whole requirement; this is one item inside a requirement that did yield.
   >
   > **Acceptance:** each item of a listed sentence yields an obligation stating it; an obligation's description states what its id names; #195's decompose-regression suite carries this case.
-- **Status:** open
+- **Status:** **filed 2026-10-13 as #386**, approved by the owner at #381 Gate 1
 
 ### [2026-10-13] Split #381: labels, scoring by difficulty, targets and the owner's review
 - **Kind:** filing
@@ -6878,4 +6878,4 @@ the record.
   > - At least one audit run on ffn, reporting the planting rate per difficulty class, with bad descriptions counted separately.
   > - Per-class targets recorded, for example all clear-cut bugs and three quarters of subtle ones.
   > - The owner's review of a sample of its planted edits.
-- **Status:** open
+- **Status:** **filed 2026-10-13 as #387**, approved by the owner at #381 Gate 1
