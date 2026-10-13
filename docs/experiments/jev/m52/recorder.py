@@ -15,6 +15,7 @@ import hashlib
 import json
 import math
 import time
+import uuid
 from pathlib import Path
 
 import httpx
@@ -58,7 +59,8 @@ def _cached(provider: str, request: dict, repeat: int, live, replay_only: bool) 
         "elapsed_ms": round((time.monotonic() - start) * 1000),
     }
     CACHE.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(".tmp")
+    # Unique per writer: two threads can record the same request at once.
+    tmp = path.with_suffix(f".{uuid.uuid4().hex}.tmp")
     tmp.write_text(json.dumps(record, ensure_ascii=False, indent=1), encoding="utf-8")
     tmp.replace(path)
     return record
