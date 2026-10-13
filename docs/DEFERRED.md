@@ -6809,15 +6809,26 @@ the record.
   > **Acceptance:** an agent run declaring the bug already present produces an already-present finding with a tested repair.
 - **Status:** **filed 2026-10-13 within #382**, combined at the owner's request
 
-### [2026-10-13] Decision: which model judges whether a test catches a planted bug
-- **Kind:** decision
-- **Found during:** #379 (testing whether TypeSafe's Jev can take over that judgement), held-out scoring
-- **Where:** `src/acceptance/defects/pair_mapping.py::_ask`, the shipped judge (GPT-5.4 Mini, up to 40 judgements per call). Evidence: `docs/experiments/jev/m52/heldout.json` and `frozen.json` on branch `379-jev-m52`, not yet merged
+### [2026-10-13] Replace the shipped defect judge with Jev then Mini
+- **Kind:** filing
+- **Found during:** #379, the owner's decision recorded in `docs/DR-379-jev-m5.2.md` (supersedes the decision entry queued earlier today, resolved by that DR)
+- **Where:** `src/acceptance/defects/pair_mapping.py::_ask`; `src/acceptance/llm.py`
 - **Severity:** should-fix
-- **What's wrong:** On the 92 held-out BugsInPy cases from #372 (planted bugs run against real tests for kill/survive labels), the shipped judge was right 66.3% of the time (95% range 56–75%). It missed 23 of 53 kills. No-tools Opus 5.5 was right 94.6% (88–98%), at $0.050 per judgement. Jev first, then Opus for the cases where Jev is unsure, was right 93.5% (87–97%) at $0.027, sending 52% of cases to Opus. Jev alone was right 80.4%. Every rule was fixed on the 137 tuning cases before the held-out set was scored once. Of that design's 6 errors, Opus alone also got 5 wrong.
-- **Why I didn't act:** choosing the model is the owner's call. Each option also adds something the checker does not have today: a new provider (Jev), or an Opus call per judgement instead of one batched call per 40.
-- **Recommendation:** Jev first, then Opus. Jev uses the targeted prompt: the function holding the planted bug, the test with its helpers, and the code the test calls. Jev says "the test fails" at a probability of 0.80 or more and "it survives" at 0.14 or less; everything in between goes to Opus. It nearly matches Opus alone for about half the cost. Before adopting it: (1) price a real review, since how many defect-test pairs a review asks about decides whether $0.027 each is affordable, and the shipped judge's own cost per judgement was never measured; (2) add Jev as a provider in `llm.py`, record-and-replay like any other; (3) re-fit the two cut-offs on more labelled cases, since 92 cannot separate this from Opus alone.
-- **Rejected:** keeping GPT-5.4 Mini (28 points behind Opus). Opus alone (most accurate, but about twice the cost for one point the held-out set cannot confirm). Jev alone (80%: it calls "fails" on tests that never run the edited line). The cheaper Jev-then-Opus rule aimed at 95% (it fell to 90.2% on held-out, at $0.008).
+- **Drafted fix:** Child of #183 (the evidence-judgement umbrella), linked from #371. Title: "Replace the shipped defect judge with Jev, then Mini for the cases Jev is unsure of". Body:
+  > `docs/DR-379-jev-m5.2.md` adopts a new judge for "would this test fail under this defect". On 92 held-out BugsInPy cases from #372, it was right 85.9% of the time against the shipped judge's 66.3%, at about a sixth of the cost per judgement.
+  >
+  > ## What changes
+  > - Jev is asked first, with targeted context: the function holding the edit with the edited line marked, the test with its imports and helpers, and the project code the test calls (`docs/experiments/jev/m52/targeted_prompt.py` is the experiment's version).
+  > - Jev's probability that the test fails decides alone at 0.34 or more ("fails") and at 0.24 or less ("survives").
+  > - Cases in between go to GPT-5.4 Mini, one case per call, with the requirement text, the original code and the defect description; its "yes" probability decides at 0.5. With no usable Mini answer, Jev's probability decides at 0.5.
+  > - Jev becomes a provider in `llm.py`, with record and replay like any other. Mini's token probabilities need recording too; `llm.py` stores neither today.
+  > - Findings Jev decides keep the static evidence tier and record that they carry no reasoning.
+  >
+  > ## Acceptance
+  > - The pipeline's defect judgement routes through Jev then Mini, and a test pins that it does.
+  > - Replay of a recorded review is byte-identical, with no live call.
+  > - The benchmark's mutant cases from #372 score at least as well as the experiment's held-out figure, within its range (77–92%).
+  > - A real review is priced: the number of defect-test pairs it asks about, and the cost of judging them.
 - **Status:** open
 
 ### [2026-10-13] A listed item in a requirement gets no obligation; its id carries a duplicate of another obligation's text
