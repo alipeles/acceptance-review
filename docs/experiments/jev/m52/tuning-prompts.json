@@ -1,0 +1,105 @@
+{
+ "tuning_cases": 137,
+ "left_out": [
+  "thefuck/28/m3/tests/rules/test_fix_file.py::test_get_new_command_with_settings",
+  "youtube-dl/39/m1/test/test_utils.py::TestUtil::test_limit_length"
+ ],
+ "scores": {
+  "jev:bare+description": {
+   "n": 137,
+   "accuracy": 0.796,
+   "brier": 0.157,
+   "log_loss": 0.493,
+   "auc": 0.852,
+   "mean_p_killed": 0.809,
+   "mean_p_survived": 0.478,
+   "no_answer": 0,
+   "mean_ms": 181,
+   "mean_input_tokens": 701
+  },
+  "jev:bare+mutant": {
+   "n": 137,
+   "accuracy": 0.708,
+   "brier": 0.199,
+   "log_loss": 0.586,
+   "auc": 0.761,
+   "mean_p_killed": 0.727,
+   "mean_p_survived": 0.51,
+   "no_answer": 0,
+   "mean_ms": 177,
+   "mean_input_tokens": 867
+  },
+  "jev:context+description": {
+   "n": 137,
+   "accuracy": 0.876,
+   "brier": 0.109,
+   "log_loss": 0.372,
+   "auc": 0.914,
+   "mean_p_killed": 0.833,
+   "mean_p_survived": 0.359,
+   "no_answer": 0,
+   "mean_ms": 190,
+   "mean_input_tokens": 970
+  },
+  "jev:context+mutant": {
+   "n": 137,
+   "accuracy": 0.832,
+   "brier": 0.112,
+   "log_loss": 0.371,
+   "auc": 0.92,
+   "mean_p_killed": 0.833,
+   "mean_p_survived": 0.357,
+   "no_answer": 0,
+   "mean_ms": 191,
+   "mean_input_tokens": 1138
+  },
+  "mini:bare+description": {
+   "n": 137,
+   "accuracy": 0.73,
+   "brier": 0.215,
+   "log_loss": 1.691,
+   "auc": 0.819,
+   "mean_p_killed": 0.959,
+   "mean_p_survived": 0.567,
+   "no_answer": 0,
+   "mean_ms": 678,
+   "mean_input_tokens": 351
+  },
+  "mini:bare+mutant": {
+   "n": 137,
+   "accuracy": 0.781,
+   "brier": 0.163,
+   "log_loss": 0.657,
+   "auc": 0.877,
+   "mean_p_killed": 0.884,
+   "mean_p_survived": 0.425,
+   "no_answer": 0,
+   "mean_ms": 704,
+   "mean_input_tokens": 513
+  },
+  "mini:context+description": {
+   "n": 137,
+   "accuracy": 0.839,
+   "brier": 0.142,
+   "log_loss": 1.158,
+   "auc": 0.869,
+   "mean_p_killed": 0.938,
+   "mean_p_survived": 0.342,
+   "no_answer": 0,
+   "mean_ms": 719,
+   "mean_input_tokens": 597
+  },
+  "mini:context+mutant": {
+   "n": 137,
+   "accuracy": 0.81,
+   "brier": 0.176,
+   "log_loss": 1.494,
+   "auc": 0.852,
+   "mean_p_killed": 0.934,
+   "mean_p_survived": 0.432,
+   "no_answer": 0,
+   "mean_ms": 679,
+   "mean_input_tokens": 759
+  }
+ }
+}
