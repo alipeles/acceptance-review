@@ -6729,7 +6729,7 @@ the record.
   > Dogfood logs remain the place tool defects are found; rates and targets come from the new benchmark.
   >
   > **Acceptance:** a chosen project with its licence confirmed from the licence file, at least one audit run on it, and the owner's review of a sample of its planted edits.
-- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+- **Status:** **filed 2026-10-13 within #381**, combined at the owner's request
 
 ### [2026-10-13] Label each bug by testing priority, by difficulty, and as a bad description
 - **Kind:** filing
@@ -6743,7 +6743,7 @@ the record.
   > The labels are set from the bug description alone, before planting is attempted, so the tool cannot excuse its own failures by calling them hard. On a benchmark, a person sets or checks them.
   >
   > **Acceptance:** audits report the planting rate per difficulty class, with bad descriptions counted separately, and per-class targets are recorded (for example: all clear-cut bugs, three quarters of subtle ones).
-- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+- **Status:** **filed 2026-10-13 within #381**, combined at the owner's request
 
 ### [2026-10-13] Drop the plausibility rule for planted edits; require exactly the described behaviour
 - **Kind:** filing
@@ -6757,7 +6757,7 @@ the record.
   > Changes the one-call builder's prompt (its recordings re-record) and `docs/audit-protocol.md`'s definition.
   >
   > **Acceptance:** builder instructions and protocol use the exact-and-nothing-broader rule; an audit on the same defects compares planting rates before and after.
-- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+- **Status:** **filed 2026-10-13 within #382**, combined at the owner's request
 
 ### [2026-10-13] Allow a planted edit to be a few separate small changes within the size limit
 - **Kind:** filing
@@ -6771,7 +6771,7 @@ the record.
   > **This changes the stored shape of a planted edit** (today a single span), which later work reads, so the design needs the owner's sign-off before implementation.
   >
   > **Acceptance:** an edit of two separate small changes is accepted and checked change by change; the two v11 cases are pinned as regression cases.
-- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+- **Status:** **filed 2026-10-13 within #382**, combined at the owner's request
 
 ### [2026-10-13] Settle some bugs by reading the code instead of planting them and running tests
 - **Kind:** filing
@@ -6783,7 +6783,7 @@ the record.
   > Distinct from #327, where no test is owed at all: here a test may be owed, but code evidence is the better and cheaper evidence for this particular bug. Pairs naturally with the priority label (low-priority requirements accept code evidence).
   >
   > **Acceptance:** a bug can be marked "settle by reading", is not sent to planting, and its rating says what kind of evidence settled it.
-- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+- **Status:** **filed 2026-10-13 within #382**, combined at the owner's request
 
 ### [2026-10-13] Also ask the coding agent when the edit verifier refuses a one-call edit
 - **Kind:** filing
@@ -6795,7 +6795,7 @@ the record.
   > On those 21, asked directly, the agent planted 5 bugs (owner-corrected from the judge's 6) and correctly made no change in most of the rest (audit v11, one Claude judge plus the owner's check of six). About 7 times the one-call cost per bug.
   >
   > **Acceptance:** when the verifier refuses an edit, the agent is asked once; an audit shows its planting rate on those bugs against the refused edits.
-- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+- **Status:** **filed 2026-10-13 within #382**, combined at the owner's request
 
 ### [2026-10-13] Let the coding agent report that the code already has the bug
 - **Kind:** filing
@@ -6807,4 +6807,4 @@ the record.
   > Let the agent declare it through a fixed, small JSON file (already-broken plus the lines), validated like a schema answer, with its repair going through the existing already-present path. Its edit, not its words, would still be what is tested. Parsing its reply text was rejected: that would make its own account evidence.
   >
   > **Acceptance:** an agent run declaring the bug already present produces an already-present finding with a tested repair.
-- **Status:** open — direction agreed with the owner 2026-10-13; filing text awaits approval
+- **Status:** **filed 2026-10-13 within #382**, combined at the owner's request
