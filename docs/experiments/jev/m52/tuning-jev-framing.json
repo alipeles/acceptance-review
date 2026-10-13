@@ -1,0 +1,88 @@
+{
+ "cases": 137,
+ "variants": {
+  "before": {
+   "n": 137,
+   "accuracy": 0.876,
+   "brier": 0.109,
+   "log_loss": 0.372,
+   "auc": 0.914,
+   "mean_p_killed": 0.833,
+   "mean_p_survived": 0.359,
+   "ece": 0.074,
+   "false_fails": 16,
+   "missed_kills": 1,
+   "of_16_false_positives_now_below_0.5": 0,
+   "clears_survivors": {
+    "lowest_kill_p": 0.47,
+    "survivors_cleared": 41,
+    "survivors_total": 58
+   },
+   "survivors_cleared_then_opus": {
+    "lo": 0.45999999999999996,
+    "accuracy": 0.978,
+    "escalated_share": 0.708,
+    "cost_per_case": 0.0346
+   },
+   "jev_cost_per_case": 4.08e-05
+  },
+  "framed": {
+   "n": 137,
+   "accuracy": 0.861,
+   "brier": 0.105,
+   "log_loss": 0.346,
+   "auc": 0.928,
+   "mean_p_killed": 0.742,
+   "mean_p_survived": 0.247,
+   "ece": 0.106,
+   "false_fails": 10,
+   "missed_kills": 9,
+   "of_16_false_positives_now_below_0.5": 7,
+   "clears_survivors": {
+    "lowest_kill_p": 0.29,
+    "survivors_cleared": 42,
+    "survivors_total": 58
+   },
+   "survivors_cleared_then_opus": {
+    "lo": 0.27999999999999997,
+    "accuracy": 0.985,
+    "escalated_share": 0.693,
+    "cost_per_case": 0.0337
+   },
+   "jev_cost_per_case": 4.77e-05
+  },
+  "two-pass": {
+   "n": 137,
+   "accuracy": 0.766,
+   "brier": 0.149,
+   "log_loss": 0.437,
+   "auc": 0.914,
+   "mean_p_killed": 0.599,
+   "mean_p_survived": 0.155,
+   "ece": 0.166,
+   "false_fails": 7,
+   "missed_kills": 25,
+   "of_16_false_positives_now_below_0.5": 10,
+   "clears_survivors": {
+    "lowest_kill_p": 0.158,
+    "survivors_cleared": 41,
+    "survivors_total": 58
+   },
+   "survivors_cleared_then_opus": {
+    "lo": 0.148,
+    "accuracy": 0.978,
+    "escalated_share": 0.701,
+    "cost_per_case": 0.0342
+   },
+   "jev_cost_per_case": 4.95e-05
+  }
+ },
+ "two_pass_gated_at_0.5": {
+  "accuracy": 0.818,
+  "false_fails": 12,
+  "missed_kills": 13
+ },
+ "reaches_question_alone": {
+  "auc_for_kill": 0.897
+ }
+}
