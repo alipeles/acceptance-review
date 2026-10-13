@@ -1,0 +1,1324 @@
+{
+ "cases": 137,
+ "context_modes": {
+  "code: whole file | test: whole file": 78,
+  "code: whole file | test: imports + test function": 12,
+  "code: top-level block | test: imports + test function": 21,
+  "code: innermost function | test: imports + test function": 1,
+  "code: innermost function | test: whole file": 15,
+  "code: top-level block | test: whole file": 10
+ },
+ "mean_input_tokens": {
+  "reach_hunk": 876,
+  "reach_context": 6686,
+  "fails_hunk": 1308,
+  "fails_context": 6935
+ },
+ "reach": {
+  "hunk": {
+   "auc_known_reach": 0.906,
+   "never_run_below_0.5": 7,
+   "kills_below_0.5": 8,
+   "lowest_kill": 0.27,
+   "never_run_below_lowest_kill": 5
+  },
+  "context": {
+   "auc_known_reach": 0.913,
+   "never_run_below_0.5": 9,
+   "kills_below_0.5": 11,
+   "lowest_kill": 0.29,
+   "never_run_below_lowest_kill": 7
+  }
+ },
+ "fails": {
+  "hunk": {
+   "n": 137,
+   "accuracy": 0.876,
+   "brier": 0.102,
+   "log_loss": 0.342,
+   "auc": 0.929,
+   "mean_p_killed": 0.748,
+   "mean_p_survived": 0.225,
+   "false_fails": 8,
+   "missed_kills": 9,
+   "of_16_false_positives_below_0.5": 9,
+   "clears_survivors": {
+    "lowest_kill_p": 0.18,
+    "survivors_cleared": 39,
+    "survivors_total": 58
+   },
+   "survivors_cleared_then_opus": {
+    "lo": 0.16999999999999998,
+    "accuracy": 0.978,
+    "escalated_share": 0.723,
+    "cost_per_case": 0.0353
+   },
+   "cv_jev_then_opus_aiming_0.978": {
+    "accuracy": 0.971,
+    "cost_per_case": 0.0351,
+    "escalated_share": 0.715
+   }
+  },
+  "context": {
+   "n": 137,
+   "accuracy": 0.839,
+   "brier": 0.109,
+   "log_loss": 0.359,
+   "auc": 0.957,
+   "mean_p_killed": 0.682,
+   "mean_p_survived": 0.185,
+   "false_fails": 4,
+   "missed_kills": 18,
+   "of_16_false_positives_below_0.5": 13,
+   "clears_survivors": {
+    "lowest_kill_p": 0.15,
+    "survivors_cleared": 32,
+    "survivors_total": 58
+   },
+   "survivors_cleared_then_opus": {
+    "lo": 0.13999999999999999,
+    "accuracy": 0.978,
+    "escalated_share": 0.803,
+    "cost_per_case": 0.0392
+   },
+   "cv_jev_then_opus_aiming_0.978": {
+    "accuracy": 0.964,
+    "cost_per_case": 0.0284,
+    "escalated_share": 0.562
+   }
+  }
+ },
+ "fails_by_context": {
+  "both whole files": {
+   "n": 78,
+   "killed": 44,
+   "auc_hunk": 0.947,
+   "auc_context": 0.948,
+   "acc_hunk": 0.885,
+   "acc_context": 0.821
+  },
+  "trimmed": {
+   "n": 59,
+   "killed": 35,
+   "auc_hunk": 0.899,
+   "auc_context": 0.973,
+   "acc_hunk": 0.864,
+   "acc_context": 0.864
+  }
+ },
+ "agent_cases_coverage": {
+  "n": 49,
+  "covered": 43,
+  "missing_same_file_only": 4,
+  "missing_other_file": 2,
+  "right_hunk_vs_context_when_covered": [
+   31,
+   28
+  ],
+  "right_hunk_vs_context_when_not": [
+   2,
+   6
+  ],
+  "rows": [
+   {
+    "case_id": "PySnooper/1/m0/tests/test_chinese.py::test_chinese",
+    "killed": false,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.3,
+    "fails_context": 0.27,
+    "reach_hunk": 0.84,
+    "reach_context": 0.86
+   },
+   {
+    "case_id": "PySnooper/1/m1/tests/test_chinese.py::test_chinese",
+    "killed": false,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.59,
+    "fails_context": 0.59,
+    "reach_hunk": 0.84,
+    "reach_context": 0.9
+   },
+   {
+    "case_id": "PySnooper/1/m2/tests/test_chinese.py::test_chinese",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.76,
+    "fails_context": 0.22,
+    "reach_hunk": 0.86,
+    "reach_context": 0.89
+   },
+   {
+    "case_id": "PySnooper/1/m3/tests/test_chinese.py::test_chinese",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.44,
+    "fails_context": 0.33,
+    "reach_hunk": 0.85,
+    "reach_context": 0.91
+   },
+   {
+    "case_id": "thefuck/2/m0/tests/test_utils.py::test_get_all_executables_pathsep",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.53,
+    "fails_context": 0.77,
+    "reach_hunk": 0.64,
+    "reach_context": 0.78
+   },
+   {
+    "case_id": "thefuck/22/m0/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_with_blank",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.54,
+    "fails_context": 0.3,
+    "reach_hunk": 0.87,
+    "reach_context": 0.48
+   },
+   {
+    "case_id": "thefuck/24/m0/tests/test_types.py::TestCorrectedCommand::test_equality",
+    "killed": false,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.19,
+    "fails_context": 0.14,
+    "reach_hunk": 0.14,
+    "reach_context": 0.22
+   },
+   {
+    "case_id": "thefuck/24/m0/tests/test_types.py::TestCorrectedCommand::test_hashable",
+    "killed": false,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": false,
+    "missing_same_file": [],
+    "missing_other_file": [
+     "tests/utils.py"
+    ],
+    "fails_hunk": 0.34,
+    "fails_context": 0.16,
+    "reach_hunk": 0.29,
+    "reach_context": 0.33
+   },
+   {
+    "case_id": "thefuck/24/m0/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_remove_duplicates",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.34,
+    "fails_context": 0.15,
+    "reach_hunk": 0.45,
+    "reach_context": 0.41
+   },
+   {
+    "case_id": "thefuck/24/m1/tests/test_types.py::TestCorrectedCommand::test_equality",
+    "killed": false,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.39,
+    "fails_context": 0.21,
+    "reach_hunk": 0.4,
+    "reach_context": 0.25
+   },
+   {
+    "case_id": "thefuck/24/m2/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_realises_generator_only_on_demand",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.68,
+    "fails_context": 0.77,
+    "reach_hunk": 0.75,
+    "reach_context": 0.75
+   },
+   {
+    "case_id": "thefuck/28/m0/tests/rules/test_fix_file.py::test_get_new_command_with_settings",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.32,
+    "fails_context": 0.3,
+    "reach_hunk": 0.36,
+    "reach_context": 0.68
+   },
+   {
+    "case_id": "thefuck/28/m1/tests/rules/test_fix_file.py::test_get_new_command_with_settings",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.41,
+    "fails_context": 0.43,
+    "reach_hunk": 0.4,
+    "reach_context": 0.71
+   },
+   {
+    "case_id": "thefuck/30/m0/tests/rules/test_fix_file.py::test_match",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.91,
+    "fails_context": 0.89,
+    "reach_hunk": 0.96,
+    "reach_context": 0.94
+   },
+   {
+    "case_id": "thefuck/30/m0/tests/rules/test_fix_file.py::test_no_editor",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.42,
+    "fails_context": 0.8,
+    "reach_hunk": 0.65,
+    "reach_context": 0.84
+   },
+   {
+    "case_id": "thefuck/30/m0/tests/rules/test_fix_file.py::test_not_file",
+    "killed": false,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.83,
+    "fails_context": 0.56,
+    "reach_hunk": 0.95,
+    "reach_context": 0.92
+   },
+   {
+    "case_id": "thefuck/30/m1/tests/rules/test_fix_file.py::test_match",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.85,
+    "fails_context": 0.87,
+    "reach_hunk": 0.93,
+    "reach_context": 0.91
+   },
+   {
+    "case_id": "thefuck/30/m1/tests/rules/test_fix_file.py::test_no_editor",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.61,
+    "fails_context": 0.8,
+    "reach_hunk": 0.83,
+    "reach_context": 0.88
+   },
+   {
+    "case_id": "thefuck/30/m2/tests/rules/test_fix_file.py::test_not_file",
+    "killed": false,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.2,
+    "fails_context": 0.23,
+    "reach_hunk": 0.1,
+    "reach_context": 0.22
+   },
+   {
+    "case_id": "thefuck/30/m3/tests/rules/test_fix_file.py::test_not_file",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.62,
+    "fails_context": 0.68,
+    "reach_hunk": 0.81,
+    "reach_context": 0.83
+   },
+   {
+    "case_id": "thefuck/32/m1/tests/rules/test_ls_lah.py::test_match",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.8,
+    "fails_context": 0.51,
+    "reach_hunk": 0.77,
+    "reach_context": 0.7
+   },
+   {
+    "case_id": "tqdm/2/m0/tqdm/tests/tests_tqdm.py::test_format_meter",
+    "killed": false,
+    "code": "whole file",
+    "test": "imports + test function",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.37,
+    "fails_context": 0.14,
+    "reach_hunk": 0.82,
+    "reach_context": 0.19
+   },
+   {
+    "case_id": "tqdm/2/m1/tqdm/tests/tests_tqdm.py::test_format_meter",
+    "killed": false,
+    "code": "whole file",
+    "test": "imports + test function",
+    "covered": false,
+    "missing_same_file": [],
+    "missing_other_file": [
+     "tqdm/utils.py"
+    ],
+    "fails_hunk": 0.88,
+    "fails_context": 0.32,
+    "reach_hunk": 0.56,
+    "reach_context": 0.17
+   },
+   {
+    "case_id": "youtube-dl/14/m0/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters",
+    "killed": false,
+    "code": "innermost function",
+    "test": "whole file",
+    "covered": false,
+    "missing_same_file": [
+     "youtube_dl/extractor/youtube.py:1711"
+    ],
+    "missing_other_file": [],
+    "fails_hunk": 0.55,
+    "fails_context": 0.16,
+    "reach_hunk": 0.18,
+    "reach_context": 0.13
+   },
+   {
+    "case_id": "youtube-dl/14/m3/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters",
+    "killed": false,
+    "code": "innermost function",
+    "test": "whole file",
+    "covered": false,
+    "missing_same_file": [
+     "youtube_dl/extractor/youtube.py:1711"
+    ],
+    "missing_other_file": [],
+    "fails_hunk": 0.79,
+    "fails_context": 0.2,
+    "reach_hunk": 0.25,
+    "reach_context": 0.21
+   },
+   {
+    "case_id": "youtube-dl/18/m0/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent",
+    "killed": true,
+    "code": "innermost function",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.18,
+    "fails_context": 0.55,
+    "reach_hunk": 0.93,
+    "reach_context": 0.9
+   },
+   {
+    "case_id": "youtube-dl/18/m2/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent",
+    "killed": true,
+    "code": "innermost function",
+    "test": "whole file",
+    "covered": false,
+    "missing_same_file": [
+     "youtube_dl/YoutubeDL.py:812"
+    ],
+    "missing_other_file": [],
+    "fails_hunk": 0.38,
+    "fails_context": 0.78,
+    "reach_hunk": 0.92,
+    "reach_context": 0.88
+   },
+   {
+    "case_id": "youtube-dl/18/m3/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent",
+    "killed": true,
+    "code": "innermost function",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.2,
+    "fails_context": 0.43,
+    "reach_hunk": 0.9,
+    "reach_context": 0.89
+   },
+   {
+    "case_id": "youtube-dl/19/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_prepare_filename",
+    "killed": false,
+    "code": "innermost function",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.44,
+    "fails_context": 0.38,
+    "reach_hunk": 0.92,
+    "reach_context": 0.92
+   },
+   {
+    "case_id": "youtube-dl/21/m3/test/test_utils.py::TestUtil::test_urljoin",
+    "killed": false,
+    "code": "top-level block",
+    "test": "imports + test function",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.82,
+    "fails_context": 0.72,
+    "reach_hunk": 0.86,
+    "reach_context": 0.83
+   },
+   {
+    "case_id": "youtube-dl/22/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter",
+    "killed": true,
+    "code": "top-level block",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.85,
+    "fails_context": 0.4,
+    "reach_hunk": 0.92,
+    "reach_context": 0.85
+   },
+   {
+    "case_id": "youtube-dl/23/m2/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+    "killed": true,
+    "code": "top-level block",
+    "test": "imports + test function",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.28,
+    "fails_context": 0.19,
+    "reach_hunk": 0.49,
+    "reach_context": 0.6
+   },
+   {
+    "case_id": "youtube-dl/23/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+    "killed": true,
+    "code": "top-level block",
+    "test": "imports + test function",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.55,
+    "fails_context": 0.56,
+    "reach_hunk": 0.85,
+    "reach_context": 0.85
+   },
+   {
+    "case_id": "youtube-dl/24/m2/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter",
+    "killed": true,
+    "code": "top-level block",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.66,
+    "fails_context": 0.52,
+    "reach_hunk": 0.81,
+    "reach_context": 0.76
+   },
+   {
+    "case_id": "youtube-dl/24/m3/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter",
+    "killed": true,
+    "code": "top-level block",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.6,
+    "fails_context": 0.37,
+    "reach_hunk": 0.85,
+    "reach_context": 0.77
+   },
+   {
+    "case_id": "youtube-dl/25/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+    "killed": false,
+    "code": "top-level block",
+    "test": "imports + test function",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.32,
+    "fails_context": 0.26,
+    "reach_hunk": 0.54,
+    "reach_context": 0.68
+   },
+   {
+    "case_id": "youtube-dl/27/m3/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr",
+    "killed": true,
+    "code": "top-level block",
+    "test": "imports + test function",
+    "covered": false,
+    "missing_same_file": [
+     "test/test_utils.py:668"
+    ],
+    "missing_other_file": [],
+    "fails_hunk": 0.9,
+    "fails_context": 0.57,
+    "reach_hunk": 0.95,
+    "reach_context": 0.94
+   },
+   {
+    "case_id": "youtube-dl/3/m1/test/test_utils.py::TestUtil::test_unescape_html",
+    "killed": true,
+    "code": "top-level block",
+    "test": "imports + test function",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.78,
+    "fails_context": 0.74,
+    "reach_hunk": 0.96,
+    "reach_context": 0.94
+   },
+   {
+    "case_id": "youtube-dl/30/m1/test/test_YoutubeDL.py::TestFormatSelection::test_format_filtering",
+    "killed": true,
+    "code": "innermost function",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.71,
+    "fails_context": 0.75,
+    "reach_hunk": 0.84,
+    "reach_context": 0.83
+   },
+   {
+    "case_id": "youtube-dl/33/m1/test/test_utils.py::TestUtil::test_parse_iso8601",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.55,
+    "fails_context": 0.75,
+    "reach_hunk": 0.94,
+    "reach_context": 0.88
+   },
+   {
+    "case_id": "youtube-dl/39/m0/test/test_utils.py::TestUtil::test_limit_length",
+    "killed": false,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.06,
+    "fails_context": 0.12,
+    "reach_hunk": 0.19,
+    "reach_context": 0.4
+   },
+   {
+    "case_id": "youtube-dl/4/m1/test/test_jsinterp.py::TestJSInterpreter::test_call",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.71,
+    "fails_context": 0.7,
+    "reach_hunk": 0.75,
+    "reach_context": 0.68
+   },
+   {
+    "case_id": "youtube-dl/4/m2/test/test_jsinterp.py::TestJSInterpreter::test_call",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.68,
+    "fails_context": 0.57,
+    "reach_hunk": 0.79,
+    "reach_context": 0.68
+   },
+   {
+    "case_id": "youtube-dl/41/m0/test/test_utils.py::TestUtil::test_unified_dates",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.61,
+    "fails_context": 0.6,
+    "reach_hunk": 0.96,
+    "reach_context": 0.92
+   },
+   {
+    "case_id": "youtube-dl/41/m1/test/test_utils.py::TestUtil::test_unified_dates",
+    "killed": false,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.87,
+    "fails_context": 0.36,
+    "reach_hunk": 0.98,
+    "reach_context": 0.91
+   },
+   {
+    "case_id": "youtube-dl/41/m2/test/test_utils.py::TestUtil::test_unified_dates",
+    "killed": true,
+    "code": "whole file",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.57,
+    "fails_context": 0.4,
+    "reach_hunk": 0.96,
+    "reach_context": 0.92
+   },
+   {
+    "case_id": "youtube-dl/5/m2/test/test_utils.py::TestUtil::test_unified_timestamps",
+    "killed": true,
+    "code": "top-level block",
+    "test": "imports + test function",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.73,
+    "fails_context": 0.43,
+    "reach_hunk": 0.27,
+    "reach_context": 0.29
+   },
+   {
+    "case_id": "youtube-dl/7/m0/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+    "killed": true,
+    "code": "top-level block",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.76,
+    "fails_context": 0.77,
+    "reach_hunk": 0.85,
+    "reach_context": 0.86
+   },
+   {
+    "case_id": "youtube-dl/9/m3/test/test_YoutubeDL.py::TestFormatSelection::test_youtube_format_selection",
+    "killed": true,
+    "code": "innermost function",
+    "test": "whole file",
+    "covered": true,
+    "missing_same_file": [],
+    "missing_other_file": [],
+    "fails_hunk": 0.72,
+    "fails_context": 0.55,
+    "reach_hunk": 0.94,
+    "reach_context": 0.91
+   }
+  ]
+ },
+ "case_modes": {
+  "PySnooper/1/m0/tests/test_chinese.py::test_chinese": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "PySnooper/1/m1/tests/test_chinese.py::test_chinese": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "PySnooper/1/m2/tests/test_chinese.py::test_chinese": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "PySnooper/1/m3/tests/test_chinese.py::test_chinese": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/1/m0/tests/rules/test_pip_unknown_command.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/1/m1/tests/rules/test_pip_unknown_command.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/1/m2/tests/rules/test_pip_unknown_command.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/2/m0/tests/test_utils.py::test_get_all_executables_pathsep": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/22/m0/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_with_blank": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/24/m0/tests/test_types.py::TestCorrectedCommand::test_equality": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/24/m0/tests/test_types.py::TestCorrectedCommand::test_hashable": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/24/m0/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_remove_duplicates": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/24/m1/tests/test_types.py::TestCorrectedCommand::test_equality": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/24/m1/tests/test_types.py::TestCorrectedCommand::test_hashable": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/24/m1/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_realises_generator_only_on_demand": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/24/m1/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_remove_duplicates": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/24/m2/tests/test_types.py::TestCorrectedCommand::test_equality": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/24/m2/tests/test_types.py::TestCorrectedCommand::test_hashable": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/24/m2/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_realises_generator_only_on_demand": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/25/m0/tests/rules/test_mkdir_p.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/25/m2/tests/rules/test_mkdir_p.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/26/m0/tests/rules/test_vagrant_up.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/26/m1/tests/rules/test_vagrant_up.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/26/m2/tests/rules/test_vagrant_up.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/27/m1/tests/rules/test_open.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/27/m2/tests/rules/test_open.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/28/m0/tests/rules/test_fix_file.py::test_get_new_command_with_settings": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/28/m1/tests/rules/test_fix_file.py::test_get_new_command_with_settings": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/30/m0/tests/rules/test_fix_file.py::test_match": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/30/m0/tests/rules/test_fix_file.py::test_no_editor": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/30/m0/tests/rules/test_fix_file.py::test_not_file": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/30/m1/tests/rules/test_fix_file.py::test_match": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/30/m1/tests/rules/test_fix_file.py::test_no_editor": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/30/m1/tests/rules/test_fix_file.py::test_not_file": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/30/m2/tests/rules/test_fix_file.py::test_not_file": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/30/m3/tests/rules/test_fix_file.py::test_not_file": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/31/m0/tests/rules/test_git_diff_staged.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/31/m2/tests/rules/test_git_diff_staged.py::test_get_new_command": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/32/m1/tests/rules/test_ls_lah.py::test_match": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/32/m2/tests/rules/test_ls_lah.py::test_match": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "thefuck/32/m3/tests/rules/test_ls_lah.py::test_match": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "tqdm/2/m0/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "test": "imports + test function (file ~22900 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/2/m1/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "test": "imports + test function (file ~22900 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/2/m1/tqdm/tests/tests_tqdm.py::test_si_format": {
+   "test": "imports + test function (file ~22900 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/2/m3/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "test": "imports + test function (file ~22900 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/2/m3/tqdm/tests/tests_tqdm.py::test_si_format": {
+   "test": "imports + test function (file ~22900 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/3/m0/tqdm/tests/tests_tqdm.py::test_format_interval": {
+   "test": "imports + test function (file ~21226 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/3/m0/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "test": "imports + test function (file ~21226 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/3/m1/tqdm/tests/tests_tqdm.py::test_format_interval": {
+   "test": "imports + test function (file ~21226 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/3/m1/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "test": "imports + test function (file ~21226 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/3/m2/tqdm/tests/tests_tqdm.py::test_format_interval": {
+   "test": "imports + test function (file ~21226 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/3/m3/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "test": "imports + test function (file ~21226 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/4/m0/tqdm/tests/tests_tqdm.py::test_si_format": {
+   "test": "imports + test function (file ~20390 tokens > 12000)",
+   "code": "whole file"
+  },
+  "tqdm/9/m0/tqdm/tests/tests_tqdm.py::test_min_interval": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "tqdm/9/m0/tqdm/tests/tests_tqdm.py::test_min_iters": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "tqdm/9/m0/tqdm/tests/tests_tqdm.py::test_update": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "tqdm/9/m1/tqdm/tests/tests_tqdm.py::test_min_interval": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "tqdm/9/m2/tqdm/tests/tests_tqdm.py::test_min_interval": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "tqdm/9/m2/tqdm/tests/tests_tqdm.py::test_update": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "tqdm/9/m3/tqdm/tests/tests_tqdm.py::test_min_interval": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "tqdm/9/m3/tqdm/tests/tests_tqdm.py::test_min_iters": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "tqdm/9/m3/tqdm/tests/tests_tqdm.py::test_si_format": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "tqdm/9/m3/tqdm/tests/tests_tqdm.py::test_update": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/1/m3/test/test_utils.py::TestUtil::test_match_str": {
+   "test": "imports + test function (file ~22023 tokens > 12000)",
+   "code": "top-level block (file ~43083 tokens > room 26380)"
+  },
+  "youtube-dl/11/m0/test/test_utils.py::TestUtil::test_str_to_int": {
+   "test": "imports + test function (file ~23821 tokens > 12000)",
+   "code": "top-level block (file ~58597 tokens > room 27183)"
+  },
+  "youtube-dl/11/m2/test/test_utils.py::TestUtil::test_str_to_int": {
+   "test": "imports + test function (file ~23821 tokens > 12000)",
+   "code": "top-level block (file ~58594 tokens > room 27183)"
+  },
+  "youtube-dl/12/m0/test/test_YoutubeDL.py::TestFormatSelection::test_format_selection_string_ops": {
+   "test": "imports + test function (file ~12865 tokens > 12000)",
+   "code": "innermost function (file ~39374 tokens > room 26692)"
+  },
+  "youtube-dl/13/m1/test/test_utils.py::TestUtil::test_urljoin": {
+   "test": "imports + test function (file ~22689 tokens > 12000)",
+   "code": "top-level block (file ~44799 tokens > room 26627)"
+  },
+  "youtube-dl/14/m0/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters": {
+   "test": "whole file",
+   "code": "innermost function (file ~54761 tokens > room 20919)"
+  },
+  "youtube-dl/14/m3/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters": {
+   "test": "whole file",
+   "code": "innermost function (file ~54766 tokens > room 20919)"
+  },
+  "youtube-dl/17/m0/test/test_utils.py::TestUtil::test_cli_bool_option": {
+   "test": "imports + test function (file ~20895 tokens > 12000)",
+   "code": "top-level block (file ~42422 tokens > room 26768)"
+  },
+  "youtube-dl/17/m1/test/test_utils.py::TestUtil::test_cli_bool_option": {
+   "test": "imports + test function (file ~20895 tokens > 12000)",
+   "code": "top-level block (file ~42423 tokens > room 26768)"
+  },
+  "youtube-dl/17/m2/test/test_utils.py::TestUtil::test_cli_bool_option": {
+   "test": "imports + test function (file ~20895 tokens > 12000)",
+   "code": "top-level block (file ~42422 tokens > room 26768)"
+  },
+  "youtube-dl/18/m0/test/test_YoutubeDL.py::TestFormatSelection::test_invalid_format_specs": {
+   "test": "whole file",
+   "code": "innermost function (file ~38367 tokens > room 16747)"
+  },
+  "youtube-dl/18/m0/test/test_YoutubeDL.py::TestFormatSelection::test_prefer_free_formats": {
+   "test": "whole file",
+   "code": "innermost function (file ~38367 tokens > room 16747)"
+  },
+  "youtube-dl/18/m0/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent": {
+   "test": "whole file",
+   "code": "innermost function (file ~38367 tokens > room 16747)"
+  },
+  "youtube-dl/18/m2/test/test_YoutubeDL.py::TestFormatSelection::test_format_not_available": {
+   "test": "whole file",
+   "code": "innermost function (file ~38366 tokens > room 16747)"
+  },
+  "youtube-dl/18/m2/test/test_YoutubeDL.py::TestFormatSelection::test_prefer_free_formats": {
+   "test": "whole file",
+   "code": "innermost function (file ~38366 tokens > room 16747)"
+  },
+  "youtube-dl/18/m2/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent": {
+   "test": "whole file",
+   "code": "innermost function (file ~38366 tokens > room 16747)"
+  },
+  "youtube-dl/18/m3/test/test_YoutubeDL.py::TestFormatSelection::test_format_not_available": {
+   "test": "whole file",
+   "code": "innermost function (file ~38367 tokens > room 16747)"
+  },
+  "youtube-dl/18/m3/test/test_YoutubeDL.py::TestFormatSelection::test_invalid_format_specs": {
+   "test": "whole file",
+   "code": "innermost function (file ~38367 tokens > room 16747)"
+  },
+  "youtube-dl/18/m3/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent": {
+   "test": "whole file",
+   "code": "innermost function (file ~38367 tokens > room 16747)"
+  },
+  "youtube-dl/19/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_prepare_filename": {
+   "test": "whole file",
+   "code": "innermost function (file ~38350 tokens > room 16837)"
+  },
+  "youtube-dl/19/m3/test/test_YoutubeDL.py::TestYoutubeDL::test_prepare_filename": {
+   "test": "whole file",
+   "code": "innermost function (file ~38351 tokens > room 16837)"
+  },
+  "youtube-dl/21/m2/test/test_utils.py::TestUtil::test_urljoin": {
+   "test": "imports + test function (file ~19352 tokens > 12000)",
+   "code": "top-level block (file ~40190 tokens > room 26751)"
+  },
+  "youtube-dl/21/m3/test/test_utils.py::TestUtil::test_urljoin": {
+   "test": "imports + test function (file ~19352 tokens > 12000)",
+   "code": "top-level block (file ~40182 tokens > room 26751)"
+  },
+  "youtube-dl/22/m0/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter": {
+   "test": "whole file",
+   "code": "top-level block (file ~36272 tokens > room 17324)"
+  },
+  "youtube-dl/22/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter": {
+   "test": "whole file",
+   "code": "top-level block (file ~36275 tokens > room 17324)"
+  },
+  "youtube-dl/22/m3/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter": {
+   "test": "whole file",
+   "code": "top-level block (file ~36279 tokens > room 17324)"
+  },
+  "youtube-dl/23/m2/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "test": "imports + test function (file ~18305 tokens > 12000)",
+   "code": "top-level block (file ~35812 tokens > room 26849)"
+  },
+  "youtube-dl/23/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "test": "imports + test function (file ~18305 tokens > 12000)",
+   "code": "top-level block (file ~35815 tokens > room 26849)"
+  },
+  "youtube-dl/24/m2/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter": {
+   "test": "whole file",
+   "code": "top-level block (file ~35559 tokens > room 17613)"
+  },
+  "youtube-dl/24/m3/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter": {
+   "test": "whole file",
+   "code": "top-level block (file ~35559 tokens > room 17613)"
+  },
+  "youtube-dl/25/m1/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "test": "imports + test function (file ~17138 tokens > 12000)",
+   "code": "top-level block (file ~33494 tokens > room 26872)"
+  },
+  "youtube-dl/25/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "test": "imports + test function (file ~17138 tokens > 12000)",
+   "code": "top-level block (file ~33494 tokens > room 26872)"
+  },
+  "youtube-dl/27/m2/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr": {
+   "test": "imports + test function (file ~12152 tokens > 12000)",
+   "code": "top-level block (file ~27887 tokens > room 27358)"
+  },
+  "youtube-dl/27/m3/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr": {
+   "test": "imports + test function (file ~12152 tokens > 12000)",
+   "code": "top-level block (file ~27887 tokens > room 27358)"
+  },
+  "youtube-dl/28/m0/test/test_utils.py::TestUtil::test_unescape_html": {
+   "test": "whole file",
+   "code": "top-level block (file ~27390 tokens > room 16281)"
+  },
+  "youtube-dl/29/m0/test/test_utils.py::TestUtil::test_unified_dates": {
+   "test": "whole file",
+   "code": "top-level block (file ~27354 tokens > room 16303)"
+  },
+  "youtube-dl/29/m1/test/test_utils.py::TestUtil::test_unified_dates": {
+   "test": "whole file",
+   "code": "top-level block (file ~27357 tokens > room 16303)"
+  },
+  "youtube-dl/29/m2/test/test_utils.py::TestUtil::test_unified_dates": {
+   "test": "whole file",
+   "code": "top-level block (file ~27348 tokens > room 16303)"
+  },
+  "youtube-dl/3/m1/test/test_utils.py::TestUtil::test_unescape_html": {
+   "test": "imports + test function (file ~20916 tokens > 12000)",
+   "code": "top-level block (file ~42421 tokens > room 27144)"
+  },
+  "youtube-dl/30/m1/test/test_YoutubeDL.py::TestFormatSelection::test_format_filtering": {
+   "test": "whole file",
+   "code": "innermost function (file ~32329 tokens > room 19489)"
+  },
+  "youtube-dl/31/m0/test/test_utils.py::TestUtil::test_parse_duration": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/31/m1/test/test_utils.py::TestUtil::test_parse_duration": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/31/m3/test/test_utils.py::TestUtil::test_parse_duration": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/32/m1/test/test_utils.py::TestUtil::test_strip_jsonp": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/33/m0/test/test_utils.py::TestUtil::test_parse_iso8601": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/33/m1/test/test_utils.py::TestUtil::test_parse_iso8601": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/34/m0/test/test_utils.py::TestUtil::test_js_to_json": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/34/m1/test/test_utils.py::TestUtil::test_js_to_json": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/35/m0/test/test_utils.py::TestUtil::test_unified_dates": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/35/m1/test/test_utils.py::TestUtil::test_unified_dates": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/37/m0/test/test_utils.py::TestUtil::test_uppercase_escpae": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/37/m2/test/test_utils.py::TestUtil::test_uppercase_escpae": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/38/m0/test/test_utils.py::TestUtil::test_urlencode_postdata": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/38/m1/test/test_utils.py::TestUtil::test_urlencode_postdata": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/38/m2/test/test_utils.py::TestUtil::test_urlencode_postdata": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/38/m3/test/test_utils.py::TestUtil::test_urlencode_postdata": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/39/m0/test/test_utils.py::TestUtil::test_limit_length": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/39/m2/test/test_utils.py::TestUtil::test_limit_length": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/39/m3/test/test_utils.py::TestUtil::test_limit_length": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/4/m1/test/test_jsinterp.py::TestJSInterpreter::test_call": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/4/m2/test/test_jsinterp.py::TestJSInterpreter::test_call": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/40/m0/test/test_utils.py::TestUtil::test_struct_unpack": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/40/m2/test/test_utils.py::TestUtil::test_struct_unpack": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/41/m0/test/test_utils.py::TestUtil::test_unified_dates": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/41/m1/test/test_utils.py::TestUtil::test_unified_dates": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/41/m2/test/test_utils.py::TestUtil::test_unified_dates": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/42/m2/test/test_utils.py::TestUtil::test_fix_xml_ampersands": {
+   "test": "whole file",
+   "code": "whole file"
+  },
+  "youtube-dl/5/m0/test/test_utils.py::TestUtil::test_unified_timestamps": {
+   "test": "imports + test function (file ~16767 tokens > 12000)",
+   "code": "top-level block (file ~32288 tokens > room 26974)"
+  },
+  "youtube-dl/5/m2/test/test_utils.py::TestUtil::test_unified_timestamps": {
+   "test": "imports + test function (file ~16767 tokens > 12000)",
+   "code": "top-level block (file ~32286 tokens > room 26974)"
+  },
+  "youtube-dl/5/m3/test/test_utils.py::TestUtil::test_unified_timestamps": {
+   "test": "imports + test function (file ~16767 tokens > 12000)",
+   "code": "top-level block (file ~32271 tokens > room 26974)"
+  },
+  "youtube-dl/6/m0/test/test_utils.py::TestUtil::test_dfxp2srt": {
+   "test": "imports + test function (file ~12128 tokens > 12000)",
+   "code": "top-level block (file ~27877 tokens > room 26936)"
+  },
+  "youtube-dl/6/m0/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr": {
+   "test": "imports + test function (file ~12128 tokens > 12000)",
+   "code": "top-level block (file ~27877 tokens > room 27384)"
+  },
+  "youtube-dl/7/m0/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "test": "whole file",
+   "code": "top-level block (file ~27485 tokens > room 16586)"
+  },
+  "youtube-dl/9/m3/test/test_YoutubeDL.py::TestFormatSelection::test_youtube_format_selection": {
+   "test": "whole file",
+   "code": "innermost function (file ~32308 tokens > room 19710)"
+  }
+ }
+}

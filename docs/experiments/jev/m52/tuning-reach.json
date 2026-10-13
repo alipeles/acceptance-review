@@ -1,0 +1,132 @@
+{
+ "cases": 137,
+ "minimal": {
+  "killed": {
+   "n": 79,
+   "mean": 0.807,
+   "at_or_above_0.5": 71
+  },
+  "run-no-change": {
+   "n": 5,
+   "mean": 0.91,
+   "at_or_above_0.5": 5
+  },
+  "never-run": {
+   "n": 11,
+   "mean": 0.392,
+   "at_or_above_0.5": 4
+  },
+  "unlabelled-survivor": {
+   "n": 42,
+   "mean": 0.259,
+   "at_or_above_0.5": 5
+  },
+  "labelled": {
+   "n": 95,
+   "auc": 0.906,
+   "accuracy_at_0.5": 0.874,
+   "never_run_below_0.5": 7,
+   "reached_at_or_above_0.5": 76
+  },
+  "never_run_below_lowest_reached": 5
+ },
+ "earlier": {
+  "killed": {
+   "n": 79,
+   "mean": 0.796,
+   "at_or_above_0.5": 77
+  },
+  "run-no-change": {
+   "n": 5,
+   "mean": 0.778,
+   "at_or_above_0.5": 4
+  },
+  "never-run": {
+   "n": 11,
+   "mean": 0.633,
+   "at_or_above_0.5": 8
+  },
+  "unlabelled-survivor": {
+   "n": 42,
+   "mean": 0.22,
+   "at_or_above_0.5": 6
+  },
+  "labelled": {
+   "n": 95,
+   "auc": 0.753,
+   "accuracy_at_0.5": 0.884,
+   "never_run_below_0.5": 3,
+   "reached_at_or_above_0.5": 81
+  },
+  "never_run_below_lowest_reached": 1
+ },
+ "minimal_mean_input_tokens": 876,
+ "never_run": {
+  "PySnooper/1/m1/tests/test_chinese.py::test_chinese": {
+   "minimal": 0.84,
+   "earlier": 0.83
+  },
+  "thefuck/24/m0/tests/test_types.py::TestCorrectedCommand::test_equality": {
+   "minimal": 0.14,
+   "earlier": 0.65
+  },
+  "thefuck/24/m0/tests/test_types.py::TestCorrectedCommand::test_hashable": {
+   "minimal": 0.29,
+   "earlier": 0.46
+  },
+  "thefuck/24/m1/tests/test_types.py::TestCorrectedCommand::test_equality": {
+   "minimal": 0.4,
+   "earlier": 0.58
+  },
+  "thefuck/30/m2/tests/rules/test_fix_file.py::test_not_file": {
+   "minimal": 0.1,
+   "earlier": 0.83
+  },
+  "tqdm/2/m0/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "minimal": 0.82,
+   "earlier": 0.73
+  },
+  "tqdm/2/m1/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "minimal": 0.56,
+   "earlier": 0.85
+  },
+  "youtube-dl/14/m0/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters": {
+   "minimal": 0.18,
+   "earlier": 0.77
+  },
+  "youtube-dl/14/m3/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters": {
+   "minimal": 0.25,
+   "earlier": 0.74
+  },
+  "youtube-dl/25/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "minimal": 0.54,
+   "earlier": 0.47
+  },
+  "youtube-dl/39/m0/test/test_utils.py::TestUtil::test_limit_length": {
+   "minimal": 0.19,
+   "earlier": 0.05
+  }
+ },
+ "run_no_change": {
+  "PySnooper/1/m0/tests/test_chinese.py::test_chinese": {
+   "minimal": 0.84,
+   "earlier": 0.44
+  },
+  "thefuck/30/m0/tests/rules/test_fix_file.py::test_not_file": {
+   "minimal": 0.95,
+   "earlier": 0.77
+  },
+  "youtube-dl/19/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_prepare_filename": {
+   "minimal": 0.92,
+   "earlier": 0.84
+  },
+  "youtube-dl/21/m3/test/test_utils.py::TestUtil::test_urljoin": {
+   "minimal": 0.86,
+   "earlier": 0.92
+  },
+  "youtube-dl/41/m1/test/test_utils.py::TestUtil::test_unified_dates": {
+   "minimal": 0.98,
+   "earlier": 0.92
+  }
+ }
+}

@@ -1,0 +1,971 @@
+{
+ "held_out_cases": 92,
+ "usable": 92,
+ "unbuildable": 0,
+ "killed": 53,
+ "survived": 39,
+ "jev_requests_failed": {
+  "targeted": 0,
+  "hunk": 0
+ },
+ "designs": {
+  "A": {
+   "accuracy": 0.663,
+   "accuracy_95pct_interval": [
+    0.562,
+    0.751
+   ],
+   "false_fails": 8,
+   "missed_kills": 23,
+   "no_verdict": 0
+  },
+  "opus": {
+   "accuracy": 0.946,
+   "accuracy_95pct_interval": [
+    0.879,
+    0.977
+   ],
+   "false_fails": 4,
+   "missed_kills": 1,
+   "no_verdict": 0,
+   "cost_per_case": 0.0496
+  },
+  "jev_targeted": {
+   "accuracy": 0.804,
+   "accuracy_95pct_interval": [
+    0.712,
+    0.873
+   ],
+   "false_fails": 7,
+   "missed_kills": 11,
+   "no_verdict": 0,
+   "cost_per_case": 0.0001
+  },
+  "jev_then_opus/targeted/0.978": {
+   "rule": {
+    "reach_cut": 0.0,
+    "lo": 0.14,
+    "hi": 0.8
+   },
+   "tuning": {
+    "accuracy": 0.978,
+    "cost_per_case": 0.0261,
+    "escalated_share": 0.518
+   },
+   "held_out": {
+    "accuracy": 0.935,
+    "accuracy_95pct_interval": [
+     0.865,
+     0.97
+    ],
+    "false_fails": 5,
+    "missed_kills": 1,
+    "no_verdict": 0,
+    "cost_per_case": 0.0274,
+    "escalated_share": 0.522
+   }
+  },
+  "jev_then_opus/targeted/0.95": {
+   "rule": {
+    "reach_cut": 0.25,
+    "lo": 0.14,
+    "hi": 0.48
+   },
+   "tuning": {
+    "accuracy": 0.956,
+    "cost_per_case": 0.0106,
+    "escalated_share": 0.197
+   },
+   "held_out": {
+    "accuracy": 0.902,
+    "accuracy_95pct_interval": [
+     0.824,
+     0.948
+    ],
+    "false_fails": 8,
+    "missed_kills": 1,
+    "no_verdict": 0,
+    "cost_per_case": 0.0081,
+    "escalated_share": 0.141
+   }
+  },
+  "jev_then_opus/hunk/0.978": {
+   "rule": {
+    "reach_cut": 0.2,
+    "lo": 0.16,
+    "hi": 0.9
+   },
+   "tuning": {
+    "accuracy": 0.978,
+    "cost_per_case": 0.0279,
+    "escalated_share": 0.555
+   },
+   "held_out": {
+    "accuracy": 0.935,
+    "accuracy_95pct_interval": [
+     0.865,
+     0.97
+    ],
+    "false_fails": 5,
+    "missed_kills": 1,
+    "no_verdict": 0,
+    "cost_per_case": 0.0294,
+    "escalated_share": 0.565
+   }
+  },
+  "jev_then_opus/hunk/0.95": {
+   "rule": {
+    "reach_cut": 0.2,
+    "lo": 0.16,
+    "hi": 0.8
+   },
+   "tuning": {
+    "accuracy": 0.956,
+    "cost_per_case": 0.0195,
+    "escalated_share": 0.38
+   },
+   "held_out": {
+    "accuracy": 0.935,
+    "accuracy_95pct_interval": [
+     0.865,
+     0.97
+    ],
+    "false_fails": 5,
+    "missed_kills": 1,
+    "no_verdict": 0,
+    "cost_per_case": 0.0242,
+    "escalated_share": 0.457
+   }
+  }
+ },
+ "per_case": {
+  "thefuck/2/m0/tests/test_utils.py::test_get_all_executables": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": true,
+   "opus": false
+  },
+  "thefuck/22/m1/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_with_blank": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "thefuck/24/m0/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_realises_generator_only_on_demand": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "thefuck/24/m2/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_remove_duplicates": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "thefuck/24/m3/tests/test_types.py::TestCorrectedCommand::test_equality": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "thefuck/24/m3/tests/test_types.py::TestCorrectedCommand::test_hashable": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "thefuck/24/m3/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_realises_generator_only_on_demand": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "thefuck/24/m3/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_remove_duplicates": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "thefuck/25/m1/tests/rules/test_mkdir_p.py::test_get_new_command": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "thefuck/26/m3/tests/rules/test_vagrant_up.py::test_get_new_command": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "thefuck/27/m0/tests/rules/test_open.py::test_get_new_command": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "thefuck/28/m2/tests/rules/test_fix_file.py::test_get_new_command_with_settings": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "thefuck/30/m2/tests/rules/test_fix_file.py::test_match": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": true,
+   "opus": false
+  },
+  "thefuck/30/m2/tests/rules/test_fix_file.py::test_no_editor": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "thefuck/30/m3/tests/rules/test_fix_file.py::test_match": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "thefuck/30/m3/tests/rules/test_fix_file.py::test_no_editor": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "thefuck/31/m1/tests/rules/test_git_diff_staged.py::test_get_new_command": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "thefuck/32/m0/tests/rules/test_ls_lah.py::test_match": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "tqdm/2/m0/tqdm/tests/tests_tqdm.py::test_si_format": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "tqdm/2/m2/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": true,
+   "opus": false
+  },
+  "tqdm/2/m2/tqdm/tests/tests_tqdm.py::test_si_format": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "tqdm/3/m2/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "tqdm/3/m3/tqdm/tests/tests_tqdm.py::test_format_interval": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "tqdm/4/m0/tqdm/tests/tests_tqdm.py::test_ansi_escape_codes": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": true,
+   "opus": false
+  },
+  "tqdm/4/m0/tqdm/tests/tests_tqdm.py::test_format_meter": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": true,
+   "opus": false
+  },
+  "tqdm/9/m0/tqdm/tests/tests_tqdm.py::test_si_format": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "tqdm/9/m1/tqdm/tests/tests_tqdm.py::test_min_iters": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "tqdm/9/m1/tqdm/tests/tests_tqdm.py::test_si_format": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "tqdm/9/m1/tqdm/tests/tests_tqdm.py::test_update": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "tqdm/9/m2/tqdm/tests/tests_tqdm.py::test_min_iters": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "tqdm/9/m2/tqdm/tests/tests_tqdm.py::test_si_format": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/1/m0/test/test_utils.py::TestUtil::test_match_str": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/1/m1/test/test_utils.py::TestUtil::test_match_str": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/1/m2/test/test_utils.py::TestUtil::test_match_str": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/11/m1/test/test_utils.py::TestUtil::test_str_to_int": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/13/m0/test/test_utils.py::TestUtil::test_urljoin": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/14/m1/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": true,
+   "opus": false
+  },
+  "youtube-dl/14/m2/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/16/m0/test/test_utils.py::TestUtil::test_dfxp2srt": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/18/m0/test/test_YoutubeDL.py::TestFormatSelection::test_format_not_available": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/18/m1/test/test_YoutubeDL.py::TestFormatSelection::test_format_not_available": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/18/m1/test/test_YoutubeDL.py::TestFormatSelection::test_invalid_format_specs": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/18/m1/test/test_YoutubeDL.py::TestFormatSelection::test_prefer_free_formats": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/18/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/18/m2/test/test_YoutubeDL.py::TestFormatSelection::test_invalid_format_specs": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/18/m3/test/test_YoutubeDL.py::TestFormatSelection::test_prefer_free_formats": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/19/m0/test/test_YoutubeDL.py::TestYoutubeDL::test_prepare_filename": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/19/m2/test/test_YoutubeDL.py::TestYoutubeDL::test_prepare_filename": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/21/m0/test/test_utils.py::TestUtil::test_urljoin": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/21/m1/test/test_utils.py::TestUtil::test_urljoin": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/22/m2/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/23/m0/test/test_utils.py::TestUtil::test_js_to_json_edgecases": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/23/m0/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/23/m1/test/test_utils.py::TestUtil::test_js_to_json_edgecases": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/23/m1/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/23/m2/test/test_utils.py::TestUtil::test_js_to_json_edgecases": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/23/m3/test/test_utils.py::TestUtil::test_js_to_json_edgecases": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/24/m0/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/24/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/25/m0/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/25/m2/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/27/m0/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/27/m1/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/3/m0/test/test_utils.py::TestUtil::test_unescape_html": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/30/m0/test/test_YoutubeDL.py::TestFormatSelection::test_format_filtering": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/31/m2/test/test_utils.py::TestUtil::test_parse_duration": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/32/m0/test/test_utils.py::TestUtil::test_strip_jsonp": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/33/m2/test/test_utils.py::TestUtil::test_parse_iso8601": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/35/m2/test/test_utils.py::TestUtil::test_unified_dates": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/35/m3/test/test_utils.py::TestUtil::test_unified_dates": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/37/m1/test/test_utils.py::TestUtil::test_uppercase_escpae": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/4/m0/test/test_jsinterp.py::TestJSInterpreter::test_call": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/4/m3/test/test_jsinterp.py::TestJSInterpreter::test_call": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/40/m1/test/test_utils.py::TestUtil::test_struct_unpack": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/40/m3/test/test_utils.py::TestUtil::test_struct_unpack": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/42/m0/test/test_utils.py::TestUtil::test_fix_xml_ampersands": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/42/m1/test/test_utils.py::TestUtil::test_fix_xml_ampersands": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/42/m3/test/test_utils.py::TestUtil::test_fix_xml_ampersands": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/43/m0/test/test_utils.py::TestUtil::test_url_basename": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/5/m1/test/test_utils.py::TestUtil::test_unified_timestamps": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/6/m1/test/test_utils.py::TestUtil::test_dfxp2srt": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/6/m1/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/6/m2/test/test_utils.py::TestUtil::test_dfxp2srt": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/6/m2/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/6/m3/test/test_utils.py::TestUtil::test_dfxp2srt": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": true,
+   "opus": true
+  },
+  "youtube-dl/6/m3/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": false,
+   "jev_then_opus/targeted/0.95": false,
+   "jev_then_opus/hunk/0.978": false,
+   "jev_then_opus/hunk/0.95": false,
+   "A": false,
+   "opus": false
+  },
+  "youtube-dl/7/m1/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/7/m2/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "killed": false,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/7/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/9/m0/test/test_YoutubeDL.py::TestFormatSelection::test_youtube_format_selection": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/9/m1/test/test_YoutubeDL.py::TestFormatSelection::test_youtube_format_selection": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  },
+  "youtube-dl/9/m2/test/test_YoutubeDL.py::TestFormatSelection::test_youtube_format_selection": {
+   "killed": true,
+   "jev_then_opus/targeted/0.978": true,
+   "jev_then_opus/targeted/0.95": true,
+   "jev_then_opus/hunk/0.978": true,
+   "jev_then_opus/hunk/0.95": true,
+   "A": false,
+   "opus": true
+  }
+ }
+}

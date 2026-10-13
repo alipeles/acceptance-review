@@ -1,0 +1,642 @@
+{
+ "model": "claude-opus-5-5",
+ "cases": 49,
+ "no_verdict": 0,
+ "summary": {
+  "all": {
+   "jev": {
+    "n": 49,
+    "correct": 32
+   },
+   "a": {
+    "n": 49,
+    "correct": 22
+   },
+   "agent": {
+    "n": 49,
+    "correct": 49
+   }
+  },
+  "escalated": {
+   "jev": {
+    "n": 43,
+    "correct": 32
+   },
+   "a": {
+    "n": 43,
+    "correct": 20
+   },
+   "agent": {
+    "n": 43,
+    "correct": 43
+   }
+  },
+  "jev-confident-wrong": {
+   "jev": {
+    "n": 6,
+    "correct": 0
+   },
+   "a": {
+    "n": 6,
+    "correct": 2
+   },
+   "agent": {
+    "n": 6,
+    "correct": 6
+   }
+  }
+ },
+ "total_cost_usd": 6.25,
+ "mean_cost_usd": 0.127,
+ "mean_elapsed_s": 14.4,
+ "rows": [
+  {
+   "case_id": "PySnooper/1/m0/tests/test_chinese.py::test_chinese",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.66,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.04,
+   "cost_usd": 0.4354682,
+   "elapsed_s": 14.2,
+   "turns": 4
+  },
+  {
+   "case_id": "PySnooper/1/m1/tests/test_chinese.py::test_chinese",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.75,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.02,
+   "cost_usd": 0.09595240000000001,
+   "elapsed_s": 13.8,
+   "turns": 4
+  },
+  {
+   "case_id": "PySnooper/1/m2/tests/test_chinese.py::test_chinese",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.83,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.10310520000000001,
+   "elapsed_s": 14.8,
+   "turns": 4
+  },
+  {
+   "case_id": "PySnooper/1/m3/tests/test_chinese.py::test_chinese",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.58,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.10232859999999999,
+   "elapsed_s": 14.5,
+   "turns": 4
+  },
+  {
+   "case_id": "thefuck/2/m0/tests/test_utils.py::test_get_all_executables_pathsep",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.79,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.07452919999999999,
+   "elapsed_s": 13.6,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/22/m0/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_with_blank",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.69,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.0829386,
+   "elapsed_s": 12.2,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/24/m0/tests/test_types.py::TestCorrectedCommand::test_equality",
+   "group": "jev-confident-wrong",
+   "killed": false,
+   "jev_p": 0.92,
+   "a": true,
+   "agent": false,
+   "agent_p": 0.02,
+   "cost_usd": 0.0692172,
+   "elapsed_s": 9.9,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/24/m0/tests/test_types.py::TestCorrectedCommand::test_hashable",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.73,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.02,
+   "cost_usd": 0.1022778,
+   "elapsed_s": 17.5,
+   "turns": 5
+  },
+  {
+   "case_id": "thefuck/24/m0/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_remove_duplicates",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.72,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.9,
+   "cost_usd": 0.119806,
+   "elapsed_s": 22.5,
+   "turns": 6
+  },
+  {
+   "case_id": "thefuck/24/m1/tests/test_types.py::TestCorrectedCommand::test_equality",
+   "group": "jev-confident-wrong",
+   "killed": false,
+   "jev_p": 0.85,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.02,
+   "cost_usd": 0.06852,
+   "elapsed_s": 12.0,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/24/m2/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_realises_generator_only_on_demand",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.79,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.10006559999999998,
+   "elapsed_s": 13.6,
+   "turns": 5
+  },
+  {
+   "case_id": "thefuck/28/m0/tests/rules/test_fix_file.py::test_get_new_command_with_settings",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.75,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.09909099999999998,
+   "elapsed_s": 10.6,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/28/m1/tests/rules/test_fix_file.py::test_get_new_command_with_settings",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.75,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.09881000000000001,
+   "elapsed_s": 16.1,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/30/m0/tests/rules/test_fix_file.py::test_match",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.69,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.08305760000000001,
+   "elapsed_s": 7.9,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/30/m0/tests/rules/test_fix_file.py::test_no_editor",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.66,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.0725134,
+   "elapsed_s": 10.6,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/30/m0/tests/rules/test_fix_file.py::test_not_file",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.54,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.02,
+   "cost_usd": 0.085374,
+   "elapsed_s": 8.9,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/30/m1/tests/rules/test_fix_file.py::test_match",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.64,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.08437919999999999,
+   "elapsed_s": 9.5,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/30/m1/tests/rules/test_fix_file.py::test_no_editor",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.68,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.42289340000000003,
+   "elapsed_s": 11.6,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/30/m2/tests/rules/test_fix_file.py::test_not_file",
+   "group": "jev-confident-wrong",
+   "killed": false,
+   "jev_p": 0.9,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.02,
+   "cost_usd": 0.085029,
+   "elapsed_s": 9.9,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/30/m3/tests/rules/test_fix_file.py::test_not_file",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.76,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.4248218,
+   "elapsed_s": 14.0,
+   "turns": 3
+  },
+  {
+   "case_id": "thefuck/32/m1/tests/rules/test_ls_lah.py::test_match",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.62,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.060053,
+   "elapsed_s": 9.0,
+   "turns": 3
+  },
+  {
+   "case_id": "tqdm/2/m0/tqdm/tests/tests_tqdm.py::test_format_meter",
+   "group": "jev-confident-wrong",
+   "killed": false,
+   "jev_p": 0.87,
+   "a": true,
+   "agent": false,
+   "agent_p": 0.02,
+   "cost_usd": 0.11119060000000001,
+   "elapsed_s": 11.6,
+   "turns": 4
+  },
+  {
+   "case_id": "tqdm/2/m1/tqdm/tests/tests_tqdm.py::test_format_meter",
+   "group": "jev-confident-wrong",
+   "killed": false,
+   "jev_p": 0.96,
+   "a": true,
+   "agent": false,
+   "agent_p": 0.04,
+   "cost_usd": 0.1435314,
+   "elapsed_s": 33.3,
+   "turns": 5
+  },
+  {
+   "case_id": "youtube-dl/14/m0/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.71,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.01,
+   "cost_usd": 0.1512948,
+   "elapsed_s": 15.1,
+   "turns": 4
+  },
+  {
+   "case_id": "youtube-dl/14/m3/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.83,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.01,
+   "cost_usd": 0.47440979999999994,
+   "elapsed_s": 10.1,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/18/m0/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.53,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.97,
+   "cost_usd": 0.46020859999999997,
+   "elapsed_s": 23.3,
+   "turns": 4
+  },
+  {
+   "case_id": "youtube-dl/18/m2/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.75,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.132182,
+   "elapsed_s": 24.4,
+   "turns": 5
+  },
+  {
+   "case_id": "youtube-dl/18/m3/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent",
+   "group": "jev-confident-wrong",
+   "killed": true,
+   "jev_p": 0.47,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.97,
+   "cost_usd": 0.16987460000000001,
+   "elapsed_s": 20.9,
+   "turns": 6
+  },
+  {
+   "case_id": "youtube-dl/19/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_prepare_filename",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.66,
+   "a": true,
+   "agent": false,
+   "agent_p": 0.02,
+   "cost_usd": 0.0752688,
+   "elapsed_s": 9.8,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/21/m3/test/test_utils.py::TestUtil::test_urljoin",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.74,
+   "a": true,
+   "agent": false,
+   "agent_p": 0.02,
+   "cost_usd": 0.0737978,
+   "elapsed_s": 12.9,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/22/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.77,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.083374,
+   "elapsed_s": 12.9,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/23/m2/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.53,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.0775532,
+   "elapsed_s": 11.1,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/23/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.8,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.0755306,
+   "elapsed_s": 8.2,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/24/m2/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.78,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.0929562,
+   "elapsed_s": 13.0,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/24/m3/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.83,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.088703,
+   "elapsed_s": 13.6,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/25/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.64,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.03,
+   "cost_usd": 0.087098,
+   "elapsed_s": 15.0,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/27/m3/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.68,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.0649286,
+   "elapsed_s": 9.6,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/3/m1/test/test_utils.py::TestUtil::test_unescape_html",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.72,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.0651804,
+   "elapsed_s": 12.7,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/30/m1/test/test_YoutubeDL.py::TestFormatSelection::test_format_filtering",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.74,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.10253340000000001,
+   "elapsed_s": 22.3,
+   "turns": 4
+  },
+  {
+   "case_id": "youtube-dl/33/m1/test/test_utils.py::TestUtil::test_parse_iso8601",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.79,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.06931280000000001,
+   "elapsed_s": 12.9,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/39/m0/test/test_utils.py::TestUtil::test_limit_length",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.52,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.0,
+   "cost_usd": 0.0564372,
+   "elapsed_s": 9.5,
+   "turns": 2
+  },
+  {
+   "case_id": "youtube-dl/4/m1/test/test_jsinterp.py::TestJSInterpreter::test_call",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.78,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.068706,
+   "elapsed_s": 16.3,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/4/m2/test/test_jsinterp.py::TestJSInterpreter::test_call",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.8,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.066562,
+   "elapsed_s": 12.7,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/41/m0/test/test_utils.py::TestUtil::test_unified_dates",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.79,
+   "a": false,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.0918362,
+   "elapsed_s": 16.4,
+   "turns": 4
+  },
+  {
+   "case_id": "youtube-dl/41/m1/test/test_utils.py::TestUtil::test_unified_dates",
+   "group": "escalated",
+   "killed": false,
+   "jev_p": 0.83,
+   "a": false,
+   "agent": false,
+   "agent_p": 0.02,
+   "cost_usd": 0.068601,
+   "elapsed_s": 10.1,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/41/m2/test/test_utils.py::TestUtil::test_unified_dates",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.58,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.97,
+   "cost_usd": 0.10750699999999999,
+   "elapsed_s": 27.3,
+   "turns": 6
+  },
+  {
+   "case_id": "youtube-dl/5/m2/test/test_utils.py::TestUtil::test_unified_timestamps",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.82,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.98,
+   "cost_usd": 0.11093240000000001,
+   "elapsed_s": 20.4,
+   "turns": 4
+  },
+  {
+   "case_id": "youtube-dl/7/m0/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.74,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.99,
+   "cost_usd": 0.0730974,
+   "elapsed_s": 10.9,
+   "turns": 3
+  },
+  {
+   "case_id": "youtube-dl/9/m3/test/test_YoutubeDL.py::TestFormatSelection::test_youtube_format_selection",
+   "group": "escalated",
+   "killed": true,
+   "jev_p": 0.75,
+   "a": true,
+   "agent": true,
+   "agent_p": 0.97,
+   "cost_usd": 0.1322468,
+   "elapsed_s": 20.3,
+   "turns": 4
+  }
+ ]
+}

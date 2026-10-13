@@ -1,0 +1,64 @@
+{
+ "cases": 137,
+ "threshold": 0.85,
+ "hinted_cases": 49,
+ "hinted_killed": 43,
+ "variants": {
+  "framed+mutant": {
+   "n": 137,
+   "accuracy": 0.876,
+   "brier": 0.102,
+   "log_loss": 0.342,
+   "auc": 0.929,
+   "mean_p_killed": 0.748,
+   "mean_p_survived": 0.225,
+   "ece": 0.102,
+   "false_fails": 8,
+   "missed_kills": 9,
+   "of_16_false_positives_below_0.5": 9,
+   "on_hinted_cases": {
+    "missed_kills": 4,
+    "false_fails": 4
+   },
+   "clears_survivors": {
+    "lowest_kill_p": 0.18,
+    "survivors_cleared": 39,
+    "survivors_total": 58
+   },
+   "survivors_cleared_then_opus": {
+    "lo": 0.16999999999999998,
+    "accuracy": 0.978,
+    "escalated_share": 0.723,
+    "cost_per_case": 0.0353
+   }
+  },
+  "with reach hint": {
+   "n": 137,
+   "accuracy": 0.861,
+   "brier": 0.102,
+   "log_loss": 0.338,
+   "auc": 0.935,
+   "mean_p_killed": 0.745,
+   "mean_p_survived": 0.22,
+   "ece": 0.117,
+   "false_fails": 8,
+   "missed_kills": 11,
+   "of_16_false_positives_below_0.5": 8,
+   "on_hinted_cases": {
+    "missed_kills": 6,
+    "false_fails": 4
+   },
+   "clears_survivors": {
+    "lowest_kill_p": 0.2,
+    "survivors_cleared": 42,
+    "survivors_total": 58
+   },
+   "survivors_cleared_then_opus": {
+    "lo": 0.19,
+    "accuracy": 0.978,
+    "escalated_share": 0.693,
+    "cost_per_case": 0.0341
+   }
+  }
+ }
+}

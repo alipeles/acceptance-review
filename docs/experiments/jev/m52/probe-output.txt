@@ -1,0 +1,10 @@
+== text
+content: 'yes'  finish: length
+       'yes'   -0.0789  top=[('yes', -0.0789), ('no', -2.5789)]
+== schema
+content: '{"fails":true}'  finish: stop
+        '{"'   -0.0001  top=[('{"', -0.0001)]
+     'fails'   -0.0003  top=[('fails', -0.0003)]
+        '":'   -0.0001  top=[('":', -0.0001)]
+      'true'   -0.0182  top=[('true', -0.0182)]
+         '}'   -0.0001  top=[('}', -0.0001)]

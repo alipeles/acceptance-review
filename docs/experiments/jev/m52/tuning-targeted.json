@@ -1,0 +1,106 @@
+{
+ "cases": 137,
+ "fails": {
+  "hunk": {
+   "n": 137,
+   "accuracy": 0.876,
+   "brier": 0.102,
+   "log_loss": 0.342,
+   "auc": 0.929,
+   "mean_p_killed": 0.748,
+   "mean_p_survived": 0.225,
+   "false_fails": 8,
+   "missed_kills": 9,
+   "of_16_false_positives_below_0.5": 9,
+   "mean_input_tokens": 1308,
+   "cv_jev_then_opus_aiming_0.978": {
+    "accuracy": 0.971,
+    "cost_per_case": 0.0351,
+    "escalated_share": 0.715
+   }
+  },
+  "file": {
+   "n": 137,
+   "accuracy": 0.839,
+   "brier": 0.109,
+   "log_loss": 0.359,
+   "auc": 0.957,
+   "mean_p_killed": 0.682,
+   "mean_p_survived": 0.185,
+   "false_fails": 4,
+   "missed_kills": 18,
+   "of_16_false_positives_below_0.5": 13,
+   "mean_input_tokens": 6935,
+   "cv_jev_then_opus_aiming_0.978": {
+    "accuracy": 0.964,
+    "cost_per_case": 0.0284,
+    "escalated_share": 0.562
+   }
+  },
+  "targeted": {
+   "n": 137,
+   "accuracy": 0.839,
+   "brier": 0.115,
+   "log_loss": 0.374,
+   "auc": 0.95,
+   "mean_p_killed": 0.666,
+   "mean_p_survived": 0.181,
+   "false_fails": 4,
+   "missed_kills": 18,
+   "of_16_false_positives_below_0.5": 13,
+   "mean_input_tokens": 2025,
+   "cv_jev_then_opus_aiming_0.978": {
+    "accuracy": 0.971,
+    "cost_per_case": 0.0341,
+    "escalated_share": 0.686
+   }
+  }
+ },
+ "reach": {
+  "hunk": {
+   "auc_known_reach": 0.906,
+   "never_run_below_0.5": 7,
+   "kills_below_0.5": 8,
+   "never_run_below_lowest_kill": 5,
+   "mean_input_tokens": 876
+  },
+  "file": {
+   "auc_known_reach": 0.913,
+   "never_run_below_0.5": 9,
+   "kills_below_0.5": 11,
+   "never_run_below_lowest_kill": 7,
+   "mean_input_tokens": 6686
+  },
+  "targeted": {
+   "auc_known_reach": 0.945,
+   "never_run_below_0.5": 9,
+   "kills_below_0.5": 7,
+   "never_run_below_lowest_kill": 8,
+   "mean_input_tokens": 1775
+  }
+ },
+ "by_group": {
+  "both whole files": {
+   "n": 78,
+   "fails_auc_hunk": 0.947,
+   "fails_auc_file": 0.948,
+   "fails_auc_targeted": 0.942
+  },
+  "trimmed": {
+   "n": 59,
+   "fails_auc_hunk": 0.899,
+   "fails_auc_file": 0.973,
+   "fails_auc_targeted": 0.963
+  }
+ },
+ "agent_cases": {
+  "n": 49,
+  "covered_targeted": 33,
+  "covered_file": 45,
+  "right_at_0.5": {
+   "hunk": 33,
+   "file": 34,
+   "targeted": 34
+  }
+ }
+}
