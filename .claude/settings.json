@@ -112,7 +112,7 @@
   },
   "sandbox": {
     "network": {
-      "allowedDomains": ["api.github.com", "uploads.github.com"]
+      "allowedDomains": ["api.github.com", "uploads.github.com", "api.typesafe.ai"]
     },
     "excludedCommands": ["gh"]
   },
