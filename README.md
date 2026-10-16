@@ -39,6 +39,7 @@ CLI entrypoint: `acceptance`.
 
 ```bash
 acceptance check --task path/to/task.md --base <rev> [--head <rev>]
+acceptance recommendation --criterion <id>
 acceptance decompose --task path/to/task.md
 acceptance diff --base <rev> [--head <rev>]
 acceptance classify --task path/to/task.md --base <rev> [--head <rev>]
