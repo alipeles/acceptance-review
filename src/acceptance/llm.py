@@ -470,6 +470,64 @@ def _extract_stop_reason(response: Any) -> str | None:
     return reason if isinstance(reason, str) else None
 
 
+# How a live call rides out a transient provider failure (#356). A review makes
+# hundreds of calls, so a failure rate that is negligible per call is not
+# negligible per review. Five attempts waiting 2, 4, 8 and 16 seconds between
+# them bounds the wait at half a minute, which outlasts a gateway blip or a
+# rate-limit window without leaving a call that will never succeed hanging.
+#
+# None of this reaches the request or the transcript: only the attempt that
+# succeeded is recorded, so a retried call and a first-time success are the same
+# recording and the request key never learns that a retry happened.
+_MAX_ATTEMPTS = 5
+_FIRST_BACKOFF_SECONDS = 2.0
+
+# Statuses worth asking again: a request timeout, a rate limit, and anything the
+# provider's side got wrong. Every other status is an answer about the request
+# itself — a bad key, a malformed body — and asking again repeats it.
+_TRANSIENT_STATUSES = frozenset({408, 429})
+
+
+def _provider_status(exc: BaseException) -> int | None:
+    """The HTTP status a provider exception carries, or `None` if it has none.
+
+    LiteLLM maps every provider's failures onto exceptions with a
+    `status_code`, which is what is read here; reading it by attribute rather
+    than by type keeps this module free of the provider stack in replay.
+    """
+    status = getattr(exc, "status_code", None)
+    if isinstance(status, bool):
+        return None
+    try:
+        return int(status) if status is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _is_transient(exc: BaseException) -> bool:
+    status = _provider_status(exc)
+    if status is not None:
+        return status in _TRANSIENT_STATUSES or status >= 500
+    return isinstance(exc, (ConnectionError, TimeoutError))
+
+
+def _is_provider_failure(exc: BaseException) -> bool:
+    """Whether `exc` is the provider refusing or failing, not a bug of ours.
+
+    Anything else — an `AssertionError` from a test's fake provider, a
+    `KeyError` in our own code — propagates untouched: wrapping it in
+    `LLMError` would turn a defect into what reads like a network problem.
+    """
+    return _provider_status(exc) is not None or _is_transient(exc)
+
+
+def _one_line(text: str, limit: int = 300) -> str:
+    """`text` with its whitespace collapsed, so a provider's HTML error page
+    cannot split the CLI's single `acceptance: model error:` line."""
+    flat = " ".join(str(text).split())
+    return flat if len(flat) <= limit else flat[: limit - 1] + "…"
+
+
 class ModelClient:
     """Issues schema-constrained model calls and records them for replay."""
 
@@ -821,7 +879,7 @@ class ModelClient:
                     "with --mode record."
                 )
             started = time.perf_counter()
-            record = self._persist_live_embedding(key, request)
+            record = self._persist_live_embedding(key, request, stage)
             seconds = time.perf_counter() - started
         else:
             seconds = None
@@ -937,11 +995,14 @@ class ModelClient:
                     merged[name] = value
         return merged
 
-    def _persist_live_embedding(self, key: str, request: dict) -> dict:
+    def _persist_live_embedding(self, key: str, request: dict, stage: str | None = None) -> dict:
         """Call, validate, and only then keep — same order as `_persist_live_call`,
         and for the same reason: a reply the harness rejects is not evidence, and
         persisting first would let replay serve it forever (#160)."""
-        response = self._embedding_fn(
+        response = self._call_provider(
+            self._embedding_fn,
+            "embedding",
+            stage,
             model=request["model"],
             input=request["input"],
         )
@@ -1109,7 +1170,10 @@ class ModelClient:
                 "to a model that accepts one."
             )
 
-        response = self._completion_fn(
+        response = self._call_provider(
+            self._completion_fn,
+            "completion",
+            stage,
             model=request["model"],
             # Marked here rather than in `request`, so the provider-specific
             # breakpoint never reaches the request key. What was asked is the
@@ -1152,6 +1216,40 @@ class ModelClient:
             "controls_applied": applied,
         }
         return record
+
+    @staticmethod
+    def _call_provider(fn: Callable[..., Any], kind: str, stage: str | None, **kwargs: Any) -> Any:
+        """`fn(**kwargs)`, asked again on a transient failure (#356).
+
+        Every attempt sends the same arguments, so whichever one succeeds is the
+        call the transcript describes. A failure that outlasts the attempts, or
+        that is not transient, becomes one `LLMError` naming the stage, the model
+        and the status — the CLI prints it as a single line rather than letting a
+        provider's traceback end the run.
+        """
+        delay = _FIRST_BACKOFF_SECONDS
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            try:
+                return fn(**kwargs)
+            except Exception as exc:
+                if not _is_provider_failure(exc):
+                    raise
+                transient = _is_transient(exc)
+                if transient and attempt < _MAX_ATTEMPTS:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                status = _provider_status(exc)
+                outcome = f"after {attempt} attempts" if transient else "and was not retried"
+                raise LLMError(
+                    _one_line(
+                        f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+                        f"{kwargs.get('model')} failed with status "
+                        f"{status if status is not None else 'none (connection error)'} "
+                        f"{outcome}: {type(exc).__name__}: {exc}"
+                    )
+                ) from exc
+        raise AssertionError("unreachable: the loop returns or raises")  # pragma: no cover
 
     def _effective_controls(self, model: str, requested: dict) -> dict:
         reporter = getattr(self._completion_fn, "effective_controls", None)
