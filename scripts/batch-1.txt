@@ -1,0 +1,19 @@
+# Batch 1: mechanical fixes, one owned file each, no two on the same file.
+# Format: <issue> <owned file>
+
+356 src/acceptance/llm.py
+355 src/acceptance/requirement/obligations.py
+350 src/acceptance/report.py
+327 src/acceptance/pipeline.py
+276 src/acceptance/cli.py
+289,290 src/acceptance/benchmark/instability.py
+243 tests/benchmark/test_runner.py
+278 pyproject.toml
+280 src/acceptance/coverage/recommendations.py
+358 src/acceptance/defects/reachability.py
+
+# Batch 2: run after batch 1 has merged. Same files as above.
+# 298 src/acceptance/requirement/obligations.py
+# 236 src/acceptance/llm.py
+# 296 src/acceptance/requirement/carry.py   (stage= half only; the benchmark/ dependency is a decision)
+# 267 src/acceptance/pipeline.py             (needs a call on how findings reach recommendations)
