@@ -1,0 +1,587 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) not fully implemented (no-defect-set).
+
+Obligations:
+
+  1. The review asks the defect enumerator only about criteria that are owed test evidence.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/pipeline.py#@@ -452,6 +452,23 @@ def run_review(
+         1.2  src/acceptance/pipeline.py#@@ -465,7 +482,7 @@ def run_review(
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         1.3  tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+
+  2. A criterion whose required evidence demands no test is not offered to the enumerator.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/pipeline.py#@@ -452,6 +452,23 @@ def run_review(
+         2.2  src/acceptance/pipeline.py#@@ -465,7 +482,7 @@ def run_review(
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         2.3  tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+
+  3. The review skips the defect enumerator for criteria whose required evidence demands no test, so no enumeration call is made for them.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/pipeline.py#@@ -452,6 +452,23 @@ def run_review(
+         3.2  src/acceptance/pipeline.py#@@ -465,7 +482,7 @@ def run_review(
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  4. The change produces no defect set.
+       requirements: task-01
+       code evidence: not addressed
+         4.1  src/acceptance/pipeline.py#@@ -465,7 +482,7 @@ def run_review(
+       test evidence: not required — This is a scope-exclusion-style outcome stated as absence of work for this criterion, so the repository change itself settles it.
+
+  5. A criterion that does require tests is enumerated exactly as before.
+       requirements: task-01
+       code evidence: addressed
+         5.1  src/acceptance/pipeline.py#@@ -452,6 +452,23 @@ def run_review(
+         5.2  src/acceptance/pipeline.py#@@ -465,7 +482,7 @@ def run_review(
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         5.3  tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+
+  6. Enumeration still happens before any test is discovered.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/pipeline.py#@@ -452,6 +452,23 @@ def run_review(
+         6.2  src/acceptance/pipeline.py#@@ -465,7 +482,7 @@ def run_review(
+         6.3  src/acceptance/pipeline.py#@@ -486,17 +503,6 @@ def run_review(
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         6.4  tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+         6.5  tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+         6.6  tests/defects/test_enumeration.py::test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review
+
+  7. The set of criteria it is given is decided from the decomposition alone.
+       requirements: task-02
+       code evidence: addressed
+         7.1  src/acceptance/pipeline.py#@@ -452,6 +452,23 @@ def run_review(
+         7.2  src/acceptance/pipeline.py#@@ -465,7 +482,7 @@ def run_review(
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         7.3  tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+         7.4  tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+
+  8. The set of criteria given to enumeration is decided from the decomposition alone, so it cannot be influenced by which tests exist.
+       requirements: task-02
+       code evidence: addressed
+         8.1  src/acceptance/pipeline.py#@@ -452,6 +452,23 @@ def run_review(
+         8.2  src/acceptance/pipeline.py#@@ -465,7 +482,7 @@ def run_review(
+         8.3  src/acceptance/pipeline.py#@@ -486,17 +503,6 @@ def run_review(
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         8.4  tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+         8.5  tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+
+  9. A regression test asserts that a criterion owed no test appears in none of the enumeration requests the review actually sends.
+       requirements: task-03
+       code evidence: not required — The requirement explicitly asks for a regression test asserting this condition, so the obligation is satisfied by the test itself.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  10. A regression test asserts that a criterion owed tests does appear in the enumeration requests the review actually sends.
+       requirements: task-03
+       code evidence: not required — The requirement explicitly asks for a regression test asserting this condition, so the obligation is satisfied by the test itself.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  11. The prompt text and response schema of the enumeration stage are unchanged.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 4 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about keeping the enumeration stage unchanged, which is settled by inspecting the delivered source/configuration rather than by a test.
+
+  12. The stages that consume defect sets are unchanged.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 4 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about downstream consumers, so the change is checked by the absence of modifications to those stages rather than by runtime test behavior.
+
+Mandate coverage: 5 of 5 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The new `no_tests` partition is introduced but never used after being computed, so it is an extra internal refactor beyond the requested behavior change of excluding no-test obligations from enumeration.
+       src/acceptance/pipeline.py#@@ -452,6 +452,23 @@ def run_review(
+       src/acceptance/pipeline.py#@@ -486,17 +503,6 @@ def run_review(
+  2. [separable] The added test asserts that the no-test obligation is absent from enumeration requests and that only the test-required obligation is enumerated. The obligations require a regression test for the no-test criterion being absent and the test-required criterion appearing, but they do not require this specific extra assertion about the exact defect-set result being only `daily-rate` or the additional control-flow framing in the test body.
+       tests/defects/test_enumeration.py#@@ -606,6 +606,64 @@ def test_the_enumerated_sets_survive_a_round_trip_through_persisted_state(tmp_pa
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  enumerator-only-owed-test-evidence
+    [condition_inverted] enumerator-only-owed-test-evidence/enumerate-all-obligations-instead-of-test-owed-only
+      The defect enumerator is still called with the full obligation list, so criteria that do not owe test evidence are included in enumeration.
+      src/acceptance/pipeline.py#1
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] enumerator-only-owed-test-evidence/filter-built-too-late-for-enumeration
+      The test-evidence filter exists, but it is applied after defect enumeration, so the enumerator still sees non-test obligations on the delivered path.
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#1
+      src/acceptance/pipeline.py#2
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+
+  no-test-evidence-criteria-not-enumerated
+    [scope_too_narrow] no-test-evidence-criteria-not-enumerated/enumerator-still-sees-no-test-obligations
+      The split into `needs_tests` and `no_tests` is not applied to every path that feeds the enumerator, so some criteria whose required evidence does not require tests can still be passed to `enumerate_defects`.
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#1
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+    [not_wired] no-test-evidence-criteria-not-enumerated/enumeration-call-left-on-original-obligations
+      The new `needs_tests` partition is computed, but the enumerator call still uses the original obligations collection instead of the filtered test-based subset.
+      src/acceptance/pipeline.py#1
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+
+  no-enumeration-call-for-no-test-evidence
+    none enumerated: The diff moves the enumeration input from all obligations to the prefiltered needs_tests list, and the no_tests split is not passed to enumerate_defects or any other enumerator call in the shown path. For criteria whose required evidence does not require tests, the delivered code therefore has no plausible static path that still calls the defect enumerator for them.
+
+  no-defect-set
+    none enumerated: The criterion says the change produces no defect set, and the diff does not introduce any code path that would emit one. It only narrows the obligations passed into enumeration and leaves the rest of the pipeline intact, so there is no plausible static defect in this change that would cause a defect set to be produced for this criterion.
+
+  enumerate-test-required-criteria-as-before
+    [scope_too_narrow] enumerate-test-required-criteria-as-before/test-required-criteria-filtered-out-before-enumeration
+      Criteria that require tests are no longer all enumerated, because the code filters obligations into `needs_tests` before calling the defect enumerator and only passes that subset onward.
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#1
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+
+  enumeration-before-tests
+    [scope_too_narrow] enumeration-before-tests/enumeration-uses-all-obligations
+      Enumeration is still fed obligations that include items needing test evidence, so the set of criteria is not determined from the decomposition alone for all cases.
+      src/acceptance/pipeline.py#1
+      pairs: 4 put to the model, 5 skipped once the defect was covered
+    [established_not_maintained] enumeration-before-tests/test-independent-split-after-enumeration
+      The code computes the test-dependent split too late or in a way that lets later test discovery influence which criteria are enumerated, so enumeration is not guaranteed to happen before discovery for the whole path.
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#1
+      src/acceptance/pipeline.py#2
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+
+  criteria-decided-from-decomposition-alone
+    [scope_too_narrow] criteria-decided-from-decomposition-alone/enumeration-now-uses-only-test-requiring-obligations
+      The criteria set is no longer decided from the full decomposition, because the enumeration stage is fed only obligations whose required evidence requires tests.
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#1
+      pairs: 4 put to the model, 36 skipped once the defect was covered
+
+  test-independence-from-existing-tests
+    [scope_too_narrow] test-independence-from-existing-tests/enumeration-still-sees-all-obligations
+      Enumeration is still fed the full obligations list, so criteria can still be influenced by obligations that do not require test evidence instead of being determined from the decomposition alone.
+      src/acceptance/pipeline.py#1
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+    [other] test-independence-from-existing-tests/criteria-split-uses-test-dependent-input
+      The split into needs_tests and no_tests could be computed from an input that already depends on discovered tests or other test presence, so the criteria set would still vary with which tests exist.
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#1
+      pairs: 4 put to the model, 36 skipped once the defect was covered
+
+  enumeration-stage-prompt-and-schema-unchanged
+    [other] enumeration-stage-prompt-and-schema-unchanged/enumeration-stage-prompt-text-changed
+      The enumeration stage's prompt text is changed by the new comments and surrounding wording in the pipeline, so the stage no longer presents the same prompt text as before.
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#1
+      src/acceptance/pipeline.py#2
+      pairs: 4 put to the model, 36 skipped once the defect was covered
+    [other] enumeration-stage-prompt-and-schema-unchanged/enumeration-stage-schema-changed
+      The enumeration stage's response schema could have been altered indirectly by changing which obligations are passed into enumeration, which may change the shape or contents of the enumeration response even if the stage name stays the same.
+      src/acceptance/pipeline.py#1
+      pairs: 13 put to the model, 27 skipped once the defect was covered
+
+  preserve-defect-set-consumers
+    [scope_too_narrow] preserve-defect-set-consumers/downstream-consumers-still-see-all-obligations
+      The defect-set consumers are still fed the full obligation list, so downstream stages that consume defect sets continue to process obligations that do not require test evidence.
+      src/acceptance/pipeline.py#1
+      pairs: 4 put to the model, 5 skipped once the defect was covered
+    [scope_too_narrow] preserve-defect-set-consumers/no-test-obligations-dropped-from-consumer-path
+      The split into test-requiring and no-test obligations is applied too early, so a downstream defect-set consumer that should still receive the full set of obligations is starved of the no-test subset.
+      src/acceptance/pipeline.py#0
+      src/acceptance/pipeline.py#1
+      src/acceptance/pipeline.py#2
+      pairs: 29 put to the model, 11 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [passed_under_edit] enumerate-test-required-criteria-as-before/test-required-criteria-filtered-out-before-enumeration x 39 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] enumeration-before-tests/enumeration-uses-all-obligations x 31 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 9 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] enumeration-before-tests/test-independent-split-after-enumeration x 39 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] enumerator-only-owed-test-evidence/enumerate-all-obligations-instead-of-test-owed-only x 39 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] enumerator-only-owed-test-evidence/filter-built-too-late-for-enumeration x 39 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] no-test-evidence-criteria-not-enumerated/enumeration-call-left-on-original-obligations x 39 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] no-test-evidence-criteria-not-enumerated/enumerator-still-sees-no-test-obligations x 39 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] preserve-defect-set-consumers/downstream-consumers-still-see-all-obligations x 31 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 9 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] test-independence-from-existing-tests/enumeration-still-sees-all-obligations x 39 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] criteria-decided-from-decomposition-alone/enumeration-now-uses-only-test-requiring-obligations x 36 candidate test(s), ranked 5 to 40
+    not asked: the defect was already covered by tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator, tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+  [defect_already_covered] enumeration-before-tests/enumeration-uses-all-obligations x 5 candidate test(s), ranked 23 to 38
+    not asked: the defect was already covered by tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator, tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme, tests/defects/test_enumeration.py::test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review
+  [defect_already_covered] enumeration-stage-prompt-and-schema-unchanged/enumeration-stage-prompt-text-changed x 36 candidate test(s), ranked 5 to 40
+    not asked: the defect was already covered by tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator, tests/defects/test_enumeration.py::test_the_enumerator_is_given_no_test
+  [defect_already_covered] enumeration-stage-prompt-and-schema-unchanged/enumeration-stage-schema-changed x 27 candidate test(s), ranked 14 to 40
+    not asked: the defect was already covered by tests/defects/test_enumeration.py::test_both_behaviours_reach_the_stored_defect
+  [defect_already_covered] preserve-defect-set-consumers/downstream-consumers-still-see-all-obligations x 5 candidate test(s), ranked 19 to 35
+    not asked: the defect was already covered by tests/defects/test_enumeration.py::test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review
+  [defect_already_covered] preserve-defect-set-consumers/no-test-obligations-dropped-from-consumer-path x 11 candidate test(s), ranked 30 to 40
+    not asked: the defect was already covered by tests/requirement/test_carry_forward.py::test_the_review_pipeline_carries_forward_and_hands_back_what_it_derived
+  [defect_already_covered] test-independence-from-existing-tests/criteria-split-uses-test-dependent-input x 36 candidate test(s), ranked 5 to 40
+    not asked: the defect was already covered by tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+
+Running the project's tests:
+  the project's tests were run: 14 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [survived, NOT COUNTED] criteria-decided-from-decomposition-alone/enumeration-now-uses-only-test-requiring-obligations
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 469..470 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 469-470:
+           -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+           +     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           +     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+    injected at src/acceptance/pipeline.py lines 469-470:
+      -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+      -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+      +     needs_tests = [o for o in decomposition.obligations if o.required_evidence.requires_tests]
+      +     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+    no test caught it; 40 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 36 skipped once the defect was covered
+
+  [killed, NOT COUNTED] enumerate-test-required-criteria-as-before/test-required-criteria-filtered-out-before-enumeration
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/pipeline.py lines 484-485:
+      -     defect_sets = enumerate_defects(
+      -         needs_tests,
+      +     defect_sets = enumerate_defects(
+      +         obligations,
+    caught by (1):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 39 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] enumeration-before-tests/enumeration-uses-all-obligations
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/pipeline.py lines 484-485:
+      -     defect_sets = enumerate_defects(
+      -         needs_tests,
+      +     defect_sets = enumerate_defects(
+      +         no_tests,
+    caught by (9):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+      tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+      tests/defects/test_enumeration.py::test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review
+      tests/defects/test_enumeration.py::test_the_pipeline_really_calls_the_enumerator
+      tests/defects/test_enumeration.py::test_the_report_says_when_a_set_was_reused_rather_than_produced_again
+      tests/defects/test_enumeration.py::test_the_review_reports_the_recorded_ways_of_failing
+      tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+      tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+      tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_a_verified_result_carries_no_such_mark
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 31 dropped as not worth asking, 5 skipped once the defect was covered
+
+  [killed, NOT COUNTED] enumeration-before-tests/test-independent-split-after-enumeration
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 469..470 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 469-470:
+           -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+           +     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           +     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+      2. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 469..470 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 469-470:
+           -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+           +     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           +     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+    injected at src/acceptance/pipeline.py lines 469-470:
+      -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+      -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+      +     needs_tests = obligations
+      +     no_tests = []
+    caught by (1):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 39 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] enumeration-stage-prompt-and-schema-unchanged/enumeration-stage-prompt-text-changed
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 472..477 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 472-477:
+           -     # Defect enumeration runs HERE, before test discovery, and the position is
+           -     # the point (#313). The stage must never see a test — a denominator chosen
+           -     # by something that can see what is already covered drifts toward it, and a
+           -     # thin enumeration then earns a strong rating (#252). Running it before any
+           -     # test has been discovered makes that structural rather than a promise: at
+           -     # this line there is no test evidence in existence for it to be handed.
+           +     # Defect enumeration runs HERE, before test discovery, and the position is
+           +     # the point (#313). The stage must never see a test — a denominator chosen
+           +     # by something that can see what is already covered drifts toward it, and a
+           +     # thin enumeration then earns a strong rating (#252). Running it before any
+           +     # test has been discovered makes that structural rather than a promise: at
+           +     # this line there is no test evidence in existence for it to be handed.
+      2. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 472..477 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 472-477:
+           -     # Defect enumeration runs HERE, before test discovery, and the position is
+           -     # the point (#313). The stage must never see a test — a denominator chosen
+           -     # by something that can see what is already covered drifts toward it, and a
+           -     # thin enumeration then earns a strong rating (#252). Running it before any
+           -     # test has been discovered makes that structural rather than a promise: at
+           -     # this line there is no test evidence in existence for it to be handed.
+           +     # Defect enumeration runs HERE, before test discovery, and the position is
+           +     # the point (#313). The stage must never see a test — a denominator chosen
+           +     # by something that can see what is already covered drifts toward it, and a
+           +     # thin enumeration then earns a strong rating (#252). Running it before any
+           +     # test has been discovered makes that structural rather than a promise: at
+           +     # this line there is no test evidence in existence for it to be handed.
+      3. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 472..477 differs from what it replaces only in comments or whitespace, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 472-477:
+           -     # Defect enumeration runs HERE, before test discovery, and the position is
+           -     # the point (#313). The stage must never see a test — a denominator chosen
+           -     # by something that can see what is already covered drifts toward it, and a
+           -     # thin enumeration then earns a strong rating (#252). Running it before any
+           -     # test has been discovered makes that structural rather than a promise: at
+           -     # this line there is no test evidence in existence for it to be handed.
+           +     # Defect enumeration runs HERE, before test discovery, and the position is
+           +     # the point (#313). The stage must never see a test — a denominator chosen
+           +     # by something that can see what is already covered drifts toward it, and a
+           +     # thin enumeration then earns a strong rating (#252). Running it after any
+           +     # test has been discovered makes that structural rather than a promise: at
+           +     # this line there is no test evidence in existence for it to be handed.
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 36 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] enumeration-stage-prompt-and-schema-unchanged/enumeration-stage-schema-changed
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/pipeline.py lines 484-485:
+      -     defect_sets = enumerate_defects(
+      -         needs_tests,
+      +     defect_sets = enumerate_defects(
+      +         obligations,
+    caught by (1):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 13 put to the model, 0 dropped as not worth asking, 27 skipped once the defect was covered
+
+  [killed, NOT COUNTED] enumerator-only-owed-test-evidence/enumerate-all-obligations-instead-of-test-owed-only
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/pipeline.py lines 484-485:
+      -     defect_sets = enumerate_defects(
+      -         needs_tests,
+      +     defect_sets = enumerate_defects(
+      +         obligations,
+    caught by (1):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 39 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] enumerator-only-owed-test-evidence/filter-built-too-late-for-enumeration
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 469..470 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 469-470:
+           -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+           +     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           +     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+      2. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 469..470 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 469-470:
+           -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+           +     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           +     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+    injected at src/acceptance/pipeline.py lines 469-470:
+      -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+      -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+      +     needs_tests = obligations
+      +     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+    caught by (1):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 39 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] no-test-evidence-criteria-not-enumerated/enumeration-call-left-on-original-obligations
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 484..485 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 484-485:
+           -     defect_sets = enumerate_defects(
+           -         needs_tests,
+           +     defect_sets = enumerate_defects(
+           +         needs_tests,
+    injected at src/acceptance/pipeline.py lines 484-485:
+      -     defect_sets = enumerate_defects(
+      -         needs_tests,
+      +     defect_sets = enumerate_defects(
+      +         obligations,
+    caught by (1):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 39 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] no-test-evidence-criteria-not-enumerated/enumerator-still-sees-no-test-obligations
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 484..485 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 484-485:
+           -     defect_sets = enumerate_defects(
+           -         needs_tests,
+           +     defect_sets = enumerate_defects(
+           +         needs_tests,
+    injected at src/acceptance/pipeline.py lines 484-485:
+      -     defect_sets = enumerate_defects(
+      -         needs_tests,
+      +     defect_sets = enumerate_defects(
+      +         obligations,
+    caught by (1):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 39 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] preserve-defect-set-consumers/downstream-consumers-still-see-all-obligations
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (failed_check): the mutated src/acceptance/pipeline.py does not parse: unexpected indent (<unknown>, line 491)
+         at src/acceptance/pipeline.py lines 484-488:
+           -     defect_sets = enumerate_defects(
+           -         needs_tests,
+           -         change_set,
+           -         client,
+           -         unusable,
+           +     defect_sets = enumerate_defects(
+           +         no_tests,
+           +         change_set,
+           +         client,
+           +         unusable,
+           +         prior=list(ledger_prior.defect_sets) if ledger_prior is not None else None,
+           +     )
+    injected at src/acceptance/pipeline.py lines 484-488:
+      -     defect_sets = enumerate_defects(
+      -         needs_tests,
+      -         change_set,
+      -         client,
+      -         unusable,
+      +     defect_sets = enumerate_defects(
+      +         no_tests,
+      +         change_set,
+      +         client,
+      +         unusable,
+    caught by (9):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+      tests/defects/test_enumeration.py::test_a_reasoned_empty_enumeration_takes_its_own_class_rather_than_an_extreme
+      tests/defects/test_enumeration.py::test_an_empty_enumeration_and_a_populated_one_do_not_produce_the_same_review
+      tests/defects/test_enumeration.py::test_the_pipeline_really_calls_the_enumerator
+      tests/defects/test_enumeration.py::test_the_report_says_when_a_set_was_reused_rather_than_produced_again
+      tests/defects/test_enumeration.py::test_the_review_reports_the_recorded_ways_of_failing
+      tests/defects/test_pair_mapping.py::test_a_continued_run_carries_verdicts_through_the_ledger
+      tests/test_rerun.py::test_a_rerun_still_reports_a_gap_in_code_the_new_work_never_touched
+      tests/test_unverified_mutation_is_inert.py::TestThroughTheWholeReview::test_a_verified_result_carries_no_such_mark
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 31 dropped as not worth asking, 5 skipped once the defect was covered
+
+  [killed, NOT COUNTED] preserve-defect-set-consumers/no-test-obligations-dropped-from-consumer-path
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (failed_check): the span 484..490 falls outside the region(s) the defect named in src/acceptance/pipeline.py (452..474, 482..488, 503..508)
+         at src/acceptance/pipeline.py lines 484-490:
+           -     defect_sets = enumerate_defects(
+           -         needs_tests,
+           -         change_set,
+           -         client,
+           -         unusable,
+           -         prior=list(ledger_prior.defect_sets) if ledger_prior is not None else None,
+           -     )
+           +     defect_sets = enumerate_defects(
+           +         obligations,
+           +         change_set,
+           +         client,
+           +         unusable,
+           +         prior=list(ledger_prior.defect_sets) if ledger_prior is not None else None,
+           +     )
+      2. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 469..470 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 469-470:
+           -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+           +     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           +     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+    injected at src/acceptance/pipeline.py lines 484-485:
+      -     defect_sets = enumerate_defects(
+      -         needs_tests,
+      +     defect_sets = enumerate_defects(
+      +         obligations,
+    caught by (1):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 29 put to the model, 0 dropped as not worth asking, 11 skipped once the defect was covered
+
+  [survived, NOT COUNTED] test-independence-from-existing-tests/criteria-split-uses-test-dependent-input
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/pipeline.py lines 469..470 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/pipeline.py lines 469-470:
+           -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+           +     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+           +     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+    injected at src/acceptance/pipeline.py lines 469-470:
+      -     needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+      -     no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+      +     needs_tests = [o for o in decomposition.obligations if o.required_evidence.requires_tests]
+      +     no_tests = [o for o in decomposition.obligations if not o.required_evidence.requires_tests]
+    no test caught it; 40 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 36 skipped once the defect was covered
+
+  [killed, NOT COUNTED] test-independence-from-existing-tests/enumeration-still-sees-all-obligations
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (failed_check): the span 484..489 falls outside the region(s) the defect named in src/acceptance/pipeline.py (482..488)
+         at src/acceptance/pipeline.py lines 484-489:
+           -     defect_sets = enumerate_defects(
+           -         needs_tests,
+           -         change_set,
+           -         client,
+           -         unusable,
+           -         prior=list(ledger_prior.defect_sets) if ledger_prior is not None else None,
+           +     defect_sets = enumerate_defects(
+           +         needs_tests,
+           +         change_set,
+           +         client,
+           +         unusable,
+           +         prior=list(ledger_prior.defect_sets) if ledger_prior is not None else None,
+           +     )
+    injected at src/acceptance/pipeline.py lines 484-488:
+      -     defect_sets = enumerate_defects(
+      -         needs_tests,
+      -         change_set,
+      -         client,
+      -         unusable,
+      +     defect_sets = enumerate_defects(
+      +         obligations,
+      +         change_set,
+      +         client,
+      +         unusable,
+    caught by (1):
+      tests/defects/test_enumeration.py::test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 39 dropped as not worth asking, 0 skipped once the defect was covered
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
+run 642eed228d0acdc7
+  continue this run with: --continue 642eed228d0acdc7
+Model usage by stage:
+  stage                         model                                                            calls   prompt  output  cached  this run  recorded  time this run
+  ----------------------------  -------------------------------------------  -------------------------  -------  ------  ------  --------  --------  -------------
+  decompose                     openai/gpt-5.4-mini                          12 (0 live / 12 replayed)   64,399   1,766    0.0%   $0.0000   $0.0562              —
+  decompose-summary             openai/gpt-5.4                                 3 (0 live / 3 replayed)    2,425   1,053    0.0%   $0.0000   $0.0219              —
+  obligation linking            voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (0 live / 2 replayed)    1,166      83    0.0%   $0.0000   $0.0010              —
+  defect enumeration            openai/gpt-5.4-mini                          10 (10 live / 0 replayed)   18,209   2,337    0.0%   $0.0242   $0.0242          44.0s
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini  19 (19 live / 0 replayed)   36,479   4,187    0.0%   $0.0391   $0.0391          34.3s
+  coverage classification       openai/gpt-5.4-mini                            1 (1 live / 0 replayed)    2,902     730    0.0%   $0.0055   $0.0055           3.5s
+  unrequested-change detection  openai/gpt-5.4-mini                            1 (1 live / 0 replayed)    2,388     199    0.0%   $0.0027   $0.0027           1.7s
+  disposition judgment          openai/gpt-5.4-mini                            1 (1 live / 0 replayed)    1,892      97    0.0%   $0.0019   $0.0019           1.3s
+  mutation descriptor           openai/gpt-5.4-mini                          28 (28 live / 0 replayed)  192,331   3,827   47.7%   $0.0995   $0.0995          40.9s
+  this run spent $0.1728 on 60 live call(s); the evidence cost $0.2518 to record (17 call(s) replayed at no cost to this run)

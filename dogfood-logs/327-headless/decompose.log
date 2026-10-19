@@ -1,0 +1,60 @@
+Requirements: 5   with obligations: 5
+
+[task-01] The review asks the defect enumerator only about criteria that are owed test
+    evidence. A criterion whose required evidence demands no test is never offered to
+    the enumerator, so it costs no enumeration call and produces no defect set. A
+    criterion that does require tests is enumerated for exactly as before.
+    -> enumerator-only-owed-test-evidence  [functional/explicit]
+       The review asks the defect enumerator only about criteria that are owed test
+       evidence.
+    -> no-test-evidence-criteria-not-enumerated  [invariant/explicit]
+       A criterion whose required evidence demands no test is not offered to the
+       enumerator.
+    -> no-enumeration-call-for-no-test-evidence  [functional/explicit]
+       The review skips the defect enumerator for criteria whose required evidence
+       demands no test, so no enumeration call is made for them.
+    -> no-defect-set  [functional/explicit]
+       The change produces no defect set.
+    -> enumerate-test-required-criteria-as-before  [regression/explicit]
+       A criterion that does require tests is enumerated exactly as before.
+
+[task-02] Enumeration still happens before any test is discovered. The set of criteria
+    it is given is decided from the decomposition alone, so it cannot be influenced by
+    which tests exist.
+    -> enumeration-before-tests  [invariant/explicit]
+       Enumeration still happens before any test is discovered.
+    -> criteria-decided-from-decomposition-alone  [invariant/explicit]
+       The set of criteria it is given is decided from the decomposition alone.
+    -> test-independence-from-existing-tests  [invariant/explicit]
+       The set of criteria given to enumeration is decided from the decomposition alone,
+       so it cannot be influenced by which tests exist.
+
+[task-03] A regression test asserts, against the enumeration requests the review
+    actually sends, that a criterion owed no test appears in none of them, and that a
+    criterion owed tests does appear.
+    -> no-test-criteria-absent-from-enumeration-requests  [test_demand/explicit]
+       A regression test asserts that a criterion owed no test appears in none of the
+       enumeration requests the review actually sends.
+    -> criterion-owed-tests-appears  [test_demand/explicit]
+       A regression test asserts that a criterion owed tests does appear in the
+       enumeration requests the review actually sends.
+
+[exclusion-01] The prompt text and response schema of the enumeration stage are
+    unchanged.
+    -> enumeration-stage-prompt-and-schema-unchanged  [compatibility/explicit]
+       The prompt text and response schema of the enumeration stage are unchanged.
+
+[exclusion-02] The stages that consume defect sets are unchanged.
+    -> preserve-defect-set-consumers  [compatibility/explicit]
+       The stages that consume defect sets are unchanged.
+
+run ad407d0971e46703
+  requirements: 5 derived, 0 carried, 0 revised; 15 decompose call(s)
+  continue this run with: --continue ad407d0971e46703
+Model usage by stage:
+  stage               model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini                          12 (12 live / 0 replayed)  64,399   1,766    0.0%   $0.0562   $0.0562          23.7s
+  decompose-summary   openai/gpt-5.4                                 3 (3 live / 0 replayed)   2,425   1,053    0.0%   $0.0219   $0.0219          14.7s
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)   1,166      83    0.0%   $0.0010   $0.0010           1.6s
+  this run spent $0.0791 on 17 live call(s); the evidence cost $0.0791 to record (0 call(s) replayed at no cost to this run)
