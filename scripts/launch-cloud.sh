@@ -30,8 +30,9 @@ logdir="$HOME/headless-runs/$(date +%Y-%m-%d)"
 mkdir -p "$logdir"
 
 # `claude --cloud` insists on a real terminal, so it runs in the foreground
-# with your terminal as its input. The batch file is read on descriptor 3 so
-# claude cannot swallow the rest of it. If claude stays attached to a session
+# and inherits yours. (Do not redirect its stdin from /dev/tty: Bun on macOS
+# cannot kqueue that device and crashes.) The batch file is read on
+# descriptor 3 so claude cannot swallow the rest of it. If claude stays attached to a session
 # after creating it, press Ctrl+C once it shows the session running; the
 # session keeps going in the cloud and the loop moves to the next issue.
 while read -r -u 3 issue files; do
@@ -42,7 +43,7 @@ while read -r -u 3 issue files; do
   echo
   echo "===== launching #$issue (reserved: $reserved) ====="
   echo "$(date +%H:%M) #$issue reserved=$reserved" >> "$logdir/launches.log"
-  claude --cloud "/fixbug-cloud $issue $reserved" < /dev/tty
+  claude --cloud "/fixbug-cloud $issue $reserved"
   sleep 3
 done 3<<< "$lines"
 
