@@ -1,0 +1,66 @@
+Requirements: 4   with obligations: 4
+
+[task-01] When decomposition finds a span of the opening summary uncovered by the
+    obligations already derived, and the follow-up call asked about that span alone
+    returns neither an obligation nor an open question, the decomposition completes
+    instead of stopping. The disagreement between the two steps is recorded as an open
+    question on the summary requirement: it says that the two steps disagreed and quotes
+    the span, and it links to the span's text in the task file. The rest of the
+    decomposition, including every other span and requirement, is derived as usual.
+    -> decomposition-completes  [functional/explicit]
+       The decomposition completes instead of stopping.
+    -> record-open-question-for-step-disagreement  [human_review/explicit]
+       Record an open question on the summary requirement stating that the two steps
+       disagreed and quoting the span.
+    -> two-steps-disagreed  [explanation_observability/explicit]
+       Record that the two decomposition steps disagreed.
+    -> quote-the-span  [docs_config/explicit]
+       The requirement quotes the span.
+    -> link-to-span-text  [functional/explicit]
+       The open question links to the span's text in the task file.
+    -> rest-of-decomposition-derived-as-usual  [invariant/explicit]
+       The rest of the decomposition, including every other span and requirement, is
+       derived as usual.
+    ?  oq-01
+       What should the decomposition do with the uncovered span when the follow-up call
+       asked about that span alone returns neither an obligation nor an open question:
+       should it complete and record the disagreement as an open question on the summary
+       requirement, or should it stop?
+    ?  task-01-span-01-disagreement
+       The coverage step and the call asked about this span alone disagreed: the first
+       found 'the follow-up call asked about that span alone returns neither an
+       obligation nor an open question' uncovered by the obligations already derived,
+       the second derived neither an obligation nor an open question from it. Does this
+       span state a property of its own that must be delivered?
+
+[task-02] A regression test is part of the deliverable: a replayed decomposition in
+    which the follow-up call for an uncovered span yields nothing completes, and its
+    result carries an open question quoting that span.
+    -> replayed-decomposition-completes  [functional/explicit]
+       A replayed decomposition in which the follow-up call for an uncovered span yields
+       nothing completes.
+    -> open-question-quote-span  [regression/explicit]
+       Its result carries an open question quoting that span.
+
+[exclusion-01] Do not change any prompt or response schema.
+    -> prompt-response-schema-unchanged  [docs_config/explicit]
+       The change does not alter any prompt or response schema.
+
+[exclusion-02] The other refusals in the summary step (a span that is not part of the
+    summary, a span decided more than once or not at all, a verdict that disagrees with
+    its own counterexample) keep stopping the run.
+    -> summary-step-refusals-stop-run  [invariant/explicit]
+       The other refusals in the summary step continue to stop the run: a span that is
+       not part of the summary, a span decided more than once or not at all, and a
+       verdict that disagrees with its own counterexample.
+
+run 825b5b20c70641d2
+  requirements: 4 derived, 0 carried, 0 revised; 14 decompose call(s)
+  continue this run with: --continue 825b5b20c70641d2
+Model usage by stage:
+  stage               model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini                          12 (2 live / 10 replayed)  65,150   1,780    0.0%   $0.0098   $0.0569           4.3s
+  decompose-summary   openai/gpt-5.4                                 2 (1 live / 1 replayed)   1,739     950    0.0%   $0.0049   $0.0186           7.6s
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)   1,149      81    0.0%   $0.0009   $0.0009           2.7s
+  this run spent $0.0156 on 5 live call(s); the evidence cost $0.0764 to record (11 call(s) replayed at no cost to this run)
