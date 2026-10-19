@@ -201,8 +201,15 @@ class RunConfig(BaseModel):
     # traceability, that is a deliberate addition to ReviewProvenance.
     scope_expansion_policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT
 
-    def build_client(self, completion_fn: Callable[..., Any] | None = None) -> ModelClient:
-        return ModelClient(
+    def build_client(
+        self,
+        completion_fn: Callable[..., Any] | None = None,
+        client_class: type[ModelClient] = ModelClient,
+    ) -> ModelClient:
+        # `client_class` lets a caller that subclasses the client (the
+        # instability harness) take this parameter set rather than copy it; a
+        # copy drifted silently when #259 added `embedding_model` (#289).
+        return client_class(
             model=self.model,
             mode=self.mode,
             store=TranscriptStore(self.transcript_root),
