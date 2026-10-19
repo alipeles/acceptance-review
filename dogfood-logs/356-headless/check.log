@@ -1,0 +1,2320 @@
+Task completion: INCOMPLETE
+
+5 obligation(s) with non-discriminating test evidence (retry-transient-failures-for-live-provider-calls, transient-failure-definition, successful-response-only-persistence, same-transcript-after-transient-failure-and-success, embedding-call-transient-failure-then-success).
+
+Obligations:
+
+  1. Live provider calls for both completion and embedding retry transient failures before giving up.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/llm.py#@@ -937,11 +995,14 @@ class ModelClient:
+         1.2  src/acceptance/llm.py#@@ -1109,7 +1170,10 @@ class ModelClient:
+         1.3  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: partially supported — kills 4 of 5 enumerated defects (static prediction)  [tier: static]
+         1.4  tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success
+         1.5  tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+         1.6  tests/test_llm_retry.py::test_retries_are_bounded_and_back_off
+         recommended test: Completion and embedding provider calls retry after connection errors, timeouts, 5xx responses, or 429 responses, and eventually stop after the configured retry limit.
+           inputs:  Use both a completion call and an embedding call with provider-shaped exceptions that have no `status_code` and represent connection failures or timeouts, but are not plain built-in `ConnectionError`/`TimeoutError` instances if possible (for example, custom subclasses or wrapper exceptions carrying connection/timeout semantics). The call should fail once and then succeed.
+           detects: The retry predicate can miss connection errors or timeouts for some exception shapes, so those live calls would not be retried.
+           full detail: acceptance recommendation --criterion retry-transient-failures-for-live-provider-calls
+
+  2. Define transient failure as a connection error, a timeout, a server error (5xx), or a rate-limit response (429).
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/llm.py#@@ -470,6 +470,64 @@ def _extract_stop_reason(response: Any) -> str | None:
+       test evidence: unsupported — kills 0 of 2 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: The code's retry logic treats connection errors, timeouts, 5xx responses, and 429 responses as transient failures.
+           inputs:  Use a provider-shaped exception with no `status_code` that represents a timeout but is not a plain built-in `TimeoutError` instance, then have the next attempt succeed. The exception should be a timeout-like provider failure that a correct implementation would retry.
+           detects: The transient check can miss timeout failures that are raised as provider exceptions with no HTTP status, so the retry logic would not treat all timeouts as transient.
+           full detail: acceptance recommendation --criterion transient-failure-definition
+
+  3. The retry count is bounded to a finite number of attempts before giving up.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/llm.py#@@ -470,6 +470,64 @@ def _extract_stop_reason(response: Any) -> str | None:
+         3.2  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         3.3  tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+
+  4. Wait with backoff between retry attempts.
+       requirements: task-01
+       code evidence: addressed
+         4.1  src/acceptance/llm.py#@@ -470,6 +470,64 @@ def _extract_stop_reason(response: Any) -> str | None:
+         4.2  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         4.3  tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success
+         4.4  tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+         4.5  tests/test_llm_retry.py::test_retries_are_bounded_and_back_off
+
+  5. A retry leaves no trace in what is recorded.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/llm.py#@@ -470,6 +470,64 @@ def _extract_stop_reason(response: Any) -> str | None:
+         5.2  src/acceptance/llm.py#@@ -937,11 +995,14 @@ class ModelClient:
+         5.3  src/acceptance/llm.py#@@ -1109,7 +1170,10 @@ class ModelClient:
+         5.4  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         5.5  tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success
+         5.6  tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+
+  6. Only a successful response is persisted.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/llm.py#@@ -937,11 +995,14 @@ class ModelClient:
+         6.2  src/acceptance/llm.py#@@ -1109,7 +1170,10 @@ class ModelClient:
+       test evidence: unsupported — kills 0 of 2 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: A successful response is recorded for replay, and unsuccessful responses leave no persisted transcript entry.
+           inputs:  Use a provider call that first raises a transient provider exception and then returns a response that fails validation, so the code path can only be correct if nothing is persisted before validation succeeds. Use a fresh transcript directory and inspect it after the call raises.
+           detects: A failed provider response could still be written to the replay store because the live-call retry wrapper is only added around provider invocation, not around the later validation/persistence boundary, so an unsuccessful response might be recorded before the code decides it is unusable.
+           full detail: acceptance recommendation --criterion successful-response-only-persistence
+
+  7. A call that failed transiently once and then succeeded produces the same transcript.
+       requirements: task-02
+       code evidence: addressed
+         7.1  src/acceptance/llm.py#@@ -470,6 +470,64 @@ def _extract_stop_reason(response: Any) -> str | None:
+         7.2  src/acceptance/llm.py#@@ -937,11 +995,14 @@ class ModelClient:
+         7.3  src/acceptance/llm.py#@@ -1109,7 +1170,10 @@ class ModelClient:
+         7.4  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: partially supported — kills 4 of 5 enumerated defects (static prediction)  [tier: static]
+         7.5  tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success
+         7.6  tests/test_llm_retry.py::test_a_failure_that_is_not_a_provider_error_is_neither_retried_nor_wrapped
+         7.7  tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+         recommended test: A retry after one transient failure records the same transcript as a first-attempt success for the same request key.
+           inputs:  Use a completion or embedding call where the first attempt raises a provider-shaped exception with no `status_code` that is transient but not a built-in `ConnectionError` or `TimeoutError` (for example, a custom exception class representing a socket timeout or connection reset), then the second attempt succeeds. Compare the transcript against a baseline first-attempt success for the same request.
+           detects: The fallback transient check only covers ConnectionError and TimeoutError, so other transient provider exceptions without a status_code would not be retried and could prevent the successful retry transcript from being recorded.
+           full detail: acceptance recommendation --criterion same-transcript-after-transient-failure-and-success
+
+  8. A call that succeeded on its first attempt is treated the same as the successful outcome of a transiently failed-then-succeeded call.
+       requirements: task-02
+       code evidence: addressed
+         8.1  src/acceptance/llm.py#@@ -470,6 +470,64 @@ def _extract_stop_reason(response: Any) -> str | None:
+         8.2  src/acceptance/llm.py#@@ -937,11 +995,14 @@ class ModelClient:
+         8.3  src/acceptance/llm.py#@@ -1109,7 +1170,10 @@ class ModelClient:
+         8.4  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         8.5  tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success
+
+  9. Replay serves it the same way as the original successful response.
+       requirements: task-02
+       code evidence: addressed
+         9.1  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         9.2  tests/prompts/test_corpus_mechanism.py::test_the_prompt_corpus_replays_with_no_live_call_at_all
+         9.3  tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls
+
+  10. A call that is still failing once retries are exhausted, or that fails with a provider error that is not transient, raises `LLMError`.
+       requirements: task-03
+       code evidence: addressed
+         10.1  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         10.2  tests/test_llm_retry.py::test_a_call_that_keeps_failing_names_stage_model_and_status_on_one_line
+         10.3  tests/test_llm_retry.py::test_a_non_transient_provider_error_is_not_retried_but_is_an_llm_error
+         10.4  tests/test_llm_retry.py::test_an_embedding_that_keeps_failing_names_its_stage
+
+  11. The LLMError message names the stage the call was made for, the provider or model, and the status.
+       requirements: task-03
+       code evidence: addressed
+         11.1  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  12. The requirement text fits on one line.
+       requirements: task-03
+       code evidence: addressed
+         12.1  src/acceptance/llm.py#@@ -470,6 +470,64 @@ def _extract_stop_reason(response: Any) -> str | None:
+         12.2  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: not required — This is a formatting constraint on the requirement text itself, so it is satisfied by the text being one line and does not require a test.
+
+  13. The error message fits on one line so the command line reports it as a single `acceptance: model error:` line.
+       requirements: task-03
+       code evidence: addressed
+         13.1  src/acceptance/llm.py#@@ -470,6 +470,64 @@ def _extract_stop_reason(response: Any) -> str | None:
+         13.2  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         13.3  tests/test_llm_retry.py::test_a_call_that_keeps_failing_names_stage_model_and_status_on_one_line
+         13.4  tests/test_llm_retry.py::test_the_cli_reports_a_call_that_keeps_failing_as_one_line
+
+  14. A completion call is included in the deliverable.
+       requirements: task-04
+       code evidence: addressed
+         14.1  src/acceptance/llm.py#@@ -1109,7 +1170,10 @@ class ModelClient:
+         14.2  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  15. An embedding call whose provider fails transiently once and then succeeds is exercised.
+       requirements: task-04
+       code evidence: addressed
+         15.1  src/acceptance/llm.py#@@ -821,7 +879,7 @@ class ModelClient:
+         15.2  src/acceptance/llm.py#@@ -937,11 +995,14 @@ class ModelClient:
+         15.3  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: partially supported — kills 2 of 3 enumerated defects (static prediction)  [tier: static]
+         15.4  tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+         recommended test: An embedding call first fails transiently and then succeeds on retry.
+           inputs:  Use a live-recorded embedding call with `embedding_fn` that raises a provider-shaped exception on the first call and succeeds on the second call, where the exception has no `status_code` and is a connection-style failure (for example, a custom exception subclassing `ConnectionError` or an exception with a connection-reset message). Use a non-empty input list so the embedding request is actually persisted on success.
+           detects: The retry logic may cover only HTTP-status failures and miss connection-style transient failures, so some transient embedding failures would not be exercised through to success.
+           full detail: acceptance recommendation --criterion embedding-call-transient-failure-then-success
+
+  16. The transient-failure-then-success embedding call records exactly what a first-time success records.
+       requirements: task-04
+       code evidence: addressed
+         16.1  src/acceptance/llm.py#@@ -821,7 +879,7 @@ class ModelClient:
+         16.2  src/acceptance/llm.py#@@ -937,11 +995,14 @@ class ModelClient:
+         16.3  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         16.4  tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+
+  17. A call that keeps failing surfaces as one `acceptance: model error:` line naming the stage.
+       requirements: task-04
+       code evidence: addressed
+         17.1  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         17.2  tests/test_llm_retry.py::test_a_call_that_keeps_failing_names_stage_model_and_status_on_one_line
+         17.3  tests/test_llm_retry.py::test_the_cli_reports_a_call_that_keeps_failing_as_one_line
+
+  18. The request key does not include any retry-policy details, so retries do not change request identity.
+       requirements: constraint-01
+       code evidence: addressed
+         18.1  src/acceptance/llm.py#@@ -470,6 +470,64 @@ def _extract_stop_reason(response: Any) -> str | None:
+         18.2  src/acceptance/llm.py#@@ -937,11 +995,14 @@ class ModelClient:
+         18.3  src/acceptance/llm.py#@@ -1109,7 +1170,10 @@ class ModelClient:
+         18.4  src/acceptance/llm.py#@@ -1153,6 +1217,40 @@ class ModelClient:
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  19. Replay mode makes no provider calls.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 6 changes across 2 files; none breaches this boundary
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         19.1  tests/prompts/test_corpus_mechanism.py::test_the_prompt_corpus_replays_with_no_live_call_at_all
+         19.2  tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call
+         19.3  tests/test_llm_retry.py::test_a_retried_call_replays_without_a_provider
+
+  20. The change does not retry failures that are not provider errors, including responses that fail schema validation.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 6 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, and a reader can verify it directly from the source and control flow without needing a test.
+
+Mandate coverage: 7 of 7 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  (none)
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  retry-transient-failures-for-live-provider-calls
+    [not_wired] retry-transient-failures-for-live-provider-calls/embedding-call-does-not-use-retry-wrapper
+      The embedding live-call path can bypass the new retry helper, so transient provider failures on embeddings would still fail immediately instead of being retried.
+      src/acceptance/llm.py#2
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [not_wired] retry-transient-failures-for-live-provider-calls/completion-call-does-not-use-retry-wrapper
+      The completion live-call path can bypass the new retry helper, so transient provider failures on completions would still fail immediately instead of being retried.
+      src/acceptance/llm.py#3
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [scope_too_narrow] retry-transient-failures-for-live-provider-calls/transient-status-set-misses-5xx
+      The transient-status check can exclude some provider failures covered by the criterion, so those failures would not be retried.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [scope_too_narrow] retry-transient-failures-for-live-provider-calls/connection-errors-not-classified-as-transient
+      The retry predicate can miss connection errors or timeouts for some exception shapes, so those live calls would not be retried.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#4
+      pairs: 24 put to the model, 0 skipped once the defect was covered
+    [condition_inverted] retry-transient-failures-for-live-provider-calls/retry-limit-off-by-one
+      The retry loop can stop one attempt too early or one attempt too late, so the configured retry limit is not enforced exactly.
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 0 skipped once the defect was covered
+
+  transient-failure-definition
+    [scope_too_narrow] transient-failure-definition/missing-timeout-classification
+      The transient check can miss timeout failures that are raised as provider exceptions with no HTTP status, so the retry logic would not treat all timeouts as transient.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#4
+      pairs: 24 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] transient-failure-definition/missing-connection-error-classification
+      The transient check can miss connection errors that are surfaced as provider exceptions with no HTTP status, so the retry logic would not treat all connection errors as transient.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#4
+      pairs: 24 put to the model, 0 skipped once the defect was covered
+
+  bounded-retries
+    [unenforced_on_one_path] bounded-retries/retry-limit-not-applied-to-all-provider-calls
+      The bounded retry loop is added for completion and embedding calls, but another provider-call path can still invoke the provider directly without going through the retry wrapper.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      pairs: 8 put to the model, 16 skipped once the defect was covered
+
+  backoff-between-retries
+    [other] backoff-between-retries/no-delay-before-first-retry
+      The retry loop can re-invoke the provider immediately after the first failure, so the first retry is not separated from the original attempt by any backoff delay.
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [scope_too_narrow] backoff-between-retries/backoff-not-applied-to-all-retries
+      The exponential sleep only covers transient failures that are retried; any retry path that bypasses the transient branch would not get a backoff delay between attempts.
+      src/acceptance/llm.py#4
+      pairs: 5 put to the model, 19 skipped once the defect was covered
+
+  retry-leaves-no-trace-in-recorded-transcript
+    [other] retry-leaves-no-trace-in-recorded-transcript/retry-path-records-different-transcript
+      A transient failure could be retried successfully, but the retry path could still leave a different recorded transcript than a first-attempt success because the recorded request or response is not normalized to the same shape after the retry.
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [scope_too_narrow] retry-leaves-no-trace-in-recorded-transcript/retry-not-applied-to-all-live-calls
+      The retry wrapper is only wired into some live provider calls, so a transient failure on an uncovered call path would still be recorded or surfaced differently from a first-attempt success.
+      src/acceptance/llm.py#1
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+
+  successful-response-only-persistence
+    [other] successful-response-only-persistence/transient-failure-persisted-before-validation
+      A failed provider response could still be written to the replay store because the live-call retry wrapper is only added around provider invocation, not around the later validation/persistence boundary, so an unsuccessful response might be recorded before the code decides it is unusable.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      pairs: 24 put to the model, 0 skipped once the defect was covered
+    [other] successful-response-only-persistence/retry-wrapper-catches-and-persists-non-success
+      The new retry helper can turn a provider failure into a returned value path if the wrapped call itself succeeds on a later attempt, but if the surrounding persistence code records the first returned object without checking that it is a successful response, an unsuccessful attempt could still be persisted as though it were valid.
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 24 put to the model, 0 skipped once the defect was covered
+
+  same-transcript-after-transient-failure-and-success
+    [not_wired] same-transcript-after-transient-failure-and-success/retry-path-not-used-for-live-completions
+      The new retry wrapper is added for embeddings, but the live completion path may still call the provider directly, so a transient failure on a completion request would not be retried before recording.
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [not_wired] same-transcript-after-transient-failure-and-success/retry-path-not-used-for-embeddings
+      The new retry wrapper is added for embeddings, but the live embedding path may still call the provider directly, so a transient failure on an embedding request would not be retried before recording.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [scope_too_narrow] same-transcript-after-transient-failure-and-success/transient-status-set-too-small
+      Only 408 and 429 are treated as transient by status code, so other retryable provider statuses such as 500-class errors would fail to retry and could produce a different transcript outcome after a transient failure.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [scope_too_narrow] same-transcript-after-transient-failure-and-success/transient-exception-set-too-narrow
+      The fallback transient check only covers ConnectionError and TimeoutError, so other transient provider exceptions without a status_code would not be retried and could prevent the successful retry transcript from being recorded.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#4
+      pairs: 24 put to the model, 0 skipped once the defect was covered
+    [prior_behavior_altered] same-transcript-after-transient-failure-and-success/retry-wrapper-relabels-nontransient-errors
+      The wrapper converts any provider failure into an LLMError message, so a non-transient provider error may no longer propagate in the same way as before and could change the recorded outcome for requests that should not be retried.
+      src/acceptance/llm.py#4
+      pairs: 12 put to the model, 12 skipped once the defect was covered
+
+  first-attempt-success-equivalence
+    [other] first-attempt-success-equivalence/retry-path-records-different-key
+      The retrying live-call path could persist a different replay key or otherwise distinguish a retried success from a first-attempt success, so replay would not serve the same transcript under the same request key.
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+
+  replay-serves-same-way
+    [not_wired] replay-serves-same-way/replay-path-bypasses-new-provider-wrapper
+      The new retry-and-normalization logic is only used for live provider calls, so a replayed request can still bypass it and return a differently shaped or differently formatted response than the original successful call.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#1
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      pairs: 12 put to the model, 12 skipped once the defect was covered
+    [other] replay-serves-same-way/retry-wrapper-changes-recorded-response
+      The new `_call_provider` wrapper could alter the successful response before it is validated and persisted, so the recorded response served on replay would not match the original successful provider behavior.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      pairs: 12 put to the model, 12 skipped once the defect was covered
+
+  llmerror-raised-on-exhausted-or-nontransient-failure
+    [scope_too_narrow] llmerror-raised-on-exhausted-or-nontransient-failure/transient-status-misclassified
+      A provider failure with a non-transient HTTP status can fall through the retry path instead of being turned into `LLMError` because the transient check only treats 408, 429, and 5xx as retryable, so some provider errors covered by the criterion are handled differently from others.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [scope_too_narrow] llmerror-raised-on-exhausted-or-nontransient-failure/non-provider-exceptions-bypass-llmerror
+      A failure that comes from the provider call but does not expose a status code can escape the `LLMError` path if it is not recognized as a provider failure, so the exhausted/non-transient failure case is not covered for all provider-shaped exceptions.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#4
+      pairs: 5 put to the model, 19 skipped once the defect was covered
+    [wrong_error_surfaced] llmerror-raised-on-exhausted-or-nontransient-failure/wrong-error-message-on-llmerror
+      The code can raise `LLMError` with a message that names the wrong cause or status for the failure, so the failure is surfaced as the wrong kind of provider problem even though an `LLMError` is raised.
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+
+  llmerror-message-stage-provider-status
+    none enumerated: The changed code routes provider failures through a single LLMError construction that includes the stage, the model, and the provider status (or a connection-error placeholder) in the message, so there is no plausible static defect in the diff that would omit one of those fields for this criterion.
+
+  one-line-message
+    none enumerated: The diff adds `_one_line()` and uses it at the only new error-construction site in `_call_provider()`, so the one-line formatting invariant is enforced on the delivered path that emits the requirement text. The criterion is about presentation of the requirement text as a single line, and there is no changed code path here that would reintroduce multiline output for that text.
+
+  single-line-acceptance-model-error
+    [other] single-line-acceptance-model-error/multi-line-error-text
+      The provider failure is wrapped in an LLMError whose message still contains embedded newlines from the original exception text, so the CLI can print the model error as multiple lines instead of one.
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+
+  completion-call
+    none enumerated: The diff adds a completion-provider call path by routing `_persist_live_call` through `_call_provider(self._completion_fn, "completion", stage, ...)`, so the deliverable includes a completion call on the live completion path. There is no plausible static defect in the shown changes that would make the change lack a completion call entirely.
+
+  embedding-call-transient-failure-then-success
+    [not_wired] embedding-call-transient-failure-then-success/embedding-retries-not-applied-to-live-call
+      The retry wrapper exists, but the embedding path does not actually go through it, so a transient provider failure is never retried before the embedding call is recorded or surfaced.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [condition_inverted] embedding-call-transient-failure-then-success/embedding-transient-status-not-treated-as-retryable
+      The transient-failure test can be wired to the wrong status set, so a provider failure that should be retried is treated as non-retryable and never reaches the succeeding attempt.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [scope_too_narrow] embedding-call-transient-failure-then-success/embedding-retry-path-excludes-connection-failures
+      The retry logic may cover only HTTP-status failures and miss connection-style transient failures, so some transient embedding failures would not be exercised through to success.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#4
+      pairs: 24 put to the model, 0 skipped once the defect was covered
+
+  embedding-call-records-first-time-success-equivalently
+    [other] embedding-call-records-first-time-success-equivalently/retry-path-records-different-error-shape
+      A transient embedding failure that later succeeds could still be recorded differently from a first-time success because the retry wrapper changes the recorded failure/success path or metadata before persistence.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [not_wired] embedding-call-records-first-time-success-equivalently/embedding-wrapper-not-applied-to-all-recording-paths
+      The new retry-and-normalization wrapper may be used for live completion calls but not for every live embedding recording path, leaving some embedding calls to bypass the equivalence logic entirely.
+      src/acceptance/llm.py#1
+      src/acceptance/llm.py#2
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+
+  model-error-single-line-per-stage
+    [wrong_error_surfaced] model-error-single-line-per-stage/wrong-error-format
+      A persistent provider failure is turned into an `LLMError`, but the message is not reduced to a single `acceptance: model error:` line naming the stage, so the CLI can still emit a multi-line or differently prefixed error.
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [not_wired] model-error-single-line-per-stage/stage-not-propagated-to-provider-wrapper
+      The live call sites do not pass the stage into the retry/error wrapper, so a failing call cannot be reported with the stage that failed.
+      src/acceptance/llm.py#1
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [not_wired] model-error-single-line-per-stage/retry-wrapper-not-used-for-all-live-calls
+      Some live provider calls still bypass the retry/error wrapper, so a persistently failing call on that path would not surface through the single staged model-error line.
+      src/acceptance/llm.py#1
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 12 put to the model, 12 skipped once the defect was covered
+
+  request-key-ignores-retry-policy
+    none enumerated: The diff only adds transient-provider retry handling around live provider calls and error reporting; it does not modify request-key construction or any code that incorporates retry-policy settings into the key. The added retry loop also explicitly states that retries do not reach the request or transcript, so there is no plausible static defect in the shown changes that would make different retry settings produce different request keys.
+
+  replay-mode-no-provider-calls
+    [unenforced_on_one_path] replay-mode-no-provider-calls/replay-path-still-invokes-provider
+      Replay mode can still reach the provider call sites because the new retry wrapper is only inserted around live provider invocations, not around the replay-mode branch that should short-circuit them.
+      src/acceptance/llm.py#1
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+
+  non-provider-failures-not-retried
+    [condition_inverted] non-provider-failures-not-retried/non-provider-errors-treated-as-provider-failures
+      The retry gate can classify a non-provider exception as retryable, so a schema-validation or other local failure is retried instead of stopping immediately.
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 5 skipped once the defect was covered
+    [scope_too_narrow] non-provider-failures-not-retried/provider-failure-check-too-broad
+      The provider-failure test is broad enough to catch exceptions that are not actually provider errors, so some local failures can still be retried.
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 20 skipped once the defect was covered
+    [not_wired] non-provider-failures-not-retried/retry-wrapper-not-used-on-live-call
+      The live completion path can still call the provider directly, bypassing the new retry wrapper, so non-provider failures are not protected from retries by this change.
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      pairs: 12 put to the model, 12 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [prefiltered] backoff-between-retries/backoff-not-applied-to-all-retries x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] backoff-between-retries/no-delay-before-first-retry x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] bounded-retries/retry-limit-not-applied-to-all-provider-calls x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] embedding-call-records-first-time-success-equivalently/embedding-wrapper-not-applied-to-all-recording-paths x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] embedding-call-records-first-time-success-equivalently/retry-path-records-different-error-shape x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] embedding-call-transient-failure-then-success/embedding-retries-not-applied-to-live-call x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] embedding-call-transient-failure-then-success/embedding-retry-path-excludes-connection-failures x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] embedding-call-transient-failure-then-success/embedding-transient-status-not-treated-as-retryable x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] first-attempt-success-equivalence/retry-path-records-different-key x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] llmerror-raised-on-exhausted-or-nontransient-failure/non-provider-exceptions-bypass-llmerror x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] llmerror-raised-on-exhausted-or-nontransient-failure/transient-status-misclassified x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] llmerror-raised-on-exhausted-or-nontransient-failure/wrong-error-message-on-llmerror x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] model-error-single-line-per-stage/retry-wrapper-not-used-for-all-live-calls x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] model-error-single-line-per-stage/stage-not-propagated-to-provider-wrapper x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] model-error-single-line-per-stage/wrong-error-format x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] non-provider-failures-not-retried/non-provider-errors-treated-as-provider-failures x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] non-provider-failures-not-retried/provider-failure-check-too-broad x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] non-provider-failures-not-retried/retry-wrapper-not-used-on-live-call x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] replay-mode-no-provider-calls/replay-path-still-invokes-provider x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] replay-serves-same-way/replay-path-bypasses-new-provider-wrapper x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] replay-serves-same-way/retry-wrapper-changes-recorded-response x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] retry-leaves-no-trace-in-recorded-transcript/retry-not-applied-to-all-live-calls x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] retry-leaves-no-trace-in-recorded-transcript/retry-path-records-different-transcript x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] retry-transient-failures-for-live-provider-calls/completion-call-does-not-use-retry-wrapper x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] retry-transient-failures-for-live-provider-calls/connection-errors-not-classified-as-transient x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] retry-transient-failures-for-live-provider-calls/embedding-call-does-not-use-retry-wrapper x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] retry-transient-failures-for-live-provider-calls/retry-limit-off-by-one x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] retry-transient-failures-for-live-provider-calls/transient-status-set-misses-5xx x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] same-transcript-after-transient-failure-and-success/retry-path-not-used-for-embeddings x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] same-transcript-after-transient-failure-and-success/retry-path-not-used-for-live-completions x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] same-transcript-after-transient-failure-and-success/retry-wrapper-relabels-nontransient-errors x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] same-transcript-after-transient-failure-and-success/transient-exception-set-too-narrow x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] same-transcript-after-transient-failure-and-success/transient-status-set-too-small x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] single-line-acceptance-model-error/multi-line-error-text x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] successful-response-only-persistence/retry-wrapper-catches-and-persists-non-success x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] successful-response-only-persistence/transient-failure-persisted-before-validation x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] transient-failure-definition/missing-connection-error-classification x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [prefiltered] transient-failure-definition/missing-timeout-classification x tests/test_rank_prefilter_findings.py::test_the_findings_record_the_embedding_model_the_review_ranks_with
+    the test's module imports no first-party module, the test takes no fixture, and it references no name defined in src/acceptance/llm.py — no path to the defect exists
+  [passed_under_edit] embedding-call-transient-failure-then-success/embedding-retries-not-applied-to-live-call x 19 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 5 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] non-provider-failures-not-retried/non-provider-errors-treated-as-provider-failures x 15 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 9 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] retry-leaves-no-trace-in-recorded-transcript/retry-not-applied-to-all-live-calls x 19 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 5 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] retry-transient-failures-for-live-provider-calls/embedding-call-does-not-use-retry-wrapper x 19 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 5 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] retry-transient-failures-for-live-provider-calls/retry-limit-off-by-one x 20 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 4 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] same-transcript-after-transient-failure-and-success/retry-path-not-used-for-embeddings x 19 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 5 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] backoff-between-retries/backoff-not-applied-to-all-retries x 19 candidate test(s), ranked 6 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success, tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success, tests/test_llm_retry.py::test_retries_are_bounded_and_back_off
+  [defect_already_covered] backoff-between-retries/no-delay-before-first-retry x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_retries_are_bounded_and_back_off
+  [defect_already_covered] bounded-retries/retry-limit-not-applied-to-all-provider-calls x 16 candidate test(s), ranked 6 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] embedding-call-records-first-time-success-equivalently/embedding-wrapper-not-applied-to-all-recording-paths x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] embedding-call-records-first-time-success-equivalently/retry-path-records-different-error-shape x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] embedding-call-transient-failure-then-success/embedding-retries-not-applied-to-live-call x 1 candidate test(s), ranked 14 to 14
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] embedding-call-transient-failure-then-success/embedding-transient-status-not-treated-as-retryable x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] first-attempt-success-equivalence/retry-path-records-different-key x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] llmerror-raised-on-exhausted-or-nontransient-failure/non-provider-exceptions-bypass-llmerror x 19 candidate test(s), ranked 6 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_non_transient_provider_error_is_not_retried_but_is_an_llm_error
+  [defect_already_covered] llmerror-raised-on-exhausted-or-nontransient-failure/transient-status-misclassified x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_keeps_failing_names_its_stage
+  [defect_already_covered] llmerror-raised-on-exhausted-or-nontransient-failure/wrong-error-message-on-llmerror x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_call_that_keeps_failing_names_stage_model_and_status_on_one_line, tests/test_llm_retry.py::test_a_non_transient_provider_error_is_not_retried_but_is_an_llm_error, tests/test_llm_retry.py::test_an_embedding_that_keeps_failing_names_its_stage
+  [defect_already_covered] model-error-single-line-per-stage/retry-wrapper-not-used-for-all-live-calls x 12 candidate test(s), ranked 13 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_the_cli_reports_a_call_that_keeps_failing_as_one_line
+  [defect_already_covered] model-error-single-line-per-stage/stage-not-propagated-to-provider-wrapper x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_call_that_keeps_failing_names_stage_model_and_status_on_one_line
+  [defect_already_covered] model-error-single-line-per-stage/wrong-error-format x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_call_that_keeps_failing_names_stage_model_and_status_on_one_line, tests/test_llm_retry.py::test_the_cli_reports_a_call_that_keeps_failing_as_one_line
+  [defect_already_covered] non-provider-failures-not-retried/non-provider-errors-treated-as-provider-failures x 5 candidate test(s), ranked 5 to 10
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_failure_that_is_not_a_provider_error_is_neither_retried_nor_wrapped
+  [defect_already_covered] non-provider-failures-not-retried/provider-failure-check-too-broad x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_failure_that_is_not_a_provider_error_is_neither_retried_nor_wrapped
+  [defect_already_covered] non-provider-failures-not-retried/retry-wrapper-not-used-on-live-call x 12 candidate test(s), ranked 13 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_the_cli_reports_a_call_that_keeps_failing_as_one_line
+  [defect_already_covered] replay-mode-no-provider-calls/replay-path-still-invokes-provider x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/prompts/test_corpus_mechanism.py::test_the_prompt_corpus_replays_with_no_live_call_at_all, tests/test_determinism.py::test_replay_reproduces_a_recorded_run_with_no_live_call, tests/test_llm_retry.py::test_a_retried_call_replays_without_a_provider
+  [defect_already_covered] replay-serves-same-way/replay-path-bypasses-new-provider-wrapper x 12 candidate test(s), ranked 13 to 24
+    not asked: the defect was already covered by tests/prompts/test_corpus_mechanism.py::test_the_prompt_corpus_replays_with_no_live_call_at_all
+  [defect_already_covered] replay-serves-same-way/retry-wrapper-changes-recorded-response x 12 candidate test(s), ranked 13 to 24
+    not asked: the defect was already covered by tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls
+  [defect_already_covered] retry-leaves-no-trace-in-recorded-transcript/retry-not-applied-to-all-live-calls x 1 candidate test(s), ranked 22 to 22
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] retry-leaves-no-trace-in-recorded-transcript/retry-path-records-different-transcript x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success, tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] retry-transient-failures-for-live-provider-calls/completion-call-does-not-use-retry-wrapper x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] retry-transient-failures-for-live-provider-calls/embedding-call-does-not-use-retry-wrapper x 1 candidate test(s), ranked 13 to 13
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] retry-transient-failures-for-live-provider-calls/transient-status-set-misses-5xx x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] same-transcript-after-transient-failure-and-success/retry-path-not-used-for-embeddings x 1 candidate test(s), ranked 13 to 13
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] same-transcript-after-transient-failure-and-success/retry-path-not-used-for-live-completions x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] same-transcript-after-transient-failure-and-success/retry-wrapper-relabels-nontransient-errors x 12 candidate test(s), ranked 13 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_failure_that_is_not_a_provider_error_is_neither_retried_nor_wrapped
+  [defect_already_covered] same-transcript-after-transient-failure-and-success/transient-status-set-too-small x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+  [defect_already_covered] single-line-acceptance-model-error/multi-line-error-text x 20 candidate test(s), ranked 5 to 24
+    not asked: the defect was already covered by tests/test_llm_retry.py::test_a_call_that_keeps_failing_names_stage_model_and_status_on_one_line, tests/test_llm_retry.py::test_the_cli_reports_a_call_that_keeps_failing_as_one_line
+
+Running the project's tests:
+  the project's tests were run: 38 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [killed, NOT COUNTED] backoff-between-retries/backoff-not-applied-to-all-retries
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1238..1241 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1238-1241:
+           -                 if transient and attempt < _MAX_ATTEMPTS:
+           -                     time.sleep(delay)
+           -                     delay *= 2
+           -                     continue
+           +                 if transient and attempt < _MAX_ATTEMPTS:
+           +                     time.sleep(delay)
+           +                     delay *= 2
+           +                     continue
+    injected at src/acceptance/llm.py lines 1238-1241:
+      -                 if transient and attempt < _MAX_ATTEMPTS:
+      -                     time.sleep(delay)
+      -                     delay *= 2
+      -                     continue
+      +                 if attempt < _MAX_ATTEMPTS:
+      +                     time.sleep(delay)
+      +                     delay *= 2
+      +                     continue
+    caught by (1):
+      tests/test_llm_retry.py::test_a_non_transient_provider_error_is_not_retried_but_is_an_llm_error
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 5 put to the model, 0 dropped as not worth asking, 19 skipped once the defect was covered
+
+  [survived, NOT COUNTED] backoff-between-retries/no-delay-before-first-retry
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1238-1240:
+      -                 if transient and attempt < _MAX_ATTEMPTS:
+      -                     time.sleep(delay)
+      -                     delay *= 2
+      +                 if transient and attempt < _MAX_ATTEMPTS:
+      +                     delay *= 2
+      +                     time.sleep(delay)
+      +                     continue
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+
+  [killed, NOT COUNTED] bounded-retries/retry-limit-not-applied-to-all-provider-calls
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1231..1233 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1231-1233:
+           -         for attempt in range(1, _MAX_ATTEMPTS + 1):
+           -             try:
+           -                 return fn(**kwargs)
+           +         for attempt in range(1, _MAX_ATTEMPTS + 1):
+           +             try:
+           +                 return fn(**kwargs)
+    injected at src/acceptance/llm.py lines 1231-1231:
+      -         for attempt in range(1, _MAX_ATTEMPTS + 1):
+      +         for attempt in range(1, _MAX_ATTEMPTS):
+    caught by (4):
+      tests/test_llm_retry.py::test_a_call_that_keeps_failing_names_stage_model_and_status_on_one_line
+      tests/test_llm_retry.py::test_an_embedding_that_keeps_failing_names_its_stage
+      tests/test_llm_retry.py::test_retries_are_bounded_and_back_off
+      tests/test_llm_retry.py::test_the_cli_reports_a_call_that_keeps_failing_as_one_line
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 8 put to the model, 0 dropped as not worth asking, 16 skipped once the defect was covered
+
+  [no_usable_edit] embedding-call-records-first-time-success-equivalently/embedding-wrapper-not-applied-to-all-recording-paths
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1002..1008 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1002-1008:
+           -         response = self._call_provider(
+           -             self._embedding_fn,
+           -             "embedding",
+           -             stage,
+           -             model=request["model"],
+           -             input=request["input"],
+           -         )
+           +         response = self._call_provider(
+           +             self._embedding_fn,
+           +             "embedding",
+           +             stage,
+           +             model=request["model"],
+           +             input=request["input"],
+           +         )
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1002..1008 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1002-1008:
+           -         response = self._call_provider(
+           -             self._embedding_fn,
+           -             "embedding",
+           -             stage,
+           -             model=request["model"],
+           -             input=request["input"],
+           -         )
+           +         response = self._call_provider(
+           +             self._embedding_fn,
+           +             "embedding",
+           +             stage,
+           +             model=request["model"],
+           +             input=request["input"],
+           +         )
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1002..1008 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1002-1008:
+           -         response = self._call_provider(
+           -             self._embedding_fn,
+           -             "embedding",
+           -             stage,
+           -             model=request["model"],
+           -             input=request["input"],
+           -         )
+           +         response = self._call_provider(
+           +             self._embedding_fn,
+           +             "embedding",
+           +             stage,
+           +             model=request["model"],
+           +             input=request["input"],
+           +         )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] embedding-call-records-first-time-success-equivalently/retry-path-records-different-error-shape
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1009..1013 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1009-1013:
+           -         record = {
+           -             "request": request,
+           -             "response": _extract_embeddings(response),
+           -             "usage": _extract_usage(response),
+           -         }
+           +         record = {
+           +             "request": request,
+           +             "response": _extract_embeddings(response),
+           +             "usage": _extract_usage(response),
+           +         }
+      2. set aside (failed_check): the span 1009..1013 falls outside the region(s) the defect named in src/acceptance/llm.py (995..1008, 1217..1256)
+         at src/acceptance/llm.py lines 1009-1013:
+           -         record = {
+           -             "request": request,
+           -             "response": _extract_embeddings(response),
+           -             "usage": _extract_usage(response),
+           -         }
+           +         record = {
+           +             "request": request,
+           +             "response": _extract_embeddings(response),
+           +             "usage": _extract_usage(response),
+           +             "controls_applied": {},
+           +         }
+      3. set aside (failed_check): the span 1009..1013 falls outside the region(s) the defect named in src/acceptance/llm.py (995..1008, 1217..1256)
+         at src/acceptance/llm.py lines 1009-1013:
+           -         record = {
+           -             "request": request,
+           -             "response": _extract_embeddings(response),
+           -             "usage": _extract_usage(response),
+           -         }
+           +         record = {
+           +             "request": request,
+           +             "response": _extract_embeddings(response),
+           +             "usage": _extract_usage(response),
+           +             "controls_applied": {},
+           +         }
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] embedding-call-transient-failure-then-success/embedding-retries-not-applied-to-live-call
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1002-1004:
+      -         response = self._call_provider(
+      -             self._embedding_fn,
+      -             "embedding",
+      +         response = self._call_provider(
+      +             self._completion_fn,
+      +             "embedding",
+    caught by (5):
+      tests/requirement/test_link_prefilter.py::test_an_embedding_request_is_replayed_from_its_recording_rather_than_issued_again
+      tests/requirement/test_link_prefilter.py::test_the_linking_path_embeds_every_obligation_exactly_once
+      tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+      tests/test_llm_retry.py::test_an_embedding_that_keeps_failing_names_its_stage
+      tests/test_stage_reasoning.py::test_an_embedding_is_not_a_stage_that_dropped_its_controls
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 19 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [killed, NOT COUNTED] embedding-call-transient-failure-then-success/embedding-retry-path-excludes-connection-failures
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 511-511:
+      -     return isinstance(exc, (ConnectionError, TimeoutError))
+      +     return isinstance(exc, ConnectionError)
+    caught by (1):
+      tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 24 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] embedding-call-transient-failure-then-success/embedding-transient-status-not-treated-as-retryable
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 488-488:
+      - _TRANSIENT_STATUSES = frozenset({408, 429})
+      + _TRANSIENT_STATUSES = frozenset({408, 429, 500})
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+
+  [no_usable_edit] first-attempt-success-equivalence/retry-path-records-different-key
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1216..1216 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1216-1216:
+           -             "controls_applied": applied,
+           +             "controls_applied": applied,
+      2. set aside (failed_check): the edit replaces 13 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/llm.py lines 1204-1216:
+           -         record = {
+           -             "request": request,
+           -             "response": _extract_content(response),
+           -             "usage": _extract_usage(response),
+           -             # Why generation ended — `length` means the answer was cut off and
+           -             # every judgment it was carrying is missing, which no other recorded
+           -             # field distinguishes from a complete short answer (#266).
+           -             "stop_reason": _extract_stop_reason(response),
+           -             # What the provider honoured, which is not always what we asked for.
+           -             # Recorded so a transcript never implies a determinism control that
+           -             # was silently dropped; absent for injected completion functions,
+           -             # which have no provider to drop anything.
+           -             "controls_applied": applied,
+           +         record = {
+           +             "request": request,
+           +             "response": _extract_content(response),
+           +             "usage": _extract_usage(response),
+           +             # Why generation ended — `length` means the answer was cut off and
+           +             # every judgment it was carrying is missing, which no other recorded
+           +             # field distinguishes from a complete short answer (#266).
+           +             "stop_reason": _extract_stop_reason(response),
+           +         }
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1216..1216 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1216-1216:
+           -             "controls_applied": applied,
+           +             "controls_applied": applied,
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] llmerror-raised-on-exhausted-or-nontransient-failure/non-provider-exceptions-bypass-llmerror
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 521-521:
+      -     return _provider_status(exc) is not None or _is_transient(exc)
+      +     return _provider_status(exc) is not None or _is_transient(exc) or isinstance(exc, Exception)
+    caught by (1):
+      tests/test_llm_retry.py::test_a_failure_that_is_not_a_provider_error_is_neither_retried_nor_wrapped
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 5 put to the model, 0 dropped as not worth asking, 19 skipped once the defect was covered
+
+  [survived, NOT COUNTED] llmerror-raised-on-exhausted-or-nontransient-failure/transient-status-misclassified
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 488-488:
+      - _TRANSIENT_STATUSES = frozenset({408, 429})
+      + _TRANSIENT_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+
+  [survived, NOT COUNTED] llmerror-raised-on-exhausted-or-nontransient-failure/wrong-error-message-on-llmerror
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1247..1248 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1247-1248:
+           -                         f"{kwargs.get('model')} failed with status "
+           -                         f"{status if status is not None else 'none (connection error)'} "
+           +                         f"{kwargs.get('model')} failed with status "
+           +                         f"{status if status is not None else 'none (connection error)'} "
+    injected at src/acceptance/llm.py lines 1247-1248:
+      -                         f"{kwargs.get('model')} failed with status "
+      -                         f"{status if status is not None else 'none (connection error)'} "
+      +                         f"{kwargs.get('model')} failed with status "
+      +                         f"{status if status is not None else 'none'} "
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+
+  [no_usable_edit] model-error-single-line-per-stage/retry-wrapper-not-used-for-all-live-calls
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1002..1008 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1002-1008:
+           -         response = self._call_provider(
+           -             self._embedding_fn,
+           -             "embedding",
+           -             stage,
+           -             model=request["model"],
+           -             input=request["input"],
+           -         )
+           +         response = self._call_provider(
+           +             self._embedding_fn,
+           +             "embedding",
+           +             stage,
+           +             model=request["model"],
+           +             input=request["input"],
+           +         )
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1002..1008 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1002-1008:
+           -         response = self._call_provider(
+           -             self._embedding_fn,
+           -             "embedding",
+           -             stage,
+           -             model=request["model"],
+           -             input=request["input"],
+           -         )
+           +         response = self._call_provider(
+           +             self._embedding_fn,
+           +             "embedding",
+           +             stage,
+           +             model=request["model"],
+           +             input=request["input"],
+           +         )
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 12 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] model-error-single-line-per-stage/stage-not-propagated-to-provider-wrapper
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1002..1008 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1002-1008:
+           -         response = self._call_provider(
+           -             self._embedding_fn,
+           -             "embedding",
+           -             stage,
+           -             model=request["model"],
+           -             input=request["input"],
+           -         )
+           +         response = self._call_provider(
+           +             self._embedding_fn,
+           +             "embedding",
+           +             stage,
+           +             model=request["model"],
+           +             input=request["input"],
+           +         )
+      2. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unexpected indent (<unknown>, line 1008)
+         at src/acceptance/llm.py lines 1002-1005:
+           -         response = self._call_provider(
+           -             self._embedding_fn,
+           -             "embedding",
+           -             stage,
+           +         response = self._call_provider(
+           +             self._embedding_fn,
+           +             "embedding",
+           +             model=request["model"],
+           +             input=request["input"],
+           +         )
+      3. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unexpected indent (<unknown>, line 1202)
+         at src/acceptance/llm.py lines 1173-1176:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] model-error-single-line-per-stage/wrong-error-format
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1252)
+         at src/acceptance/llm.py lines 1244-1250:
+           -                 raise LLMError(
+           -                     _one_line(
+           -                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           -                         f"{kwargs.get('model')} failed with status "
+           -                         f"{status if status is not None else 'none (connection error)'} "
+           -                         f"{outcome}: {type(exc).__name__}: {exc}"
+           -                     )
+           +                 raise LLMError(
+           +                     _one_line(
+           +                         f"acceptance: model error: {kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           +                         f"{kwargs.get('model')} failed with status "
+           +                         f"{status if status is not None else 'none (connection error)'} "
+           +                         f"{outcome}: {type(exc).__name__}: {exc}"
+           +                     )
+           +                 ) from exc
+      2. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1252)
+         at src/acceptance/llm.py lines 1244-1250:
+           -                 raise LLMError(
+           -                     _one_line(
+           -                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           -                         f"{kwargs.get('model')} failed with status "
+           -                         f"{status if status is not None else 'none (connection error)'} "
+           -                         f"{outcome}: {type(exc).__name__}: {exc}"
+           -                     )
+           +                 raise LLMError(
+           +                     _one_line(
+           +                         f"acceptance: model error: {kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           +                         f"{kwargs.get('model')} failed with status "
+           +                         f"{status if status is not None else 'none (connection error)'} "
+           +                         f"{outcome}: {type(exc).__name__}: {exc}"
+           +                     )
+           +                 ) from exc
+      3. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1252)
+         at src/acceptance/llm.py lines 1244-1250:
+           -                 raise LLMError(
+           -                     _one_line(
+           -                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           -                         f"{kwargs.get('model')} failed with status "
+           -                         f"{status if status is not None else 'none (connection error)'} "
+           -                         f"{outcome}: {type(exc).__name__}: {exc}"
+           -                     )
+           +                 raise LLMError(
+           +                     _one_line(
+           +                         f"acceptance: model error: {kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           +                         f"{kwargs.get('model')} failed with status "
+           +                         f"{status if status is not None else 'none (connection error)'} "
+           +                         f"{outcome}: {type(exc).__name__}: {exc}"
+           +                     )
+           +                 ) from exc
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] non-provider-failures-not-retried/non-provider-errors-treated-as-provider-failures
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1235..1236 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1235-1236:
+           -                 if not _is_provider_failure(exc):
+           -                     raise
+           +                 if not _is_provider_failure(exc):
+           +                     raise
+    injected at src/acceptance/llm.py lines 1235-1236:
+      -                 if not _is_provider_failure(exc):
+      -                     raise
+      +                 if _is_provider_failure(exc):
+      +                     raise
+    caught by (9):
+      tests/test_llm_retry.py::test_a_call_that_keeps_failing_names_stage_model_and_status_on_one_line
+      tests/test_llm_retry.py::test_a_completion_that_fails_transiently_once_records_a_first_time_success
+      tests/test_llm_retry.py::test_a_failure_that_is_not_a_provider_error_is_neither_retried_nor_wrapped
+      tests/test_llm_retry.py::test_a_non_transient_provider_error_is_not_retried_but_is_an_llm_error
+      tests/test_llm_retry.py::test_a_retried_call_replays_without_a_provider
+      tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+      tests/test_llm_retry.py::test_an_embedding_that_keeps_failing_names_its_stage
+      tests/test_llm_retry.py::test_retries_are_bounded_and_back_off
+      tests/test_llm_retry.py::test_the_cli_reports_a_call_that_keeps_failing_as_one_line
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 15 dropped as not worth asking, 5 skipped once the defect was covered
+
+  [survived, NOT COUNTED] non-provider-failures-not-retried/provider-failure-check-too-broad
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1235-1235:
+      -                 if not _is_provider_failure(exc):
+      +                 if not _is_provider_failure(exc) and _provider_status(exc) is None:
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+
+  [no_usable_edit] non-provider-failures-not-retried/retry-wrapper-not-used-on-live-call
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+      3. set aside (failed_check): the edit replaces 30 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._call_provider,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 12 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] replay-mode-no-provider-calls/replay-path-still-invokes-provider
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 869..885 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 869-885:
+           -         if record is None:
+           -             if self.mode is Mode.REPLAY:
+           -                 raise TranscriptNotFoundError(
+           -                     f"no recorded transcript for embedding request {key} "
+           -                     f"(embedding_model={self.embedding_model}, {len(texts)} inputs); "
+           -                     "REPLAY mode does not fall back to a live call.\n"
+           -                     "\n"
+           -                     "The key hashes the exact input list, so this is expected "
+           -                     "whenever the text being embedded changes — including when an "
+           -                     "upstream stage rewords the obligations feeding it. Re-record "
+           -                     "with --mode record."
+           -                 )
+           -             started = time.perf_counter()
+           -             record = self._persist_live_embedding(key, request, stage)
+           -             seconds = time.perf_counter() - started
+           -         else:
+           -             seconds = None
+           +         if record is None:
+           +             if self.mode is Mode.REPLAY:
+           +                 raise TranscriptNotFoundError(
+           +                     f"no recorded transcript for embedding request {key} "
+           +                     f"(embedding_model={self.embedding_model}, {len(texts)} inputs); "
+           +                     "REPLAY mode does not fall back to a live call.\n"
+           +                     "\n"
+           +                     "The key hashes the exact input list, so this is expected "
+           +                     "whenever the text being embedded changes — including when an "
+           +                     "upstream stage rewords the obligations feeding it. Re-record "
+           +                     "with --mode record."
+           +                 )
+           +             started = time.perf_counter()
+           +             record = self._persist_live_embedding(key, request, stage)
+           +             seconds = time.perf_counter() - started
+           +         else:
+           +             seconds = None
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 869..885 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 869-885:
+           -         if record is None:
+           -             if self.mode is Mode.REPLAY:
+           -                 raise TranscriptNotFoundError(
+           -                     f"no recorded transcript for embedding request {key} "
+           -                     f"(embedding_model={self.embedding_model}, {len(texts)} inputs); "
+           -                     "REPLAY mode does not fall back to a live call.\n"
+           -                     "\n"
+           -                     "The key hashes the exact input list, so this is expected "
+           -                     "whenever the text being embedded changes — including when an "
+           -                     "upstream stage rewords the obligations feeding it. Re-record "
+           -                     "with --mode record."
+           -                 )
+           -             started = time.perf_counter()
+           -             record = self._persist_live_embedding(key, request, stage)
+           -             seconds = time.perf_counter() - started
+           -         else:
+           -             seconds = None
+           +         if record is None:
+           +             if self.mode is Mode.REPLAY:
+           +                 raise TranscriptNotFoundError(
+           +                     f"no recorded transcript for embedding request {key} "
+           +                     f"(embedding_model={self.embedding_model}, {len(texts)} inputs); "
+           +                     "REPLAY mode does not fall back to a live call.\n"
+           +                     "\n"
+           +                     "The key hashes the exact input list, so this is expected "
+           +                     "whenever the text being embedded changes — including when an "
+           +                     "upstream stage rewords the obligations feeding it. Re-record "
+           +                     "with --mode record."
+           +                 )
+           +             started = time.perf_counter()
+           +             record = self._persist_live_embedding(key, request, stage)
+           +             seconds = time.perf_counter() - started
+           +         else:
+           +             seconds = None
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 881..882 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 881-882:
+           -             started = time.perf_counter()
+           -             record = self._persist_live_embedding(key, request, stage)
+           +             started = time.perf_counter()
+           +             record = self._persist_live_embedding(key, request, stage)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] replay-serves-same-way/replay-path-bypasses-new-provider-wrapper
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 12 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] replay-serves-same-way/retry-wrapper-changes-recorded-response
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the edit replaces 29 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/llm.py lines 1173-1201:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+      2. set aside (failed_check): the span 1189..1199 falls outside the region(s) the defect named in src/acceptance/llm.py (995..1008, 1170..1179, 1217..1256)
+         at src/acceptance/llm.py lines 1189-1199:
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": False,
+           +                 },
+           +             },
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1233..1233 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1233-1233:
+           -                 return fn(**kwargs)
+           +                 return fn(**kwargs)
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 12 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] retry-leaves-no-trace-in-recorded-transcript/retry-not-applied-to-all-live-calls
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 882..882 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 882-882:
+           -             record = self._persist_live_embedding(key, request, stage)
+           +             record = self._persist_live_embedding(key, request, stage)
+    injected at src/acceptance/llm.py lines 882-882:
+      -             record = self._persist_live_embedding(key, request, stage)
+      +             record = self._live_call(key, request, stage)
+    caught by (5):
+      tests/requirement/test_link_prefilter.py::test_an_embedding_request_is_replayed_from_its_recording_rather_than_issued_again
+      tests/requirement/test_link_prefilter.py::test_the_linking_path_embeds_every_obligation_exactly_once
+      tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+      tests/test_llm_retry.py::test_an_embedding_that_keeps_failing_names_its_stage
+      tests/test_stage_reasoning.py::test_an_embedding_is_not_a_stage_that_dropped_its_controls
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 19 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [survived, NOT COUNTED] retry-leaves-no-trace-in-recorded-transcript/retry-path-records-different-transcript
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1238-1240:
+      -                 if transient and attempt < _MAX_ATTEMPTS:
+      -                     time.sleep(delay)
+      -                     delay *= 2
+      +                 if transient and attempt < _MAX_ATTEMPTS:
+      +                     time.sleep(delay)
+      +                     delay *= 2
+      +                     continue
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+
+  [no_usable_edit] retry-transient-failures-for-live-provider-calls/completion-call-does-not-use-retry-wrapper
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1174 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1174:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           +         response = self._call_provider(
+           +             self._completion_fn,
+      2. set aside (refused_after_run): 11 of the 25 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/llm.py lines 1173-1174:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           +         response = self._completion_fn(
+      3. set aside (refused_after_run): 11 of the 25 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/llm.py lines 1173-1174:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           +         response = self._completion_fn(
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] retry-transient-failures-for-live-provider-calls/connection-errors-not-classified-as-transient
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 507-511:
+      - def _is_transient(exc: BaseException) -> bool:
+      -     status = _provider_status(exc)
+      -     if status is not None:
+      -         return status in _TRANSIENT_STATUSES or status >= 500
+      -     return isinstance(exc, (ConnectionError, TimeoutError))
+      + def _is_transient(exc: BaseException) -> bool:
+      +     status = _provider_status(exc)
+      +     if status is not None:
+      +         return status in _TRANSIENT_STATUSES or status >= 500
+      +     return isinstance(exc, (ConnectionError, TimeoutError)) or isinstance(getattr(exc, "__cause__", None), (ConnectionError, TimeoutError))
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 24 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] retry-transient-failures-for-live-provider-calls/embedding-call-does-not-use-retry-wrapper
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1002-1003:
+      -         response = self._call_provider(
+      -             self._embedding_fn,
+      +         response = self._call_provider(
+      +             self._retrying_embedding_fn,
+    caught by (5):
+      tests/requirement/test_link_prefilter.py::test_an_embedding_request_is_replayed_from_its_recording_rather_than_issued_again
+      tests/requirement/test_link_prefilter.py::test_the_linking_path_embeds_every_obligation_exactly_once
+      tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+      tests/test_llm_retry.py::test_an_embedding_that_keeps_failing_names_its_stage
+      tests/test_stage_reasoning.py::test_an_embedding_is_not_a_stage_that_dropped_its_controls
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 19 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [killed, NOT COUNTED] retry-transient-failures-for-live-provider-calls/retry-limit-off-by-one
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1238-1238:
+      -                 if transient and attempt < _MAX_ATTEMPTS:
+      +                 if transient and attempt <= _MAX_ATTEMPTS:
+    caught by (4):
+      tests/test_llm_retry.py::test_a_call_that_keeps_failing_names_stage_model_and_status_on_one_line
+      tests/test_llm_retry.py::test_an_embedding_that_keeps_failing_names_its_stage
+      tests/test_llm_retry.py::test_retries_are_bounded_and_back_off
+      tests/test_llm_retry.py::test_the_cli_reports_a_call_that_keeps_failing_as_one_line
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 20 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] retry-transient-failures-for-live-provider-calls/transient-status-set-misses-5xx
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 488-488:
+      - _TRANSIENT_STATUSES = frozenset({408, 429})
+      + _TRANSIENT_STATUSES = frozenset({408, 429, 500, 501, 502, 503, 504})
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+
+  [killed, NOT COUNTED] same-transcript-after-transient-failure-and-success/retry-path-not-used-for-embeddings
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1002-1003:
+      -         response = self._call_provider(
+      -             self._embedding_fn,
+      +         response = self._call_provider(
+      +             self._retrying_embedding_fn,
+    caught by (5):
+      tests/requirement/test_link_prefilter.py::test_an_embedding_request_is_replayed_from_its_recording_rather_than_issued_again
+      tests/requirement/test_link_prefilter.py::test_the_linking_path_embeds_every_obligation_exactly_once
+      tests/test_llm_retry.py::test_an_embedding_that_fails_transiently_once_records_a_first_time_success
+      tests/test_llm_retry.py::test_an_embedding_that_keeps_failing_names_its_stage
+      tests/test_stage_reasoning.py::test_an_embedding_is_not_a_stage_that_dropped_its_controls
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 19 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [no_usable_edit] same-transcript-after-transient-failure-and-success/retry-path-not-used-for-live-completions
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1174 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1174:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           +         response = self._call_provider(
+           +             self._completion_fn,
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] same-transcript-after-transient-failure-and-success/retry-wrapper-relabels-nontransient-errors
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1252)
+         at src/acceptance/llm.py lines 1242-1250:
+           -                 status = _provider_status(exc)
+           -                 outcome = f"after {attempt} attempts" if transient else "and was not retried"
+           -                 raise LLMError(
+           -                     _one_line(
+           -                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           -                         f"{kwargs.get('model')} failed with status "
+           -                         f"{status if status is not None else 'none (connection error)'} "
+           -                         f"{outcome}: {type(exc).__name__}: {exc}"
+           -                     )
+           +                 status = _provider_status(exc)
+           +                 outcome = f"after {attempt} attempts" if transient else "and was not retried"
+           +                 raise LLMError(
+           +                     _one_line(
+           +                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           +                         f"{kwargs.get('model')} failed with status "
+           +                         f"{status if status is not None else 'none (connection error)'} "
+           +                         f"{outcome}: {type(exc).__name__}: {exc}"
+           +                     )
+           +                 ) from exc
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1242..1251 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1242-1251:
+           -                 status = _provider_status(exc)
+           -                 outcome = f"after {attempt} attempts" if transient else "and was not retried"
+           -                 raise LLMError(
+           -                     _one_line(
+           -                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           -                         f"{kwargs.get('model')} failed with status "
+           -                         f"{status if status is not None else 'none (connection error)'} "
+           -                         f"{outcome}: {type(exc).__name__}: {exc}"
+           -                     )
+           -                 ) from exc
+           +                 status = _provider_status(exc)
+           +                 outcome = f"after {attempt} attempts" if transient else "and was not retried"
+           +                 raise LLMError(
+           +                     _one_line(
+           +                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           +                         f"{kwargs.get('model')} failed with status "
+           +                         f"{status if status is not None else 'none (connection error)'} "
+           +                         f"{outcome}: {type(exc).__name__}: {exc}"
+           +                     )
+           +                 ) from exc
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1242..1251 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1242-1251:
+           -                 status = _provider_status(exc)
+           -                 outcome = f"after {attempt} attempts" if transient else "and was not retried"
+           -                 raise LLMError(
+           -                     _one_line(
+           -                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           -                         f"{kwargs.get('model')} failed with status "
+           -                         f"{status if status is not None else 'none (connection error)'} "
+           -                         f"{outcome}: {type(exc).__name__}: {exc}"
+           -                     )
+           -                 ) from exc
+           +                 status = _provider_status(exc)
+           +                 outcome = f"after {attempt} attempts" if transient else "and was not retried"
+           +                 raise LLMError(
+           +                     _one_line(
+           +                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           +                         f"{kwargs.get('model')} failed with status "
+           +                         f"{status if status is not None else 'none (connection error)'} "
+           +                         f"{outcome}: {type(exc).__name__}: {exc}"
+           +                     )
+           +                 ) from exc
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 12 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] same-transcript-after-transient-failure-and-success/transient-exception-set-too-narrow
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 511..511 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 511-511:
+           -     return isinstance(exc, (ConnectionError, TimeoutError))
+           +     return isinstance(exc, (ConnectionError, TimeoutError))
+    injected at src/acceptance/llm.py lines 511-511:
+      -     return isinstance(exc, (ConnectionError, TimeoutError))
+      +     return isinstance(exc, (ConnectionError, TimeoutError, OSError))
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 24 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] same-transcript-after-transient-failure-and-success/transient-status-set-too-small
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 488-488:
+      - _TRANSIENT_STATUSES = frozenset({408, 429})
+      + _TRANSIENT_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+
+  [survived, NOT COUNTED] single-line-acceptance-model-error/multi-line-error-text
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1252)
+         at src/acceptance/llm.py lines 1245-1249:
+           -                     _one_line(
+           -                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           -                         f"{kwargs.get('model')} failed with status "
+           -                         f"{status if status is not None else 'none (connection error)'} "
+           -                         f"{outcome}: {type(exc).__name__}: {exc}"
+           +                     _one_line(
+           +                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           +                         f"{kwargs.get('model')} failed with status "
+           +                         f"{status if status is not None else 'none (connection error)'} "
+           +                         f"{outcome}: {type(exc).__name__}: {str(exc).replace('\n', ' ')}"
+           +                     )
+      2. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 1251)
+         at src/acceptance/llm.py lines 1245-1249:
+           -                     _one_line(
+           -                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           -                         f"{kwargs.get('model')} failed with status "
+           -                         f"{status if status is not None else 'none (connection error)'} "
+           -                         f"{outcome}: {type(exc).__name__}: {exc}"
+           +                     _one_line(
+           +                         f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to "
+           +                         f"{kwargs.get('model')} failed with status "
+           +                         f"{status if status is not None else 'none (connection error)'} "
+           +                         f"{outcome}: {type(exc).__name__}: {str(exc).replace('\n', ' ')}"
+           +                     )
+    injected at src/acceptance/llm.py lines 1249-1249:
+      -                         f"{outcome}: {type(exc).__name__}: {exc}"
+      +                         f"{outcome}: {type(exc).__name__}: {str(exc).replace('\n', ' ')}"
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 20 skipped once the defect was covered
+
+  [survived, NOT COUNTED] successful-response-only-persistence/retry-wrapper-catches-and-persists-non-success
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1233..1233 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1233-1233:
+           -                 return fn(**kwargs)
+           +                 return fn(**kwargs)
+    injected at src/acceptance/llm.py lines 1233-1233:
+      -                 return fn(**kwargs)
+      +                 response = fn(**kwargs)
+      +                 if getattr(response, "successful", True):
+      +                     return response
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 24 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] successful-response-only-persistence/transient-failure-persisted-before-validation
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 1173..1202 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 1173-1202:
+           -         response = self._call_provider(
+           -             self._completion_fn,
+           -             "completion",
+           -             stage,
+           -             model=request["model"],
+           -             # Marked here rather than in `request`, so the provider-specific
+           -             # breakpoint never reaches the request key. What was asked is the
+           -             # same question whichever provider answers it.
+           -             messages=mark_reusable_opening(request["messages"], request["model"]),
+           -             # LiteLLM's `response_format` is its provider-agnostic interface —
+           -             # it translates this into each provider's own mechanism (Anthropic
+           -             # takes structured output as tool use) and normalizes the reply.
+           -             # We pass the schema rather than the model class only so it can be
+           -             # ref-inlined first; passing the class would have LiteLLM call
+           -             # `model_json_schema()` itself and reintroduce the `$defs` that
+           -             # break Anthropic's reply shape and degrade judgment everywhere.
+           -             response_format={
+           -                 "type": "json_schema",
+           -                 "json_schema": {
+           -                     "name": request["response_schema"]["name"],
+           -                     "schema": request["response_schema"]["schema"],
+           -                     # Strict is the strongest constraint providers offer, so
+           -                     # response models must be strict-compatible: every field
+           -                     # required, no open-ended dicts. One that isn't fails loudly
+           -                     # on the live call rather than degrading to free text.
+           -                     "strict": True,
+           -                 },
+           -             },
+           -             **requested,
+           -         )
+           +         response = self._call_provider(
+           +             self._completion_fn,
+           +             "completion",
+           +             stage,
+           +             model=request["model"],
+           +             # Marked here rather than in `request`, so the provider-specific
+           +             # breakpoint never reaches the request key. What was asked is the
+           +             # same question whichever provider answers it.
+           +             messages=mark_reusable_opening(request["messages"], request["model"]),
+           +             # LiteLLM's `response_format` is its provider-agnostic interface —
+           +             # it translates this into each provider's own mechanism (Anthropic
+           +             # takes structured output as tool use) and normalizes the reply.
+           +             # We pass the schema rather than the model class only so it can be
+           +             # ref-inlined first; passing the class would have LiteLLM call
+           +             # `model_json_schema()` itself and reintroduce the `$defs` that
+           +             # break Anthropic's reply shape and degrade judgment everywhere.
+           +             response_format={
+           +                 "type": "json_schema",
+           +                 "json_schema": {
+           +                     "name": request["response_schema"]["name"],
+           +                     "schema": request["response_schema"]["schema"],
+           +                     # Strict is the strongest constraint providers offer, so
+           +                     # response models must be strict-compatible: every field
+           +                     # required, no open-ended dicts. One that isn't fails loudly
+           +                     # on the live call rather than degrading to free text.
+           +                     "strict": True,
+           +                 },
+           +             },
+           +             **requested,
+           +         )
+    pairs: 0 settled by the run, 24 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] transient-failure-definition/missing-connection-error-classification
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 507-511:
+      - def _is_transient(exc: BaseException) -> bool:
+      -     status = _provider_status(exc)
+      -     if status is not None:
+      -         return status in _TRANSIENT_STATUSES or status >= 500
+      -     return isinstance(exc, (ConnectionError, TimeoutError))
+      + def _is_transient(exc: BaseException) -> bool:
+      +     status = _provider_status(exc)
+      +     if status is not None:
+      +         return status in _TRANSIENT_STATUSES or status >= 500
+      +     return isinstance(exc, (ConnectionError, TimeoutError, Exception))
+    caught by (1):
+      tests/test_llm_retry.py::test_a_failure_that_is_not_a_provider_error_is_neither_retried_nor_wrapped
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 24 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] transient-failure-definition/missing-timeout-classification
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 507-511:
+      - def _is_transient(exc: BaseException) -> bool:
+      -     status = _provider_status(exc)
+      -     if status is not None:
+      -         return status in _TRANSIENT_STATUSES or status >= 500
+      -     return isinstance(exc, (ConnectionError, TimeoutError))
+      + def _is_transient(exc: BaseException) -> bool:
+      +     status = _provider_status(exc)
+      +     if status is not None:
+      +         return status in _TRANSIENT_STATUSES or status >= 500
+      +     return isinstance(exc, (ConnectionError, TimeoutError, OSError))
+    no test caught it; 25 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 24 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

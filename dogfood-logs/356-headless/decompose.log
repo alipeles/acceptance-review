@@ -1,0 +1,86 @@
+Requirements: 7   with obligations: 7
+
+[task-01] Live provider calls, both completion and embedding, retry transient failures
+    before giving up. A transient failure is a connection error, a timeout, a server
+    error (5xx) or a rate-limit response (429). The retries are bounded in number and
+    wait with backoff between attempts.
+    -> retry-transient-failures-for-live-provider-calls  [error_handling/explicit]
+       Live provider calls for both completion and embedding retry transient failures
+       before giving up.
+    -> transient-failure-definition  [invariant/explicit]
+       Define transient failure as a connection error, a timeout, a server error (5xx),
+       or a rate-limit response (429).
+    -> bounded-retries  [invariant/explicit]
+       The retry count is bounded to a finite number of attempts before giving up.
+    -> backoff-between-retries  [functional/explicit]
+       Wait with backoff between retry attempts.
+
+[task-02] A retry leaves no trace in what is recorded. Only a successful response is
+    persisted, so a call that failed transiently once and then succeeded produces the
+    same transcript, under the same request key, as a call that succeeded on its first
+    attempt, and replay serves it the same way.
+    -> retry-leaves-no-trace-in-recorded-transcript  [functional/explicit]
+       A retry leaves no trace in what is recorded.
+    -> successful-response-only-persistence  [functional/explicit]
+       Only a successful response is persisted.
+    -> same-transcript-after-transient-failure-and-success  [regression/explicit]
+       A call that failed transiently once and then succeeded produces the same
+       transcript.
+    -> first-attempt-success-equivalence  [functional/explicit]
+       A call that succeeded on its first attempt is treated the same as the successful
+       outcome of a transiently failed-then-succeeded call.
+    -> replay-serves-same-way  [functional/explicit]
+       Replay serves it the same way as the original successful response.
+
+[task-03] A call that is still failing once the retries are exhausted, or that fails
+    with a provider error that is not transient, raises `LLMError`. Its message names
+    the stage the call was made for, the provider or model, and the status, and fits on
+    one line, so the command line reports it as a single `acceptance: model error:`
+    line.
+    -> llmerror-raised-on-exhausted-or-nontransient-failure  [error_handling/explicit]
+       A call that is still failing once retries are exhausted, or that fails with a
+       provider error that is not transient, raises `LLMError`.
+    -> llmerror-message-stage-provider-status  [explanation_observability/explicit]
+       The LLMError message names the stage the call was made for, the provider or
+       model, and the status.
+    -> one-line-message  [invariant/explicit]
+       The requirement text fits on one line.
+    -> single-line-acceptance-model-error  [explanation_observability/explicit]
+       The error message fits on one line so the command line reports it as a single
+       `acceptance: model error:` line.
+
+[task-04] A regression test is part of the deliverable: a completion call and an
+    embedding call whose provider fails transiently once and then succeeds, each shown
+    to record exactly what a first-time success records, and a call that keeps failing
+    shown to surface as one `acceptance: model error:` line naming the stage.
+    -> completion-call  [functional/explicit]
+       A completion call is included in the deliverable.
+    -> embedding-call-transient-failure-then-success  [functional/explicit]
+       An embedding call whose provider fails transiently once and then succeeds is
+       exercised.
+    -> embedding-call-records-first-time-success-equivalently  [regression/explicit]
+       The transient-failure-then-success embedding call records exactly what a first-
+       time success records.
+    -> model-error-single-line-per-stage  [error_handling/explicit]
+       A call that keeps failing surfaces as one `acceptance: model error:` line naming
+       the stage.
+
+[constraint-01] Retrying is not part of a request's identity: nothing about the retry
+    policy enters the request key, so every existing recording replays.
+    -> request-key-ignores-retry-policy  [invariant/explicit]
+       The request key does not include any retry-policy details, so retries do not
+       change request identity.
+
+[exclusion-01] Replay mode makes no provider calls, so it has nothing to retry.
+    -> replay-mode-no-provider-calls  [invariant/explicit]
+       Replay mode makes no provider calls.
+
+[exclusion-02] Failures that are not provider errors, such as a response that fails
+    schema validation, are not retried.
+    -> non-provider-failures-not-retried  [error_handling/explicit]
+       The change does not retry failures that are not provider errors, including
+       responses that fail schema validation.
+
+
+Unreconciled linking answers: answers contradict each other: these obligations are linked transitively but at least one pair among them was denied, so none of them were merged
+  affected: retry-leaves-no-trace-in-recorded-transcript, same-transcript-after-transient-failure-and-success, first-attempt-success-equivalence
