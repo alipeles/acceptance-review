@@ -1,0 +1,60 @@
+Requirements: 4   with obligations: 4
+
+[task-01] A fresh `pip install -e .` must resolve a litellm release with which a
+    recording run works. The litellm requirement in `pyproject.toml` is bounded on both
+    sides, to a range of releases that install and that can build a model response, and
+    the bound carries a comment saying why each side is where it is, so that the next
+    person widening it knows what to re-check.
+    -> litellm-release-works-with-recording-run  [functional/explicit]
+       A fresh `pip install -e .` resolves a litellm release with which a recording run
+       works.
+    -> litellm-requirement-bounded-both-sides  [docs_config/explicit]
+       The litellm requirement in `pyproject.toml` is bounded on both sides.
+    -> litellm-installable-release-range  [compatibility/explicit]
+       Constrain the litellm dependency to a range of releases that install.
+    -> litellm-can-build-model-response  [functional/explicit]
+       The selected litellm release can build a model response.
+    -> litellm-bound-comment-justification  [docs_config/explicit]
+       The litellm version bound in pyproject.toml includes comments explaining why the
+       lower and upper sides are set where they are.
+
+[task-02] The test suite includes a smoke test, which is itself a deliverable, that
+    drives litellm's own completion path against the installed version far enough to
+    build its response model, without contacting a provider. It runs in the ordinary
+    replay-mode suite, so CI fails when an installed litellm cannot construct a
+    response.
+    -> smoke-test-included  [test_demand/explicit]
+       The test suite includes a smoke test.
+    -> litellm-completion-path-builds-response-model  [functional/explicit]
+       litellm's own completion path against the installed version drives far enough to
+       build its response model.
+    -> no-provider-contact  [compatibility/explicit]
+       The change does not contact a provider.
+    -> ordinary-replay-mode-suite  [functional/explicit]
+       The smoke test runs in the ordinary replay-mode suite.
+    -> ci-fails-on-response-construction-failure  [functional/explicit]
+       CI fails when an installed litellm cannot construct a response.
+    ?  task-02-span-01-disagreement
+       The coverage step and the call asked about this span alone disagreed: the first
+       found 'which is itself a deliverable' uncovered by the obligations already
+       derived, the second derived neither an obligation nor an open question from it.
+       Does this span state a property of its own that must be delivered?
+
+[exclusion-01] No change to how model requests are assembled or recorded.
+    -> model-request-assembly-and-recording-unchanged  [compatibility/explicit]
+       The change does not alter how model requests are assembled or recorded.
+
+[exclusion-02] No change to the pinned versions of pydantic or openai.
+    -> keep-pydantic-openai-pins-unchanged  [compatibility/explicit]
+       The pinned versions of pydantic and openai remain unchanged.
+
+run 594187e0065a80e0
+  requirements: 4 derived, 0 carried, 0 revised; 16 decompose call(s)
+  continue this run with: --continue 594187e0065a80e0
+Model usage by stage:
+  stage               model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini                          14 (14 live / 0 replayed)  75,529   2,032    0.0%   $0.0658   $0.0658          35.2s
+  decompose-summary   openai/gpt-5.4                                 2 (2 live / 0 replayed)   1,710   1,191    0.0%   $0.0221   $0.0221          14.6s
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)   1,297      95    0.0%   $0.0010   $0.0010           1.6s
+  this run spent $0.0890 on 18 live call(s); the evidence cost $0.0890 to record (0 call(s) replayed at no cost to this run)
