@@ -1,18 +1,31 @@
-# Batch 1: mechanical fixes, one owned file each, no two on the same file.
-# Format: <issue> <owned file>
+# Batch 1: mechanical fixes. Each line names the files that issue is expected
+# to edit (comma-separated, no spaces). That is not a limit on the session; it
+# is what the other sessions are told to stay out of. No two lines share a
+# file. Assignments come from each issue's Acceptance section, not its title.
+# Format: <issue> <files>
+#
+# Run #355 FIRST and ALONE, then merge it, then launch the rest. It is the
+# crash that stops `decompose` on any task file with a background sentence, so
+# until it lands every other run's decompose log is likely to be a traceback.
+
+355 src/acceptance/requirement/obligations.py
+
+# Launch these after #355 has merged.
 
 356 src/acceptance/llm.py
-355 src/acceptance/requirement/obligations.py
 350 src/acceptance/report.py
 327 src/acceptance/pipeline.py
 276 src/acceptance/cli.py
 289,290 src/acceptance/benchmark/instability.py
-243 tests/benchmark/test_runner.py
+243 src/acceptance/benchmark/runner.py,tests/benchmark/test_runner.py
 278 pyproject.toml
-280 src/acceptance/coverage/recommendations.py
 358 src/acceptance/defects/reachability.py
 
-# Batch 2: run after batch 1 has merged. Same files as above.
+# Held back for an attended session:
+# 280 wants the re-ask "visible in review state", which means a field in
+#     review_state.py, a schema change an unattended run must not make.
+#
+# Batch 2: after batch 1 has merged. Same files as above.
 # 298 src/acceptance/requirement/obligations.py
 # 236 src/acceptance/llm.py
 # 296 src/acceptance/requirement/carry.py   (stage= half only; the benchmark/ dependency is a decision)

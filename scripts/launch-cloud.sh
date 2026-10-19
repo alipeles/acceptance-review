@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Start one Claude Code cloud session per line of a batch file.
 #
-# Usage, from the repo root, after the command files are pushed to main:
+# Usage, from the repo root, on main, after the command files are pushed:
 #   scripts/launch-cloud.sh scripts/batch-1.txt
 #
-# Batch file format: "<issue> <owned file>" per line; blank lines and lines
-# starting with # are ignored. "289,290" is passed through as one issue.
+# Batch file format: "<issue> <files>" per line, files comma-separated with no
+# spaces. The files are the ones that issue is expected to edit. They are not
+# a limit on that session; they are what every OTHER session in the batch is
+# told to keep its hands off, so two branches never change the same file.
+# Blank lines and lines starting with # are ignored. "289,290" is one issue.
 #
 # Each `claude --cloud` call creates its own session from the GitHub remote at
 # the branch you are currently on, so be on main and pushed before running.
@@ -22,9 +25,15 @@ if [ -n "$(git status --porcelain .claude/commands scripts)" ]; then
   exit 1
 fi
 
-grep -Ev '^\s*(#|$)' "$batch" | while read -r issue owned; do
-  echo "launching #$issue ($owned)"
-  claude --cloud "/fixbug-cloud $issue $owned"
+lines="$(grep -Ev '^\s*(#|$)' "$batch")"
+
+echo "$lines" | while read -r issue files; do
+  # Reserved = every file claimed by a different line of the batch.
+  reserved="$(echo "$lines" | awk -v me="$issue" '$1 != me {print $2}' \
+              | tr ',' '\n' | sort -u | paste -sd, -)"
+  [ -z "$reserved" ] && reserved="none"
+  echo "launching #$issue (reserved: $reserved)"
+  claude --cloud "/fixbug-cloud $issue $reserved"
   sleep 5
 done
 

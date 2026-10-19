@@ -1,10 +1,12 @@
 ---
-description: Fix one backlog bug in a cloud session, inside one file, with the checker run for data rather than as a gate
+description: Fix one backlog bug in a cloud session, unattended, with the checker run for data rather than as a gate
 ---
 
 You are fixing one bug from the backlog in a cloud session with nobody watching.
-Arguments, in order: `<issue number> <owned file>`. Example:
-`/fixbug-cloud 356 src/acceptance/llm.py`
+Arguments, in order: `<issue number> <reserved files>`. The reserved files are
+the ones other sessions running tonight are editing, comma-separated with no
+spaces, or `none`. Example:
+`/fixbug-cloud 243 src/acceptance/llm.py,src/acceptance/report.py`
 
 $ARGUMENTS
 
@@ -15,9 +17,26 @@ every run's output in one sitting afterwards and records the corrections then.
 
 ## Where things are
 
-- `<owned file>` is the one source file this fix may change. Tests under `tests/`
-  are also yours. Nothing else is: not `pipeline.py`, not a prompt, not another
-  module, not `CLAUDE.md`, not `docs/DEFERRED.md`, not `session-state/`.
+- You may change whatever the fix needs under `src/`, `tests/` and
+  `pyproject.toml`, with two exceptions.
+
+  **Reserved files** (`<reserved files>`): another session is editing these
+  right now, and two branches changing one file is a merge conflict for the
+  human. Do not touch them. If the fix cannot be made without one, that is a
+  BLOCKED outcome (step 4).
+
+  **No-go list**, the same for every run, because a wrong change here is
+  expensive or invisible: any prompt text or response schema (editing one
+  orphans every recorded transcript for that stage and changes what the tool
+  says); `review_state.py` and `review_store.py` (later milestones depend on
+  the shape); the shared request-assembly code in `llm.py` that every stage's
+  request passes through (a change there moves every stage's request key at
+  once), unless the issue is about that code; `CLAUDE.md`, `docs/DEFERRED.md`,
+  `session-state/`, `.claude/`. A fix that needs one of these is also BLOCKED.
+
+  Everything else is yours. Keep the diff to what the issue asks for, but do
+  not refuse a one-line change in a neighbouring module that the fix plainly
+  needs; the point of this run is a landed fix, not a small diff.
 - The run directory is `dogfood-logs/<issue>-headless/`. Everything you would
   normally write for a gate goes there. Unlike a normal task, this directory is
   committed on the branch, because the branch is the only thing that comes
@@ -45,8 +64,17 @@ every run's output in one sitting afterwards and records the corrections then.
    what must be true when the bug is fixed, Constraints only where the issue
    states one, Scope exclusions for what the issue says to leave alone. The
    regression test that reproduces the defect is itself a deliverable here, so
-   name it as one; do not pair any other requirement with "add a test". The
-   task file must not mention this run, the backlog, dogfooding, cloud
+   name it as one; do not pair any other requirement with "add a test".
+
+   Leave the bug's history out. The issue explains where the defect was seen
+   and why it matters; the task file says only what the software must do once
+   it is fixed. A sentence that describes the current wrong behaviour, or how
+   it was found, is background, and the decomposer has no obligation to derive
+   from it (that is #355, where a span yielding nothing aborts the whole
+   decomposition, and #212, where background becomes an obligation). The
+   reproduction belongs in the regression test, not in the mandate.
+
+   The task file must not mention this run, the backlog, dogfooding, cloud
    sessions or headless work. Copy it to the run directory as well.
 
 2. **Decompose, save, continue.** Run
@@ -58,19 +86,23 @@ every run's output in one sitting afterwards and records the corrections then.
    cases you think it falls into. Then move on. A wrong question is noted, not
    acted on; that stop exists for an attended session.
 
+   If `decompose` exits with an error instead of a breakdown, that is itself
+   data: keep the log, write the error and the sentence it stopped on under
+   `Decompose` in `notes.md`, and continue to step 3. Do not reword the task
+   file to get past it, and do not stop. A crash here is a known tool defect,
+   not a reason the bug cannot be fixed.
+
 3. **Reproduce before fixing.** Write the regression test first, run it, and
    see it fail for the reason the issue describes. Paste the failing output
    into `notes.md` under `Reproduction`. If you cannot make it fail, stop:
    write `dogfood-logs/<issue>-headless/BLOCKED.md` saying what you tried and
    what you saw, commit and push just that directory, and end the session.
 
-4. **Fix it, inside the owned file.** If the correct fix needs a change outside
-   `<owned file>` and `tests/`, do not make it. Write `BLOCKED.md` naming the
+4. **Fix it.** If the correct fix needs a change to a reserved file or to
+   anything on the no-go list, do not make it. Write `BLOCKED.md` naming the
    file and the change you would make, specific enough to approve or reject,
-   commit and push just the run directory, and end the session. The same
-   applies if the fix would change a prompt, a response schema, the
-   review-state schema, or anything shared that every stage's request goes
-   through. Those decisions are the human's.
+   commit and push just the run directory, and end the session. Those
+   decisions are the human's. Anything else, make the change.
 
 5. **Run the suite and the linters.** `.venv/bin/pytest -q`,
    `.venv/bin/ruff check .`, `.venv/bin/ruff format --check .`. All three
@@ -83,8 +115,8 @@ every run's output in one sitting afterwards and records the corrections then.
    you tested, what you left out, what you assumed, what you know is
    unverified. Write it from memory of what you did, not from `git diff`.
 
-7. **Commit the fix.** Stage explicit paths only: `<owned file>` and the test
-   files you added or changed. Never `git add -A`. Never stage
+7. **Commit the fix.** Stage explicit paths only: the source and test files
+   you changed. Never `git add -A`. Never stage
    `current-task.md`, `.acceptance/`, `.env`, `session-state/` or
    `docs/DEFERRED.md`. The subject must not start with `#`; use
    `fix: <what changed> (#<issue>)`.
@@ -120,8 +152,7 @@ every run's output in one sitting afterwards and records the corrections then.
 
 ## What "done" looks like from the outside
 
-Branch `<issue>-headless` on origin with two commits: the fix touching
-`<owned file>` and `tests/`, and the run directory holding `issue.md`,
+Branch `<issue>-headless` on origin with two commits: the fix and its tests, and the run directory holding `issue.md`,
 `current-task.md`, `decompose.log`, `notes.md`, `declaration.md`,
 `check.log` and `revisions.txt`. Or one commit holding only `BLOCKED.md`. Both
 are good outcomes. A fix with no failing-then-passing test in `notes.md` is the
