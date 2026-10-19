@@ -74,6 +74,11 @@ every run's output in one sitting afterwards and records the corrections then.
    decomposition, and #212, where background becomes an obligation). The
    reproduction belongs in the regression test, not in the mandate.
 
+   After writing the file, read it once more and delete every clause that
+   compares the required behaviour to the current one: "rather than", "instead
+   of", "as it does today", "as today", "no longer", "currently", "still". A
+   sentence that says only what must be true needs none of them.
+
    The task file must not mention this run, the backlog, dogfooding, cloud
    sessions or headless work. Copy it to the run directory as well.
 
