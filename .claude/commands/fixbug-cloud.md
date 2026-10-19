@@ -150,10 +150,22 @@ every run's output in one sitting afterwards and records the corrections then.
    `docs/DEFERRED.md` entry format from CLAUDE.md. Do not fix it and do not
    file it.
 
-10. **Commit the run directory and push.** Second commit, staging only
-    `dogfood-logs/<issue>-headless/`, subject
+10. **Commit the run directory, push, open a draft PR.** Second commit,
+    staging only `dogfood-logs/<issue>-headless/`, subject
     `dogfood: headless run for #<issue>`. Then
-    `git push -u origin <issue>-headless`. Do not open a PR.
+    `git push -u origin <issue>-headless`.
+
+    Open a **draft** pull request from `<issue>-headless` to `main`, titled
+    `fix: <what changed> (#<issue>)`. Its body, in this order: one sentence
+    saying what the fix does; the checker's completion verdict and each
+    obligation it rated below strongly supported, copied from `check.log`
+    (or the one-line error if it crashed); the declaration; and anything
+    under `Deferred` in `notes.md`. Use the GitHub tool if one is available,
+    otherwise `gh api repos/alipeles/acceptance-review/pulls` with
+    `draft: true`. A draft cannot be merged by accident; merging is the
+    human's decision and never yours. If the run ended in `BLOCKED.md`, open
+    the draft anyway with the block as its body, so every run is reviewed
+    from one list.
 
 ## What "done" looks like from the outside
 

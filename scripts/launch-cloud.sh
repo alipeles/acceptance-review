@@ -26,6 +26,8 @@ if [ -n "$(git status --porcelain .claude/commands scripts)" ]; then
 fi
 
 lines="$(grep -Ev '^\s*(#|$)' "$batch")"
+logdir="$HOME/headless-runs/$(date +%Y-%m-%d)"
+mkdir -p "$logdir"
 
 echo "$lines" | while read -r issue files; do
   # Reserved = every file claimed by a different line of the batch.
@@ -33,10 +35,15 @@ echo "$lines" | while read -r issue files; do
               | tr ',' '\n' | sort -u | paste -sd, -)"
   [ -z "$reserved" ] && reserved="none"
   echo "launching #$issue (reserved: $reserved)"
-  claude --cloud "/fixbug-cloud $issue $reserved"
+  # Own empty stdin, so claude cannot swallow the rest of the batch file;
+  # own log and background, so the loop does not wait on the session.
+  claude --cloud "/fixbug-cloud $issue $reserved" \
+    < /dev/null > "$logdir/launch-$issue.log" 2>&1 &
   sleep 5
 done
+wait
 
 echo
-echo "Sessions are listed at https://claude.ai/code. Each pushes a branch"
-echo "named <issue>-headless when it finishes. Nothing is merged."
+echo "Launch output is in $logdir/launch-<issue>.log. Sessions are listed at"
+echo "https://claude.ai/code. Each pushes a branch named <issue>-headless and"
+echo "opens a draft PR when it finishes. Nothing is merged."
