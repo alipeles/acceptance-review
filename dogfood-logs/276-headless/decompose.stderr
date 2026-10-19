@@ -1,0 +1,10 @@
+run fe4aae21fd0cffee
+  requirements: 4 derived, 0 carried, 0 revised; 8 decompose call(s)
+  continue this run with: --continue fe4aae21fd0cffee
+Model usage by stage:
+  stage               model                                     calls  prompt  output  cached  this run  recorded  time this run
+  ------------------  ----------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini     6 (6 live / 0 replayed)  32,748   1,137    0.0%   $0.0297   $0.0297          16.7s
+  decompose-summary   openai/gpt-5.4          2 (2 live / 0 replayed)   1,831     611    0.0%   $0.0137   $0.0137           7.7s
+  obligation linking  voyage/voyage-3.5-lite  1 (1 live / 0 replayed)     308       0       —   $0.0000   $0.0000           0.5s
+  this run spent $0.0434 on 9 live call(s); the evidence cost $0.0434 to record (0 call(s) replayed at no cost to this run)
