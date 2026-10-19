@@ -1,0 +1,83 @@
+Requirements: 6   with obligations: 6
+
+[task-01] The judgement-instability harness in `src/acceptance/benchmark/instability.py`
+    runs a review several times, and once over a perturbed input, and reports how far
+    its judgements move.
+    -> runs-review-several-times  [functional/explicit]
+       Run a review several times.
+    -> perturbed-input-run  [functional/explicit]
+       Run the review once over a perturbed input.
+    -> judgement-movement-reporting  [explanation_observability/explicit]
+       Report how far the judgements move across repeated reviews and the perturbed-
+       input review.
+
+[task-02] When the harness builds its own model client (no client factory supplied),
+    that client must be configured exactly as `RunConfig.build_client()` would configure
+    it for the same run configuration, including the embedding model, per-stage models
+    and per-stage reasoning settings. The client the harness uses to watch a run must
+    accept every argument `ModelClient.complete` accepts and pass each one through
+    unchanged, so that a parameter added to `ModelClient` later reaches the pipeline
+    without any edit to the harness.
+    -> harness-client-matches-runconfig-build-client  [compatibility/explicit]
+       When the harness builds its own model client without a supplied client factory,
+       it configures that client exactly as `RunConfig.build_client()` would configure
+       it for the same run configuration.
+    -> watch-client-complete-signature  [compatibility/explicit]
+       The client the harness uses to watch a run accepts every argument that
+       `ModelClient.complete` accepts.
+    -> pass-complete-args-through-unchanged  [functional/explicit]
+       The harness's watch client accepts every argument that ModelClient.complete
+       accepts and passes each one through unchanged.
+
+[task-03] The perturbation result must state a sensitivity for each judgement axis
+    separately: obligation and open-question presence, evidence class, and defect
+    verdict. Each axis's sensitivity is the number of judgements on that axis that
+    moved, divided by the number of judgements on that axis that were watched, so every
+    reported sensitivity lies between 0 and 1. For the defect-verdict axis, the watched
+    judgements are the (defect, test) verdicts present in both the baseline and the
+    perturbed run. An axis with nothing watched reports no sensitivity, not zero. No
+    single sensitivity blended across axes is reported.
+    -> separate-axis-sensitivities  [functional/explicit]
+       State a sensitivity for each judgement axis separately: obligation and open-
+       question presence, evidence class, and defect verdict.
+    -> axis-sensitivity-ratio  [functional/explicit]
+       Each axis's sensitivity is computed as the number of judgements on that axis that
+       moved divided by the number of judgements on that axis that were watched.
+    -> sensitivity-bounded-0-to-1  [invariant/explicit]
+       Every reported sensitivity lies between 0 and 1.
+    -> defect-verdict-watched-judgements  [invariant/explicit]
+       For the defect-verdict axis, watch only the (defect, test) verdicts that are
+       present in both the baseline run and the perturbed run.
+    -> no-watched-axis-no-sensitivity  [invariant/explicit]
+       An axis with nothing watched reports no sensitivity, not zero.
+
+[task-04] A regression test is part of the deliverable: one that runs the harness
+    through its default client construction over a small recorded case and fails if the
+    pipeline's client gains a parameter the harness does not pass on.
+    -> regression-test-part-of-deliverable  [test_demand/explicit]
+       A regression test is part of the deliverable.
+    -> default-client-construction-small-recorded-case  [test_demand/explicit]
+       A regression test runs the harness through its default client construction over a
+       small recorded case.
+    -> client-parameter-forwarding-regression-test  [test_demand/explicit]
+       A regression test fails if the pipeline's client gains a parameter the harness
+       does not pass on.
+
+[exclusion-01] No change to any prompt or response schema.
+    -> prompt-response-schema-unchanged  [docs_config/explicit]
+       No change to any prompt or response schema.
+
+[exclusion-02] No change to how the pipeline itself builds or calls its client.
+    -> pipeline-client-build-and-call-unchanged  [compatibility/explicit]
+       The change does not alter how the pipeline itself builds or calls its client.
+
+run 28c4e53176371af0
+  requirements: 6 derived, 0 carried, 0 revised; 23 decompose call(s)
+  continue this run with: --continue 28c4e53176371af0
+Model usage by stage:
+  stage               model                                                            calls   prompt  output  cached  this run  recorded  time this run
+  ------------------  -------------------------------------------  -------------------------  -------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini                          19 (19 live / 0 replayed)  103,330   2,878    0.0%   $0.0904   $0.0904          35.8s
+  decompose-summary   openai/gpt-5.4                                 4 (4 live / 0 replayed)    3,366   1,868    0.0%   $0.0364   $0.0364          22.6s
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)    2,098     263    0.0%   $0.0022   $0.0022           2.4s
+  this run spent $0.1291 on 25 live call(s); the evidence cost $0.1291 to record (0 call(s) replayed at no cost to this run)

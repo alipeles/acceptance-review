@@ -1,0 +1,1294 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) with non-discriminating test evidence (watch-client-complete-signature).
+
+Obligations:
+
+  1. Run a review several times.
+       requirements: task-01
+       code evidence: addressed
+         1.1  tests/benchmark/test_instability.py#@@ -803,8 +819,10 @@ def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
+         1.2  tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         1.3  tests/benchmark/test_instability.py::test_the_default_run_count_produces_three_runs_per_model
+
+  2. Run the review once over a perturbed input.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/benchmark/instability.py#@@ -704,13 +732,7 @@ def run_once(
+         2.2  src/acceptance/benchmark/instability.py#@@ -729,15 +751,58 @@ def _perturbation_result(
+         2.3  tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         2.4  tests/benchmark/test_instability.py::test_a_perturbation_run_is_included_when_one_is_supplied
+         2.5  tests/benchmark/test_instability.py::test_verdicts_in_only_one_run_are_not_watched
+
+  3. Report how far the judgements move across repeated reviews and the perturbed-input review.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/benchmark/instability.py#@@ -181,21 +181,49 @@ class ModelInstability(PersistableModel):
+         3.2  tests/benchmark/test_instability.py#@@ -371,16 +375,28 @@ def test_cross_model_agreement_is_none_with_a_single_model():
+         3.3  tests/benchmark/test_instability.py#@@ -803,8 +819,10 @@ def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
+         3.4  tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         3.5  tests/benchmark/test_instability.py::test_a_perturbation_run_is_included_when_one_is_supplied
+         3.6  tests/benchmark/test_instability.py::test_decomposition_variation_is_surfaced_and_not_only_evidence_variation
+         3.7  tests/benchmark/test_instability.py::test_presence_rows_show_an_obligation_missing_from_some_runs
+         3.8  tests/benchmark/test_instability.py::test_the_three_movement_sources_are_reported_as_distinct_figures
+
+  4. When the harness builds its own model client without a supplied client factory, it configures that client exactly as `RunConfig.build_client()` would configure it for the same run configuration.
+       requirements: task-02
+       code evidence: addressed
+         4.1  src/acceptance/benchmark/instability.py#@@ -251,11 +279,9 @@ class InstabilityReport(PersistableModel):
+         4.2  src/acceptance/benchmark/instability.py#@@ -704,13 +732,7 @@ def run_once(
+         4.3  src/acceptance/config.py#@@ -201,8 +201,15 @@ class RunConfig(BaseModel):
+         4.4  tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         4.5  tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it
+         4.6  tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces
+         4.7  tests/test_stage_reasoning.py::test_run_config_reaches_the_client
+
+  5. The client the harness uses to watch a run accepts every argument that `ModelClient.complete` accepts.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/benchmark/instability.py#@@ -265,8 +291,10 @@ class ObservingClient(ModelClient):
+         5.2  tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+       test evidence: unsupported — kills 0 of 1 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: The watch client exposes a `complete` call signature that includes every parameter accepted by `ModelClient.complete`.
+           inputs:  Construct a RunConfig that builds the observing/watch client through the new client_class path, then inspect the resulting client's complete callable signature against ModelClient.complete. Use a configuration that exercises the default build path (no custom client_factory), with a temporary transcript root and a minimal valid model/mode/seed so build_client is actually invoked. The test should compare the parameter names accepted by the built client's complete method to those accepted by ModelClient.complete, excluding self.
+           detects: The watch client is built through `RunConfig.build_client`, but that factory can still produce a client whose `complete` signature does not include every parameter accepted by `ModelClient.complete` if the subclass path does not mirror the base method's full signature.
+           full detail: acceptance recommendation --criterion watch-client-complete-signature
+
+  6. The harness's watch client accepts every argument that ModelClient.complete accepts and passes each one through unchanged.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/benchmark/instability.py#@@ -265,8 +291,10 @@ class ObservingClient(ModelClient):
+         6.2  tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         6.3  tests/benchmark/test_instability.py::test_run_once_drives_the_real_pipeline_and_snapshots_its_output
+         6.4  tests/benchmark/test_instability.py::test_the_default_construction_runs_the_pipeline_end_to_end
+         6.5  tests/benchmark/test_instability.py::test_the_observing_client_forwards_every_parameter_complete_accepts
+
+  7. State a sensitivity for each judgement axis separately: obligation and open-question presence, evidence class, and defect verdict.
+       requirements: task-03
+       code evidence: addressed
+         7.1  src/acceptance/benchmark/instability.py#@@ -181,21 +181,49 @@ class ModelInstability(PersistableModel):
+         7.2  src/acceptance/benchmark/instability.py#@@ -729,15 +751,58 @@ def _perturbation_result(
+         7.3  tests/benchmark/test_instability.py#@@ -371,16 +375,28 @@ def test_cross_model_agreement_is_none_with_a_single_model():
+         7.4  tests/benchmark/test_instability.py#@@ -803,8 +819,10 @@ def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
+         7.5  tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+       test evidence: strongly supported — kills 5 of 5 enumerated defects (static prediction)  [tier: static]
+         7.6  tests/benchmark/test_instability.py::test_a_flipped_pair_verdict_is_reported_per_pair
+         7.7  tests/benchmark/test_instability.py::test_obligations_gained_under_perturbation_cannot_push_presence_above_one
+         7.8  tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+         7.9  tests/benchmark/test_instability.py::test_the_harness_reports_variance_without_reducing_it
+
+  8. Each axis's sensitivity is computed as the number of judgements on that axis that moved divided by the number of judgements on that axis that were watched.
+       requirements: task-03
+       code evidence: addressed
+         8.1  src/acceptance/benchmark/instability.py#@@ -181,21 +181,49 @@ class ModelInstability(PersistableModel):
+         8.2  src/acceptance/benchmark/instability.py#@@ -729,15 +751,58 @@ def _perturbation_result(
+         8.3  tests/benchmark/test_instability.py#@@ -371,16 +375,28 @@ def test_cross_model_agreement_is_none_with_a_single_model():
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         8.4  tests/benchmark/test_instability.py::test_decomposition_variation_is_surfaced_and_not_only_evidence_variation
+         8.5  tests/benchmark/test_instability.py::test_obligations_gained_under_perturbation_cannot_push_presence_above_one
+         8.6  tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+
+  9. Every reported sensitivity lies between 0 and 1.
+       requirements: task-03
+       code evidence: addressed
+         9.1  src/acceptance/benchmark/instability.py#@@ -181,21 +181,49 @@ class ModelInstability(PersistableModel):
+         9.2  tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         9.3  tests/benchmark/test_instability.py::test_obligations_gained_under_perturbation_cannot_push_presence_above_one
+         9.4  tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+
+  10. For the defect-verdict axis, watch only the (defect, test) verdicts that are present in both the baseline run and the perturbed run.
+       requirements: task-03
+       code evidence: addressed
+         10.1  src/acceptance/benchmark/instability.py#@@ -729,15 +751,58 @@ def _perturbation_result(
+         10.2  tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         10.3  tests/benchmark/test_instability.py::test_verdicts_in_only_one_run_are_not_watched
+
+  11. An axis with nothing watched reports no sensitivity, not zero.
+       requirements: task-03
+       code evidence: addressed
+         11.1  src/acceptance/benchmark/instability.py#@@ -181,21 +181,49 @@ class ModelInstability(PersistableModel):
+         11.2  tests/benchmark/test_instability.py#@@ -371,16 +375,28 @@ def test_cross_model_agreement_is_none_with_a_single_model():
+         11.3  tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         11.4  tests/benchmark/test_instability.py::test_an_axis_with_nothing_watched_reports_no_sensitivity
+         11.5  tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_none_when_nothing_was_watched
+
+  12. A regression test is part of the deliverable.
+       requirements: task-04
+       code evidence: not required — This requirement explicitly demands a test, so the obligation is satisfied by the test itself.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  13. A regression test runs the harness through its default client construction over a small recorded case.
+       requirements: task-04
+       code evidence: not required — The requirement explicitly asks for a test that performs this harness run; the test itself is the deliverable evidence.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  14. A regression test fails if the pipeline's client gains a parameter the harness does not pass on.
+       requirements: task-04
+       code evidence: not required — The requirement itself asks for a regression test that fails under the specified mismatch, so the demanded evidence is the test.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  15. No change to any prompt or response schema.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 11 changes across 3 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being done, and it is settled by inspecting the change rather than by runtime behavior.
+
+  16. The change does not alter how the pipeline itself builds or calls its client.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 11 changes across 3 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work the change must not do, and it is settled by inspecting the source change rather than by a test.
+
+Mandate coverage: 6 of 6 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] `RunConfig.build_client` now accepts a new `client_class` parameter and returns that subclass instead of always constructing `ModelClient`. The obligations require the harness to match `RunConfig.build_client()` and to avoid changing pipeline client construction/calls, but they do not ask to change the public `RunConfig` API itself.
+       src/acceptance/config.py#@@ -201,8 +201,15 @@ class RunConfig(BaseModel):
+       src/acceptance/benchmark/instability.py#@@ -704,13 +732,7 @@ def run_once(
+  2. [in_service] `PerturbationResult` was redesigned from scalar fields plus `sensitivity()` to an `axes` collection of `AxisSensitivity` objects with an axis-parameterized `sensitivity(axis)` method, and `SensitivityAxis`/`AxisSensitivity` were added as exported symbols. The task asks for per-axis reporting, but not for this specific API reshaping or new exported types.
+       src/acceptance/benchmark/instability.py#@@ -181,21 +181,49 @@ class ModelInstability(PersistableModel):
+       tests/benchmark/test_instability.py#@@ -371,16 +375,28 @@ def test_cross_model_agreement_is_none_with_a_single_model():
+       tests/benchmark/test_instability.py#@@ -803,8 +819,10 @@ def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
+       tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+  3. [in_service] `_perturbation_result` now computes watched/changed counts separately per axis, including new presence/evidence/verdict counting logic and a special case for gained presence items. The obligations require separate axis sensitivities and the defect-verdict watched-set rule, but not the specific presence/evidence counting algorithm or the extra gained-items adjustment.
+       src/acceptance/benchmark/instability.py#@@ -729,15 +751,58 @@ def _perturbation_result(
+       tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+  4. [in_service] `ObservingClient.complete` was changed from an explicit parameter list to `*args, **kwargs`, and the test now asserts it forwards every parameter by introspecting `ModelClient.complete`. The obligations require signature compatibility and unchanged forwarding, but not this broader signature change or the introspection-based regression test shape.
+       src/acceptance/benchmark/instability.py#@@ -265,8 +291,10 @@ class ObservingClient(ModelClient):
+       tests/benchmark/test_instability.py#@@ -30,6 +32,8 @@ from acceptance.benchmark.instability import (
+       tests/benchmark/test_instability.py#@@ -371,16 +375,28 @@ def test_cross_model_agreement_is_none_with_a_single_model():
+       tests/benchmark/test_instability.py#@@ -872,3 +890,206 @@ def test_the_harness_reports_variance_without_reducing_it():
+  5. [in_service] The docstring and construction-path refactor in `ObservingClient`/`run_once` to call `config.build_client(client_class=ObservingClient)` is an implementation refactor beyond the requested behavior; the obligations require the harness client to match `RunConfig.build_client()` and the default construction path to work, but not this specific delegation mechanism.
+       src/acceptance/benchmark/instability.py#@@ -251,11 +279,9 @@ class InstabilityReport(PersistableModel):
+       src/acceptance/benchmark/instability.py#@@ -704,13 +732,7 @@ def run_once(
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  runs-review-several-times
+    [not_wired] runs-review-several-times/single-run-only
+      The harness still executes only one review run, so the new multi-run reporting path is never exercised.
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [missing_case] runs-review-several-times/multi-run-loop-missing
+      The run orchestration does not handle the case where more than one review run is requested, so additional runs are skipped or never scheduled.
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+
+  perturbed-input-run
+    [not_wired] perturbed-input-run/client-factory-bypasses-perturbed-run
+      The perturbed-input path can still construct and use the default client path instead of the observing client path, so the single review run is not actually performed through the perturbed-input harness wiring.
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/config.py#0
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [scope_too_narrow] perturbed-input-run/perturbation-result-no-longer-single-run
+      The perturbation accounting can miss some perturbed-input cases because the new axis-based sensitivity bookkeeping only covers the axes explicitly populated in `_perturbation_result`, so a perturbed review run can be recorded without the full one-run measurement the criterion calls for.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 14 put to the model, 83 skipped once the defect was covered
+
+  judgement-movement-reporting
+    [not_wired] judgement-movement-reporting/perturbation-result-not-included-in-report
+      The code computes per-axis judgement movement for the perturbed-input run, but the benchmark report path never includes that result in the emitted output.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [scope_too_narrow] judgement-movement-reporting/only-perturbed-run-reported
+      The report can omit judgement-movement information for the repeated baseline reviews and only describe the perturbed-input run.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 28 put to the model, 69 skipped once the defect was covered
+    [not_wired] judgement-movement-reporting/axis-sensitivity-not-surfaced
+      The new per-axis sensitivity data structure exists, but the code shown does not demonstrate that the benchmark output actually surfaces the axis breakdown instead of still using the old blended fields.
+      src/acceptance/benchmark/instability.py#0
+      src/acceptance/benchmark/instability.py#4
+      pairs: 12 put to the model, 85 skipped once the defect was covered
+
+  harness-client-matches-runconfig-build-client
+    [scope_too_narrow] harness-client-matches-runconfig-build-client/build-client-parameter-drift
+      The harness may still construct its fallback client with a parameter set that does not match `RunConfig.build_client()` for all run configurations, because the new call path relies on `build_client(client_class=ObservingClient)` and any mismatch in the arguments forwarded by `RunConfig.build_client()` would make the two clients diverge.
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/config.py#0
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [other] harness-client-matches-runconfig-build-client/build-client-extra-kwargs-not-forwarded
+      `RunConfig.build_client()` may not forward every configuration field that it uses when building the normal client into the subclassed client path, so the harness-created client can differ from the standard `ModelClient` for the same run configuration.
+      src/acceptance/config.py#0
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+
+  watch-client-complete-signature
+    [scope_too_narrow] watch-client-complete-signature/build-client-still-omits-completion-params
+      The watch client is built through `RunConfig.build_client`, but that factory can still produce a client whose `complete` signature does not include every parameter accepted by `ModelClient.complete` if the subclass path does not mirror the base method's full signature.
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/config.py#0
+      pairs: 97 put to the model, 0 skipped once the defect was covered
+
+  pass-complete-args-through-unchanged
+    [missing_case] pass-complete-args-through-unchanged/missing-complete-parameters
+      The watch client may not accept the full `ModelClient.complete` argument set, so a caller can pass an argument that gets dropped before reaching the underlying client.
+      src/acceptance/benchmark/instability.py#2
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [other] pass-complete-args-through-unchanged/positional-argument-repacking
+      The watch client may forward arguments through `*args`/`**kwargs` in a way that changes how the underlying client receives them, rather than preserving the original call shape unchanged.
+      src/acceptance/benchmark/instability.py#2
+      pairs: 60 put to the model, 37 skipped once the defect was covered
+    [not_wired] pass-complete-args-through-unchanged/client-factory-uses-wrong-client-class
+      The harness may still construct a plain `ModelClient` on the watch path instead of the observing subclass, so the forwarding logic is never exercised.
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/config.py#0
+      pairs: 12 put to the model, 85 skipped once the defect was covered
+
+  separate-axis-sensitivities
+    [scope_too_narrow] separate-axis-sensitivities/presence-axis-counts-only-baseline-statements
+      The presence-axis sensitivity can undercount watched judgements by ignoring statements that exist only in the perturbed run, so the presence axis is not reported over all obligation/open-question presence changes.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [wrong_output_shape] separate-axis-sensitivities/presence-axis-uses-gained-count-as-watched-population
+      The presence-axis watched count is inflated by adding the number of gained statements to the baseline population, so the axis can report a denominator that is not the actual watched population for that axis.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] separate-axis-sensitivities/evidence-axis-counts-intersection-only
+      The evidence-class axis only watches evidence classes present in both runs, so evidence-class changes involving a class that appears in only one run are not included in the axis sensitivity.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 12 put to the model, 85 skipped once the defect was covered
+    [scope_too_narrow] separate-axis-sensitivities/verdict-axis-counts-only-shared-defect-test-pairs
+      The defect-verdict axis only watches defect/test pairs present in both runs, so verdict changes for pairs that appear in only one run are not represented in the axis sensitivity.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 5 put to the model, 92 skipped once the defect was covered
+    [other] separate-axis-sensitivities/single-axis-sensitivity-still-exposed
+      The perturbation result could still expose or compute a single blended sensitivity value somewhere on the delivered path, so the new per-axis values exist but the observable result is not actually distinct sensitivities for all three axes.
+      src/acceptance/benchmark/instability.py#0
+      src/acceptance/benchmark/instability.py#4
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  axis-sensitivity-ratio
+    [other] axis-sensitivity-ratio/presence-axis-counts-gained-judgements-in-watched-total
+      The presence axis can report a watched count that includes gained statements from the perturbed run, so the denominator is not just the judgements watched on that axis.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+    [other] axis-sensitivity-ratio/presence-axis-counts-changed-judgements-from-both-kinds-together
+      The presence axis can count moved judgements by taking a single set of subjects across obligations and open questions, which can collapse distinct moved judgements into one numerator.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 12 put to the model, 85 skipped once the defect was covered
+    [other] axis-sensitivity-ratio/evidence-axis-uses-intersection-for-watched-but-difference-for-changed
+      The evidence-class axis can use an intersection for the watched population while counting changes from content differences, so the numerator and denominator are not measuring the same axis population.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 12 put to the model, 85 skipped once the defect was covered
+    [other] axis-sensitivity-ratio/verdict-axis-uses-intersection-for-watched-but-subject-set-for-changed
+      The defect-verdict axis can compute watched judgements from paired verdict keys but compute moved judgements from a subject set, so the numerator may not correspond to the watched verdict population.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+
+  sensitivity-bounded-0-to-1
+    [scope_too_narrow] sensitivity-bounded-0-to-1/unbounded-axis-sensitivity
+      AxisSensitivity.sensitivity can return values outside the inclusive range [0, 1] when changed_judgements is greater than watched_judgements, and the new per-axis reporting does not clamp or validate the ratio.
+      src/acceptance/benchmark/instability.py#0
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [other] sensitivity-bounded-0-to-1/presence-axis-overcounts-gains
+      The presence axis can be reported above 1 because its watched population adds gained statements to the baseline population, while changed_judgements still counts only content differences for presence kinds.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+
+  defect-verdict-watched-judgements
+    [scope_too_narrow] defect-verdict-watched-judgements/verdict-watch-uses-union-instead-of-intersection
+      The defect-verdict watched count can include verdict pairs that appear in only one run, so the sensitivity denominator is not limited to pairs present in both baseline and perturbed runs.
+      src/acceptance/benchmark/instability.py#4
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+
+  no-watched-axis-no-sensitivity
+    [condition_inverted] no-watched-axis-no-sensitivity/axis-sensitivity-zero-returns-zero
+      An axis with zero watched judgements can still produce a numeric sensitivity value instead of no value.
+      src/acceptance/benchmark/instability.py#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [other] no-watched-axis-no-sensitivity/perturbation-result-falls-back-to-zero
+      PerturbationResult.sensitivity() can report 0.0 for an axis that has no matching AxisSensitivity row instead of omitting the value.
+      src/acceptance/benchmark/instability.py#0
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+
+  prompt-response-schema-unchanged
+    [other] prompt-response-schema-unchanged/response-schema-shape-changed
+      The delivered code changes the response schema shape by replacing `PerturbationResult.watched_judgements` and `changed_judgements` with an `axes` list of `AxisSensitivity` objects, so code expecting the old response fields would see a different schema.
+      src/acceptance/benchmark/instability.py#0
+      pairs: 4 put to the model, 5 skipped once the defect was covered
+    [other] prompt-response-schema-unchanged/new-enum-alters-schema
+      The delivered code introduces a new `SensitivityAxis` enum and uses it as a field type in the persisted model, which changes the response schema definition rather than leaving it unchanged.
+      src/acceptance/benchmark/instability.py#0
+      pairs: 14 put to the model, 83 skipped once the defect was covered
+    [other] prompt-response-schema-unchanged/build-client-signature-changed
+      The delivered code changes `RunConfig.build_client` to accept a new `client_class` parameter, which alters the configuration API shape even though the criterion requires no schema change.
+      src/acceptance/config.py#0
+      pairs: 12 put to the model, 85 skipped once the defect was covered
+
+  pipeline-client-build-and-call-unchanged
+    [other] pipeline-client-build-and-call-unchanged/pipeline-uses-new-client-class-path
+      The pipeline now constructs its client through a different build path, so the client-construction path is no longer unchanged.
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/config.py#0
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [other] pipeline-client-build-and-call-unchanged/build-client-signature-change-affects-callers
+      The shared client builder now takes an extra `client_class` parameter, so the pipeline's client-building API is no longer the same shape as before.
+      src/acceptance/config.py#0
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+    [other] pipeline-client-build-and-call-unchanged/observing-client-forwarding-shape-changed
+      The observing client no longer exposes the same explicit `complete(...)` call shape, so the arguments passed to the underlying client call can no longer be checked against the previous pipeline path.
+      src/acceptance/benchmark/instability.py#2
+      pairs: 4 put to the model, 93 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [passed_under_edit] axis-sensitivity-ratio/presence-axis-counts-gained-judgements-in-watched-total x 96 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] defect-verdict-watched-judgements/verdict-watch-uses-union-instead-of-intersection x 96 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] no-watched-axis-no-sensitivity/axis-sensitivity-zero-returns-zero x 95 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] prompt-response-schema-unchanged/response-schema-shape-changed x 88 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 9 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] sensitivity-bounded-0-to-1/presence-axis-overcounts-gains x 96 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] separate-axis-sensitivities/presence-axis-uses-gained-count-as-watched-population x 96 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] separate-axis-sensitivities/single-axis-sensitivity-still-exposed x 95 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] axis-sensitivity-ratio/evidence-axis-uses-intersection-for-watched-but-difference-for-changed x 85 candidate test(s), ranked 13 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+  [defect_already_covered] axis-sensitivity-ratio/presence-axis-counts-changed-judgements-from-both-kinds-together x 85 candidate test(s), ranked 13 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_decomposition_variation_is_surfaced_and_not_only_evidence_variation, tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+  [defect_already_covered] axis-sensitivity-ratio/verdict-axis-uses-intersection-for-watched-but-subject-set-for-changed x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+  [defect_already_covered] harness-client-matches-runconfig-build-client/build-client-extra-kwargs-not-forwarded x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it, tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces, tests/test_stage_reasoning.py::test_run_config_reaches_the_client
+  [defect_already_covered] harness-client-matches-runconfig-build-client/build-client-parameter-drift x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it, tests/benchmark/test_instability.py::test_the_observing_client_does_not_change_what_the_pipeline_produces, tests/test_stage_reasoning.py::test_run_config_reaches_the_client
+  [defect_already_covered] judgement-movement-reporting/axis-sensitivity-not-surfaced x 85 candidate test(s), ranked 13 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_three_movement_sources_are_reported_as_distinct_figures
+  [defect_already_covered] judgement-movement-reporting/only-perturbed-run-reported x 69 candidate test(s), ranked 29 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_decomposition_variation_is_surfaced_and_not_only_evidence_variation, tests/benchmark/test_instability.py::test_presence_rows_show_an_obligation_missing_from_some_runs
+  [defect_already_covered] judgement-movement-reporting/perturbation-result-not-included-in-report x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_perturbation_run_is_included_when_one_is_supplied
+  [defect_already_covered] no-watched-axis-no-sensitivity/perturbation-result-falls-back-to-zero x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_an_axis_with_nothing_watched_reports_no_sensitivity, tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_none_when_nothing_was_watched
+  [defect_already_covered] pass-complete-args-through-unchanged/client-factory-uses-wrong-client-class x 85 candidate test(s), ranked 13 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_run_once_drives_the_real_pipeline_and_snapshots_its_output
+  [defect_already_covered] pass-complete-args-through-unchanged/missing-complete-parameters x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_construction_runs_the_pipeline_end_to_end, tests/benchmark/test_instability.py::test_the_observing_client_forwards_every_parameter_complete_accepts
+  [defect_already_covered] pass-complete-args-through-unchanged/positional-argument-repacking x 37 candidate test(s), ranked 61 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_construction_runs_the_pipeline_end_to_end
+  [defect_already_covered] perturbed-input-run/client-factory-bypasses-perturbed-run x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_perturbation_run_is_included_when_one_is_supplied
+  [defect_already_covered] perturbed-input-run/perturbation-result-no-longer-single-run x 83 candidate test(s), ranked 15 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_verdicts_in_only_one_run_are_not_watched
+  [defect_already_covered] pipeline-client-build-and-call-unchanged/build-client-signature-change-affects-callers x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_construction_runs_the_pipeline_end_to_end
+  [defect_already_covered] pipeline-client-build-and-call-unchanged/observing-client-forwarding-shape-changed x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_run_once_drives_the_real_pipeline_and_snapshots_its_output, tests/benchmark/test_instability.py::test_the_default_construction_runs_the_pipeline_end_to_end
+  [defect_already_covered] pipeline-client-build-and-call-unchanged/pipeline-uses-new-client-class-path x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_construction_runs_the_pipeline_end_to_end
+  [defect_already_covered] prompt-response-schema-unchanged/build-client-signature-changed x 85 candidate test(s), ranked 13 to 97
+    not asked: the defect was already covered by tests/test_config.py::test_the_default_model_is_pinned_so_changing_it_is_deliberate, tests/test_config.py::test_the_default_seed_reaches_both_the_model_call_and_the_provenance, tests/test_config.py::test_the_seed_is_part_of_the_request_so_changing_it_invalidates_transcripts
+  [defect_already_covered] prompt-response-schema-unchanged/new-enum-alters-schema x 83 candidate test(s), ranked 15 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_report_carries_no_pass_fail_or_threshold_field, tests/benchmark/test_instability.py::test_the_three_movement_sources_are_reported_as_distinct_figures, tests/benchmark/test_instability.py::test_verdicts_in_only_one_run_are_not_watched, tests/requirement/test_carry_forward.py::test_a_changed_response_schema_invalidates_the_entries_derived_under_it
+  [defect_already_covered] prompt-response-schema-unchanged/response-schema-shape-changed x 5 candidate test(s), ranked 5 to 59
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+  [defect_already_covered] runs-review-several-times/multi-run-loop-missing x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_run_count_produces_three_runs_per_model
+  [defect_already_covered] runs-review-several-times/single-run-only x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_run_count_produces_three_runs_per_model
+  [defect_already_covered] sensitivity-bounded-0-to-1/unbounded-axis-sensitivity x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+  [defect_already_covered] separate-axis-sensitivities/evidence-axis-counts-intersection-only x 85 candidate test(s), ranked 13 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_harness_reports_variance_without_reducing_it
+  [defect_already_covered] separate-axis-sensitivities/presence-axis-counts-only-baseline-statements x 93 candidate test(s), ranked 5 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_obligations_gained_under_perturbation_cannot_push_presence_above_one
+  [defect_already_covered] separate-axis-sensitivities/verdict-axis-counts-only-shared-defect-test-pairs x 92 candidate test(s), ranked 6 to 97
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_flipped_pair_verdict_is_reported_per_pair, tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+
+Running the project's tests:
+  the project's tests were run: 33 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [survived, NOT COUNTED] axis-sensitivity-ratio/evidence-axis-uses-intersection-for-watched-but-difference-for-changed
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 772-772:
+      -     evidence_watched = len(set(baseline.evidence_classes) & set(perturbed.evidence_classes))
+      +     evidence_watched = len(set(baseline.evidence_classes) | set(perturbed.evidence_classes))
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 85 skipped once the defect was covered
+
+  [survived, NOT COUNTED] axis-sensitivity-ratio/presence-axis-counts-changed-judgements-from-both-kinds-together
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 781-782:
+      -     def changed(kinds: set[DifferenceKind]) -> int:
+      -         return len({d.subject for d in content if d.kind in kinds})
+      +     def changed(kinds: set[DifferenceKind]) -> int:
+      +         return sum(1 for d in content if d.kind in kinds)
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 85 skipped once the defect was covered
+
+  [killed, NOT COUNTED] axis-sensitivity-ratio/presence-axis-counts-gained-judgements-in-watched-total
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 766-768:
+      -     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions)) + len(
+      -         gained
+      -     )
+      +     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions))
+    caught by (1):
+      tests/benchmark/test_instability.py::test_obligations_gained_under_perturbation_cannot_push_presence_above_one
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 96 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] axis-sensitivity-ratio/verdict-axis-uses-intersection-for-watched-but-subject-set-for-changed
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 781-782:
+      -     def changed(kinds: set[DifferenceKind]) -> int:
+      -         return len({d.subject for d in content if d.kind in kinds})
+      +     def changed(kinds: set[DifferenceKind]) -> int:
+      +         return sum(1 for d in content if d.kind in kinds)
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+
+  [killed, NOT COUNTED] defect-verdict-watched-judgements/verdict-watch-uses-union-instead-of-intersection
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 776-776:
+      -     verdict_watched = len(verdict_keys[0] & verdict_keys[1])
+      +     verdict_watched = len(verdict_keys[0] | verdict_keys[1])
+    caught by (1):
+      tests/benchmark/test_instability.py::test_verdicts_in_only_one_run_are_not_watched
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 96 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] harness-client-matches-runconfig-build-client/build-client-extra-kwargs-not-forwarded
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the span 212..220 falls outside the region(s) the defect named in src/acceptance/config.py (201..215)
+         at src/acceptance/config.py lines 212-220:
+           -         return client_class(
+           -             model=self.model,
+           -             mode=self.mode,
+           -             store=TranscriptStore(self.transcript_root),
+           -             temperature=self.temperature,
+           -             seed=self.seed,
+           -             completion_fn=completion_fn,
+           -             embedding_model=self.embedding_model,
+           -             stage_models=self.stage_models,
+           +         return client_class(
+           +             model=self.model,
+           +             mode=self.mode,
+           +             store=TranscriptStore(self.transcript_root),
+           +             temperature=self.temperature,
+           +             seed=self.seed,
+           +             completion_fn=completion_fn,
+           +             embedding_model=self.embedding_model,
+           +             stage_models=self.stage_models,
+           +         )
+      2. set aside (failed_check): the span 212..220 falls outside the region(s) the defect named in src/acceptance/config.py (201..215)
+         at src/acceptance/config.py lines 212-220:
+           -         return client_class(
+           -             model=self.model,
+           -             mode=self.mode,
+           -             store=TranscriptStore(self.transcript_root),
+           -             temperature=self.temperature,
+           -             seed=self.seed,
+           -             completion_fn=completion_fn,
+           -             embedding_model=self.embedding_model,
+           -             stage_models=self.stage_models,
+           +         return client_class(
+           +             model=self.model,
+           +             mode=self.mode,
+           +             store=TranscriptStore(self.transcript_root),
+           +             temperature=self.temperature,
+           +             seed=self.seed,
+           +             completion_fn=completion_fn,
+           +             embedding_model=self.embedding_model,
+           +             stage_models=self.stage_models,
+           +         )
+      3. set aside (changed_nothing): the replacement for src/acceptance/config.py lines 212..215 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/config.py lines 212-215:
+           -         return client_class(
+           -             model=self.model,
+           -             mode=self.mode,
+           -             store=TranscriptStore(self.transcript_root),
+           +         return client_class(
+           +             model=self.model,
+           +             mode=self.mode,
+           +             store=TranscriptStore(self.transcript_root),
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] harness-client-matches-runconfig-build-client/build-client-parameter-drift
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/benchmark/instability.py does not parse: '(' was never closed (<unknown>, line 735)
+         at src/acceptance/benchmark/instability.py lines 735-735:
+           -         client = config.build_client(client_class=ObservingClient)
+           +         client = ObservingClient(
+      2. set aside (failed_check): the mutated src/acceptance/benchmark/instability.py does not parse: '(' was never closed (<unknown>, line 735)
+         at src/acceptance/benchmark/instability.py lines 735-735:
+           -         client = config.build_client(client_class=ObservingClient)
+           +         client = ObservingClient(
+      3. set aside (refused_after_run): every one of the 2 tests that failed under the edit failed with NameError, which means the edited code no longer loads or names something that does not exist. Those failures say nothing about the named defect, so this is not counted as a kill and the defect goes to the static judge.
+         at src/acceptance/benchmark/instability.py lines 735-735:
+           -         client = config.build_client(client_class=ObservingClient)
+           +         client = ObservingClient(
+           +             model=config.model,
+           +             mode=config.mode,
+           +             store=TranscriptStore(config.transcript_root),
+           +             temperature=config.temperature,
+           +             seed=config.seed,
+           +             completion_fn=None,
+           +             embedding_model=config.embedding_model,
+           +             stage_models=config.stage_models,
+           +             stage_reasoning=config.stage_reasoning,
+           +         )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 failed_check, 1 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [not_mutable] judgement-movement-reporting/axis-sensitivity-not-surfaced
+    candidate edits: 3 asked for, 2 set aside, none used
+      1. set aside (failed_check): the edit replaces 19 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/instability.py lines 787-805:
+           -     return PerturbationResult(
+           -         name=name,
+           -         axes=[
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.PRESENCE,
+           -                 watched_judgements=presence_watched,
+           -                 changed_judgements=changed(presence_kinds),
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           -                 watched_judgements=evidence_watched,
+           -                 changed_judgements=evidence_changed,
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.DEFECT_VERDICT,
+           -                 watched_judgements=verdict_watched,
+           -                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           -             ),
+           -         ],
+           +     return PerturbationResult(
+           +         name=name,
+           +         axes=[
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.PRESENCE,
+           +                 watched_judgements=presence_watched,
+           +                 changed_judgements=changed(presence_kinds),
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           +                 watched_judgements=evidence_watched,
+           +                 changed_judgements=evidence_changed,
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.DEFECT_VERDICT,
+           +                 watched_judgements=verdict_watched,
+           +                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           +             ),
+           +         ],
+           +         content_differences=content,
+           +         shape_differences=shape,
+           +     )
+      2. set aside (failed_check): the edit replaces 19 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/instability.py lines 787-805:
+           -     return PerturbationResult(
+           -         name=name,
+           -         axes=[
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.PRESENCE,
+           -                 watched_judgements=presence_watched,
+           -                 changed_judgements=changed(presence_kinds),
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           -                 watched_judgements=evidence_watched,
+           -                 changed_judgements=evidence_changed,
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.DEFECT_VERDICT,
+           -                 watched_judgements=verdict_watched,
+           -                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           -             ),
+           -         ],
+           +     return PerturbationResult(
+           +         name=name,
+           +         axes=[
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.PRESENCE,
+           +                 watched_judgements=presence_watched,
+           +                 changed_judgements=changed(presence_kinds),
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           +                 watched_judgements=evidence_watched,
+           +                 changed_judgements=evidence_changed,
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.DEFECT_VERDICT,
+           +                 watched_judgements=verdict_watched,
+           +                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           +             ),
+           +         ],
+           +         content_differences=content,
+           +         shape_differences=shape,
+           +     )
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 85 skipped once the defect was covered
+    The named defect is about the benchmark output surfacing per-axis sensitivity instead of relying on old blended movement fields, but the shown code already returns a PerturbationResult with an axes list of AxisSensitivity rows at lines 787-805. Making the defective behavior true would require coordinated changes in the output/reporting code that consumes this result, not a single contiguous edit in the implicated region.
+
+  [survived, NOT COUNTED] judgement-movement-reporting/only-perturbed-run-reported
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 793-793:
+      -                 changed_judgements=changed(presence_kinds),
+      +                 changed_judgements=changed(presence_kinds) + len({d.subject for d in differences if d.kind in presence_kinds and d.present_in == baseline.run.label()}),
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 69 skipped once the defect was covered
+
+  [no_usable_edit] judgement-movement-reporting/perturbation-result-not-included-in-report
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 787..808 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 787-808:
+           -     return PerturbationResult(
+           -         name=name,
+           -         axes=[
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.PRESENCE,
+           -                 watched_judgements=presence_watched,
+           -                 changed_judgements=changed(presence_kinds),
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           -                 watched_judgements=evidence_watched,
+           -                 changed_judgements=evidence_changed,
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.DEFECT_VERDICT,
+           -                 watched_judgements=verdict_watched,
+           -                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           -             ),
+           -         ],
+           -         content_differences=content,
+           -         shape_differences=shape,
+           -     )
+           +     return PerturbationResult(
+           +         name=name,
+           +         axes=[
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.PRESENCE,
+           +                 watched_judgements=presence_watched,
+           +                 changed_judgements=changed(presence_kinds),
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           +                 watched_judgements=evidence_watched,
+           +                 changed_judgements=evidence_changed,
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.DEFECT_VERDICT,
+           +                 watched_judgements=verdict_watched,
+           +                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           +             ),
+           +         ],
+           +         content_differences=content,
+           +         shape_differences=shape,
+           +     )
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 787..808 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 787-808:
+           -     return PerturbationResult(
+           -         name=name,
+           -         axes=[
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.PRESENCE,
+           -                 watched_judgements=presence_watched,
+           -                 changed_judgements=changed(presence_kinds),
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           -                 watched_judgements=evidence_watched,
+           -                 changed_judgements=evidence_changed,
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.DEFECT_VERDICT,
+           -                 watched_judgements=verdict_watched,
+           -                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           -             ),
+           -         ],
+           -         content_differences=content,
+           -         shape_differences=shape,
+           -     )
+           +     return PerturbationResult(
+           +         name=name,
+           +         axes=[
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.PRESENCE,
+           +                 watched_judgements=presence_watched,
+           +                 changed_judgements=changed(presence_kinds),
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           +                 watched_judgements=evidence_watched,
+           +                 changed_judgements=evidence_changed,
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.DEFECT_VERDICT,
+           +                 watched_judgements=verdict_watched,
+           +                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           +             ),
+           +         ],
+           +         content_differences=content,
+           +         shape_differences=shape,
+           +     )
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 787..808 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 787-808:
+           -     return PerturbationResult(
+           -         name=name,
+           -         axes=[
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.PRESENCE,
+           -                 watched_judgements=presence_watched,
+           -                 changed_judgements=changed(presence_kinds),
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           -                 watched_judgements=evidence_watched,
+           -                 changed_judgements=evidence_changed,
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.DEFECT_VERDICT,
+           -                 watched_judgements=verdict_watched,
+           -                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           -             ),
+           -         ],
+           -         content_differences=content,
+           -         shape_differences=shape,
+           -     )
+           +     return PerturbationResult(
+           +         name=name,
+           +         axes=[
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.PRESENCE,
+           +                 watched_judgements=presence_watched,
+           +                 changed_judgements=changed(presence_kinds),
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           +                 watched_judgements=evidence_watched,
+           +                 changed_judgements=evidence_changed,
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.DEFECT_VERDICT,
+           +                 watched_judgements=verdict_watched,
+           +                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           +             ),
+           +         ],
+           +         content_differences=content,
+           +         shape_differences=shape,
+           +     )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] no-watched-axis-no-sensitivity/axis-sensitivity-zero-returns-zero
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 205-206:
+      -         if self.watched_judgements == 0:
+      -             return None
+      +         if self.watched_judgements == 0:
+      +             return 0.0
+    caught by (2):
+      tests/benchmark/test_instability.py::test_an_axis_with_nothing_watched_reports_no_sensitivity
+      tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_none_when_nothing_was_watched
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 95 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] no-watched-axis-no-sensitivity/perturbation-result-falls-back-to-zero
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 220-224:
+      -     def sensitivity(self, axis: SensitivityAxis) -> float | None:
+      -         for row in self.axes:
+      -             if row.axis is axis:
+      -                 return row.sensitivity()
+      -         return None
+      +     def sensitivity(self, axis: SensitivityAxis) -> float | None:
+      +         for row in self.axes:
+      +             if row.axis is axis:
+      +                 return row.sensitivity()
+      +         return 0.0
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+
+  [survived, NOT COUNTED] pass-complete-args-through-unchanged/client-factory-uses-wrong-client-class
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 735-735:
+      -         client = config.build_client(client_class=ObservingClient)
+      +         client = config.build_client(client_class=ModelClient)
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 85 skipped once the defect was covered
+
+  [survived, NOT COUNTED] pass-complete-args-through-unchanged/missing-complete-parameters
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 294-298:
+      -     def complete(self, *args: Any, **kwargs: Any) -> Any:
+      -         # Forwarded wholesale, never restated: a pinned parameter list dropped
+      -         # `stage_controls` the moment #259 added it (#289).
+      -         result = super().complete(*args, **kwargs)
+      -         self.observed.append(result)
+      +     def complete(self, *args: Any, **kwargs: Any) -> Any:
+      +         # Forwarded wholesale, never restated: a pinned parameter list dropped
+      +         # `stage_controls` the moment #259 added it (#289).
+      +         result = super().complete(*args, **kwargs)
+      +         self.observed.append(result)
+      +         return result
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+
+  [no_usable_edit] pass-complete-args-through-unchanged/positional-argument-repacking
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 294..297 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 294-297:
+           -     def complete(self, *args: Any, **kwargs: Any) -> Any:
+           -         # Forwarded wholesale, never restated: a pinned parameter list dropped
+           -         # `stage_controls` the moment #259 added it (#289).
+           -         result = super().complete(*args, **kwargs)
+           +     def complete(self, *args: Any, **kwargs: Any) -> Any:
+           +         # Forwarded wholesale, never restated: a pinned parameter list dropped
+           +         # `stage_controls` the moment #259 added it (#289).
+           +         result = super().complete(*args, **kwargs)
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 297..297 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 297-297:
+           -         result = super().complete(*args, **kwargs)
+           +         result = super().complete(*args, **kwargs)
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 297..297 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 297-297:
+           -         result = super().complete(*args, **kwargs)
+           +         result = super().complete(*args, **kwargs)
+    pairs: 0 settled by the run, 60 put to the model, 0 dropped as not worth asking, 37 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] perturbed-input-run/client-factory-bypasses-perturbed-run
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 732-735:
+      -     if client_factory is not None:
+      -         client = client_factory(config)
+      -     else:
+      -         client = config.build_client(client_class=ObservingClient)
+      +     if client_factory is not None:
+      +         client = client_factory(config)
+      +     else:
+      +         client = config.build_client()
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+
+  [killed, NOT COUNTED] perturbed-input-run/perturbation-result-no-longer-single-run
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (failed_check): the edit replaces 19 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/instability.py lines 787-805:
+           -     return PerturbationResult(
+           -         name=name,
+           -         axes=[
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.PRESENCE,
+           -                 watched_judgements=presence_watched,
+           -                 changed_judgements=changed(presence_kinds),
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           -                 watched_judgements=evidence_watched,
+           -                 changed_judgements=evidence_changed,
+           -             ),
+           -             AxisSensitivity(
+           -                 axis=SensitivityAxis.DEFECT_VERDICT,
+           -                 watched_judgements=verdict_watched,
+           -                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           -             ),
+           -         ],
+           +     return PerturbationResult(
+           +         name=name,
+           +         axes=[
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.PRESENCE,
+           +                 watched_judgements=presence_watched,
+           +                 changed_judgements=changed(presence_kinds),
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.EVIDENCE_CLASS,
+           +                 watched_judgements=evidence_watched,
+           +                 changed_judgements=evidence_changed,
+           +             ),
+           +             AxisSensitivity(
+           +                 axis=SensitivityAxis.DEFECT_VERDICT,
+           +                 watched_judgements=verdict_watched,
+           +                 changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+           +             ),
+           +         ],
+           +         content_differences=content,
+           +         shape_differences=shape,
+           +     )
+    injected at src/acceptance/benchmark/instability.py lines 793-793:
+      -                 changed_judgements=changed(presence_kinds),
+      +                 changed_judgements=changed(presence_kinds) + 1,
+    caught by (2):
+      tests/benchmark/test_instability.py::test_obligations_gained_under_perturbation_cannot_push_presence_above_one
+      tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 14 put to the model, 0 dropped as not worth asking, 83 skipped once the defect was covered
+
+  [survived, NOT COUNTED] pipeline-client-build-and-call-unchanged/build-client-signature-change-affects-callers
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 735-735:
+      -         client = config.build_client(client_class=ObservingClient)
+      +         client = config.build_client()
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+
+  [already_present] pipeline-client-build-and-call-unchanged/observing-client-forwarding-shape-changed
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    Lines 294-297 already use `*args, **kwargs` and forward them wholesale. To repair to the expected explicit signature with unchanged forwarding, replace that contiguous run with a single explicit parameter and matching call. (the repair failed 12 of 97 candidate tests, too many to say anything about this defect)
+
+  [no_usable_edit] pipeline-client-build-and-call-unchanged/pipeline-uses-new-client-class-path
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (refused_after_run): every one of the 2 tests that failed under the edit failed with NameError, which means the edited code no longer loads or names something that does not exist. Those failures say nothing about the named defect, so this is not counted as a kill and the defect goes to the static judge.
+         at src/acceptance/benchmark/instability.py lines 735-735:
+           -         client = config.build_client(client_class=ObservingClient)
+           +         client = ObservingClient(
+           +             model=config.model,
+           +             mode=config.mode,
+           +             store=TranscriptStore(config.transcript_root),
+           +             temperature=config.temperature,
+           +             seed=config.seed,
+           +             completion_fn=None,
+           +             embedding_model=config.embedding_model,
+           +             stage_models=config.stage_models,
+           +             stage_reasoning=config.stage_reasoning,
+           +         )
+      2. set aside (refused_after_run): every one of the 2 tests that failed under the edit failed with NameError, which means the edited code no longer loads or names something that does not exist. Those failures say nothing about the named defect, so this is not counted as a kill and the defect goes to the static judge.
+         at src/acceptance/benchmark/instability.py lines 735-735:
+           -         client = config.build_client(client_class=ObservingClient)
+           +         client = ObservingClient(
+           +             model=config.model,
+           +             mode=config.mode,
+           +             store=TranscriptStore(config.transcript_root),
+           +             temperature=config.temperature,
+           +             seed=config.seed,
+           +             completion_fn=None,
+           +             embedding_model=config.embedding_model,
+           +             stage_models=config.stage_models,
+           +             stage_reasoning=config.stage_reasoning,
+           +         )
+      3. set aside (refused_after_run): every one of the 2 tests that failed under the edit failed with NameError, which means the edited code no longer loads or names something that does not exist. Those failures say nothing about the named defect, so this is not counted as a kill and the defect goes to the static judge.
+         at src/acceptance/benchmark/instability.py lines 735-735:
+           -         client = config.build_client(client_class=ObservingClient)
+           +         client = ObservingClient(
+           +             model=config.model,
+           +             mode=config.mode,
+           +             store=TranscriptStore(config.transcript_root),
+           +             temperature=config.temperature,
+           +             seed=config.seed,
+           +             completion_fn=None,
+           +             embedding_model=config.embedding_model,
+           +             stage_models=config.stage_models,
+           +             stage_reasoning=config.stage_reasoning,
+           +         )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] prompt-response-schema-unchanged/build-client-signature-changed
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (refused_after_run): 11 of the 97 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 204-208:
+           -     def build_client(
+           -         self,
+           -         completion_fn: Callable[..., Any] | None = None,
+           -         client_class: type[ModelClient] = ModelClient,
+           -     ) -> ModelClient:
+           +     def build_client(
+           +         self,
+           +         completion_fn: Callable[..., Any] | None = None,
+           +     ) -> ModelClient:
+      2. set aside (refused_after_run): 11 of the 97 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 204-208:
+           -     def build_client(
+           -         self,
+           -         completion_fn: Callable[..., Any] | None = None,
+           -         client_class: type[ModelClient] = ModelClient,
+           -     ) -> ModelClient:
+           +     def build_client(
+           +         self,
+           +         completion_fn: Callable[..., Any] | None = None,
+           +     ) -> ModelClient:
+      3. set aside (refused_after_run): 11 of the 97 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 204-208:
+           -     def build_client(
+           -         self,
+           -         completion_fn: Callable[..., Any] | None = None,
+           -         client_class: type[ModelClient] = ModelClient,
+           -     ) -> ModelClient:
+           +     def build_client(
+           +         self,
+           +         completion_fn: Callable[..., Any] | None = None,
+           +     ) -> ModelClient:
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 85 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] prompt-response-schema-unchanged/new-enum-alters-schema
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 197-199:
+      - class AxisSensitivity(PersistableModel):
+      -     axis: SensitivityAxis
+      -     watched_judgements: int
+      + class AxisSensitivity(PersistableModel):
+      +     axis: str
+      +     watched_judgements: int
+      +     changed_judgements: int
+    caught by (2):
+      tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_a_proportion_of_watched_judgements
+      tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 14 put to the model, 0 dropped as not worth asking, 83 skipped once the defect was covered
+
+  [killed, NOT COUNTED] prompt-response-schema-unchanged/response-schema-shape-changed
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 216-216:
+      -     axes: list[AxisSensitivity] = Field(default_factory=list)
+      +     watched_judgements: int = 0
+    caught by (9):
+      tests/benchmark/test_instability.py::test_a_perturbation_run_is_included_when_one_is_supplied
+      tests/benchmark/test_instability.py::test_an_axis_with_nothing_watched_reports_no_sensitivity
+      tests/benchmark/test_instability.py::test_obligations_gained_under_perturbation_cannot_push_presence_above_one
+      tests/benchmark/test_instability.py::test_omitted_parameters_fall_back_to_the_declared_defaults
+      tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_a_proportion_of_watched_judgements
+      tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_none_when_nothing_was_watched
+      tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+      tests/benchmark/test_instability.py::test_the_three_movement_sources_are_reported_as_distinct_figures
+      tests/benchmark/test_instability.py::test_verdicts_in_only_one_run_are_not_watched
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 88 dropped as not worth asking, 5 skipped once the defect was covered
+
+  [not_mutable] runs-review-several-times/multi-run-loop-missing
+    candidate edits: 2 asked for, 1 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 737..738 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 737-738:
+           -     scored = classify_case(case, client)
+           -     review = scored.reviewer_output
+           +     scored = classify_case(case, client)
+           +     review = scored.reviewer_output
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    The implicated lines 737-738 only classify one case and extract a single review; the missing multi-run scheduling behavior is in the surrounding run loop/caller logic, not in this contiguous span. Changing only this span cannot make later requested runs be entered into the sequence.
+
+  [not_mutable] runs-review-several-times/single-run-only
+    candidate edits: 3 asked for, 2 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 737..738 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 737-738:
+           -     scored = classify_case(case, client)
+           -     review = scored.reviewer_output
+           +     scored = classify_case(case, client)
+           +     review = scored.reviewer_output
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 737..742 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 737-742:
+           -     scored = classify_case(case, client)
+           -     review = scored.reviewer_output
+           -     if review is None:  # pragma: no cover - classify_case always attaches one
+           -         raise RuntimeError("the pipeline returned no review")
+           - 
+           -     return snapshot_review(review, run)
+           +     scored = classify_case(case, client)
+           +     review = scored.reviewer_output
+           +     if review is None:  # pragma: no cover - classify_case always attaches one
+           +         raise RuntimeError("the pipeline returned no review")
+           + 
+           +     return snapshot_review(review, run)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+    The implicated region is only run_once, which performs a single classification and snapshot for one RunKey. Making the harness invoke the review workflow repeatedly in sequence for a configured number of runs requires changing the caller loop in measure_instability, not just this one contiguous span; this region cannot by itself wire in multi-run execution.
+
+  [killed, NOT COUNTED] sensitivity-bounded-0-to-1/presence-axis-overcounts-gains
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 766-768:
+      -     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions)) + len(
+      -         gained
+      -     )
+      +     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions))
+    caught by (1):
+      tests/benchmark/test_instability.py::test_obligations_gained_under_perturbation_cannot_push_presence_above_one
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 96 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] sensitivity-bounded-0-to-1/unbounded-axis-sensitivity
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 207-207:
+      -         return self.changed_judgements / self.watched_judgements
+      +         return min(1.0, self.changed_judgements / self.watched_judgements)
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+
+  [survived, NOT COUNTED] separate-axis-sensitivities/evidence-axis-counts-intersection-only
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 772-772:
+      -     evidence_watched = len(set(baseline.evidence_classes) & set(perturbed.evidence_classes))
+      +     evidence_watched = len(set(baseline.evidence_classes) | set(perturbed.evidence_classes))
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 85 skipped once the defect was covered
+
+  [survived, NOT COUNTED] separate-axis-sensitivities/presence-axis-counts-only-baseline-statements
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 766..768 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 766-768:
+           -     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions)) + len(
+           -         gained
+           -     )
+           +     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions)) + len(
+           +         gained
+           +     )
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 766..768 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 766-768:
+           -     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions)) + len(
+           -         gained
+           -     )
+           +     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions)) + len(
+           +         gained
+           +     )
+    injected at src/acceptance/benchmark/instability.py lines 766-768:
+      -     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions)) + len(
+      -         gained
+      -     )
+      +     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions) | gained)
+    no test caught it; 97 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 93 skipped once the defect was covered
+
+  [killed, NOT COUNTED] separate-axis-sensitivities/presence-axis-uses-gained-count-as-watched-population
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 766-768:
+      -     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions)) + len(
+      -         gained
+      -     )
+      +     presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions))
+    caught by (1):
+      tests/benchmark/test_instability.py::test_obligations_gained_under_perturbation_cannot_push_presence_above_one
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 96 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] separate-axis-sensitivities/single-axis-sensitivity-still-exposed
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 220..224 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 220-224:
+           -     def sensitivity(self, axis: SensitivityAxis) -> float | None:
+           -         for row in self.axes:
+           -             if row.axis is axis:
+           -                 return row.sensitivity()
+           -         return None
+           +     def sensitivity(self, axis: SensitivityAxis) -> float | None:
+           +         for row in self.axes:
+           +             if row.axis is axis:
+           +                 return row.sensitivity()
+           +         return None
+    injected at src/acceptance/benchmark/instability.py lines 220-224:
+      -     def sensitivity(self, axis: SensitivityAxis) -> float | None:
+      -         for row in self.axes:
+      -             if row.axis is axis:
+      -                 return row.sensitivity()
+      -         return None
+      +     def sensitivity(self, axis: SensitivityAxis) -> float | None:
+      +         if not self.axes:
+      +             return None
+      +         return self.axes[0].sensitivity()
+    caught by (2):
+      tests/benchmark/test_instability.py::test_an_axis_with_nothing_watched_reports_no_sensitivity
+      tests/benchmark/test_instability.py::test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 95 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] separate-axis-sensitivities/verdict-axis-counts-only-shared-defect-test-pairs
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 773-776:
+      -     verdict_keys = [
+      -         {(v.defect_id, v.test_id) for v in s.defect_verdicts} for s in (baseline, perturbed)
+      -     ]
+      -     verdict_watched = len(verdict_keys[0] & verdict_keys[1])
+      +     verdict_keys = [
+      +         {(v.defect_id, v.test_id) for v in s.defect_verdicts} for s in (baseline, perturbed)
+      +     ]
+      +     verdict_watched = len(verdict_keys[0] | verdict_keys[1])
+    caught by (1):
+      tests/benchmark/test_instability.py::test_verdicts_in_only_one_run_are_not_watched
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 5 put to the model, 0 dropped as not worth asking, 92 skipped once the defect was covered
+
+  [no_usable_edit] watch-client-complete-signature/build-client-still-omits-completion-params
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 294..297 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 294-297:
+           -     def complete(self, *args: Any, **kwargs: Any) -> Any:
+           -         # Forwarded wholesale, never restated: a pinned parameter list dropped
+           -         # `stage_controls` the moment #259 added it (#289).
+           -         result = super().complete(*args, **kwargs)
+           +     def complete(self, *args: Any, **kwargs: Any) -> Any:
+           +         # Forwarded wholesale, never restated: a pinned parameter list dropped
+           +         # `stage_controls` the moment #259 added it (#289).
+           +         result = super().complete(*args, **kwargs)
+      2. set aside (refused_after_run): 12 of the 97 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/benchmark/instability.py lines 294-297:
+           -     def complete(self, *args: Any, **kwargs: Any) -> Any:
+           -         # Forwarded wholesale, never restated: a pinned parameter list dropped
+           -         # `stage_controls` the moment #259 added it (#289).
+           -         result = super().complete(*args, **kwargs)
+           +     def complete(self, prompt: str, *, temperature: float | None = None) -> Any:
+           +         # Forwarded wholesale, never restated: a pinned parameter list dropped
+           +         # `stage_controls` the moment #259 added it (#289).
+           +         result = super().complete(prompt, temperature=temperature)
+      3. set aside (changed_nothing): the replacement for src/acceptance/benchmark/instability.py lines 294..294 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/instability.py lines 294-294:
+           -     def complete(self, *args: Any, **kwargs: Any) -> Any:
+           +     def complete(self, *args: Any, **kwargs: Any) -> Any:
+    pairs: 0 settled by the run, 97 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+Defects the delivered code already has, as asserted by the model (static tier; needs human review):
+  pipeline-client-build-and-call-unchanged/observing-client-forwarding-shape-changed
+    Lines 294-297 already use `*args, **kwargs` and forward them wholesale. To repair to the expected explicit signature with unchanged forwarding, replace that contiguous run with a single explicit parameter and matching call. (the repair failed 12 of 97 candidate tests, too many to say anything about this defect)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/benchmark/instability.py lines 294-297:
+      -     def complete(self, *args: Any, **kwargs: Any) -> Any:
+      -         # Forwarded wholesale, never restated: a pinned parameter list dropped
+      -         # `stage_controls` the moment #259 added it (#289).
+      -         result = super().complete(*args, **kwargs)
+      +     def complete(self, stage_controls: Any) -> Any:
+      +         # Forwarded wholesale, never restated: a pinned parameter list dropped
+      +         # `stage_controls` the moment #259 added it (#289).
+      +         result = super().complete(stage_controls)
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
+run 2f00d3a9e708c75c
+  continue this run with: --continue 2f00d3a9e708c75c
+Model usage by stage:
+  stage                         model                                                            calls   prompt  output  cached  this run  recorded  time this run
+  ----------------------------  -------------------------------------------  -------------------------  -------  ------  ------  --------  --------  -------------
+  decompose                     openai/gpt-5.4-mini                          19 (0 live / 19 replayed)  103,330   2,878    0.0%   $0.0000   $0.0904              —
+  decompose-summary             openai/gpt-5.4                                 4 (0 live / 4 replayed)    3,366   1,868    0.0%   $0.0000   $0.0364              —
+  obligation linking            voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (0 live / 2 replayed)    2,098     263    0.0%   $0.0000   $0.0022              —
+  defect enumeration            openai/gpt-5.4-mini                          13 (13 live / 0 replayed)   41,522   4,850    0.0%   $0.0530   $0.0530          65.2s
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini  96 (96 live / 0 replayed)  138,403  18,316    0.0%   $0.1736   $0.1736         145.3s
+  coverage classification       openai/gpt-5.4-mini                            1 (1 live / 0 replayed)    6,654   1,254    0.0%   $0.0106   $0.0106           6.0s
+  unrequested-change detection  openai/gpt-5.4-mini                            1 (1 live / 0 replayed)    6,139     612    0.0%   $0.0074   $0.0074           3.9s
+  test recommendation           openai/gpt-5.4-mini                            1 (1 live / 0 replayed)    5,547     404    0.0%   $0.0060   $0.0060           3.0s
+  mutation descriptor           openai/gpt-5.4-mini                          56 (56 live / 0 replayed)  130,156   7,415   39.2%   $0.0965   $0.0965          87.2s
+  this run spent $0.3470 on 168 live call(s); the evidence cost $0.4761 to record (25 call(s) replayed at no cost to this run)
