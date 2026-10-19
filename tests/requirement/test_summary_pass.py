@@ -251,19 +251,29 @@ def test_a_span_they_do_not_require_yields_an_obligation_quoting_that_span():
     assert parsed.source[span.start : span.end] == span.text
 
 
-def test_an_uncovered_span_that_yields_nothing_stops_the_run():
+def test_an_uncovered_span_that_yields_nothing_becomes_an_open_question():
     """It was reached only because the step before it argued, with a
     counterexample, that the derived obligations do not require this property. A
-    step that then declines it has contradicted the one that sent it, and the
-    property would be lost in the gap between them."""
+    step that then declines it has contradicted the one that sent it — which is
+    information, not an error (#355). Either the span has no content of its own
+    or the follow-up missed a property; the disagreement is surfaced as an open
+    question quoting the span, and the rest of the decomposition completes."""
+    parsed = parse_task_file(TASK)
     answer = _spans((_COVERED_SPAN, "covered"), (_UNCOVERED_SPAN, "uncovered"))
 
-    with pytest.raises(SchemaValidationError) as raised:
-        decompose(parse_task_file(TASK), _client(answer, decline_spans=True))
+    result = decompose(parsed, _client(answer, decline_spans=True))
 
-    message = str(raised.value)
-    assert "neither an obligation nor an open question" in message
-    assert _UNCOVERED_SPAN in message
+    # The rest of the mandate is derived as usual.
+    assert [o.id for o in result.obligations] == ["header-row"]
+    disposition = result.requirement_map.disposition_for("task-01")
+    assert disposition.disposition.value == "open_question"
+    [question] = [q for q in result.open_questions if q.id in disposition.open_question_ids]
+    assert _UNCOVERED_SPAN in question.question
+    assert "disagreed" in question.question
+    # Linked to the span's own text in the mandate, not the whole summary.
+    assert [span.text for span in question.source_spans] == [_UNCOVERED_SPAN]
+    span = question.source_spans[0]
+    assert parsed.source[span.start : span.end] == span.text
 
 
 def test_the_deciding_step_yields_no_obligations_itself():

@@ -914,6 +914,36 @@ def _record_questions(
     return remapped
 
 
+def _span_disagreement(
+    span: RequirementRef,
+    decision: SpanDecision,
+    seen_ids: set[str],
+    into: list[OpenQuestion],
+) -> str:
+    """Record that the coverage step and the span's own call disagreed; return its id.
+
+    Written by the code rather than asked of the model: the two answers already
+    in hand are the whole of what is known, and a third call would only be a
+    third opinion. The span is linked from the mandate, the same offsets the
+    span's obligation would have quoted.
+    """
+    question_id = _unique(f"{span.id}-disagreement", seen_ids)
+    into.append(
+        OpenQuestion(
+            id=question_id,
+            question=(
+                f"The coverage step and the call asked about this span alone "
+                f"disagreed: the first found {normalise(decision.text)!r} uncovered "
+                f"by the obligations already derived, the second derived neither an "
+                f"obligation nor an open question from it. Does this span state a "
+                f"property of its own that must be delivered?"
+            ),
+            source_spans=[span.span],
+        )
+    )
+    return question_id
+
+
 def _span_requirement(summary: RequirementRef, decision: SpanDecision) -> RequirementRef:
     """One uncovered span of the summary, as an ordinary requirement of its own.
 
@@ -1157,13 +1187,12 @@ def decompose(
                 # because the step before it argued, with a counterexample, that
                 # the derived obligations do not require this property — so a
                 # step that then declines it has contradicted the one that sent
-                # it, and the property would be lost silently.
-                raise SchemaValidationError(
-                    f"span {decision.index} of requirement '{summary.id}' was found "
-                    f"uncovered by the obligations already derived, but the call asked "
-                    f"about it alone produced neither an obligation nor an open "
-                    f"question: {normalise(decision.text)!r}"
-                )
+                # it. That is information, not an error (#355): either the span
+                # has no content of its own or the follow-up missed a property.
+                # Surfaced as an open question on the summary, so the property
+                # is not lost silently, and the rest of the run completes.
+                questions_here = [_span_disagreement(span, decision, seen_ids, open_questions)]
+                span_question_ids.extend(questions_here)
         obligations.extend(span_obligations)
         # The span-by-span account goes on the disposition WHATEVER it is, not
         # only when the summary yielded nothing. A covered span is a requirement
