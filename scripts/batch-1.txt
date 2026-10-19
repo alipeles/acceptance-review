@@ -8,7 +8,7 @@
 # crash that stops `decompose` on any task file with a background sentence, so
 # until it lands every other run's decompose log is likely to be a traceback.
 
-355 src/acceptance/requirement/obligations.py
+# 355 src/acceptance/requirement/obligations.py
 
 # Launch these after #355 has merged.
 
