@@ -452,6 +452,23 @@ def run_review(
     derived_ids = {obligation.id for obligation in question_obligations}
     obligations = decomposition.obligations + question_obligations
 
+    # Only obligations that REQUIRE test evidence reach the stages that gather
+    # it (#266). Previously every obligation did, and the ones no test could
+    # ever bear on were filtered out three stages later, at the recommendation
+    # step — after the mapper had already chosen among them and the strength
+    # classifier had already rated them. Two costs, both observed: the mapper
+    # picked between obligations that were never candidates, and ratings were
+    # produced for obligations whose ratings the report then discarded, which
+    # surfaced as rating movement nobody could explain.
+    #
+    # The split sits above enumeration, which is one of those stages (#327): a
+    # defect set for a criterion owed no test is read by nothing — support and
+    # recommendation both filter on this predicate — so enumerating one is a
+    # model call per criterion for records nobody consumes. The split depends on
+    # the decomposition alone, so enumeration still sees no test.
+    needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
+    no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
+
     # Defect enumeration runs HERE, before test discovery, and the position is
     # the point (#313). The stage must never see a test — a denominator chosen
     # by something that can see what is already covered drifts toward it, and a
@@ -465,7 +482,7 @@ def run_review(
     # place of it is what lets a later rating movement be attributed to one
     # cause instead of three.
     defect_sets = enumerate_defects(
-        obligations,
+        needs_tests,
         change_set,
         client,
         unusable,
@@ -485,17 +502,6 @@ def run_review(
     # output moved, an unchanged id may now stand for a different set of merged
     # requirements, so no stored judgement about it can be trusted (#144). The
     # ledger enforces it for the parts that still carry.
-
-    # Only obligations that REQUIRE test evidence reach the stages that gather
-    # it (#266). Previously every obligation did, and the ones no test could
-    # ever bear on were filtered out three stages later, at the recommendation
-    # step — after the mapper had already chosen among them and the strength
-    # classifier had already rated them. Two costs, both observed: the mapper
-    # picked between obligations that were never candidates, and ratings were
-    # produced for obligations whose ratings the report then discarded, which
-    # surfaced as rating movement nobody could explain.
-    needs_tests = [o for o in obligations if o.required_evidence.requires_tests]
-    no_tests = [o for o in obligations if not o.required_evidence.requires_tests]
 
     discovered = discover_tests(repo, change_set)
 
