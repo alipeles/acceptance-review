@@ -1,0 +1,1 @@
+acceptance: model error: span 1 of requirement 'task-01' was found uncovered by the obligations already derived, but the call asked about it alone produced neither an obligation nor an open question: 'the follow-up call asked about that span alone returns neither an obligation nor an open question'
