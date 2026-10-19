@@ -29,21 +29,24 @@ lines="$(grep -Ev '^\s*(#|$)' "$batch")"
 logdir="$HOME/headless-runs/$(date +%Y-%m-%d)"
 mkdir -p "$logdir"
 
-echo "$lines" | while read -r issue files; do
+# `claude --cloud` insists on a real terminal, so it runs in the foreground
+# with your terminal as its input. The batch file is read on descriptor 3 so
+# claude cannot swallow the rest of it. If claude stays attached to a session
+# after creating it, press Ctrl+C once it shows the session running; the
+# session keeps going in the cloud and the loop moves to the next issue.
+while read -r -u 3 issue files; do
   # Reserved = every file claimed by a different line of the batch.
   reserved="$(echo "$lines" | awk -v me="$issue" '$1 != me {print $2}' \
               | tr ',' '\n' | sort -u | paste -sd, -)"
   [ -z "$reserved" ] && reserved="none"
-  echo "launching #$issue (reserved: $reserved)"
-  # Own empty stdin, so claude cannot swallow the rest of the batch file;
-  # own log and background, so the loop does not wait on the session.
-  claude --cloud "/fixbug-cloud $issue $reserved" \
-    < /dev/null > "$logdir/launch-$issue.log" 2>&1 &
-  sleep 5
-done
-wait
+  echo
+  echo "===== launching #$issue (reserved: $reserved) ====="
+  echo "$(date +%H:%M) #$issue reserved=$reserved" >> "$logdir/launches.log"
+  claude --cloud "/fixbug-cloud $issue $reserved" < /dev/tty
+  sleep 3
+done 3<<< "$lines"
 
 echo
-echo "Launch output is in $logdir/launch-<issue>.log. Sessions are listed at"
+echo "Launches are listed in $logdir/launches.log. Sessions are listed at"
 echo "https://claude.ai/code. Each pushes a branch named <issue>-headless and"
 echo "opens a draft PR when it finishes. Nothing is merged."
