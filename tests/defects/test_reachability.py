@@ -190,6 +190,47 @@ def test_judges_when_the_module_imports_relatively(tmp_path):
     assert len(judged) == 1
 
 
+def test_judges_a_test_that_reads_a_non_python_implicated_file(tmp_path):
+    """#358: the proof follows imports, fixtures and Python names, and a Markdown
+    file has none of those — so it proves every test unreachable from it,
+    including the one that opens it by path and asserts on its content. A defect
+    implicating a non-Python file is never prefiltered."""
+    (tmp_path / "FINDINGS.md").write_text("Accuracy: 0.91\n", encoding="utf-8")
+    source = (
+        "from pathlib import Path\n\n\ndef test_findings_figure():\n"
+        "    assert '0.91' in Path('FINDINGS.md').read_text()\n"
+    )
+    repo = _repo(tmp_path, {"test_findings.py": source})
+    pair = Pair(
+        _defect(code_refs=["FINDINGS.md#0"]),
+        _test("test_findings.py::test_findings_figure", "test_findings.py", source),
+    )
+
+    judged, excluded = prefilter([pair], repo, _change_set())
+
+    assert excluded == []
+    assert [p.key for p in judged] == [
+        ("d-hard-coded-thirty", "test_findings.py::test_findings_figure")
+    ]
+
+
+def test_judges_when_any_implicated_file_is_not_python(tmp_path):
+    """One non-Python file among the defect's files is enough: the defect may
+    live in the part the proof cannot see."""
+    (tmp_path / "config.toml").write_text("rate = 30\n", encoding="utf-8")
+    source = "def test_unrelated():\n    assert 1 + 1 == 2\n"
+    repo = _repo(tmp_path, {"test_arithmetic.py": source})
+    pair = Pair(
+        _defect(code_refs=["billing.py#0", "config.toml#0"]),
+        _test("test_arithmetic.py::test_unrelated", "test_arithmetic.py", source),
+    )
+
+    judged, excluded = prefilter([pair], repo, _change_set())
+
+    assert excluded == []
+    assert len(judged) == 1
+
+
 def test_pairs_are_formed_in_a_fixed_order(tmp_path):
     """The order reaches the request, so it cannot depend on how the filesystem
     was walked or a recorded run stops replaying."""
