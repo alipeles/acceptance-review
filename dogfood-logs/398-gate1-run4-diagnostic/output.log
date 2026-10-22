@@ -1,0 +1,67 @@
+run 8ec089ff76154502
+  requirements: 6 derived, 0 carried, 0 revised; 14 decompose call(s)
+  continue this run with: --continue 8ec089ff76154502
+Model usage by stage:
+  stage               model                                       calls  prompt  output  cached  this run  recorded  time this run
+  ------------------  ----------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini     12 (10 live / 2 replayed)  66,137   1,878   28.6%   $0.0356   $0.0453          32.9s
+  decompose-summary   openai/gpt-5.4            2 (2 live / 0 replayed)   1,945   1,056    0.0%   $0.0207   $0.0207          13.2s
+  obligation linking  voyage/voyage-3.5-lite    1 (1 live / 0 replayed)     506       0       —   $0.0000   $0.0000           1.5s
+  this run spent $0.0563 on 13 live call(s); the evidence cost $0.0660 to record (2 call(s) replayed at no cost to this run)
+Requirements: 6   with obligations: 6
+
+[task-01] Wherever the `acceptance` tool is installed, when the command starts it loads
+    the `.env` file in the working directory, if there is one, before any model call.
+    Today the tool has no `.env` loading of its own, so installed as a standalone tool
+    and run in another project it sees no API keys at all. A variable already set in the
+    environment keeps its value over the one in `.env`. No `.env` file is not an error.
+    -> load-working-directory-env-before-model-call  [functional/explicit]
+       When the command starts, it loads the `.env` file from the working directory, if
+       one exists, before any model call.
+    -> env-vars-take-precedence-over-dotenv  [invariant/explicit]
+       A variable already set in the environment keeps its value over the one in `.env`.
+    -> no-dotenv-file-is-allowed  [error_handling/explicit]
+       The command accepts the absence of a `.env` file without treating it as an error.
+
+[task-02] In record mode, the command warns at startup about each key that a model it is
+    configured to use would need and that is not set, naming the variable and the model.
+    Before the first live call to a model, if that model's key is still missing, the run
+    stops with an error that names the variable and the model, and the call is not sent,
+    so the user never sees the provider's "invalid API key" reply instead. A run that
+    needs no live call, because every request is already recorded or because it runs in
+    replay mode, still succeeds without any keys.
+    -> startup-warns-missing-model-keys  [functional/explicit]
+       At startup, the command warns about each required key that is missing for any
+       model it is configured to use, naming both the variable and the model.
+    -> missing-key-preflight-error  [functional/explicit]
+       Before the first live call to a model, if that model's key is still missing, the
+       run stops with an error that names the variable and the model.
+    -> call-not-sent  [functional/explicit]
+       The live model call is not sent when the required key is still missing before the
+       first live call.
+    -> invalid-api-key-reply-not-shown  [error_handling/explicit]
+       The user never sees the provider's "invalid API key" reply instead.
+    -> no-live-call-no-keys-required  [functional/explicit]
+       A run that needs no live call, because every request is already recorded or
+       because it runs in replay mode, succeeds without any keys.
+
+[constraint-01] No model request changes, so every recorded transcript keeps replaying.
+    -> preserve-recorded-transcripts-replay  [compatibility/explicit]
+       Preserve the existing replay behavior for recorded transcripts so that every
+       recorded transcript keeps replaying without any model request changes.
+
+[exclusion-01] Reading `.env` from any directory other than the working directory.
+    -> env-loading-stays-working-directory-only  [compatibility/explicit]
+       The change does not read `.env` from any directory other than the working
+       directory.
+
+[exclusion-02] Warning about, or stopping for, a missing key that the coding agent which
+    builds mutation edits needs.
+    -> no-warning-or-stop-for-mutation-edit-key  [functional/explicit]
+       The change does not add warning or startup-stop behavior for a missing key that
+       the coding agent which builds mutation edits needs.
+
+[exclusion-03] A command-line option to name a different `.env` file.
+    -> no-custom-env-file-option  [compatibility/explicit]
+       The change does not add a command-line option to name a different `.env` file.
+

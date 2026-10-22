@@ -9,7 +9,15 @@ description = "Independent acceptance review for AI-assisted software changes."
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
-dependencies = ["pydantic>=2", "litellm>=1.50", "markdown-it-py>=3", "pathspec>=0.12"]
+dependencies = [
+    "pydantic>=2",
+    "litellm>=1.50",
+    "markdown-it-py>=3",
+    "pathspec>=0.12",
+    # Loads the working directory's `.env` (#398). LiteLLM already depends on
+    # it, but the CLI now calls it directly, so it is declared.
+    "python-dotenv>=1.0",
+]
 
 [project.optional-dependencies]
 # ruff is pinned exactly, not floated. Its default rule set widens between

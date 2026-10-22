@@ -69,6 +69,38 @@ class CliError(Exception):
     """A user-facing CLI failure (bad input), not a bug."""
 
 
+def load_env_file(directory: Path) -> None:
+    """Load `directory/.env` into the environment, if it exists (#398).
+
+    The working directory's, because that is the project being reviewed and the
+    one whose keys the user means. Before this the tool had no loading of its
+    own and relied on LiteLLM's import-time search, which starts from LiteLLM's
+    install location: it found this repo's `.env` from a checkout and nothing at
+    all from an installed tool run in another project.
+
+    `override=False`: a variable already set in the environment wins, so a key
+    exported for one run is not replaced by the file's.
+    """
+    from dotenv import load_dotenv
+
+    load_dotenv(directory / ".env", override=False)
+
+
+def warn_missing_keys(client: ModelClient) -> None:
+    """Name each key a live call would need and cannot find, before any call.
+
+    A warning, not a stop: a run whose requests are all recorded needs no key.
+    One that does reach a live call stops there, naming the same variable.
+    """
+    for model, names in client.missing_keys_by_model().items():
+        for name in names:
+            print(
+                f"acceptance: warning: {name} is not set, and {model} needs it; "
+                "the run will stop at the first call to it that is not already recorded",
+                file=sys.stderr,
+            )
+
+
 def _resolve_revision(revision: str, repo: Path | None = None) -> str:
     try:
         result = subprocess.run(
@@ -934,6 +966,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    load_env_file(Path.cwd())
 
     if args.command == "check":
         config = RunConfig(
@@ -950,6 +983,7 @@ def main(argv: list[str] | None = None) -> int:
         # Built here, not inside run_check, so the per-stage cost footer can be
         # read back off the client that issued the calls (#264).
         client = config.build_client()
+        warn_missing_keys(client)
         try:
             run_id = new_run_id()
             review = run_check(
@@ -1024,6 +1058,7 @@ def main(argv: list[str] | None = None) -> int:
             link_distance_threshold=args.link_distance_threshold,
         )
         client = config.build_client()
+        warn_missing_keys(client)
         try:
             result, unusable, run_id = run_decompose(
                 args.task, config, args.continue_from, client=client
@@ -1074,6 +1109,9 @@ def main(argv: list[str] | None = None) -> int:
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
         )
+        # `run_classify` builds its own clients, all from this config, so one
+        # built here answers for them.
+        warn_missing_keys(config.build_client())
         try:
             obligations, open_questions, coverages, dispositioned = run_classify(
                 args.task, args.base, args.head, config, args.repo
