@@ -6962,7 +6962,7 @@ the record.
   redirected straight into `dogfood-logs/` (inside the Google Drive folder) came
   back empty, all on runs making live calls, and a live run redirected into
   `$TMPDIR` did not."*
-- **Status:** open — approved at #398 Gate 1 as "fix next", after #398
+- **Status:** done, 2026-10-22 — CLAUDE.md now says to redirect into `$TMPDIR` and copy in
 
 ### [2026-10-22] Decision: leave litellm's own `.env` search switched on
 - **Kind:** decision
