@@ -241,3 +241,41 @@ def test_the_cli_finds_a_key_in_the_working_directorys_env(elsewhere, no_keys, m
     assert "is not set" not in err
     # The key was found, so the call went out.
     assert provider.calls
+
+
+def test_a_client_on_the_default_embedding_path_names_the_embedding_models_key(tmp_path, no_keys):
+    """Built as the CLI builds it — no embedding function passed — the client
+    checks the embedding model's key even when its completions are injected."""
+    client = ModelClient(
+        model="openai/gpt-test",
+        mode=Mode.RECORD,
+        store=TranscriptStore(tmp_path),
+        completion_fn=_fake_response,
+        embedding_model="voyage/voyage-3.5-lite",
+    )
+
+    assert client.missing_keys_by_model() == {"voyage/voyage-3.5-lite": ["VOYAGE_API_KEY"]}
+
+
+def test_the_classify_command_warns_then_stops_before_the_first_live_call(
+    git_repo, no_keys, monkeypatch, capsys
+):
+    """`classify` builds its clients inside `run_classify`, so its warning is
+    issued separately from `check`'s and `decompose`'s and is tested separately."""
+    task = git_repo["path"] / "task.md"
+    task.write_text("# Task: x\n\n## Task\n\nThe parser accepts empty input.\n")
+    provider = _spy(_fake_response)
+    monkeypatch.setattr("acceptance.llm._default_completion_fn", provider)
+
+    status = cli.main(["classify", "--task", str(task), "--base", git_repo["base"]])
+
+    err = capsys.readouterr().err
+    assert status == 1
+    assert provider.calls == []
+    warnings = [line for line in err.splitlines() if line.startswith("acceptance: warning:")]
+    assert any("OPENAI_API_KEY" in line and "openai/gpt-5.4-mini" in line for line in warnings)
+    assert any("VOYAGE_API_KEY" in line and "voyage/voyage-3.5-lite" in line for line in warnings)
+    errors = [line for line in err.splitlines() if line.startswith("acceptance: model error:")]
+    assert len(errors) == 1
+    assert "OPENAI_API_KEY" in errors[0]
+    assert "invalid" not in err.lower()
