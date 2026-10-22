@@ -6467,7 +6467,7 @@ the record.
   >
   > **Acceptance.** A revised requirement's obligations describe its new text; a
   > regression case pins it with this exclusion's two wordings.
-- **Status:** open
+- **Status:** **filed 2026-10-22 as #400**, together with #398's second instance
 
 ### [2026-09-22] The gates refuse edits that would have injected their defect
 - **Kind:** filing
@@ -6879,3 +6879,105 @@ the record.
   > - Per-class targets recorded, for example all clear-cut bugs and three quarters of subtle ones.
   > - The owner's review of a sample of its planted edits.
 - **Status:** **filed 2026-10-13 as #387**, approved by the owner at #381 Gate 1
+
+### [2026-10-22] A condition opening a one-claim sentence is dropped from its obligation
+- **Kind:** filing
+- **Found during:** #398, Gate 1, runs 2 and 4
+- **Where:** `src/acceptance/requirement/` (derivation);
+  `dogfood-logs/398-gate1-run2/`, `dogfood-logs/398-gate1-run4-diagnostic/`
+- **Severity:** should-fix
+- **What's wrong:** *"In record mode, the command warns at startup about each
+  key that a model it is configured to use would need and that is not set,
+  naming the variable and the model."* was derived, on a continued run and again
+  on a fresh one, as *"At startup, the command warns about each missing key
+  required by any configured model, naming both the variable and the model."*
+  The obligation now demands the warning in replay mode as well, where no key is
+  needed and the same requirement says the run succeeds without keys.
+- **Why I didn't act:** decomposition is outside #398.
+- **Drafted fix:** file as a sub-issue of #181, the decomposition umbrella:
+
+  > **A condition opening a one-claim sentence is dropped from its obligation**
+  >
+  > Child of #181. Found at #398's Gate 1, twice: run 2 (`dogfood-logs/398-gate1-run2/`,
+  > continued) and run 4 (`dogfood-logs/398-gate1-run4-diagnostic/`, fresh).
+  >
+  > Requirement: *"In record mode, the command warns at startup about each key
+  > that a model it is configured to use would need and that is not set, naming
+  > the variable and the model."* Both runs derived `startup-warns-missing-model-keys`:
+  > *"At startup, the command warns about each missing key required by any
+  > configured model, naming both the variable and the model."*
+  >
+  > The condition governs the sentence's only claim, so this is not #343 (a
+  > condition governing two conjoined claims reaches only the first obligation):
+  > there is no split and no sibling that kept it. The loss turns a conditional
+  > behaviour into an unconditional one, so a correct implementation, which
+  > warns only in record mode, can be judged as not addressing it. It is the
+  > spec's demonstration scenario 2, a qualifier missed, produced by the tool
+  > itself.
+  >
+  > **Acceptance:** an obligation derived from a sentence opening with a
+  > condition carries the condition; #195's decompose-regression suite holds
+  > this sentence.
+- **Status:** **filed 2026-10-22 as #399**, approved by the owner at #398 Gate 1
+
+### [2026-10-22] Second instance: a reworded exclusion keeps its old obligation on a continued run
+- **Kind:** filing (evidence for the 2026-09-22 draft "A revised requirement comes back with its old obligation, word for word", which I could not find filed)
+- **Found during:** #398, Gate 1, runs 2–4
+- **Where:** `dogfood-logs/398-gate1-run{2,3}/` against `dogfood-logs/398-gate1-run4-diagnostic/`
+- **Severity:** should-fix
+- **What's wrong:** exclusion-02 was reworded twice, from *"Keys for the coding
+  agent that builds mutation edits"* to *"Checking for keys that the coding
+  agent which builds mutation edits needs"* to *"Warning about, or stopping for,
+  a missing key that the coding agent which builds mutation edits needs"*. Both
+  continued runs kept `do-not-read-coding-agent-keys`: *"The change does not
+  read keys for the coding agent which builds mutation edits."* A fresh run on
+  the final text derived `no-warning-or-stop-for-mutation-edit-key`, which is
+  right. As in #334's instance, the rewording was the sanctioned fix and
+  `--continue` silently undid it.
+- **Why I didn't act:** decomposition is outside #398.
+- **Drafted fix:** file the 2026-09-22 draft as written, as a sub-issue of #181,
+  adding to its body: *"Second instance at #398's Gate 1: an exclusion reworded
+  twice kept the run-1 obligation word for word on both continued runs, and a
+  fresh run derived the right one (`dogfood-logs/398-gate1-run{2,3,4-diagnostic}/`)."*
+  If it was in fact filed under another title, add that sentence as a comment
+  instead.
+- **Status:** **filed 2026-10-22 as #400**, with both instances, approved by the owner at #398 Gate 1
+
+### [2026-10-22] The empty `output.log` points at the Google Drive folder, not at live calls
+- **Kind:** defect (working procedure, not the tool)
+- **Found during:** #398, Gate 1
+- **Where:** `CLAUDE.md`, *Dogfooding — the review gates*, the `output.log` paragraph
+- **Severity:** nice-to-have
+- **What's wrong:** three `decompose` runs in this gate wrote zero-byte logs.
+  Each was redirected straight into `dogfood-logs/` and each made live calls; each
+  identical re-run, which replayed, wrote a full log. A fourth run that made 13
+  live calls but was redirected into `$TMPDIR` wrote 4,600 bytes. The checkout
+  lives under `~/GoogleDrive/`. I believe a long-running write into the synced
+  folder is what loses the file; one clean comparison is suggestive, not proof.
+  CLAUDE.md currently says the live-call explanation was tested and ruled out,
+  which these four runs complicate.
+- **Why I didn't act:** CLAUDE.md is outside #398.
+- **Drafted fix:** replace the paragraph's last two sentences with: *"Redirect
+  into `$TMPDIR` and copy the file in afterwards. At #398's Gate 1, three runs
+  redirected straight into `dogfood-logs/` (inside the Google Drive folder) came
+  back empty, all on runs making live calls, and a live run redirected into
+  `$TMPDIR` did not."*
+- **Status:** open — approved at #398 Gate 1 as "fix next", after #398
+
+### [2026-10-22] Decision: leave litellm's own `.env` search switched on
+- **Kind:** decision
+- **Found during:** #398, Gate 1 planning
+- **Where:** `.venv/lib/python3.10/site-packages/litellm/__init__.py:26`
+- **Severity:** nice-to-have
+- **What's wrong:** litellm calls `load_dotenv()` at import unless
+  `LITELLM_MODE` is something other than `DEV`, searching upward from its own
+  install. #398 adds loading from the working directory but leaves that search
+  in place, so for a copy of the tool installed inside a checkout that has its
+  own `.env`, a key missing from the project's `.env` can still be filled from
+  the checkout's. Both loads leave existing variables alone, and ours runs
+  first, so the project's values always win.
+- **Recommendation:** leave it. Setting `LITELLM_MODE=PRODUCTION` would turn
+  the search off, but the mode is read in about fifty litellm modules, including
+  `cost_calculator.py`, so it changes far more than `.env` loading.
+  **Rejected alternative:** set it from the CLI before litellm is imported.
+- **Status:** decided 2026-10-22 by the owner at #398 Gate 1: leave it
