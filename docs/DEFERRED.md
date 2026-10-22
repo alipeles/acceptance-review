@@ -6981,3 +6981,146 @@ the record.
   `cost_calculator.py`, so it changes far more than `.env` loading.
   **Rejected alternative:** set it from the CLI before litellm is imported.
 - **Status:** decided 2026-10-22 by the owner at #398 Gate 1: leave it
+
+### [2026-10-22] The pair judge says no test catches a defect that two tests demonstrably catch
+- **Kind:** filing
+- **Found during:** #398, Gate 2, run 1
+- **Where:** `src/acceptance/defects/pair_mapping.py` (pair judgement);
+  `dogfood-logs/398-gate2-run1/`, run `fa81be2b2dc8c191`
+- **Severity:** should-fix
+- **What's wrong:** defect `startup-warning-omits-embedding-model-when-no-embedding-fn`
+  (the startup warning skips the embedding model when the client was built
+  with no embedding function) had all 78 of its pairs put to the model, and
+  none was judged to catch it, so `startup-warns-missing-model-keys` was rated
+  partially supported. Two tests catch it: with that check disabled,
+  `tests/test_env_and_keys.py::test_record_mode_names_every_configured_models_missing_key`
+  (asserts `VOYAGE_API_KEY` for `voyage/voyage-3.5-lite` on a client built with
+  no embedding function) and `::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call`
+  (asserts the same warning through `main`) both fail. I planted it and ran them.
+- **Why I didn't act:** pair judgement is outside #398.
+- **Drafted fix:** file as a sub-issue of #183, the evidence-judgement umbrella:
+
+  > **The pair judge says no test catches a defect that two tests demonstrably catch**
+  >
+  > Child of #183. Found at #398's Gate 2, run `fa81be2b2dc8c191`
+  > (`dogfood-logs/398-gate2-run1/`).
+  >
+  > Defect `startup-warning-omits-embedding-model-when-no-embedding-fn`: the
+  > startup warning skips the embedding model when the client is built with no
+  > embedding function. All 78 pairs were put to the model; none was judged to
+  > catch it, and `startup-warns-missing-model-keys` was rated partially
+  > supported.
+  >
+  > `test_record_mode_names_every_configured_models_missing_key` builds exactly
+  > that client and asserts the embedding model's key is named;
+  > `test_the_cli_warns_at_startup_then_stops_before_the_first_live_call` asserts
+  > the same warning through `main`. With the check disabled on that path, both
+  > fail. The run's own injected edit for this defect changed no behaviour and
+  > was correctly not counted, so the judge was not misled by a run result; it
+  > answered the pairs wrongly on its own.
+  >
+  > This is a false negative that turns a gate red, the opposite of the
+  > misleading direction, but it still prescribes a test that already exists.
+  >
+  > **It survives the recommended test.** Run 2 (`38a9481d190f816a`,
+  > `dogfood-logs/398-gate2-run2/`) added
+  > `test_a_client_on_the_default_embedding_path_names_the_embedding_models_key`,
+  > built to run 1's recommendation word for word: a RECORD client with
+  > `embedding_model` set and no `embedding_fn`, asserting the embedding model's
+  > key is named. It fails when the check is disabled on that path. It too was
+  > judged not to catch the defect, and run 2 recommended the same test again.
+  >
+  > **Acceptance:** a regression case holds this defect and these two tests, and
+  > the judge marks at least one of them as catching it.
+- **Status:** filed as #401 under #183, 2026-10-22
+
+### [2026-10-22] Defect enumeration finds "no plausible defect" where flipping one argument breaks the obligation
+- **Kind:** filing
+- **Found during:** #398, Gate 2, run 1
+- **Where:** defect enumeration; `dogfood-logs/398-gate2-run1/`, run `fa81be2b2dc8c191`
+- **Severity:** should-fix
+- **What's wrong:** for `env-vars-take-precedence-over-dotenv` ("a variable
+  already set in the environment keeps its value over the one in `.env`") the
+  enumerator returned none, reasoning: *"The diff explicitly loads `.env` with
+  `override=False`, which is the mechanism that preserves any already-set
+  environment variable … So there is no plausible static defect."* It described
+  why the delivered code is right instead of how it could be wrong. Changing
+  `override=False` to `override=True` breaks the obligation, and
+  `test_a_variable_already_set_wins_over_the_env_file` fails on it (I planted
+  it). The obligation is then reported "no plausible defect — test evidence is
+  not obtainable here", although the test exists.
+- **Why I didn't act:** enumeration is outside #398.
+- **Drafted fix:** file as a sub-issue of #183:
+
+  > **Defect enumeration finds "no plausible defect" where flipping one argument breaks the obligation**
+  >
+  > Child of #183. Found at #398's Gate 2, run `fa81be2b2dc8c191`
+  > (`dogfood-logs/398-gate2-run1/`).
+  >
+  > Obligation `env-vars-take-precedence-over-dotenv`. The enumerator declined:
+  > *"The diff explicitly loads `.env` with `override=False`, which is the
+  > mechanism that preserves any already-set environment variable … So there is
+  > no plausible static defect in the shown changes."* That is an argument that
+  > the code is correct, which is not the enumerator's question. The one-token
+  > edit `override=True` breaks the obligation, and the delivered test
+  > `test_a_variable_already_set_wins_over_the_env_file` fails on it.
+  >
+  > The obligation is then reported "test evidence is not obtainable here",
+  > which reads as a limit of the tool rather than as a missed defect. Close to
+  > #270 (an obligation true by construction earns a test for a defect that
+  > cannot exist), from the other side: here the defect can exist and is
+  > declared impossible.
+  >
+  > **Acceptance:** a regression case holds this obligation and diff, and at
+  > least one defect is enumerated for it.
+- **Status:** filed as #402 under #183, 2026-10-22
+
+### [2026-10-22] #376 gains an instance: the only test file of a change is rated `separable`
+- **Kind:** filing (comment on #376)
+- **Found during:** #398, Gate 2, run 1
+- **Where:** `dogfood-logs/398-gate2-run1/`, run `fa81be2b2dc8c191`
+- **Severity:** nice-to-have
+- **Drafted fix:** comment on #376 (a test file cited as evidence for an
+  obligation is reported as a separable unrequested change):
+
+  > Another instance at #398's Gate 2, run `fa81be2b2dc8c191`
+  > (`dogfood-logs/398-gate2-run1/`). `tests/test_env_and_keys.py` is the only
+  > test file in the change and is cited as evidence by eight of the twelve
+  > obligations, yet it is rated `[separable]`: *"The obligations ask for the
+  > behavior, but they do not require this specific test artifact set or its
+  > breadth."*
+- **Status:** filed as a comment on #376, 2026-10-22
+
+### [2026-10-22] A dependency the delivered code imports is rated a `separable` unrequested change
+- **Kind:** filing
+- **Found during:** #398, Gate 2, run 1
+- **Where:** unrequested-change disposition; `dogfood-logs/398-gate2-run1/`
+- **Severity:** nice-to-have
+- **What's wrong:** declaring `python-dotenv` in `pyproject.toml` was rated
+  `[separable]`: *"they do not require introducing this specific dependency or
+  changing packaging metadata."* `cli.py::load_env_file` imports `dotenv`
+  directly, so the declaration is what makes an install correct; without it
+  the code works only because litellm happens to depend on the same package.
+- **Why I didn't act:** disposition judgement is outside #398.
+- **Drafted fix:** file as a sub-issue of #185, the findings and verdict umbrella:
+
+  > **A dependency the delivered code imports is rated a `separable` unrequested change**
+  >
+  > Child of #185. Found at #398's Gate 2, run `fa81be2b2dc8c191`
+  > (`dogfood-logs/398-gate2-run1/`).
+  >
+  > The change adds `python-dotenv` to `pyproject.toml`'s dependencies. The
+  > disposition is `separable`: *"they do not require introducing this specific
+  > dependency or changing packaging metadata."* But the same change adds
+  > `from dotenv import load_dotenv` in `cli.py::load_env_file`, the function
+  > that delivers the mandate's first requirement. A dependency the delivered
+  > code imports is in service of that code by construction; reverting it alone
+  > leaves the code relying on another package's dependencies.
+  >
+  > Related: #375 (a backward-compatible parameter that delivers an obligation
+  > is rated a risky unrequested change), the same failure to follow a change
+  > to the code that needs it.
+  >
+  > **Acceptance:** a declaration of a package the change's own code imports is
+  > `in_service` of the obligations that code addresses.
+- **Status:** filed as #403 under #185, 2026-10-22
