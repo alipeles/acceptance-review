@@ -538,8 +538,11 @@ def test_check_runs_with_the_saved_command_and_prints_it(
 def test_check_with_no_command_runs_locked_down_and_says_so(tmp_path, captured_check, capsys):
     cli.main(["check", "--task", "t.md", "--base", "HEAD"])
 
-    assert captured_check["execution"].sandbox.test_command is None
-    assert "locked down" in capsys.readouterr().err
+    sandbox = captured_check["execution"].sandbox
+    assert sandbox.test_command is None
+    err = capsys.readouterr().err
+    assert f"tests run with: {sandbox.interpreter} -m pytest, locked down" in err
+    assert "environment variables passed to the tests:" in err
 
 
 def test_check_refuses_a_command_nobody_agreed_to(tmp_path, captured_check, capsys):
