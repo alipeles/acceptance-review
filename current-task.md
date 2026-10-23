@@ -1,25 +1,41 @@
 # Task
 
-Wherever the `acceptance` tool is installed, when the command starts it loads
-the `.env` file in the working directory, if there is one, before any model
-call. Today the tool has no `.env` loading of its own, so installed as a
-standalone tool and run in another project it sees no API keys at all. A
-variable already set in the environment keeps its value over the one in `.env`.
-No `.env` file is not an error.
+A project whose tests live in a subdirectory with their own `pyproject.toml` and
+virtualenv has its tests run by `acceptance check`, using the project's own
+dependencies, and the tests pytest collects are recognised as the tests the tool
+asked for.
 
-In record mode, the command warns at startup about each key that a model it is
-configured to use would need and that is not set, naming the variable and the
-model. Before the first live call to a model, if that model's key is still
-missing, the run stops with an error that names the variable and the model, and
-the call is not sent, so the user never sees the provider's "invalid API key"
-reply instead. A run that needs no live call, because every request is already
-recorded or because it runs in replay mode, still succeeds without any keys.
+To make that possible, the user tells the tool once, per repository, the command they already
+use to run their tests — for example `cd api && .venv/bin/python -m pytest` —
+and the tool runs the project's tests with exactly that command, adding only
+which tests to run, its own pytest plugin, and the options it needs to list
+tests and to leave no pytest cache in the project. When
+no test command is set and the tests cannot be run, the tool says that a test
+command needs to be set, rather than reporting that pytest declines the tests.
 
-## Constraints
-- No model request changes, so every recorded transcript keeps replaying.
+Tests run this way run as they do on the user's own machine: with the user's
+environment variables and with network access, so a suite that needs a local
+database and a variable such as `DATABASE_URL` can run.
+
+Because the tool runs the tests many times, including against deliberately
+broken copies of the code, setting the test command shows the user that risk in
+plain words and saves the command only after the user explicitly agrees. If the
+saved command changes, the user is asked to agree again. Each run prints the
+test command it uses and the names of the environment variables passed to the
+tests; it never prints their values.
+
+By default the tool never runs two copies of the project's tests at the same
+time. When setting the test command, the user may say how many copies can
+safely run at once; the tool then runs up to that many, and tells each copy
+which one it is through an environment variable, so that a project can give
+each copy its own database.
+
+Test discovery no longer offers a pytest fixture, such as a `conftest.py`
+function named `test_db_url`, as a test.
+
+The spec's execution-safety wording is updated to match.
 
 ## Scope exclusions
-- Reading `.env` from any directory other than the working directory.
-- Warning about, or stopping for, a missing key that the coding agent which
-  builds mutation edits needs.
-- A command-line option to name a different `.env` file.
+- Working out a test command, an interpreter or a directory from the project's
+  files.
+- Judging whether a database or service the tests use is safe to use.

@@ -93,6 +93,30 @@ class Baseline(_Model):
         return [test for test in self.set_aside if test.kind is TestOutcomeKind.FAILED]
 
 
+def _not_collected_reason(config: SandboxConfig | None, *, nothing_collected: bool) -> str:
+    """Why a candidate test was set aside before anything ran.
+
+    When pytest collected **nothing** and no test command is set, the likeliest
+    reason is not that pytest declines these tests but that the tool ran them
+    the wrong way: its own interpreter, from the repository root, without the
+    project's dependencies. That is #405, where every test of a project kept in
+    `api/` with its own virtualenv was reported as one pytest "declines". Saying
+    so names the fix the user actually has.
+    """
+    if nothing_collected and (config is None or config.test_command is None):
+        return (
+            "no candidate test could be collected when pytest was run with the acceptance "
+            "tool's own interpreter from the repository root. If you run your tests another "
+            "way — your project's own virtualenv, from a subdirectory, with a database — "
+            'set that command once with: acceptance set-test-command "<your command>"'
+        )
+    return (
+        "the project's own pytest does not collect this test, so asking it to run "
+        "would make the whole run fail without running anything. Test discovery "
+        "found the file; pytest declines it."
+    )
+
+
 def establish_baseline(
     test_ids: list[str],
     project_root: Path,
@@ -128,11 +152,7 @@ def establish_baseline(
         SetAsideTest(
             test_id=test_id,
             kind=TestOutcomeKind.NOT_STARTED,
-            reason=(
-                "the project's own pytest does not collect this test, so asking it to run "
-                "would make the whole run fail without running anything. Test discovery "
-                "found the file; pytest declines it."
-            ),
+            reason=_not_collected_reason(config, nothing_collected=not collectable),
         )
         for test_id in requested
         if test_id not in collectable
