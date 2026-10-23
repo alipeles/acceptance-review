@@ -479,6 +479,29 @@ def test_the_command_gets_only_the_plugin_the_cache_switch_and_the_tests(tmp_pat
     )
 
 
+def test_listing_tests_adds_only_collect_only_to_that(tmp_path, monkeypatch):
+    """The listing run goes through the same builder; this pins what it is
+    actually handed, by recording every command the sandbox spawns."""
+    from acceptance.execution import sandbox
+
+    spawned: list = []
+
+    def record(command, cwd, env, total_seconds):
+        spawned.append(command)
+        return False, None, 0
+
+    monkeypatch.setattr(sandbox, "_spawn_and_wait", record)
+    collect_tests([TEST_ID], tmp_path, _command())
+    run_tests([TEST_ID], tmp_path, _command())
+
+    target = tmp_path.resolve() / TEST_ID
+    plugin = "-p _acceptance_sandbox_netblock -p no:cacheprovider"
+    assert spawned == [
+        f"{COMMAND} --collect-only {plugin} {target}",
+        f"{COMMAND} {plugin} {target}",
+    ]
+
+
 # --- what `check` does with it -------------------------------------------------
 
 
@@ -507,7 +530,7 @@ def test_check_runs_with_the_saved_command_and_prints_it(
     sandbox = captured_check["execution"].sandbox
     assert (sandbox.test_command, sandbox.parallel_runs) == (COMMAND, 2)
     err = capsys.readouterr().err
-    assert f"tests run with: {COMMAND}" in err
+    assert f"tests run with: {COMMAND}  (up to 2 at once)" in err
     assert "DATABASE_URL" in err
     assert "s3cret-pw" not in err
 
