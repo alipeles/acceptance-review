@@ -7124,3 +7124,58 @@ the record.
   > **Acceptance:** a declaration of a package the change's own code imports is
   > `in_service` of the obligations that code addresses.
 - **Status:** filed as #403 under #185, 2026-10-22
+
+### [2026-10-23] One obligation contains another whole and adds a clause
+- **Kind:** filing
+- **Found during:** #405, Gate 1 runs 2 and 3
+- **Where:** `src/acceptance/requirement/` decomposition; run `4fe56787714b80f4`
+  (`dogfood-logs/405-gate1-run3/`)
+- **Severity:** nice-to-have
+- **What's wrong:** the sentence "Each run prints … the names of the
+  environment variables passed to the tests; it never prints their values"
+  yields `print-env-var-names` ("Each test run prints the names of the
+  environment variables passed to the tests") and `hide-env-var-values` ("Each
+  test run prints the names of the environment variables passed to the tests,
+  while hiding their values"). The second contains the first and adds one
+  clause, so the names requirement is stated twice.
+- **Why I didn't act:** decomposition is outside #405.
+- **Drafted fix:** a comment on #277 (one requirement yields two obligations
+  stating the same property, differing only in voice), not a new issue:
+
+  > A related shape, found at #405's Gate 1 (run `4fe56787714b80f4`,
+  > `dogfood-logs/405-gate1-run3/`): not a restatement in another voice, but
+  > containment. `hide-env-var-values` reads "Each test run prints the names of
+  > the environment variables passed to the tests, while hiding their values",
+  > which is the whole of its sibling `print-env-var-names` plus one clause. The
+  > second obligation should state only that values are never printed. It held
+  > across two runs with `--continue`, so it is not run-to-run noise.
+- **Status:** open. Note: run 4 (`09cb6b6fd9b02ac6`), after an unrelated edit
+  to the task file, re-derived this requirement and produced
+  `never-print-env-var-values`, which states only the values clause. So it
+  held across two runs and then cleared.
+
+### [2026-10-23] A clause gets no obligation; its slot carries a restatement of a sibling
+- **Kind:** filing
+- **Found during:** #405, Gate 1 run 4
+- **Where:** `src/acceptance/requirement/` decomposition; run `09cb6b6fd9b02ac6`
+  (`dogfood-logs/405-gate1-run4/`)
+- **Severity:** should-fix
+- **What's wrong:** "the tool then runs up to that many" has no obligation.
+  `per-copy-database-selection` restates `env-var-identifies-test-copy` plus
+  its purpose clause instead.
+- **Why I didn't act:** decomposition is outside #405.
+- **Drafted fix:** a comment on #386 (a listed item gets no obligation, and its
+  id carries a duplicate of another obligation's text):
+
+  > A second instance, in prose rather than a list, at #405's Gate 1 (run
+  > `09cb6b6fd9b02ac6`, `dogfood-logs/405-gate1-run4/`). The requirement: "When
+  > setting the test command, the user may say how many copies can safely run
+  > at once; the tool then runs up to that many, and tells each copy which one
+  > it is through an environment variable, so that a project can give each copy
+  > its own database." Four obligations came back. None states "the tool runs
+  > up to that many copies at once"; `test-command-parallel-copies-limit` only
+  > says the configuration includes the limit. The fourth,
+  > `per-copy-database-selection`, restates `env-var-identifies-test-copy` and
+  > adds the purpose clause. So a real behaviour is lost and its place is taken
+  > by a duplicate, which is #386's shape.
+- **Status:** open
