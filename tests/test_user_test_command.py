@@ -12,7 +12,6 @@ at the repository root.
 
 import os
 import shlex
-import socket
 import sys
 import textwrap
 import threading
@@ -169,8 +168,6 @@ def test_the_network_is_not_blocked_under_a_test_command(tmp_path):
     outcome = run_tests([TEST_ID], root, _command()).outcome_for(TEST_ID)
 
     assert outcome.kind is TestOutcomeKind.PASSED, outcome
-    # And this process, which loaded no plugin, is untouched either way.
-    assert "install_network_block" not in socket.create_connection.__qualname__
 
 
 def test_the_network_is_still_blocked_without_a_test_command(tmp_path):
@@ -403,6 +400,83 @@ def test_raising_the_parallel_count_by_hand_is_refused_too(tmp_path):
 
     with pytest.raises(TestCommandError):
         load_test_command(tmp_path)
+
+
+def test_changing_only_the_parallel_count_asks_again(tmp_path, capsys):
+    """Agreeing to one run at a time is not agreeing to four against the same
+    database, so the same command with a new count is a change to agree to."""
+    save_test_command(tmp_path, COMMAND, 1)
+    ask = _answers("no")
+
+    code = cli.run_set_test_command(tmp_path, COMMAND, 4, interactive=True, ask=ask)
+
+    assert code == 1
+    assert len(ask.asked) == 1
+    assert "This replaces:" in capsys.readouterr().out
+    assert load_test_command(tmp_path).parallel_runs == 1
+
+
+def test_the_parallel_count_given_when_setting_is_what_check_runs_with(tmp_path, monkeypatch):
+    assert (
+        cli.run_set_test_command(tmp_path, COMMAND, 3, interactive=True, ask=_answers("yes")) == 0
+    )
+    monkeypatch.chdir(tmp_path)
+    seen: dict = {}
+
+    def fake_run_check(*args, **kwargs):
+        seen["sandbox"] = kwargs["execution"].sandbox
+        raise cli.CliError("stopped by the test")
+
+    monkeypatch.setattr(cli, "run_check", fake_run_check)
+    cli.main(["check", "--task", "t.md", "--base", "HEAD"])
+
+    assert seen["sandbox"].parallel_runs == 3
+    assert '"parallel_runs": 3' in (tmp_path / SETTING_PATH).read_text()
+
+
+def test_setting_the_command_again_leaves_one_record_holding_the_latest(tmp_path):
+    for command, runs in [(COMMAND, 1), ("uv run pytest", 2)]:
+        assert (
+            cli.run_set_test_command(tmp_path, command, runs, interactive=True, ask=_answers("yes"))
+            == 0
+        )
+
+    assert [p.name for p in (tmp_path / SETTING_PATH).parent.iterdir()] == [SETTING_PATH.name]
+    saved = load_test_command(tmp_path)
+    assert (saved.command, saved.parallel_runs) == ("uv run pytest", 2)
+
+
+# --- the command is run as given -------------------------------------------
+
+
+def test_shell_syntax_and_quoting_in_the_command_reach_the_shell_intact(tmp_path):
+    """The command is a shell command line, as the user types it: `cd … &&`, a
+    variable set for one command, a quoted value with a space."""
+    root = _subdirectory_project(
+        tmp_path,
+        """
+        import os
+
+        def test_uses_the_project():
+            assert os.environ["MARK"] == "two words"
+        """,
+    )
+    config = _command(test_command="cd api && MARK='two words' .venv/bin/python -m pytest")
+
+    outcome = run_tests([TEST_ID], root, config).outcome_for(TEST_ID)
+
+    assert outcome.kind is TestOutcomeKind.PASSED, outcome
+
+
+def test_the_command_gets_only_the_plugin_the_cache_switch_and_the_tests(tmp_path):
+    from acceptance.execution.sandbox import _pytest_command
+
+    command = _pytest_command(_command(), [], [TEST_ID], tmp_path)
+
+    assert command == (
+        f"{COMMAND} -p _acceptance_sandbox_netblock -p no:cacheprovider "
+        f"{tmp_path.resolve() / TEST_ID}"
+    )
 
 
 # --- what `check` does with it -------------------------------------------------

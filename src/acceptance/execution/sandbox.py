@@ -313,7 +313,7 @@ def _collect_once(
     try:
         with _run_slot(config) as worker:
             aborted, _, exit_code = _spawn_and_wait(
-                _pytest_command(config, ["--collect-only", "-q"], test_ids, project_root),
+                _pytest_command(config, ["--collect-only"], test_ids, project_root),
                 cwd=project_root,
                 env=_with_worker(env, worker),
                 total_seconds=config.total_seconds,
@@ -342,15 +342,14 @@ def _pytest_command(
     the plugin and the ids. The ids are absolute paths, because the command may
     change directory first — `cd api && .venv/bin/python -m pytest` — and an
     absolute path means the same file wherever pytest ends up running.
+
+    Nothing else is added: the plugin, which is how outcomes and the per-test
+    budget work; `no:cacheprovider`, so no `.pytest_cache` is written into the
+    project; and `options`, which is `--collect-only` when listing tests. The
+    user's command is theirs, and every extra flag is one more way it could
+    behave differently from the run they know works.
     """
-    arguments = [
-        *options,
-        "-p",
-        _PLUGIN_MODULE,
-        "-p",
-        "no:cacheprovider",
-        "--no-header",
-    ]
+    arguments = [*options, "-p", _PLUGIN_MODULE, "-p", "no:cacheprovider"]
     if config.test_command is None:
         return [config.interpreter, "-m", "pytest", *arguments, *test_ids]
     root = project_root.resolve()
@@ -439,7 +438,7 @@ def _run_in_workspace(
     plugin_dir.mkdir()
     shutil.copyfile(netblock.__file__, plugin_dir / f"{_PLUGIN_MODULE}.py")
 
-    command = _pytest_command(config, ["-q"], requested, project_root)
+    command = _pytest_command(config, [], requested, project_root)
     env = _sandbox_env(plugin_dir, report_path, config, project_root)
 
     with _run_slot(config) as worker:
