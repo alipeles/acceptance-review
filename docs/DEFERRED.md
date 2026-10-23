@@ -7149,7 +7149,7 @@ the record.
   > which is the whole of its sibling `print-env-var-names` plus one clause. The
   > second obligation should state only that values are never printed. It held
   > across two runs with `--continue`, so it is not run-to-run noise.
-- **Status:** open. Note: run 4 (`09cb6b6fd9b02ac6`), after an unrelated edit
+- **Status:** filed (#277 comment, approved 2026-10-23). Note: run 4 (`09cb6b6fd9b02ac6`), after an unrelated edit
   to the task file, re-derived this requirement and produced
   `never-print-env-var-values`, which states only the values clause. So it
   held across two runs and then cleared.
@@ -7178,4 +7178,146 @@ the record.
   > `per-copy-database-selection`, restates `env-var-identifies-test-copy` and
   > adds the purpose clause. So a real behaviour is lost and its place is taken
   > by a duplicate, which is #386's shape.
-- **Status:** open
+- **Status:** filed (#386 comment, approved 2026-10-23).
+
+### [2026-10-23] An enumerated defect is the code's documented design, not a violation
+- **Kind:** filing
+- **Found during:** #405, Gate 2 run 1 (`18c717ef086fedb2`, `dogfood-logs/405-gate2-run1/`)
+- **Where:** defect enumeration; `src/acceptance/execution/sandbox.py::_collect_in_workspace`
+- **Severity:** should-fix
+- **What's wrong:** `pytest-collected-tests-match-requested-tests` was rated
+  partially supported because one enumerated defect,
+  `collection-file-not-read-on-failure`, went uncaught. That "defect" is the
+  documented design: when a joint collection fails, the partial list is
+  discarded and files are admitted one at a time, because a set must collect
+  jointly or the run dies.
+- **Why I didn't act:** defect enumeration is outside #405. Owner agreed to
+  attribute it, 2026-10-23.
+- **Drafted fix:** a comment on #283 (a prescribed test's target defect does
+  not always violate the obligation):
+
+  > Another instance at #405's Gate 2 (run `18c717ef086fedb2`,
+  > `dogfood-logs/405-gate2-run1/`). Obligation
+  > `pytest-collected-tests-match-requested-tests`; enumerated defect
+  > `collection-file-not-read-on-failure`: "if pytest exits nonzero … the code
+  > falls back to an empty collected set instead of preserving the collected
+  > names it did obtain". That is `_collect_in_workspace`'s documented design:
+  > a joint collection that fails says nothing about which ids collect
+  > *together*, so it retries file by file. Implementing the "fix" would admit
+  > ids that kill the run. The obligation is met either way, and the rating
+  > dropped to partially supported on a defect that is not one.
+  >
+  > Run 2 (`0cf1a8e59e50a913`, `dogfood-logs/405-gate2-run2/`) repeated it and
+  > added an inverted one. Obligation
+  > `add-only-test-selection-plugin-and-cache-options` says the tool adds only
+  > the tests, its plugin, and the listing/cache options. The change removed
+  > `--no-header` to satisfy exactly that. The enumerated defect: "the
+  > test-command builder can omit the `--no-header` option", with the
+  > recommendation "a correct implementation must include `--no-header`". The
+  > defect was built from the diff's removed line and contradicts the
+  > obligation it is filed under.
+- **Status:** filed (#283 comment, approved 2026-10-23).
+
+### [2026-10-23] A test asserting the whole output by equality is judged not to catch an extra-output defect
+- **Kind:** filing
+- **Found during:** #405, Gate 2 run 3 (`a177c6062ee33dc7`, `dogfood-logs/405-gate2-run3/`)
+- **Where:** evidence judgement (static pair judge)
+- **Severity:** should-fix
+- **What's wrong:** `run-tests-with-exact-command` stayed partially supported
+  because `extra-flags-added-to-user-command` ("the test-command path can
+  append extra pytest options beyond …") was judged uncaught by every mapped
+  test. Two mapped tests compare the entire command string with `==`, so any
+  extra flag fails them. The same run's injection reports `[killed, NOT
+  COUNTED]` for that defect: the edit was caught, but verification is off, so
+  the static verdict stands.
+- **Why I didn't act:** evidence judgement is outside #405.
+- **Drafted fix:** file as a sub-issue of #183 (evidence judgement):
+
+  > **An exact-equality assertion is judged not to catch an "extra content"
+  > defect**
+  >
+  > Child of #183. Found at #405's Gate 2, run `a177c6062ee33dc7`
+  > (`dogfood-logs/405-gate2-run3/`).
+  >
+  > Defect `run-tests-with-exact-command/extra-flags-added-to-user-command`:
+  > the built command gains pytest options beyond the allowed ones. Mapped
+  > tests `test_the_command_gets_only_the_plugin_the_cache_switch_and_the_tests`
+  > and `test_listing_tests_adds_only_collect_only_to_that` assert
+  > `command == "<the exact expected string>"`. Any appended flag makes them
+  > fail, yet both pairs were judged not to kill the defect. The run's own
+  > injection killed it (`[killed, NOT COUNTED]`, uncounted only because edit
+  > verification is off), so the static verdict contradicts an observation
+  > the review already holds.
+  >
+  > **Acceptance:** a test whose assertion is equality with a fixed expected
+  > value is judged to kill a defect that adds content to that value.
+- **Status:** filed as #406, sub-issue of #183 (approved 2026-10-23).
+
+### [2026-10-23] A recommendation prescribes, assertion for assertion, a test already mapped
+- **Kind:** filing
+- **Found during:** #405, Gate 2 run 4 (`4907b8a4e90e2e8a`, `dogfood-logs/405-gate2-run4/`)
+- **Where:** evidence judgement / recommendation
+- **Severity:** should-fix
+- **What's wrong:** `print-test-command-each-run` is partially supported, and
+  its recommendation's four required assertions (no saved command, capture
+  stderr, the interpreter plus `-m pytest` and "locked down", the
+  variable-names line) are exactly those of the mapped test
+  `test_check_with_no_command_runs_locked_down_and_says_so`.
+- **Why I didn't act:** outside #405.
+- **Drafted fix:** a comment on #225 (a rating falls as its evidence improves,
+  and the recommendation prescribes a test already in the strength call's own
+  mapped set):
+
+  > Another instance at #405's Gate 2. Run 3 (`a177c6062ee33dc7`) recommended
+  > a test for `print-test-command-each-run` asserting the locked-down command
+  > line and the variable-names line. That test was written as
+  > `test_check_with_no_command_runs_locked_down_and_says_so`; run 4
+  > (`4907b8a4e90e2e8a`) maps it to the obligation, keeps the rating at
+  > partially supported, and recommends it again with the same four required
+  > assertions (`acceptance recommendation --criterion
+  > print-test-command-each-run`). Followed literally, the gate cannot close.
+- **Status:** filed (#225 comment, approved 2026-10-23).
+
+### [2026-10-23] A change the delivered code needs at run time is rated `separable`
+- **Kind:** filing
+- **Found during:** #405, Gate 2 run 1 (`18c717ef086fedb2`)
+- **Where:** unrequested-change disposition; `src/acceptance/mutation/workspace.py`
+- **Severity:** should-fix
+- **What's wrong:** linking `.venv` into the copies where broken code is
+  tested was rated `[separable]`: "they do not require this specific
+  workspace-linking strategy". Without it the user's command names an
+  interpreter that does not exist in the copy, and `use-project-dependencies`
+  fails there. The disposition judged the mechanism, not whether an obligation
+  needs it.
+- **Why I didn't act:** disposition judgement is outside #405. Owner agreed
+  to attribute it, 2026-10-23.
+- **Drafted fix:** a comment on #375 (a backward-compatible parameter that
+  delivers an obligation is rated a risky unrequested change):
+
+  > Same failure at #405's Gate 2 (run `18c717ef086fedb2`,
+  > `dogfood-logs/405-gate2-run1/`), rated `separable` this time. The change
+  > links `.venv` into the copies where mutants run; the reason given is that
+  > the obligations "do not require this specific workspace-linking strategy".
+  > But without some way for the copy to reach the project's interpreter,
+  > `use-project-dependencies` is false in every copy. "Not this specific
+  > mechanism" is true of every implementation, so it cannot be what decides
+  > `separable`.
+- **Status:** filed (#375 comment, approved 2026-10-23).
+
+### [2026-10-23] Two sandbox tests leave the network block installed in the suite's own process
+- **Kind:** defect
+- **Found during:** #405, full suite after Gate 2 run 1
+- **Where:** `tests/test_execution_sandbox.py:192` and `:485`
+- **Severity:** should-fix
+- **What's wrong:** both call `netblock.pytest_configure(_Config())` directly,
+  which runs `install_network_block()` in the pytest process and never undoes
+  it. Every test that runs afterwards has `socket.create_connection` replaced.
+  It surfaced as an order-dependent failure of a #405 test that inspected the
+  process's own socket functions.
+- **Why I didn't act:** predates #405; the #405 test was corrected instead.
+- **Drafted fix:** in both tests, `monkeypatch.setenv(netblock.ALLOW_NETWORK_VAR,
+  "1")` (added by #405) so the call under test skips the block, which neither
+  test is about; or `monkeypatch.setattr` the four `socket` attributes so they
+  are restored at teardown.
+- **Status:** approved 2026-10-23 as fix-next-issue; not filed (a test-hygiene
+  fix with no umbrella).
