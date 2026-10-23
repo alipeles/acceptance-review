@@ -39,6 +39,14 @@ from acceptance.coverage.open_questions import (
     resolve_open_questions,
 )
 from acceptance.coverage.unrequested import detect_unrequested_changes
+from acceptance.execution.sandbox import WORKER_VAR, SandboxConfig, passed_environment_names
+from acceptance.execution.user_command import (
+    RISK_NOTICE,
+    TestCommandError,
+    load_test_command,
+    sandbox_config,
+    save_test_command,
+)
 from acceptance.llm import LLMError, Mode, ModelClient
 from acceptance.mutation.agent import AGENT_STAGE
 from acceptance.mutation.descriptor import STAGE as DESCRIPTOR_STAGE
@@ -960,7 +968,106 @@ def build_parser() -> argparse.ArgumentParser:
         help="Emit the structured coverage classifications as JSON.",
     )
 
+    setter = subparsers.add_parser(
+        "set-test-command",
+        help="Set, for this repository, the command you run your tests with.",
+    )
+    setter.add_argument(
+        "test_command",
+        metavar="COMMAND",
+        help='The command exactly as you run it, e.g. "cd api && .venv/bin/python -m pytest". '
+        "The tool adds only the tests to run.",
+    )
+    setter.add_argument(
+        "--parallel",
+        type=int,
+        default=1,
+        metavar="N",
+        help="How many runs of your tests can safely happen at once (default: 1). Each is "
+        f"told its number, 1 to N, in {WORKER_VAR}.",
+    )
+
     return parser
+
+
+def run_set_test_command(
+    repo: Path,
+    command: str,
+    parallel_runs: int,
+    *,
+    interactive: bool,
+    ask=input,
+    out=None,
+) -> int:
+    """Show the risk, ask for an explicit yes, and save only on one.
+
+    **Only a person at a terminal can agree.** There is no flag that answers
+    yes: a coding agent runs commands without a terminal, and an agreement it
+    could give on the user's behalf would protect nothing. Off a terminal this
+    refuses, and says how the user can run it themselves.
+
+    Asked every time the command is set, so a changed command is always agreed
+    to again; `load_test_command` refuses one changed by hand.
+    """
+    out = out or sys.stdout
+    if not interactive:
+        print(
+            "acceptance: error: set-test-command must be run by you, in a terminal, "
+            "because it asks you to agree to a risk. Nothing was saved.",
+            file=sys.stderr,
+        )
+        return 1
+    try:
+        previous = load_test_command(repo)
+    except TestCommandError:
+        previous = None
+    print(RISK_NOTICE, file=out)
+    if previous is not None and (previous.command, previous.parallel_runs) != (
+        command,
+        parallel_runs,
+    ):
+        print(
+            f"This replaces: {previous.command}  (up to {previous.parallel_runs} at once)\n",
+            file=out,
+        )
+    print(f"Test command:  {command}", file=out)
+    print(f"At once:       up to {parallel_runs}", file=out)
+    try:
+        answer = ask('\nType "yes" to agree and save it: ')
+    except EOFError:
+        answer = ""
+    if answer.strip().lower() != "yes":
+        print("Not saved.", file=out)
+        return 1
+    try:
+        path = save_test_command(repo, command, parallel_runs)
+    except ValueError as error:
+        print(f"acceptance: error: {error}", file=sys.stderr)
+        return 1
+    print(f"Saved to {path}.", file=out)
+    return 0
+
+
+def _report_test_command(config: SandboxConfig) -> None:
+    """Say, on every check, how the project's tests will be run and with what.
+
+    On stderr, like the run id, so the report on stdout stays byte-identical
+    between runs. Variable names only, never values: a wrong `DATABASE_URL`
+    should be easy to spot, and its value would carry its password.
+    """
+    names = ", ".join(passed_environment_names(config)) or "(none)"
+    if config.test_command is None:
+        print(
+            f"tests run with: {config.interpreter} -m pytest, locked down "
+            "(no network; set your own command with `acceptance set-test-command`)",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"tests run with: {config.test_command}  (up to {config.parallel_runs} at once)",
+            file=sys.stderr,
+        )
+    print(f"environment variables passed to the tests: {names}", file=sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -968,7 +1075,21 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     load_env_file(Path.cwd())
 
+    if args.command == "set-test-command":
+        return run_set_test_command(
+            Path("."),
+            args.test_command,
+            args.parallel,
+            interactive=sys.stdin.isatty() and sys.stdout.isatty(),
+        )
+
     if args.command == "check":
+        try:
+            sandbox = sandbox_config(load_test_command(Path(".")))
+        except TestCommandError as exc:
+            print(f"acceptance: error: {exc}", file=sys.stderr)
+            return 1
+        _report_test_command(sandbox)
         config = RunConfig(
             model=args.model,
             mode=Mode(args.mode),
@@ -998,7 +1119,7 @@ def main(argv: list[str] | None = None) -> int:
                 continue_from=args.continue_from,
                 ledger=LedgerStore(),
                 run_id=run_id,
-                execution=ExecutionSettings(),
+                execution=ExecutionSettings(sandbox=sandbox),
             )
         except CliError as exc:
             print(f"acceptance: error: {exc}", file=sys.stderr)
