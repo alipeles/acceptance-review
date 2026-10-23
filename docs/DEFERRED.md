@@ -7319,5 +7319,4 @@ the record.
   "1")` (added by #405) so the call under test skips the block, which neither
   test is about; or `monkeypatch.setattr` the four `socket` attributes so they
   are restored at teardown.
-- **Status:** approved 2026-10-23 as fix-next-issue; not filed (a test-hygiene
-  fix with no umbrella).
+- **Status:** filed as #409, sub-issue of #184 (approved 2026-10-23); next task.
