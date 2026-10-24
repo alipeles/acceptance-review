@@ -1,0 +1,107 @@
+run 7744c16d7cd1f3ed
+  requirements: 10 derived, 0 carried, 0 revised; 26 decompose call(s)
+  continue this run with: --continue 7744c16d7cd1f3ed
+Model usage by stage:
+  stage               model                                       calls   prompt  output  cached  this run  recorded  time this run
+  ------------------  ----------------------  -------------------------  -------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini     21 (21 live / 0 replayed)  114,330   3,005    0.0%   $0.0993   $0.0993          36.0s
+  decompose-summary   openai/gpt-5.4            5 (5 live / 0 replayed)    4,552   1,664    0.0%   $0.0363   $0.0363          20.7s
+  obligation linking  voyage/voyage-3.5-lite    1 (1 live / 0 replayed)      621       0       —   $0.0000   $0.0000           0.8s
+  this run spent $0.1356 on 27 live call(s); the evidence cost $0.1356 to record (0 call(s) replayed at no cost to this run)
+Requirements: 10   with obligations: 10
+
+[task-01] Model calls move from OpenAI to Claude. The default model becomes
+    `anthropic/claude-sonnet-5-5`, and the summary-span stage, which today names
+    `openai/gpt-5.4` as its own model, runs on the default like every other stage.
+    -> model-calls-move-to-claude  [functional/explicit, code_and_tests]
+       Model calls move from OpenAI to Claude.
+    -> default-model-anthropic-claude-sonnet-5-5  [functional/explicit, code_and_tests]
+       Set the default model to `anthropic/claude-sonnet-5-5`.
+    -> summary-span-uses-default-model  [compatibility/explicit, code_and_tests]
+       The summary-span stage runs on the default model like every other stage.
+
+[task-02] Claude accepts neither a seed nor a temperature, so a run against it is
+    reproducible only through its recorded transcripts. A recorded Claude run replays
+    with no live call, and two recorded runs over the same input produce byte-identical
+    review state. The run still requests temperature 0 and seed 0, and the review's
+    provenance records that Claude applied neither. The module documentation states this
+    as the determinism strategy for Claude.
+    -> claude-accepts-neither-seed-nor-temperature  [invariant/explicit, code_and_tests]
+       Claude accepts neither a seed nor a temperature.
+    -> recorded-transcripts-reproducibility  [invariant/explicit, code_and_tests]
+       A run against Claude is reproducible only through its recorded transcripts.
+    -> recorded-run-replays-no-live-call  [functional/explicit, code_and_tests]
+       A recorded Claude run replays with no live call.
+    -> byte-identical-review-state  [invariant/explicit, code_and_tests]
+       Two recorded runs over the same input produce byte-identical review state.
+    -> request-temperature-zero-and-seed-zero  [functional/explicit, code_and_tests]
+       The run requests temperature 0 and seed 0.
+    -> provenance-records-claude-applied-neither  [docs_config/explicit, code_only]
+       The review's provenance records that Claude applied neither.
+       why code_only: This is a provenance/documentation record in the review metadata,
+       which is settled by the recorded output itself rather than by runtime behavior or
+       a test.
+    -> doc-determinism-strategy-for-claude  [docs_config/explicit, code_only]
+       Document that the determinism strategy for Claude is to rely on recorded
+       transcripts because Claude accepts neither a seed nor a temperature.
+       why code_only: This requirement is satisfied by the module documentation text
+       itself; no runtime behavior or test is needed to establish that the documentation
+       states the strategy.
+
+[task-03] A Claude response that does not match the stage's response schema is rejected
+    with the same typed error as any other provider's.
+    -> claude-schema-mismatch-typed-error  [error_handling/explicit, code_and_tests]
+       A Claude response that does not match the stage's response schema is rejected
+       with the same typed error as any other provider's.
+
+[task-04] The committed prompt recordings are re-recorded against the new default, and
+    each prompt test's assertions hold on Claude's answers. Recordings made against
+    OpenAI models still replay, and the committed set keeps at least one recording from
+    a provider other than the default.
+    -> re-record-prompt-recordings-against-new-default  [functional/explicit, code_and_tests]
+       The committed prompt recordings are re-recorded against the new default.
+    -> prompt-test-assertions-hold-on-claude-answers  [functional/explicit, code_and_tests]
+       Each prompt test's assertions hold on Claude's answers.
+    -> openai-recordings-still-replay  [compatibility/explicit, code_and_tests]
+       Recordings made against OpenAI models still replay.
+    -> retain-nondefault-provider-recording  [invariant/explicit, code_and_tests]
+       The committed set includes at least one recording from a provider other than the
+       default.
+
+[task-05] Which model each stage runs on is set only in `config.py`.
+    -> config-only-model-selection  [docs_config/explicit, code_only]
+       Which model each stage runs on is set only in `config.py`.
+       why code_only: This is a configuration-location requirement that is satisfied by
+       the source layout itself; a reader can verify it by inspecting `config.py` and
+       the surrounding code, without needing a test.
+
+[exclusion-01] Sending offline runs through the Message Batches API.
+    -> no-message-batches-api  [compatibility/explicit, code_only, satisfied by absence]
+       The change does not route offline runs through the Message Batches API.
+       why code_only: This is a scope exclusion about implementation path, so a reader
+       can verify it directly from the code and configuration without needing a test.
+
+[exclusion-02] Changing where prompt-cache breakpoints are placed.
+    -> prompt-cache-breakpoints-unchanged  [compatibility/explicit, code_only, satisfied by absence]
+       The change does not alter where prompt-cache breakpoints are placed.
+       why code_only: This is a scope exclusion, so the source change itself is
+       sufficient to show the excluded work was not done.
+
+[exclusion-03] Reporting spend per run.
+    -> no-spend-reporting-per-run  [functional/explicit, code_only, satisfied by absence]
+       The change does not add reporting of spend per run.
+       why code_only: This is a scope exclusion, so the review checks for the absence of
+       spend-per-run reporting in the delivered code rather than a testable behavior.
+
+[exclusion-04] Re-measuring benchmark figures on Claude.
+    -> do-not-remeasure-benchmarks-on-claude  [functional/explicit, code_only, satisfied by absence]
+       The change does not re-measure benchmark figures on Claude.
+       why code_only: This scope exclusion is satisfied by the absence of benchmark re-
+       measurement work in the change, which is checked directly in the source diff.
+
+[exclusion-05] Changing any prompt or response schema.
+    -> prompt-response-schema-unchanged  [compatibility/explicit, code_only, satisfied by absence]
+       The change does not alter any prompt or response schema.
+       why code_only: This is a scope exclusion about work that must not be done, and it
+       is settled by inspecting the source change itself.
+
