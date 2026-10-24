@@ -36,6 +36,19 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-10-24] Untracked scripts in docs/experiments/materiality/ fail lint and formatting
+- **Kind:** defect
+- **Found during:** #413, before Gate 2
+- **Where:** docs/experiments/materiality/build_page.py, extract.py
+- **Severity:** nice-to-have
+- **What's wrong:** both files are untracked in the main checkout and not from
+  this session. `ruff check .` reports 7 errors and `ruff format --check .`
+  wants to reformat both. CI would fail if they were committed as they are.
+- **Why I didn't act:** not mine; another session or the owner may be working on them.
+- **Drafted fix:** whoever owns them runs `ruff check --fix` and `ruff format`
+  on them before committing. Nothing to do for #413.
+- **Status:** open
+
 ### [2026-10-24] A bug ticket's description of the current defect is decomposed into obligations, including one that preserves the defect
 - **Kind:** filing (new issue, child of #181)
 - **Found during:** #409, Gate 1 run 1

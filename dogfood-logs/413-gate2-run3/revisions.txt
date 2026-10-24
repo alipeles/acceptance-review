@@ -1,0 +1,4 @@
+base 4441f97c9f6aec383946c3df05c7a920a64577bb
+head 4b3844f8d2097cc90d685c2fbeb059b773304f41
+run  fdafedfbfed085ce (continuing 027e2568b87fb680)
+model anthropic/claude-sonnet-5-5 for every stage; $0.25 on 16 live calls, 44 replayed
