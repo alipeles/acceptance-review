@@ -1,23 +1,31 @@
 # Task
 
-Every bullet under a task file's `## Scope exclusions` heading becomes an
-obligation saying the change does not do the excluded work. That holds when the
-bullet ends with a clause explaining the exclusion, such as "Model calls issued
-by the measurement harness, which is not part of a review run." Today a bullet
-like that sometimes becomes an obligation describing the excluded work as
-something the change must do, and the review then reports it as not addressed.
+The defect-to-test pair judgement, "if the delivered code had this defect,
+would this test fail?", is decided by Jev first, and by Claude Sonnet 5.5 only
+for the pairs Jev is unsure of. This replaces today's judge, which asks the
+default model about up to 40 pairs in one call.
 
-An obligation that comes from a scope exclusion requires code evidence only,
-never a test. Within one review, two such obligations whose code evidence is the
-same get the same coverage status.
+Jev is asked about one pair at a time, with targeted context: the function
+holding the defect with the defect's lines marked, the test with its file's
+imports and the helpers it uses, and the project code the test calls.
+`docs/experiments/jev/m52/targeted_prompt.py` is the experiment's version of
+that context. Jev's probability that the test fails decides the pair on its own
+at 0.34 or more (the test fails) and at 0.24 or less (the test survives).
 
-When duplicate obligations are merged, a scope-exclusion obligation merges only
-with another scope-exclusion obligation, and any other obligation merges only
-with one of the same type.
+A pair whose probability falls between those two goes to Sonnet, one pair per
+call, with the requirement text, the original code and the defect's
+description. Sonnet answers yes or no in a schema-constrained response; no
+token probability is read. When Sonnet gives no usable answer, Jev's
+probability decides the pair at 0.5.
 
-A regression case in the decomposition prompt tests covers a scope-exclusion
-bullet that ends with an explanatory clause.
+Jev is a provider in `llm.py`, recorded and replayed like any other. Its
+probability is recorded with its call, so replaying a recorded review
+reproduces every decision with no live call, and two recorded runs over the
+same input produce byte-identical review state.
+
+A verdict Jev decides keeps the static evidence tier and records that it
+carries no reasoning.
 
 ## Scope exclusions
-- Which evidence obligations from the other sections of a task file require.
-- Which model each stage calls.
+- Re-fitting the 0.34 and 0.24 cut-offs.
+- Changing how defects are enumerated, or which pairs reach the judge.
