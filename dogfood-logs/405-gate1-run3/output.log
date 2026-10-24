@@ -1,0 +1,98 @@
+run 4fe56787714b80f4
+  continuing 4c120edcd9cd9bd2
+  requirements: 1 derived, 6 carried, 1 revised; 6 decompose call(s)
+  REMOVED exclusion-01: Working out a test command from the project's files. (1 obligation(s) dropped)
+  continue this run with: --continue 4fe56787714b80f4
+Model usage by stage:
+  stage                        model                                                          calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  -------------------------------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    openai/gpt-5.4-mini                          5 (5 live / 0 replayed)  27,434     788   34.5%   $0.0177   $0.0177           8.4s
+  decompose-summary            openai/gpt-5.4                               1 (1 live / 0 replayed)     883     495    0.0%   $0.0096   $0.0096           7.9s
+  obligation linking           voyage/voyage-3.5-lite, openai/gpt-5.4-mini  2 (2 live / 0 replayed)   1,576      97    0.0%   $0.0011   $0.0011           2.0s
+  requirement carry alignment  openai/gpt-5.4-mini                          1 (1 live / 0 replayed)     487      24    0.0%   $0.0005   $0.0005           2.0s
+  this run spent $0.0289 on 9 live call(s); the evidence cost $0.0289 to record (0 call(s) replayed at no cost to this run)
+Requirements: 8   with obligations: 8
+
+[task-01] A project whose tests live in a subdirectory with their own `pyproject.toml`
+    and virtualenv has its tests run by `acceptance check`, using the project's own
+    dependencies, and the tests pytest collects are recognised as the tests the tool
+    asked for.
+    -> subdir-tests-run-by-acceptance-check  [functional/explicit]
+       A project whose tests live in a subdirectory with their own `pyproject.toml` and
+       virtualenv has its tests run by `acceptance check`.
+    -> use-project-dependencies  [functional/explicit]
+       Use the project's own dependencies when running the tests.
+    -> pytest-collected-tests-match-requested-tests  [invariant/explicit]
+       The tests pytest collects are recognised as the tests the tool asked for.
+
+[task-02] To make that possible, the user tells the tool once, per repository, the
+    command they already use to run their tests — for example `cd api &&
+    .venv/bin/python -m pytest` — and the tool runs the project's tests with exactly
+    that command, adding only which tests to run. When no test command is set and the
+    tests cannot be run, the tool says that a test command needs to be set, rather than
+    reporting that pytest declines the tests.
+    -> test-command-provided-once-per-repo  [functional/explicit]
+       The user tells the tool once, per repository, the command they already use to run
+       their tests.
+    -> run-tests-with-configured-command  [functional/explicit]
+       The tool runs the project's tests with exactly the configured command, adding
+       only which tests to run.
+    -> test-command-required-message  [functional/explicit]
+       When no test command is set and the tests cannot be run, the tool says that a
+       test command needs to be set.
+
+[task-03] Tests run this way run as they do on the user's own machine: with the user's
+    environment variables and with network access, so a suite that needs a local
+    database and a variable such as `DATABASE_URL` can run.
+    -> run-tests-with-env-and-network  [compatibility/explicit]
+       Tests run as they do on the user's own machine, with the user's environment
+       variables and with network access.
+    -> local-db-and-env-var-test-runs  [functional/explicit]
+       A suite that needs a local database and a variable such as `DATABASE_URL` can
+       run.
+
+[task-04] Because the tool runs the tests many times, including against deliberately
+    broken copies of the code, setting the test command shows the user that risk in
+    plain words and saves the command only after the user explicitly agrees. If the
+    saved command changes, the user is asked to agree again. Each run prints the test
+    command it uses and the names of the environment variables passed to the tests; it
+    never prints their values. The tool never runs two copies of the project's tests at
+    the same time.
+    -> risk-warning-in-plain-words  [explanation_observability/explicit]
+       Setting the test command shows the user that the risk is described in plain
+       words.
+    -> save-command-only-after-explicit-agreement  [functional/explicit]
+       The test command is saved only after the user explicitly agrees.
+    -> reconfirm-on-command-change  [functional/explicit]
+       If the saved test command changes, the user is asked to agree again.
+    -> print-test-command-each-run  [explanation_observability/explicit]
+       Each run prints the test command it uses.
+    -> print-env-var-names  [explanation_observability/explicit]
+       Each test run prints the names of the environment variables passed to the tests.
+    -> hide-env-var-values  [explanation_observability/explicit]
+       Each test run prints the names of the environment variables passed to the tests,
+       while hiding their values.
+    -> single-test-run-at-a-time  [invariant/explicit]
+       The tool never runs two copies of the project's tests at the same time.
+
+[task-05] Test discovery no longer offers a pytest fixture, such as a `conftest.py`
+    function named `test_db_url`, as a test.
+    -> fixture-not-discovered-as-test  [regression/explicit]
+       Test discovery no longer offers a pytest fixture, such as a `conftest.py`
+       function named `test_db_url`, as a test.
+
+[task-06] The spec's execution-safety wording is updated to match.
+    -> execution-safety-wording-matches-spec  [docs_config/explicit]
+       The spec's execution-safety wording is updated to match.
+
+[exclusion-01] Working out a test command, an interpreter or a directory from the
+    project's files.
+    -> no-auto-detection-of-test-command-interpreter-or-directory  [docs_config/explicit]
+       The change does not work out a test command, an interpreter, or a directory from
+       the project's files.
+
+[exclusion-02] Judging whether a database or service the tests use is safe to use.
+    -> no-unsafe-service-judgment  [docs_config/explicit]
+       The change does not include judging whether a database or service the tests use
+       is safe to use.
+

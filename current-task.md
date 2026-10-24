@@ -1,37 +1,41 @@
 # Task
 
-Add a third way of building a mutation edit: drive a headless coding agent over a
-copy of the project and ask it for what the one-call builder is asked for — the
-smallest edit that makes one named defect true. Claude Code is the first agent it
-can drive. The agent is chosen by a setting, and supporting another agent, such
-as Codex, means adding that agent's adapter without changing the builder.
+A project whose tests live in a subdirectory with their own `pyproject.toml` and
+virtualenv has its tests run by `acceptance check`, using the project's own
+dependencies, and the tests pytest collects are recognised as the tests the tool
+asked for.
 
-The agent builder is a fallback, never the first attempt. It is asked about a
-defect only when every candidate the existing builder produced for that defect
-was set aside, and only when it has been configured; with nothing configured a
-review behaves exactly as it does today.
+To make that possible, the user tells the tool once, per repository, the command they already
+use to run their tests — for example `cd api && .venv/bin/python -m pytest` —
+and the tool runs the project's tests with exactly that command, adding only
+which tests to run, its own pytest plugin, and the options it needs to list
+tests and to leave no pytest cache in the project. When
+no test command is set and the tests cannot be run, the tool says that a test
+command needs to be set, rather than reporting that pytest declines the tests.
 
-What the agent changed in the copy is reduced to one span replacement in one
-file and then goes through every check any other candidate goes through, before
-and after it is run against the tests. If what it changed is not a single
-contiguous edit inside a region the defect names, the candidate is set aside
-rather than repaired. An unverified agent edit carries no more weight in the
-review than any other unverified edit.
+Tests run this way run as they do on the user's own machine: with the user's
+environment variables and with network access, so a suite that needs a local
+database and a variable such as `DATABASE_URL` can run.
 
-The copy the agent works in has the project's test files removed, so it cannot
-read them whatever it is told or decides to do.
+Because the tool runs the tests many times, including against deliberately
+broken copies of the code, setting the test command shows the user that risk in
+plain words and saves the command only after the user explicitly agrees. If the
+saved command changes, the user is asked to agree again. Each run prints the
+test command it uses and the names of the environment variables passed to the
+tests; it never prints their values.
 
-What a run records is the agent's diff, not its transcript. A replayed review
-reuses the recorded diff without starting the agent, and two replays of the same
-input are byte-identical. A run that exceeds its time limit, fails, or changes
-nothing yields no usable answer.
+By default the tool never runs two copies of the project's tests at the same
+time. When setting the test command, the user may say how many copies can
+safely run at once; the tool then runs up to that many, and tells each copy
+which one it is through an environment variable, so that a project can give
+each copy its own database.
 
-Each defect sent to the agent records what the attempt cost in dollars and how
-long it took on the wall clock, next to the same figures for the one-call
-builder's attempts at that defect, so the two can be compared.
+Test discovery no longer offers a pytest fixture, such as a `conftest.py`
+function named `test_db_url`, as a test.
+
+The spec's execution-safety wording is updated to match.
 
 ## Scope exclusions
-- An adapter for Codex or for any agent other than Claude Code.
-- Making the agent builder the first attempt or the default.
-- A command-line option for the setting.
-- Changing the existing builder's prompt or the number of candidates it is asked for.
+- Working out a test command, an interpreter or a directory from the project's
+  files.
+- Judging whether a database or service the tests use is safe to use.

@@ -1,0 +1,4 @@
+base b63b4498553bdc5194128c5f7d9b515347cf3654  (main when 405-test-command branched)
+head 3ac5edb8f00cf7c1f9bf389e5b4d271e25998560  (after run-2 fixes, rebased onto main ec38330)
+run  a177c6062ee33dc7, continuing 0cf1a8e59e50a913
+command: acceptance check --task current-task.md --base b63b449 --head HEAD --continue 0cf1a8e59e50a913 --mode record

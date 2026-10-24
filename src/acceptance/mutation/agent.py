@@ -265,7 +265,7 @@ def agent_copy(project_root: Path) -> Iterator[Path]:
     one-call builder's withholding uses too, so the two builders are kept from
     the same files.
     """
-    with copied_project(project_root, "acceptance-agent-") as root:
+    with copied_project(project_root, "acceptance-agent-", link_environments=False) as root:
         for name in _AGENT_CONFIG_DIRS:
             shutil.rmtree(root / name, ignore_errors=True)
         for path in sorted(root.rglob("*"), reverse=True):

@@ -22,10 +22,18 @@ license = { text = "MIT" }
 # against the new release — CI runs 3.12, where 1.97.0 works, so CI alone will
 # not catch a 3.10-only break — and make one recording run.
 dependencies = [
-  "pydantic>=2",
-  "litellm>=1.93,<1.97",
-  "markdown-it-py>=3",
-  "pathspec>=0.12",
+    "pydantic>=2",
+    "litellm>=1.93,<1.97",
+    "markdown-it-py>=3",
+    "pathspec>=0.12",
+    # Loads the working directory's `.env` (#398). LiteLLM already depends on
+    # it, but the CLI now calls it directly, so it is declared.
+    "python-dotenv>=1.0",
+    # A runtime dependency, not only a test one: the CLI imports the sandbox's
+    # pytest plugin, and with no test command set the execution tier runs this
+    # interpreter's `-m pytest`. Declared only under `dev`, a fresh install
+    # could not start at all.
+    "pytest",
 ]
 
 [project.optional-dependencies]

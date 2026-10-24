@@ -4,15 +4,19 @@
 a temporary directory and loaded by the project's own interpreter with `-p`,
 which will not have this project installed. Keep it standalone and stdlib-only.
 
-It does three things, all of which have to happen inside the run rather than
+It does four things, all of which have to happen inside the run rather than
 around it:
 
 1. Blocks outbound network before the first test module is imported. `-p`
-   plugins load before collection, which is the earliest hook available.
+   plugins load before collection, which is the earliest hook available. Not
+   under a user's test command, which runs as on their own machine (#405).
 2. Enforces the per-test time budget, which only the process running the test
    can interrupt.
 3. Writes one line per test to a report file as each finishes, so that a run
    killed by the whole-run budget still leaves the outcomes it did observe.
+4. Names every test relative to the project root the runner gave it, not to
+   whatever directory pytest chose as its own root, and on a collection run
+   writes the collected names to a file.
 """
 
 from __future__ import annotations
@@ -21,6 +25,7 @@ import json
 import os
 import signal
 import socket
+from pathlib import Path
 
 import pytest  # available by definition: this module is loaded by pytest
 
@@ -34,6 +39,11 @@ TIMEOUT_MARKER = "ACCEPTANCE_TEST_TIMEOUT"
 #: keeps the invocation to the named tests and nothing else.
 REPORT_PATH_VAR = "ACCEPTANCE_SANDBOX_REPORT"
 PER_TEST_BUDGET_VAR = "ACCEPTANCE_SANDBOX_PER_TEST_SECONDS"
+COLLECTED_PATH_VAR = "ACCEPTANCE_SANDBOX_COLLECTED"
+ID_ROOT_VAR = "ACCEPTANCE_SANDBOX_ID_ROOT"
+#: Set to "1" only under a user's test command. Absent means blocked, so a run
+#: that lost its environment somehow fails closed.
+ALLOW_NETWORK_VAR = "ACCEPTANCE_SANDBOX_ALLOW_NETWORK"
 
 #: A local socket is not network egress, and forbidding it breaks unrelated
 #: machinery — `multiprocessing` uses it on some platforms. Everything else is
@@ -204,10 +214,50 @@ def _error_type(report) -> str | None:  # type: ignore[no-untyped-def]
     return name if name.isidentifier() else None
 
 
+def _relative_id(node_id: str, rootpath: Path, id_root: Path | None) -> str:
+    """`node_id`, renamed relative to `id_root` instead of pytest's own root.
+
+    pytest names a test by its path from the directory it took as its root —
+    the nearest one with a pytest configuration — so a project kept in `api/`
+    reports `tests/x.py::t` for what the review calls `api/tests/x.py::t`. A
+    path outside `id_root`, or no `id_root` at all, leaves the id as pytest
+    gave it.
+    """
+    if id_root is None:
+        return node_id
+    path, separator, rest = node_id.partition("::")
+    try:
+        relative = (rootpath / path).resolve().relative_to(id_root)
+    except (ValueError, OSError):
+        return node_id
+    return relative.as_posix() + separator + rest
+
+
 class SandboxPlugin:
-    def __init__(self, reporter: _Reporter, per_test_seconds: float | None) -> None:
+    def __init__(
+        self,
+        reporter: _Reporter,
+        per_test_seconds: float | None,
+        rootpath: Path | None = None,
+        id_root: Path | None = None,
+        collected_path: str | None = None,
+    ) -> None:
         self._reporter = reporter
         self._per_test_seconds = per_test_seconds
+        self._rootpath = rootpath or Path.cwd()
+        self._id_root = id_root
+        self._collected_path = collected_path
+
+    def _id(self, node_id: str) -> str:
+        return _relative_id(node_id, self._rootpath, self._id_root)
+
+    # --- the collected names -------------------------------------------------
+
+    def pytest_collection_finish(self, session) -> None:  # type: ignore[no-untyped-def]
+        if self._collected_path is None:
+            return
+        with open(self._collected_path, "w", encoding="utf-8") as handle:
+            handle.writelines(self._id(item.nodeid) + "\n" for item in session.items)
 
     # --- the per-test budget -------------------------------------------------
 
@@ -243,6 +293,7 @@ class SandboxPlugin:
     # --- the report ----------------------------------------------------------
 
     def pytest_runtest_logreport(self, report) -> None:  # type: ignore[no-untyped-def]
+        node_id = self._id(report.nodeid)
         if report.skipped:
             # A skip is `not_started` either way — no verdict about the test was
             # observed — but the reason has to say which kind it was. A test
@@ -251,7 +302,7 @@ class SandboxPlugin:
             # outcome exists to keep.
             ran_first = report.when == "call"
             self._reporter.note(
-                report.nodeid,
+                node_id,
                 "not_started",
                 (
                     "the test ran and skipped itself, so no verdict was observed"
@@ -263,17 +314,18 @@ class SandboxPlugin:
         if report.failed:
             kind, reason = _classify(report)
             error_type = _error_type(report) if kind == "failed" else None
-            self._reporter.note(report.nodeid, kind, reason, error_type, _detail(report))
+            self._reporter.note(node_id, kind, reason, error_type, _detail(report))
             return
         if report.when == "call" and report.passed:
-            self._reporter.note(report.nodeid, "passed", None)
+            self._reporter.note(node_id, "passed", None)
 
     def pytest_runtest_logfinish(self, nodeid, location=None) -> None:  # type: ignore[no-untyped-def]
-        self._reporter.flush(nodeid)
+        self._reporter.flush(self._id(nodeid))
 
 
 def pytest_configure(config) -> None:  # type: ignore[no-untyped-def]
-    install_network_block()
+    if os.environ.get(ALLOW_NETWORK_VAR) != "1":
+        install_network_block()
 
     # A missing report path means reporting has nowhere to go. It must NOT mean
     # the rest of the plugin is skipped: an early return here would leave the
@@ -299,8 +351,17 @@ def pytest_configure(config) -> None:  # type: ignore[no-untyped-def]
             "declines to run rather than run unbounded"
         )
 
+    raw_id_root = os.environ.get(ID_ROOT_VAR) or None
+    # `rootpath` is pytest 6.1+; a project pinned older has `rootdir`.
+    rootpath = getattr(config, "rootpath", None) or getattr(config, "rootdir", None)
     config.pluginmanager.register(
-        SandboxPlugin(_Reporter(report_path), per_test_seconds),
+        SandboxPlugin(
+            _Reporter(report_path),
+            per_test_seconds,
+            rootpath=Path(str(rootpath)) if rootpath else None,
+            id_root=Path(raw_id_root).resolve() if raw_id_root else None,
+            collected_path=os.environ.get(COLLECTED_PATH_VAR) or None,
+        ),
         name="acceptance-sandbox",
     )
 

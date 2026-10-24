@@ -478,17 +478,16 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
         for verdict in review.pair_verdicts
         if verdict.defect_id == defect_id and verdict.tier is EvidenceTier.DEFECT_KILLED
     )
-    asked = sum(
-        1
-        for verdict in review.pair_verdicts
-        if verdict.defect_id == defect_id and verdict.tier is not EvidenceTier.DEFECT_KILLED
-    )
     dropped = sum(
         1
         for entry in review.unjudged_pairs
         if entry.defect_id == defect_id and entry.cause is UnjudgedCause.PASSED_UNDER_EDIT
     )
-    _, skipped = _pair_counts(review, defect_id)
+    # One count of asked pairs, shared with the defect block. Counting only the
+    # answered ones here left an unanswered pair out, so a `not_mutable` defect
+    # whose one pair the judge never answered read "0 put to the model" in this
+    # section and "1" in the other (#350).
+    asked, skipped = _pair_counts(review, defect_id)
     # No early return on three zeroes. The criterion is that the report states
     # these counts for every defect the stage was asked about, and #340's own Gate
     # 2 raised exactly this: a `not_mutable` defect has no pairs of its own here,

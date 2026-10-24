@@ -20,7 +20,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-__all__ = ["SKIPPED", "copied_project"]
+__all__ = ["LINKED", "SKIPPED", "copied_project"]
 
 #: Directory names never copied into a workspace.
 #:
@@ -53,9 +53,8 @@ SKIPPED = frozenset(
         ".nox",
         ".hypothesis",
         "htmlcov",
-        # Dependency trees. The interpreter that runs the tests is named by
-        # configuration and lives outside the copy, so its packages are found
-        # without being copied.
+        # Dependency trees. Not copied, but a `.venv` is linked back to the
+        # original — see `LINKED`.
         ".venv",
         "node_modules",
         # Editor state.
@@ -68,9 +67,28 @@ SKIPPED = frozenset(
 )
 
 
+#: Skipped directories that the copy gets as a link to the original instead.
+#:
+#: A user's test command names its interpreter by a path inside the project —
+#: `cd api && .venv/bin/python -m pytest` — and the command runs inside the
+#: copy. Without the link that path does not exist there, every test passes in
+#: the project and fails in the unmodified copy, and the faithfulness check sets
+#: every one aside (#405). A link, not a copy: a virtualenv is large, and one
+#: copy per defect multiplies it. The tests never write to it, and
+#: `shutil.rmtree` removes the link without following it, so the original is
+#: untouched when the workspace goes.
+LINKED = frozenset({".venv"})
+
+
 @contextmanager
-def copied_project(project_root: Path, prefix: str) -> Iterator[Path]:
+def copied_project(
+    project_root: Path, prefix: str, link_environments: bool = True
+) -> Iterator[Path]:
     """A copy of `project_root`, removed on exit. Yields the copy's root.
+
+    `link_environments=False` leaves out the `LINKED` links too. A copy handed
+    to a coding agent to edit takes that: nothing it runs needs the project's
+    interpreter, and a link would let an edit reach the original through it.
 
     The copy keeps the project's own directory basename. pytest finds its
     rootdir and its configuration by walking up from where it is invoked, and a
@@ -84,12 +102,22 @@ def copied_project(project_root: Path, prefix: str) -> Iterator[Path]:
     """
     workspace = Path(tempfile.mkdtemp(prefix=prefix))
     try:
-        root = workspace / (project_root.resolve().name or "project")
-        shutil.copytree(project_root, root, ignore=_ignore, symlinks=True)
+        source = project_root.resolve()
+        root = workspace / (source.name or "project")
+        linked: list[Path] = []
+
+        def ignore(directory: str, names: list[str]) -> set[str]:
+            skipped = {name for name in names if name in SKIPPED}
+            if not link_environments:
+                return skipped
+            linked.extend(
+                Path(directory, name) for name in skipped & LINKED if Path(directory, name).is_dir()
+            )
+            return skipped
+
+        shutil.copytree(source, root, ignore=ignore, symlinks=True)
+        for original in linked:
+            (root / original.relative_to(source)).symlink_to(original, target_is_directory=True)
         yield root
     finally:
         shutil.rmtree(workspace, ignore_errors=True)
-
-
-def _ignore(_directory: str, names: list[str]) -> set[str]:
-    return {name for name in names if name in SKIPPED}

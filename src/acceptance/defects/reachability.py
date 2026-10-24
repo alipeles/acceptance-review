@@ -36,17 +36,20 @@ routing through a module it imports, or by receiving a pytest fixture. Close all
 three and the absence is genuine rather than assumed:
 
 1. the defect names at least one implicated file — with none, nothing is known;
-2. the test is not defined in one of those files;
-3. the test's module imports no first-party module at all, so there is no helper
+2. every implicated file is a Python module — a Markdown, config or data file is
+   reached by a test that opens it by path, which no import, fixture or name
+   shows (#358);
+3. the test is not defined in one of those files;
+4. the test's module imports no first-party module at all, so there is no helper
    for a call to route through;
-4. the test function takes no arguments, so no fixture can hand it anything;
-5. the test's module uses no dynamic import or evaluation machinery;
-6. the test references none of the names defined in the defect's files.
+5. the test function takes no arguments, so no fixture can hand it anything;
+6. the test's module uses no dynamic import or evaluation machinery;
+7. the test references none of the names defined in the defect's files.
 
 Together those leave no path. Drop any one and the proof fails, so any one
 failing means the pair is judged.
 
-Condition 3 is what makes this rare in practice: almost every real test imports
+Condition 4 is what makes this rare in practice: almost every real test imports
 something first-party. That is expected. The recorded-exclusion behaviour is
 proved on a constructed fixture rather than on incidental real input, because a
 rule that fires by luck is not a tested rule.
@@ -198,7 +201,7 @@ def _defined_names(repo: Path, change_set: ChangeSet, files: set[str]) -> set[st
     """Names defined in the given files, by their changed definitions.
 
     A superset of the names in the defect's own hunks, deliberately: taking the
-    whole file makes condition 6 harder to satisfy, so the exclusion is harder to
+    whole file makes condition 7 harder to satisfy, so the exclusion is harder to
     earn, which is the safe direction.
     """
     return {
@@ -259,6 +262,8 @@ def _exclusion_reason(pair: Pair, prover: _Prover) -> str | None:
     files = _implicated_files(pair.defect)
     if not files:
         return None  # nothing known about where the defect lives
+    if any(Path(path).suffix != ".py" for path in files):
+        return None  # a test reads a non-Python file by path, which no import shows
     if pair.test.file in files:
         return None  # the test sits in one of the defect's own files
 

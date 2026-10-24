@@ -1,0 +1,68 @@
+Requirements: 4   with obligations: 4
+
+[task-01] The review report states, for every enumerated defect the pair-judgement stage
+    was asked about, how many of that defect's pairs the run settled, how many were put
+    to the judge, how many were dropped as not worth asking, and how many were skipped
+    once the defect was covered. This holds for a defect the injection stage did not
+    attempt, whose injection outcome is `not_mutable` or `not_attempted`, as much as for
+    one it did.
+    -> pair-judgement-defect-counts  [functional/explicit]
+       The review report states, for every enumerated defect the pair-judgement stage
+       was asked about, how many of that defect's pairs the run settled, how many were
+       put to the judge, how many were dropped as not worth asking, and how many were
+       skipped once the defect was covered.
+    -> report-covers-unattempted-defects  [functional/explicit]
+       The review report states, for a defect the injection stage did not attempt and
+       whose injection outcome is `not_mutable` or `not_attempted`, how many of that
+       defect's pairs the run settled, how many were put to the judge, how many were
+       dropped as not worth asking, and how many were skipped once the defect was
+       covered.
+
+[task-02] The counts for such a defect are correct, not merely present. No edit was
+    built for it, so none of its pairs was settled by the run and none was dropped or
+    skipped on the strength of an edit: every one of its pairs is counted as put to the
+    judge, including a pair the judge was offered and did not answer. The count of pairs
+    put to the judge agrees wherever the report states it for the same defect.
+    -> pair-counts-correct  [functional/explicit]
+       The counts for such a defect are correct, not merely present.
+    -> judge-pair-count-agreement  [invariant/explicit]
+       The count of pairs put to the judge agrees wherever the report states it for the
+       same defect.
+    -> no-edit-built-for-it  [invariant/explicit]
+       No edit was built for it, so none of its pairs was settled by the run.
+    -> all-pairs-counted-as-put-to-judge  [invariant/explicit]
+       Every pair is counted as put to the judge, with none dropped or skipped on the
+       strength of an edit.
+    -> include-judge-unanswered-pair  [functional/explicit]
+       The count includes a pair the judge was offered and did not answer.
+
+[task-03] A regression test is part of the deliverable: it renders a review holding a
+    `not_mutable` defect and a `not_attempted` defect, each with pairs that went to the
+    judge, and pins the exact counts the report states for each.
+    -> render-review-with-two-defects  [functional/explicit]
+       Render a review holding a `not_mutable` defect and a `not_attempted` defect.
+    -> judge-pairs-for-both-defects  [functional/explicit]
+       Render each of the `not_mutable` and `not_attempted` defects with pairs that went
+       to the judge.
+    -> pairs-went-to-judge  [functional/explicit]
+       Each defect includes pairs that went to the judge.
+    -> pin-exact-counts-report-states  [functional/explicit]
+       Pin the exact counts the report states for each.
+    -> regression-test-pins-exact-counts  [test_demand/explicit]
+       A regression test asserts the exact counts the report states for each.
+
+[exclusion-01] How pairs are routed between the run and the judge is unchanged; only
+    what the report says about them is in scope.
+    -> routing-unchanged  [functional/explicit]
+       The change does not alter how pairs are routed between the run and the judge.
+
+run 50763f82a579811a
+  requirements: 4 derived, 0 carried, 0 revised; 14 decompose call(s)
+  continue this run with: --continue 50763f82a579811a
+Model usage by stage:
+  stage               model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini                          11 (11 live / 0 replayed)  59,871   2,072    0.0%   $0.0542   $0.0542          21.3s
+  decompose-summary   openai/gpt-5.4                                 3 (3 live / 0 replayed)   2,419   1,146    0.0%   $0.0232   $0.0232          15.5s
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)   1,939     272    0.0%   $0.0022   $0.0022           2.3s
+  this run spent $0.0797 on 16 live call(s); the evidence cost $0.0797 to record (0 call(s) replayed at no cost to this run)
