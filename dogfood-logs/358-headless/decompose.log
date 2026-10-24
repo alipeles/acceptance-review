@@ -1,0 +1,58 @@
+Requirements: 5   with obligations: 5
+
+[task-01] The reachability prefilter in `src/acceptance/defects/reachability.py`
+    excludes a (defect, test) pair from judgement only when it can prove the test has no
+    path to the defect. Its proof follows imports, fixtures and Python names, so it
+    holds only for defects that live in Python modules.
+    -> no-judgement-except-proven-unreachable  [invariant/explicit]
+       The reachability prefilter excludes a (defect, test) pair from judgement only
+       when it can prove the test has no path to the defect.
+    -> python-module-limited-proof  [invariant/explicit]
+       The reachability prefilter's proof is limited to defects that live in Python
+       modules because it follows imports, fixtures, and Python names.
+
+[task-02] When any of a defect's implicated files is not a Python module — a Markdown
+    document, a config file, a data file read from disk — the prefilter makes no
+    exclusion for that defect: every pair with that defect is sent to the judge. Defects
+    whose implicated files are all Python modules are prefiltered by the existing rules.
+    -> no-exclusion-for-non-python-implicated-files  [functional/explicit]
+       When any implicated file in a defect is not a Python module, the prefilter makes
+       no exclusion for that defect.
+    -> all-pairs-sent-to-judge-for-defect  [functional/explicit]
+       Every pair associated with the defect is sent to the judge when the defect has
+       any implicated file that is not a Python module.
+    -> preserve-existing-prefilter-rules-for-python-only-defects  [invariant/explicit]
+       Preserve the existing prefiltering rules for defects whose implicated files are
+       all Python modules.
+
+[task-03] A regression test is part of the deliverable: a test that opens a non-Python
+    file by path and asserts on its content, paired with a defect implicating that file,
+    is judged and not prefiltered.
+    -> non-python-file-content-test-judged  [test_demand/explicit]
+       A test opens a non-Python file by path and asserts on its content, and a defect
+       implicating that file is judged rather than prefiltered.
+    -> not-prefiltered  [invariant/explicit]
+       The requirement is not prefiltered.
+
+[exclusion-01] Recognising a test that names a file's path in its source as reaching
+    that file.
+    -> exclude-path-name-as-reachability  [compatibility/explicit]
+       The change does not treat a test as reaching a file solely because the test
+       source names that file's path.
+
+[exclusion-02] Any change to the judge, the defect builder or how prefiltered pairs are
+    scored.
+    -> no-change-to-judge-defect-builder-or-scoring  [functional/explicit]
+       The change does not alter the judge, the defect builder, or how prefiltered pairs
+       are scored.
+
+run 869524bf1aee2422
+  requirements: 5 derived, 0 carried, 0 revised; 13 decompose call(s)
+  continue this run with: --continue 869524bf1aee2422
+Model usage by stage:
+  stage               model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini                          10 (10 live / 0 replayed)  54,239   1,656    0.0%   $0.0481   $0.0481          24.8s
+  decompose-summary   openai/gpt-5.4                                 3 (3 live / 0 replayed)   2,541   1,092    0.0%   $0.0227   $0.0227          15.6s
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)   1,234      89    0.0%   $0.0010   $0.0010           1.9s
+  this run spent $0.0719 on 15 live call(s); the evidence cost $0.0719 to record (0 call(s) replayed at no cost to this run)
