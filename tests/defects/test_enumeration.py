@@ -606,6 +606,64 @@ def test_the_enumerated_sets_survive_a_round_trip_through_persisted_state(tmp_pa
     assert reloaded.to_canonical_json() == review.to_canonical_json()
 
 
+_EXCLUSION_QUOTE = "The invoice layout is unchanged"
+
+_TASK_WITH_EXCLUSION = _TASK + f"\n## Scope exclusions\n- {_EXCLUSION_QUOTE}\n"
+
+# Two criteria, one owed tests and one owed none. The descriptions are distinct
+# phrases so a prompt can be searched for either without matching the other.
+_DECOMPOSITION_WITH_EXCLUSION = {
+    **_DECOMPOSITION,
+    "obligations": [
+        *_DECOMPOSITION["obligations"],
+        {
+            "id": "invoice-layout-unchanged",
+            "description": f"{_EXCLUSION_QUOTE}.",
+            "type": "compatibility",
+            "importance": "normal",
+            "explicit": True,
+            "observable_behavior": "the invoice template is not edited",
+            "source_quote": _EXCLUSION_QUOTE,
+            "required_evidence": "code_only",
+            "required_evidence_reason": "no test can assert that excluded work was not done",
+        },
+    ],
+}
+
+
+def test_a_criterion_owed_no_test_is_never_offered_to_the_enumerator(tmp_path):
+    """#327, asserted on the requests as sent rather than on the output.
+
+    An obligation offered to the enumerator and then dropped reads the same
+    from the output as one never offered (#266), and the cost is the call.
+    The criterion owed tests is the control: without it, a pipeline that
+    enumerated nothing at all would pass.
+    """
+    repo, base, head = _repo(tmp_path)
+    capture: list = []
+    client = client_dispatching(
+        {"_Decomposition": _DECOMPOSITION_WITH_EXCLUSION, **_answer([_defect(code_refs=[])])},
+        capture=capture,
+    )
+
+    review = run_review(
+        task_text=_TASK_WITH_EXCLUSION,
+        change_set=extract_change_set(repo, base, head),
+        repo=repo,
+        client=client,
+        reviewed_revision=head,
+    )
+
+    by_id = {o.id: o for o in review.obligation_map}
+    assert not by_id["invoice-layout-unchanged"].required_evidence.requires_tests
+    assert by_id["daily-rate"].required_evidence.requires_tests
+
+    enumeration = [call["prompt"] for call in capture if call["schema"] == "_Enumeration"]
+    assert any(_QUOTE in prompt for prompt in enumeration), "the control was not enumerated"
+    assert not any(_EXCLUSION_QUOTE in prompt for prompt in enumeration)
+    assert {entry.obligation_id for entry in review.defect_sets} == {"daily-rate"}
+
+
 def test_two_runs_over_the_same_input_agree_byte_for_byte(tmp_path):
     """M0.5, over the stage this issue adds."""
     built = _repo(tmp_path)
