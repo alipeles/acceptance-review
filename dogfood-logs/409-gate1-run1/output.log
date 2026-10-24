@@ -1,0 +1,54 @@
+run e01fdf6cc0825d46
+  requirements: 4 derived, 0 carried, 0 revised; 12 decompose call(s)
+  continue this run with: --continue e01fdf6cc0825d46
+Model usage by stage:
+  stage               model                                                          calls  prompt  output  cached  this run  recorded  time this run
+  ------------------  -------------------------------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  decompose           openai/gpt-5.4-mini                          9 (9 live / 0 replayed)  48,795   1,469    0.0%   $0.0432   $0.0432          18.2s
+  decompose-summary   openai/gpt-5.4                               3 (3 live / 0 replayed)   2,397     874    0.0%   $0.0191   $0.0191          12.0s
+  obligation linking  voyage/voyage-3.5-lite, openai/gpt-5.4-mini  2 (2 live / 0 replayed)   1,250      73    0.0%   $0.0010   $0.0010           1.6s
+  this run spent $0.0633 on 14 live call(s); the evidence cost $0.0633 to record (0 call(s) replayed at no cost to this run)
+Requirements: 4   with obligations: 4
+
+[task-01] Two tests in `tests/test_execution_sandbox.py`,
+    `test_a_budget_that_cannot_be_enforced_declines_the_run` and
+    `test_the_per_test_budget_still_applies_without_a_report_path`, call the network-
+    blocking pytest plugin's `pytest_configure` directly. That installs the network
+    block in the test suite's own process and never removes it, so every test that runs
+    afterwards finds `socket.create_connection`, `socket.getaddrinfo` and
+    `socket.socket.connect` replaced.
+    -> call-network-blocking-pytest-configure-directly  [functional/explicit]
+       Call the network-blocking pytest plugin's `pytest_configure` directly.
+    -> network-block-installed-in-test-process  [functional/explicit]
+       The network block is installed in the test suite's own process.
+    -> preserve-installed-network-block  [invariant/explicit]
+       The network block installed by the pytest plugin remains in place after the
+       direct `pytest_configure` call.
+
+[task-02] When the work is done, both tests leave the process's `socket` module as they
+    found them: after either test runs, `socket.create_connection`, `socket.getaddrinfo`
+    and `socket.socket.connect` are the original functions. Neither test is about the
+    network block, so each should skip installing it rather than install and remove it.
+    -> socket-module-restored-after-tests  [regression/explicit]
+       Both tests leave the process's socket module as they found it, so after either
+       test runs, socket.create_connection, socket.getaddrinfo, and
+       socket.socket.connect are the original functions.
+    -> skip-network-block-installation  [regression/explicit]
+       Neither test installs the network block; each test skips installing it instead of
+       installing and removing it.
+    -> skip-network-block-installation-2  [functional/explicit]
+       Each test should skip installing the network block and leave the process's socket
+       module untouched by that setup step.
+
+[task-03] This is a reported defect, so a regression test that fails while the block is
+    left installed and passes once it is not is part of the deliverable.
+    -> regression-test-block-left-installed  [test_demand/explicit]
+       A regression test fails while the block is left installed and passes once it is
+       not.
+
+[exclusion-01] Changing how the network block itself works for the projects the tool
+    runs.
+    -> no-network-block-implementation-change  [functional/explicit]
+       The change does not alter how the network block itself works for the projects the
+       tool runs.
+

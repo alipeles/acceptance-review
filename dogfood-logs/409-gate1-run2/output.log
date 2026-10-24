@@ -1,0 +1,46 @@
+run f88d860009b99893
+  continuing e01fdf6cc0825d46
+  requirements: 0 derived, 1 carried, 2 revised; 5 decompose call(s)
+  REMOVED task-01: Two tests in `tests/test_execution_sandbox.py`,
+`test_a_budget_that_cannot_be_enforced_declines_the_run` and
+`test_the_per_test_budget_still_applies_without_a_report_path`, call the
+network-blocking pytest plugin's `pytest_configure` directly. That installs the
+network block in the test suite's own process and never removes it, so every
+test that runs afterwards finds `socket.create_connection`, `socket.getaddrinfo`
+and `socket.socket.connect` replaced. (4 obligation(s) dropped)
+  continue this run with: --continue f88d860009b99893
+Model usage by stage:
+  stage                        model                                     calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  ----------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    openai/gpt-5.4-mini     3 (3 live / 0 replayed)  16,354     495    0.0%   $0.0145   $0.0145           5.1s
+  decompose-summary            openai/gpt-5.4          2 (2 live / 0 replayed)   1,595     445    0.0%   $0.0107   $0.0107           6.4s
+  obligation linking           voyage/voyage-3.5-lite  1 (1 live / 0 replayed)     157       0       —   $0.0000   $0.0000           3.8s
+  requirement carry alignment  openai/gpt-5.4-mini     1 (1 live / 0 replayed)     596      36    0.0%   $0.0006   $0.0006           2.2s
+  this run spent $0.0258 on 7 live call(s); the evidence cost $0.0258 to record (0 call(s) replayed at no cost to this run)
+Requirements: 3   with obligations: 3
+
+[task-01] The tests `test_a_budget_that_cannot_be_enforced_declines_the_run` and
+    `test_the_per_test_budget_still_applies_without_a_report_path` in
+    `tests/test_execution_sandbox.py` leave the test suite's own process with its
+    original `socket.create_connection`, `socket.getaddrinfo` and
+    `socket.socket.connect`, so tests that run after them see an unmodified `socket`
+    module. Neither test is about the network block, so each runs with the block skipped
+    rather than installing it and removing it afterwards.
+    -> restore-socket-monkeypatches-after-tests  [regression/explicit]
+       Leave the test suite's own process with its original `socket.create_connection`,
+       `socket.getaddrinfo`, and `socket.socket.connect` after the tests run.
+    -> skip-network-block-in-these-tests  [functional/explicit]
+       The two tests run with the network block skipped rather than installing it and
+       removing it afterwards.
+
+[task-02] A regression test that fails if either test leaves the network block installed
+    is part of the deliverable.
+    -> network-block-regression-test  [test_demand/explicit]
+       A regression test fails if either test leaves the network block installed.
+
+[exclusion-01] Changing how the network block itself works for the projects the tool
+    runs.
+    -> no-network-block-implementation-change  [functional/explicit]
+       The change does not alter how the network block itself works for the projects the
+       tool runs.
+

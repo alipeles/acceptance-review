@@ -180,6 +180,9 @@ def test_the_per_test_budget_is_refused_rather_than_ignored_when_unenforceable(
 
     monkeypatch.delenv(netblock.REPORT_PATH_VAR, raising=False)
     monkeypatch.setenv(netblock.PER_TEST_BUDGET_VAR, "5")
+    # This process is the suite's own; installing the block here would leave it
+    # in place for every later test.
+    monkeypatch.setenv(netblock.ALLOW_NETWORK_VAR, "1")
     monkeypatch.delattr(signal_module, "setitimer", raising=False)
 
     class _Config:
@@ -473,6 +476,9 @@ def test_the_per_test_budget_still_applies_without_a_report_path(tmp_path, monke
 
     monkeypatch.delenv(netblock.REPORT_PATH_VAR, raising=False)
     monkeypatch.setenv(netblock.PER_TEST_BUDGET_VAR, "5")
+    # This process is the suite's own; installing the block here would leave it
+    # in place for every later test.
+    monkeypatch.setenv(netblock.ALLOW_NETWORK_VAR, "1")
 
     registered = {}
 

@@ -1,0 +1,40 @@
+run 851b6085fab262e7
+  continuing f88d860009b99893
+  requirements: 0 derived, 2 carried, 1 revised; 3 decompose call(s)
+  continue this run with: --continue 851b6085fab262e7
+Model usage by stage:
+  stage                        model                                     calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  ----------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    openai/gpt-5.4-mini     2 (2 live / 0 replayed)  11,008     344   86.0%   $0.0034   $0.0034           3.1s
+  decompose-summary            openai/gpt-5.4          1 (1 live / 0 replayed)     849     320    0.0%   $0.0069   $0.0069           4.3s
+  obligation linking           voyage/voyage-3.5-lite  1 (1 live / 0 replayed)     169       0       —   $0.0000   $0.0000           0.6s
+  requirement carry alignment  openai/gpt-5.4-mini     1 (1 live / 0 replayed)     478      24    0.0%   $0.0005   $0.0005           1.9s
+  this run spent $0.0108 on 5 live call(s); the evidence cost $0.0108 to record (0 call(s) replayed at no cost to this run)
+Requirements: 3   with obligations: 3
+
+[task-01] The tests
+    `test_the_per_test_budget_is_refused_rather_than_ignored_when_unenforceable` and
+    `test_the_per_test_budget_still_applies_without_a_report_path` in
+    `tests/test_execution_sandbox.py` leave the test suite's own process with its
+    original `socket.create_connection`, `socket.getaddrinfo` and
+    `socket.socket.connect`, so tests that run after them see an unmodified `socket`
+    module. Neither test is about the network block, so each runs with the block skipped
+    rather than installing it and removing it afterwards.
+    -> restore-socket-monkeypatches-after-test  [regression/explicit]
+       Leave the test suite's own process with its original `socket.create_connection`,
+       `socket.getaddrinfo`, and `socket.socket.connect` after the test runs.
+    -> skip-network-block-for-these-tests  [functional/explicit]
+       Each of the two tests runs with the network block skipped, rather than installing
+       it and removing it afterwards.
+
+[task-02] A regression test that fails if either test leaves the network block installed
+    is part of the deliverable.
+    -> network-block-regression-test  [test_demand/explicit]
+       A regression test fails if either test leaves the network block installed.
+
+[exclusion-01] Changing how the network block itself works for the projects the tool
+    runs.
+    -> no-network-block-implementation-change  [functional/explicit]
+       The change does not alter how the network block itself works for the projects the
+       tool runs.
+
