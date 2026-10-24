@@ -67,7 +67,6 @@ from acceptance.requirement.ledger import LedgerEntry, MergeDecision
 from acceptance.requirement.obligations import Decomposition
 from acceptance.review_state import (
     Obligation,
-    ObligationType,
     RequirementDisposition,
     RequirementMap,
 )
@@ -157,12 +156,17 @@ class _Verdicts(StrictResponseModel):
 
 def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
     """False for a pair that cannot be the same requirement whatever the model
-    thinks — one demands a test, the other demands a behavior (#232, DR-232).
+    thinks: two obligations of different types, or a scope exclusion paired
+    with anything that is not one (DR-310).
 
-    Enforced here rather than asked for in the prompt, because the prompt's own
-    criteria point the wrong way on this pair: the test that asserts X is also
-    the evidence for X, so "the same test would demonstrate both" reads true.
-    The rule survived two prompt attempts and the merges kept happening.
+    A merge keeps the earlier obligation's fields and only gains the other's
+    source spans, so merging across types silently retypes one of them. The
+    sharpest case is #232 (DR-232): a test demand and the behaviour it tests.
+    That one is enforced here rather than asked for in the prompt, because the
+    prompt's own criteria point the wrong way on the pair: the test that asserts
+    X is also the evidence for X, so "the same test would demonstrate both"
+    reads true. The rule survived two prompt attempts and the merges kept
+    happening. DR-310 widened it from that one pair to every pair of types.
 
     Skipping the pair rather than overriding its answer afterwards is the point.
     A question that has only one admissible answer is not a question, and asking
@@ -170,8 +174,19 @@ def _can_state_one_requirement(left: Obligation, right: Obligation) -> bool:
     in a transitive component, where #144's clique rule then suppresses every
     OTHER merge in that component. Both of this bundle's Gate 1 runs 2 and 5 lost
     real merges exactly that way.
+
+    A scope exclusion absorbed into a Constraint would lose `satisfied_by_absence`
+    and its code-only evidence, and be owed tests and judged as work to do again.
+    That is keyed on the parse's mark, not on `type`. And two exclusions may
+    merge whatever their types: the model chooses `type`, and gave exclusions
+    both `invariant` and `boundary` in one run, so requiring a match there would
+    stop an exclusion stated twice from merging.
     """
-    return (left.type is ObligationType.TEST_DEMAND) == (right.type is ObligationType.TEST_DEMAND)
+    if left.satisfied_by_absence != right.satisfied_by_absence:
+        return False
+    if left.satisfied_by_absence:
+        return True
+    return left.type is right.type
 
 
 def embedding_text(obligation: Obligation) -> str:

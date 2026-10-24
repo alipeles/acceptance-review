@@ -542,7 +542,7 @@ _APPROVED_TRANSCRIPTS = {
         "CSV",
     ),
     # _Verdicts, anthropic/claude-sonnet-5-5 — 1 recording(s)
-    "5d7ec87dd4f316daee5e827b5f8d9fb79c6be9ada5f28fe49fc4bda1f8bbe67a.json": (
+    "b78224190677622930b87ad28b405f4bf770997c42f5fb20ac7d2ee7d1f30753.json": (
         "invoice",
         "CSV",
     ),

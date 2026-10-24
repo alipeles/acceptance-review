@@ -84,3 +84,32 @@ excluded ("which is not part of a review run") is never work of its own, with
 on #338's task file or a #302-shaped one (0 of 2) even before this edit, so the
 prompt change is not shown to be what fixes it; Decision 2 is the guarantee.
 The regression case is `exclusion-05` in `tests/prompts/test_decomposition_prompt.py`.
+
+## Decision 4 — obligations merge only with their own kind
+
+Duplicate obligations are still merged (`requirement/linking.py`), but
+`_can_state_one_requirement` now skips two kinds of pair, decided by the owner
+at #310's Gate 2:
+
+- **A scope exclusion and anything that is not one.** A merge keeps the earlier
+  obligation's fields and only gains the other's source spans. A Constraint
+  restating an exclusion usually comes first, so the merged obligation would
+  lose `satisfied_by_absence` and its code-only evidence: owed tests again, and
+  shown to the coverage stage without the scope-exclusion mark. Keyed on the
+  parse's mark, not on `type`.
+- **Two ordinary obligations of different `type`.** For the same reason: the
+  merge would silently retype one of them. This widens #232's rule (a test
+  demand never merges with the behaviour it tests) to every pair of types.
+
+Two scope exclusions may merge whatever their `type`. The model chooses the
+type and gave exclusions both `invariant` and `boundary` in a single run, so
+requiring a match there would stop an exclusion stated twice from merging,
+which the owner wants merged.
+
+**Risk, measured.** The same behaviour stated in two sections can be typed
+differently by the model, and then it no longer merges. On Sonnet 5.5's
+recorded answers the linking prompt tests all still pass, including
+`test_one_behaviour_demanded_in_two_sections_yields_one_obligation`. One
+hand-written fixture in `tests/requirement/test_linking.py` merged a
+`functional` behaviour with a `regression` "A test asserts that…" — a pair
+#232 already meant to forbid — and was rewritten as a same-type duplicate.

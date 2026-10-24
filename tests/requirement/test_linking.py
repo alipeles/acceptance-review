@@ -24,6 +24,7 @@ from acceptance.review_state import (
     Disposition,
     Obligation,
     ObligationType,
+    RequiredEvidence,
     RequirementDisposition,
     RequirementMap,
     RequirementRef,
@@ -360,7 +361,7 @@ The report shows a tier on every line.
 - Every rendered line carries its evidence tier.
 
 ## Completion expectations
-- A test asserts that every rendered line carries its evidence tier.
+- Each rendered line shows the evidence tier it carries.
 """
 
 _DERIVED = {
@@ -376,12 +377,12 @@ _DERIVED = {
         },
         {
             "id": "tier-on-every-line-tested",
-            "description": "A test asserts every rendered line carries its tier",
-            "type": "regression",
+            "description": "Each rendered line shows the evidence tier it carries",
+            "type": "functional",
             "importance": "critical",
             "explicit": True,
-            "observable_behavior": "a test asserts each line shows a tier",
-            "source_quote": "A test asserts that every rendered line carries its evidence tier.",
+            "observable_behavior": "each line shows a tier",
+            "source_quote": "Each rendered line shows the evidence tier it carries.",
         },
     ],
     "open_questions": [],
@@ -657,6 +658,95 @@ def test_two_test_demands_can_still_merge_with_each_other():
     decomposition = _typed_decomposition(
         ("constraint-01", "alpha", ObligationType.TEST_DEMAND),
         ("completion-01", "beta", ObligationType.TEST_DEMAND),
+    )
+
+    linked = link_duplicate_obligations(
+        decomposition, _client_confirming(["alpha", "beta"], {frozenset(("alpha", "beta"))})
+    )
+
+    assert len(linked.obligations) == 1
+
+
+# --- a scope exclusion merges only with another scope exclusion (DR-310) -----
+
+
+def _as_exclusions(decomposition: Decomposition, *obligation_ids: str) -> Decomposition:
+    """Mark the named obligations the way derivation marks a scope exclusion."""
+    marked = [
+        obligation.model_copy(
+            update={
+                "satisfied_by_absence": True,
+                "required_evidence": RequiredEvidence.CODE_ONLY,
+                "required_evidence_reason": "A scope exclusion is owed code evidence only.",
+            }
+        )
+        if obligation.id in obligation_ids
+        else obligation
+        for obligation in decomposition.obligations
+    ]
+    return decomposition.model_copy(update={"obligations": marked})
+
+
+def test_a_scope_exclusion_and_a_constraint_are_not_merged_even_if_confirmed():
+    """The constraint comes first, so a merge would keep ITS fields: the
+    exclusion would lose `satisfied_by_absence` and its code-only evidence, be
+    owed tests again and be judged as work to do — #310 through the back door."""
+    decomposition = _as_exclusions(
+        _decomposition(("constraint-01", "alpha"), ("exclusion-01", "beta")), "beta"
+    )
+
+    linked = link_duplicate_obligations(
+        decomposition, _client_confirming(["alpha", "beta"], {frozenset(("alpha", "beta"))})
+    )
+
+    assert [obligation.id for obligation in linked.obligations] == ["alpha", "beta"]
+    assert _pairs(["alpha", "beta"], {o.id: o for o in decomposition.obligations}) == []
+
+
+def test_a_scope_exclusion_stated_twice_still_merges_and_stays_an_exclusion():
+    """The rule is about a MIXED pair. The owner wants a duplicated exclusion
+    merged, and the merged obligation must keep both marks — even when the
+    model typed the two copies differently, as it does (`invariant` and
+    `boundary` for exclusions of one run)."""
+    decomposition = _as_exclusions(
+        _typed_decomposition(
+            ("exclusion-01", "alpha", ObligationType.INVARIANT),
+            ("exclusion-02", "beta", ObligationType.BOUNDARY),
+        ),
+        "alpha",
+        "beta",
+    )
+
+    linked = link_duplicate_obligations(
+        decomposition, _client_confirming(["alpha", "beta"], {frozenset(("alpha", "beta"))})
+    )
+
+    [merged] = linked.obligations
+    assert merged.satisfied_by_absence
+    assert merged.required_evidence is RequiredEvidence.CODE_ONLY
+
+
+def test_two_obligations_of_different_types_are_not_merged_even_if_confirmed():
+    """DR-310 widened #232's rule from one pair of types to every pair. A merge
+    keeps the earlier obligation's fields, so merging a functional obligation
+    with an invariant one silently retypes the invariant."""
+    decomposition = _typed_decomposition(
+        ("constraint-01", "alpha", ObligationType.FUNCTIONAL),
+        ("constraint-02", "beta", ObligationType.INVARIANT),
+    )
+
+    linked = link_duplicate_obligations(
+        decomposition, _client_confirming(["alpha", "beta"], {frozenset(("alpha", "beta"))})
+    )
+
+    assert [obligation.id for obligation in linked.obligations] == ["alpha", "beta"]
+
+
+def test_two_obligations_of_the_same_type_still_merge():
+    """The rule must not stop de-duplication of ordinary obligations."""
+    decomposition = _typed_decomposition(
+        ("constraint-01", "alpha", ObligationType.FUNCTIONAL),
+        ("completion-01", "beta", ObligationType.FUNCTIONAL),
     )
 
     linked = link_duplicate_obligations(

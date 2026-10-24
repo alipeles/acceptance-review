@@ -11,6 +11,10 @@ An obligation that comes from a scope exclusion requires code evidence only,
 never a test. Within one review, two such obligations whose code evidence is the
 same get the same coverage status.
 
+When duplicate obligations are merged, a scope-exclusion obligation merges only
+with another scope-exclusion obligation, and any other obligation merges only
+with one of the same type.
+
 A regression case in the decomposition prompt tests covers a scope-exclusion
 bullet that ends with an explanatory clause.
 
