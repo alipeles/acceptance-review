@@ -1,0 +1,111 @@
+run b1b2749ff056bea4
+  continuing 0cb3e70c33b8e587
+  requirements: 0 derived, 7 carried, 2 revised; 4 decompose call(s)
+  continue this run with: --continue b1b2749ff056bea4
+Model usage by stage:
+  stage                        model                                          calls  prompt  output  reasoning  cached  this run  recorded  time this run
+  ---------------------------  ---------------------------  -----------------------  ------  ------  ---------  ------  --------  --------  -------------
+  decompose                    anthropic/claude-sonnet-5-5  2 (2 live / 0 replayed)  18,871     931        318    0.0%   $0.0563   $0.0563          14.6s
+  decompose-summary            anthropic/claude-sonnet-5-5  2 (2 live / 0 replayed)   3,104     473          0    0.0%   $0.0109   $0.0109           5.4s
+  obligation linking           voyage/voyage-3.5-lite       1 (1 live / 0 replayed)     963       0          —       —   $0.0000   $0.0000           1.3s
+  requirement carry alignment  anthropic/claude-sonnet-5-5  1 (1 live / 0 replayed)     881      54          0    0.0%   $0.0023   $0.0023           2.8s
+  this run spent $0.0695 on 6 live call(s); the evidence cost $0.0695 to record (0 call(s) replayed at no cost to this run)
+Requirements: 9   with obligations: 9
+
+[task-01] The shortest opening the client marks as reusable follows Anthropic's current
+    documented minimum for each model: 512 tokens for Claude Sonnet 5.5, Opus 5.5 and
+    Haiku 5.5. The module documentation says that Anthropic ignores a breakpoint below
+    the minimum, rather than that it rejects one.
+    -> min-reusable-prefix-per-model  [boundary/explicit, code_and_tests]
+       The client's minimum prefix length for marking an opening as reusable (cacheable)
+       is 512 tokens for each of Claude Sonnet 5.5, Opus 5.5 and Haiku 5.5, following
+       Anthropic's documented minimum for each model.
+    -> module-docs-state-anthropic-ignores-sub-minimum-breakpoint  [docs_config/explicit, code_only]
+       The module documentation states that Anthropic ignores a cache breakpoint placed
+       below the model's minimum token count, rather than stating that it rejects one.
+       why code_only: The obligation concerns the wording of the module documentation,
+       which a reader confirms by inspecting the docstring; no runtime behavior exists
+       for a test to exercise.
+
+[task-02] Repeated calls of the defect-to-test pair mapping stage that share an opening
+    are read from the cache.
+    -> pair-mapping-cache-hit-on-shared-opening  [functional/explicit, code_and_tests]
+       When the defect-to-test pair mapping stage is called repeatedly and the calls
+       share an opening, the later calls are served from the cache rather than
+       recomputed.
+
+[task-03] In the mutation descriptor stage, a region's numbered source sits in the
+    reusable opening, so calls for defects in the same region share it instead of each
+    repeating it.
+    -> region-source-in-shared-opening  [functional/explicit, code_and_tests]
+       In the mutation descriptor stage, a region's numbered source is placed in the
+       reusable opening of the prompt, so that calls for defects in the same region
+       share that opening rather than each call repeating the numbered source in its own
+       non-shared portion.
+
+[task-04] A run can opt in to sending its model calls through the Message Batches API.
+    The setting belongs to the run's configuration and is off by default, so `acceptance
+    check` and `acceptance decompose` keep calling the model directly. Benchmark scoring
+    and experiment scripts can switch it on.
+    -> batch-api-opt-in  [functional/explicit, code_and_tests]
+       A run can opt in to sending its model calls through the Message Batches API; when
+       opted in, the run's model calls are submitted via the Message Batches API.
+    -> batch-setting-in-run-config-default-off  [functional/explicit, code_and_tests]
+       The opt-in setting for sending model calls through the Message Batches API is
+       part of the run's configuration and its default value is off.
+    -> check-and-decompose-call-model-directly-by-default  [functional/explicit, code_and_tests]
+       With the batch setting at its default (off), `acceptance check` and `acceptance
+       decompose` send their model calls directly to the model and not through the
+       Message Batches API.
+    -> batch-opt-in-switchable-by-scripts  [functional/explicit, code_and_tests]
+       Benchmark scoring and experiment scripts can enable the run-configuration setting
+       that sends the run's model calls through the Message Batches API.
+
+[task-05] How a call was sent does not change what was asked: a batched request is
+    recorded under the same key as the same request sent directly, and its recording
+    replays with no live call. The recording notes that it was sent through a batch. Two
+    recorded runs over the same input still produce byte-identical review state
+    whichever way their calls were sent.
+    -> batched-request-same-recording-key  [invariant/explicit, code_and_tests]
+       A batched request is recorded under the same key as the same request sent
+       directly, so the recording key depends only on what was asked and not on whether
+       the call was sent through a batch or directly.
+    -> batched-recording-replays-offline  [functional/explicit, code_and_tests]
+       A recording made from a batched request replays without making any live call.
+    -> recording-notes-batch-origin  [functional/explicit, code_and_tests]
+       A recording of a request that was sent through a batch carries a note indicating
+       it was sent through a batch.
+    -> identical-review-state-across-send-modes  [invariant/explicit, code_and_tests]
+       Two recorded runs over the same input produce byte-identical review state,
+       whether their calls were sent directly or through a batch.
+
+[exclusion-01] Changing how live review runs split their requests into partitions.
+    -> no-change-to-live-review-request-partitioning  [invariant/explicit, code_only, satisfied by absence]
+       The change does not alter how live review runs split their requests into
+       partitions.
+       why code_only: A scope exclusion is satisfied by work not done, and a test cannot
+       demonstrate that partitioning logic was left unmodified; a reader confirms it by
+       inspecting the diff.
+
+[exclusion-02] Reporting spend per run.
+    -> no-per-run-spend-reporting  [invariant/explicit, code_only, satisfied by absence]
+       The change does not add reporting of spend per run.
+       why code_only: This scope exclusion is satisfied by work not done, so no test can
+       demonstrate the absence of spend reporting; a reader confirms it by inspecting
+       the diff.
+
+[exclusion-03] Re-measuring benchmark figures on Claude.
+    -> no-benchmark-remeasurement  [invariant/explicit, code_only, satisfied by absence]
+       The change does not re-measure benchmark figures on Claude.
+       why code_only: This is a scope exclusion naming work not done; no test can
+       demonstrate an absence, and a reader confirms it by inspecting the diff.
+
+[exclusion-04] Changing any prompt or response schema other than the mutation
+    descriptor's.
+    -> no-other-prompt-or-schema-changes  [regression/explicit, code_only, satisfied by absence]
+       The change does not alter any prompt or response schema other than the mutation
+       descriptor's.
+       why code_only: The exclusion names work (editing other prompts or response
+       schemas) whose absence a reader confirms by inspecting the diff, so no test is
+       owed.
+

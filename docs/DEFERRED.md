@@ -7631,3 +7631,98 @@ the record.
   > the judge sees enough of the file to know, or a claim made from a partial
   > view is labelled as such rather than as a finding.
 - **Status:** open
+
+### [2026-10-24] Decision: add the `anthropic` SDK to send Message Batches
+- **Kind:** decision
+- **Found during:** #414, Gate 1
+- **Where:** `pyproject.toml`; `src/acceptance/llm.py::_live_call`
+- **Severity:** blocker (for #414)
+- **What's wrong:** every live call goes through `litellm.completion`. litellm
+  1.106.3 (the pinned version) can retrieve an Anthropic batch but has no path
+  to create one. The `anthropic` SDK is not installed in `.venv`.
+- **Why I didn't act:** a new dependency is the owner's call.
+- **Drafted fix:** recommended: add `anthropic` (the official SDK) and use
+  `client.messages.batches.create / retrieve / results` only for batched
+  calls. Direct calls stay on litellm. Rejected alternative: raw `httpx` calls
+  to `/v1/messages/batches`. That needs no new dependency, but it means
+  hand-writing polling, result streaming and error types the SDK already has.
+  Either way, the batch path must build the same native request litellm
+  builds, with `response_format` becoming `output_config.format`, and must
+  return content and usage in the same shape `_live_call` records today.
+- **Status:** approved 2026-10-24; doing in #414.
+
+### [2026-10-24] Decision: how concurrent calls are gathered into one batch
+- **Kind:** decision
+- **Found during:** #414, Gate 1
+- **Where:** `src/acceptance/llm.py`, `src/acceptance/concurrency.py::map_calls`
+- **Severity:** should-fix
+- **What's wrong:** stages fan out through `map_calls`, which runs at most 8
+  calls at once on threads, and each thread calls `ModelClient.complete`. A
+  batch needs many requests submitted together. Pair mapping also runs in
+  sequential rounds, and a descriptor's retry depends on its first answer, so
+  no single stage-wide batch exists.
+- **Why I didn't act:** design choice that sets the shape of the batch path.
+- **Drafted fix:** recommended: when batching is on, `map_calls` lifts its
+  limit of 8, and the client queues each cache miss instead of calling. When
+  every waiting thread has queued (or a short quiet period passes), the queue
+  goes out as one batch, and each thread gets its own result, matched by
+  `custom_id` = request key. The stages do not change, and one round of pair
+  mapping becomes one batch. Rejected alternative: a new batch API that each
+  stage calls explicitly. That gives clearer batches, but every stage would
+  have to change.
+- **Status:** approved 2026-10-24; doing in #414.
+
+### [2026-10-24] Decision: recorded `cost_usd` for a batched call is half the direct price
+- **Kind:** decision
+- **Found during:** #414, Gate 1
+- **Where:** `src/acceptance/llm.py::_extract_usage`
+- **Severity:** nice-to-have
+- **What's wrong:** `cost_usd` comes from `litellm.completion_cost`, which
+  prices a direct call. A batched call is billed at 50%.
+- **Why I didn't act:** reporting spend per run is out of #414's scope, but
+  the per-call figure is written into the recording, so it is touched anyway.
+- **Drafted fix:** recommended: record half of litellm's figure for batched
+  calls, next to the batch note, so the usage table stays honest. Rejected:
+  record the direct price and leave the correction to later spend reporting.
+- **Status:** approved 2026-10-24; doing in #414.
+
+### [2026-10-24] Filing: Anthropic's docs confirm #324's mechanism
+- **Kind:** filing
+- **Found during:** #414, Gate 1
+- **Where:** #324, where every stage sends a unique response schema and
+  nothing caches
+- **Severity:** should-fix
+- **What's wrong:** #324 says "I believe the structured-output schema is part
+  of the provider's cached prefix" and that this was never confirmed. On
+  Claude it is now confirmed. Anthropic's structured-outputs page, read
+  2026-10-24, says: "Changing the `output_config.format` parameter will
+  invalidate any prompt cache for that conversation thread." litellm sends
+  Sonnet 5.5's schema as that parameter. Worktree recordings of the
+  `_Decomposition` calls match this: an identical 13,011-character opening,
+  zero cached tokens on every call, and cache writes of 9,116–9,302 tokens
+  that rise and fall with schema size.
+- **Why I didn't act:** adds a finding to an existing issue.
+- **Drafted fix:** comment on #324:
+  > On Claude this is confirmed. Anthropic's structured-outputs docs say
+  > changing `output_config.format` invalidates the prompt cache, and litellm
+  > sends our schema as that parameter on Claude Sonnet 5.5. Recordings of
+  > the requirement-derivation calls show an identical 13,011-character
+  > opening with zero cache reads, and cache writes that follow schema size.
+  > So per-call enums defeat caching on Claude as they were believed to on
+  > OpenAI. Found during #414.
+- **Status:** approved 2026-10-24; commented on #324 (issuecomment-6388306244).
+
+### [2026-10-24] The token count that gates the cache marker uses OpenAI's tokenizer
+- **Kind:** defect
+- **Found during:** #414, Gate 1
+- **Where:** `src/acceptance/llm.py::_count_tokens`
+- **Severity:** nice-to-have
+- **What's wrong:** `litellm.token_counter` falls back to tiktoken for
+  `anthropic/claude-sonnet-5-5`. I believe it undercounts compared with
+  Claude's tokenizer, so an opening just over the real minimum can be left
+  unmarked. I have not measured the gap.
+- **Why I didn't act:** #414 asks for the right minimums, not a new counter.
+- **Drafted fix:** Anthropic ignores a breakpoint below the minimum and
+  charges nothing for it, so mark any opening whose estimate is at least,
+  say, 80% of the minimum. A wrong guess costs nothing either way.
+- **Status:** approved 2026-10-24 as a later fix; not in #414.
