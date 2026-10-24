@@ -1,0 +1,79 @@
+run 744ba51d41556fba
+  continuing 9c80499269145c8d
+  requirements: 0 derived, 3 carried, 3 revised; 12 decompose call(s)
+  REMOVED task-01: The `acceptance` command must find provider API keys in the `.env` file of the
+directory it is run from, wherever the tool itself is installed. Today it only
+finds them when it is run from inside its own source checkout: it has no `.env`
+loading of its own and depends on a library that searches for `.env` next to
+where that library is installed. Installed as a standalone tool and run in
+another project, it sees no keys at all. (2 obligation(s) dropped)
+  continue this run with: --continue 744ba51d41556fba
+Model usage by stage:
+  stage                        model                                       calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  ----------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    openai/gpt-5.4-mini     10 (0 live / 10 replayed)  54,764   1,545    0.0%   $0.0000   $0.0480              —
+  decompose-summary            openai/gpt-5.4            2 (0 live / 2 replayed)   1,914   1,030    0.0%   $0.0000   $0.0202              —
+  obligation linking           voyage/voyage-3.5-lite    1 (0 live / 1 replayed)     551       0       —   $0.0000   $0.0000              —
+  requirement carry alignment  openai/gpt-5.4-mini       1 (0 live / 1 replayed)     803      48    0.0%   $0.0000   $0.0008              —
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.0691 to record (14 call(s) replayed at no cost to this run)
+Requirements: 6   with obligations: 6
+
+[task-01] Wherever the `acceptance` tool is installed, when the command starts it loads
+    the `.env` file in the working directory, if there is one, before any model call.
+    Today the tool has no `.env` loading of its own, so installed as a standalone tool
+    and run in another project it sees no API keys at all. A variable already set in the
+    environment keeps its value; `.env` only fills in what is missing. No `.env` file is
+    not an error.
+    -> load-working-directory-env-before-model-call  [functional/explicit]
+       When the command starts, it loads the `.env` file from the working directory, if
+       one exists, before any model call.
+    -> preserve-preexisting-env-values  [invariant/explicit]
+       A variable already set in the environment keeps its value.
+    -> env-only-fills-missing  [invariant/explicit]
+       The `.env` loading behavior fills in only missing environment variables, leaving
+       already set variables unchanged.
+    -> no-dotenv-file-is-not-an-error  [error_handling/explicit]
+       The command treats the absence of a `.env` file in the working directory as a
+       non-error condition.
+
+[task-02] In record mode, the command warns at startup about each key that a model it is
+    configured to use would need and that is not set, naming the variable and the model.
+    Before the first live call to a model, if that model's key is still missing, the run
+    stops with an error that names the variable and the model, and the call is not sent,
+    so the user never sees the provider's "invalid API key" reply instead. A run that
+    needs no live call, because every request is already recorded or because it runs in
+    replay mode, still succeeds without any keys.
+    -> startup-warns-missing-model-keys  [functional/explicit]
+       At startup, the command warns about each missing key required by any configured
+       model, naming both the variable and the model.
+    -> missing-key-preflight-error  [functional/explicit]
+       Before the first live call to a model, if that model's key is still missing, the
+       run stops with an error that names the variable and the model.
+    -> call-not-sent  [functional/explicit]
+       The live model call is not sent when the required key is still missing before the
+       first live call.
+    -> hide-provider-invalid-api-key-reply  [error_handling/explicit]
+       The user never sees the provider's "invalid API key" reply instead.
+    -> no-live-call-succeeds-without-keys  [functional/explicit]
+       A run that needs no live call, because every request is already recorded or
+       because it runs in replay mode, still succeeds without any keys.
+
+[constraint-01] No model request changes, so every recorded transcript keeps replaying.
+    -> preserve-recorded-transcripts-replay  [compatibility/explicit]
+       Preserve the ability for every recorded transcript to keep replaying without any
+       model request changes.
+
+[exclusion-01] Reading `.env` from any directory other than the working directory.
+    -> no-other-env-directories  [compatibility/explicit]
+       The change does not read `.env` from any directory other than the working
+       directory.
+
+[exclusion-02] Checking for keys that the coding agent which builds mutation edits
+    needs.
+    -> do-not-read-coding-agent-keys  [functional/explicit]
+       The change does not read keys for the coding agent which builds mutation edits.
+
+[exclusion-03] A command-line option to name a different `.env` file.
+    -> no-cli-option-for-env-file  [compatibility/explicit]
+       The change does not add a command-line option to name a different `.env` file.
+

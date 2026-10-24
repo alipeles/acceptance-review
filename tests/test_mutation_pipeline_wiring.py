@@ -1050,11 +1050,15 @@ class TestTheRunRoutesPairsThroughTheRealPipeline:
     def test_the_pair_counts_are_stated_even_when_they_are_all_zero(self, tmp_path):
         """ "Nothing to report" and "not reported" are different, which is the
         distinction this project exists to keep. A defect no edit could be built
-        for still says so."""
+        for still says so.
+
+        Its one pair went to the judge and came back unanswered, which still
+        counts as put to the model (#350): no edit was built, so every pair the
+        defect has was the judge's to answer."""
         report = render_report(
             _review(tmp_path, execution=ExecutionSettings(), judgments=_DECLINING)
         )
-        assert "pairs: 0 settled by the run, 0 put to the model, 0 dropped" in report
+        assert "pairs: 0 settled by the run, 1 put to the model, 0 dropped" in report
 
     def test_a_kill_is_never_read_as_naming_the_defect(self, tmp_path):
         """The other criterion #340's Gate 2 flagged. A test going red under an

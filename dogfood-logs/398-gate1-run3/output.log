@@ -1,0 +1,69 @@
+run c39bcc784e81e9ad
+  continuing 744ba51d41556fba
+  requirements: 0 derived, 4 carried, 2 revised; 5 decompose call(s)
+  continue this run with: --continue c39bcc784e81e9ad
+Model usage by stage:
+  stage                        model                                     calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  ----------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    openai/gpt-5.4-mini     4 (0 live / 4 replayed)  22,068     615   21.5%   $0.0000   $0.0161              —
+  decompose-summary            openai/gpt-5.4          1 (0 live / 1 replayed)     943     489    0.0%   $0.0000   $0.0097              —
+  obligation linking           voyage/voyage-3.5-lite  1 (0 live / 1 replayed)     517       0       —   $0.0000   $0.0000              —
+  requirement carry alignment  openai/gpt-5.4-mini     1 (0 live / 1 replayed)     492      36    0.0%   $0.0000   $0.0005              —
+  this run spent $0.0000 on 0 live call(s); the evidence cost $0.0264 to record (7 call(s) replayed at no cost to this run)
+Requirements: 6   with obligations: 6
+
+[task-01] Wherever the `acceptance` tool is installed, when the command starts it loads
+    the `.env` file in the working directory, if there is one, before any model call.
+    Today the tool has no `.env` loading of its own, so installed as a standalone tool
+    and run in another project it sees no API keys at all. A variable already set in the
+    environment keeps its value over the one in `.env`. No `.env` file is not an error.
+    -> load-working-directory-env-before-model-call  [functional/explicit]
+       When the command starts, it loads the `.env` file in the working directory, if
+       one exists, before any model call.
+    -> env-vars-take-precedence  [invariant/explicit]
+       A variable already set in the environment keeps its value over the one in `.env`.
+    -> no-dotenv-file-not-an-error  [error_handling/explicit]
+       The command starts successfully when no `.env` file is present in the working
+       directory.
+
+[task-02] In record mode, the command warns at startup about each key that a model it is
+    configured to use would need and that is not set, naming the variable and the model.
+    Before the first live call to a model, if that model's key is still missing, the run
+    stops with an error that names the variable and the model, and the call is not sent,
+    so the user never sees the provider's "invalid API key" reply instead. A run that
+    needs no live call, because every request is already recorded or because it runs in
+    replay mode, still succeeds without any keys.
+    -> startup-warns-missing-model-keys  [functional/explicit]
+       At startup, the command warns about each missing key required by any configured
+       model, naming both the variable and the model.
+    -> missing-key-preflight-error  [functional/explicit]
+       Before the first live call to a model, if that model's key is still missing, the
+       run stops with an error that names the variable and the model.
+    -> call-not-sent  [functional/explicit]
+       The live model call is not sent when the required key is still missing before the
+       first live call.
+    -> hide-provider-invalid-api-key-reply  [error_handling/explicit]
+       The user never sees the provider's "invalid API key" reply instead.
+    -> no-live-call-succeeds-without-keys  [functional/explicit]
+       A run that needs no live call, because every request is already recorded or
+       because it runs in replay mode, still succeeds without any keys.
+
+[constraint-01] No model request changes, so every recorded transcript keeps replaying.
+    -> preserve-recorded-transcripts-replay  [compatibility/explicit]
+       Preserve the ability for every recorded transcript to keep replaying without any
+       model request changes.
+
+[exclusion-01] Reading `.env` from any directory other than the working directory.
+    -> no-other-env-directories  [compatibility/explicit]
+       The change does not read `.env` from any directory other than the working
+       directory.
+
+[exclusion-02] Warning about, or stopping for, a missing key that the coding agent which
+    builds mutation edits needs.
+    -> do-not-read-coding-agent-keys  [functional/explicit]
+       The change does not read keys for the coding agent which builds mutation edits.
+
+[exclusion-03] A command-line option to name a different `.env` file.
+    -> no-cli-option-for-env-file  [compatibility/explicit]
+       The change does not add a command-line option to name a different `.env` file.
+
