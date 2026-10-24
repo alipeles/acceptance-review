@@ -718,6 +718,44 @@ def test_two_requirements_stating_the_same_thing_yield_two_obligations():
         assert len(result.requirement_map.requirements_for_obligation(obligation.id)) == 1
 
 
+def test_a_scope_exclusion_requires_code_evidence_only_whatever_the_model_answers():
+    """DR-310: the heading settles which evidence a scope exclusion is owed.
+
+    The model is asked, and here answers `code_and_tests` for the exclusion —
+    the per-bullet judgement #266 allowed. The answer must not survive: an
+    exclusion is owed code evidence only, set from the parse exactly as
+    `satisfied_by_absence` is. The constraint beside it gave the same answer and
+    keeps it, so an implementation narrowing every obligation fails here too.
+    """
+    parsed = parse_task_file(TASK)
+    response = {
+        "obligations": [
+            _obligation("render-lines", "Render each invoice line.", "Render each invoice line."),
+            _obligation("usd-format", "Format money as USD.", "Format money as USD"),
+            _obligation(
+                "pdf-untouched", "The change does not alter the PDF renderer.", "the PDF renderer"
+            ),
+        ],
+        "open_questions": [],
+        "requirement_dispositions": [
+            _disposition("task-01", "yielded", obligation_ids=["render-lines"]),
+            _disposition("constraint-01", "yielded", obligation_ids=["usd-format"]),
+            _disposition("constraint-02", "no_obligation", reason="Not applicable."),
+            _disposition("exclusion-01", "yielded", obligation_ids=["pdf-untouched"]),
+            _disposition("completion-01", "no_obligation", reason="Not applicable."),
+        ],
+    }
+
+    result = decompose(parsed, _client_returning(response))
+    by_id = {obligation.id: obligation for obligation in result.obligations}
+
+    exclusion = by_id["pdf-untouched"]
+    assert exclusion.required_evidence is RequiredEvidence.CODE_ONLY
+    assert exclusion.required_evidence_reason.strip()
+    assert exclusion.satisfied_by_absence
+    assert by_id["usd-format"].required_evidence is RequiredEvidence.CODE_AND_TESTS
+
+
 def test_two_requirements_minting_the_same_id_keep_separate_obligations():
     """`_unique` still renames a colliding id — two requirements can
     independently pick the same slug — but a rename can no longer mis-resolve

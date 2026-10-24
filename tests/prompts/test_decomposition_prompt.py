@@ -36,6 +36,11 @@ from tests.support import recorded_client
 #     obligations to DO the excluded work — "Which currencies the amount column
 #     supports, which is #401" is a trap, because its inverted form ("support
 #     these currencies") is a plausible-sounding requirement.
+#   * A fifth exclusion ending in an explanatory clause that is a statement of
+#     fact, not an issue number. #310: #302's "Model calls issued by the
+#     measurement harness, which is not part of a review run." derived "The
+#     change excludes model calls issued by the measurement harness from the
+#     review run scope" — work to do — while its siblings came out right.
 _TASK = """# Task
 Export invoices to a CSV file.
 
@@ -49,6 +54,7 @@ Export invoices to a CSV file.
 - How the invoice list is paginated, which is #402.
 - Whether the export runs on a schedule, which is #403.
 - Compressing the output file.
+- Invoices held by the archive service, which is not part of the export.
 
 ## Completion expectations
 - A test asserts that the export writes a header row naming every column.
@@ -56,9 +62,9 @@ Export invoices to a CSV file.
 - A test asserts that the amount column has exactly two decimal places.
 """
 
-_EXCLUSION_IDS = ["exclusion-01", "exclusion-02", "exclusion-03", "exclusion-04"]
+_EXCLUSION_IDS = ["exclusion-01", "exclusion-02", "exclusion-03", "exclusion-04", "exclusion-05"]
 
-# The same four, for the one test that had a known failure among them. On
+# The same five, for the one test that had a known failure among them. On
 # `gpt-5.4-mini`, `exclusion-01` wrote its `observable_behavior` as "...the CSV
 # export's supported-currency behavior is unchanged...", the positive reframing
 # the prompt forbids in that field by name — the milder half of #219, held as a
@@ -70,7 +76,7 @@ _TEST_DEMAND_IDS = ["completion-01", "completion-02", "completion-03"]
 
 # The subject each exclusion names. An obligation mentioning one of these is
 # the inversion: the excluded work asserted as a requirement of this change.
-_EXCLUDED_SUBJECTS = ["currenc", "paginat", "schedul", "compress"]
+_EXCLUDED_SUBJECTS = ["currenc", "paginat", "schedul", "compress", "archive"]
 
 # A reason that says the change must hold something is an obligation written
 # into a free-text field. "unchanged" and "preserve" are how it actually
@@ -217,11 +223,10 @@ def test_every_scope_exclusion_yields_an_obligation_satisfied_by_absence(derived
     return to #230, is that the obligation is marked as satisfied by an ABSENCE
     rather than being an ordinary obligation nobody wrote a test for.
 
-    This asserts `satisfied_by_absence`, not which evidence is required (#266).
-    The two were one field until a scope exclusion naming a BEHAVIOR turned out
-    to want a regression test. What the heading settles beyond argument is that
-    the obligation is met by work not done; whether a test is owed for it is a
-    judgement, and the test below is the one that covers it.
+    This asserts `satisfied_by_absence`; which evidence is required is asserted
+    separately below. The two stay separate fields (#266) even though every
+    exclusion is now code-only (DR-310), because a version pin is code-only
+    without being satisfied by an absence.
     """
     disposition = _disposition(derived, requirement_id)
     assert disposition.disposition is Disposition.YIELDED
@@ -255,16 +260,24 @@ def test_only_exclusions_are_satisfied_by_absence(derived):
     assert not misfiled, f"non-exclusion obligations marked satisfied-by-absence: {misfiled}"
 
 
+@pytest.mark.parametrize("requirement_id", _EXCLUSION_IDS)
+def test_every_scope_exclusion_requires_code_evidence_only(derived, requirement_id):
+    """DR-310: the heading settles it. A scope exclusion is owed code evidence
+    and never a test, whatever the model answered for it."""
+    for obligation in _obligations_of(derived, requirement_id):
+        assert obligation.required_evidence is RequiredEvidence.CODE_ONLY, (
+            f"{obligation.id} requires {obligation.required_evidence.value}"
+        )
+
+
 def test_the_ordinary_requirements_still_require_test_evidence(derived):
     """The false-green guard on #266's central risk.
 
-    Which evidence an obligation requires is now a MODEL judgement, where the
-    scope-exclusion heading used to settle it structurally. That buys the
-    flexibility a behavioural exclusion needs, and it costs the guarantee: a
-    model answering `code_only` too freely would excuse the mandate from test
-    evidence one obligation at a time, and every later stage would honour it
-    without complaint. Nothing downstream can catch that — an obligation off the
-    test axis produces no finding, by design.
+    Outside the scope-exclusion heading, which evidence an obligation requires
+    is a MODEL judgement. A model answering `code_only` too freely would excuse
+    the mandate from test evidence one obligation at a time, and every later
+    stage would honour it without complaint. Nothing downstream can catch that —
+    an obligation off the test axis produces no finding, by design.
 
     So it is caught here, against real responses. The three Constraints in the
     task file are ordinary behavioural requirements about CSV output; if any of
@@ -318,16 +331,17 @@ def test_sibling_exclusions_share_one_disposition(derived):
 
 
 def test_sibling_exclusions_differing_in_content_still_share_a_disposition(derived):
-    """The boundary the recommendation names: the four bullets name four
+    """The boundary the recommendation names: the five bullets name five
     different excluded topics — currencies, pagination, scheduling,
-    compression — so passing the test above cannot be an artifact of them
-    saying the same thing. Consistency of disposition, not of content."""
+    compression, archived invoices — so passing the test above cannot be an
+    artifact of them saying the same thing. Consistency of disposition, not of
+    content."""
     subjects = {
         obligation.description for i in _EXCLUSION_IDS for obligation in _obligations_of(derived, i)
     }
 
     assert len(subjects) == len(_EXCLUSION_IDS), (
-        f"the four exclusions should name four different excluded topics; got {sorted(subjects)}"
+        f"each exclusion should name a different excluded topic; got {sorted(subjects)}"
     )
 
 

@@ -9,6 +9,7 @@ the test verifies the pipeline turns it into ImplementationCoverage with real
 diff-region links. Classification *accuracy* is measured by the benchmark (M3.3).
 """
 
+import json
 from pathlib import Path
 
 from acceptance.benchmark.fixtures import materialize_archetype
@@ -24,6 +25,8 @@ from acceptance.review_state import (
     ObligationType,
     RequiredEvidence,
 )
+from acceptance.source_ref import TextSpan
+from tests.support import _fake_response, model_client_with, sent_text
 from tests.support import client_returning as _client_returning
 from tests.support import make_obligation as _obligation
 
@@ -425,3 +428,59 @@ def test_a_breached_boundary_keeps_the_hunks_the_model_cited(tmp_path):
     [coverage] = classify_coverage([_boundary_obligation()], change_set, client)
 
     assert [ref.file for ref in coverage.diff_refs] == [receipt]
+
+
+# --- #310: the coverage stage is told which obligations are scope exclusions ---
+
+
+_EXCLUDED = "Model calls issued by the measurement harness, which is not part of a review run."
+
+
+def _misworded_boundary_obligation():
+    """A scope exclusion the decomposer worded as work to do — #302's Gate 2."""
+    return _boundary_obligation().model_copy(
+        update={
+            "id": "harness-calls",
+            "description": "The change excludes measurement-harness calls from the review run.",
+            "source_spans": [TextSpan(text=_EXCLUDED, start=0, end=len(_EXCLUDED))],
+        }
+    )
+
+
+def _capturing_client(sent: list[str]):
+    def completion_fn(**kwargs):
+        sent.append(sent_text(kwargs["messages"]))
+        return _fake_response(json.dumps({"classifications": []}))
+
+    return model_client_with(completion_fn)
+
+
+def test_the_request_marks_a_scope_exclusion_and_carries_its_bullet(tmp_path):
+    """#310's cause. The obligation list used to carry only id, type and
+    description, so the coverage stage could recognise a boundary only by its
+    wording — and judged a mis-worded one as work to do. The parse knows which
+    obligations are exclusions; the request must say so, with the bullet the
+    obligation was derived from, whatever the description says."""
+    change_set = _archetype_change_set("01-missed-obligation", tmp_path)
+    sent: list[str] = []
+
+    classify_coverage([_misworded_boundary_obligation()], change_set, _capturing_client(sent))
+
+    [request] = sent
+    line = next(line for line in request.splitlines() if "id=harness-calls" in line)
+    assert "scope exclusion" in line
+    assert _EXCLUDED in line
+
+
+def test_an_ordinary_obligation_is_not_marked_as_a_scope_exclusion(tmp_path):
+    """The negative case: marking every obligation would turn the whole mandate
+    into boundaries, each `addressed` by doing nothing."""
+    change_set = _archetype_change_set("01-missed-obligation", tmp_path)
+    ordinary = _obligation("total", "Print the receipt total.", ObligationType.FUNCTIONAL)
+    sent: list[str] = []
+
+    classify_coverage([ordinary], change_set, _capturing_client(sent))
+
+    [request] = sent
+    line = next(line for line in request.splitlines() if "id=total" in line)
+    assert "scope exclusion" not in line

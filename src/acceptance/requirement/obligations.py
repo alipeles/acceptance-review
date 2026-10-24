@@ -96,6 +96,14 @@ _STAGE = "decompose"
 # and a recording made under batching does not replay as though nothing moved.
 ONE_REQUIREMENT_PER_CALL = 1
 
+# The reason every scope-exclusion obligation carries for requiring code evidence
+# only (DR-310). Fixed text, not the model's: the narrowing is the heading's, so
+# the sentence a reader argues with is the rule's, stated once.
+_EXCLUSION_EVIDENCE_REASON = (
+    "A scope exclusion is satisfied by work not done, which a reader confirms by "
+    "inspecting the change; it is owed code evidence only, never a test."
+)
+
 _SYSTEM_PROMPT = """\
 You decompose a software task into discrete, typed acceptance obligations and
 the ambiguities that need human judgment.
@@ -280,13 +288,20 @@ Those are the positive reframing this section already rejects for `description`,
 moved one field along, and it is rejected here too. The words "preserve",
 "keep", "maintain" and "unchanged" have no place in either field.
 
-Whether such an obligation needs a TEST is a separate question, answered under
-WHICH EVIDENCE AN OBLIGATION REQUIRES below. Most scope exclusions need none —
-no test can demonstrate that work was not done. Some do: a bullet excluding
-WORK ("we are not also building the export feature") is unevidenceable by test,
-while a bullet excluding a change to BEHAVIOR ("this does not alter how
-pagination works") names something a regression test asserts directly. Decide it
-per bullet; the heading does not settle it.
+A bullet often ends with a clause explaining WHY the work is excluded — "which
+is #401", "which is not part of a review run", "which another team owns". That
+clause is an aside about the excluded work, never work of its own. Read past it
+exactly as you read past a reference you cannot resolve:
+
+    "Model calls issued by the measurement harness, which is not part of a
+     review run."
+    ->  "The change does not alter model calls issued by the measurement
+         harness."
+    NOT -> "The change excludes model calls issued by the measurement harness
+            from the review run."
+
+The heading settles which evidence such an obligation requires: code only,
+never a test. Answer `code_only` for it.
 
 Every bullet under one `## Scope exclusions` heading is treated the same way as
 its siblings — they are the same kind of statement. If one of them reads like it
@@ -738,6 +753,15 @@ def _obligations_from(
             required = RequiredEvidence.CODE_AND_TESTS
         if required is RequiredEvidence.CODE_AND_TESTS:
             reason = ""
+        exclusion = requirement.section is RequirementSection.EXCLUSION
+        if exclusion:
+            # The heading settles it, and the model's answer cannot move it
+            # (DR-310). #266 made this a per-bullet judgement so a behavioural
+            # exclusion could still be owed a regression test; the owner ruled
+            # that a scope exclusion is owed code evidence only. Set from the
+            # parse for the same reason `satisfied_by_absence` is.
+            required = RequiredEvidence.CODE_ONLY
+            reason = _EXCLUSION_EVIDENCE_REASON
         produced.append(
             Obligation(
                 id=_unique(item.id, seen_ids),
@@ -753,7 +777,7 @@ def _obligations_from(
                 # both of which failed while they depended on the model restating
                 # a distinction it had already been told. The section is now the
                 # answering requirement's own, with no re-filing to reconcile.
-                satisfied_by_absence=requirement.section is RequirementSection.EXCLUSION,
+                satisfied_by_absence=exclusion,
                 required_evidence=required,
                 required_evidence_reason=reason,
             )
