@@ -5,14 +5,12 @@ documented minimum for each model: 512 tokens for Claude Sonnet 5.5, Opus 5.5 an
 Haiku 5.5. The module documentation says that Anthropic ignores a breakpoint
 below the minimum, rather than that it rejects one.
 
-The defect-to-test pair mapping stage, which sends the most calls in a review,
-already places its defect list in the reusable opening, yet a recent review on
-Claude Sonnet 5.5 showed no cache reads on any stage. Repeated pair-mapping calls
-that share an opening are read from the cache.
+Repeated calls of the defect-to-test pair mapping stage that share an opening are
+read from the cache.
 
-The mutation descriptor stage sends one call per defect, and defects that share a
-region repeat that region's numbered source in every call. That source moves into
-the reusable opening so calls over the same region share it.
+In the mutation descriptor stage, a region's numbered source sits in the reusable
+opening, so calls for defects in the same region share it instead of each
+repeating it.
 
 A run can opt in to sending its model calls through the Message Batches API. The
 setting belongs to the run's configuration and is off by default, so
