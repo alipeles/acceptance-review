@@ -28,3 +28,13 @@ dogfood-logs/
 # tool which paths are not the delivery, which is what this file is for.
 /session-state/
 /docs/DEFERRED.md
+
+# tests/fixtures/transcripts/ holds recorded model answers that the prompt tests
+# replay. Nobody writes them by hand, and they are large: #413's re-recording
+# was 1.09 MB of a 1.12 MB diff. Reviewing them would send that machine output
+# to the model on every request that carries the diff, at real cost, for no
+# finding a reader could act on. The tests that replay them stay in the diff,
+# and those are where a wrong recording shows up. Decided by the owner,
+# 2026-10-24. A mandate that asks for a re-recording can then look unaddressed;
+# that is the known price of this rule, to be read as such rather than hidden.
+/tests/fixtures/transcripts/
