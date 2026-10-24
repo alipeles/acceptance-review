@@ -36,6 +36,63 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
 
 -->
 
+### [2026-10-24] A bug ticket's description of the current defect is decomposed into obligations, including one that preserves the defect
+- **Kind:** filing (new issue, child of #181)
+- **Found during:** #409, Gate 1 run 1
+- **Where:** `src/acceptance/requirement/` (decompose stage)
+- **Severity:** should-fix
+- **What's wrong:** a task paragraph describing what the code does today became
+  three obligations, one of them an invariant requiring the defect to stay.
+- **Why I didn't act:** out of scope for #409; a decomposition prompt change.
+- **Drafted fix:** file as below, labels `bug`, `track:checker`, parent #181.
+
+  > **Title:** A bug ticket's description of the current defect is decomposed into obligations, one of which preserves the defect
+  >
+  > **What happens.** A task paragraph that describes the defect as it stands —
+  > the problem statement any bug ticket opens with — is decomposed as if it were
+  > a mandate. Observed at #409's Gate 1, run 1 (`dogfood-logs/409-gate1-run1/`):
+  > the paragraph *"Two tests … call the network-blocking pytest plugin's
+  > `pytest_configure` directly. That installs the network block in the test
+  > suite's own process and never removes it …"* yielded
+  > `call-network-blocking-pytest-configure-directly`,
+  > `network-block-installed-in-test-process`, and
+  > `preserve-installed-network-block` `[invariant/explicit]` — *"The network
+  > block installed by the pytest plugin remains in place after the direct
+  > `pytest_configure` call."* The next paragraph of the same file asks for the
+  > opposite.
+  >
+  > **Why it matters.** The invariant is the defect itself. A correct fix would
+  > be reported as breaking it, and the error surfaces only at Gate 2. Client
+  > bug tickets routinely open with a problem statement, so this is not
+  > something a task-file style rule can be relied on to prevent.
+  >
+  > **Not #342** (a prohibition decomposed into what it forbids): no negation
+  > is dropped here; descriptive text is read as prescriptive.
+  >
+  > **Acceptance.** Run 1's task file yields no obligation requiring or
+  > preserving the described defect; it either yields nothing from the problem
+  > statement or treats it as context. A decompose regression case pins it.
+- **Status:** open
+
+### [2026-10-24] Another occurrence of #277: one sentence yields two obligations for one property
+- **Kind:** filing (comment on existing issue #277)
+- **Found during:** #409, Gate 1 run 1
+- **Where:** `src/acceptance/requirement/` (decompose stage)
+- **Severity:** nice-to-have (adds evidence to an open issue)
+- **What's wrong:** see comment.
+- **Why I didn't act:** #277 owns it.
+- **Drafted fix:** comment on #277:
+
+  > Another occurrence at #409's Gate 1, run 1 (`dogfood-logs/409-gate1-run1/`).
+  > One sentence — *"Neither test is about the network block, so each should
+  > skip installing it rather than install and remove it."* — yielded
+  > `skip-network-block-installation` `[regression]` and
+  > `skip-network-block-installation-2` `[functional]`, both stating that each
+  > test skips the block. Nothing linked or flagged them. A reworded task file
+  > (run 2) produced one obligation for the same property, so it does not
+  > reproduce every time.
+- **Status:** open
+
 ### [2026-08-20] #293's premise reproduces on a nine-line append, and #292's anchoring does not stop it
 - **Kind:** filing (comment on existing issue #293)
 - **Found during:** #291, Gate 2 runs 1 and 2
