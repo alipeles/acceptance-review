@@ -1,0 +1,70 @@
+run 39e676bdc29bee30
+  requirements: 5 derived, 0 carried, 0 revised; 12 decompose call(s)
+  continue this run with: --continue 39e676bdc29bee30
+Model usage by stage:
+  stage               model                                                                  calls  prompt  output  reasoning  cached  this run  recorded  time this run
+  ------------------  ---------------------------------------------------  -----------------------  ------  ------  ---------  ------  --------  --------  -------------
+  decompose           anthropic/claude-sonnet-5-5                          9 (9 live / 0 replayed)  85,315   3,095        405    0.0%   $0.2429   $0.2429          91.2s
+  decompose-summary   anthropic/claude-sonnet-5-5                          3 (3 live / 0 replayed)   4,458   1,326          0    0.0%   $0.0222   $0.0222          17.3s
+  obligation linking  voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5  2 (2 live / 0 replayed)   2,166     227          0    0.0%   $0.0054   $0.0054          10.8s
+  this run spent $0.2704 on 14 live call(s); the evidence cost $0.2704 to record (0 call(s) replayed at no cost to this run)
+Requirements: 5   with obligations: 5
+
+[task-01] Every bullet under a task file's `## Scope exclusions` heading becomes an
+    obligation saying the change does not do the excluded work. That holds when the
+    bullet ends with a clause explaining the exclusion, such as "Model calls issued by
+    the measurement harness, which is not part of a review run." Today a bullet like
+    that sometimes becomes an obligation describing the excluded work as something the
+    change must do, and the review then reports it as not addressed.
+    -> scope-exclusion-bullets-become-absence-obligations  [functional/explicit, code_and_tests]
+       Every bullet under a task file's `## Scope exclusions` heading is decomposed into
+       an obligation that states the change does not do the excluded work.
+    -> scope-exclusion-with-rationale-clause-stays-absence  [functional/explicit, code_and_tests]
+       A scope-exclusion bullet that ends with a clause explaining the exclusion, such
+       as "Model calls issued by the measurement harness, which is not part of a review
+       run.", still yields exactly one obligation stating that the change does not do
+       the excluded work, and the explanatory clause does not turn the excluded work
+       into work the change must do.
+
+[task-02] An obligation that comes from a scope exclusion is judged on code evidence
+    alone. The review checks that no change in the diff does the excluded work, and
+    never asks for a test of it. Within one review, two such obligations whose code
+    evidence is the same get the same coverage status.
+    -> scope-exclusion-obligation-judged-on-code-evidence-alone  [functional/explicit, code_and_tests]
+       An obligation that comes from a scope exclusion is judged on code evidence alone:
+       its coverage verdict is determined solely from the code in the change, and test
+       evidence plays no part in it.
+    -> scope-exclusion-review-checks-diff-for-excluded-work  [functional/explicit, code_and_tests]
+       For an obligation that comes from a scope exclusion, the review examines the diff
+       and confirms that no change in it does the excluded work.
+    -> scope-exclusion-review-requests-no-test  [functional/explicit, code_and_tests]
+       When the review evaluates an obligation that comes from a scope exclusion, it
+       requests no test as evidence for that obligation; the obligation is judged on
+       code evidence alone.
+    -> scope-exclusion-consistent-coverage-status  [invariant/explicit, code_and_tests]
+       Within a single review, any two scope-exclusion obligations whose code evidence
+       is identical are assigned the same coverage status.
+
+[task-03] A regression case in the decomposition prompt tests covers a scope-exclusion
+    bullet that ends with an explanatory clause.
+    -> regression-case-scope-exclusion-explanatory-clause  [test_demand/explicit, tests_only]
+       A regression case in the decomposition prompt tests covers a scope-exclusion
+       bullet that ends with an explanatory clause.
+       why tests_only: The requirement asks for a regression test case itself; the test
+       is the whole deliverable and no separate source change is demanded.
+
+[exclusion-01] Which evidence obligations from the other sections of a task file
+    require.
+    -> no-change-to-required-evidence-for-other-sections  [invariant/explicit, code_only, satisfied by absence]
+       The change does not alter which evidence obligations from the other sections of a
+       task file require.
+       why code_only: This scope exclusion names work that was not done, and the absence
+       of such changes is confirmed by inspecting the diff, so no test can demonstrate
+       it.
+
+[exclusion-02] Which model each stage calls.
+    -> no-change-to-stage-model-selection  [invariant/explicit, code_only, satisfied by absence]
+       The change does not alter which model each stage calls.
+       why code_only: This is a scope exclusion naming work not to be done, so it is
+       confirmed by inspecting the diff and no test can show that work was absent.
+
