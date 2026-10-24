@@ -180,6 +180,9 @@ def test_the_per_test_budget_is_refused_rather_than_ignored_when_unenforceable(
 
     monkeypatch.delenv(netblock.REPORT_PATH_VAR, raising=False)
     monkeypatch.setenv(netblock.PER_TEST_BUDGET_VAR, "5")
+    # This process is the suite's own; installing the block here would leave it
+    # in place for every later test.
+    monkeypatch.setenv(netblock.ALLOW_NETWORK_VAR, "1")
     monkeypatch.delattr(signal_module, "setitimer", raising=False)
 
     class _Config:
@@ -473,6 +476,9 @@ def test_the_per_test_budget_still_applies_without_a_report_path(tmp_path, monke
 
     monkeypatch.delenv(netblock.REPORT_PATH_VAR, raising=False)
     monkeypatch.setenv(netblock.PER_TEST_BUDGET_VAR, "5")
+    # This process is the suite's own; installing the block here would leave it
+    # in place for every later test.
+    monkeypatch.setenv(netblock.ALLOW_NETWORK_VAR, "1")
 
     registered = {}
 
@@ -577,3 +583,45 @@ def test_the_defaults_come_from_configuration_not_from_the_project(tmp_path):
     assert config.interpreter == sys.executable
     assert config.per_test_seconds == 30.0
     assert config.total_seconds == 300.0
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(
+            lambda tmp_path, mp: (
+                test_the_per_test_budget_is_refused_rather_than_ignored_when_unenforceable(mp)
+            ),
+            id="budget-refused-when-unenforceable",
+        ),
+        pytest.param(
+            test_the_per_test_budget_still_applies_without_a_report_path,
+            id="budget-applies-without-report-path",
+        ),
+    ],
+)
+def test_a_test_that_configures_the_plugin_in_process_leaves_socket_untouched(call, tmp_path):
+    """Calling the plugin's `pytest_configure` here must not block this process.
+
+    The block replaces functions on the `socket` module itself and nothing
+    undoes it, so a test that left it installed would hand every later test in
+    the suite a refusing `socket` — an order-dependent failure far from its cause.
+    """
+    import socket
+
+    originals = {
+        "create_connection": socket.create_connection,
+        "getaddrinfo": socket.getaddrinfo,
+        "connect": socket.socket.connect,
+    }
+    try:
+        with pytest.MonkeyPatch.context() as mp:
+            call(tmp_path, mp)
+        assert socket.create_connection is originals["create_connection"]
+        assert socket.getaddrinfo is originals["getaddrinfo"]
+        assert socket.socket.connect is originals["connect"]
+    finally:
+        # A failure above must not leak the block into the rest of the suite.
+        socket.create_connection = originals["create_connection"]
+        socket.getaddrinfo = originals["getaddrinfo"]
+        socket.socket.connect = originals["connect"]
