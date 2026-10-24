@@ -93,25 +93,6 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > reproduce every time.
 - **Status:** open
 
-### [2026-10-24] Another occurrence of #376: a requested regression test is reported as an unrequested change
-- **Kind:** filing (comment on existing issue #376)
-- **Found during:** #409, Gate 2 run 1
-- **Where:** unrequested-change detection (`src/acceptance/coverage/`)
-- **Severity:** nice-to-have (adds evidence to an open issue)
-- **What's wrong:** see comment.
-- **Why I didn't act:** #376 owns it.
-- **Drafted fix:** comment on #376:
-
-  > A related occurrence at #409's Gate 2, run 1 (`dogfood-logs/409-gate2-run1/`),
-  > with a different disposition. The task file asks for a regression test
-  > (obligation `network-block-regression-test`, `[test_demand]`). The review
-  > reported the delivered test as unrequested change 1, `[in_service]`: *"The
-  > new parametrized regression test calls the two existing tests directly …
-  > and adds a new test path beyond simply verifying the socket monkeypatches
-  > are restored."* Here the test is not only evidence but the deliverable of an
-  > obligation; it should not be reported as unrequested at any disposition.
-- **Status:** open
-
 ### [2026-08-20] #293's premise reproduces on a nine-line append, and #292's anchoring does not stop it
 - **Kind:** filing (comment on existing issue #293)
 - **Found during:** #291, Gate 2 runs 1 and 2
