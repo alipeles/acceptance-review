@@ -1,0 +1,36 @@
+# Task
+
+Runs on Claude should reuse cached prompt openings wherever requests repeat one,
+and a run that does not need its answers straight away should be able to send its
+model calls through the Message Batches API at half price.
+
+The shortest opening the client marks as reusable follows Anthropic's current
+documented minimum for each model: 512 tokens for Claude Sonnet 5.5, Opus 5.5 and
+Haiku 5.5. The module documentation stops saying that Anthropic rejects a
+breakpoint below the minimum; a short prefix is simply not cached.
+
+The defect-to-test pair mapping stage, which sends the most calls in a review,
+already places its defect list in the reusable opening, yet a recent review on
+Claude Sonnet 5.5 showed no cache reads on any stage. Repeated pair-mapping calls
+that share an opening are read from the cache.
+
+The mutation descriptor stage sends one call per defect, and defects that share a
+region repeat that region's numbered source in every call. That source moves into
+the reusable opening so calls over the same region share it.
+
+A run can opt in to sending its model calls through the Message Batches API. The
+setting belongs to the run's configuration and is off by default, so
+`acceptance check` and `acceptance decompose` keep calling the model directly.
+Benchmark scoring and experiment scripts can switch it on.
+
+How a call was sent does not change what was asked: a batched request is recorded
+under the same key as the same request sent directly, and its recording replays
+with no live call. The recording notes that it was sent through a batch. Two
+recorded runs over the same input still produce byte-identical review state
+whichever way their calls were sent.
+
+## Scope exclusions
+- Changing how live review runs split their requests into partitions.
+- Reporting spend per run.
+- Re-measuring benchmark figures on Claude.
+- Changing any prompt or response schema other than the mutation descriptor's.

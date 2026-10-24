@@ -1,0 +1,157 @@
+Requirements: 10   with obligations: 10
+
+[task-01] Runs on Claude should reuse cached prompt openings wherever requests repeat
+    one, and a run that does not need its answers straight away should be able to send
+    its model calls through the Message Batches API at half price.
+    -> claude-reuse-cached-prompt-openings  [functional/explicit, code_and_tests]
+       For runs on Claude, when multiple requests share a repeated prompt opening
+       (prefix), the requests reuse the cached prompt opening via Anthropic prompt
+       caching instead of resending it uncached.
+    -> cache-reuse-claude-only  [boundary/inferred, code_and_tests]
+       Prompt-opening cache reuse applies to runs on Claude; runs on other models are
+       not given Claude-specific caching directives.
+    -> batch-api-routing  [functional/explicit, code_and_tests]
+       A run that does not need its answers straight away can send its model calls
+       through the Message Batches API instead of the synchronous Messages API.
+    -> batch-results-returned-to-calls  [functional/inferred, code_and_tests]
+       Each model call sent through the Message Batches API gets back its own result,
+       matched to the originating call once the batch completes, so the run proceeds as
+       it would with a synchronous answer.
+    -> immediate-runs-stay-synchronous  [regression/inferred, code_and_tests]
+       Runs that need their answers straight away continue to send model calls
+       synchronously, with batch routing applied only to runs that do not need immediate
+       answers.
+
+[task-02] The shortest opening the client marks as reusable follows Anthropic's current
+    documented minimum for each model: 512 tokens for Claude Sonnet 5.5, Opus 5.5 and
+    Haiku 5.5. The module documentation stops saying that Anthropic rejects a breakpoint
+    below the minimum; a short prefix is simply not cached.
+    -> min-reusable-prefix-512-tokens  [boundary/explicit, code_and_tests]
+       The shortest opening (prefix) the client marks as reusable is 512 tokens for each
+       of Claude Sonnet 5.5, Opus 5.5 and Haiku 5.5, matching Anthropic's documented
+       minimum for those models. A prefix shorter than 512 tokens is not marked as
+       reusable, and one of 512 tokens or more is eligible.
+    -> module-doc-no-rejection-claim  [docs_config/explicit, code_only]
+       The module documentation no longer states that Anthropic rejects a cache
+       breakpoint placed below the model's minimum token count; it instead describes
+       that a prefix shorter than the minimum is simply not cached.
+       why code_only: This is a documentation text change that a reader confirms by
+       reading the module docstring; no test would add evidence.
+    -> short-prefix-not-cached  [functional/explicit, code_and_tests]
+       A prefix shorter than the model's minimum cacheable length is simply not cached;
+       it is not treated as an error, and the module documentation describes this
+       behavior.
+
+[task-03] The defect-to-test pair mapping stage, which sends the most calls in a review,
+    already places its defect list in the reusable opening, yet a recent review on
+    Claude Sonnet 5.5 showed no cache reads on any stage. Repeated pair-mapping calls
+    that share an opening are read from the cache.
+    -> pair-mapping-defect-list-in-reusable-opening  [invariant/explicit, code_and_tests]
+       Preserve the placement of the defect list in the reusable opening of every
+       defect-to-test pair mapping call, so that the defect list is part of the opening
+       that is identical across the repeated calls of that stage.
+    -> sonnet-5-5-cache-reads-reported  [functional/inferred, code_and_tests]
+       When a review runs on Claude Sonnet 5.5, repeated calls that share a reusable
+       opening are served from the prompt cache, so cache reads are reported on the
+       stages that repeat such calls, including defect-to-test pair mapping. The recent
+       review's finding of no cache reads on any stage must no longer hold.
+    -> pair-mapping-shared-opening-cache-reads  [functional/explicit, code_and_tests]
+       Repeated defect-to-test pair-mapping calls that share the same reusable opening
+       are served from the prompt cache, so that cache reads occur on the second and
+       later calls.
+
+[task-04] The mutation descriptor stage sends one call per defect, and defects that
+    share a region repeat that region's numbered source in every call. That source moves
+    into the reusable opening so calls over the same region share it.
+    -> descriptor-one-call-per-defect  [invariant/explicit, code_and_tests]
+       The mutation descriptor stage sends exactly one call for each defect, so the
+       number of calls equals the number of defects, including when several defects
+       share a region.
+    -> region-source-in-shared-opening  [functional/inferred, code_and_tests]
+       Defects that share a region get that region's numbered source from the reusable
+       opening, which is common to all calls over that region. Each per-defect call
+       carries the source through that shared opening and does not repeat it in its own
+       call-specific content.
+
+[task-05] A run can opt in to sending its model calls through the Message Batches API.
+    The setting belongs to the run's configuration and is off by default, so `acceptance
+    check` and `acceptance decompose` keep calling the model directly. Benchmark scoring
+    and experiment scripts can switch it on.
+    -> batch-api-opt-in  [functional/explicit, code_and_tests]
+       A run can opt in to sending its model calls through the Message Batches API; when
+       opted in, the run's model calls are submitted via the Message Batches API rather
+       than direct calls.
+    -> batch-setting-in-run-config  [functional/explicit, code_and_tests]
+       The opt-in setting for sending model calls through the Message Batches API is
+       defined as part of the run's configuration, so that a run's configuration
+       determines whether batching is used.
+    -> batch-api-off-by-default  [functional/explicit, code_and_tests]
+       The run configuration setting that opts a run into sending model calls through
+       the Message Batches API defaults to off, so `acceptance check` and `acceptance
+       decompose` call the model directly unless the setting is explicitly enabled.
+    -> batch-setting-enableable-by-scripts  [functional/explicit, code_and_tests]
+       Benchmark scoring and experiment scripts can enable the opt-in Message Batches
+       API setting in a run's configuration, so that the run's model calls are sent
+       through the Message Batches API.
+
+[task-06] How a call was sent does not change what was asked: a batched request is
+    recorded under the same key as the same request sent directly, and its recording
+    replays with no live call. The recording notes that it was sent through a batch. Two
+    recorded runs over the same input still produce byte-identical review state
+    whichever way their calls were sent.
+    -> batched-request-same-recording-key  [functional/explicit, code_and_tests]
+       A batched request is recorded under the same key as the same request sent
+       directly, so the recording key is independent of whether the call was sent
+       through a batch or directly.
+    -> batched-recording-replays-offline  [functional/explicit, code_and_tests]
+       A recording made from a batched request replays without making any live call.
+    -> recording-notes-batch-origin  [functional/explicit, code_and_tests]
+       A recording of a request that was sent through a batch carries a note indicating
+       that it was sent through a batch.
+    -> review-state-byte-identical-across-send-modes  [invariant/explicit, code_and_tests]
+       Two recorded runs over the same input produce byte-identical review state,
+       whether their calls were sent directly or through a batch, including when the two
+       runs use different send modes.
+
+[exclusion-01] Changing how live review runs split their requests into partitions.
+    -> no-change-live-review-partitioning  [regression/explicit, code_only, satisfied by absence]
+       The change does not alter how live review runs split their requests into
+       partitions.
+       why code_only: This excludes work; no test can demonstrate that partitioning work
+       was not done, and a reader confirms it by checking that the diff contains no
+       change to live review partitioning.
+
+[exclusion-02] Reporting spend per run.
+    -> no-spend-per-run-reporting  [invariant/explicit, code_only, satisfied by absence]
+       The change does not add or alter reporting of spend per run.
+       why code_only: This scope exclusion names work that was not done, so no test can
+       demonstrate its absence; a reader confirms it by checking that the diff contains
+       no spend-reporting work.
+
+[exclusion-03] Re-measuring benchmark figures on Claude.
+    -> no-benchmark-remeasurement-on-claude  [invariant/explicit, code_only, satisfied by absence]
+       The change does not re-measure benchmark figures on Claude.
+       why code_only: This is a scope exclusion naming work not to be done; no test can
+       demonstrate absence of re-measurement, and a reader confirms it by inspecting the
+       diff.
+
+[exclusion-04] Changing any prompt or response schema other than the mutation
+    descriptor's.
+    -> no-other-prompt-or-schema-changes  [invariant/explicit, code_only, satisfied by absence]
+       The change does not alter any prompt or response schema other than the mutation
+       descriptor's.
+       why code_only: This is a scope exclusion naming work not to be done, so a reader
+       confirms it by inspecting the diff and no test can demonstrate an absence of
+       edits.
+run f5cc026820bcc6ee
+  continuing 80fb35e8d30f29c2
+  requirements: 5 derived, 5 carried, 0 revised; 22 decompose call(s)
+  continue this run with: --continue f5cc026820bcc6ee
+Model usage by stage:
+  stage               model                                                                    calls   prompt  output  reasoning  cached  this run  recorded  time this run
+  ------------------  ---------------------------------------------------  -------------------------  -------  ------  ---------  ------  --------  --------  -------------
+  decompose           anthropic/claude-sonnet-5-5                          17 (17 live / 0 replayed)  160,144   7,037      2,200    0.0%   $0.4686   $0.4686         125.9s
+  decompose-summary   anthropic/claude-sonnet-5-5                            5 (5 live / 0 replayed)    8,035   2,690          0    0.0%   $0.0430   $0.0430          26.7s
+  obligation linking  voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5    2 (2 live / 0 replayed)    4,436     485          0    0.0%   $0.0102   $0.0102          10.5s
+  this run spent $0.5218 on 24 live call(s); the evidence cost $0.5218 to record (0 call(s) replayed at no cost to this run)
+

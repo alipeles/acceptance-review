@@ -1,0 +1,96 @@
+run 80fb35e8d30f29c2
+  requirements: 5 derived, 0 carried, 0 revised; 7 decompose call(s)
+  continue this run with: --continue 80fb35e8d30f29c2
+Model usage by stage:
+  stage               model                                          calls  prompt  output  reasoning  cached  this run  recorded  time this run
+  ------------------  ---------------------------  -----------------------  ------  ------  ---------  ------  --------  --------  -------------
+  decompose           anthropic/claude-sonnet-5-5  6 (6 live / 0 replayed)  56,651   2,909        565    0.0%   $0.1699   $0.1699          52.6s
+  decompose-summary   anthropic/claude-sonnet-5-5  1 (1 live / 0 replayed)   1,578     384          0    0.0%   $0.0070   $0.0070           4.5s
+  obligation linking  voyage/voyage-3.5-lite       1 (1 live / 0 replayed)     429       0          —       —   $0.0000   $0.0000           0.9s
+  this run spent $0.1769 on 8 live call(s); the evidence cost $0.1769 to record (0 call(s) replayed at no cost to this run)
+Requirements: 5   with obligations: 5
+
+[task-01] Runs on Claude should reuse cached prompt openings wherever requests repeat
+    one, and a run that does not need its answers straight away should be able to send
+    its model calls through the Message Batches API at half price.
+    -> claude-reuse-cached-prompt-openings  [functional/explicit, code_and_tests]
+       For runs on Claude, when multiple requests share a repeated prompt opening
+       (prefix), the requests reuse the cached prompt opening via Anthropic prompt
+       caching instead of resending it uncached.
+    -> cache-reuse-claude-only  [boundary/inferred, code_and_tests]
+       Prompt-opening cache reuse applies to runs on Claude; runs on other models are
+       not given Claude-specific caching directives.
+    -> batch-api-routing  [functional/explicit, code_and_tests]
+       A run that does not need its answers straight away can send its model calls
+       through the Message Batches API instead of the synchronous Messages API.
+    -> batch-results-returned-to-calls  [functional/inferred, code_and_tests]
+       Each model call sent through the Message Batches API gets back its own result,
+       matched to the originating call once the batch completes, so the run proceeds as
+       it would with a synchronous answer.
+    -> immediate-runs-stay-synchronous  [regression/inferred, code_and_tests]
+       Runs that need their answers straight away continue to send model calls
+       synchronously, with batch routing applied only to runs that do not need immediate
+       answers.
+
+[exclusion-01] Changing how live review runs split their requests into partitions.
+    -> no-change-live-review-partitioning  [regression/explicit, code_only, satisfied by absence]
+       The change does not alter how live review runs split their requests into
+       partitions.
+       why code_only: This excludes work; no test can demonstrate that partitioning work
+       was not done, and a reader confirms it by checking that the diff contains no
+       change to live review partitioning.
+
+[exclusion-02] Reporting spend per run.
+    -> no-spend-per-run-reporting  [invariant/explicit, code_only, satisfied by absence]
+       The change does not add or alter reporting of spend per run.
+       why code_only: This scope exclusion names work that was not done, so no test can
+       demonstrate its absence; a reader confirms it by checking that the diff contains
+       no spend-reporting work.
+
+[exclusion-03] Re-measuring benchmark figures on Claude.
+    -> no-benchmark-remeasurement-on-claude  [invariant/explicit, code_only, satisfied by absence]
+       The change does not re-measure benchmark figures on Claude.
+       why code_only: This is a scope exclusion naming work not to be done; no test can
+       demonstrate absence of re-measurement, and a reader confirms it by inspecting the
+       diff.
+
+[exclusion-04] Changing any prompt or response schema other than the mutation
+    descriptor's.
+    -> no-other-prompt-or-schema-changes  [invariant/explicit, code_only, satisfied by absence]
+       The change does not alter any prompt or response schema other than the mutation
+       descriptor's.
+       why code_only: This is a scope exclusion naming work not to be done, so a reader
+       confirms it by inspecting the diff and no test can demonstrate an absence of
+       edits.
+
+Open questions not tied to a requirement:
+  ? batch-opt-in-mechanism
+     How does a run signal that it does not need its answers straight away (for example
+     a config flag, a CLI option, or inference from the run type), and should batch mode
+     be opt-in or applied automatically?
+
+!! NOT READ AS ANY REQUIREMENT: 5 block(s) of the task file
+   These were parsed but matched no §7.1 section, so the decomposer
+   never saw them. Move them under a recognised heading if they state
+   a requirement.
+     - The shortest opening the client marks as reusable follows Anthropic's current
+       documented minimum for each model: 512 tokens for Claude Sonnet 5.5, Opus 5.5 and
+       Haiku 5.5. The module documentation stops saying that Anthropic rejects a
+       breakpoint below the minimum; a short prefix is simply not cached.
+     - The defect-to-test pair mapping stage, which sends the most calls in a review,
+       already places its defect list in the reusable opening, yet a recent review on
+       Claude Sonnet 5.5 showed no cache reads on any stage. Repeated pair-mapping calls
+       that share an opening are read from the cache.
+     - The mutation descriptor stage sends one call per defect, and defects that share a
+       region repeat that region's numbered source in every call. That source moves into
+       the reusable opening so calls over the same region share it.
+     - A run can opt in to sending its model calls through the Message Batches API. The
+       setting belongs to the run's configuration and is off by default, so `acceptance
+       check` and `acceptance decompose` keep calling the model directly. Benchmark
+       scoring and experiment scripts can switch it on.
+     - How a call was sent does not change what was asked: a batched request is recorded
+       under the same key as the same request sent directly, and its recording replays
+       with no live call. The recording notes that it was sent through a batch. Two
+       recorded runs over the same input still produce byte-identical review state
+       whichever way their calls were sent.
+

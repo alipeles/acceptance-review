@@ -7390,3 +7390,24 @@ the record.
   test is about; or `monkeypatch.setattr` the four `socket` attributes so they
   are restored at teardown.
 - **Status:** filed as #409, sub-issue of #184 (approved 2026-10-23); next task.
+
+### [2026-10-24] One requirement yields three obligations for one opt-in setting, unmerged
+- **Kind:** filing
+- **Found during:** #414, Gate 1 run 3
+- **Where:** `requirement/linking.py` (duplicates not merged); decomposition of task-04
+- **Severity:** nice-to-have
+- **What's wrong:** one paragraph stating an opt-in run setting yielded `batch-api-opt-in`, `batch-setting-in-run-config` and `batch-setting-enableable-by-scripts`; the third restates the first two, and linking left all three.
+- **Why I didn't act:** already tracked by #273 (an explicit obligation restating another explicit obligation is not reconciled); this adds a case.
+- **Drafted fix:** a comment on #273:
+
+  > Another case at #414's Gate 1 run 3 (run `8e2df00902e66524`,
+  > `dogfood-logs/414-gate1-run3/`). One paragraph, "A run can opt in to
+  > sending its model calls through the Message Batches API. The setting
+  > belongs to the run's configuration and is off by default ... Benchmark
+  > scoring and experiment scripts can switch it on", yielded three explicit
+  > obligations: `batch-api-opt-in`, `batch-setting-in-run-config` and
+  > `batch-setting-enableable-by-scripts`. The third states nothing the first
+  > two do not: a setting on the run configuration is what lets a script
+  > switch it on. Linking merged none of them. Same requirement, so #277
+  > (two obligations differing only in voice) is close too.
+- **Status:** filed (#273 comment, approved 2026-10-24).
