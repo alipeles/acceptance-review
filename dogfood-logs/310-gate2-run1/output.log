@@ -1,0 +1,486 @@
+tests run with: /Users/alipeles1/code/acceptance-worktrees/310-scope-exclusion-absence-form/.venv/bin/python -m pytest, locked down (no network; set your own command with `acceptance set-test-command`)
+environment variables passed to the tests: HOME, LANG, LC_ALL, PATH, TMPDIR, USER
+Task completion: UNABLE-TO-DETERMINE
+
+1 obligation(s) could not be classified from static evidence; deeper retrieval or execution would be needed to decide.
+
+Obligations:
+
+  1. Every bullet under a task file's `## Scope exclusions` heading is turned into an obligation that states the change does not do the excluded work, not one that describes the excluded work as something to do or as a property to hold.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/requirement/obligations.py#@@ -280,13 +288,20 @@ Those are the positive reframing this section already rejects for `description`,
+         1.2  tests/prompts/test_decomposition_prompt.py#@@ -36,6 +36,11 @@ from tests.support import recorded_client
+         1.3  tests/prompts/test_decomposition_prompt.py#@@ -49,6 +54,7 @@ Export invoices to a CSV file.
+         1.4  tests/prompts/test_decomposition_prompt.py#@@ -56,9 +62,9 @@ Export invoices to a CSV file.
+         1.5  tests/prompts/test_decomposition_prompt.py#@@ -70,7 +76,7 @@ _TEST_DEMAND_IDS = ["completion-01", "completion-02", "completion-03"]
+       test evidence: strongly supported — kills 5 of 5 enumerated defects (static prediction)  [tier: static]
+         1.6  tests/prompts/test_decomposition_prompt.py::test_an_exclusion_obligation_states_no_property_to_preserve
+         1.7  tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_yields_an_obligation_satisfied_by_absence
+         1.8  tests/prompts/test_decomposition_prompt.py::test_no_obligation_anywhere_demands_the_excluded_work
+         1.9  tests/requirement/test_requirement_map.py::test_a_scope_exclusion_requires_code_evidence_only_whatever_the_model_answers
+
+  2. A scope-exclusion bullet that ends with a clause explaining the exclusion (for example "Model calls issued by the measurement harness, which is not part of a review run.") yields exactly one obligation stating that the change does not do the excluded work, with the explanatory clause treated as an aside and not as work of its own. The obligation is not a description of the excluded work as something the change must do.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/requirement/obligations.py#@@ -280,13 +288,20 @@ Those are the positive reframing this section already rejects for `description`,
+         2.2  tests/prompts/test_decomposition_prompt.py#@@ -36,6 +36,11 @@ from tests.support import recorded_client
+         2.3  tests/prompts/test_decomposition_prompt.py#@@ -49,6 +54,7 @@ Export invoices to a CSV file.
+         2.4  tests/prompts/test_decomposition_prompt.py#@@ -70,7 +76,7 @@ _TEST_DEMAND_IDS = ["completion-01", "completion-02", "completion-03"]
+         2.5  tests/prompts/test_decomposition_prompt.py#@@ -56,9 +62,9 @@ Export invoices to a CSV file.
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         2.6  tests/prompts/test_coverage_prompt.py::test_a_misworded_scope_exclusion_is_judged_as_a_boundary
+         2.7  tests/prompts/test_decomposition_prompt.py::test_no_obligation_anywhere_demands_the_excluded_work
+
+  3. An obligation derived from a scope exclusion is assigned code-only required evidence; no test is required for it.
+       requirements: task-02
+       code evidence: addressed
+         3.1  src/acceptance/requirement/obligations.py#@@ -96,6 +96,14 @@ _STAGE = "decompose"
+         3.2  src/acceptance/requirement/obligations.py#@@ -738,6 +753,15 @@ def _obligations_from(
+         3.3  src/acceptance/requirement/obligations.py#@@ -753,7 +777,7 @@ def _obligations_from(
+         3.4  tests/requirement/test_requirement_map.py#@@ -718,6 +718,44 @@ def test_two_requirements_stating_the_same_thing_yield_two_obligations():
+         3.5  tests/prompts/test_decomposition_prompt.py#@@ -255,16 +260,24 @@ def test_only_exclusions_are_satisfied_by_absence(derived):
+         3.6  docs/DR-310-scope-exclusions-code-evidence-only.md#@@ -0,0 +1,86 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         3.7  tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_requires_code_evidence_only
+         3.8  tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_yields_an_obligation_satisfied_by_absence
+         3.9  tests/requirement/test_requirement_map.py::test_a_scope_exclusion_requires_code_evidence_only_whatever_the_model_answers
+
+  4. Within one review, any two scope-exclusion obligations whose code evidence is the same are assigned the same coverage status.
+       requirements: task-02
+       code evidence: addressed
+         4.1  src/acceptance/coverage/prompt.py#@@ -80,10 +80,23 @@ def obligations_block(obligations: list[Obligation]) -> Block:
+         4.2  src/acceptance/coverage/classify.py#@@ -122,6 +122,13 @@ Some obligations state that the change does NOT do some particular work — "The
+         4.3  tests/coverage/test_classify.py#@@ -425,3 +428,59 @@ def test_a_breached_boundary_keeps_the_hunks_the_model_cited(tmp_path):
+         4.4  tests/prompts/test_coverage_prompt.py#@@ -0,0 +1,97 @@
+         4.5  tests/prompts/test_corpus_mechanism.py#@@ -412,84 +412,100 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
+         4.6  docs/DR-310-scope-exclusions-code-evidence-only.md#@@ -0,0 +1,86 @@
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         4.7  tests/coverage/test_classify.py::test_the_request_marks_a_scope_exclusion_and_carries_its_bullet
+         4.8  tests/prompts/test_coverage_prompt.py::test_scope_exclusions_with_the_same_evidence_get_the_same_status
+         4.9  tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_requires_code_evidence_only
+         4.10  tests/prompts/test_decomposition_prompt.py::test_no_obligation_anywhere_demands_the_excluded_work
+
+  5. A regression case in the decomposition prompt tests covers a scope-exclusion bullet that ends with an explanatory clause.
+       requirements: task-03
+       code evidence: not required — The requirement asks for a regression test case and no source change of its own; the test is the whole deliverable.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  6. The change does not alter which evidence obligations from the other sections of a task file require.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 25 changes across 11 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+  7. The change does not alter which model each stage calls.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 25 changes across 11 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+Mandate coverage: 5 of 5 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The opening-request test now reads the message through `message_text` instead of indexing `messages[1]["content"]`. No obligation involves how a request's message content is read, so this is an unrelated test-helper change.
+       tests/test_pipeline_request_openings.py#@@ -25,7 +25,7 @@ from acceptance.change.diff import extract_change_set
+       tests/test_pipeline_request_openings.py#@@ -202,7 +202,9 @@ def test_content_two_requests_share_is_written_the_same_way_in_both(tmp_path):
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  scope-exclusion-bullets-become-absence-obligations
+    [not_wired] scope-exclusion-bullets-become-absence-obligations/description-wording-left-to-model
+      The description of a scope-exclusion obligation is still whatever the model writes. The code overrides only required_evidence and the reason, and sets satisfied_by_absence. Nothing enforces or rewrites the description into negative form, so a mis-worded bullet such as 'The change excludes X from Y' still comes out as work to do.
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+    [other] scope-exclusion-bullets-become-absence-obligations/prompt-only-guidance-for-trailing-clause
+      The fix for a trailing explanatory clause ('which is not part of a review run') being read as work is a prompt edit only. The doc admits the defect did not reproduce before or after the edit, so the edit is unproven. A trailing-clause bullet can still become a positive 'excludes ... from ...' obligation.
+      src/acceptance/requirement/obligations.py#1
+      docs/DR-310-scope-exclusions-code-evidence-only.md#0
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+    [scope_too_narrow] scope-exclusion-bullets-become-absence-obligations/coverage-mark-masks-rather-than-fixes-wording
+      The coverage-stage mark and prompt change only make the verdict robust to mis-worded exclusions. The obligation still carries the positive description. The criterion is about the obligation's description, so a mis-worded description is tolerated, not prevented.
+      src/acceptance/coverage/prompt.py#0
+      src/acceptance/coverage/classify.py#0
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+    [missing_case] scope-exclusion-bullets-become-absence-obligations/exclusion-flag-depends-on-section-parse
+      The absence status depends on requirement.section being EXCLUSION. A bullet under the heading that the parser files under another section, such as a nested bullet, a differently formatted heading, or a bullet split across lines, gets no absence treatment and no negative-form handling.
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+    [qualifier_ignored] scope-exclusion-bullets-become-absence-obligations/prompt-positive-reframing-still-possible
+      The prompt's worked example shows the negative rewrite, but the decomposition prompt does not forbid collapsing several bullets into one obligation or dropping a bullet. A bullet could yield no obligation, or one merged with a sibling, so not every bullet yields its own absence obligation.
+      src/acceptance/requirement/obligations.py#1
+      pairs: 12 put to the model, 92 skipped once the defect was covered
+
+  scope-exclusion-with-explanatory-clause-yields-absence-obligation
+    [qualifier_ignored] scope-exclusion-with-explanatory-clause-yields-absence-obligation/aside-still-restated-as-work-to-do
+      The only mechanism that keeps the obligation in the negative form is prose in the decomposition prompt. No code enforces it. The model can still turn the bullet "X, which is not part of a review run" into "The change excludes X from the review run", which treats the aside as the operative instruction and restates the excluded work as work to do.
+      src/acceptance/requirement/obligations.py#1
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+    [other] scope-exclusion-with-explanatory-clause-yields-absence-obligation/aside-yields-extra-obligation
+      The explanatory clause ("which is not part of a review run") could be decomposed into a second obligation of its own next to the absence obligation. The criterion requires exactly one obligation per bullet, and no code deduplicates or caps the obligations from one exclusion bullet. Each would also be forced to code_only and satisfied_by_absence.
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#2
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+    [missing_case] scope-exclusion-with-explanatory-clause-yields-absence-obligation/marker-without-bullet-text-when-spans-empty
+      The marker quotes the bullet only if the obligation has non-empty source_spans. If spans are empty, or cover only part of the bullet and so omit the exclusion text, the block renders a bare "(scope exclusion)" or a truncated quote. A mis-worded description such as "excludes X from Y" then has no boundary text to be judged against, and the coverage stage can still report it not addressed because the excluded work is absent.
+      src/acceptance/coverage/prompt.py#0
+      src/acceptance/coverage/classify.py#0
+      pairs: 12 put to the model, 92 skipped once the defect was covered
+
+  scope-exclusion-obligation-code-only-evidence
+    [not_wired] scope-exclusion-obligation-code-only-evidence/override-skipped-on-other-construction-path
+      The code_only override sits in one branch of `_obligations_from`. If an exclusion-derived obligation is built on another path (a fallback, a re-decomposition, or a merge of obligations), it never passes through this override and keeps the model's `code_and_tests` answer.
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+    [scope_too_narrow] scope-exclusion-obligation-code-only-evidence/exclusion-section-not-detected-for-some-bullets
+      The override is keyed on `requirement.section is RequirementSection.EXCLUSION`. A scope-exclusion bullet that the parse does not label EXCLUSION, such as a nested bullet, a differently worded or cased heading, or a bullet after a sub-heading, is treated as an ordinary requirement. Its obligation keeps the model's evidence judgement and may be owed tests.
+      src/acceptance/requirement/obligations.py#2
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+
+  scope-exclusion-same-evidence-same-status
+    [scope_too_narrow] scope-exclusion-same-evidence-same-status/mark-without-bullet-falls-back-to-wording
+      When an exclusion obligation has no source_spans text, obligations_block emits a bare '(scope exclusion)' marker with no quoted bullet. The coverage stage then has nothing to judge against except the description wording, so a mis-worded exclusion can again be judged as work to do while its siblings are addressed.
+      src/acceptance/coverage/prompt.py#0
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+    [not_wired] scope-exclusion-same-evidence-same-status/status-consistency-left-to-model-judgement
+      Equal status for equal evidence is only requested through prompt text (the mark plus an instruction). No code step after classification compares or normalises statuses across exclusion obligations in a run. The model can therefore still give one exclusion a different status from a sibling with the same evidence, for example not_addressed on a positively worded one, or non-empty diff_refs.
+      src/acceptance/coverage/classify.py#0
+      src/acceptance/coverage/prompt.py#0
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+    [unenforced_on_one_path] scope-exclusion-same-evidence-same-status/exclusion-evidence-override-not-on-every-construction-path
+      The code_only override and the fixed reason are applied only inside _obligations_from. If an exclusion obligation reaches the review by another route (a re-decomposition, merge, or reload that builds Obligation directly), it keeps the model's code_and_tests requirement. Such an exclusion would then be owed tests, and could be reported not addressed while a sibling with the same code evidence is addressed.
+      src/acceptance/requirement/obligations.py#2
+      src/acceptance/requirement/obligations.py#3
+      src/acceptance/review_state.py#0
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+    [other] scope-exclusion-same-evidence-same-status/decomposer-still-may-split-or-miscategorize-exclusion
+      The prompt change tells the decomposer to read past a trailing explanatory clause, but nothing enforces that. A bullet can still yield a positive obligation, or a clause can be split into a separate obligation. Whether that obligation is marked as an exclusion depends on the requirement's section. A clause split off or filed under a different section would carry no scope-exclusion mark and would be judged as work to do, diverging from its siblings.
+      src/acceptance/requirement/obligations.py#1
+      src/acceptance/requirement/obligations.py#3
+      pairs: 4 put to the model, 100 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [defect_already_covered] scope-exclusion-bullets-become-absence-obligations/coverage-mark-masks-rather-than-fixes-wording x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_an_exclusion_obligation_states_no_property_to_preserve
+  [defect_already_covered] scope-exclusion-bullets-become-absence-obligations/description-wording-left-to-model x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_no_obligation_anywhere_demands_the_excluded_work
+  [defect_already_covered] scope-exclusion-bullets-become-absence-obligations/exclusion-flag-depends-on-section-parse x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_yields_an_obligation_satisfied_by_absence, tests/requirement/test_requirement_map.py::test_a_scope_exclusion_requires_code_evidence_only_whatever_the_model_answers
+  [defect_already_covered] scope-exclusion-bullets-become-absence-obligations/prompt-only-guidance-for-trailing-clause x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_no_obligation_anywhere_demands_the_excluded_work
+  [defect_already_covered] scope-exclusion-bullets-become-absence-obligations/prompt-positive-reframing-still-possible x 92 candidate test(s), ranked 13 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_no_obligation_anywhere_demands_the_excluded_work
+  [defect_already_covered] scope-exclusion-obligation-code-only-evidence/exclusion-section-not-detected-for-some-bullets x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_requires_code_evidence_only, tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_yields_an_obligation_satisfied_by_absence, tests/requirement/test_requirement_map.py::test_a_scope_exclusion_requires_code_evidence_only_whatever_the_model_answers
+  [defect_already_covered] scope-exclusion-obligation-code-only-evidence/override-skipped-on-other-construction-path x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_requires_code_evidence_only
+  [defect_already_covered] scope-exclusion-same-evidence-same-status/decomposer-still-may-split-or-miscategorize-exclusion x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_no_obligation_anywhere_demands_the_excluded_work
+  [defect_already_covered] scope-exclusion-same-evidence-same-status/exclusion-evidence-override-not-on-every-construction-path x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_every_scope_exclusion_requires_code_evidence_only
+  [defect_already_covered] scope-exclusion-same-evidence-same-status/mark-without-bullet-falls-back-to-wording x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/coverage/test_classify.py::test_the_request_marks_a_scope_exclusion_and_carries_its_bullet
+  [defect_already_covered] scope-exclusion-same-evidence-same-status/status-consistency-left-to-model-judgement x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_coverage_prompt.py::test_scope_exclusions_with_the_same_evidence_get_the_same_status
+  [defect_already_covered] scope-exclusion-with-explanatory-clause-yields-absence-obligation/aside-still-restated-as-work-to-do x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_no_obligation_anywhere_demands_the_excluded_work
+  [defect_already_covered] scope-exclusion-with-explanatory-clause-yields-absence-obligation/aside-yields-extra-obligation x 100 candidate test(s), ranked 5 to 104
+    not asked: the defect was already covered by tests/prompts/test_decomposition_prompt.py::test_no_obligation_anywhere_demands_the_excluded_work
+  [defect_already_covered] scope-exclusion-with-explanatory-clause-yields-absence-obligation/marker-without-bullet-text-when-spans-empty x 92 candidate test(s), ranked 13 to 104
+    not asked: the defect was already covered by tests/prompts/test_coverage_prompt.py::test_a_misworded_scope_exclusion_is_judged_as_a_boundary
+
+Running the project's tests:
+  the project's tests were run: 14 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [not_mutable] scope-exclusion-bullets-become-absence-obligations/coverage-mark-masks-rather-than-fixes-wording
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+    The offered regions are only the coverage stage. obligations_block (prompt.py 91-100) prints obligation.description unchanged and adds a scope-exclusion marker, and the classify prompt (classify.py 125-130) tells the model to treat a positively worded exclusion as a boundary. That is the masking the defect describes. But the criterion concerns how the description is written when the obligation is created, and that decomposer code is not shown. I can't tell whether it already forces absence wording, and an edit to the renderer would not change the obligation's own description. So I give no edit.
+
+  [already_present] scope-exclusion-bullets-become-absence-obligations/description-wording-left-to-model
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+    Line 768 passes `description=item.description` straight through, even for exclusion obligations. Only required_evidence, the reason and satisfied_by_absence are overridden (lines 763-764, 780), so the code already does the DEFECTIVE behaviour. Repairing it would take a negative-form rewrite of the description, which needs a helper that is not visible here and cannot be done as a minimal contiguous edit without inventing one. I cannot give an honest repair, so the edit is a no-op placeholder and the finding is recorded in this reason.There is no valid minimal edit shown.Placeholder identical to existing line 768.You may treat this as a finding rather than an edit.No repair is offered beyond this.Reporting defective as required.The only surviving question is whether tests notice an unrewritten description.As this is not repairable with the visible code, I flag it as the finding above.Edit provided is identical to the original.To repair, the description would need to be wrapped by a function that enforces negative form on exclusion obligations.That function does not exist in the visible regions.End. (the repair was refused: the replacement for src/acceptance/requirement/obligations.py lines 768..768 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced)
+
+  [not_mutable] scope-exclusion-bullets-become-absence-obligations/exclusion-flag-depends-on-section-parse
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+    The defect is about how the parser assigns a section to bullets under the `## Scope exclusions` heading. The offered regions only consume `requirement.section` (line 756: `exclusion = requirement.section is RequirementSection.EXCLUSION`, then `satisfied_by_absence=exclusion` at line 780). Those lines already behave as the code would if the parser were correct. I cannot see the parser, so I cannot tell whether nested, oddly formatted, or multi-line bullets are filed under a different section. Any edit inside these regions would change the consumer, not the parse, so it would not make the named defect real.
+
+  [no_usable_edit] scope-exclusion-bullets-become-absence-obligations/prompt-only-guidance-for-trailing-clause
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 298-301:
+           -     ->  "The change does not alter model calls issued by the measurement
+           -          harness."
+           -     NOT -> "The change excludes model calls issued by the measurement harness
+           -             from the review run."
+           +     ->  "The change excludes model calls issued by the measurement harness
+           +          from the review run."
+           +     NOT -> "The change does not alter model calls issued by the measurement
+           +             harness."
+      2. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 293-301:
+           - clause is an aside about the excluded work, never work of its own. Read past it
+           - exactly as you read past a reference you cannot resolve:
+           - 
+           -     "Model calls issued by the measurement harness, which is not part of a
+           -      review run."
+           -     ->  "The change does not alter model calls issued by the measurement
+           -          harness."
+           -     NOT -> "The change excludes model calls issued by the measurement harness
+           -             from the review run."
+           + clause is work of its own. Restate it as part of the obligation, as a
+           + thing the change does:
+           + 
+           +     "Model calls issued by the measurement harness, which is not part of a
+           +      review run."
+           +     ->  "The change excludes model calls issued by the measurement harness
+           +          from the review run."
+      3. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 293-301:
+           - clause is an aside about the excluded work, never work of its own. Read past it
+           - exactly as you read past a reference you cannot resolve:
+           - 
+           -     "Model calls issued by the measurement harness, which is not part of a
+           -      review run."
+           -     ->  "The change does not alter model calls issued by the measurement
+           -          harness."
+           -     NOT -> "The change excludes model calls issued by the measurement harness
+           -             from the review run."
+           + clause is the substance of the bullet. Carry it into the obligation and state
+           + the excluded work as something the change does, with that clause as its scope:
+           + 
+           +     "Model calls issued by the measurement harness, which is not part of a
+           +      review run."
+           +     ->  "The change excludes model calls issued by the measurement harness
+           +          from the review run."
+           +     NOT -> "The change does not alter model calls issued by the measurement
+           +             harness."
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [already_present] scope-exclusion-bullets-become-absence-obligations/prompt-positive-reframing-still-possible
+    candidate edits: 3 asked for, 2 set aside, none used
+      1. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 306-306:
+           - Every bullet under one `## Scope exclusions` heading is treated the same way as
+           + Related bullets under one `## Scope exclusions` heading may be merged into a single obligation, and every bullet is treated the same way as
+      2. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 305-305:
+           - 
+           + 
+           + Related bullets under the heading may be merged into one obligation, and a bullet that seems redundant may be dropped without an obligation of its own.
+           + 
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 92 skipped once the defect was covered
+    The visible prompt text (lines 288-307) shows the worked example of the negative rewrite. It also says every bullet is treated the same way as its siblings. Nothing visible requires one obligation per bullet or forbids merging or dropping bullets, so the model may collapse bullets or skip one, leaving that bullet without a negative-form obligation of its own. That matches the DEFECTIVE behaviour. The edit repairs it by adding an explicit one-obligation-per-bullet rule at line 305, which was a blank line. (the repair failed 14 of 104 candidate tests, too many to say anything about this defect)
+
+  [not_mutable] scope-exclusion-obligation-code-only-evidence/exclusion-section-not-detected-for-some-bullets
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+    Lines 756-764 do key the override on `requirement.section is RequirementSection.EXCLUSION`. Whether every bullet under the Scope exclusions heading gets that section depends on the requirement parser, which is not shown. That includes nested bullets, differently cased headings and bullets after a sub-heading. Without it I cannot say whether the code currently gives the EXPECTED or the DEFECTIVE behaviour. Any edit confined to this region would have to invent a new narrowing condition rather than reproduce the named parse-labelling defect, so I give no edit.
+
+  [survived, NOT COUNTED] scope-exclusion-obligation-code-only-evidence/override-skipped-on-other-construction-path
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/obligations.py lines 757-757:
+      -         if exclusion:
+      +         if exclusion and quote_override is None:
+    no test caught it; 104 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+
+  [survived, NOT COUNTED] scope-exclusion-same-evidence-same-status/decomposer-still-may-split-or-miscategorize-exclusion
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/obligations.py lines 780-780:
+      -                 satisfied_by_absence=exclusion,
+      +                 satisfied_by_absence=exclusion and not produced,
+    no test caught it; 104 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+
+  [survived, NOT COUNTED] scope-exclusion-same-evidence-same-status/exclusion-evidence-override-not-on-every-construction-path
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/requirement/obligations.py lines 757-757:
+      -         if exclusion:
+      +         if exclusion and quote_override is None:
+    no test caught it; 104 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+
+  [already_present] scope-exclusion-same-evidence-same-status/mark-without-bullet-falls-back-to-wording
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+    Lines 95-96 already do the defective behaviour. When source_spans is empty, excluded is '' and line 96 falls to the bare ' (scope exclusion)' marker with no bullet. The repair falls back to the obligation description when there are no spans, so the marker always carries quoted text.
+
+  [already_present] scope-exclusion-same-evidence-same-status/status-consistency-left-to-model-judgement
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+    The defect says no code step reconciles statuses across exclusion obligations: the only mechanism is the marker in obligations_block (prompt.py lines 93-96) plus prompt text in classify.py lines 125-134. Each obligation is classified independently by the model, so the code already does the DEFECTIVE behaviour. A true repair would need a post-classification normalisation step in classify_coverage, which the offered regions do not show and which is not one contiguous edit within them. The replacement I gave is identical to the existing lines, a no-op, so I cannot supply a real repair here. (the repair was refused: the replacement for src/acceptance/coverage/prompt.py lines 94..96 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced)
+
+  [no_usable_edit] scope-exclusion-with-explanatory-clause-yields-absence-obligation/aside-still-restated-as-work-to-do
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 298-301:
+           -     ->  "The change does not alter model calls issued by the measurement
+           -          harness."
+           -     NOT -> "The change excludes model calls issued by the measurement harness
+           -             from the review run."
+           +     ->  "The change excludes model calls issued by the measurement harness
+           +              from the review run."
+           +     NOT -> "The change does not alter model calls issued by the measurement
+           +             harness."
+      2. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 293-301:
+           - clause is an aside about the excluded work, never work of its own. Read past it
+           - exactly as you read past a reference you cannot resolve:
+           - 
+           -     "Model calls issued by the measurement harness, which is not part of a
+           -      review run."
+           -     ->  "The change does not alter model calls issued by the measurement
+           -          harness."
+           -     NOT -> "The change excludes model calls issued by the measurement harness
+           -             from the review run."
+           + clause is the operative instruction. Fold it into the description, so the
+           + excluded work is restated as something the change does:
+           + 
+           +     "Model calls issued by the measurement harness, which is not part of a
+           +      review run."
+           +     ->  "The change excludes model calls issued by the measurement harness
+           +          from the review run."
+      3. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 293-301:
+           - clause is an aside about the excluded work, never work of its own. Read past it
+           - exactly as you read past a reference you cannot resolve:
+           - 
+           -     "Model calls issued by the measurement harness, which is not part of a
+           -      review run."
+           -     ->  "The change does not alter model calls issued by the measurement
+           -          harness."
+           -     NOT -> "The change excludes model calls issued by the measurement harness
+           -             from the review run."
+           + clause is the operative instruction about the excluded work. Fold it into the
+           + description, so the excluded work is restated as something the change does:
+           + 
+           +     "Model calls issued by the measurement harness, which is not part of a
+           +      review run."
+           +     ->  "The change excludes model calls issued by the measurement harness
+           +          from the review run."
+           +     NOT -> "The change does not alter model calls issued by the measurement
+           +             harness."
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] scope-exclusion-with-explanatory-clause-yields-absence-obligation/aside-yields-extra-obligation
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 291-301:
+           - A bullet often ends with a clause explaining WHY the work is excluded — "which
+           - is #401", "which is not part of a review run", "which another team owns". That
+           - clause is an aside about the excluded work, never work of its own. Read past it
+           - exactly as you read past a reference you cannot resolve:
+           - 
+           -     "Model calls issued by the measurement harness, which is not part of a
+           -      review run."
+           -     ->  "The change does not alter model calls issued by the measurement
+           -          harness."
+           -     NOT -> "The change excludes model calls issued by the measurement harness
+           -             from the review run."
+           + A bullet often ends with a clause explaining WHY the work is excluded — "which
+           + is #401", "which is not part of a review run", "which another team owns". That
+           + clause is a statement of its own: give it a second obligation next to the first:
+           + 
+           +     "Model calls issued by the measurement harness, which is not part of a
+           +      review run."
+           +     ->  "The change does not alter model calls issued by the measurement
+           +          harness."
+           +     AND -> "The change excludes model calls issued by the measurement harness
+           +             from the review run."
+      2. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 764-764:
+           -             reason = _EXCLUSION_EVIDENCE_REASON
+           +             reason = _EXCLUSION_EVIDENCE_REASON
+           +             produced.append(
+           +                 Obligation(
+           +                     id=_unique(item.id, seen_ids),
+           +                     description=item.description,
+           +                     type=item.type,
+           +                     importance=_importance(item.importance),
+           +                     explicit=item.explicit,
+           +                     observable_behavior=item.observable_behavior,
+           +                     source_spans=[span] if span is not None else [],
+           +                     satisfied_by_absence=True,
+           +                     required_evidence=required,
+           +                     required_evidence_reason=reason,
+           +                 )
+           +             )
+      3. set aside (refused_after_run): 14 of the 104 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/requirement/obligations.py lines 765-765:
+           -         produced.append(
+           +         for _ in range(2 if exclusion else 1):
+           +             produced.append(
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 100 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [not_mutable] scope-exclusion-with-explanatory-clause-yields-absence-obligation/marker-without-bullet-text-when-spans-empty
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 92 skipped once the defect was covered
+    Lines 94-96 of prompt.py build the quote only from the joined source_spans text and fall back to a bare " (scope exclusion)" when that is empty. That matches the DEFECTIVE sentence for empty spans. The EXPECTED behaviour needs the full bullet text, and no field holding it is visible: the Obligation model is not shown, and the only candidate is the description, which is the mis-worded text. A repair therefore cannot be written without guessing at a field, so I give no edit.
+
+Defects the delivered code already has, as asserted by the model (static tier; needs human review):
+  scope-exclusion-bullets-become-absence-obligations/description-wording-left-to-model
+    Line 768 passes `description=item.description` straight through, even for exclusion obligations. Only required_evidence, the reason and satisfied_by_absence are overridden (lines 763-764, 780), so the code already does the DEFECTIVE behaviour. Repairing it would take a negative-form rewrite of the description, which needs a helper that is not visible here and cannot be done as a minimal contiguous edit without inventing one. I cannot give an honest repair, so the edit is a no-op placeholder and the finding is recorded in this reason.There is no valid minimal edit shown.Placeholder identical to existing line 768.You may treat this as a finding rather than an edit.No repair is offered beyond this.Reporting defective as required.The only surviving question is whether tests notice an unrewritten description.As this is not repairable with the visible code, I flag it as the finding above.Edit provided is identical to the original.To repair, the description would need to be wrapped by a function that enforces negative form on exclusion obligations.That function does not exist in the visible regions.End. (the repair was refused: the replacement for src/acceptance/requirement/obligations.py lines 768..768 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/requirement/obligations.py lines 768-768:
+      -                 description=item.description,
+      +                 description=item.description,
+  scope-exclusion-bullets-become-absence-obligations/prompt-positive-reframing-still-possible
+    The visible prompt text (lines 288-307) shows the worked example of the negative rewrite. It also says every bullet is treated the same way as its siblings. Nothing visible requires one obligation per bullet or forbids merging or dropping bullets, so the model may collapse bullets or skip one, leaving that bullet without a negative-form obligation of its own. That matches the DEFECTIVE behaviour. The edit repairs it by adding an explicit one-obligation-per-bullet rule at line 305, which was a blank line. (the repair failed 14 of 104 candidate tests, too many to say anything about this defect)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/requirement/obligations.py lines 305-305:
+      - 
+      + Each bullet yields exactly one obligation of its own. Never merge several bullets into one obligation and never drop a bullet.
+      + 
+  scope-exclusion-same-evidence-same-status/mark-without-bullet-falls-back-to-wording
+    Lines 95-96 already do the defective behaviour. When source_spans is empty, excluded is '' and line 96 falls to the bare ' (scope exclusion)' marker with no bullet. The repair falls back to the obligation description when there are no spans, so the marker always carries quoted text.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/coverage/prompt.py lines 95-95:
+      -             excluded = " ".join(span.text for span in obligation.source_spans)
+      +             excluded = " ".join(span.text for span in obligation.source_spans) or obligation.description
+  scope-exclusion-same-evidence-same-status/status-consistency-left-to-model-judgement
+    The defect says no code step reconciles statuses across exclusion obligations: the only mechanism is the marker in obligations_block (prompt.py lines 93-96) plus prompt text in classify.py lines 125-134. Each obligation is classified independently by the model, so the code already does the DEFECTIVE behaviour. A true repair would need a post-classification normalisation step in classify_coverage, which the offered regions do not show and which is not one contiguous edit within them. The replacement I gave is identical to the existing lines, a no-op, so I cannot supply a real repair here. (the repair was refused: the replacement for src/acceptance/coverage/prompt.py lines 94..96 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/coverage/prompt.py lines 94-96:
+      -         if obligation.satisfied_by_absence:
+      -             excluded = " ".join(span.text for span in obligation.source_spans)
+      -             marker = f" (scope exclusion: {excluded!r})" if excluded else " (scope exclusion)"
+      +         if obligation.satisfied_by_absence:
+      +             excluded = " ".join(span.text for span in obligation.source_spans)
+      +             marker = f" (scope exclusion: {excluded!r})" if excluded else " (scope exclusion)"
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run c25e896ecec51ca1
+  continuing b51f520cab69ba16
+  continue this run with: --continue c25e896ecec51ca1
+Model usage by stage:
+  stage                         model                                                                    calls  prompt  output  reasoning  cached  this run  recorded  time this run
+  ----------------------------  ---------------------------------------------------  -------------------------  ------  ------  ---------  ------  --------  --------  -------------
+  decompose                     anthropic/claude-sonnet-5-5                            7 (7 live / 0 replayed)  66,734   2,755        597    0.0%   $0.1933   $0.1933          27.1s
+  decompose-summary             anthropic/claude-sonnet-5-5                            3 (3 live / 0 replayed)   4,442   1,107          0    0.0%   $0.0200   $0.0200          11.3s
+  obligation linking            voyage/voyage-3.5-lite                                 1 (1 live / 0 replayed)     504       0          —       —   $0.0000   $0.0000           0.8s
+  defect enumeration            anthropic/claude-sonnet-5-5                            4 (4 live / 0 replayed)  28,155   6,828      2,534    0.0%   $0.1379   $0.1379          58.1s
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5  20 (20 live / 0 replayed)  83,961   6,905          0    0.0%   $0.1852   $0.1852          79.8s
+  coverage classification       anthropic/claude-sonnet-5-5                            1 (1 live / 0 replayed)  18,781   2,598      1,053    0.0%   $0.0729   $0.0729          19.2s
+  unrequested-change detection  anthropic/claude-sonnet-5-5                            1 (1 live / 0 replayed)  17,817     816        663    0.0%   $0.0527   $0.0527           8.3s
+  mutation descriptor           anthropic/claude-sonnet-5-5                          22 (22 live / 0 replayed)  94,757  20,862     14,395    0.0%   $0.3981   $0.3981         198.0s
+  this run spent $1.0600 on 59 live call(s); the evidence cost $1.0600 to record (0 call(s) replayed at no cost to this run)
+

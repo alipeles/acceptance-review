@@ -7588,3 +7588,46 @@ the record.
      held-out figures above were measured with Mini and are not re-measured
      here; #385's benchmark acceptance item is the check."
 - **Status:** done 2026-10-24: #385 edited as drafted and DR-379 amended (approved 2026-10-24).
+
+### [2026-10-24] A defect judge asserts a defect "already present" from a slice of a prompt that rules it out
+- **Kind:** filing
+- **Found during:** #310, Gate 2 run 1 (`c25e896ecec51ca1`, `dogfood-logs/310-gate2-run1/`)
+- **Where:** evidence judgement (mutation descriptor, "Defects the delivered code already has")
+- **Severity:** should-fix
+- **What's wrong:** defect
+  `scope-exclusion-bullets-become-absence-obligations/prompt-positive-reframing-still-possible`
+  was reported as already present: "Nothing visible requires one obligation per
+  bullet or forbids merging or dropping bullets". The decomposition prompt does
+  require it ("Every bullet under it is `yielded`, and produces EXACTLY ONE
+  obligation"), about 50 lines above the region the judge was shown, and the
+  code rejects a response that leaves any requirement undisposed (M1.2.r2). The
+  claim lands in a section marked "needs human review", so it stops a gate. In
+  the same run, the reason for `description-wording-left-to-model` degenerated
+  into a dozen repeated sentences ("No repair is offered beyond this.Reporting
+  defective as required.…").
+- **Why I didn't act:** evidence judgement is outside #310.
+- **Drafted fix:** file as a sub-issue of #183 (evidence judgement):
+
+  > **A defect is asserted "already present" from a region that omits the text
+  > ruling it out**
+  >
+  > Child of #183. Found at #310's Gate 2, run `c25e896ecec51ca1`
+  > (`dogfood-logs/310-gate2-run1/`).
+  >
+  > The mutation descriptor is shown only the regions offered for a defect. For
+  > `prompt-positive-reframing-still-possible` it was shown lines 288-307 of the
+  > decomposition prompt and concluded that nothing requires one obligation per
+  > scope-exclusion bullet. Lines 238-240 of the same prompt say exactly that,
+  > and `RequirementDisposition` validation rejects a response that drops a
+  > requirement. The "already present" claim is then reported under "Defects the
+  > delivered code already has … needs human review", which stops a gate on a
+  > claim the repository refutes.
+  >
+  > Related: #357 (a defect whose defective behaviour satisfies its own
+  > criterion is confirmed as already present).
+  >
+  > **Acceptance:** a defect is not reported as already present when text outside
+  > the offered region, in the same file, states the expected behaviour — either
+  > the judge sees enough of the file to know, or a claim made from a partial
+  > view is labelled as such rather than as a finding.
+- **Status:** open
