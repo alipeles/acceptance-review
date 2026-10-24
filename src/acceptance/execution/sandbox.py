@@ -1,12 +1,15 @@
-"""Runs a named set of tests in an isolated sandbox and reports what happened.
+"""Runs a named set of tests and reports what happened.
 
 The contract every caller depends on: `run_tests` returns. It does not raise,
 whatever the project, the interpreter or the clock does — a run that could not
 happen is an ordinary result that leaves the review's conclusions where they
 were, not an error to propagate. Nothing here elevates an evidence tier.
 
-Three properties carry §17's execution-safety line, and each is enforced in the
-only place it can be:
+There are two ways a run happens, and `SandboxConfig.test_command` picks one.
+
+**No test command: locked down.** The tool's own interpreter runs pytest from
+the project root, and three properties are enforced in the only place each can
+be:
 
 - **No network.** Installed inside the run by `netblock.py`, before the first
   test module is imported.
@@ -15,18 +18,34 @@ only place it can be:
   the code under test.
 - **A time budget.** Per test inside the run; for the run as a whole out here,
   as a wall-clock kill of the whole process group.
+
+**A test command: as on the user's machine.** The command the user already runs
+their tests with, which they set and agreed to (`execution/test_command.py`),
+runs through the shell with the user's whole environment and network access.
+Only the time budget still applies. The command is run exactly as given; this
+module adds the plugin and the test names and nothing else, and guesses no
+interpreter and no directory. `docs/DR-405-user-test-command.md` records why.
+
+In both, the plugin reports every test by its path relative to the project
+root, whatever directory pytest took as its own root, so the ids that come back
+are the ids that were asked for.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import queue
+import shlex
 import shutil
 import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from pydantic import Field, field_validator
@@ -35,11 +54,16 @@ from acceptance.execution import netblock
 from acceptance.execution.outcome import SandboxRunResult, TestOutcome, TestOutcomeKind
 from acceptance.model_base import PersistableModel as _Model
 
-__all__ = ["SandboxConfig", "collect_tests", "run_tests"]
+__all__ = ["WORKER_VAR", "SandboxConfig", "collect_tests", "passed_environment_names", "run_tests"]
 
 #: The module name the plugin is copied to and loaded under. Deliberately
 #: unlikely to collide with anything in a project under review.
 _PLUGIN_MODULE = "_acceptance_sandbox_netblock"
+
+#: Under a test command, which of the `parallel_runs` slots a run holds, 1 to
+#: N. A project whose tests share a service reads it to give each concurrent
+#: run its own — a database named after it, say.
+WORKER_VAR = "ACCEPTANCE_WORKER"
 
 #: Environment variables the subprocess is allowed to inherit. Everything else
 #: is dropped, which is what keeps the launching machine's credentials out of
@@ -73,17 +97,40 @@ class SandboxConfig(_Model):
 
     The interpreter is likewise configuration with a conventional default — the
     one running the checker — and is never inferred from the project's files.
+
+    `test_command`, when set, replaces the interpreter: it is the shell command
+    the user runs their tests with, and the run is no longer locked down.
+    `parallel_runs` is how many runs of that command may be in flight at once,
+    which only the user can know — two runs sharing one database can corrupt
+    each other's results. It means nothing without a test command, whose runs
+    are hermetic and independent by construction.
     """
 
     interpreter: str = Field(default_factory=lambda: sys.executable)
     per_test_seconds: float = 30.0
     total_seconds: float = 300.0
+    test_command: str | None = None
+    parallel_runs: int = 1
 
     @field_validator("per_test_seconds", "total_seconds")
     @classmethod
     def _budgets_are_positive(cls, value: float) -> float:
         if value <= 0:
             raise ValueError("a time budget must be greater than zero")
+        return value
+
+    @field_validator("parallel_runs")
+    @classmethod
+    def _at_least_one_run(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("at least one run must be allowed at a time")
+        return value
+
+    @field_validator("test_command")
+    @classmethod
+    def _command_is_named(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("a test command must not be blank")
         return value
 
     @field_validator("interpreter")
@@ -192,10 +239,14 @@ def _collect_in_workspace(
     shutil.copyfile(netblock.__file__, plugin_dir / f"{_PLUGIN_MODULE}.py")
     report_path = workspace / "outcomes.jsonl"
     report_path.touch()
+    collected_path = workspace / "collected.txt"
     env = _sandbox_env(plugin_dir, report_path, config, project_root)
+    env[netblock.COLLECTED_PATH_VAR] = str(collected_path)
     wanted = set(requested)
 
-    exit_code, collected = _collect_once(requested, project_root, config, env, wanted)
+    exit_code, collected = _collect_once(
+        requested, project_root, config, env, wanted, collected_path
+    )
     if exit_code == 0:
         return collected
 
@@ -222,7 +273,7 @@ def _collect_in_workspace(
     for path in sorted(by_file, key=lambda p: (-len(by_file[p]), p)):
         ids = by_file[path]
         candidate = admitted_ids + ids
-        code, found = _collect_once(candidate, project_root, config, env, wanted)
+        code, found = _collect_once(candidate, project_root, config, env, wanted, collected_path)
         if code == 0:
             admitted_ids = candidate
             admitted = found
@@ -242,40 +293,111 @@ def _collect_once(
     config: SandboxConfig,
     env: dict[str, str],
     wanted: set[str],
+    collected_path: Path,
 ) -> tuple[int | None, set[str]]:
     """Ask pytest to collect `test_ids`; report its exit code and what it named.
 
     Collection imports every named module, which runs its top-level code, so it
-    gets the same network block and the same allowlisted environment as a real
-    run. Importing a stranger's module is not a safe operation just because no
-    test is executed afterwards.
+    gets exactly the environment a real run gets — locked down, or the user's
+    own under a test command. Importing a stranger's module is not a safe
+    operation just because no test is executed afterwards.
+
+    What pytest collected is read from the file the plugin writes, not from
+    pytest's printed output. pytest prints ids relative to the directory it took
+    as its root, which is wherever the nearest pytest configuration is — `api/`
+    for a project kept in `api/` — while the review holds ids relative to the
+    project root. Nothing matched, and every test was set aside, which is #405.
+    The plugin writes ids relative to the project root instead.
     """
+    collected_path.unlink(missing_ok=True)
     try:
-        completed = subprocess.run(
-            [
-                config.interpreter,
-                "-m",
-                "pytest",
-                "--collect-only",
-                "-q",
-                "-p",
-                _PLUGIN_MODULE,
-                "-p",
-                "no:cacheprovider",
-                "--no-header",
-                *test_ids,
-            ],
-            cwd=str(project_root),
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=config.total_seconds,
-            check=False,
-        )
+        with _run_slot(config) as worker:
+            aborted, _, exit_code = _spawn_and_wait(
+                _pytest_command(config, ["--collect-only"], test_ids, project_root),
+                cwd=project_root,
+                env=_with_worker(env, worker),
+                total_seconds=config.total_seconds,
+            )
     except (OSError, subprocess.SubprocessError):
         return None, set()
+    if aborted:
+        return None, set()
 
-    return completed.returncode, _match(completed.stdout, wanted)
+    try:
+        text = collected_path.read_text(encoding="utf-8")
+    except OSError:
+        text = ""
+    return exit_code, _match(text, wanted)
+
+
+def _pytest_command(
+    config: SandboxConfig, options: list[str], test_ids: list[str], project_root: Path
+) -> list[str] | str:
+    """The pytest invocation for `test_ids`, in whichever of the two forms applies.
+
+    Without a test command, an argument list for the tool's own interpreter,
+    with ids relative to the project root, which is the working directory.
+
+    With one, a shell string: the user's command exactly as they gave it, then
+    the plugin and the ids. The ids are absolute paths, because the command may
+    change directory first — `cd api && .venv/bin/python -m pytest` — and an
+    absolute path means the same file wherever pytest ends up running.
+
+    Nothing else is added: the plugin, which is how outcomes and the per-test
+    budget work; `no:cacheprovider`, so no `.pytest_cache` is written into the
+    project; and `options`, which is `--collect-only` when listing tests. The
+    user's command is theirs, and every extra flag is one more way it could
+    behave differently from the run they know works.
+    """
+    arguments = [*options, "-p", _PLUGIN_MODULE, "-p", "no:cacheprovider"]
+    if config.test_command is None:
+        return [config.interpreter, "-m", "pytest", *arguments, *test_ids]
+    root = project_root.resolve()
+    absolute = [str(root / test_id) for test_id in test_ids]
+    return " ".join([config.test_command, *(shlex.quote(a) for a in [*arguments, *absolute])])
+
+
+#: One pool of numbered run slots per allowed width, shared by every run in
+#: this process. Process-wide because the runs that must not overlap come from
+#: different callers at once — the control run, and one thread per mutant.
+_SLOT_POOLS: dict[int, queue.Queue[int]] = {}
+_SLOT_POOLS_LOCK = threading.Lock()
+
+
+@contextmanager
+def _run_slot(config: SandboxConfig) -> Iterator[int | None]:
+    """Hold one of `config.parallel_runs` numbered slots for the length of a run.
+
+    Only under a test command. Those runs use the user's own services, and two
+    of them against one database can corrupt each other's results, so no more
+    run at once than the user said is safe — one, unless they said otherwise.
+    The slot's number, 1 to `parallel_runs`, is what the run is told it is, so a
+    project can give each concurrent run its own database.
+
+    Locked-down runs take no slot: they share nothing, and limiting them would
+    only slow down the case that is already safe.
+    """
+    if config.test_command is None:
+        yield None
+        return
+    with _SLOT_POOLS_LOCK:
+        pool = _SLOT_POOLS.get(config.parallel_runs)
+        if pool is None:
+            pool = queue.Queue()
+            for number in range(1, config.parallel_runs + 1):
+                pool.put(number)
+            _SLOT_POOLS[config.parallel_runs] = pool
+    number = pool.get()
+    try:
+        yield number
+    finally:
+        pool.put(number)
+
+
+def _with_worker(env: dict[str, str], worker: int | None) -> dict[str, str]:
+    if worker is None:
+        return env
+    return {**env, WORKER_VAR: str(worker)}
 
 
 def _match(stdout: str, wanted: set[str]) -> set[str]:
@@ -316,25 +438,16 @@ def _run_in_workspace(
     plugin_dir.mkdir()
     shutil.copyfile(netblock.__file__, plugin_dir / f"{_PLUGIN_MODULE}.py")
 
-    command = [
-        config.interpreter,
-        "-m",
-        "pytest",
-        "-p",
-        _PLUGIN_MODULE,
-        "-p",
-        "no:cacheprovider",
-        "--no-header",
-        "-q",
-        *requested,
-    ]
+    command = _pytest_command(config, [], requested, project_root)
+    env = _sandbox_env(plugin_dir, report_path, config, project_root)
 
-    aborted, abort_reason, exit_code = _spawn_and_wait(
-        command,
-        cwd=project_root,
-        env=_sandbox_env(plugin_dir, report_path, config, project_root),
-        total_seconds=config.total_seconds,
-    )
+    with _run_slot(config) as worker:
+        aborted, abort_reason, exit_code = _spawn_and_wait(
+            command,
+            cwd=project_root,
+            env=_with_worker(env, worker),
+            total_seconds=config.total_seconds,
+        )
 
     observed = _fold_parametrised(_read_report(report_path), requested)
     unreached = _why_unreached(aborted, abort_reason, exit_code, observed)
@@ -441,41 +554,74 @@ def _import_roots(project_root: Path) -> list[str]:
 def _sandbox_env(
     plugin_dir: Path, report_path: Path, config: SandboxConfig, project_root: Path
 ) -> dict[str, str]:
-    """Build the subprocess environment from an allowlist, never by inheriting.
+    """Build the subprocess environment.
 
-    An allowlist rather than a denylist of credential-looking names: a denylist
-    has to predict what a secret is called, and being wrong once is an
-    execution-safety incident on someone else's repository.
+    **Locked down**, with no test command: from an allowlist, never by
+    inheriting. An allowlist rather than a denylist of credential-looking names:
+    a denylist has to predict what a secret is called, and being wrong once is
+    an execution-safety incident on someone else's repository.
+
+    **Under a test command**: the user's whole environment, because that is
+    what their tests run with every day — a `DATABASE_URL` is the reason the
+    command exists. The user agreed to this when they set the command.
     """
-    env = {name: os.environ[name] for name in _INHERITED_ENV if name in os.environ}
-    # The project's own code first, the plugin last: the plugin only has to be
-    # importable, while the project's code has to win against an installed copy
-    # of itself.
-    env["PYTHONPATH"] = os.pathsep.join([*_import_roots(project_root), str(plugin_dir)])
+    if config.test_command is None:
+        env = {name: os.environ[name] for name in _INHERITED_ENV if name in os.environ}
+        inherited_path: list[str] = []
+        # The launching machine's per-user site-packages directory is on the
+        # interpreter's path by default, and dropping `PYTHONPATH` from the
+        # allowlist does not remove it. It is launch-side code the project under
+        # review never asked for, so it is switched off explicitly.
+        env["PYTHONNOUSERSITE"] = "1"
+    else:
+        env = dict(os.environ)
+        inherited_path = [p for p in env.get("PYTHONPATH", "").split(os.pathsep) if p]
+        env[netblock.ALLOW_NETWORK_VAR] = "1"
+    # The project's own code first, the plugin after it: the plugin only has to
+    # be importable, while the project's code has to win against an installed
+    # copy of itself. Whatever the user had on the path comes last.
+    env["PYTHONPATH"] = os.pathsep.join(
+        [*_import_roots(project_root), str(plugin_dir), *inherited_path]
+    )
     env["PYTHONDONTWRITEBYTECODE"] = "1"
-    # The launching machine's per-user site-packages directory is on the
-    # interpreter's path by default, and dropping `PYTHONPATH` from the
-    # allowlist does not remove it. It is launch-side code the project under
-    # review never asked for, so it is switched off explicitly.
-    env["PYTHONNOUSERSITE"] = "1"
     env[netblock.REPORT_PATH_VAR] = str(report_path)
     env[netblock.PER_TEST_BUDGET_VAR] = repr(config.per_test_seconds)
+    env[netblock.ID_ROOT_VAR] = str(project_root.resolve())
     return env
 
 
+def passed_environment_names(config: SandboxConfig) -> list[str]:
+    """The names of the environment variables a run passes to the project's tests.
+
+    Names only, never values: the point is that a user can see a wrong
+    `DATABASE_URL` is being passed, and printing its value would print its
+    password. Only the variables from outside are listed; the ones this module
+    sets for its own plugin are machinery, not the user's.
+    """
+    if config.test_command is None:
+        return sorted(name for name in _INHERITED_ENV if name in os.environ)
+    return sorted(os.environ)
+
+
 def _spawn_and_wait(
-    command: list[str],
+    command: list[str] | str,
     cwd: Path,
     env: dict[str, str],
     total_seconds: float,
 ) -> tuple[bool, str | None, int | None]:
     """Run the command under the whole-run budget.
 
+    A string is the user's test command and goes through the shell; a list is
+    run directly. Either way the whole process group is killed at the budget,
+    which matters more under the shell, where pytest is a child of the process
+    we hold.
+
     Returns (aborted, abort reason, exit code). The exit code is `None` when the
     run was stopped rather than allowed to finish.
     """
     process = subprocess.Popen(
         command,
+        shell=isinstance(command, str),
         cwd=str(cwd),
         env=env,
         stdout=subprocess.DEVNULL,

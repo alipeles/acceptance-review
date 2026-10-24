@@ -114,6 +114,39 @@ class ControlNotHonouredError(LLMError):
     """
 
 
+class MissingKeyError(LLMError):
+    """A live call's provider key is not set (#398).
+
+    Raised before the call, like `ControlNotHonouredError`, so nothing is sent.
+    The point is the message: a provider that receives no key answers as if it
+    had received a bad one — Voyage replies 401 "Provided API key is invalid" —
+    and that sends the user to check a key that was never the problem.
+    """
+
+
+def missing_keys(model: str) -> list[str]:
+    """The environment variables `model`'s provider needs and does not have.
+
+    Asked of LiteLLM, which knows each provider's variable names, and imported
+    lazily like every other provider touch so replay never needs it. Empty for a
+    model LiteLLM does not recognise: there is no variable to name, and the call
+    then fails with the provider's own answer, as it always did.
+    """
+    import contextlib
+    import io
+
+    import litellm
+
+    # LiteLLM prints a provider-list banner to stdout for a model it does not
+    # recognise. stdout carries the report, which must stay byte-identical.
+    with contextlib.redirect_stdout(io.StringIO()):
+        try:
+            found = litellm.validate_environment(model=model)
+        except Exception:  # noqa: BLE001 — an unanswerable question is not a missing key
+            return []
+    return sorted(found.get("missing_keys") or [])
+
+
 def request_key(request: dict) -> str:
     """Content-address a request.
 
@@ -543,6 +576,7 @@ class ModelClient:
         embedding_fn: Callable[..., Any] | None = None,
         stage_models: Mapping[str, str] | None = None,
         stage_reasoning: Mapping[str, ReasoningEffort] | None = None,
+        key_check: Callable[[str], list[str]] | None = None,
     ) -> None:
         self.model = model
         # Stages that name their own model (#317). A stage absent from this map
@@ -575,6 +609,15 @@ class ModelClient:
         # rather than quietly skipping the work.
         self.embedding_model = embedding_model
         self._embedding_fn = embedding_fn or _default_embedding_fn
+        # Which variables a model's provider lacks (#398), asked only of the
+        # provider path that will actually be called. An injected function has
+        # no provider behind it and needs no key, so by default it is not
+        # checked — a test's fake would otherwise fail wherever no key is set,
+        # which is CI. `key_check` overrides that for both paths at once.
+        self._completion_key_check = key_check or (missing_keys if completion_fn is None else None)
+        self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
+        # Models whose keys have been confirmed present, so each is asked once.
+        self._keys_confirmed: set[str] = set()
         # One entry per completed call: the controls that call ran under, or
         # None if nothing is known about them. Accumulated so a review's
         # provenance can report the controls actually in force rather than the
@@ -606,6 +649,46 @@ class ModelClient:
     def model_for(self, stage: str | None) -> str:
         """The model this stage runs on: its own if it names one, else the run's."""
         return self._stage_models.get(stage or UNKNOWN_STAGE, self.model)
+
+    def missing_keys_by_model(self) -> dict[str, list[str]]:
+        """Each model this client may call live, mapped to the keys it lacks.
+
+        For the CLI's startup warning (#398). Only models with something missing
+        appear, and nothing appears in REPLAY, which makes no live call. A
+        missing key here is a warning, not an error: a RECORD run whose requests
+        are all recorded never needs one, and stopping it would refuse a run
+        that would have succeeded. The stop comes before the first live call
+        instead — see `_require_keys`.
+        """
+        if self.mode is not Mode.RECORD:
+            return {}
+        checks: dict[str, Callable[[str], list[str]]] = {}
+        if self._completion_key_check is not None:
+            for model in {self.model, *self._stage_models.values()}:
+                checks[model] = self._completion_key_check
+        if self._embedding_key_check is not None and self.embedding_model is not None:
+            checks[self.embedding_model] = self._embedding_key_check
+        missing = {model: check(model) for model, check in sorted(checks.items())}
+        return {model: names for model, names in missing.items() if names}
+
+    def _require_keys(
+        self,
+        model: str,
+        check: Callable[[str], list[str]] | None,
+        kind: str,
+        stage: str | None,
+    ) -> None:
+        """Stop before a live call whose provider key is not set (#398)."""
+        if check is None or model in self._keys_confirmed:
+            return
+        names = check(model)
+        if names:
+            raise MissingKeyError(
+                f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to {model} was not "
+                f"sent: {', '.join(names)} is not set. Set it in the environment or "
+                "in a .env file in the directory acceptance runs from."
+            )
+        self._keys_confirmed.add(model)
 
     def reasoning_for(self, stage: str | None) -> ReasoningEffort | None:
         """The reasoning effort this stage asks for, or None if it asks for none."""
@@ -999,6 +1082,7 @@ class ModelClient:
         """Call, validate, and only then keep — same order as `_persist_live_call`,
         and for the same reason: a reply the harness rejects is not evidence, and
         persisting first would let replay serve it forever (#160)."""
+        self._require_keys(request["model"], self._embedding_key_check, "embedding", stage)
         response = self._call_provider(
             self._embedding_fn,
             "embedding",
@@ -1148,6 +1232,7 @@ class ModelClient:
         return record
 
     def _live_call(self, key: str, request: dict, stage: str | None = None) -> dict:
+        self._require_keys(request["model"], self._completion_key_check, "completion", stage)
         requested = {"temperature": request["temperature"]}
         if "seed" in request:
             requested["seed"] = request["seed"]

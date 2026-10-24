@@ -1,0 +1,486 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) with non-discriminating test evidence (render-review-with-two-defects).
+
+Obligations:
+
+  1. The review report states, for every enumerated defect the pair-judgement stage was asked about, how many of that defect's pairs the run settled, how many were put to the judge, how many were dropped as not worth asking, and how many were skipped once the defect was covered.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/report.py#@@ -478,17 +478,16 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         1.2  tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_dropped_pairs_are_counted_not_listed_one_by_one
+
+  2. The review report states, for a defect the injection stage did not attempt and whose injection outcome is `not_mutable` or `not_attempted`, how many of that defect's pairs the run settled, how many were put to the judge, how many were dropped as not worth asking, and how many were skipped once the defect was covered.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/report.py#@@ -478,17 +478,16 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
+         2.2  tests/test_pair_counts_without_an_attempt.py#@@ -0,0 +1,137 @@
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  3. The counts for such a defect are correct, not merely present.
+       requirements: task-02
+       code evidence: addressed
+         3.1  src/acceptance/report.py#@@ -478,17 +478,16 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
+         3.2  tests/test_pair_counts_without_an_attempt.py#@@ -0,0 +1,137 @@
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         3.3  tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_pair_counts_are_stated_even_when_they_are_all_zero
+         3.4  tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge
+         3.5  tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge
+
+  4. The count of pairs put to the judge agrees wherever the report states it for the same defect.
+       requirements: task-02
+       code evidence: addressed
+         4.1  src/acceptance/report.py#@@ -478,17 +478,16 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         4.2  tests/test_pair_counts_without_an_attempt.py::test_the_two_sections_agree_on_how_many_pairs_went_to_the_judge
+
+  5. No edit was built for it, so none of its pairs was settled by the run.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/report.py#@@ -478,17 +478,16 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
+         5.2  tests/test_pair_counts_without_an_attempt.py#@@ -0,0 +1,137 @@
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  6. Every pair is counted as put to the judge, with none dropped or skipped on the strength of an edit.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/report.py#@@ -478,17 +478,16 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
+         6.2  tests/test_pair_counts_without_an_attempt.py#@@ -0,0 +1,137 @@
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         6.3  tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_pair_counts_are_stated_even_when_they_are_all_zero
+         6.4  tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge
+         6.5  tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge
+         6.6  tests/test_pair_counts_without_an_attempt.py::test_the_two_sections_agree_on_how_many_pairs_went_to_the_judge
+
+  7. The count includes a pair the judge was offered and did not answer.
+       requirements: task-02
+       code evidence: addressed
+         7.1  src/acceptance/report.py#@@ -478,17 +478,16 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
+         7.2  tests/test_pair_counts_without_an_attempt.py#@@ -0,0 +1,137 @@
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         7.3  tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_pair_counts_are_stated_even_when_they_are_all_zero
+         7.4  tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge
+         7.5  tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge
+
+  8. Render a review holding a `not_mutable` defect and a `not_attempted` defect.
+       requirements: task-03
+       code evidence: addressed
+         8.1  tests/test_pair_counts_without_an_attempt.py#@@ -0,0 +1,137 @@
+       test evidence: partially supported — kills 1 of 2 enumerated defects (static prediction)  [tier: static]
+         8.2  tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_held_back_pair_is_recorded_rather_than_dropped
+         recommended test: The rendered review includes both a `not_mutable` defect and a `not_attempted` defect.
+           inputs:  Build a Review containing exactly two defects under the same obligation: one `not_mutable` defect with three pair-related inputs total (two judged verdicts plus one unjudged/ unanswered pair) and one `not_attempted` defect with two pair-related inputs total (one judged verdict plus one unjudged/ unanswered pair). The two defects must have different asked/skipped totals so a shared count would be wrong for at least one block.
+           detects: The pair-disposition section can still report the wrong asked/skipped counts for one of the two defect blocks if it relies on a shared count that does not match the block-specific verdicts, so one defect can be rendered with incomplete counts while the other is rendered correctly.
+           full detail: acceptance recommendation --criterion render-review-with-two-defects
+
+  9. Render each of the `not_mutable` and `not_attempted` defects with pairs that went to the judge.
+       requirements: task-03
+       code evidence: addressed
+         9.1  tests/test_pair_counts_without_an_attempt.py#@@ -0,0 +1,137 @@
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         9.2  tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge
+         9.3  tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge
+
+  10. Each defect includes pairs that went to the judge.
+       requirements: task-03
+       code evidence: addressed
+         10.1  tests/test_pair_counts_without_an_attempt.py#@@ -0,0 +1,137 @@
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  11. Pin the exact counts the report states for each.
+       requirements: task-03
+       code evidence: addressed
+         11.1  tests/test_pair_counts_without_an_attempt.py#@@ -0,0 +1,137 @@
+         11.2  tests/test_mutation_pipeline_wiring.py#@@ -1050,11 +1050,15 @@ class TestTheRunRoutesPairsThroughTheRealPipeline:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         11.3  tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge
+         11.4  tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge
+
+  12. A regression test asserts the exact counts the report states for each.
+       requirements: task-03
+       code evidence: not required — The requirement explicitly demands a regression test, so the test itself is the deliverable evidence.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  13. The change does not alter how pairs are routed between the run and the judge.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 3 changes across 3 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about implementation work, so the source diff itself is sufficient to show whether routing logic changed.
+
+Mandate coverage: 4 of 4 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The report logic now uses the total asked count from `_pair_counts` in the pair disposition section, changing the displayed count there from answered-only to all asked pairs. The obligations require the report to state counts correctly and consistently, but they do not call for changing this section’s counting behavior beyond fixing the defect/injection counts.
+       src/acceptance/report.py#@@ -478,17 +478,16 @@ def _pair_disposition(review: Review, defect_id: str) -> list[str]:
+  2. [in_service] The new regression test changes the expected report text for a `not_mutable` defect from `0 put to the model` to `1 put to the model`, which is a behavior change in the existing mutation pipeline wiring test beyond merely adding coverage for the requested defect-count consistency.
+       tests/test_mutation_pipeline_wiring.py#@@ -1050,11 +1050,15 @@ class TestTheRunRoutesPairsThroughTheRealPipeline:
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  pair-judgement-defect-counts
+    [other] pair-judgement-defect-counts/skipped-count-from-wrong-source
+      The report can still show the skipped-after-coverage count from a source that does not include all skipped pairs for the defect, so the per-defect counts are incomplete or inconsistent.
+      src/acceptance/report.py#0
+      pairs: 4 put to the model, 63 skipped once the defect was covered
+
+  report-covers-unattempted-defects
+    none enumerated: No plausible static defect is exposed by the diff for this criterion: the changed code now takes `asked, skipped` from `_pair_counts(review, defect_id)` in the defect block, which is the only visible place where the report could have been missing the pair-count figures for unattempted/not_mutable defects. The diff does not introduce a new guard, branch, or shape change that would selectively omit those counts for the covered outcomes.
+
+  pair-counts-correct
+    [other] pair-counts-correct/pair-counts-still-uses-answered-only-count
+      The defect block can still report a count based on only the answered pair verdicts, so a defect with an unanswered pair would be shown as having fewer pairs put to the judge than it actually did.
+      src/acceptance/report.py#0
+      pairs: 3 put to the model, 0 skipped once the defect was covered
+
+  judge-pair-count-agreement
+    [other] judge-pair-count-agreement/pair-counts-still-diverge-between-report-sections
+      The report can still compute the number of pairs put to the judge from different sources in different sections, so one statement about the same defect can disagree with another statement in the same report.
+      src/acceptance/report.py#0
+      pairs: 6 put to the model, 61 skipped once the defect was covered
+
+  no-edit-built-for-it
+    none enumerated: The changed code only adjusts how pair counts are reported in `_pair_disposition`; it does not introduce any path that settles a defect's pairs by edit, nor does it touch the edit-settlement logic itself. So there is no plausible static defect in this diff that could make the run settle pairs by an edit.
+
+  all-pairs-counted-as-put-to-judge
+    [scope_too_narrow] all-pairs-counted-as-put-to-judge/pair-counts-still-use-answered-only-total
+      The pair-disposition section can still report a put-to-judge count that excludes unanswered pairs, so a pair omitted by an edit is not counted here even though the defect block counts it.
+      src/acceptance/report.py#0
+      pairs: 4 put to the model, 63 skipped once the defect was covered
+
+  include-judge-unanswered-pair
+    [scope_too_narrow] include-judge-unanswered-pair/unanswered-pair-still-excluded-from-disposition
+      The disposition section can still omit a judge-offered pair that was never answered, so the defect’s counts do not include that pair in this part of the report.
+      src/acceptance/report.py#0
+      pairs: 4 put to the model, 63 skipped once the defect was covered
+
+  render-review-with-two-defects
+    [scope_too_narrow] render-review-with-two-defects/pair-counts-used-for-both-defect-blocks
+      The pair-disposition section can still report the wrong asked/skipped counts for one of the two defect blocks if it relies on a shared count that does not match the block-specific verdicts, so one defect can be rendered with incomplete counts while the other is rendered correctly.
+      src/acceptance/report.py#0
+      pairs: 67 put to the model, 0 skipped once the defect was covered
+    [missing_case] render-review-with-two-defects/pair-disposition-still-drops-unanswered-pair
+      The pair-disposition logic can still fail to account for an unanswered pair tied to one of the defects, so the rendered review may include only one of the two required defects in the defect summary section.
+      src/acceptance/report.py#0
+      pairs: 4 put to the model, 63 skipped once the defect was covered
+
+  judge-pairs-for-both-defects
+    [scope_too_narrow] judge-pairs-for-both-defects/not_mutable-uses-only-answered-pairs
+      The defect block can still count only answered pairs for `not_mutable`, so a pair that was sent to the judge but never answered is omitted from that defect's rendered pair list.
+      src/acceptance/report.py#0
+      pairs: 4 put to the model, 63 skipped once the defect was covered
+    [scope_too_narrow] judge-pairs-for-both-defects/not_attempted-uses-only-answered-pairs
+      The defect block can still count only answered pairs for `not_attempted`, so a pair that went to the judge but was left unanswered is omitted from that defect's rendered pair list.
+      src/acceptance/report.py#0
+      pairs: 4 put to the model, 63 skipped once the defect was covered
+
+  pairs-went-to-judge
+    none enumerated: The changed code now uses the same pair-count source for the defect block and the pair-disposition section, so there is no plausible static defect in this diff that would make the rendered review omit judge-bound pairs for a defect. The only touched logic removes a separate count that could have diverged, which makes the criterion hold by construction rather than introducing a new failure mode.
+
+  pin-exact-counts-report-states
+    [scope_too_narrow] pin-exact-counts-report-states/pair-counts-not-reused-for-disposition
+      The disposition section can still compute its own asked count instead of reusing the exact pair counts used elsewhere, so one category can report a different number of asked pairs than the defect block for the same defect.
+      src/acceptance/report.py#0
+      pairs: 4 put to the model, 63 skipped once the defect was covered
+
+  routing-unchanged
+    [other] routing-unchanged/pair-counts-used-for-disposition
+      The disposition section now reuses `_pair_counts(review, defect_id)` for `asked`, so if that helper counts a different set of pairs than the disposition logic is supposed to report, the run/judge routing summary can change here.
+      src/acceptance/report.py#0
+      pairs: 4 put to the model, 63 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [passed_under_edit] pair-counts-correct/pair-counts-still-uses-answered-only-count x 64 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 3 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] all-pairs-counted-as-put-to-judge/pair-counts-still-use-answered-only-total x 63 candidate test(s), ranked 5 to 67
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_pair_counts_are_stated_even_when_they_are_all_zero, tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge, tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge, tests/test_pair_counts_without_an_attempt.py::test_the_two_sections_agree_on_how_many_pairs_went_to_the_judge
+  [defect_already_covered] include-judge-unanswered-pair/unanswered-pair-still-excluded-from-disposition x 63 candidate test(s), ranked 5 to 67
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_pair_counts_are_stated_even_when_they_are_all_zero, tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge, tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge
+  [defect_already_covered] judge-pair-count-agreement/pair-counts-still-diverge-between-report-sections x 61 candidate test(s), ranked 7 to 67
+    not asked: the defect was already covered by tests/test_pair_counts_without_an_attempt.py::test_the_two_sections_agree_on_how_many_pairs_went_to_the_judge
+  [defect_already_covered] judge-pairs-for-both-defects/not_attempted-uses-only-answered-pairs x 63 candidate test(s), ranked 5 to 67
+    not asked: the defect was already covered by tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge
+  [defect_already_covered] judge-pairs-for-both-defects/not_mutable-uses-only-answered-pairs x 63 candidate test(s), ranked 5 to 67
+    not asked: the defect was already covered by tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge
+  [defect_already_covered] pair-judgement-defect-counts/skipped-count-from-wrong-source x 63 candidate test(s), ranked 5 to 67
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_dropped_pairs_are_counted_not_listed_one_by_one
+  [defect_already_covered] pin-exact-counts-report-states/pair-counts-not-reused-for-disposition x 63 candidate test(s), ranked 5 to 67
+    not asked: the defect was already covered by tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge, tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge
+  [defect_already_covered] render-review-with-two-defects/pair-disposition-still-drops-unanswered-pair x 63 candidate test(s), ranked 5 to 67
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_held_back_pair_is_recorded_rather_than_dropped
+  [defect_already_covered] routing-unchanged/pair-counts-used-for-disposition x 63 candidate test(s), ranked 5 to 67
+    not asked: the defect was already covered by tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge, tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge
+
+Running the project's tests:
+  the project's tests were run: 11 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [no_usable_edit] all-pairs-counted-as-put-to-judge/pair-counts-still-use-answered-only-total
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      2. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      3. set aside (refused_after_run): 21 of the 67 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id, answered_only=True)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 63 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] include-judge-unanswered-pair/unanswered-pair-still-excluded-from-disposition
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      2. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      3. set aside (refused_after_run): 21 of the 67 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id, answered_only=True)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 63 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] judge-pair-count-agreement/pair-counts-still-diverge-between-report-sections
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      2. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+    injected at src/acceptance/report.py lines 490-490:
+      -     asked, skipped = _pair_counts(review, defect_id)
+      +     asked, skipped = len(review.pair_verdicts), 0
+    caught by (2):
+      tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_pair_counts_are_stated_even_when_they_are_all_zero
+      tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 6 put to the model, 0 dropped as not worth asking, 61 skipped once the defect was covered
+
+  [no_usable_edit] judge-pairs-for-both-defects/not_attempted-uses-only-answered-pairs
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 486..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 486-490:
+           -     # One count of asked pairs, shared with the defect block. Counting only the
+           -     # answered ones here left an unanswered pair out, so a `not_mutable` defect
+           -     # whose one pair the judge never answered read "0 put to the model" in this
+           -     # section and "1" in the other (#350).
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     # One count of asked pairs, shared with the defect block. Counting only the
+           +     # answered ones here left an unanswered pair out, so a `not_mutable` defect
+           +     # whose one pair the judge never answered read "0 put to the model" in this
+           +     # section and "1" in the other (#350).
+           +     asked, skipped = _pair_counts(review, defect_id)
+      2. set aside (refused_after_run): 21 of the 67 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id, include_unanswered=True)
+      3. set aside (refused_after_run): 21 of the 67 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id, include_unanswered=True)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 63 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] judge-pairs-for-both-defects/not_mutable-uses-only-answered-pairs
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      2. set aside (refused_after_run): 21 of the 67 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id, answered_only=True)
+      3. set aside (refused_after_run): 21 of the 67 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id, answered_only=True)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 63 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] pair-counts-correct/pair-counts-still-uses-answered-only-count
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+    injected at src/acceptance/report.py lines 490-490:
+      -     asked, skipped = _pair_counts(review, defect_id)
+      +     asked, skipped = sum(
+      +         1
+      +         for verdict in review.pair_verdicts
+      +         if verdict.defect_id == defect_id
+      +     ), 0
+    caught by (3):
+      tests/test_mutation_pipeline_wiring.py::TestTheRunRoutesPairsThroughTheRealPipeline::test_the_pair_counts_are_stated_even_when_they_are_all_zero
+      tests/test_pair_counts_without_an_attempt.py::test_a_not_attempted_defect_counts_every_pair_as_put_to_the_judge
+      tests/test_pair_counts_without_an_attempt.py::test_a_not_mutable_defect_counts_every_pair_as_put_to_the_judge
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 3 put to the model, 64 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] pair-judgement-defect-counts/skipped-count-from-wrong-source
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      2. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      3. set aside (refused_after_run): 21 of the 67 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id, source="narrow")
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 63 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] pin-exact-counts-report-states/pair-counts-not-reused-for-disposition
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      2. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      3. set aside (refused_after_run): every one of the 21 tests that failed under the edit failed with NameError, which means the edited code no longer loads or names something that does not exist. Those failures say nothing about the named defect, so this is not counted as a kill and the defect goes to the static judge.
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked = sum(
+           +         1
+           +         for verdict in review.pair_verdicts
+           +         if verdict.defect_id == defect_id
+           +     )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 63 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] render-review-with-two-defects/pair-counts-used-for-both-defect-blocks
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      2. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      3. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+    pairs: 0 settled by the run, 67 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] render-review-with-two-defects/pair-disposition-still-drops-unanswered-pair
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 491..496 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 491-496:
+           -     # No early return on three zeroes. The criterion is that the report states
+           -     # these counts for every defect the stage was asked about, and #340's own Gate
+           -     # 2 raised exactly this: a `not_mutable` defect has no pairs of its own here,
+           -     # and omitting the line left the report silent about it rather than saying
+           -     # zero. "Nothing to report" and "not reported" are the distinction this whole
+           -     # project is about.
+           +     # No early return on three zeroes. The criterion is that the report states
+           +     # these counts for every defect the stage was asked about, and #340's own Gate
+           +     # 2 raised exactly this: a `not_mutable` defect has no pairs of its own here,
+           +     # and omitting the line left the report silent about it rather than saying
+           +     # zero. "Nothing to report" and "not reported" are the distinction this whole
+           +     # project is about.
+      2. set aside (failed_check): the span 491..496 falls outside the region(s) the defect named in src/acceptance/report.py (478..493)
+         at src/acceptance/report.py lines 491-496:
+           -     # No early return on three zeroes. The criterion is that the report states
+           -     # these counts for every defect the stage was asked about, and #340's own Gate
+           -     # 2 raised exactly this: a `not_mutable` defect has no pairs of its own here,
+           -     # and omitting the line left the report silent about it rather than saying
+           -     # zero. "Nothing to report" and "not reported" are the distinction this whole
+           -     # project is about.
+           +     # No early return on three zeroes. The criterion is that the report states
+           +     # these counts for every defect the stage was asked about, and #340's own Gate
+           +     # 2 raised exactly this: a `not_mutable` defect has no pairs of its own here,
+           +     # and omitting the line left the report silent about it rather than saying
+           +     # zero. "Nothing to report" and "not reported" are the distinction this whole
+           +     # project is about.
+           +     if asked == 0 and skipped == 0 and settled == 0 and dropped == 0:
+           +         return []
+    injected at src/acceptance/report.py lines 491-493:
+      -     # No early return on three zeroes. The criterion is that the report states
+      -     # these counts for every defect the stage was asked about, and #340's own Gate
+      -     # 2 raised exactly this: a `not_mutable` defect has no pairs of its own here,
+      +     # No early return on three zeroes. The criterion is that the report states
+      +     # these counts for every defect the stage was asked about, and #340's own Gate
+      +     # 2 raised exactly this: a `not_mutable` defect has no pairs of its own here,
+      +     # and omitting the line left the report silent about it rather than saying
+      +     # zero. "Nothing to report" and "not reported" are the distinction this whole
+      +     # project is about.
+      +     if asked == 0 and skipped == 0 and settled == 0 and dropped == 0:
+      +         return []
+    no test caught it; 67 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 63 skipped once the defect was covered
+
+  [no_usable_edit] routing-unchanged/pair-counts-used-for-disposition
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/report.py lines 490..490 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked, skipped = _pair_counts(review, defect_id)
+      2. set aside (refused_after_run): every one of the 21 tests that failed under the edit failed with NameError, which means the edited code no longer loads or names something that does not exist. Those failures say nothing about the named defect, so this is not counted as a kill and the defect goes to the static judge.
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked = sum(
+           +         1
+           +         for verdict in review.pair_verdicts
+           +         if verdict.defect_id == defect_id and verdict.tier is EvidenceTier.DEFECT_KILLED
+           +     )
+      3. set aside (refused_after_run): every one of the 21 tests that failed under the edit failed with NameError, which means the edited code no longer loads or names something that does not exist. Those failures say nothing about the named defect, so this is not counted as a kill and the defect goes to the static judge.
+         at src/acceptance/report.py lines 490-490:
+           -     asked, skipped = _pair_counts(review, defect_id)
+           +     asked = sum(
+           +         1
+           +         for verdict in review.pair_verdicts
+           +         if verdict.defect_id == defect_id and verdict.tier is EvidenceTier.DEFECT_KILLED
+           +     )
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 63 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
+run db3e58f2dac830bf
+  continue this run with: --continue db3e58f2dac830bf
+Model usage by stage:
+  stage                         model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ----------------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose                     openai/gpt-5.4-mini                          11 (0 live / 11 replayed)  59,871   2,072    0.0%   $0.0000   $0.0542              —
+  decompose-summary             openai/gpt-5.4                                 3 (0 live / 3 replayed)   2,419   1,146    0.0%   $0.0000   $0.0232              —
+  obligation linking            voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (0 live / 2 replayed)   1,939     272    0.0%   $0.0000   $0.0022              —
+  defect enumeration            openai/gpt-5.4-mini                          12 (0 live / 12 replayed)  17,376   2,092    0.0%   $0.0000   $0.0224              —
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini  25 (25 live / 0 replayed)  41,338   6,574    0.0%   $0.0543   $0.0543          46.5s
+  coverage classification       openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   3,577     931    0.0%   $0.0069   $0.0069           4.4s
+  unrequested-change detection  openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   3,008     196    0.0%   $0.0031   $0.0031           1.6s
+  test recommendation           openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   2,533     513    0.0%   $0.0042   $0.0042           3.3s
+  mutation descriptor           openai/gpt-5.4-mini                          32 (6 live / 26 replayed)  72,092   3,313   59.1%   $0.0075   $0.0402          11.4s
+  this run spent $0.0760 on 34 live call(s); the evidence cost $0.2109 to record (54 call(s) replayed at no cost to this run)

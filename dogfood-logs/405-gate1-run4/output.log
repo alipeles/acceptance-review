@@ -1,0 +1,112 @@
+run 09cb6b6fd9b02ac6
+  continuing 4fe56787714b80f4
+  requirements: 1 derived, 7 carried, 1 revised; 13 decompose call(s)
+  continue this run with: --continue 09cb6b6fd9b02ac6
+Model usage by stage:
+  stage                        model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    openai/gpt-5.4-mini                          11 (11 live / 0 replayed)  59,217   1,486   48.0%   $0.0319   $0.0319          18.8s
+  decompose-summary            openai/gpt-5.4                                 2 (2 live / 0 replayed)   1,732   1,276    0.0%   $0.0235   $0.0235          17.6s
+  obligation linking           voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)   1,723      76    0.0%   $0.0009   $0.0009           2.0s
+  requirement carry alignment  openai/gpt-5.4-mini                            1 (1 live / 0 replayed)     512      24    0.0%   $0.0005   $0.0005           2.1s
+  this run spent $0.0568 on 16 live call(s); the evidence cost $0.0568 to record (0 call(s) replayed at no cost to this run)
+Requirements: 9   with obligations: 9
+
+[task-01] A project whose tests live in a subdirectory with their own `pyproject.toml`
+    and virtualenv has its tests run by `acceptance check`, using the project's own
+    dependencies, and the tests pytest collects are recognised as the tests the tool
+    asked for.
+    -> subdir-tests-run-by-acceptance-check  [functional/explicit]
+       A project whose tests live in a subdirectory with their own `pyproject.toml` and
+       virtualenv has its tests run by `acceptance check`.
+    -> use-project-dependencies  [functional/explicit]
+       Use the project's own dependencies when running the tests.
+    -> pytest-collected-tests-match-requested-tests  [invariant/explicit]
+       The tests pytest collects are recognised as the tests the tool asked for.
+
+[task-02] To make that possible, the user tells the tool once, per repository, the
+    command they already use to run their tests — for example `cd api &&
+    .venv/bin/python -m pytest` — and the tool runs the project's tests with exactly
+    that command, adding only which tests to run. When no test command is set and the
+    tests cannot be run, the tool says that a test command needs to be set, rather than
+    reporting that pytest declines the tests.
+    -> test-command-provided-once-per-repo  [functional/explicit]
+       The user tells the tool once, per repository, the command they already use to run
+       their tests.
+    -> run-tests-with-configured-command  [functional/explicit]
+       The tool runs the project's tests with exactly the configured command, adding
+       only which tests to run.
+    -> test-command-required-message  [functional/explicit]
+       When no test command is set and the tests cannot be run, the tool says that a
+       test command needs to be set.
+
+[task-03] Tests run this way run as they do on the user's own machine: with the user's
+    environment variables and with network access, so a suite that needs a local
+    database and a variable such as `DATABASE_URL` can run.
+    -> run-tests-with-env-and-network  [compatibility/explicit]
+       Tests run as they do on the user's own machine, with the user's environment
+       variables and with network access.
+    -> local-db-and-env-var-test-runs  [functional/explicit]
+       A suite that needs a local database and a variable such as `DATABASE_URL` can
+       run.
+
+[task-04] Because the tool runs the tests many times, including against deliberately
+    broken copies of the code, setting the test command shows the user that risk in
+    plain words and saves the command only after the user explicitly agrees. If the
+    saved command changes, the user is asked to agree again. Each run prints the test
+    command it uses and the names of the environment variables passed to the tests; it
+    never prints their values.
+    -> show-risk-in-plain-words  [explanation_observability/explicit]
+       Setting the test command shows the user that risk in plain words.
+    -> confirm-before-saving-command  [functional/explicit]
+       The test command is saved only after the user explicitly agrees.
+    -> reconfirm-on-command-change  [functional/explicit]
+       If the saved test command changes, the user is asked to agree again.
+    -> print-test-command-each-run  [explanation_observability/explicit]
+       Each run prints the test command it uses.
+    -> print-env-var-names  [explanation_observability/explicit]
+       Each test run prints the names of the environment variables passed to the tests.
+    -> never-print-env-var-values  [explanation_observability/explicit]
+       The test run output omits the values of environment variables passed to the
+       tests.
+
+[task-05] By default the tool never runs two copies of the project's tests at the same
+    time. When setting the test command, the user may say how many copies can safely run
+    at once; the tool then runs up to that many, and tells each copy which one it is
+    through an environment variable, so that a project can give each copy its own
+    database.
+    -> default-single-test-runner  [invariant/explicit]
+       By default, the tool runs no more than one copy of the project's tests at the
+       same time.
+    -> test-command-parallel-copies-limit  [functional/explicit]
+       The test command configuration includes a user-specified maximum number of test
+       copies that can safely run at once.
+    -> env-var-identifies-test-copy  [functional/explicit]
+       Each concurrently running test copy is told which copy it is through an
+       environment variable.
+    -> per-copy-database-selection  [functional/explicit]
+       The tool provides each concurrently running test copy with an environment
+       variable identifying which copy it is, enabling the project to select a separate
+       database per copy.
+
+[task-06] Test discovery no longer offers a pytest fixture, such as a `conftest.py`
+    function named `test_db_url`, as a test.
+    -> fixture-not-discovered-as-test  [regression/explicit]
+       Test discovery no longer offers a pytest fixture, such as a `conftest.py`
+       function named `test_db_url`, as a test.
+
+[task-07] The spec's execution-safety wording is updated to match.
+    -> execution-safety-wording-matches-spec  [docs_config/explicit]
+       The spec's execution-safety wording is updated to match.
+
+[exclusion-01] Working out a test command, an interpreter or a directory from the
+    project's files.
+    -> no-auto-detection-of-test-command-interpreter-or-directory  [docs_config/explicit]
+       The change does not work out a test command, an interpreter, or a directory from
+       the project's files.
+
+[exclusion-02] Judging whether a database or service the tests use is safe to use.
+    -> no-unsafe-service-judgment  [docs_config/explicit]
+       The change does not include judging whether a database or service the tests use
+       is safe to use.
+

@@ -81,6 +81,25 @@ def test_class_based_test_method_gets_a_pytest_style_node_id(tmp_path):
     assert result.tests[0].test_id == "test_new.py::TestThing::test_it"
 
 
+def test_a_fixture_named_test_in_a_conftest_is_not_offered_as_a_test(tmp_path):
+    """#405: a changed `tests/conftest.py` defining a fixture `test_db_url` was
+    offered as the test `tests/conftest.py::test_db_url`, which pytest never
+    collects. The real test beside it is still found."""
+    repo = tmp_path
+    (repo / "tests").mkdir()
+    _write(
+        repo,
+        "tests/conftest.py",
+        "import pytest\n\n\n@pytest.fixture\ndef test_db_url():\n    return 'x'\n",
+    )
+    _write(repo, "tests/test_api.py", "def test_api(test_db_url):\n    assert test_db_url\n")
+    change_set = _change_set(_test_change("tests/conftest.py"), _test_change("tests/test_api.py"))
+
+    result = discover_tests(repo, change_set)
+
+    assert {t.test_id for t in result.tests} == {"tests/test_api.py::test_api"}
+
+
 def test_deleted_test_file_is_not_discovered(tmp_path):
     repo = tmp_path
     change_set = _change_set(_test_change("test_gone.py", status="deleted"))

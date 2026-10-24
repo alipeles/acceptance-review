@@ -1,0 +1,881 @@
+Task completion: INCOMPLETE
+
+2 obligation(s) with non-discriminating test evidence (startup-warns-missing-model-keys, invalid-api-key-reply-not-shown).
+
+Obligations:
+
+  1. When the command starts, it loads the `.env` file from the working directory, if one exists, before any model call.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/cli.py#@@ -69,6 +69,38 @@ class CliError(Exception):
+         1.2  src/acceptance/cli.py#@@ -934,6 +966,7 @@ def build_parser() -> argparse.ArgumentParser:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         1.3  tests/test_env_and_keys.py::test_the_cli_finds_a_key_in_the_working_directorys_env
+         1.4  tests/test_env_and_keys.py::test_the_cli_loads_the_working_directorys_env
+         1.5  tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+
+  2. A variable already set in the environment keeps its value over the one in `.env`.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/cli.py#@@ -69,6 +69,38 @@ class CliError(Exception):
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  3. The command accepts the absence of a `.env` file without treating it as an error.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/cli.py#@@ -69,6 +69,38 @@ class CliError(Exception):
+         3.2  src/acceptance/cli.py#@@ -934,6 +966,7 @@ def build_parser() -> argparse.ArgumentParser:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         3.3  tests/test_env_and_keys.py::test_no_env_file_is_not_an_error
+
+  4. At startup, the command warns about each required key that is missing for any model it is configured to use, naming both the variable and the model.
+       requirements: task-02
+       code evidence: addressed
+         4.1  src/acceptance/cli.py#@@ -69,6 +69,38 @@ class CliError(Exception):
+         4.2  src/acceptance/cli.py#@@ -950,6 +983,7 @@ def main(argv: list[str] | None = None) -> int:
+         4.3  src/acceptance/cli.py#@@ -1024,6 +1058,7 @@ def main(argv: list[str] | None = None) -> int:
+         4.4  src/acceptance/cli.py#@@ -1074,6 +1109,9 @@ def main(argv: list[str] | None = None) -> int:
+         4.5  src/acceptance/llm.py#@@ -575,6 +609,15 @@ class ModelClient:
+       test evidence: partially supported — kills 2 of 3 enumerated defects (static prediction)  [tier: static]
+         4.6  tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+         recommended test: Startup output includes a warning for each missing model key, and each warning identifies the variable and the model.
+           inputs:  Construct a `ModelClient` in `Mode.RECORD` with a real `embedding_model` set, but with `embedding_fn` omitted so the default embedding function path is used. Ensure the environment lacks the embedding provider key and that the client is otherwise configured so `missing_keys_by_model()` is the code path under test. Use a model name that LiteLLM recognizes for embeddings and that maps to a known missing key.
+           detects: The startup warning can miss a configured embedding model when the client was built without an embedding function, because the embedding-key check is disabled in that case.
+           full detail: acceptance recommendation --criterion startup-warns-missing-model-keys
+
+  5. Before the first live call to a model, if that model's key is still missing, the run stops with an error that names the variable and the model.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/llm.py#@@ -607,6 +650,46 @@ class ModelClient:
+         5.2  src/acceptance/llm.py#@@ -999,6 +1082,7 @@ class ModelClient:
+         5.3  src/acceptance/llm.py#@@ -1148,6 +1232,7 @@ class ModelClient:
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         5.4  tests/test_env_and_keys.py::test_a_missing_key_stops_the_completion_before_it_is_sent
+         5.5  tests/test_env_and_keys.py::test_a_missing_key_stops_the_embedding_before_it_is_sent
+         5.6  tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+
+  6. The live model call is not sent when the required key is still missing before the first live call.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/llm.py#@@ -607,6 +650,46 @@ class ModelClient:
+         6.2  src/acceptance/llm.py#@@ -999,6 +1082,7 @@ class ModelClient:
+         6.3  src/acceptance/llm.py#@@ -1148,6 +1232,7 @@ class ModelClient:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         6.4  tests/test_env_and_keys.py::test_a_missing_key_stops_the_embedding_before_it_is_sent
+         6.5  tests/test_env_and_keys.py::test_the_cli_finds_a_key_in_the_working_directorys_env
+         6.6  tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+
+  7. The user never sees the provider's "invalid API key" reply instead.
+       requirements: task-02
+       code evidence: addressed
+         7.1  src/acceptance/llm.py#@@ -607,6 +650,46 @@ class ModelClient:
+         7.2  src/acceptance/llm.py#@@ -999,6 +1082,7 @@ class ModelClient:
+         7.3  src/acceptance/llm.py#@@ -1148,6 +1232,7 @@ class ModelClient:
+       test evidence: partially supported — kills 2 of 3 enumerated defects (static prediction)  [tier: static]
+         7.4  tests/test_env_and_keys.py::test_a_missing_key_stops_the_completion_before_it_is_sent
+         7.5  tests/test_env_and_keys.py::test_a_missing_key_stops_the_embedding_before_it_is_sent
+         7.6  tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+         recommended test: A run that would otherwise surface the provider's "invalid API key" reply instead stops before that reply reaches the user.
+           inputs:  Invoke the CLI through `cli.main([...])` with the `classify` subcommand, using a temporary working directory that contains a task/base/head setup sufficient for classify to start, and with no provider keys set in the environment or `.env`. Use a monkeypatched live completion provider (or the default provider hook used by classify) that would be reached only if preflight does not stop execution, and that returns a recognizable invalid-key-style response if called.
+           detects: The CLI's classify command can build a client with missing provider keys and still proceed without the new preflight warning, so the user only learns from the provider's invalid-key reply later.
+           full detail: acceptance recommendation --criterion invalid-api-key-reply-not-shown
+
+  8. A run that needs no live call, because every request is already recorded or because it runs in replay mode, succeeds without any keys.
+       requirements: task-02
+       code evidence: addressed
+         8.1  src/acceptance/llm.py#@@ -575,6 +609,15 @@ class ModelClient:
+         8.2  src/acceptance/llm.py#@@ -607,6 +650,46 @@ class ModelClient:
+         8.3  src/acceptance/llm.py#@@ -999,6 +1082,7 @@ class ModelClient:
+         8.4  src/acceptance/llm.py#@@ -1148,6 +1232,7 @@ class ModelClient:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         8.5  tests/test_env_and_keys.py::test_a_recorded_request_needs_no_key_in_either_mode
+         8.6  tests/test_env_and_keys.py::test_replay_reports_no_missing_keys
+         8.7  tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+
+  9. Preserve the existing replay behavior for recorded transcripts so that every recorded transcript keeps replaying without any model request changes.
+       requirements: constraint-01
+       code evidence: addressed
+         9.1  src/acceptance/llm.py#@@ -575,6 +609,15 @@ class ModelClient:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         9.2  tests/test_env_and_keys.py::test_a_recorded_request_needs_no_key_in_either_mode
+         9.3  tests/test_env_and_keys.py::test_replay_reports_no_missing_keys
+
+  10. The change does not read `.env` from any directory other than the working directory.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 13 changes across 4 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the implementation not adding any alternate-directory `.env` lookup, which is directly checkable in the source change.
+
+  11. The change does not add warning or startup-stop behavior for a missing key that the coding agent which builds mutation edits needs.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 13 changes across 4 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion, so the delivered source must simply not introduce that warning or stop behavior.
+
+  12. The change does not add a command-line option to name a different `.env` file.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 13 changes across 4 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not being added, which is settled by inspecting the source and CLI surface rather than by runtime behavior.
+
+Mandate coverage: 6 of 6 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [separable] Adds a new runtime dependency on python-dotenv and a config comment. The obligations require loading a .env from the working directory, but they do not require introducing this specific dependency or changing packaging metadata.
+       pyproject.toml#@@ -9,7 +9,15 @@ description = "Independent acceptance review for AI-assisted software changes."
+  2. [in_service] Adds a new public helper `load_env_file(directory: Path)` and calls it from `main`, which changes the CLI's public surface beyond the requested behavior. The task requires loading the working directory .env, but not exposing a new helper API.
+       src/acceptance/cli.py#@@ -69,6 +69,38 @@ class CliError(Exception):
+       src/acceptance/cli.py#@@ -934,6 +966,7 @@ def build_parser() -> argparse.ArgumentParser:
+  3. [in_service] Adds a new public helper `warn_missing_keys(client: ModelClient)` and invokes it from command startup. The warning behavior is requested, but not as a new exported helper function.
+       src/acceptance/cli.py#@@ -69,6 +69,38 @@ class CliError(Exception):
+       src/acceptance/cli.py#@@ -950,6 +983,7 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/cli.py#@@ -1024,6 +1058,7 @@ def main(argv: list[str] | None = None) -> int:
+       src/acceptance/cli.py#@@ -1074,6 +1109,9 @@ def main(argv: list[str] | None = None) -> int:
+  4. [in_service] Introduces the new exported exception `MissingKeyError` and the helper `missing_keys(model: str)`. The obligations require preflight errors and warnings, but do not require adding these new public symbols.
+       src/acceptance/llm.py#@@ -114,6 +114,39 @@ class ControlNotHonouredError(LLMError):
+       src/acceptance/llm.py#@@ -607,6 +650,46 @@ class ModelClient:
+  5. [in_service] Extends `ModelClient.__init__` with a new `key_check` parameter, changing the constructor signature. The task requires the behavior, but not a new public constructor argument.
+       src/acceptance/llm.py#@@ -543,6 +576,7 @@ class ModelClient:
+       src/acceptance/llm.py#@@ -575,6 +609,15 @@ class ModelClient:
+  6. [separable] Adds a large new test file covering dotenv loading, key warnings, and missing-key errors. The obligations ask for the behavior, but they do not require this specific test artifact set or its breadth.
+       tests/test_env_and_keys.py#@@ -0,0 +1,243 @@
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  load-working-directory-env-before-model-call
+    [not_wired] load-working-directory-env-before-model-call/startup-load-not-called
+      The new `.env` loader exists but the command startup path never invokes it before building or using model clients.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#3
+      src/acceptance/cli.py#4
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] load-working-directory-env-before-model-call/wrong-directory-loaded
+      The startup loader reads a `.env` file, but from the wrong directory or only for some command paths, so the working-directory file is not reliably loaded.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#3
+      src/acceptance/cli.py#4
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [condition_inverted] load-working-directory-env-before-model-call/model-call-before-env-load
+      A model client can be built or used before the startup `.env` load runs, so the first model call can happen with the old environment.
+      src/acceptance/cli.py#1
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#3
+      src/acceptance/cli.py#4
+      pairs: 12 put to the model, 66 skipped once the defect was covered
+
+  env-vars-take-precedence-over-dotenv
+    none enumerated: The diff explicitly loads `.env` with `override=False`, which is the mechanism that preserves any already-set environment variable. The CLI calls this loader on startup before any command-specific work, and there is no changed path that reloads `.env` with overriding enabled or otherwise mutates existing environment variables after loading. So there is no plausible static defect in the shown changes that would make an existing environment variable lose precedence over `.env`.
+
+  no-dotenv-file-is-allowed
+    [other] no-dotenv-file-is-allowed/dotenv-load-not-optional
+      The new startup path can still fail if loading `.env` is treated as a hard requirement instead of a no-op when the file is absent.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      pairs: 4 put to the model, 74 skipped once the defect was covered
+    [other] no-dotenv-file-is-allowed/dotenv-loader-raises-on-missing-file
+      The helper that loads `.env` could surface a missing-file condition from `python-dotenv` instead of ignoring it, which would make the command fail in directories without `.env`.
+      src/acceptance/cli.py#0
+      pairs: 4 put to the model, 74 skipped once the defect was covered
+
+  startup-warns-missing-model-keys
+    [scope_too_narrow] startup-warns-missing-model-keys/startup-warning-only-uses-one-client
+      The startup warning is only computed from one client instance, so some configured models can be missed when the command builds additional clients later.
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#3
+      src/acceptance/cli.py#4
+      src/acceptance/llm.py#3
+      pairs: 4 put to the model, 74 skipped once the defect was covered
+    [scope_too_narrow] startup-warns-missing-model-keys/startup-warning-skips-non-record-paths
+      The missing-key scan is limited to RECORD mode, so startup warnings disappear for other modes even though the command is configured to use the same models there.
+      src/acceptance/llm.py#3
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#3
+      src/acceptance/cli.py#4
+      pairs: 3 put to the model, 0 skipped once the defect was covered
+    [missing_case] startup-warns-missing-model-keys/startup-warning-omits-embedding-model-when-no-embedding-fn
+      The startup warning can miss a configured embedding model when the client was built without an embedding function, because the embedding-key check is disabled in that case.
+      src/acceptance/llm.py#1
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 78 put to the model, 0 skipped once the defect was covered
+
+  missing-key-preflight-error
+    [scope_too_narrow] missing-key-preflight-error/missing-key-check-not-applied-to-all-live-paths
+      The preflight key check is only attached to some live-call paths, so a first live call can still be sent without the missing key being checked first.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#5
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [condition_inverted] missing-key-preflight-error/preflight-raises-after-sending-call
+      The key check happens after the provider call is already underway, so the run can send the first live request before failing.
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#5
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [wrong_output_shape] missing-key-preflight-error/error-message-misses-model-or-variable
+      The preflight error is raised, but its message does not include both the missing variable name and the model name.
+      src/acceptance/llm.py#3
+      pairs: 12 put to the model, 66 skipped once the defect was covered
+    [scope_too_narrow] missing-key-preflight-error/preflight-only-covers-record-mode
+      The startup warning path only inspects RECORD-mode clients, so a non-RECORD run that reaches its first live call can still fail without the preflight error naming the missing key and model.
+      src/acceptance/llm.py#3
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#3
+      src/acceptance/cli.py#4
+      pairs: 5 put to the model, 73 skipped once the defect was covered
+
+  call-not-sent
+    [scope_too_narrow] call-not-sent/missing-key-check-only-on-record
+      The pre-call key check is only performed for RECORD-mode clients, so a run in another mode can still reach its first live request without the required key being present.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#5
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [missing_case] call-not-sent/embedding-path-not-checked
+      The completion path is guarded, but the embedding path can still make a live provider call without first enforcing the missing-key check for that model.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 74 skipped once the defect was covered
+    [not_wired] call-not-sent/startup-warning-not-enforced
+      The CLI warns about missing keys at startup, but that warning is not connected to the actual live-call guard, so the first live request can still be sent when the key is missing.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#3
+      src/acceptance/cli.py#4
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#5
+      pairs: 4 put to the model, 74 skipped once the defect was covered
+
+  invalid-api-key-reply-not-shown
+    [not_wired] invalid-api-key-reply-not-shown/missing-key-check-not-called-for-live-completion
+      The live completion path can still reach the provider without first running the new missing-key check, so the provider's invalid-key reply can surface to the user.
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#5
+      pairs: 4 put to the model, 74 skipped once the defect was covered
+    [not_wired] invalid-api-key-reply-not-shown/missing-key-check-not-called-for-live-embedding
+      The live embedding path can still reach the provider without first running the new missing-key check, so the provider's invalid-key reply can surface to the user.
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 74 skipped once the defect was covered
+    [not_wired] invalid-api-key-reply-not-shown/startup-warning-not-issued-for-classify-client
+      The CLI's classify command can build a client with missing provider keys and still proceed without the new preflight warning, so the user only learns from the provider's invalid-key reply later.
+      src/acceptance/cli.py#4
+      pairs: 78 put to the model, 0 skipped once the defect was covered
+
+  no-live-call-no-keys-required
+    [scope_too_narrow] no-live-call-no-keys-required/startup-warning-becomes-hard-failure
+      The new key check can stop a run before any live call even when every request is already recorded, so recorded-only runs do not always succeed without keys.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#3
+      src/acceptance/cli.py#4
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 1 put to the model, 0 skipped once the defect was covered
+    [missing_case] no-live-call-no-keys-required/replay-mode-still-warns-or-stops
+      Replay-mode runs are not covered by the new key-warning path, so a replay run could still be treated as needing keys or otherwise fail the no-keys criterion.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#3
+      src/acceptance/cli.py#4
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 4 put to the model, 74 skipped once the defect was covered
+
+  preserve-recorded-transcripts-replay
+    [old_input_rejected] preserve-recorded-transcripts-replay/replay-path-now-requires-key-check
+      A replay run can now be stopped by the new key-check path even though recorded transcripts should replay without any model request changes.
+      src/acceptance/cli.py#1
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#3
+      src/acceptance/cli.py#4
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#5
+      pairs: 4 put to the model, 74 skipped once the defect was covered
+
+  env-loading-stays-working-directory-only
+    [other] env-loading-stays-working-directory-only/non-working-directory-env-search
+      The new env-loading helper could still search upward or otherwise resolve `.env` relative to something other than the current working directory, so a run would read a file outside the working directory.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#1
+      pairs: 60 put to the model, 18 skipped once the defect was covered
+
+  no-warning-or-stop-for-mutation-edit-key
+    [scope_too_narrow] no-warning-or-stop-for-mutation-edit-key/mutation-edit-key-warning-not-excluded
+      The new missing-key warning path can still report the mutation-edit coding agent's key instead of excluding it from the startup check.
+      src/acceptance/cli.py#0
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#4
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 60 put to the model, 18 skipped once the defect was covered
+    [scope_too_narrow] no-warning-or-stop-for-mutation-edit-key/mutation-edit-key-stop-not-excluded
+      The new pre-call key check can still raise a startup-stop error for the mutation-edit coding agent's missing key instead of leaving that path alone.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#5
+      pairs: 78 put to the model, 0 skipped once the defect was covered
+
+  no-custom-env-file-option
+    none enumerated: The diff only adds unconditional loading of the working directory's .env file and key warnings; it does not introduce any new command-line flag, option, parser argument, or help text for selecting an alternate .env file. There is no plausible static defect in the shown changes that could make the command interface expose such an option.
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [passed_under_edit] call-not-sent/missing-key-check-only-on-record x 76 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] load-working-directory-env-before-model-call/startup-load-not-called x 76 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] load-working-directory-env-before-model-call/wrong-directory-loaded x 76 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] missing-key-preflight-error/missing-key-check-not-applied-to-all-live-paths x 76 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] missing-key-preflight-error/preflight-raises-after-sending-call x 76 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] no-live-call-no-keys-required/startup-warning-becomes-hard-failure x 77 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] startup-warns-missing-model-keys/startup-warning-skips-non-record-paths x 75 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 3 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] call-not-sent/embedding-path-not-checked x 74 candidate test(s), ranked 5 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_a_missing_key_stops_the_embedding_before_it_is_sent
+  [defect_already_covered] call-not-sent/startup-warning-not-enforced x 74 candidate test(s), ranked 5 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_the_cli_finds_a_key_in_the_working_directorys_env, tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+  [defect_already_covered] env-loading-stays-working-directory-only/non-working-directory-env-search x 18 candidate test(s), ranked 61 to 78
+    not asked: the defect was already covered by tests/test_cli.py::test_check_persists_the_review_to_the_store
+  [defect_already_covered] invalid-api-key-reply-not-shown/missing-key-check-not-called-for-live-completion x 74 candidate test(s), ranked 5 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_a_missing_key_stops_the_completion_before_it_is_sent, tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+  [defect_already_covered] invalid-api-key-reply-not-shown/missing-key-check-not-called-for-live-embedding x 74 candidate test(s), ranked 5 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_a_missing_key_stops_the_embedding_before_it_is_sent
+  [defect_already_covered] load-working-directory-env-before-model-call/model-call-before-env-load x 66 candidate test(s), ranked 13 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_the_cli_finds_a_key_in_the_working_directorys_env, tests/test_env_and_keys.py::test_the_cli_loads_the_working_directorys_env, tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+  [defect_already_covered] missing-key-preflight-error/error-message-misses-model-or-variable x 66 candidate test(s), ranked 13 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_a_missing_key_stops_the_completion_before_it_is_sent, tests/test_env_and_keys.py::test_a_missing_key_stops_the_embedding_before_it_is_sent
+  [defect_already_covered] missing-key-preflight-error/preflight-only-covers-record-mode x 73 candidate test(s), ranked 5 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+  [defect_already_covered] no-dotenv-file-is-allowed/dotenv-load-not-optional x 74 candidate test(s), ranked 5 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_no_env_file_is_not_an_error
+  [defect_already_covered] no-dotenv-file-is-allowed/dotenv-loader-raises-on-missing-file x 74 candidate test(s), ranked 5 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_no_env_file_is_not_an_error
+  [defect_already_covered] no-live-call-no-keys-required/replay-mode-still-warns-or-stops x 74 candidate test(s), ranked 5 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_a_recorded_request_needs_no_key_in_either_mode, tests/test_env_and_keys.py::test_replay_reports_no_missing_keys
+  [defect_already_covered] no-warning-or-stop-for-mutation-edit-key/mutation-edit-key-warning-not-excluded x 18 candidate test(s), ranked 61 to 78
+    not asked: the defect was already covered by tests/test_mutation_agent.py::TestCostPerDefect::test_a_label_does_not_change_the_request_key
+  [defect_already_covered] preserve-recorded-transcripts-replay/replay-path-now-requires-key-check x 74 candidate test(s), ranked 5 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_a_recorded_request_needs_no_key_in_either_mode, tests/test_env_and_keys.py::test_replay_reports_no_missing_keys
+  [defect_already_covered] startup-warns-missing-model-keys/startup-warning-only-uses-one-client x 74 candidate test(s), ranked 5 to 78
+    not asked: the defect was already covered by tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+
+Running the project's tests:
+  the project's tests were run: 24 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [survived, NOT COUNTED] call-not-sent/embedding-path-not-checked
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 618..618 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 618-618:
+           -         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
+           +         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
+    injected at src/acceptance/llm.py lines 1085-1085:
+      -         self._require_keys(request["model"], self._embedding_key_check, "embedding", stage)
+      +         self._require_keys(request["model"], self._completion_key_check, "embedding", stage)
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 74 skipped once the defect was covered
+
+  [killed, NOT COUNTED] call-not-sent/missing-key-check-only-on-record
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 663-664:
+      -         if self.mode is not Mode.RECORD:
+      -             return {}
+      +         return {}
+    caught by (2):
+      tests/test_env_and_keys.py::test_record_mode_names_every_configured_models_missing_key
+      tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 76 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] call-not-sent/startup-warning-not-enforced
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 674..691 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 674-691:
+           -     def _require_keys(
+           -         self,
+           -         model: str,
+           -         check: Callable[[str], list[str]] | None,
+           -         kind: str,
+           -         stage: str | None,
+           -     ) -> None:
+           -         """Stop before a live call whose provider key is not set (#398)."""
+           -         if check is None or model in self._keys_confirmed:
+           -             return
+           -         names = check(model)
+           -         if names:
+           -             raise MissingKeyError(
+           -                 f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to {model} was not "
+           -                 f"sent: {', '.join(names)} is not set. Set it in the environment or "
+           -                 "in a .env file in the directory acceptance runs from."
+           -             )
+           -         self._keys_confirmed.add(model)
+           +     def _require_keys(
+           +         self,
+           +         model: str,
+           +         check: Callable[[str], list[str]] | None,
+           +         kind: str,
+           +         stage: str | None,
+           +     ) -> None:
+           +         """Stop before a live call whose provider key is not set (#398)."""
+           +         if check is None or model in self._keys_confirmed:
+           +             return
+           +         names = check(model)
+           +         if names:
+           +             raise MissingKeyError(
+           +                 f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to {model} was not "
+           +                 f"sent: {', '.join(names)} is not set. Set it in the environment or "
+           +                 "in a .env file in the directory acceptance runs from."
+           +             )
+           +         self._keys_confirmed.add(model)
+    injected at src/acceptance/cli.py lines 986-986:
+      -         warn_missing_keys(client)
+      +         warn_missing_keys(client)
+      +         client._completion_key_check = None
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 74 skipped once the defect was covered
+
+  [survived, NOT COUNTED] env-loading-stays-working-directory-only/non-working-directory-env-search
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 86..86 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 86-86:
+           -     load_dotenv(directory / ".env", override=False)
+           +     load_dotenv(directory / ".env", override=False)
+      2. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 969..969 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 969-969:
+           -     load_env_file(Path.cwd())
+           +     load_env_file(Path.cwd())
+    injected at src/acceptance/cli.py lines 86-86:
+      -     load_dotenv(directory / ".env", override=False)
+      +     load_dotenv(Path.cwd() / ".env", override=False)
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 60 put to the model, 0 dropped as not worth asking, 18 skipped once the defect was covered
+
+  [survived, NOT COUNTED] invalid-api-key-reply-not-shown/missing-key-check-not-called-for-live-completion
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1234-1235:
+      -     def _live_call(self, key: str, request: dict, stage: str | None = None) -> dict:
+      -         self._require_keys(request["model"], self._completion_key_check, "completion", stage)
+      +     def _live_call(self, key: str, request: dict, stage: str | None = None) -> dict:
+      +         self._require_keys(request["model"], self._completion_key_check, "completion", stage)
+      +         requested = {"temperature": request["temperature"]}
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 74 skipped once the defect was covered
+
+  [no_usable_edit] invalid-api-key-reply-not-shown/missing-key-check-not-called-for-live-embedding
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: '(' was never closed (<unknown>, line 1085)
+         at src/acceptance/llm.py lines 1085-1085:
+           -         self._require_keys(request["model"], self._embedding_key_check, "embedding", stage)
+           +         response = self._call_provider(
+      2. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: '(' was never closed (<unknown>, line 1085)
+         at src/acceptance/llm.py lines 1085-1085:
+           -         self._require_keys(request["model"], self._embedding_key_check, "embedding", stage)
+           +         response = self._call_provider(
+      3. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: '(' was never closed (<unknown>, line 1085)
+         at src/acceptance/llm.py lines 1085-1085:
+           -         self._require_keys(request["model"], self._embedding_key_check, "embedding", stage)
+           +         response = self._call_provider(
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 74 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 failed_check). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] invalid-api-key-reply-not-shown/startup-warning-not-issued-for-classify-client
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 1112..1114 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 1112-1114:
+           -         # `run_classify` builds its own clients, all from this config, so one
+           -         # built here answers for them.
+           -         warn_missing_keys(config.build_client())
+           +         # `run_classify` builds its own clients, all from this config, so one
+           +         # built here answers for them.
+           +         warn_missing_keys(config.build_client())
+    injected at src/acceptance/cli.py lines 1112-1114:
+      -         # `run_classify` builds its own clients, all from this config, so one
+      -         # built here answers for them.
+      -         warn_missing_keys(config.build_client())
+      +         # `run_classify` builds its own clients, all from this config, so one
+      +         # built here answers for them.
+      +         pass
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 78 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] load-working-directory-env-before-model-call/model-call-before-env-load
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 969..969 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 969-969:
+           -     load_env_file(Path.cwd())
+           +     load_env_file(Path.cwd())
+      2. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 969..969 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 969-969:
+           -     load_env_file(Path.cwd())
+           +     load_env_file(Path.cwd())
+      3. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 969..969 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 969-969:
+           -     load_env_file(Path.cwd())
+           +     load_env_file(Path.cwd())
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 66 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [killed, NOT COUNTED] load-working-directory-env-before-model-call/startup-load-not-called
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 969..969 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 969-969:
+           -     load_env_file(Path.cwd())
+           +     load_env_file(Path.cwd())
+    injected at src/acceptance/cli.py lines 969-969:
+      -     load_env_file(Path.cwd())
+      +     pass
+    caught by (2):
+      tests/test_env_and_keys.py::test_the_cli_finds_a_key_in_the_working_directorys_env
+      tests/test_env_and_keys.py::test_the_cli_loads_the_working_directorys_env
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 76 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] load-working-directory-env-before-model-call/wrong-directory-loaded
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 969..969 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 969-969:
+           -     load_env_file(Path.cwd())
+           +     load_env_file(Path.cwd())
+    injected at src/acceptance/cli.py lines 969-969:
+      -     load_env_file(Path.cwd())
+      +     load_env_file(Path.cwd() / ".env")
+    caught by (2):
+      tests/test_env_and_keys.py::test_the_cli_finds_a_key_in_the_working_directorys_env
+      tests/test_env_and_keys.py::test_the_cli_loads_the_working_directorys_env
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 76 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] missing-key-preflight-error/error-message-misses-model-or-variable
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 691)
+         at src/acceptance/llm.py lines 686-689:
+           -             raise MissingKeyError(
+           -                 f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to {model} was not "
+           -                 f"sent: {', '.join(names)} is not set. Set it in the environment or "
+           -                 "in a .env file in the directory acceptance runs from."
+           +             raise MissingKeyError(
+           +                 f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to {model} was not "
+           +                 f"sent: {', '.join(names)} is not set. Set it in the environment or "
+           +                 "in a .env file in the directory acceptance runs from."
+           +             )
+      2. set aside (failed_check): the mutated src/acceptance/llm.py does not parse: unmatched ')' (<unknown>, line 691)
+         at src/acceptance/llm.py lines 686-689:
+           -             raise MissingKeyError(
+           -                 f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to {model} was not "
+           -                 f"sent: {', '.join(names)} is not set. Set it in the environment or "
+           -                 "in a .env file in the directory acceptance runs from."
+           +             raise MissingKeyError(
+           +                 f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to {model} was not "
+           +                 f"sent: {', '.join(names)} is not set for {model}. Set it in the environment or "
+           +                 "in a .env file in the directory acceptance runs from."
+           +             )
+    injected at src/acceptance/llm.py lines 687-689:
+      -                 f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to {model} was not "
+      -                 f"sent: {', '.join(names)} is not set. Set it in the environment or "
+      -                 "in a .env file in the directory acceptance runs from."
+      +                 f"{kind} call for stage {stage or UNKNOWN_STAGE!r} to {model} was not "
+      +                 f"sent: {', '.join(names)} is not set for {model}. Set it in the environment or "
+      +                 "in a .env file in the directory acceptance runs from."
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 66 skipped once the defect was covered
+
+  [killed, NOT COUNTED] missing-key-preflight-error/missing-key-check-not-applied-to-all-live-paths
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1235-1235:
+      -         self._require_keys(request["model"], self._completion_key_check, "completion", stage)
+      +         requested = {"temperature": request["temperature"]}
+    caught by (2):
+      tests/test_env_and_keys.py::test_a_missing_key_stops_the_completion_before_it_is_sent
+      tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 76 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] missing-key-preflight-error/preflight-only-covers-record-mode
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 663-664:
+      -         if self.mode is not Mode.RECORD:
+      -             return {}
+      +         if self.mode not in (Mode.RECORD, Mode.REPLAY):
+      +             return {}
+    caught by (1):
+      tests/test_env_and_keys.py::test_replay_reports_no_missing_keys
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 5 put to the model, 0 dropped as not worth asking, 73 skipped once the defect was covered
+
+  [killed, NOT COUNTED] missing-key-preflight-error/preflight-raises-after-sending-call
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1235-1235:
+      -         self._require_keys(request["model"], self._completion_key_check, "completion", stage)
+      +         requested = {"temperature": request["temperature"]}
+    caught by (2):
+      tests/test_env_and_keys.py::test_a_missing_key_stops_the_completion_before_it_is_sent
+      tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 76 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] no-dotenv-file-is-allowed/dotenv-load-not-optional
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 86..86 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 86-86:
+           -     load_dotenv(directory / ".env", override=False)
+           +     load_dotenv(directory / ".env", override=False)
+      2. set aside (refused_after_run): 43 of the 78 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/cli.py lines 86-86:
+           -     load_dotenv(directory / ".env", override=False)
+           +     load_dotenv(directory / ".env", override=False, raise_error_if_not_found=True)
+      3. set aside (refused_after_run): 43 of the 78 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/cli.py lines 86-86:
+           -     load_dotenv(directory / ".env", override=False)
+           +     load_dotenv(directory / ".env", override=False, raise_error_if_not_found=True)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 74 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (1 changed_nothing, 2 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [no_usable_edit] no-dotenv-file-is-allowed/dotenv-loader-raises-on-missing-file
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 86..86 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 86-86:
+           -     load_dotenv(directory / ".env", override=False)
+           +     load_dotenv(directory / ".env", override=False)
+      2. set aside (changed_nothing): the replacement for src/acceptance/cli.py lines 86..86 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/cli.py lines 86-86:
+           -     load_dotenv(directory / ".env", override=False)
+           +     load_dotenv(directory / ".env", override=False)
+      3. set aside (refused_after_run): 43 of the 78 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/cli.py lines 86-86:
+           -     load_dotenv(directory / ".env", override=False)
+           +     load_dotenv(directory / ".env", override=False, raise_error_if_not_found=True)
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 74 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (2 changed_nothing, 1 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] no-live-call-no-keys-required/replay-mode-still-warns-or-stops
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/cli.py lines 985-986:
+      -         client = config.build_client()
+      -         warn_missing_keys(client)
+      +         client = config.build_client()
+      +         if config.mode is Mode.RECORD:
+      +             warn_missing_keys(client)
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 74 skipped once the defect was covered
+
+  [killed, NOT COUNTED] no-live-call-no-keys-required/startup-warning-becomes-hard-failure
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/cli.py lines 89-94:
+      - def warn_missing_keys(client: ModelClient) -> None:
+      -     """Name each key a live call would need and cannot find, before any call.
+      - 
+      -     A warning, not a stop: a run whose requests are all recorded needs no key.
+      -     One that does reach a live call stops there, naming the same variable.
+      -     """
+      + def warn_missing_keys(client: ModelClient) -> None:
+      +     """Name each key a live call would need and cannot find, before any call.
+      + 
+      +     A warning, not a stop: a run whose requests are all recorded needs no key.
+      +     One that does reach a live call stops there, naming the same variable.
+      +     """
+      +     for model, names in client.missing_keys_by_model().items():
+      +         for name in names:
+      +             raise CliError(
+      +                 f"acceptance: error: {name} is not set, and {model} needs it; "
+      +                 "the run will stop at the first call to it that is not already recorded"
+      +             )
+    caught by (1):
+      tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 1 put to the model, 77 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] no-warning-or-stop-for-mutation-edit-key/mutation-edit-key-stop-not-excluded
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 617..618 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 617-618:
+           -         self._completion_key_check = key_check or (missing_keys if completion_fn is None else None)
+           -         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
+           +         self._completion_key_check = key_check or (missing_keys if completion_fn is None else None)
+           +         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
+      2. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 617..618 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 617-618:
+           -         self._completion_key_check = key_check or (missing_keys if completion_fn is None else None)
+           -         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
+           +         self._completion_key_check = key_check or (missing_keys if completion_fn is None else None)
+           +         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
+      3. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 617..618 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 617-618:
+           -         self._completion_key_check = key_check or (missing_keys if completion_fn is None else None)
+           -         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
+           +         self._completion_key_check = key_check or (missing_keys if completion_fn is None else None)
+           +         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
+    pairs: 0 settled by the run, 78 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] no-warning-or-stop-for-mutation-edit-key/mutation-edit-key-warning-not-excluded
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 663-670:
+      -         if self.mode is not Mode.RECORD:
+      -             return {}
+      -         checks: dict[str, Callable[[str], list[str]]] = {}
+      -         if self._completion_key_check is not None:
+      -             for model in {self.model, *self._stage_models.values()}:
+      -                 checks[model] = self._completion_key_check
+      -         if self._embedding_key_check is not None and self.embedding_model is not None:
+      -             checks[self.embedding_model] = self._embedding_key_check
+      +         if self.mode is not Mode.RECORD:
+      +             return {}
+      +         checks: dict[str, Callable[[str], list[str]]] = {}
+      +         if self._completion_key_check is not None:
+      +             for model in {self.model, *self._stage_models.values()}:
+      +                 checks[model] = self._completion_key_check
+      +         if self._embedding_key_check is not None and self.embedding_model is not None:
+      +             checks[self.embedding_model] = self._embedding_key_check
+      +         missing = {model: check(model) for model, check in sorted(checks.items())}
+      +         return {model: names for model, names in missing.items() if names}
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 60 put to the model, 0 dropped as not worth asking, 18 skipped once the defect was covered
+
+  [survived, NOT COUNTED] preserve-recorded-transcripts-replay/replay-path-now-requires-key-check
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (failed_check): the edit replaces 16 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/cli.py lines 971-986:
+           -     if args.command == "check":
+           -         config = RunConfig(
+           -             model=args.model,
+           -             mode=Mode(args.mode),
+           -             seed=_seed_from(args),
+           -             temperature=args.temperature,
+           -             pair_batch_size=args.pair_batch_size,
+           -             tests_per_batch=args.tests_per_batch,
+           -             stop_after_kills=None if args.full_pair_sweep else args.stop_after_kills,
+           -             embedding_model=args.embedding_model,
+           -             link_distance_threshold=args.link_distance_threshold,
+           -         )
+           -         # Built here, not inside run_check, so the per-stage cost footer can be
+           -         # read back off the client that issued the calls (#264).
+           -         client = config.build_client()
+           -         warn_missing_keys(client)
+           +     if args.command == "check":
+           +         config = RunConfig(
+           +             model=args.model,
+           +             mode=Mode(args.mode),
+           +             seed=_seed_from(args),
+           +             temperature=args.temperature,
+           +             pair_batch_size=args.pair_batch_size,
+           +             tests_per_batch=args.tests_per_batch,
+           +             stop_after_kills=None if args.full_pair_sweep else args.stop_after_kills,
+           +             embedding_model=args.embedding_model,
+           +             link_distance_threshold=args.link_distance_threshold,
+           +         )
+           +         # Built here, not inside run_check, so the per-stage cost footer can be
+           +         # read back off the client that issued the calls (#264).
+           +         client = config.build_client()
+           +         try:
+           +             run_id = new_run_id()
+           +             review = run_check(
+           +                 args.task,
+           +                 args.base,
+           +                 args.head,
+           +                 config,
+           +                 ReviewStore(),
+           +                 declaration=args.declaration,
+           +                 client=client,
+           +                 since=args.since,
+           +                 continue_from=args.continue_from,
+           +                 ledger=LedgerStore(),
+           +                 run_id=run_id,
+           +                 execution=ExecutionSettings(),
+           +             )
+    injected at src/acceptance/cli.py lines 985-986:
+      -         client = config.build_client()
+      -         warn_missing_keys(client)
+      +         client = config.build_client()
+      +         if args.mode != "replay":
+      +             warn_missing_keys(client)
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 74 skipped once the defect was covered
+
+  [survived, NOT COUNTED] startup-warns-missing-model-keys/startup-warning-omits-embedding-model-when-no-embedding-fn
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 618-618:
+      -         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None else None)
+      +         self._embedding_key_check = key_check or (missing_keys if embedding_fn is None and embedding_model is not None else None)
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 78 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] startup-warns-missing-model-keys/startup-warning-only-uses-one-client
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/cli.py lines 985-986:
+      -         client = config.build_client()
+      -         warn_missing_keys(client)
+      +         client = config.build_client()
+      +         warn_missing_keys(config.build_client())
+    no test caught it; 78 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 74 skipped once the defect was covered
+
+  [killed, NOT COUNTED] startup-warns-missing-model-keys/startup-warning-skips-non-record-paths
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 663..664 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 663-664:
+           -         if self.mode is not Mode.RECORD:
+           -             return {}
+           +         if self.mode is not Mode.RECORD:
+           +             return {}
+    injected at src/acceptance/llm.py lines 663-664:
+      -         if self.mode is not Mode.RECORD:
+      -             return {}
+      +         if self.mode is Mode.RECORD:
+      +             return {}
+    caught by (3):
+      tests/test_env_and_keys.py::test_record_mode_names_every_configured_models_missing_key
+      tests/test_env_and_keys.py::test_replay_reports_no_missing_keys
+      tests/test_env_and_keys.py::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 3 put to the model, 75 dropped as not worth asking, 0 skipped once the defect was covered
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run fa81be2b2dc8c191
+  continuing 8ec089ff76154502
+  continue this run with: --continue fa81be2b2dc8c191
+Model usage by stage:
+  stage                         model                                                              calls   prompt  output  cached  this run  recorded  time this run
+  ----------------------------  -------------------------------------------  ---------------------------  -------  ------  ------  --------  --------  -------------
+  obligation linking            voyage/voyage-3.5-lite                           1 (0 live / 1 replayed)      506       0       —   $0.0000   $0.0000              —
+  defect enumeration            openai/gpt-5.4-mini                            12 (12 live / 0 replayed)   46,228   4,249    0.0%   $0.0538   $0.0538          47.5s
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini  102 (102 live / 0 replayed)  136,924  18,507    0.0%   $0.1755   $0.1755         153.0s
+  coverage classification       openai/gpt-5.4-mini                              1 (1 live / 0 replayed)    6,836   1,043    0.0%   $0.0098   $0.0098           5.5s
+  unrequested-change detection  openai/gpt-5.4-mini                              1 (1 live / 0 replayed)    6,234     598    0.0%   $0.0074   $0.0074           3.7s
+  disposition judgment          openai/gpt-5.4-mini                              1 (1 live / 0 replayed)    1,439      67    0.0%   $0.0014   $0.0014           1.5s
+  test recommendation           openai/gpt-5.4-mini                              1 (1 live / 0 replayed)    5,853     751    0.0%   $0.0078   $0.0078           4.8s
+  mutation descriptor           openai/gpt-5.4-mini                            45 (45 live / 0 replayed)  204,778   5,794   41.6%   $0.1222   $0.1222          63.6s
+  this run spent $0.3778 on 163 live call(s); the evidence cost $0.3778 to record (1 call(s) replayed at no cost to this run)
+
