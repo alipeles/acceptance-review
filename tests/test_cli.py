@@ -375,7 +375,7 @@ def test_render_decomposition_lists_obligations_and_open_questions():
     )
 
     rendered = render_decomposition(result)
-    assert "[functional/explicit] ob-1: Do the thing." in rendered
+    assert "[functional/explicit, code_and_tests] ob-1: Do the thing." in rendered
     assert "? q-1: How many?" in rendered
 
 

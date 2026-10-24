@@ -515,7 +515,6 @@ def _requirement_block(
         if obligation is None:
             lines.append(f"    -> {obligation_id}  (obligation not found)")
             continue
-        flag = "explicit" if obligation.explicit else "inferred"
         # Naming the other requirements an obligation serves is what makes the
         # relation legible as many-to-many rather than looking like the same
         # obligation duplicated under several headings (DR-202 decision 2).
@@ -525,8 +524,9 @@ def _requirement_block(
             if other != requirement.id
         ]
         also = f"   (also serves {', '.join(shared)})" if shared else ""
-        lines.append(f"    -> {obligation_id}  [{obligation.type.value}/{flag}]{also}")
+        lines.append(f"    -> {obligation_id}  {_obligation_bracket(obligation)}{also}")
         lines.extend(_wrap(obligation.description, indent="       ", hang="       "))
+        lines.extend(_required_evidence_reason(obligation, indent="       "))
 
     for question_id in entry.open_question_ids:
         question = questions.get(question_id)
@@ -544,6 +544,30 @@ def _requirement_block(
     return lines
 
 
+def _obligation_bracket(obligation) -> str:
+    """`[type/derivation, required_evidence]`, plus a mark for a scope exclusion.
+
+    Which kinds of evidence an obligation requires is a decomposition-time
+    judgement (#266), and a wrong "no test is owed here" is a false green no
+    later stage questions — so Gate 1 is where a reader has to see it (#276).
+    `satisfied_by_absence` is independent of it and marked separately.
+    """
+    flag = "explicit" if obligation.explicit else "inferred"
+    parts = [f"{obligation.type.value}/{flag}", obligation.required_evidence.value]
+    if obligation.satisfied_by_absence:
+        parts.append("satisfied by absence")
+    return f"[{', '.join(parts)}]"
+
+
+def _required_evidence_reason(obligation, indent: str) -> list[str]:
+    """The stated reason for narrowing from `code_and_tests` — the one sentence a
+    reader who thinks the other kind of evidence IS owed can argue with."""
+    reason = obligation.required_evidence_reason.strip()
+    if not reason:
+        return []
+    return _wrap(f"why {obligation.required_evidence.value}: {reason}", indent=indent, hang=indent)
+
+
 def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
     """Obligations no requirement claims.
 
@@ -559,8 +583,9 @@ def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
         return []
     lines = ["Obligations mapped to no requirement:"]
     for obligation in orphans:
-        lines.append(f"  ! {obligation.id}  [{obligation.type.value}]")
+        lines.append(f"  ! {obligation.id}  {_obligation_bracket(obligation)}")
         lines.extend(_wrap(obligation.description, indent="     ", hang="     "))
+        lines.extend(_required_evidence_reason(obligation, indent="     "))
     lines.append("")
     return lines
 
@@ -585,8 +610,8 @@ def _render_flat(result: Decomposition) -> str:
     lines = ["Obligations:"]
     if result.obligations:
         for o in result.obligations:
-            flag = "explicit" if o.explicit else "inferred"
-            lines.append(f"  [{o.type.value}/{flag}] {o.id}: {o.description}")
+            lines.append(f"  {_obligation_bracket(o)} {o.id}: {o.description}")
+            lines.extend(_required_evidence_reason(o, indent="    "))
     else:
         lines.append("  (none)")
     lines.append("")

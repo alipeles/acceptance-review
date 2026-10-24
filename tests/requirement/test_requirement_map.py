@@ -36,6 +36,7 @@ from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import (
     Disposition,
     ObligationType,
+    RequiredEvidence,
     RequirementDisposition,
     RequirementMap,
     RequirementSection,
@@ -1077,3 +1078,90 @@ def test_a_fully_recognised_file_says_nothing_about_unread_text():
     output = render_decomposition(_decomposition_with_a_shared_and_a_declined_requirement())
 
     assert "NOT READ AS ANY REQUIREMENT" not in output
+
+
+# --- required evidence reaches the reader (#276) ----------------------------
+
+
+def _decomposition_with_narrowed_and_absent_obligations():
+    """One obligation at each setting the reader has to be able to tell apart:
+    the `code_and_tests` default, a narrowing with its reason, and a scope
+    exclusion satisfied by work not done."""
+    parsed = parse_task_file(TASK)
+    obligations = [
+        make_obligation("render-lines", "Render each invoice line.", ObligationType.FUNCTIONAL),
+        make_obligation("usd-format", "Format money as USD.", ObligationType.FUNCTIONAL).model_copy(
+            update={
+                "required_evidence": RequiredEvidence.TESTS_ONLY,
+                "required_evidence_reason": "The formatter exists; only a test is asked for.",
+            }
+        ),
+        make_obligation(
+            "pdf-untouched", "The PDF renderer is not changed.", ObligationType.FUNCTIONAL
+        ).model_copy(update={"satisfied_by_absence": True}),
+    ]
+    yielded = {
+        "task-01": "render-lines",
+        "constraint-01": "usd-format",
+        "exclusion-01": "pdf-untouched",
+    }
+    dispositions = [
+        RequirementDisposition(
+            requirement_id=rid, disposition=Disposition.YIELDED, obligation_ids=[oid]
+        )
+        for rid, oid in yielded.items()
+    ] + [
+        RequirementDisposition(
+            requirement_id=rid, disposition=Disposition.NO_OBLIGATION, reason="Not applicable."
+        )
+        for rid in ("constraint-02", "completion-01")
+    ]
+    return Decomposition(
+        obligations=obligations,
+        open_questions=[],
+        requirement_map=RequirementMap(
+            requirements=build_registry(parsed),
+            dispositions=dispositions,
+            unread_source=parsed.unclaimed,
+        ),
+    )
+
+
+def _line_for(output: str, obligation_id: str) -> str:
+    return next(line for line in output.splitlines() if f"-> {obligation_id} " in line)
+
+
+def test_the_cli_shows_each_obligations_required_evidence():
+    """A wrong "no test is owed here" is the false green the design is most
+    exposed to, and Gate 1 is the only place a reader sees it before it
+    decides a verdict."""
+    from acceptance.cli import render_decomposition
+
+    output = render_decomposition(_decomposition_with_narrowed_and_absent_obligations())
+
+    assert "[functional/explicit, code_and_tests]" in _line_for(output, "render-lines")
+    assert "[functional/explicit, tests_only]" in _line_for(output, "usd-format")
+
+
+def test_the_cli_shows_the_reason_for_a_narrowed_required_evidence():
+    """The reason is the only thing a reader can argue with."""
+    from acceptance.cli import render_decomposition
+
+    output = render_decomposition(_decomposition_with_narrowed_and_absent_obligations())
+
+    lines = output.splitlines()
+    after = lines[lines.index(_line_for(output, "usd-format")) :]
+    # The obligation's own block ends where the next requirement's heading starts.
+    end = next(i for i, line in enumerate(after[1:], 1) if line.startswith("["))
+    block = "\n".join(after[:end])
+    assert "The formatter exists; only a test is asked for." in block
+
+
+def test_the_cli_marks_an_obligation_satisfied_by_absence():
+    from acceptance.cli import render_decomposition
+
+    output = render_decomposition(_decomposition_with_narrowed_and_absent_obligations())
+
+    assert "satisfied by absence" in _line_for(output, "pdf-untouched")
+    assert "satisfied by absence" not in _line_for(output, "render-lines")
+    assert "satisfied by absence" not in _line_for(output, "usd-format")

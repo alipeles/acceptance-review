@@ -1,0 +1,134 @@
+Task completion: UNABLE-TO-DETERMINE
+
+1 obligation(s) could not be classified from static evidence; deeper retrieval or execution would be needed to decide.
+
+Obligations:
+
+  1. The text output of `acceptance decompose` shows each listed obligation's `required_evidence` value inside the bracket that already carries the obligation's type and derivation.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/cli.py#@@ -485,8 +484,9 @@ def _requirement_block(
+         1.2  src/acceptance/cli.py#@@ -504,6 +504,30 @@ def _requirement_block(
+         1.3  src/acceptance/cli.py#@@ -519,8 +543,9 @@ def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
+         1.4  src/acceptance/cli.py#@@ -545,8 +570,8 @@ def _render_flat(result: Decomposition) -> str:
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  2. Where an obligation carries a required_evidence_reason, print that reason beneath the obligation's restated text.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/cli.py#@@ -485,8 +484,9 @@ def _requirement_block(
+         2.2  src/acceptance/cli.py#@@ -504,6 +504,30 @@ def _requirement_block(
+         2.3  src/acceptance/cli.py#@@ -519,8 +543,9 @@ def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
+         2.4  src/acceptance/cli.py#@@ -545,8 +570,8 @@ def _render_flat(result: Decomposition) -> str:
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  3. Mark obligations that are satisfied by absence so a reader can tell them apart from obligations that are not.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/cli.py#@@ -485,8 +484,9 @@ def _requirement_block(
+         3.2  src/acceptance/cli.py#@@ -504,6 +504,30 @@ def _requirement_block(
+         3.3  src/acceptance/cli.py#@@ -519,8 +543,9 @@ def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
+         3.4  src/acceptance/cli.py#@@ -545,8 +570,8 @@ def _render_flat(result: Decomposition) -> str:
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  4. A regression test asserts each of these three things against a decomposition fixture.
+       requirements: task-02
+       code evidence: not required — The requirement explicitly asks for a regression test, so the obligation is satisfied by the test itself.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  5. The `--json` output of `decompose` remains unchanged.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 8 changes across 3 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion, so the change is checked by the source behavior itself rather than by a test.
+
+  6. The rendered review report changes to reflect the new evidence metadata and absence marker formatting requirements.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 8 changes across 3 files; none breaches this boundary
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  7. The rendered review report prints any required_evidence_reason beneath the obligation's restated text.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 8 changes across 3 files; none breaches this boundary
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  8. The rendered review report marks obligations that are satisfied_by_absence so they are distinguishable from obligations that are not.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 8 changes across 3 files; none breaches this boundary
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+Mandate coverage: 4 of 4 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The new helper `_obligation_bracket` changes the formatting logic by adding `required_evidence` and the absence marker to the bracket, but the obligations only require the CLI/review report to display those values; extracting the formatting into a helper is an internal refactor not specifically requested.
+       src/acceptance/cli.py#@@ -504,6 +504,30 @@ def _requirement_block(
+       src/acceptance/cli.py#@@ -519,8 +543,9 @@ def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
+       src/acceptance/cli.py#@@ -545,8 +570,8 @@ def _render_flat(result: Decomposition) -> str:
+  2. [in_service] The new helper `_required_evidence_reason` centralizes rendering of the reason text. The obligations require the reason to be printed beneath the restated text, but do not call for this extra helper or its specific implementation structure.
+       src/acceptance/cli.py#@@ -504,6 +504,30 @@ def _requirement_block(
+       src/acceptance/cli.py#@@ -519,8 +543,9 @@ def _orphan_obligations(result: Decomposition, requirement_map) -> list[str]:
+       src/acceptance/cli.py#@@ -545,8 +570,8 @@ def _render_flat(result: Decomposition) -> str:
+  3. [in_service] The flat `_render_flat` output now includes `required_evidence` and the optional reason text. The obligations mention the `acceptance decompose` text output and the rendered review report, but do not ask for the flat/internal render format to change.
+       src/acceptance/cli.py#@@ -545,8 +570,8 @@ def _render_flat(result: Decomposition) -> str:
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  show-required-evidence-in-bracket
+    none enumerated: The diff adds a single bracket formatter `_obligation_bracket(obligation)` and routes every rendered obligation listing through it in both `_requirement_block`, `_orphan_obligations`, and `_render_flat`. That formatter always includes `obligation.required_evidence.value` in the bracket, so there is no plausible static path in the shown changes where a listed obligation would still be rendered without its required evidence value inside the bracket.
+
+  print-required-evidence-reason-beneath-restated-text
+    none enumerated: The diff adds _required_evidence_reason() and calls it immediately after printing the obligation's restated text in both the requirement and flat render paths, so there is no plausible static defect in the shown changes that would omit a present required_evidence_reason from directly beneath that text.
+
+  satisfied-by-absence-marked
+    none enumerated: The diff adds a dedicated marker in `_obligation_bracket` that appends `satisfied by absence` whenever `obligation.satisfied_by_absence` is true, and all changed render paths (`_requirement_block`, `_orphan_obligations`, `_render_flat`) now use that helper. There is no plausible static path in the shown changes where a satisfied-by-absence obligation would be rendered indistinguishably from a non-marked obligation.
+
+  json-output-unchanged
+    [other] json-output-unchanged/json-output-now-includes-extra-evidence-lines
+      The JSON rendering path could now emit additional `why ...` lines or bracket fields that were not part of the previous `decompose --json` output, changing the output shape/content.
+      src/acceptance/cli.py#2
+      src/acceptance/cli.py#4
+      pairs: 28 put to the model, 55 skipped once the defect was covered
+
+  review-report-not-unchanged
+    none enumerated: The diff only changes report rendering to include the new obligation bracket format and required-evidence reason lines, and it does so in the shared rendering paths shown. There is no plausible static defect in the shown changes that would leave the rendered report unchanged relative to the previous output, nor any sign of a reversed condition, narrowed scope, wiring gap, or compatibility break in the touched code.
+
+  review-report-evidence-reason-display
+    none enumerated: No plausible static defect is visible for this criterion: the changed render paths now call _required_evidence_reason() immediately after the obligation text in both the requirement block and flat report, and the helper emits the required_evidence_reason only when non-empty. The criterion is about observability in the rendered review report, and the diff shows the wiring and placement needed for that behavior.
+
+  review-report-absence-marking
+    none enumerated: The diff adds a dedicated visible marker in the rendered report via `_obligation_bracket`, and that helper is used in both requirement/orphan blocks and the flat report. The only new branch relevant to the criterion is `if obligation.satisfied_by_absence: parts.append("satisfied by absence")`, so there is no plausible static way in the shown changes for satisfied-by-absence obligations to be rendered without a visible marker while other obligations are marked.
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [defect_already_covered] json-output-unchanged/json-output-now-includes-extra-evidence-lines x 55 candidate test(s), ranked 29 to 83
+    not asked: the defect was already covered by tests/test_cli.py::test_check_json_emits_a_structured_review, tests/test_cli.py::test_json_is_the_default_format_when_none_is_requested, tests/test_cli.py::test_the_removal_is_reported_in_json_mode_too
+
+Running the project's tests:
+  the project's tests were run: 1 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [survived, NOT COUNTED] json-output-unchanged/json-output-now-includes-extra-evidence-lines
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/cli.py lines 574-574:
+      -             lines.extend(_required_evidence_reason(o, indent="    "))
+      +             lines.append(f"  {_obligation_bracket(o)} {o.id}: {o.description}")
+    no test caught it; 83 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 55 skipped once the defect was covered
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>

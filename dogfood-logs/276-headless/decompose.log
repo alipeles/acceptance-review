@@ -1,0 +1,41 @@
+Requirements: 4   with obligations: 4
+
+[task-01] The text output of `acceptance decompose` shows, for every obligation it
+    lists, which kinds of evidence that obligation requires (its `required_evidence`
+    value), placed inside the bracket that already carries the obligation's type and
+    derivation, for example `[test_demand/explicit, tests_only]`. Where an obligation
+    carries a `required_evidence_reason`, the output prints that reason beneath the
+    obligation's restated text. An obligation that is `satisfied_by_absence` is marked
+    so a reader can tell it apart from one that is not.
+    -> show-required-evidence-in-bracket  [explanation_observability/explicit]
+       The text output of `acceptance decompose` shows each listed obligation's
+       `required_evidence` value inside the bracket that already carries the
+       obligation's type and derivation.
+    -> print-required-evidence-reason-beneath-restated-text  [explanation_observability/explicit]
+       Where an obligation carries a required_evidence_reason, print that reason beneath
+       the obligation's restated text.
+    -> satisfied-by-absence-marked  [invariant/explicit]
+       Mark obligations that are satisfied by absence so a reader can tell them apart
+       from obligations that are not.
+
+[task-02] A regression test asserts each of these three things against a decomposition
+    fixture.
+    -> decomposition-fixture-regression-test  [test_demand/explicit]
+       A regression test asserts each of these three things against a decomposition
+       fixture.
+
+[exclusion-01] The `--json` output of `decompose` is unchanged.
+    -> json-output-unchanged  [compatibility/explicit]
+       The `--json` output of `decompose` remains unchanged.
+
+[exclusion-02] The rendered review report is unchanged.
+    -> review-report-not-unchanged  [compatibility/explicit]
+       The rendered review report changes to reflect the new evidence metadata and
+       absence marker formatting requirements.
+    -> review-report-evidence-reason-display  [explanation_observability/explicit]
+       The rendered review report prints any required_evidence_reason beneath the
+       obligation's restated text.
+    -> review-report-absence-marking  [explanation_observability/explicit]
+       The rendered review report marks obligations that are satisfied_by_absence so
+       they are distinguishable from obligations that are not.
+
