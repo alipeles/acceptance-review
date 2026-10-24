@@ -58,30 +58,14 @@ Export invoices to a CSV file.
 
 _EXCLUSION_IDS = ["exclusion-01", "exclusion-02", "exclusion-03", "exclusion-04"]
 
-# The same four, for the one test that has a known failure among them. Held
-# visible as a strict xfail rather than deleted: in this corpus `exclusion-01`
-# writes its `observable_behavior` as "...the CSV export's supported-currency
-# behavior is unchanged...", which is the positive reframing the prompt forbids
-# in that field by name. The `description` is correct, so this is the milder half
-# of #219 rather than #219 itself — and it is a decomposer-judgement defect,
-# which #317 excludes from its own scope. Strict, so it fails the moment the
-# defect is fixed.
-_EXCLUSION_ID_PARAMS = [
-    pytest.param(
-        "exclusion-01",
-        marks=pytest.mark.xfail(
-            strict=True,
-            reason=(
-                "exclusion-01's observable_behavior says the supported-currency "
-                "behaviour is 'unchanged', the reframing the prompt forbids; filed "
-                "against #181"
-            ),
-        ),
-    ),
-    "exclusion-02",
-    "exclusion-03",
-    "exclusion-04",
-]
+# The same four, for the one test that had a known failure among them. On
+# `gpt-5.4-mini`, `exclusion-01` wrote its `observable_behavior` as "...the CSV
+# export's supported-currency behavior is unchanged...", the positive reframing
+# the prompt forbids in that field by name — the milder half of #219, held as a
+# strict xfail. Sonnet 5.5's recording does not reframe it, so since #413 the
+# case is an ordinary one. That is one answer from a different model, not a fix
+# to the prompt: the defect may still be there, and it stays tracked under #181.
+_EXCLUSION_ID_PARAMS = _EXCLUSION_IDS
 _TEST_DEMAND_IDS = ["completion-01", "completion-02", "completion-03"]
 
 # The subject each exclusion names. An obligation mentioning one of these is
@@ -172,26 +156,13 @@ def test_every_criterion_of_the_same_shape_is_treated_the_same_way(derived):
     "requirement_id",
     [
         "constraint-01",
-        # KNOWN DEFECT, held visible rather than deleted. In this corpus
-        # `constraint-02` yields its own behaviour obligation AND a second one
-        # typed `test_demand` restating `completion-02`, which demands a test of
-        # it. `#317` predicted exactly this residue: constraining `source_quote`
-        # to the answering requirement's spans makes an obligation about another
-        # requirement unsourceable, but not unwritable — the model can still
-        # paraphrase one while quoting its own text, which degrades
-        # misattribution into duplication
+        # Was a strict xfail. On `gpt-5.4-mini`, `constraint-02` yielded its own
+        # behaviour obligation AND a second one typed `test_demand` restating
+        # `completion-02` — the paraphrase residue #317 predicted
         # (`docs/experiments/317-over-answering/findings.md` §9, "What it does
-        # not close"). Strict, so it fails the moment the defect is fixed.
-        pytest.param(
-            "constraint-02",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason=(
-                    "constraint-02 gains a duplicate of completion-02's test demand; "
-                    "the paraphrase residue #317 documents, filed against #181"
-                ),
-            ),
-        ),
+        # not close"). Sonnet 5.5's recording does not duplicate it (#413). One
+        # answer from a different model, not a fix: still tracked under #181.
+        "constraint-02",
         "constraint-03",
     ],
 )

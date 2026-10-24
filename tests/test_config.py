@@ -122,6 +122,29 @@ def test_provenance_reports_the_controls_the_provider_honoured():
     assert provenance.determinism() == "unpinned"
 
 
+def test_the_default_model_applies_neither_seed_nor_temperature():
+    """The default is Claude, which takes no seed and refuses any temperature
+    (#413). Unlike `_dropping_client`, this asks LiteLLM itself which controls
+    survive, so it fails if LiteLLM starts passing either one through — which
+    would put a temperature on every Claude request and get each one refused."""
+    from acceptance.config import DEFAULT_MODEL, DEFAULT_SEED
+    from acceptance.llm import _litellm_effective_controls
+    from acceptance.requirement.obligations import _Decomposition
+    from tests.support import client_finding_nothing
+
+    client = client_finding_nothing(temperature=0.0, seed=DEFAULT_SEED)
+    client._completion_fn.effective_controls = _litellm_effective_controls
+    client.complete([{"role": "user", "content": "decompose"}], _Decomposition)
+
+    provenance = provenance_for(client)
+
+    assert provenance.model == DEFAULT_MODEL
+    assert provenance.controls_requested.temperature == 0.0
+    assert provenance.controls_requested.seed == DEFAULT_SEED
+    assert provenance.controls_in_force.temperature is None
+    assert provenance.controls_in_force.seed is None
+
+
 def test_provenance_of_a_run_that_made_no_model_call_is_indeterminate():
     """Not "the configured controls held". With no call there is no evidence
     either way, and an indeterminate answer is a valid result (§9.3)."""
