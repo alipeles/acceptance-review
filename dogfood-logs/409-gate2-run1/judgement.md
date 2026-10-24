@@ -12,17 +12,27 @@ That test failed on both cases before the fix (commit ee52c25) and passes after
 
 ## Findings
 
-1. **No test mapped to any obligation; obligation 3 indeterminate — tool
-   defect.** Defect enumeration for all three task obligations says "No
-   production code was changed … the diff is empty". The diff is not empty; it
-   is entirely in a test file, and enumeration only looks at non-test code. With
-   nothing enumerated, no mapping or execution stage ran (none appears in the
-   model-usage table), so the regression test that directly checks obligations
-   `restore-socket-monkeypatches-after-test` and `network-block-regression-test`
-   is never considered. Any task whose deliverable is a change to tests can
-   therefore never reach "strongly supported". Not covered by #402 (enumeration
-   misses a defect in changed production code) or #327 (defects enumerated for
-   criteria owed no test). Drafted as a new filing under #183.
+1. **The test-delivery obligation is judged on the wrong kind of evidence —
+   tool defect, filed as #410 (under #185).** `network-block-regression-test`
+   (`test_demand`) got code evidence "not required — the test itself is the
+   deliverable and no separate source change is required" and test evidence
+   "indeterminate". The agreed rule is the reverse: an obligation to deliver a
+   test is satisfied by code evidence (the test is there and correct), not by
+   test evidence. Defect enumeration excludes `test_demand` by design (DR-313
+   decision 2), so test evidence can never arrive. This is the one obligation
+   the verdict calls unclassifiable, and the cause of UNABLE-TO-DETERMINE.
+
+   *Correction:* the first version of this judgement blamed defect enumeration
+   for treating a test-only diff as empty. The owner pointed out the
+   code-evidence rule for test-delivery obligations, and that framing was
+   withdrawn.
+
+1a. **The two behaviour obligations** (`restore-socket-monkeypatches-after-test`,
+   `skip-network-block-for-these-tests`) got code evidence `addressed` (correct)
+   and test evidence "no plausible defect … not obtainable here", because
+   enumeration does not look at test files. Short of "strongly supported", so the
+   gate is not clean on them either. Whether this is a defect or a reasonable
+   limit is open with the owner; deliberately not filed.
 
 2. **The requested regression test is reported as an unrequested change
    (`in_service`) — tool defect, same family as #376.** The note says the test
@@ -36,4 +46,5 @@ That test failed on both cases before the fix (commit ee52c25) and passes after
    `src/acceptance/execution/netblock.py` is untouched.
 
 No code change can address 1 or 2: the code is the fix the issue asked for, and
-the evidence the tool needs (the regression test) exists and discriminates.
+the regression test exists and discriminates (fails both cases at ee52c25,
+passes at f66dc6a).
