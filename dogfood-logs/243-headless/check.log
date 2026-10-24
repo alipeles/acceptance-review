@@ -1,0 +1,258 @@
+Task completion: INCOMPLETE
+
+2 obligation(s) with non-discriminating test evidence (full-checker-pipeline, gap-recall-non-zero).
+
+Obligations:
+
+  1. The benchmark case's task file, repository, and revisions are fed through the full checker.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/benchmark/runner.py#@@ -26,6 +32,7 @@ def run_case(
+       test evidence: unsupported — kills 0 of 1 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: A benchmark case is processed by the full checker using its task file, repository, and revisions.
+           inputs:  Use a benchmark case whose task text is intentionally empty or yields an empty requirement registry, but whose repository and base/head revisions are valid and whose client is a checker stub that would clearly prove it was invoked if the pipeline runs (for example, a client that raises or records a call). The case should be constructed inline in the runner test, not via a corpus builder, so the precheck is the only thing that can stop execution.
+           detects: The new precheck can reject a case before the checker runs, so a benchmark case with an empty task file never reaches the full checker pipeline even though the criterion says the task file, repository, and revisions are fed through it.
+           full detail: acceptance recommendation --criterion full-checker-pipeline
+
+  2. Return a scored copy of the case.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/benchmark/runner.py#@@ -26,6 +32,7 @@ def run_case(
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         2.2  tests/benchmark/test_runner.py::test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_score
+
+  3. `run_case` refuses a case whose task file yields no requirements, raising the same `EmptyRequirementRegistryError` the corpus case builders raise, before any checker stage runs.
+       requirements: task-02
+       code evidence: addressed
+         3.1  src/acceptance/benchmark/runner.py#@@ -11,7 +17,7 @@ from __future__ import annotations
+         3.2  src/acceptance/benchmark/runner.py#@@ -26,6 +32,7 @@ def run_case(
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  4. A case whose task file yields requirements runs through the checker.
+       requirements: task-02
+       code evidence: addressed
+         4.1  src/acceptance/benchmark/runner.py#@@ -26,6 +32,7 @@ def run_case(
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  5. The requirement is scored.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/benchmark/runner.py#@@ -26,6 +32,7 @@ def run_case(
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         5.2  tests/benchmark/test_labels.py::test_full_loop_scores_the_noop_checker_as_all_miss
+         5.3  tests/benchmark/test_runner.py::test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_score
+
+  6. The companion regression test shows the gap recall is non-zero when the same case is run through a checker that reports the labelled gap.
+       requirements: task-03
+       code evidence: not required — This requirement explicitly asks for the regression test to show the result, so the obligation is satisfied by the test itself.
+       test evidence: unsupported — kills 0 of 1 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: The regression test output includes a gap recall value greater than zero for the labelled-gap checker case.
+           inputs:  Use the same labelled-gap regression case shape already present in the file: a case whose checker client dispatches a labelled obligation and a coverage classification with status not_addressed, so the scored result should have gap recall greater than zero. The task text must be the one that the current precheck rejects, so the test specifically proves the regression case reaches scoring despite the empty-registry guard.
+           detects: The new pre-check rejects the inline regression case before the checker can run, so the labelled-gap checker case never reaches scoring and cannot produce a non-zero gap recall in the test output.
+           full detail: acceptance recommendation --criterion gap-recall-non-zero
+
+  7. The refusal uses the existing `require_nonempty_registry` check.
+       requirements: constraint-01
+       code evidence: addressed
+         7.1  src/acceptance/benchmark/runner.py#@@ -11,7 +17,7 @@ from __future__ import annotations
+         7.2  src/acceptance/benchmark/runner.py#@@ -26,6 +32,7 @@ def run_case(
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  8. The synthetic cases in the scoring, alignment and case tests build scored cases without calling `run_case`.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 8 changes across 2 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by the test code itself not using `run_case`; a test of runtime behavior would not add anything beyond inspecting the test implementation.
+
+  9. The change does not alter the corpus case builders that already refuse an unreadable task file.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 8 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work that must not be changed, and a reader can verify it directly from the source diff without a test.
+
+  10. A regression test asserts that the runner's acceptance test runs over a task file that yields at least one requirement, and that a companion regression test runs the same case through a checker that reports the labelled gap so the all-miss assertion is shown to depend on the checker's output and not on the input.
+       requirements: completion-02
+       code evidence: not required — This requirement asks for a regression test, so the obligation is satisfied by the test itself rather than by source behavior.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  11. run_case refuses cases whose task text yields no requirements by raising EmptyRequirementRegistryError before invoking the checker.
+       code evidence: addressed
+         11.1  src/acceptance/benchmark/runner.py#@@ -4,6 +4,12 @@ Feeds a BenchmarkCase's inputs through the current checker (M0.6's
+         11.2  src/acceptance/benchmark/runner.py#@@ -11,7 +17,7 @@ from __future__ import annotations
+         11.3  src/acceptance/benchmark/runner.py#@@ -26,6 +32,7 @@ def run_case(
+         11.4  tests/benchmark/test_runner.py#@@ -1,7 +1,10 @@
+         11.5  tests/benchmark/test_runner.py#@@ -33,25 +45,61 @@ def _labels() -> GroundTruthLabels:
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+Mandate coverage: 7 of 8 requirements yielded obligations
+  1 deliberately declined, taken at face value and not counted against coverage
+  1. [no_obligation] completion-01: Implementation
+       reason: The requirement is only the section marker "Implementation" standing alone, with no requirement text under it.
+
+Unrequested changes:
+  1. [separable] The runner now rejects empty-requirement task files before any checker work, which is requested, but the added docstring and test commentary about the specific #243 scenario and the distinction between input-vs-checker behavior go beyond the obligations themselves.
+       src/acceptance/benchmark/runner.py#@@ -4,6 +4,12 @@ Feeds a BenchmarkCase's inputs through the current checker (M0.6's
+       tests/benchmark/test_runner.py#@@ -9,7 +12,16 @@ from acceptance.benchmark.case import (
+       tests/benchmark/test_runner.py#@@ -33,25 +45,61 @@ def _labels() -> GroundTruthLabels:
+       tests/benchmark/test_runner.py#@@ -64,18 +112,39 @@ def test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_sc
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  full-checker-pipeline
+    [other] full-checker-pipeline/nonempty-registry-precheck-bypasses-full-pipeline
+      The new precheck can reject a case before the checker runs, so a benchmark case with an empty task file never reaches the full checker pipeline even though the criterion says the task file, repository, and revisions are fed through it.
+      src/acceptance/benchmark/runner.py#2
+      pairs: 5 put to the model, 0 skipped once the defect was covered
+
+  returns-scored-copy-of-case
+    [missing_case] returns-scored-copy-of-case/nonempty-registry-precheck-blocks-scoring
+      Cases whose task text yields no requirements are rejected before scoring, so the runner does not return a scored case object for that input.
+      src/acceptance/benchmark/runner.py#2
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+
+  refuse-empty-requirement-task-file
+    none enumerated: No plausible static defect is exposed by the diff for this criterion: the runner now imports and calls require_nonempty_registry at the start of run_case, before RunConfig/ReviewStore setup and before run_check can be invoked, so the refusal path is wired in at the only relevant entry point shown.
+
+  run-through-checker
+    none enumerated: The diff only adds a pre-check that rejects empty requirement registries before run_check is called; it does not alter the path for cases whose task file yields requirements. For any case with yielded requirements, run_case still reaches config/review_store setup and then invokes run_check, so there is no plausible static defect in the changed code that would prevent such cases from proceeding into the checker stage.
+
+  is-scored
+    [scope_too_narrow] is-scored/empty-registry-guard-blocks-scoring
+      Cases with an empty task requirement registry are refused before scoring, so those cases never get a score assigned.
+      src/acceptance/benchmark/runner.py#2
+      pairs: 5 put to the model, 0 skipped once the defect was covered
+
+  gap-recall-non-zero
+    [missing_case] gap-recall-non-zero/empty-registry-guard-blocks-regression-case
+      The new pre-check rejects the inline regression case before the checker can run, so the labelled-gap checker case never reaches scoring and cannot produce a non-zero gap recall in the test output.
+      src/acceptance/benchmark/runner.py#2
+      pairs: 5 put to the model, 0 skipped once the defect was covered
+
+  use-existing-require-nonempty-registry-check
+    none enumerated: No plausible static defect is exposed by the diff for this criterion: the runner now imports `require_nonempty_registry` and calls it at the start of `run_case`, before `RunConfig`, `ReviewStore`, or `run_check` are used. The change is specifically wired into the runner path the criterion names, so there is no remaining changed-region failure mode to enumerate.
+
+  exclude-synthetic-cases-from-run-case
+    none enumerated: No plausible static defect is exposed by the diff for this criterion: the change only adds a pre-check inside run_case, while the criterion is about synthetic scoring, alignment, and case tests constructing scored cases directly rather than invoking run_case. The modified code does not introduce a path that would make those synthetic tests call run_case, nor does it alter their construction sites.
+
+  corpus-case-builders-untouched
+    [other] corpus-case-builders-untouched/runner-now-refuses-empty-registry
+      The runner adds a new pre-check that refuses cases with an empty requirement registry, so the delivered change alters acceptance behavior outside the corpus case builders instead of leaving the builders' unreadable-task-file refusal logic untouched.
+      src/acceptance/benchmark/runner.py#1
+      src/acceptance/benchmark/runner.py#2
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+
+  task-02-span-02-disagreement-as-implemented
+    none enumerated: No plausible static defect remains in the delivered change for this criterion: run_case now calls require_nonempty_registry(case.case_id, case.inputs.task_text) before any checker invocation, so the refusal is wired onto the run_case path and there is no changed branch that could invert or omit that pre-check.
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [defect_already_covered] corpus-case-builders-untouched/runner-now-refuses-empty-registry x 1 candidate test(s), ranked 5 to 5
+    not asked: the defect was already covered by tests/benchmark/test_runner.py::test_run_case_refuses_a_task_file_that_yields_no_requirements, tests/benchmark/test_runner.py::test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_score
+  [defect_already_covered] returns-scored-copy-of-case/nonempty-registry-precheck-blocks-scoring x 1 candidate test(s), ranked 5 to 5
+    not asked: the defect was already covered by tests/benchmark/test_runner.py::test_running_the_empty_skeleton_over_an_archetype_case_yields_an_all_miss_score
+
+Running the project's tests:
+  the project's tests were run: 5 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [already_present] corpus-case-builders-untouched/runner-now-refuses-empty-registry
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 1 skipped once the defect was covered
+    Line 35 currently adds the new pre-check `require_nonempty_registry(case.case_id, case.inputs.task_text)` before scoring, which is the defective behavior described. Removing that single line restores the prior runner behavior and leaves the corpus case builders' unreadable-task-file refusal logic untouched.
+
+  [already_present] full-checker-pipeline/nonempty-registry-precheck-bypasses-full-pipeline
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 5 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    Line 35 performs the precheck before the task file is written and before run_check is invoked, so cases with empty task text can return early and bypass the full checker pipeline. (the repair was refused: the replacement for src/acceptance/benchmark/runner.py lines 35..35 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced)
+
+  [already_present] gap-recall-non-zero/empty-registry-guard-blocks-regression-case
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 5 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    Line 35 already rejects the regression case before run_check can execute, so the defect is present; the smallest repair is to remove that pre-check. (the repair was refused: the replacement for src/acceptance/benchmark/runner.py lines 35..35 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced)
+
+  [killed, NOT COUNTED] is-scored/empty-registry-guard-blocks-scoring
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/runner.py lines 35..35 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/runner.py lines 35-35:
+           -     require_nonempty_registry(case.case_id, case.inputs.task_text)
+           +     require_nonempty_registry(case.case_id, case.inputs.task_text)
+    injected at src/acceptance/benchmark/runner.py lines 35-35:
+      -     require_nonempty_registry(case.case_id, case.inputs.task_text)
+      +     config = config if config is not None else RunConfig()
+    caught by (1):
+      tests/benchmark/test_runner.py::test_run_case_refuses_a_task_file_that_yields_no_requirements
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 5 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] returns-scored-copy-of-case/nonempty-registry-precheck-blocks-scoring
+    candidate edits: 3 asked for, 2 set aside, used candidate 3
+      1. set aside (changed_nothing): the replacement for src/acceptance/benchmark/runner.py lines 35..35 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/runner.py lines 35-35:
+           -     require_nonempty_registry(case.case_id, case.inputs.task_text)
+           +     require_nonempty_registry(case.case_id, case.inputs.task_text)
+      2. set aside (changed_nothing): the replacement for src/acceptance/benchmark/runner.py lines 35..35 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/benchmark/runner.py lines 35-35:
+           -     require_nonempty_registry(case.case_id, case.inputs.task_text)
+           +     require_nonempty_registry(case.case_id, case.inputs.task_text)
+    injected at src/acceptance/benchmark/runner.py lines 35-35:
+      -     require_nonempty_registry(case.case_id, case.inputs.task_text)
+      +     if case.inputs.task_text.strip():
+      +         require_nonempty_registry(case.case_id, case.inputs.task_text)
+    no test caught it; 5 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 1 skipped once the defect was covered
+
+Defects the delivered code already has, as asserted by the model (static tier; needs human review):
+  corpus-case-builders-untouched/runner-now-refuses-empty-registry
+    Line 35 currently adds the new pre-check `require_nonempty_registry(case.case_id, case.inputs.task_text)` before scoring, which is the defective behavior described. Removing that single line restores the prior runner behavior and leaves the corpus case builders' unreadable-task-file refusal logic untouched.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/benchmark/test_runner.py::test_run_case_refuses_a_task_file_that_yields_no_requirements
+    repair at src/acceptance/benchmark/runner.py lines 35-35:
+      -     require_nonempty_registry(case.case_id, case.inputs.task_text)
+      +     config = config if config is not None else RunConfig()
+  full-checker-pipeline/nonempty-registry-precheck-bypasses-full-pipeline
+    Line 35 performs the precheck before the task file is written and before run_check is invoked, so cases with empty task text can return early and bypass the full checker pipeline. (the repair was refused: the replacement for src/acceptance/benchmark/runner.py lines 35..35 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/benchmark/runner.py lines 35-35:
+      -     require_nonempty_registry(case.case_id, case.inputs.task_text)
+      +     require_nonempty_registry(case.case_id, case.inputs.task_text)
+  gap-recall-non-zero/empty-registry-guard-blocks-regression-case
+    Line 35 already rejects the regression case before run_check can execute, so the defect is present; the smallest repair is to remove that pre-check. (the repair was refused: the replacement for src/acceptance/benchmark/runner.py lines 35..35 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/benchmark/runner.py lines 35-35:
+      -     require_nonempty_registry(case.case_id, case.inputs.task_text)
+      +     require_nonempty_registry(case.case_id, case.inputs.task_text)
+
+Open questions:
+  1. [resolved] The coverage step and the call asked about this span alone disagreed: the first found 'before any checker stage runs' uncovered by the obligations already derived, the second derived neither an obligation nor an open question from it. Does this span state a property of its own that must be delivered?
+       The diff explicitly adds a pre-check in `run_case` that calls `require_nonempty_registry(case.case_id, case.inputs.task_text)` before any config, review store, repo, or checker setup, and the new test asserts that a task file yielding no requirements raises `EmptyRequirementRegistryError` rather than producing a score. This makes the span’s intended property clear: the runner itself refuses empty requirement registries before the checker runs.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
+run 9625abbb98095e72
+  continue this run with: --continue 9625abbb98095e72
+Model usage by stage:
+  stage                         model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ----------------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose                     openai/gpt-5.4-mini                           12 (7 live / 5 replayed)  65,622   1,625   43.9%   $0.0180   $0.0371          30.6s
+  decompose-summary             openai/gpt-5.4                                 3 (3 live / 0 replayed)   2,874   1,037    0.0%   $0.0227   $0.0227          16.8s
+  obligation linking            voyage/voyage-3.5-lite                         1 (1 live / 0 replayed)     410       0       —   $0.0000   $0.0000           0.6s
+  open-question judgment        openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   2,676     204    0.0%   $0.0029   $0.0029           1.9s
+  defect enumeration            openai/gpt-5.4-mini                          10 (10 live / 0 replayed)  15,159   1,308    0.0%   $0.0173   $0.0173          17.2s
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini    9 (9 live / 0 replayed)  10,021   1,150    0.0%   $0.0119   $0.0119          12.8s
+  coverage classification       openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   3,425     568    0.0%   $0.0051   $0.0051           3.2s
+  unrequested-change detection  openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   3,007     123    0.0%   $0.0028   $0.0028           1.7s
+  disposition judgment          openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   2,794     106    0.0%   $0.0026   $0.0026           1.1s
+  test recommendation           openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   2,697     712    0.0%   $0.0052   $0.0052           4.4s
+  mutation descriptor           openai/gpt-5.4-mini                            8 (8 live / 0 replayed)  14,646     795   33.2%   $0.0113   $0.0113          11.9s
+  this run spent $0.0998 on 43 live call(s); the evidence cost $0.1189 to record (5 call(s) replayed at no cost to this run)
