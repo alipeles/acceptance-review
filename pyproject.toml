@@ -9,9 +9,21 @@ description = "Independent acceptance review for AI-assisted software changes."
 requires-python = ">=3.10"
 readme = "README.md"
 license = { text = "MIT" }
+# litellm is bounded on both sides because an unbounded resolve broke every
+# recording run while replay, the suite and CI all stayed green (#278).
+#   floor 1.93: the oldest release a recording run has been confirmed on; 1.96.2
+#     is the other. Older ones are untested, not known bad.
+#   ceiling 1.97: on Python 3.10, our floor, 1.97.0 cannot build its own
+#     `ModelResponse` (`Message` is not fully defined), and 1.98 through 1.100
+#     fail to import (`typing.NotRequired`). Both surface on the first live call,
+#     the first as an `APIConnectionError`. 1.101 to 1.106 pass the smoke test on
+#     3.10 but have not been through a recording run there.
+# Before raising the ceiling, run `tests/test_litellm_smoke.py` on Python 3.10
+# against the new release — CI runs 3.12, where 1.97.0 works, so CI alone will
+# not catch a 3.10-only break — and make one recording run.
 dependencies = [
     "pydantic>=2",
-    "litellm>=1.50",
+    "litellm>=1.93,<1.97",
     "markdown-it-py>=3",
     "pathspec>=0.12",
     # Loads the working directory's `.env` (#398). LiteLLM already depends on

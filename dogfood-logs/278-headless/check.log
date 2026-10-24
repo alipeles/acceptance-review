@@ -1,0 +1,367 @@
+Task completion: INCOMPLETE
+
+7 obligation(s) with non-discriminating test evidence (litellm-release-works-with-recording-run, litellm-can-build-model-response, litellm-completion-path-builds-response-model, no-provider-contact, ordinary-replay-mode-suite, ci-fails-on-response-construction-failure, task-02-span-01-disagreement-as-implemented).
+
+Obligations:
+
+  1. A fresh `pip install -e .` resolves a litellm release with which a recording run works.
+       requirements: task-01
+       code evidence: addressed
+         1.1  pyproject.toml#@@ -9,7 +9,24 @@ description = "Independent acceptance review for AI-assisted software changes."
+         1.2  tests/test_litellm_smoke.py#@@ -0,0 +1,63 @@
+       test evidence: unsupported — kills 0 of 2 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: After installing the project in editable mode from a fresh environment, the resolved litellm version supports a recording run that succeeds.
+           inputs:  Fresh editable install with an older litellm release below the current floor that still supports a recording run. Exercise the same recording path with local mock_response so the test distinguishes a working older release from an unnecessarily excluded one.
+           detects: The dependency floor excludes litellm releases that could still support a recording run, so a fresh editable install cannot resolve some working versions covered by the criterion.
+           full detail: acceptance recommendation --criterion litellm-release-works-with-recording-run
+
+  2. The litellm requirement in `pyproject.toml` is bounded on both sides.
+       requirements: task-01
+       code evidence: addressed
+         2.1  pyproject.toml#@@ -9,7 +9,24 @@ description = "Independent acceptance review for AI-assisted software changes."
+       test evidence: not required — This is settled by inspecting the dependency specification in `pyproject.toml`; no test can directly demonstrate the version bounds themselves.
+
+  3. Constrain the litellm dependency to a range of releases that install.
+       requirements: task-01
+       code evidence: addressed
+         3.1  pyproject.toml#@@ -9,7 +9,24 @@ description = "Independent acceptance review for AI-assisted software changes."
+       test evidence: not required — This is a dependency version constraint in pyproject.toml, which is settled by the source change itself.
+
+  4. The selected litellm release can build a model response.
+       requirements: task-01
+       code evidence: addressed
+         4.1  tests/test_litellm_smoke.py#@@ -0,0 +1,63 @@
+       test evidence: unsupported — kills 0 of 1 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: A fresh `pip install -e .` resolves a litellm release that can build a model response during a recording run.
+           inputs:  Install the project editable in a fresh environment with a litellm release just above the current ceiling that still can build a ModelResponse on the recording path. Exercise the same recording-run path used by the repo’s smoke test, with mock_response/local-only completion so no provider is contacted.
+           detects: The dependency pin can exclude litellm releases that are able to build a model response during a recording run, so a fresh install may resolve to a version that is unnecessarily blocked even though it would satisfy the criterion.
+           full detail: acceptance recommendation --criterion litellm-can-build-model-response
+
+  5. The litellm version bound in pyproject.toml includes comments explaining why the lower and upper sides are set where they are.
+       requirements: task-01
+       code evidence: addressed
+         5.1  pyproject.toml#@@ -9,7 +9,24 @@ description = "Independent acceptance review for AI-assisted software changes."
+       test evidence: not required — This is satisfied by the presence of explanatory comments in pyproject.toml, which can be verified directly from the source change.
+
+  6. The test suite includes a smoke test.
+       requirements: task-02
+       code evidence: not required — The requirement asks for the presence of a test, so the test itself is the demanded evidence.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  7. litellm's own completion path against the installed version drives far enough to build its response model.
+       requirements: task-02
+       code evidence: addressed
+         7.1  tests/test_litellm_smoke.py#@@ -0,0 +1,63 @@
+       test evidence: unsupported — kills 0 of 1 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: Running the smoke test exercises litellm's completion path on the installed version until a response model is constructed.
+           inputs:  Run the smoke test against an installed litellm version above the current ceiling that still reaches the completion path and constructs a response model. Use the existing mock_response-based smoke path so the test is isolated from provider availability.
+           detects: The dependency pin excludes installed litellm versions that the criterion still covers, so the smoke test cannot drive the completion path far enough on those versions to build a response model.
+           full detail: acceptance recommendation --criterion litellm-completion-path-builds-response-model
+
+  8. The change does not contact a provider.
+       requirements: task-02
+       code evidence: addressed
+         8.1  tests/test_litellm_smoke.py#@@ -0,0 +1,63 @@
+       test evidence: unsupported — kills 0 of 1 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: No provider network call or provider interaction occurs while exercising the smoke test path.
+           inputs:  Run the smoke-test path with a litellm version that would otherwise attempt a live provider call if the short-circuit/mock path were not used. Use monkeypatching to make any socket connect/create_connection attempt fail immediately, and use a mock_response that should satisfy the path locally.
+           detects: The dependency pinning change can still leave the smoke-test path using a LiteLLM release that makes a live provider call during the test run, so exercising the smoke test path would still contact a provider.
+           full detail: acceptance recommendation --criterion no-provider-contact
+
+  9. The smoke test runs in the ordinary replay-mode suite.
+       requirements: task-02
+       code evidence: addressed
+         9.1  tests/test_litellm_smoke.py#@@ -0,0 +1,63 @@
+       test evidence: unsupported — kills 0 of 1 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: The smoke test is executed as part of the ordinary replay-mode suite.
+           inputs:  Invoke the ordinary replay-mode suite entrypoint in a normal test run and verify that the newly added smoke test module is collected and executed as part of that suite. Use a marker or collection-based check rather than calling the smoke test directly.
+           detects: The smoke test exists, but the ordinary replay-mode suite never invokes it, so replay runs can still pass without executing the smoke test.
+           full detail: acceptance recommendation --criterion ordinary-replay-mode-suite
+
+  10. CI fails when an installed litellm cannot construct a response.
+       requirements: task-02
+       code evidence: addressed
+         10.1  tests/test_litellm_smoke.py#@@ -0,0 +1,63 @@
+       test evidence: unsupported — kills 0 of 1 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: Running the ordinary replay-mode suite causes CI to fail if the installed litellm cannot build its response model.
+           inputs:  Run the ordinary replay-mode test command in an environment where the resolved installed litellm is a version above the current ceiling but still within the criterion’s covered range, and where that version is known to fail constructing a response model on the first live call. Use the existing replay-mode defaults so the smoke path is not manually invoked.
+           detects: The dependency cap excludes litellm versions that CI may install and exercise, so the suite can no longer fail on a response-construction break in those excluded versions.
+           full detail: acceptance recommendation --criterion ci-fails-on-response-construction-failure
+
+  11. The change does not alter how model requests are assembled or recorded.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 2 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about source changes, so it is checked by inspecting the diff rather than by runtime behavior.
+
+  12. The pinned versions of pydantic and openai remain unchanged.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 2 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a version-pin constraint that is settled by inspecting the repository change itself.
+
+  13. The installed litellm builds a valid response object on the live-call path and recording runs complete successfully through that path.
+       code evidence: addressed
+         13.1  pyproject.toml#@@ -9,7 +9,24 @@ description = "Independent acceptance review for AI-assisted software changes."
+         13.2  tests/test_litellm_smoke.py#@@ -0,0 +1,63 @@
+       test evidence: unsupported — kills 0 of 2 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: The installed litellm builds a valid response object on the live-call path and recording runs complete successfully through that path.
+           inputs:  Fresh editable install with an older litellm release below the current floor that still builds a valid response object and completes the recording path. Use the same local mock_response recording harness so the test distinguishes a working older release from an unnecessarily excluded one.
+           detects: The lower bound rejects older litellm releases that may still build a valid response object and complete recording runs, so the installed package set is narrower than the criterion requires.
+           full detail: acceptance recommendation --criterion task-02-span-01-disagreement-as-implemented
+
+Mandate coverage: 4 of 4 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The new smoke test monkeypatches `socket.socket.connect` and `socket.create_connection` globally, which can affect unrelated code paths beyond the litellm call path the obligations require. The task asks for a no-provider-contact smoke test, but not for broad socket interception behavior.
+       tests/test_litellm_smoke.py#@@ -0,0 +1,63 @@
+  2. [in_service] The added test imports `Mode`, `ModelClient`, `TranscriptStore`, and `_default_completion_fn` and exercises a full recording flow, but the obligations only require a smoke test that the installed litellm completion path can build a response and that CI fails on construction failure. The extra end-to-end recording-path coverage is beyond the explicitly requested smoke test artifact.
+       tests/test_litellm_smoke.py#@@ -0,0 +1,63 @@
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  litellm-release-works-with-recording-run
+    [scope_too_narrow] litellm-release-works-with-recording-run/litellm-floor-too-high
+      The dependency floor excludes litellm releases that could still support a recording run, so a fresh editable install cannot resolve some working versions covered by the criterion.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] litellm-release-works-with-recording-run/litellm-ceiling-too-low
+      The dependency ceiling cuts off litellm releases that may work for recording runs, so a fresh editable install cannot resolve later working versions covered by the criterion.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  litellm-requirement-bounded-both-sides
+    none enumerated: The diff changes the litellm dependency to a single requirement string with both a lower bound (>=1.93) and an upper bound (<1.97), so the criterion is satisfied by construction in the only changed location that controls it.
+
+  litellm-installable-release-range
+    [scope_too_narrow] litellm-installable-release-range/upper-bound-too-low
+      The litellm pin excludes releases that still install, so `pip install -e .` can fail for valid versions above the chosen ceiling.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  litellm-can-build-model-response
+    [scope_too_narrow] litellm-can-build-model-response/litellm-ceiling-too-low
+      The dependency pin can exclude litellm releases that are able to build a model response during a recording run, so a fresh install may resolve to a version that is unnecessarily blocked even though it would satisfy the criterion.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  litellm-bound-comment-justification
+    none enumerated: The changed pyproject.toml section already includes comments immediately above the litellm dependency line that explain both the lower bound (floor 1.93) and the upper bound (ceiling 1.97), so there is no plausible static defect in the diff that would leave the bound uncommented or unjustified.
+
+  litellm-completion-path-builds-response-model
+    [scope_too_narrow] litellm-completion-path-builds-response-model/litellm-version-ceiling-blocks-smoke-path
+      The dependency pin excludes installed litellm versions that the criterion still covers, so the smoke test cannot drive the completion path far enough on those versions to build a response model.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  no-provider-contact
+    [other] no-provider-contact/provider-contact-still-allowed-by-smoke-path
+      The dependency pinning change can still leave the smoke-test path using a LiteLLM release that makes a live provider call during the test run, so exercising the smoke test path would still contact a provider.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  ordinary-replay-mode-suite
+    [not_wired] ordinary-replay-mode-suite/smoke-test-not-in-replay-suite
+      The smoke test exists, but the ordinary replay-mode suite never invokes it, so replay runs can still pass without executing the smoke test.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  ci-fails-on-response-construction-failure
+    [scope_too_narrow] ci-fails-on-response-construction-failure/litellm-ceiling-too-low-for-ci
+      The dependency cap excludes litellm versions that CI may install and exercise, so the suite can no longer fail on a response-construction break in those excluded versions.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  model-request-assembly-and-recording-unchanged
+    [other] model-request-assembly-and-recording-unchanged/litellm-version-cap-changes-request-path
+      The dependency change can force the project onto a different litellm release, and that release can change how model requests are assembled or recorded compared with the previously accepted versions.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  keep-pydantic-openai-pins-unchanged
+    [other] keep-pydantic-openai-pins-unchanged/pydantic-pin-changed
+      The dependency list changes the pinned pydantic version instead of leaving it unchanged.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  task-02-span-01-disagreement-as-implemented
+    [scope_too_narrow] task-02-span-01-disagreement-as-implemented/litellm-ceiling-too-low-for-recording-path
+      The dependency cap excludes litellm releases that could still satisfy the live-call and recording-run path, so some valid installed versions are blocked even though the criterion covers them.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] task-02-span-01-disagreement-as-implemented/litellm-floor-excludes-working-older-releases
+      The lower bound rejects older litellm releases that may still build a valid response object and complete recording runs, so the installed package set is narrower than the criterion requires.
+      pyproject.toml#0
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+Running the project's tests:
+  the project's tests were run: 12 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [survived, NOT COUNTED] ci-fails-on-response-construction-failure/litellm-ceiling-too-low-for-ci
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 26-26:
+      -   "litellm>=1.93,<1.97",
+      +   "litellm>=1.93,<1.101",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] keep-pydantic-openai-pins-unchanged/pydantic-pin-changed
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 25-25:
+      -   "pydantic>=2",
+      +   "pydantic>=2.1",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] litellm-can-build-model-response/litellm-ceiling-too-low
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 26-26:
+      -   "litellm>=1.93,<1.97",
+      +   "litellm>=1.93,<1.101",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] litellm-completion-path-builds-response-model/litellm-version-ceiling-blocks-smoke-path
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 26-26:
+      -   "litellm>=1.93,<1.97",
+      +   "litellm>=1.93,<1.101",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] litellm-installable-release-range/upper-bound-too-low
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 26-26:
+      -   "litellm>=1.93,<1.97",
+      +   "litellm>=1.93,<1.107",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] litellm-release-works-with-recording-run/litellm-ceiling-too-low
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 26-26:
+      -   "litellm>=1.93,<1.97",
+      +   "litellm>=1.93,<1.107",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] litellm-release-works-with-recording-run/litellm-floor-too-high
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 26-26:
+      -   "litellm>=1.93,<1.97",
+      +   "litellm>=1.97,<1.97",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] model-request-assembly-and-recording-unchanged/litellm-version-cap-changes-request-path
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for pyproject.toml lines 26..26 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at pyproject.toml lines 26-26:
+           -   "litellm>=1.93,<1.97",
+           +   "litellm>=1.93,<1.97",
+    injected at pyproject.toml lines 26-26:
+      -   "litellm>=1.93,<1.97",
+      +   "litellm>=1.93,<1.101",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] no-provider-contact/provider-contact-still-allowed-by-smoke-path
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 26-26:
+      -   "litellm>=1.93,<1.97",
+      +   "litellm>=1.93,<1.101",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] ordinary-replay-mode-suite/smoke-test-not-in-replay-suite
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (changed_nothing): the replacement for pyproject.toml lines 21..23 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at pyproject.toml lines 21-23:
+           - # Before raising the ceiling, run `tests/test_litellm_smoke.py` on Python 3.10
+           - # against the new release — CI runs 3.12, where 1.97.0 works, so CI alone will
+           - # not catch a 3.10-only break — and make one recording run.
+           + # Before raising the ceiling, run `tests/test_litellm_smoke.py` on Python 3.10
+           + # against the new release — CI runs 3.12, where 1.97.0 works, so CI alone will
+           + # not catch a 3.10-only break — and make one recording run.
+      2. set aside (changed_nothing): the replacement for pyproject.toml lines 21..23 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at pyproject.toml lines 21-23:
+           - # Before raising the ceiling, run `tests/test_litellm_smoke.py` on Python 3.10
+           - # against the new release — CI runs 3.12, where 1.97.0 works, so CI alone will
+           - # not catch a 3.10-only break — and make one recording run.
+           + # Before raising the ceiling, run `tests/test_litellm_smoke.py` on Python 3.10
+           + # against the new release — CI runs 3.12, where 1.97.0 works, so CI alone will
+           + # not catch a 3.10-only break — and make one recording run.
+      3. set aside (changed_nothing): the replacement for pyproject.toml lines 21..23 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at pyproject.toml lines 21-23:
+           - # Before raising the ceiling, run `tests/test_litellm_smoke.py` on Python 3.10
+           - # against the new release — CI runs 3.12, where 1.97.0 works, so CI alone will
+           - # not catch a 3.10-only break — and make one recording run.
+           + # Before raising the ceiling, run `tests/test_litellm_smoke.py` on Python 3.10
+           + # against the new release — CI runs 3.12, where 1.97.0 works, so CI alone will
+           + # not catch a 3.10-only break — and make one recording run.
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 changed_nothing). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [survived, NOT COUNTED] task-02-span-01-disagreement-as-implemented/litellm-ceiling-too-low-for-recording-path
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 26-26:
+      -   "litellm>=1.93,<1.97",
+      +   "litellm>=1.93,<1.107",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] task-02-span-01-disagreement-as-implemented/litellm-floor-excludes-working-older-releases
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 26-26:
+      -   "litellm>=1.93,<1.97",
+      +   "litellm<1.97",
+    no test caught it; 2 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+Open questions:
+  1. [resolved] The coverage step and the call asked about this span alone disagreed: the first found 'which is itself a deliverable' uncovered by the obligations already derived, the second derived neither an obligation nor an open question from it. Does this span state a property of its own that must be delivered?
+       The added smoke tests explicitly exercise the installed litellm on the live-call path and assert that a response object is built and then successfully consumed through a recording run, so the span is committed to a deliverable property of the system rather than being merely explanatory text.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
+run 88cbdc1752620600
+  continue this run with: --continue 88cbdc1752620600
+Model usage by stage:
+  stage                         model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ----------------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose                     openai/gpt-5.4-mini                          14 (0 live / 14 replayed)  75,529   2,032    0.0%   $0.0000   $0.0658              —
+  decompose-summary             openai/gpt-5.4                                 2 (0 live / 2 replayed)   1,710   1,191    0.0%   $0.0000   $0.0221              —
+  obligation linking            voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (0 live / 2 replayed)   1,297      95    0.0%   $0.0000   $0.0010              —
+  open-question judgment        openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   1,688     137    0.0%   $0.0019   $0.0019           5.0s
+  defect enumeration            openai/gpt-5.4-mini                          12 (12 live / 0 replayed)  18,327   1,999    0.0%   $0.0227   $0.0227          20.9s
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (2 live / 0 replayed)   3,038     726    0.0%   $0.0051   $0.0051           4.2s
+  coverage classification       openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   2,583     718    0.0%   $0.0052   $0.0052           3.7s
+  unrequested-change detection  openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   2,036     206    0.0%   $0.0025   $0.0025           2.0s
+  test recommendation           openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   2,540   2,347    0.0%   $0.0125   $0.0125          12.3s
+  mutation descriptor           openai/gpt-5.4-mini                          15 (15 live / 0 replayed)  25,604   1,608   18.5%   $0.0232   $0.0232          21.3s
+  this run spent $0.0731 on 33 live call(s); the evidence cost $0.1620 to record (18 call(s) replayed at no cost to this run)
