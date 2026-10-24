@@ -1,15 +1,28 @@
 # Task
 
-The tests `test_the_per_test_budget_is_refused_rather_than_ignored_when_unenforceable` and
-`test_the_per_test_budget_still_applies_without_a_report_path` in
-`tests/test_execution_sandbox.py` leave the test suite's own process with its
-original `socket.create_connection`, `socket.getaddrinfo` and
-`socket.socket.connect`, so tests that run after them see an unmodified
-`socket` module. Neither test is about the network block, so each runs with the
-block skipped rather than installing it and removing it afterwards.
+The default model becomes `anthropic/claude-sonnet-5-5`, and the summary-span
+stage, which today names `openai/gpt-5.4` as its own model, runs on the default
+like every other stage.
 
-A regression test that fails if either test leaves the network block installed
-is part of the deliverable.
+A recorded Claude run replays with no live call, and two recorded runs over the
+same input produce byte-identical review state. The run still requests
+temperature 0 and seed 0, and the review's provenance records that Claude
+applied neither. The module documentation states that recorded transcripts,
+not a seed or a temperature, are what make a Claude run reproducible.
+
+A Claude response that does not match the stage's response schema is rejected
+with the same typed error as any other provider's.
+
+The committed prompt recordings are re-recorded against the new default, and
+each prompt test's assertions hold on Claude's answers. Recordings made against
+OpenAI models still replay, and the committed set keeps at least one recording
+from a provider other than the default.
+
+Which model each stage runs on is set only in `config.py`.
 
 ## Scope exclusions
-- Changing how the network block itself works for the projects the tool runs.
+- Sending offline runs through the Message Batches API.
+- Changing where prompt-cache breakpoints are placed.
+- Reporting spend per run.
+- Re-measuring benchmark figures on Claude.
+- Changing any prompt or response schema.

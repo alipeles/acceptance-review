@@ -58,30 +58,14 @@ Export invoices to a CSV file.
 
 _EXCLUSION_IDS = ["exclusion-01", "exclusion-02", "exclusion-03", "exclusion-04"]
 
-# The same four, for the one test that has a known failure among them. Held
-# visible as a strict xfail rather than deleted: in this corpus `exclusion-01`
-# writes its `observable_behavior` as "...the CSV export's supported-currency
-# behavior is unchanged...", which is the positive reframing the prompt forbids
-# in that field by name. The `description` is correct, so this is the milder half
-# of #219 rather than #219 itself — and it is a decomposer-judgement defect,
-# which #317 excludes from its own scope. Strict, so it fails the moment the
-# defect is fixed.
-_EXCLUSION_ID_PARAMS = [
-    pytest.param(
-        "exclusion-01",
-        marks=pytest.mark.xfail(
-            strict=True,
-            reason=(
-                "exclusion-01's observable_behavior says the supported-currency "
-                "behaviour is 'unchanged', the reframing the prompt forbids; filed "
-                "against #181"
-            ),
-        ),
-    ),
-    "exclusion-02",
-    "exclusion-03",
-    "exclusion-04",
-]
+# The same four, for the one test that had a known failure among them. On
+# `gpt-5.4-mini`, `exclusion-01` wrote its `observable_behavior` as "...the CSV
+# export's supported-currency behavior is unchanged...", the positive reframing
+# the prompt forbids in that field by name — the milder half of #219, held as a
+# strict xfail. Sonnet 5.5's recording does not reframe it, so since #413 the
+# case is an ordinary one. That is one answer from a different model, not a fix
+# to the prompt: the defect may still be there, and it stays tracked under #181.
+_EXCLUSION_ID_PARAMS = _EXCLUSION_IDS
 _TEST_DEMAND_IDS = ["completion-01", "completion-02", "completion-03"]
 
 # The subject each exclusion names. An obligation mentioning one of these is
@@ -172,26 +156,13 @@ def test_every_criterion_of_the_same_shape_is_treated_the_same_way(derived):
     "requirement_id",
     [
         "constraint-01",
-        # KNOWN DEFECT, held visible rather than deleted. In this corpus
-        # `constraint-02` yields its own behaviour obligation AND a second one
-        # typed `test_demand` restating `completion-02`, which demands a test of
-        # it. `#317` predicted exactly this residue: constraining `source_quote`
-        # to the answering requirement's spans makes an obligation about another
-        # requirement unsourceable, but not unwritable — the model can still
-        # paraphrase one while quoting its own text, which degrades
-        # misattribution into duplication
+        # Was a strict xfail. On `gpt-5.4-mini`, `constraint-02` yielded its own
+        # behaviour obligation AND a second one typed `test_demand` restating
+        # `completion-02` — the paraphrase residue #317 predicted
         # (`docs/experiments/317-over-answering/findings.md` §9, "What it does
-        # not close"). Strict, so it fails the moment the defect is fixed.
-        pytest.param(
-            "constraint-02",
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason=(
-                    "constraint-02 gains a duplicate of completion-02's test demand; "
-                    "the paraphrase residue #317 documents, filed against #181"
-                ),
-            ),
-        ),
+        # not close"). Sonnet 5.5's recording does not duplicate it (#413). One
+        # answer from a different model, not a fix: still tracked under #181.
+        "constraint-02",
         "constraint-03",
     ],
 )
@@ -206,9 +177,31 @@ def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, req
     linking merges them correctly, and the demand for the test disappears
     exactly as it did before the fix.
     """
-    framed = [o.description for o in _obligations_of(derived, requirement_id) if _demands_a_test(o)]
+    framed = _invented_framing(_obligations_of(derived, requirement_id))
 
     assert not framed, f"{requirement_id} demands no test; framing was invented: {framed}"
+
+
+def _invented_framing(obligations) -> list[str]:
+    """The descriptions of `obligations` that demand a test."""
+    return [o.description for o in obligations if _demands_a_test(o)]
+
+
+def test_the_framing_check_still_catches_the_duplicate_gpt_5_4_mini_gave(derived):
+    """The check above, against the answer it was written for.
+
+    It was a strict xfail on `constraint-02` until #413 moved the corpus to
+    Sonnet 5.5, whose answer is clean. The xfail was also the proof that the
+    check catches the defect; without it, a loosened check would still pass on
+    a clean answer. So rebuild the `gpt-5.4-mini` answer from Claude's own —
+    `constraint-02` carrying a copy of `completion-02`'s test demand — and
+    require the check to name it.
+    """
+    own = _obligations_of(derived, "constraint-02")
+    duplicate = next(o for o in _obligations_of(derived, "completion-02") if _demands_a_test(o))
+
+    assert _invented_framing(own) == []
+    assert _invented_framing([*own, duplicate]) == [duplicate.description]
 
 
 # --- #219 / #230: scope exclusions ------------------------------------------
@@ -350,11 +343,34 @@ def test_an_exclusion_obligation_states_no_property_to_preserve(derived, require
     now be a real obligation rather than dead free text.
     """
     for obligation in _obligations_of(derived, requirement_id):
-        text = f"{obligation.description} {obligation.observable_behavior}".lower()
-        offending = [word for word in _PRESERVATION_WORDS if word in text]
+        offending = _preservation_words_in(obligation)
         assert not offending, (
             f"{obligation.id} states a property to preserve: {obligation.description!r}"
         )
+
+
+def _preservation_words_in(obligation) -> list[str]:
+    """The words in `obligation` that state a property to preserve."""
+    text = f"{obligation.description} {obligation.observable_behavior}".lower()
+    return [word for word in _PRESERVATION_WORDS if word in text]
+
+
+def test_the_preservation_check_still_catches_the_reframing_gpt_5_4_mini_gave(derived):
+    """The check above, against the answer it was written for.
+
+    `exclusion-01` was a strict xfail until #413: `gpt-5.4-mini` wrote its
+    `observable_behavior` as "...the CSV export's supported-currency behavior is
+    unchanged...". Sonnet 5.5's answer is clean, which removed the xfail and with
+    it the proof that the check catches the reframing. Put that wording back
+    into Claude's own obligation and require the check to catch it.
+    """
+    obligation = _obligations_of(derived, "exclusion-01")[0]
+    reframed = obligation.model_copy(
+        update={"observable_behavior": "The CSV export's supported-currency behavior is unchanged."}
+    )
+
+    assert _preservation_words_in(obligation) == []
+    assert _preservation_words_in(reframed) == ["unchanged"]
 
 
 def test_no_obligation_anywhere_demands_the_excluded_work(derived):

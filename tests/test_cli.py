@@ -72,6 +72,50 @@ def test_a_default_cli_run_is_seeded(git_repo, fixture_task_path, capsys, stub_m
     assert review["provenance"]["controls_in_force"] == {"temperature": 0.0, "seed": DEFAULT_SEED}
 
 
+def test_a_default_cli_run_on_claude_records_both_controls_as_not_applied(
+    git_repo, fixture_task_path, capsys, monkeypatch
+):
+    """The test above, against the default model's real provider answer.
+
+    The default is Claude (#413), which takes no seed and refuses any
+    temperature. The stub here asks LiteLLM itself which controls survive, the
+    question the live path asks, so the saved review is checked for what Claude
+    actually applied rather than for what a stand-in claims. Requested and in
+    force must differ: requested stays 0 and 0, in force is neither.
+    """
+    from acceptance.config import DEFAULT_MODEL, RunConfig
+    from acceptance.llm import _litellm_effective_controls
+    from tests.support import client_finding_nothing
+
+    def build_client(self, completion_fn=None):
+        client = client_finding_nothing(
+            model=self.model, temperature=self.temperature, seed=self.seed
+        )
+        client._completion_fn.effective_controls = _litellm_effective_controls
+        return client
+
+    monkeypatch.setattr(RunConfig, "build_client", build_client)
+
+    exit_code = main(
+        [
+            "check",
+            "--json",
+            "--task",
+            fixture_task_path,
+            "--base",
+            git_repo["base"],
+            "--head",
+            git_repo["head"],
+        ]
+    )
+
+    assert exit_code == 0
+    provenance = json.loads(capsys.readouterr().out)["provenance"]
+    assert provenance["model"] == DEFAULT_MODEL
+    assert provenance["controls_requested"] == {"temperature": 0.0, "seed": DEFAULT_SEED}
+    assert provenance["controls_in_force"] == {"temperature": None, "seed": None}
+
+
 def test_no_seed_is_the_deliberate_way_to_run_unpinned(
     git_repo, fixture_task_path, capsys, stub_model
 ):

@@ -22,7 +22,7 @@ import pytest
 
 from acceptance.benchmark.fixtures import materialize_archetype
 from acceptance.change.diff import extract_change_set
-from acceptance.config import ScopeExpansionPolicy
+from acceptance.config import DEFAULT_MODEL, ScopeExpansionPolicy
 from acceptance.coverage.disposition import classify_dispositions
 from acceptance.coverage.prompt import DiffRef
 from acceptance.coverage.unrequested import UnrequestedChange, UnrequestedChangeKind
@@ -83,6 +83,11 @@ CLAUDE_SONNET = "anthropic/claude-sonnet-5"
         # what let the harness sit OpenAI-only behind a provider-agnostic
         # dependency until #158.
         (CLAUDE_SONNET, ScopeExpansionPolicy.STRICT, "risky"),
+        # The default model since #413, both ways. These are also the recordings
+        # `test_corpus_mechanism.py` replays through `replaying_client()`, which
+        # always asks the default — before #413 the GPT_MINI pair served that.
+        (DEFAULT_MODEL, ScopeExpansionPolicy.STRICT, "risky"),
+        (DEFAULT_MODEL, ScopeExpansionPolicy.LOOSE, "separable"),
     ],
 )
 def test_the_policy_knob_actually_changes_the_models_disposition(tmp_path, model, policy, expected):

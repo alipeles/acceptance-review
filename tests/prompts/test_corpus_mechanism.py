@@ -196,12 +196,51 @@ def test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls(
         assert record["request"]["temperature"] == 0.0, name
         # ...refused by the provider, and recorded as refused rather than assumed.
         assert record["controls_applied"] == {"seed": None, "temperature": None}, name
-        # ...and the call still produced a usable answer.
-        assert json.loads(record["response"])["disposition"] in {
-            "in_service",
-            "separable",
-            "risky",
-        }, name
+        # ...and the call still produced an answer the stage could use, judged
+        # against the schema the recording itself sent. Before #413 the only
+        # Claude recording was a disposition, checked by its enum; since the
+        # whole corpus moved to Claude, every stage's answer is checked the same
+        # way from its own schema, which covers that enum and more.
+        _assert_answers_its_schema(json.loads(record["response"]), record, name)
+
+
+def _assert_answers_its_schema(response, record, name):
+    """The top level of `response` against the schema `record` sent.
+
+    Not a full validator: required fields present, no field the schema lacks,
+    and every enum-valued field holding one of its values. Enough that a
+    recording whose answer the stage would reject cannot pass as evidence.
+    """
+    schema = record["request"]["response_schema"]["schema"]
+    assert isinstance(response, dict), name
+    properties = schema["properties"]
+    assert set(schema.get("required", [])) <= set(response), name
+    assert set(response) <= set(properties), name
+    for field, value in response.items():
+        allowed = properties[field].get("enum")
+        if allowed is not None:
+            assert value in allowed, (name, field, value)
+
+
+def test_every_recording_the_default_replays_is_on_the_default_model():
+    """The prompt tests check Claude's answers, not leftovers from OpenAI.
+
+    Only `test_disposition_prompt.py` names models of its own, so only
+    disposition recordings may be on another model. A stage that named its own
+    model again, or a prompt test that pinned one, would leave that stage's
+    assertions running on another provider's answers while the suite stayed
+    green (#413).
+    """
+    for path in sorted(RECORDED_TRANSCRIPTS.glob("*.json")):
+        request = json.loads(path.read_text())["request"]
+        if request["response_schema"]["name"] != "_DispositionJudgment":
+            assert request["model"] == DEFAULT_MODEL, path.name
+
+    prompt_tests = pathlib.Path(__file__).parent
+    for source in sorted(prompt_tests.glob("test_*.py")):
+        if source.name in {"test_disposition_prompt.py", pathlib.Path(__file__).name}:
+            continue
+        assert "openai/" not in source.read_text(), source.name
 
 
 def test_the_default_model_is_one_the_corpus_actually_holds():
@@ -363,93 +402,108 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
 # Derivation now issues one call per requirement rather than one per batch of
 # eight, so the eleven-requirement invoice task that recorded 2 transcripts
 # records 19: ten bullets, the summary step, and the calls that author
-# obligations for the summary spans it left uncovered. The two `_SummarySpans`
-# recordings are against `openai/gpt-5.4` rather than the run's model, which is
-# the recorded evidence that a stage may name its own model.
+# obligations for the summary spans it left uncovered.
+#
+# **#413 re-recorded it on `anthropic/claude-sonnet-5-5`, the new default for
+# every stage.** The `_SummarySpans` recordings used to be against
+# `openai/gpt-5.4`, the recorded evidence that a stage may name its own model;
+# with no stage overriding the default that evidence is gone, and the mechanism
+# rests on the injected-response tests in `test_stage_reasoning.py`. The
+# gpt-5.4-mini and claude-sonnet-5 disposition recordings stay because
+# `test_disposition_prompt.py` names those models outright.
 #
 # Grouped by response schema and model, and generated from what was recorded
 # rather than hand-listed — the ids are request hashes, so they are not
 # authorable by hand and carry no meaning beyond identity.
 _APPROVED_TRANSCRIPTS = {
-    # _Decomposition, openai/gpt-5.4-mini — 19 recording(s)
-    "0db605cd8cd79d4e96b2b00eb0cfb97e08e363ea3fa4d8b67a5257d33d7e9b4b.json": (
+    # _Decomposition, anthropic/claude-sonnet-5-5 — 19 recording(s)
+    "08129e38374e9e0ea96d6a3f0d21178d090cae679769d7acec9a2adafcde67c2.json": (
         "invoice",
         "CSV",
     ),
-    "0e54ccb1b994dbd7414eb804023bd7e0c747756725ee333c5b86ac8f4dcb1110.json": (
+    "09191a9cd2f4a10ab57bd719da338d68c7c05b6bc2153779dd62b40edc2306c1.json": (
         "invoice",
         "CSV",
     ),
-    "26008f3105fd2990bd6cdb6c211dd81019dcd057b732cfc9eafcadafc17d2627.json": (
+    "12a9b7d3e58b881d4b2d13299ce8c6f1fcaee924fbf528dd7854f28168fc86bb.json": (
         "invoice",
         "CSV",
     ),
-    "386663bc208e63c446b8ed03ca6e94ed9a77f25412788158506e8106e1edbfcf.json": (
+    "1af4d4e3fd02a3d7aa3111331ab697145887c01f7147ca177d814c34f303cc05.json": (
         "invoice",
         "CSV",
     ),
-    "4cbdec07c03d64fcabfc8f08da97d5e37b011ca233780f4b5d063591aea3c49f.json": (
+    "1ebe046143ede6d4fff427ea3a0fdfc5fb036d5bfbb0c24b9205ef7123cf84fc.json": (
         "invoice",
         "CSV",
     ),
-    "4ce568d1bd2c53de22936ccb532443a63c8be0d051581b29918660bac7b002e5.json": (
+    "26cff79a8c2d01dc660cc0baee07cfe8a03df02afcb7345191da691fd6e1c7bb.json": (
         "invoice",
         "CSV",
     ),
-    "5ddc8915319828f44218b4945dcdc4c24ca3bdb2d23282deb3b54bf1919e0040.json": (
+    "26e47cbb014850d4d99cbea447c472c5f560fe901355e99916041a64d8db88a9.json": (
         "invoice",
         "CSV",
     ),
-    "7a6f5c1d2ba5cb3abf47579535bb63764ca57e28d749bdc52edfe0bd9677118c.json": (
+    "3ced417e1a972253fabf1885472e57b5c21a1dd586d959afb04f74422998412c.json": (
         "invoice",
         "CSV",
     ),
-    "832eb1033ea699d8d9b9760860a508443fdfaf0838941dbdcd22133dd97409f1.json": (
+    "43cf1711f98282f03ab6cd8206ab1798a25d8746ef970aecf4d63a6583fe6f7f.json": (
         "invoice",
         "CSV",
     ),
-    "949f73831132b5d9290e4d2bdc8cf21e3d1f3c79096ccfc2623fed5be734fc3f.json": (
+    "4578658bac07af2262c162675a937dd6858133b73fb2c9c7f5a44fbf5509e59b.json": (
         "invoice",
         "CSV",
     ),
-    "9b3bdd7227e632dd543fc3413711b192d4cc7e74f93d1a45c2c2ba6dd30f9ee6.json": (
+    "5b000466c2889ca38766fc30f35a35ff78b3fdac14143eac08189da24361cd9a.json": (
         "invoice",
         "CSV",
     ),
-    "a362ebf22aa06b6aa78eb9646890dc29b7288195892418423bfd18d9377f06f5.json": (
+    "620ed870be83b339088ff9a9c374f72424e145e9d8d90515495eafd645c3e3e4.json": (
         "invoice",
         "CSV",
     ),
-    "b0b789be229a87b9096031e1edc0d88fa488e1f949df864be5632be1a58ce70d.json": (
+    "6dd9228b2c407d6a796ed80293b8683fba7c2d0198ff1c8eb018ddc076c99d0b.json": (
         "invoice",
         "CSV",
     ),
-    "c8b9491a44ea3813a5278efc85f819806bf08b4e52cb65aeeea77f11a58c6e53.json": (
+    "91b7e997fd48f5ed8f8e6004257e5e37c136551e22fa8cb73168e80e91515c33.json": (
         "invoice",
         "CSV",
     ),
-    "cf319802ba28e5af17cd7e568c98571e98c6d134b70ea8d25d5585faf19725c8.json": (
+    "b832b74904e872e25c33fde96eeecf76e02f044cbaa00cf5adc1c2a79acd71fe.json": (
         "invoice",
         "CSV",
     ),
-    "d1118d9bc44851922064ecc3460420bba83e4136e2b905ef52fb2e5576983a6e.json": (
+    "cd47a7de3694c8523165e1a0c4ab3de6dd89d2763d7ea4cfc6d2a8d4a53e385c.json": (
         "invoice",
         "CSV",
     ),
-    "d63bf090aac4b8e9a3ea5d8585993dfb05256b5cf26fe21d2e24c45a06f3696a.json": (
+    "d70fa50663327c72d6723f00137d2012d0200b6cfa183c04b99eb60d727e597d.json": (
         "invoice",
         "CSV",
     ),
-    "ec291f98c787637453b50a03ea4cd48fb3a4c8adcf86b665109749585706ef3d.json": (
+    "ddf38aff642c804c39fd4491957837e34fb1ee25773304415fad92754a625586.json": (
         "invoice",
         "CSV",
     ),
-    "f86d8eb1202ac352ded60177bc2f04a2dec9e55db82eff9a140563f5c3da211e.json": (
+    "eea626d51e8fe03b829be25c1c8f79fe89d65d802ebe7a60389d4b92607e5281.json": (
         "invoice",
         "CSV",
     ),
     # _DispositionJudgment, anthropic/claude-sonnet-5 — 1 recording(s)
     "e601a647baf1a5f1e0f06f0123daa9d21befb9cacca0781c80905feeec5087d0.json": (
+        "orders.py",
+        "ship_order",
+    ),
+    # _DispositionJudgment, anthropic/claude-sonnet-5-5 — 2 recording(s)
+    "40c881bcfc46fccedd19e8bce940906059b1037382f8e1b645a7bd59664928cb.json": (
+        "orders.py",
+        "ship_order",
+    ),
+    "ef40e2ed154c20459393a7365e4133ac818a9e886de25ec1874222b21b9563de.json": (
         "orders.py",
         "ship_order",
     ),
@@ -462,17 +516,17 @@ _APPROVED_TRANSCRIPTS = {
         "orders.py",
         "ship_order",
     ),
-    # _SummarySpans, openai/gpt-5.4 — 2 recording(s)
-    "94cb56e14aa637b5a3d8a71371422f5674305f7eade464a12217ac5fa2b411df.json": (
+    # _SummarySpans, anthropic/claude-sonnet-5-5 — 2 recording(s)
+    "9db5b050af953e853d357d411553fa5b810b12b3c1799bab309c0adcd306683a.json": (
         "invoice",
         "CSV",
     ),
-    "9c623b442c391c1781307a53af26e5a98ea17b8db0e86ca98a431b35eb7e2f4c.json": (
+    "bd04e902bdedf1240fabe5cd42f3686e9b833af0da4898216003cfc31569f463.json": (
         "invoice",
         "CSV",
     ),
-    # _Verdicts, openai/gpt-5.4-mini — 1 recording(s)
-    "017183bb4468ccade80b41f1a5319c3662c7c53594b0350a7b6c421449cbef84.json": (
+    # _Verdicts, anthropic/claude-sonnet-5-5 — 1 recording(s)
+    "bd4336709cb38972e2744cdd989eb389a510441905de74065ea23dd30b866a6b.json": (
         "invoice",
         "CSV",
     ),

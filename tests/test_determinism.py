@@ -13,7 +13,7 @@ from types import SimpleNamespace
 
 from pydantic import BaseModel
 
-from acceptance.config import RunConfig, provenance_for
+from acceptance.config import DEFAULT_MODEL, RunConfig, provenance_for
 from acceptance.llm import Mode
 from acceptance.review_state import Component, EvidenceTier, Finding, Link, Review
 
@@ -68,11 +68,11 @@ def _produce_review(config: RunConfig, completion_fn) -> Review:
 
 
 def test_two_recorded_runs_are_byte_identical(tmp_path):
-    config = RunConfig(
-        model="anthropic/claude-sonnet-5",
-        mode=Mode.RECORD,
-        transcript_root=tmp_path / "transcripts",
-    )
+    """On the default model, which since #413 is Claude: no seed and no
+    temperature reach it, so transcript reuse is the only thing that can make
+    the second run match the first."""
+    config = RunConfig(mode=Mode.RECORD, transcript_root=tmp_path / "transcripts")
+    assert config.model == DEFAULT_MODEL
     provider = _drifting_provider()
 
     first = _produce_review(config, provider).to_canonical_json()
