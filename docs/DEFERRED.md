@@ -93,6 +93,68 @@ Severity: `blocker` (an Acceptance item of the task in flight depends on it) ·
   > reproduce every time.
 - **Status:** open
 
+### [2026-10-24] A change made entirely in test files gets no defects enumerated, so its tests are never mapped or judged
+- **Kind:** filing (new issue, child of #183)
+- **Found during:** #409, Gate 2 run 1
+- **Where:** defect enumeration (`src/acceptance/defects/enumeration.py` — its
+  prompt is given "the changed production code" only)
+- **Severity:** should-fix (blocks a clean Gate 2 for any test-only task, #409 included)
+- **What's wrong:** see draft.
+- **Why I didn't act:** out of scope for #409; changes a stage's input and prompt.
+- **Drafted fix:** file as below, labels `bug`, `track:checker`, parent #183.
+
+  > **Title:** A change made entirely in test files gets no defects enumerated, so its tests are never mapped or judged
+  >
+  > **What happens.** When every changed line is in a test file, defect
+  > enumeration reports the diff as empty and enumerates nothing for every
+  > obligation. Observed at #409's Gate 2, run 1
+  > (`dogfood-logs/409-gate2-run1/`): the delivery was two lines in each of two
+  > tests plus a new regression test, all in `tests/test_execution_sandbox.py`.
+  > For each obligation enumeration said *"No production code was changed in the
+  > delivered diff"* / *"the diff is empty"*. No mapping or execution stage ran,
+  > every obligation shows "(no mapped test)", the `test_demand` obligation is
+  > `indeterminate`, and the verdict is UNABLE-TO-DETERMINE.
+  >
+  > The regression test the task asked for,
+  > `test_a_test_that_configures_the_plugin_in_process_leaves_socket_untouched`,
+  > fails on both of its cases before the fix and passes after it — it is
+  > exactly the evidence the review needed, and the review never looked at it.
+  >
+  > **Why it matters.** Fixing a test, test harness, or test isolation is
+  > ordinary work, and such a task can never be reviewed past "unable to
+  > determine". Obligations that are *about* test code are real obligations; the
+  > code they describe happens to live under `tests/`.
+  >
+  > **Not #402** (enumeration misses a defect in changed production code) and
+  > **not #327** (defects enumerated for criteria owed no test).
+  >
+  > **Acceptance.** Over #409's Gate 2 run-1 inputs (`revisions.txt` in that
+  > directory), enumeration names at least one defect for
+  > `restore-socket-monkeypatches-after-test`, and the regression test is mapped
+  > to it. A change touching both production and test code still enumerates only
+  > over what the obligations are about, so ordinary tests are not treated as the
+  > code under review.
+- **Status:** open
+
+### [2026-10-24] Another occurrence of #376: a requested regression test is reported as an unrequested change
+- **Kind:** filing (comment on existing issue #376)
+- **Found during:** #409, Gate 2 run 1
+- **Where:** unrequested-change detection (`src/acceptance/coverage/`)
+- **Severity:** nice-to-have (adds evidence to an open issue)
+- **What's wrong:** see comment.
+- **Why I didn't act:** #376 owns it.
+- **Drafted fix:** comment on #376:
+
+  > A related occurrence at #409's Gate 2, run 1 (`dogfood-logs/409-gate2-run1/`),
+  > with a different disposition. The task file asks for a regression test
+  > (obligation `network-block-regression-test`, `[test_demand]`). The review
+  > reported the delivered test as unrequested change 1, `[in_service]`: *"The
+  > new parametrized regression test calls the two existing tests directly …
+  > and adds a new test path beyond simply verifying the socket monkeypatches
+  > are restored."* Here the test is not only evidence but the deliverable of an
+  > obligation; it should not be reported as unrequested at any disposition.
+- **Status:** open
+
 ### [2026-08-20] #293's premise reproduces on a nine-line append, and #292's anchoring does not stop it
 - **Kind:** filing (comment on existing issue #293)
 - **Found during:** #291, Gate 2 runs 1 and 2
