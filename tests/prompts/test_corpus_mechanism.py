@@ -196,10 +196,51 @@ def test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls(
         assert record["request"]["temperature"] == 0.0, name
         # ...refused by the provider, and recorded as refused rather than assumed.
         assert record["controls_applied"] == {"seed": None, "temperature": None}, name
-        # ...and the call still produced an answer of the shape it was asked for.
-        # Every stage's schema is an object at the top, so a reply that parses to
-        # anything else is not one the stage could have used.
-        assert isinstance(json.loads(record["response"]), dict), name
+        # ...and the call still produced an answer the stage could use, judged
+        # against the schema the recording itself sent. Before #413 the only
+        # Claude recording was a disposition, checked by its enum; since the
+        # whole corpus moved to Claude, every stage's answer is checked the same
+        # way from its own schema, which covers that enum and more.
+        _assert_answers_its_schema(json.loads(record["response"]), record, name)
+
+
+def _assert_answers_its_schema(response, record, name):
+    """The top level of `response` against the schema `record` sent.
+
+    Not a full validator: required fields present, no field the schema lacks,
+    and every enum-valued field holding one of its values. Enough that a
+    recording whose answer the stage would reject cannot pass as evidence.
+    """
+    schema = record["request"]["response_schema"]["schema"]
+    assert isinstance(response, dict), name
+    properties = schema["properties"]
+    assert set(schema.get("required", [])) <= set(response), name
+    assert set(response) <= set(properties), name
+    for field, value in response.items():
+        allowed = properties[field].get("enum")
+        if allowed is not None:
+            assert value in allowed, (name, field, value)
+
+
+def test_every_recording_the_default_replays_is_on_the_default_model():
+    """The prompt tests check Claude's answers, not leftovers from OpenAI.
+
+    Only `test_disposition_prompt.py` names models of its own, so only
+    disposition recordings may be on another model. A stage that named its own
+    model again, or a prompt test that pinned one, would leave that stage's
+    assertions running on another provider's answers while the suite stayed
+    green (#413).
+    """
+    for path in sorted(RECORDED_TRANSCRIPTS.glob("*.json")):
+        request = json.loads(path.read_text())["request"]
+        if request["response_schema"]["name"] != "_DispositionJudgment":
+            assert request["model"] == DEFAULT_MODEL, path.name
+
+    prompt_tests = pathlib.Path(__file__).parent
+    for source in sorted(prompt_tests.glob("test_*.py")):
+        if source.name in {"test_disposition_prompt.py", pathlib.Path(__file__).name}:
+            continue
+        assert "openai/" not in source.read_text(), source.name
 
 
 def test_the_default_model_is_one_the_corpus_actually_holds():

@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 from pydantic import BaseModel
 
+from acceptance.config import DEFAULT_MODEL
 from acceptance.llm import (
     Mode,
     ModelClient,
@@ -73,8 +74,9 @@ def test_record_mode_validates_and_persists_a_transcript(store):
 
 
 def test_recorded_transcript_replays_with_zero_live_calls(store):
+    """On the default model, Claude since #413."""
     recorded = ModelClient(
-        model="anthropic/claude-sonnet-5",
+        model=DEFAULT_MODEL,
         mode=Mode.RECORD,
         store=store,
         completion_fn=_recorder('{"supported": false, "rationale": "no assertion on the result"}'),
@@ -82,7 +84,7 @@ def test_recorded_transcript_replays_with_zero_live_calls(store):
     original = recorded.complete(MESSAGES, Verdict)
 
     replayed = ModelClient(
-        model="anthropic/claude-sonnet-5",
+        model=DEFAULT_MODEL,
         mode=Mode.REPLAY,
         store=store,
         completion_fn=_exploding_completion_fn,
@@ -121,11 +123,28 @@ def test_replay_without_a_transcript_raises_rather_than_calling_live(store):
 
 
 def test_malformed_json_is_rejected_with_a_typed_error(store):
+    """On the default model, Claude since #413 — the same typed error an
+    OpenAI reply gets (`test_a_reply_from_any_provider_gets_the_same_typed_error`)."""
     client = ModelClient(
-        model="anthropic/claude-sonnet-5",
+        model=DEFAULT_MODEL,
         mode=Mode.RECORD,
         store=store,
         completion_fn=_recorder("I think the test looks fine, honestly."),
+    )
+
+    with pytest.raises(SchemaValidationError):
+        client.complete(MESSAGES, Verdict)
+
+
+@pytest.mark.parametrize("model", [DEFAULT_MODEL, "openai/gpt-5.4-mini"])
+def test_a_reply_from_any_provider_gets_the_same_typed_error(store, model):
+    """A schema-violating reply is rejected the same way whichever provider
+    sent it: the check sits after the provider call, on the text alone."""
+    client = ModelClient(
+        model=model,
+        mode=Mode.RECORD,
+        store=store,
+        completion_fn=_recorder('{"supported": "yes-ish"}'),
     )
 
     with pytest.raises(SchemaValidationError):
