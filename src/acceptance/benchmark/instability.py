@@ -181,19 +181,47 @@ class ModelInstability(PersistableModel):
     shape_difference_count: MetricStats = Field(default_factory=MetricStats)
 
 
-class PerturbationResult(PersistableModel):
-    name: str
+class SensitivityAxis(str, Enum):
+    """The populations perturbation sensitivity is counted over, one per axis.
+
+    Obligation and open-question presence share an axis because both are
+    statements matched by content; evidence class and defect verdict are each a
+    judgement about a subject present in both runs.
+    """
+
+    PRESENCE = "presence"
+    EVIDENCE_CLASS = "evidence_class"
+    DEFECT_VERDICT = "defect_verdict"
+
+
+class AxisSensitivity(PersistableModel):
+    axis: SensitivityAxis
     watched_judgements: int
     changed_judgements: int
-    content_differences: list[Difference] = Field(default_factory=list)
-    shape_differences: list[Difference] = Field(default_factory=list)
 
     def sensitivity(self) -> float | None:
-        """Proportion of watched judgements that moved. None when nothing was
-        watched — a fabricated 0.0 would read as stability."""
+        """Proportion of this axis's watched judgements that moved. None when
+        nothing was watched — a fabricated 0.0 would read as stability."""
         if self.watched_judgements == 0:
             return None
         return self.changed_judgements / self.watched_judgements
+
+
+class PerturbationResult(PersistableModel):
+    """Movement under a perturbation, one sensitivity per axis and never a
+    blended one: a numerator drawn from every axis over a denominator from one
+    reported more than 1 once defect verdicts populated (#290)."""
+
+    name: str
+    axes: list[AxisSensitivity] = Field(default_factory=list)
+    content_differences: list[Difference] = Field(default_factory=list)
+    shape_differences: list[Difference] = Field(default_factory=list)
+
+    def sensitivity(self, axis: SensitivityAxis) -> float | None:
+        for row in self.axes:
+            if row.axis is axis:
+                return row.sensitivity()
+        return None
 
 
 class AgreementAxis(str, Enum):
@@ -251,11 +279,9 @@ class InstabilityReport(PersistableModel):
 class ObservingClient(ModelClient):
     """A `ModelClient` that keeps every parsed response it returns.
 
-    The discrimination stage's per-defect verdicts never reach the `Review`
-    (#149). Rather than change the pipeline to persist them — out of scope here —
-    the harness passes this client in and reads the stage's own output as it goes.
-    Delegation happens through `super().complete`, so recording, replay, request
-    keying and determinism controls are untouched.
+    Delegation happens through `super().complete` with every argument passed on
+    as given, so recording, replay, request keying and determinism controls are
+    untouched. It is built by `RunConfig.build_client`, never field by field.
     """
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -265,8 +291,10 @@ class ObservingClient(ModelClient):
         # run look identical — stability faked by the measuring instrument.
         self.observed: list[Any] = []
 
-    def complete(self, messages, response_model, partition=None, parse_as=None, stage=None):
-        result = super().complete(messages, response_model, partition, parse_as, stage)
+    def complete(self, *args: Any, **kwargs: Any) -> Any:
+        # Forwarded wholesale, never restated: a pinned parameter list dropped
+        # `stage_controls` the moment #259 added it (#289).
+        result = super().complete(*args, **kwargs)
         self.observed.append(result)
         return result
 
@@ -704,13 +732,7 @@ def run_once(
     if client_factory is not None:
         client = client_factory(config)
     else:
-        client = ObservingClient(
-            model=config.model,
-            mode=config.mode,
-            store=config.build_client().store,
-            temperature=config.temperature,
-            seed=config.seed,
-        )
+        client = config.build_client(client_class=ObservingClient)
 
     scored = classify_case(case, client)
     review = scored.reviewer_output
@@ -729,15 +751,58 @@ def _perturbation_result(
     differences = compare_runs(baseline, perturbed, client)
     content = [d for d in differences if d.classification is DifferenceClass.CONTENT]
     shape = [d for d in differences if d.classification is DifferenceClass.SHAPE]
-    watched = len(baseline.obligations) + len(baseline.open_questions)
+    presence_kinds = {DifferenceKind.OBLIGATION, DifferenceKind.OPEN_QUESTION}
+    perturbed_label = perturbed.run.label()
+
+    # Presence watches every statement either run made, counting a matched pair
+    # once: the baseline's statements plus those only the perturbed run has. A
+    # statement gained under the perturbation moved, so it has to be in the
+    # population it moved out of, or gains alone push the figure above 1.
+    gained = {
+        d.subject
+        for d in differences
+        if d.kind in presence_kinds and d.present_in == perturbed_label
+    }
+    presence_watched = len(set(baseline.obligations.values()) | set(baseline.open_questions)) + len(
+        gained
+    )
+    # The judgement axes watch exactly what `_judgement_differences` compares:
+    # subjects present in both runs. One present in only one run did not survive
+    # to be compared; it is not a judgement that moved.
+    evidence_watched = len(set(baseline.evidence_classes) & set(perturbed.evidence_classes))
+    verdict_keys = [
+        {(v.defect_id, v.test_id) for v in s.defect_verdicts} for s in (baseline, perturbed)
+    ]
+    verdict_watched = len(verdict_keys[0] & verdict_keys[1])
+
     # Sensitivity counts content movement only. A re-partitioning under an
     # irrelevant edit is untidy, not a wrong answer, and folding it in here would
     # be exactly the blended figure this harness exists to avoid.
-    changed = len({d.subject for d in content})
+    def changed(kinds: set[DifferenceKind]) -> int:
+        return len({d.subject for d in content if d.kind in kinds})
+
+    # Evidence-class flips are counted per difference, not per subject: the
+    # subject is the obligation's description, which two ids can share.
+    evidence_changed = sum(1 for d in content if d.kind is DifferenceKind.EVIDENCE_CLASS)
     return PerturbationResult(
         name=name,
-        watched_judgements=watched,
-        changed_judgements=changed,
+        axes=[
+            AxisSensitivity(
+                axis=SensitivityAxis.PRESENCE,
+                watched_judgements=presence_watched,
+                changed_judgements=changed(presence_kinds),
+            ),
+            AxisSensitivity(
+                axis=SensitivityAxis.EVIDENCE_CLASS,
+                watched_judgements=evidence_watched,
+                changed_judgements=evidence_changed,
+            ),
+            AxisSensitivity(
+                axis=SensitivityAxis.DEFECT_VERDICT,
+                watched_judgements=verdict_watched,
+                changed_judgements=changed({DifferenceKind.DEFECT_VERDICT}),
+            ),
+        ],
         content_differences=content,
         shape_differences=shape,
     )

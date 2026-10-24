@@ -20,7 +20,9 @@ from acceptance.benchmark.fixtures import build_benchmark_case
 from acceptance.benchmark.instability import (
     DEFAULT_MODELS,
     DEFAULT_RUNS_PER_MODEL,
+    AxisSensitivity,
     ClassDistribution,
+    DefectVerdict,
     DifferenceClass,
     DifferenceKind,
     InstabilityReport,
@@ -30,6 +32,8 @@ from acceptance.benchmark.instability import (
     PerturbationResult,
     RunKey,
     RunSnapshot,
+    SensitivityAxis,
+    _perturbation_result,
     add_unrelated_test,
     classify_unmatched,
     compare_runs,
@@ -371,16 +375,28 @@ def test_cross_model_agreement_is_none_with_a_single_model():
 
 def test_perturbation_sensitivity_is_a_proportion_of_watched_judgements():
     result = PerturbationResult(
-        name="add-unrelated-test", watched_judgements=8, changed_judgements=2
+        name="add-unrelated-test",
+        axes=[
+            AxisSensitivity(
+                axis=SensitivityAxis.PRESENCE, watched_judgements=8, changed_judgements=2
+            )
+        ],
     )
 
-    assert result.sensitivity() == 0.25
+    assert result.sensitivity(SensitivityAxis.PRESENCE) == 0.25
 
 
 def test_perturbation_sensitivity_is_none_when_nothing_was_watched():
-    result = PerturbationResult(name="x", watched_judgements=0, changed_judgements=0)
+    result = PerturbationResult(
+        name="x",
+        axes=[
+            AxisSensitivity(
+                axis=SensitivityAxis.PRESENCE, watched_judgements=0, changed_judgements=0
+            )
+        ],
+    )
 
-    assert result.sensitivity() is None
+    assert result.sensitivity(SensitivityAxis.PRESENCE) is None
 
 
 def test_the_perturbation_never_writes_into_the_repository_under_review(tmp_path):
@@ -803,8 +819,10 @@ def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
     assert all(m.content_difference_count is not None for m in report.per_model)
     # 2. perturbation — its own field, with its own figure
     assert report.perturbation is not None
-    assert (
-        report.perturbation.sensitivity() is not None or report.perturbation.watched_judgements == 0
+    assert {row.axis for row in report.perturbation.axes} == set(SensitivityAxis)
+    assert all(
+        row.sensitivity() is not None or row.watched_judgements == 0
+        for row in report.perturbation.axes
     )
     # 3. model — its own field, keyed by axis
     assert {row.axis for row in report.cross_model_agreement} <= set(AgreementAxis)
@@ -872,3 +890,209 @@ def test_the_harness_reports_variance_without_reducing_it():
     assert sum(distribution.counts.values()) == len(snapshots)
     # Every pairwise difference is retained, not averaged away.
     assert len(summary.content_differences) == 2
+
+
+# --------------------------------------------------------------------------
+# The harness delegates to the client contract instead of copying it (#289)
+# --------------------------------------------------------------------------
+
+
+class _StopAfterBuild(Exception):
+    pass
+
+
+def test_the_default_client_is_configured_as_run_config_builds_it(tmp_path, monkeypatch):
+    """Every real caller takes the default construction path, so it is compared
+    attribute by attribute against `RunConfig.build_client()`. A parameter added
+    to `ModelClient` and `build_client` later is covered without editing this
+    test: it appears in one client's attributes and must match in the other's."""
+    from acceptance.benchmark import instability
+
+    built: list = []
+
+    def capture(case, client):
+        built.append(client)
+        raise _StopAfterBuild
+
+    monkeypatch.setattr(instability, "classify_case", capture)
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+
+    with pytest.raises(_StopAfterBuild):
+        run_once(case, RunKey(model="m", seed=7, index=0), transcript_root=tmp_path / "t")
+
+    expected = RunConfig(
+        model="m", mode=Mode.RECORD, seed=7, transcript_root=tmp_path / "t"
+    ).build_client()
+    harness = built[0]
+
+    def configuration(client):
+        state = {k: v for k, v in vars(client).items() if k not in {"store", "observed"}}
+        state["store_root"] = client.store.root
+        return state
+
+    assert configuration(harness) == configuration(expected)
+    assert harness.embedding_model is not None
+
+
+def test_the_observing_client_forwards_every_parameter_complete_accepts(monkeypatch):
+    """Read off `ModelClient.complete`'s own signature, so a parameter added
+    there is checked here without anyone remembering to add it."""
+    import inspect
+    import tempfile
+
+    from acceptance.llm import ModelClient, TranscriptStore
+
+    received: dict = {}
+
+    def recording_complete(self, *args, **kwargs):
+        received.update(kwargs)
+        return "result"
+
+    # Read before patching: the double takes `**kwargs` and names nothing.
+    names = [name for name in inspect.signature(ModelClient.complete).parameters if name != "self"]
+    monkeypatch.setattr(ModelClient, "complete", recording_complete)
+
+    client = ObservingClient(model="m", mode=Mode.RECORD, store=TranscriptStore(tempfile.mkdtemp()))
+    sentinels = {name: object() for name in names}
+
+    result = client.complete(**sentinels)
+
+    assert received == sentinels
+    assert result == "result"
+    assert client.observed == ["result"]
+
+
+_TWO_OBLIGATIONS = {
+    "obligations": [
+        {
+            "id": "show-fields",
+            "description": "Show the item name, quantity, and unit price",
+            "type": "functional",
+            "importance": "critical",
+            "explicit": True,
+            "observable_behavior": "...",
+            "source_quote": "Show the item name, the quantity, and the unit price.",
+        },
+        {
+            "id": "line-total",
+            "description": "Include the line total (quantity times unit price)",
+            "type": "functional",
+            "importance": "critical",
+            "explicit": True,
+            "observable_behavior": "...",
+            "source_quote": "Include the line total (quantity × unit price).",
+        },
+    ],
+    "open_questions": [],
+    "requirement_dispositions": [],
+}
+
+
+def test_the_default_construction_runs_the_pipeline_end_to_end(tmp_path, monkeypatch):
+    """No client factory: the harness builds its own client, over a small
+    recorded case. Two obligations reach obligation linking, which needs the
+    embedding model and passes `stage_controls` — the two parameters a copied
+    construction and a copied signature both dropped."""
+    from support import _EMPTY_BY_SCHEMA as EMPTY
+    from support import _fake_response, constant_embedding_fn
+
+    from acceptance import llm
+
+    dispatch = {**EMPTY, "_Decomposition": _TWO_OBLIGATIONS}
+    schemas: list = []
+    embedded: list = []
+
+    def completion_fn(**kwargs):
+        name = kwargs["response_format"]["json_schema"]["name"]
+        schemas.append(name)
+        return _fake_response(json.dumps(_completed(dispatch[name], **kwargs)))
+
+    def embedding_fn(**kwargs):
+        embedded.append(kwargs["model"])
+        return constant_embedding_fn(**kwargs)
+
+    monkeypatch.setattr(llm, "_default_completion_fn", completion_fn)
+    monkeypatch.setattr(llm, "_default_embedding_fn", embedding_fn)
+    # The provider is patched out, so no key is needed. Without this the key
+    # check (#398) stops the first call wherever no key is set, which is CI.
+    monkeypatch.setattr(llm, "missing_keys", lambda model: [])
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+
+    snapshot = run_once(case, RunKey(model="m", seed=7, index=0), transcript_root=tmp_path / "t")
+
+    assert embedded, "obligation linking must have embedded through the harness's client"
+    assert "_Verdicts" in schemas, "obligation linking must have run"
+    assert set(snapshot.obligations) <= {"show-fields", "line-total"}
+    assert snapshot.obligations
+
+
+# --------------------------------------------------------------------------
+# Perturbation sensitivity is reported per axis (#290)
+# --------------------------------------------------------------------------
+
+
+def _verdicts(kills: bool, count: int) -> list[DefectVerdict]:
+    return [DefectVerdict(defect_id=f"d{i}", test_id="t", kills=kills) for i in range(count)]
+
+
+def test_perturbation_sensitivity_is_per_axis_and_never_exceeds_one():
+    """One obligation and four flipped defect verdicts. A blended figure divides
+    four verdict flips by one watched obligation and reports 4.0."""
+    baseline = _snapshot(0, {"a": "kept"}, defects=_verdicts(True, 4))
+    perturbed = _snapshot(1, {"a": "kept"}, defects=_verdicts(False, 4))
+    client = _coverage_client({}, alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}])
+
+    result = _perturbation_result("noop", baseline, perturbed, client)
+
+    by_axis = {row.axis: row for row in result.axes}
+    assert set(by_axis) == set(SensitivityAxis)
+    for row in result.axes:
+        figure = row.sensitivity()
+        assert figure is None or 0.0 <= figure <= 1.0, (row.axis, figure)
+    assert result.sensitivity(SensitivityAxis.DEFECT_VERDICT) == 1.0
+    assert result.sensitivity(SensitivityAxis.PRESENCE) == 0.0
+    assert result.sensitivity(SensitivityAxis.EVIDENCE_CLASS) == 0.0
+
+
+def test_verdicts_in_only_one_run_are_not_watched():
+    """A verdict present in one run only did not survive to be compared, so it
+    neither moved nor was watched."""
+    baseline = _snapshot(0, {"a": "kept"}, defects=_verdicts(True, 2))
+    perturbed = _snapshot(
+        1,
+        {"a": "kept"},
+        defects=[DefectVerdict(defect_id="d0", test_id="t", kills=False)],
+    )
+    client = _coverage_client({}, alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}])
+
+    result = _perturbation_result("noop", baseline, perturbed, client)
+    row = {r.axis: r for r in result.axes}[SensitivityAxis.DEFECT_VERDICT]
+
+    assert (row.watched_judgements, row.changed_judgements) == (1, 1)
+
+
+def test_an_axis_with_nothing_watched_reports_no_sensitivity():
+    baseline = _snapshot(0, {"a": "kept"})
+    perturbed = _snapshot(1, {"a": "kept"})
+    client = _coverage_client({}, alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}])
+
+    result = _perturbation_result("noop", baseline, perturbed, client)
+
+    assert result.sensitivity(SensitivityAxis.DEFECT_VERDICT) is None
+
+
+def test_obligations_gained_under_perturbation_cannot_push_presence_above_one():
+    """Three obligations appear that the baseline never had. Dividing by the
+    baseline's one obligation would report 3.0."""
+    baseline = _snapshot(0, {"a": "kept"})
+    perturbed = _snapshot(1, {"a": "kept", "b": "new one", "c": "new two", "d": "new three"})
+    client = _coverage_client(
+        {"new one": False, "new two": False, "new three": False},
+        alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}],
+    )
+
+    result = _perturbation_result("noop", baseline, perturbed, client)
+    row = {r.axis: r for r in result.axes}[SensitivityAxis.PRESENCE]
+
+    assert row.changed_judgements == 3
+    assert row.sensitivity() == 0.75
