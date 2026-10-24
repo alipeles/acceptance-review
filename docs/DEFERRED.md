@@ -7411,3 +7411,180 @@ the record.
   > switch it on. Linking merged none of them. Same requirement, so #277
   > (two obligations differing only in voice) is close too.
 - **Status:** filed (#273 comment, approved 2026-10-24).
+
+### [2026-10-24] Decide: key reused defect sets on the definitions they cite, not on whole diff hunks
+- **Kind:** decision (with a drafted filing)
+- **Found during:** cost investigation of the job_search repo's #6 Gate 2 runs 3 and 4, 2026-10-24
+- **Where:** `src/acceptance/defects/enumeration.py::region_digests_for`, `::_key`
+- **Severity:** should-fix
+- **What's wrong:** a stored defect set is reused only when the digest of every
+  diff hunk it cites is unchanged. A file that is new on the branch is one hunk,
+  so any edit anywhere in it re-lists the defects of every obligation that cites
+  it. Re-listed defects come back worded differently, and the defect's wording
+  is part of the identity a defect/test verdict is reused on
+  (`pair_mapping.py::defect_text`), so every pair under them is judged again.
+  Measured in `job-search-system-of-record/.acceptance/ledger/`: run 3
+  (`3400de37130eee87`) reused 11 of 37 defect sets and run 4
+  (`b6a86b44f3a99954`) 14 of 37, every one of them an empty set; neither reused
+  a single one of its 1,951 and 1,420 pair verdicts, though only 2 of 57 and 1
+  of 73 tests had changed source. In run 4, 22 of the 23 re-listed sets cite
+  `api/app/routes/entities.py#0`, the one hunk that is that whole 501-line new
+  file; the round between runs 3 and 4 moved 65 lines out of it.
+- **Why I didn't act:** it changes a stage's reuse rule, which is a design
+  decision, and it moves that stage's carry key.
+- **Recommendation:** digest the enclosing definitions a defect set cites, using
+  `change/context.py`'s existing enclosing-definition lookup, and keep the hunk
+  digest only for changes outside any definition. Run 4's round would then have
+  left most sets reusable; run 3's 376-line edit would still, legitimately,
+  force most to be re-listed. **Rejected alternative:** show the model the prior
+  run's defects when re-listing, so the wording stays stable and pair verdicts
+  match. It cuts cost further but anchors the listing on the earlier answer,
+  which is the same drift toward the already-covered that the stage's
+  never-shown-a-test rule exists to prevent.
+- **Drafted fix:** child of #184 (determinism and reproducibility). Title:
+  "Reused defect sets are invalidated by any edit to the diff hunk they cite, so a new file re-lists everything". Body:
+  > `--continue` reuses a stored defect set only while every diff hunk it cites
+  > has an unchanged digest (`defects/enumeration.py::region_digests_for`). A
+  > file new on the branch is a single hunk, so any edit to it re-lists every
+  > obligation's defects that cite it. The re-listed defects are worded
+  > differently, and `pair_mapping.py::defect_text` is part of a pair verdict's
+  > reuse identity, so no pair verdict under them is reused either.
+  >
+  > On the job_search repo's #6 Gate 2, runs 3 and 4 reused no pair verdict
+  > (0 of 1,951; 0 of 1,420) although only 2 and 1 tests had changed source.
+  > In run 4, 22 of 23 re-listed sets cite `api/app/routes/entities.py#0`,
+  > the whole of a 501-line new file. Each round cost $7–8.
+  >
+  > ## Change
+  > Key the reuse check on the digests of the enclosing definitions a set
+  > cites (`change/context.py` already finds them), falling back to the hunk
+  > digest only for changes outside any definition.
+  >
+  > ## Acceptance
+  > - An edit to one function in a new file leaves reusable every defect set
+  >   that cites only other functions in that file.
+  > - An edit inside a function a set cites still re-lists that set.
+  > - A second `check --continue` over a round that edits one function in a
+  >   multi-function new file reuses the pair verdicts of the untouched sets.
+- **Status:** filed as #421, sub-issue of #184 (approved 2026-10-24).
+
+### [2026-10-24] Mutation descriptors are never reused across runs, and are paid for while their results cannot raise a tier
+- **Kind:** filing
+- **Found during:** cost investigation of the job_search repo's #6 Gate 2 runs 3 and 4, 2026-10-24
+- **Where:** `src/acceptance/pipeline.py` (the mutation step, which receives no
+  prior run); `src/acceptance/mutation/descriptor.py`; `src/acceptance/change/context.py::_scan_callers`
+- **Severity:** should-fix
+- **What's wrong:** two things. First, the earlier run's ledger reaches only
+  defect listing and pair judging, so mutation descriptors can only replay a
+  byte-identical request. That request shows line numbers as they are now and
+  the changed code's callers across every `.py` file, tests included, so a code
+  edit above a region or a new test calling the function changes it. Runs 3 and
+  4 made 83 and 80 live descriptor calls, $2.77 and $2.55. Second, with
+  `verify_edits` off (the default), the comment in `pipeline.py` says no observed
+  result reaches the defect-killed tier and every defect still goes to the
+  static judge. If so, that spend cannot change any rating today.
+- **Why I didn't act:** out of scope for an investigation; whether to skip the
+  stage while `verify_edits` is off is the owner's call.
+- **Drafted fix:** child of #183 (evidence judgement). Title: "Mutation
+  descriptors are rebuilt on every run, and run even when their results cannot
+  count". Body:
+  > On the job_search repo's #6 Gate 2, the mutation descriptor stage cost
+  > $2.77 (run 3, 83 calls) and $2.55 (run 4, 80 calls), about a third of each
+  > run. Two problems:
+  >
+  > 1. **Nothing reuses them.** `pipeline.py` hands the continued run's ledger
+  >    to defect listing and pair judging only. A descriptor replays only when
+  >    its request is byte-identical, and the request carries current line
+  >    numbers and every caller of the region, test files included
+  >    (`change/context.py::_scan_callers`), so adding a test or editing code
+  >    above the region rebuilds it.
+  > 2. **They may buy nothing.** With `verify_edits` off, no observed result
+  >    reaches `defect-killed`, and every defect still goes to the static judge.
+  >
+  > ## Change
+  > - Skip building descriptors when `verify_edits` is off, recording in the
+  >   review that tests were not run and why (the existing
+  >   `ExecutionDecision`), unless the run's other uses of the attempts are
+  >   shown to change a rating.
+  > - When they do run, reuse a descriptor through the ledger while the
+  >   defect's text and the source of its regions are unchanged, with line
+  >   numbers re-anchored rather than part of the key.
+  >
+  > ## Acceptance
+  > - With `verify_edits` off, a review makes no mutation descriptor call, and
+  >   its report says tests were not run against injected defects.
+  > - With it on, a `check --continue` round that only adds tests rebuilds no
+  >   descriptor.
+- **Status:** filed as #422, sub-issue of #183 (approved 2026-10-24).
+
+### [2026-10-24] Implementation coverage is re-judged when only tests change, because its request includes test hunks
+- **Kind:** filing
+- **Found during:** cost investigation of the job_search repo's #6 Gate 2 runs 3 and 4, 2026-10-24
+- **Where:** `src/acceptance/coverage/classify.py::classify_coverage`
+- **Severity:** nice-to-have on cost, should-fix on stability
+- **What's wrong:** coverage is one call for all obligations, carrying
+  `diff_block(change_set)`, the whole diff with test files included. Adding a
+  test changes the request, so every obligation's implementation coverage is
+  judged again with no code change behind it, and can drift. Defect listing
+  already strips tests before its call (`enumeration.py::non_test_changes`).
+  The call itself is cheap, about $0.16 a run.
+- **Why I didn't act:** out of scope for an investigation; it changes a stage's
+  request, so the stage must be re-recorded.
+- **Drafted fix:** child of #185 (findings model, verdict and presentation).
+  Title: "Implementation coverage is re-judged when only tests change". Body:
+  > `coverage/classify.py::classify_coverage` sends the whole diff, test files
+  > included. Implementation coverage asks whether the code addresses each
+  > obligation, so a test hunk is not evidence for it, but adding one changes
+  > the request and re-judges every obligation. That costs little (about $0.16
+  > a run on the job_search repo's #6) but lets a coverage status move with no
+  > code change behind it.
+  >
+  > ## Change
+  > Pass `non_test_changes(change_set)` to the coverage stage, as defect
+  > listing already does, for every obligation except one whose deliverable
+  > is itself a test (a regression test, a measurement harness). Those need
+  > the test hunks, since the test is the code that addresses them, and go
+  > in a call of their own.
+  >
+  > ## Acceptance
+  > - A round that changes only test files replays the coverage call for
+  >   every obligation whose deliverable is not a test.
+  > - An obligation whose deliverable is a test can still be rated addressed
+  >   on the test hunk that delivers it.
+- **Status:** filed as #423, sub-issue of #185 (approved 2026-10-24).
+
+### [2026-10-24] Amend #385 and DR-379: the fallback judge becomes Claude Sonnet 5.5
+- **Kind:** filing (resolves a decision)
+- **Found during:** cost investigation, 2026-10-24
+- **Where:** #385's issue body; `docs/DR-379-jev-m5.2.md`
+- **Severity:** should-fix
+- **What's wrong:** #385, which wires Jev into the pipeline as the
+  defect/test judge, names GPT-5.4 Mini as the fallback for the cases Jev is
+  unsure of. #412 moved model calls off OpenAI. The rule also reads Mini's
+  probability of "yes" from OpenAI's token probabilities, which I believe
+  Anthropic's API does not return.
+- **Decision:** the owner, 2026-10-24: the fallback is Claude Sonnet 5.5, for
+  now, matching the default model. Recorded here; the DR is amended when this
+  is approved.
+- **Drafted fix:**
+  1. Edit #385's body. Replace the third "What changes" bullet with:
+     > - Cases in between go to Claude Sonnet 5.5 (owner's decision,
+     >   2026-10-24, after #412 moved model calls off OpenAI), one case per
+     >   call, with the requirement text, the original code and the defect
+     >   description. Sonnet answers yes or no, schema-constrained; no token
+     >   probability is read. With no usable answer, Jev's probability decides
+     >   at 0.5.
+
+     Replace "Mini's token probabilities need recording too; `llm.py` stores
+     neither today." with "Jev's probability is recorded with its call so a
+     replay reproduces the decision." Retitle to "Replace the shipped defect
+     judge with Jev, then Sonnet for the cases Jev is unsure of". Add to
+     Acceptance: "The fallback's share of judgements and its cost are reported
+     with the priced review, since Jev-then-Sonnet was never measured in
+     DR-379."
+  2. Add an amendment section to `docs/DR-379-jev-m5.2.md`: "**Amended
+     2026-10-24.** The fallback is Claude Sonnet 5.5, not GPT-5.4 Mini, after
+     #412. Sonnet gives a yes/no answer rather than a probability. The
+     held-out figures above were measured with Mini and are not re-measured
+     here; #385's benchmark acceptance item is the check."
+- **Status:** done 2026-10-24: #385 edited as drafted and DR-379 amended (approved 2026-10-24).

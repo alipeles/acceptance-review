@@ -76,3 +76,13 @@ Wiring Jev into the pipeline is a separate issue, as #371 requires. It
 includes adding Jev as a provider in `llm.py` with record and replay, and
 pricing a real review. If Jev is used, findings it decides keep the static
 evidence tier and must record that they carry no reasoning.
+
+## Amended 2026-10-24
+
+The fallback is Claude Sonnet 5.5, not GPT-5.4 Mini, by the owner's decision
+after #412 moved model calls off OpenAI. Sonnet gives a yes/no answer rather
+than a probability, so the 0.5 cut-off on Mini's "yes" probability no longer
+applies; with no usable answer, Jev's probability still decides at 0.5. Jev's
+own cut-offs (0.34 and 0.24) are unchanged. The held-out figures above were
+measured with Mini and are not re-measured here; #385's benchmark acceptance
+item is the check.
