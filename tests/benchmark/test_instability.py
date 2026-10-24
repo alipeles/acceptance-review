@@ -1013,6 +1013,9 @@ def test_the_default_construction_runs_the_pipeline_end_to_end(tmp_path, monkeyp
 
     monkeypatch.setattr(llm, "_default_completion_fn", completion_fn)
     monkeypatch.setattr(llm, "_default_embedding_fn", embedding_fn)
+    # The provider is patched out, so no key is needed. Without this the key
+    # check (#398) stops the first call wherever no key is set, which is CI.
+    monkeypatch.setattr(llm, "missing_keys", lambda model: [])
     case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
 
     snapshot = run_once(case, RunKey(model="m", seed=7, index=0), transcript_root=tmp_path / "t")
