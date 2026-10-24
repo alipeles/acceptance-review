@@ -646,6 +646,25 @@ def model_client_with(completion_fn, model: str = _DEFAULT_MODEL, embedding_fn=N
     )
 
 
+def message_text(message: dict) -> str:
+    """The text of one message as the provider received it.
+
+    A plain string for most providers. For Anthropic the client marks the end of
+    the reusable opening on a content block (`llm.mark_reusable_opening`), so that
+    one message arrives as a list of text blocks. A test reading what was SENT has
+    to accept both, or it tests the provider rather than the stage.
+    """
+    content = message["content"]
+    if isinstance(content, str):
+        return content
+    return "".join(block["text"] for block in content)
+
+
+def sent_text(messages: list[dict], separator: str = "\n") -> str:
+    """Every message's text, as sent, joined — see `message_text`."""
+    return separator.join(message_text(message) for message in messages)
+
+
 def client_answering_per_call(
     responder, model: str = _DEFAULT_MODEL, embedding_fn=None
 ) -> tuple[ModelClient, list[dict]]:
@@ -659,7 +678,7 @@ def client_answering_per_call(
     calls: list[dict] = []
 
     def completion_fn(**kwargs):
-        prompt = "\n".join(message["content"] for message in kwargs["messages"])
+        prompt = sent_text(kwargs["messages"])
         response = responder(prompt)
         calls.append({"prompt": prompt, "response": response})
         return _fake_response(json.dumps(response))
@@ -752,7 +771,7 @@ def client_dispatching(
             capture.append(
                 {
                     "schema": schema_name,
-                    "prompt": "\n".join(m["content"] for m in kwargs["messages"]),
+                    "prompt": sent_text(kwargs["messages"]),
                     # The messages as sent, not just their text. A test about
                     # what a stage was GIVEN can use `prompt`; a test about how
                     # the request is ORDERED needs the boundaries, which the
@@ -879,12 +898,14 @@ RECORDED_TRANSCRIPTS = pathlib.Path(__file__).parent / "fixtures" / "transcripts
 # reflects a model the tool actually runs, and an unlisted model in the corpus
 # means something recorded that should not have. Add a model here deliberately.
 #
-# `openai/gpt-5.4` is here because a STAGE may name its own model (#317), not
-# because the run's default moved: the summary step runs on it, so a corpus
-# recorded through `decompose` necessarily holds recordings against it.
+# `anthropic/claude-sonnet-5-5` is the default since #413 and holds most of the
+# corpus. The other two are the models `test_disposition_prompt.py` names
+# outright, so they stay replayed after the default moved: `gpt-5.4-mini` was the
+# default before it, and `claude-sonnet-5` is the recording that first showed a
+# call completing against a provider that drops our controls (#158).
 APPROVED_CORPUS_MODELS = (
+    "anthropic/claude-sonnet-5-5",
     "openai/gpt-5.4-mini",
-    "openai/gpt-5.4",
     "anthropic/claude-sonnet-5",
 )
 

@@ -86,8 +86,8 @@ def test_the_default_model_is_pinned_so_changing_it_is_deliberate():
     incidental one — swapping it has to be a visible edit here, not a silent
     drift that quietly invalidates every recorded judgment.
     """
-    assert RunConfig().model == "openai/gpt-5.4-mini"
-    assert RunConfig().build_client().model == "openai/gpt-5.4-mini"
+    assert RunConfig().model == "anthropic/claude-sonnet-5-5"
+    assert RunConfig().build_client().model == "anthropic/claude-sonnet-5-5"
 
 
 # --- provenance: what held, not what was asked for (#160) -------------------

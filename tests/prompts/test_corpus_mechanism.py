@@ -196,12 +196,10 @@ def test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls(
         assert record["request"]["temperature"] == 0.0, name
         # ...refused by the provider, and recorded as refused rather than assumed.
         assert record["controls_applied"] == {"seed": None, "temperature": None}, name
-        # ...and the call still produced a usable answer.
-        assert json.loads(record["response"])["disposition"] in {
-            "in_service",
-            "separable",
-            "risky",
-        }, name
+        # ...and the call still produced an answer of the shape it was asked for.
+        # Every stage's schema is an object at the top, so a reply that parses to
+        # anything else is not one the stage could have used.
+        assert isinstance(json.loads(record["response"]), dict), name
 
 
 def test_the_default_model_is_one_the_corpus_actually_holds():

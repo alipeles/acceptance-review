@@ -25,7 +25,7 @@ from acceptance.change.diff import extract_change_set
 from acceptance.coverage.prompt import diff_block
 from acceptance.pipeline import run_review
 from acceptance.request_blocks import REUSABLE_OPENING_MESSAGES, SHARED_PREAMBLE
-from tests.support import client_dispatching
+from tests.support import client_dispatching, sent_text
 
 _TASK = """# Task
 Format money amounts correctly.
@@ -129,11 +129,11 @@ def _requests(tmp_path) -> list[dict]:
 
 
 def _opening(request: dict) -> str:
-    return "\n\n".join(m["content"] for m in request["messages"][:REUSABLE_OPENING_MESSAGES])
+    return sent_text(request["messages"][:REUSABLE_OPENING_MESSAGES], separator="\n\n")
 
 
 def _subject(request: dict) -> str:
-    return "\n\n".join(m["content"] for m in request["messages"][REUSABLE_OPENING_MESSAGES:])
+    return sent_text(request["messages"][REUSABLE_OPENING_MESSAGES:], separator="\n\n")
 
 
 def test_every_request_the_pipeline_issues_opens_with_the_shared_preamble(tmp_path):
@@ -162,7 +162,7 @@ def test_no_request_places_content_unique_to_it_ahead_of_content_it_shares(tmp_p
     requests = _requests(tmp_path)
     counts: dict[str, int] = {}
     for request in requests:
-        text = "\n".join(m["content"] for m in request["messages"])
+        text = sent_text(request["messages"])
         for line in {ln for ln in text.splitlines() if ln.strip()}:
             counts[line] = counts.get(line, 0) + 1
 

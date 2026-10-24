@@ -217,18 +217,20 @@ def test_the_cli_warns_at_startup_then_stops_before_the_first_live_call(
     assert status == 1
     assert provider.calls == []
     warnings = [line for line in err.splitlines() if line.startswith("acceptance: warning:")]
-    assert any("OPENAI_API_KEY" in line and "openai/gpt-5.4-mini" in line for line in warnings)
+    assert any(
+        "ANTHROPIC_API_KEY" in line and "anthropic/claude-sonnet-5-5" in line for line in warnings
+    )
     assert any("VOYAGE_API_KEY" in line and "voyage/voyage-3.5-lite" in line for line in warnings)
     errors = [line for line in err.splitlines() if line.startswith("acceptance: model error:")]
     assert len(errors) == 1
-    assert "OPENAI_API_KEY" in errors[0]
+    assert "ANTHROPIC_API_KEY" in errors[0]
     assert "was not sent" in errors[0]
     assert "invalid" not in err.lower()
 
 
 def test_the_cli_finds_a_key_in_the_working_directorys_env(elsewhere, no_keys, monkeypatch, capsys):
     """The #398 scenario end to end: the key is only in the project's `.env`."""
-    (elsewhere / ".env").write_text("OPENAI_API_KEY=sk-test\nVOYAGE_API_KEY=pa-test\n")
+    (elsewhere / ".env").write_text("ANTHROPIC_API_KEY=sk-ant-test\nVOYAGE_API_KEY=pa-test\n")
     task = elsewhere / "task.md"
     task.write_text("# Task: x\n\n## Task\n\nThe parser accepts empty input.\n")
     provider = _spy(_fake_response)
@@ -273,9 +275,11 @@ def test_the_classify_command_warns_then_stops_before_the_first_live_call(
     assert status == 1
     assert provider.calls == []
     warnings = [line for line in err.splitlines() if line.startswith("acceptance: warning:")]
-    assert any("OPENAI_API_KEY" in line and "openai/gpt-5.4-mini" in line for line in warnings)
+    assert any(
+        "ANTHROPIC_API_KEY" in line and "anthropic/claude-sonnet-5-5" in line for line in warnings
+    )
     assert any("VOYAGE_API_KEY" in line and "voyage/voyage-3.5-lite" in line for line in warnings)
     errors = [line for line in err.splitlines() if line.startswith("acceptance: model error:")]
     assert len(errors) == 1
-    assert "OPENAI_API_KEY" in errors[0]
+    assert "ANTHROPIC_API_KEY" in errors[0]
     assert "invalid" not in err.lower()

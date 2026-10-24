@@ -8,6 +8,15 @@ canonically (serialization.py). The alternative from §3.2 — N-sample majority
 with disclosed variance — is deferred to the benchmark harness (M-B0.4), which
 layers variance reporting on top of these controls rather than replacing them.
 
+**On Claude the seed and temperature do nothing.** Claude has no seed, and has
+refused any `temperature` since 2026-10-21, so LiteLLM drops both and a Claude
+run is reproducible through its recorded transcripts alone (#412). The run still
+requests temperature 0 and seed 0: they are part of the hashed request, so a
+Claude transcript keys the same way as any other, and the review's provenance
+records that the provider applied neither (`controls_in_force`). Reproducibility
+then means replay: a second run over the same input hits the first run's
+transcripts and needs no provider to repeat itself.
+
 `RunConfig` is the single surface for those controls; it builds the
 `ModelClient` the pipeline calls and stamps a matching `ReviewProvenance` onto
 the review so a reader can tell how it was produced.
@@ -39,23 +48,25 @@ from acceptance.review_state import (
 )
 
 # LiteLLM model string. Provider-agnostic: swap freely via --model / RunConfig.
-DEFAULT_MODEL = "openai/gpt-5.4-mini"
+#
+# Claude Sonnet 5.5 for every stage, the owner's choice when #412 moved model
+# calls off OpenAI. It replaced `gpt-5.4-mini`, which ran almost every stage, and
+# `gpt-5.4`, which ran the summary-span stage alone. No Claude model is priced
+# near `gpt-5.4-mini`; Sonnet is the close analogue of `gpt-5.4`.
+DEFAULT_MODEL = "anthropic/claude-sonnet-5-5"
 
 # Stages that name their own model, overriding the run's (#317). A stage absent
-# here runs on `model`, which is almost every stage.
+# here runs on `model`, which is every stage at present.
 #
-# `decompose-summary` decides, per span of the mandate's opening summary, whether
-# the obligations already derived from the bullets require that property.
-# `gpt-5.4-mini` failed it in three different ways across three prompt versions:
-# returning nothing, marking every span covered, and marking every span
-# uncovered. Measured at about $0.011 per review for that one call.
+# `decompose-summary` used to name `openai/gpt-5.4` here: `gpt-5.4-mini` failed
+# it in three different ways across three prompt versions (returning nothing,
+# marking every span covered, marking every span uncovered). With every stage on
+# Sonnet 5.5 the entry would only repeat the default, so it went (#413). Restore
+# it, with its own model, if Sonnet fails that stage the same way.
 #
 # WHICH model is right for a stage is a judgement that belongs with the stage,
-# not with this table's mechanism — the mechanism is what #317 delivers, and this
-# entry is the one value that work measured.
-DEFAULT_STAGE_MODELS = {
-    "decompose-summary": "openai/gpt-5.4",
-}
+# not with this table's mechanism — the mechanism is what #317 delivers.
+DEFAULT_STAGE_MODELS: dict[str, str] = {}
 
 # Fixed by default so the "fixed seed/temperature + cached transcripts"
 # strategy this module documents is actually in force. The value is arbitrary;
