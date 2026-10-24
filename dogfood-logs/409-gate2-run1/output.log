@@ -1,0 +1,73 @@
+tests run with: /Users/alipeles1/code/AI_acceptance_tool/.venv/bin/python3 -m pytest, locked down (no network; set your own command with `acceptance set-test-command`)
+environment variables passed to the tests: HOME, LANG, LC_ALL, PATH, TMPDIR, USER
+run fe4faf6c875c884f
+  continuing 851b6085fab262e7
+  continue this run with: --continue fe4faf6c875c884f
+Model usage by stage:
+  stage                         model                                     calls  prompt  output  cached  this run  recorded  time this run
+  ----------------------------  ----------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  obligation linking            voyage/voyage-3.5-lite  1 (0 live / 1 replayed)     169       0       —   $0.0000   $0.0000              —
+  defect enumeration            openai/gpt-5.4-mini     3 (3 live / 0 replayed)   3,278     230    0.0%   $0.0035   $0.0035           5.0s
+  coverage classification       openai/gpt-5.4-mini     1 (1 live / 0 replayed)   1,965     233    0.0%   $0.0025   $0.0025           1.3s
+  unrequested-change detection  openai/gpt-5.4-mini     1 (1 live / 0 replayed)   1,460      84    0.0%   $0.0015   $0.0015           0.8s
+  this run spent $0.0075 on 5 live call(s); the evidence cost $0.0075 to record (1 call(s) replayed at no cost to this run)
+Task completion: UNABLE-TO-DETERMINE
+
+1 obligation(s) could not be classified from static evidence; deeper retrieval or execution would be needed to decide.
+
+Obligations:
+
+  1. Leave the test suite's own process with its original `socket.create_connection`, `socket.getaddrinfo`, and `socket.socket.connect` after the test runs.
+       requirements: task-01
+       code evidence: addressed
+         1.1  tests/test_execution_sandbox.py#@@ -577,3 +583,45 @@ def test_the_defaults_come_from_configuration_not_from_the_project(tmp_path):
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  2. Each of the two tests runs with the network block skipped, rather than installing it and removing it afterwards.
+       requirements: task-01
+       code evidence: addressed
+         2.1  tests/test_execution_sandbox.py#@@ -180,6 +180,9 @@ def test_the_per_test_budget_is_refused_rather_than_ignored_when_unenforceable(
+         2.2  tests/test_execution_sandbox.py#@@ -473,6 +476,9 @@ def test_the_per_test_budget_still_applies_without_a_report_path(tmp_path, monke
+         2.3  tests/test_execution_sandbox.py#@@ -577,3 +583,45 @@ def test_the_defaults_come_from_configuration_not_from_the_project(tmp_path):
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  3. A regression test fails if either test leaves the network block installed.
+       requirements: task-02
+       code evidence: not required — The requirement explicitly asks for a regression test, so the test itself is the deliverable and no separate source change is required.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  4. The change does not alter how the network block itself works for the projects the tool runs.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 3 changes across 1 file; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about work not done, so a reader can verify it directly from the source change without needing a test.
+
+Mandate coverage: 3 of 3 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The new parametrized regression test calls the two existing tests directly, which changes their execution context and adds a new test path beyond simply verifying the socket monkeypatches are restored after the original tests run.
+       tests/test_execution_sandbox.py#@@ -577,3 +583,45 @@ def test_the_defaults_come_from_configuration_not_from_the_project(tmp_path):
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  restore-socket-monkeypatches-after-test
+    none enumerated: No production code was changed in the delivered diff, so there is no concrete changed region to inspect for a new failure mode. With no code modifications, there is no plausible static defect introduced here that could leave the process-level socket monkeypatches unrestored after the test.
+
+  skip-network-block-for-these-tests
+    none enumerated: No changed production code was provided (diff is empty), so there is no concrete implementation change to inspect for a plausible failure mode. With no touched code path, this criterion cannot be attributed a static defect in the delivered diff.
+
+  no-network-block-implementation-change
+    none enumerated: The diff is empty, so there is no changed production code to inspect for a change in the network-blocking plugin’s behavior or implementation. With no code changes, the criterion is satisfied by construction and there is no plausible static defect to enumerate.
+
+Running the project's tests:
+  the project's tests were not run: no enumerated defect names a changed region that could be edited, so there was nothing to observe a test against
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
