@@ -183,6 +183,14 @@ def _added_or_modified_tests(repo: Path, change_set: ChangeSet) -> dict[str, Dis
     for file_change in change_set.files:
         if file_change.category != "test" or file_change.status == "deleted":
             continue
+        # The change set calls every file under `tests/` a test file, which is
+        # right for what changed but wrong for what pytest collects: it never
+        # collects from `conftest.py` or a helper module. A fixture named
+        # `test_db_url` in a conftest was offered as a test, pytest refused it,
+        # and the review reported a test that never existed (#405). The same
+        # file-name rule the scan of existing tests uses settles it.
+        if not _is_test_file(Path(file_change.path)):
+            continue
         source = _read(repo / file_change.path)
         module = _parse(source) if source is not None else None
         if module is None:

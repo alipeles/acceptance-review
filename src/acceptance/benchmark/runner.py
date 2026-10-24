@@ -4,6 +4,12 @@ Feeds a BenchmarkCase's inputs through the current checker (M0.6's
 `run_check` pipeline) and returns a new case with `reviewer_output` and
 `score` filled in. Cases are treated as data, not mutated in place: the
 input case is untouched, and a copy carries the result.
+
+A case whose task file yields no requirements is refused before the checker
+runs, for the reason `EmptyRequirementRegistryError` gives. The corpus case
+builders already refuse one, but a case can reach `run_case` without passing
+through a builder — the runner's own acceptance test built one inline and
+scored all-miss over an input with nothing in it to find (#243).
 """
 
 from __future__ import annotations
@@ -11,7 +17,7 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from acceptance.benchmark.case import BenchmarkCase
+from acceptance.benchmark.case import BenchmarkCase, require_nonempty_registry
 from acceptance.benchmark.scoring import score_case
 from acceptance.cli import run_check
 from acceptance.config import RunConfig
@@ -26,6 +32,7 @@ def run_case(
     client: ModelClient | None = None,
 ) -> BenchmarkCase:
     """Run the checker over `case.inputs` and return a scored copy of `case`."""
+    require_nonempty_registry(case.case_id, case.inputs.task_text)
     config = config if config is not None else RunConfig()
     review_store = review_store if review_store is not None else ReviewStore()
     repo = Path(case.inputs.repo)

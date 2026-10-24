@@ -6467,7 +6467,7 @@ the record.
   >
   > **Acceptance.** A revised requirement's obligations describe its new text; a
   > regression case pins it with this exclusion's two wordings.
-- **Status:** open
+- **Status:** **filed 2026-10-22 as #400**, together with #398's second instance
 
 ### [2026-09-22] The gates refuse edits that would have injected their defect
 - **Kind:** filing
@@ -6879,3 +6879,444 @@ the record.
   > - Per-class targets recorded, for example all clear-cut bugs and three quarters of subtle ones.
   > - The owner's review of a sample of its planted edits.
 - **Status:** **filed 2026-10-13 as #387**, approved by the owner at #381 Gate 1
+
+### [2026-10-22] A condition opening a one-claim sentence is dropped from its obligation
+- **Kind:** filing
+- **Found during:** #398, Gate 1, runs 2 and 4
+- **Where:** `src/acceptance/requirement/` (derivation);
+  `dogfood-logs/398-gate1-run2/`, `dogfood-logs/398-gate1-run4-diagnostic/`
+- **Severity:** should-fix
+- **What's wrong:** *"In record mode, the command warns at startup about each
+  key that a model it is configured to use would need and that is not set,
+  naming the variable and the model."* was derived, on a continued run and again
+  on a fresh one, as *"At startup, the command warns about each missing key
+  required by any configured model, naming both the variable and the model."*
+  The obligation now demands the warning in replay mode as well, where no key is
+  needed and the same requirement says the run succeeds without keys.
+- **Why I didn't act:** decomposition is outside #398.
+- **Drafted fix:** file as a sub-issue of #181, the decomposition umbrella:
+
+  > **A condition opening a one-claim sentence is dropped from its obligation**
+  >
+  > Child of #181. Found at #398's Gate 1, twice: run 2 (`dogfood-logs/398-gate1-run2/`,
+  > continued) and run 4 (`dogfood-logs/398-gate1-run4-diagnostic/`, fresh).
+  >
+  > Requirement: *"In record mode, the command warns at startup about each key
+  > that a model it is configured to use would need and that is not set, naming
+  > the variable and the model."* Both runs derived `startup-warns-missing-model-keys`:
+  > *"At startup, the command warns about each missing key required by any
+  > configured model, naming both the variable and the model."*
+  >
+  > The condition governs the sentence's only claim, so this is not #343 (a
+  > condition governing two conjoined claims reaches only the first obligation):
+  > there is no split and no sibling that kept it. The loss turns a conditional
+  > behaviour into an unconditional one, so a correct implementation, which
+  > warns only in record mode, can be judged as not addressing it. It is the
+  > spec's demonstration scenario 2, a qualifier missed, produced by the tool
+  > itself.
+  >
+  > **Acceptance:** an obligation derived from a sentence opening with a
+  > condition carries the condition; #195's decompose-regression suite holds
+  > this sentence.
+- **Status:** **filed 2026-10-22 as #399**, approved by the owner at #398 Gate 1
+
+### [2026-10-22] Second instance: a reworded exclusion keeps its old obligation on a continued run
+- **Kind:** filing (evidence for the 2026-09-22 draft "A revised requirement comes back with its old obligation, word for word", which I could not find filed)
+- **Found during:** #398, Gate 1, runs 2–4
+- **Where:** `dogfood-logs/398-gate1-run{2,3}/` against `dogfood-logs/398-gate1-run4-diagnostic/`
+- **Severity:** should-fix
+- **What's wrong:** exclusion-02 was reworded twice, from *"Keys for the coding
+  agent that builds mutation edits"* to *"Checking for keys that the coding
+  agent which builds mutation edits needs"* to *"Warning about, or stopping for,
+  a missing key that the coding agent which builds mutation edits needs"*. Both
+  continued runs kept `do-not-read-coding-agent-keys`: *"The change does not
+  read keys for the coding agent which builds mutation edits."* A fresh run on
+  the final text derived `no-warning-or-stop-for-mutation-edit-key`, which is
+  right. As in #334's instance, the rewording was the sanctioned fix and
+  `--continue` silently undid it.
+- **Why I didn't act:** decomposition is outside #398.
+- **Drafted fix:** file the 2026-09-22 draft as written, as a sub-issue of #181,
+  adding to its body: *"Second instance at #398's Gate 1: an exclusion reworded
+  twice kept the run-1 obligation word for word on both continued runs, and a
+  fresh run derived the right one (`dogfood-logs/398-gate1-run{2,3,4-diagnostic}/`)."*
+  If it was in fact filed under another title, add that sentence as a comment
+  instead.
+- **Status:** **filed 2026-10-22 as #400**, with both instances, approved by the owner at #398 Gate 1
+
+### [2026-10-22] The empty `output.log` points at the Google Drive folder, not at live calls
+- **Kind:** defect (working procedure, not the tool)
+- **Found during:** #398, Gate 1
+- **Where:** `CLAUDE.md`, *Dogfooding — the review gates*, the `output.log` paragraph
+- **Severity:** nice-to-have
+- **What's wrong:** three `decompose` runs in this gate wrote zero-byte logs.
+  Each was redirected straight into `dogfood-logs/` and each made live calls; each
+  identical re-run, which replayed, wrote a full log. A fourth run that made 13
+  live calls but was redirected into `$TMPDIR` wrote 4,600 bytes. The checkout
+  lives under `~/GoogleDrive/`. I believe a long-running write into the synced
+  folder is what loses the file; one clean comparison is suggestive, not proof.
+  CLAUDE.md currently says the live-call explanation was tested and ruled out,
+  which these four runs complicate.
+- **Why I didn't act:** CLAUDE.md is outside #398.
+- **Drafted fix:** replace the paragraph's last two sentences with: *"Redirect
+  into `$TMPDIR` and copy the file in afterwards. At #398's Gate 1, three runs
+  redirected straight into `dogfood-logs/` (inside the Google Drive folder) came
+  back empty, all on runs making live calls, and a live run redirected into
+  `$TMPDIR` did not."*
+- **Status:** done, 2026-10-22 — CLAUDE.md now says to redirect into `$TMPDIR` and copy in
+
+### [2026-10-22] Decision: leave litellm's own `.env` search switched on
+- **Kind:** decision
+- **Found during:** #398, Gate 1 planning
+- **Where:** `.venv/lib/python3.10/site-packages/litellm/__init__.py:26`
+- **Severity:** nice-to-have
+- **What's wrong:** litellm calls `load_dotenv()` at import unless
+  `LITELLM_MODE` is something other than `DEV`, searching upward from its own
+  install. #398 adds loading from the working directory but leaves that search
+  in place, so for a copy of the tool installed inside a checkout that has its
+  own `.env`, a key missing from the project's `.env` can still be filled from
+  the checkout's. Both loads leave existing variables alone, and ours runs
+  first, so the project's values always win.
+- **Recommendation:** leave it. Setting `LITELLM_MODE=PRODUCTION` would turn
+  the search off, but the mode is read in about fifty litellm modules, including
+  `cost_calculator.py`, so it changes far more than `.env` loading.
+  **Rejected alternative:** set it from the CLI before litellm is imported.
+- **Status:** decided 2026-10-22 by the owner at #398 Gate 1: leave it
+
+### [2026-10-22] The pair judge says no test catches a defect that two tests demonstrably catch
+- **Kind:** filing
+- **Found during:** #398, Gate 2, run 1
+- **Where:** `src/acceptance/defects/pair_mapping.py` (pair judgement);
+  `dogfood-logs/398-gate2-run1/`, run `fa81be2b2dc8c191`
+- **Severity:** should-fix
+- **What's wrong:** defect `startup-warning-omits-embedding-model-when-no-embedding-fn`
+  (the startup warning skips the embedding model when the client was built
+  with no embedding function) had all 78 of its pairs put to the model, and
+  none was judged to catch it, so `startup-warns-missing-model-keys` was rated
+  partially supported. Two tests catch it: with that check disabled,
+  `tests/test_env_and_keys.py::test_record_mode_names_every_configured_models_missing_key`
+  (asserts `VOYAGE_API_KEY` for `voyage/voyage-3.5-lite` on a client built with
+  no embedding function) and `::test_the_cli_warns_at_startup_then_stops_before_the_first_live_call`
+  (asserts the same warning through `main`) both fail. I planted it and ran them.
+- **Why I didn't act:** pair judgement is outside #398.
+- **Drafted fix:** file as a sub-issue of #183, the evidence-judgement umbrella:
+
+  > **The pair judge says no test catches a defect that two tests demonstrably catch**
+  >
+  > Child of #183. Found at #398's Gate 2, run `fa81be2b2dc8c191`
+  > (`dogfood-logs/398-gate2-run1/`).
+  >
+  > Defect `startup-warning-omits-embedding-model-when-no-embedding-fn`: the
+  > startup warning skips the embedding model when the client is built with no
+  > embedding function. All 78 pairs were put to the model; none was judged to
+  > catch it, and `startup-warns-missing-model-keys` was rated partially
+  > supported.
+  >
+  > `test_record_mode_names_every_configured_models_missing_key` builds exactly
+  > that client and asserts the embedding model's key is named;
+  > `test_the_cli_warns_at_startup_then_stops_before_the_first_live_call` asserts
+  > the same warning through `main`. With the check disabled on that path, both
+  > fail. The run's own injected edit for this defect changed no behaviour and
+  > was correctly not counted, so the judge was not misled by a run result; it
+  > answered the pairs wrongly on its own.
+  >
+  > This is a false negative that turns a gate red, the opposite of the
+  > misleading direction, but it still prescribes a test that already exists.
+  >
+  > **It survives the recommended test.** Run 2 (`38a9481d190f816a`,
+  > `dogfood-logs/398-gate2-run2/`) added
+  > `test_a_client_on_the_default_embedding_path_names_the_embedding_models_key`,
+  > built to run 1's recommendation word for word: a RECORD client with
+  > `embedding_model` set and no `embedding_fn`, asserting the embedding model's
+  > key is named. It fails when the check is disabled on that path. It too was
+  > judged not to catch the defect, and run 2 recommended the same test again.
+  >
+  > **Acceptance:** a regression case holds this defect and these two tests, and
+  > the judge marks at least one of them as catching it.
+- **Status:** filed as #401 under #183, 2026-10-22
+
+### [2026-10-22] Defect enumeration finds "no plausible defect" where flipping one argument breaks the obligation
+- **Kind:** filing
+- **Found during:** #398, Gate 2, run 1
+- **Where:** defect enumeration; `dogfood-logs/398-gate2-run1/`, run `fa81be2b2dc8c191`
+- **Severity:** should-fix
+- **What's wrong:** for `env-vars-take-precedence-over-dotenv` ("a variable
+  already set in the environment keeps its value over the one in `.env`") the
+  enumerator returned none, reasoning: *"The diff explicitly loads `.env` with
+  `override=False`, which is the mechanism that preserves any already-set
+  environment variable … So there is no plausible static defect."* It described
+  why the delivered code is right instead of how it could be wrong. Changing
+  `override=False` to `override=True` breaks the obligation, and
+  `test_a_variable_already_set_wins_over_the_env_file` fails on it (I planted
+  it). The obligation is then reported "no plausible defect — test evidence is
+  not obtainable here", although the test exists.
+- **Why I didn't act:** enumeration is outside #398.
+- **Drafted fix:** file as a sub-issue of #183:
+
+  > **Defect enumeration finds "no plausible defect" where flipping one argument breaks the obligation**
+  >
+  > Child of #183. Found at #398's Gate 2, run `fa81be2b2dc8c191`
+  > (`dogfood-logs/398-gate2-run1/`).
+  >
+  > Obligation `env-vars-take-precedence-over-dotenv`. The enumerator declined:
+  > *"The diff explicitly loads `.env` with `override=False`, which is the
+  > mechanism that preserves any already-set environment variable … So there is
+  > no plausible static defect in the shown changes."* That is an argument that
+  > the code is correct, which is not the enumerator's question. The one-token
+  > edit `override=True` breaks the obligation, and the delivered test
+  > `test_a_variable_already_set_wins_over_the_env_file` fails on it.
+  >
+  > The obligation is then reported "test evidence is not obtainable here",
+  > which reads as a limit of the tool rather than as a missed defect. Close to
+  > #270 (an obligation true by construction earns a test for a defect that
+  > cannot exist), from the other side: here the defect can exist and is
+  > declared impossible.
+  >
+  > **Acceptance:** a regression case holds this obligation and diff, and at
+  > least one defect is enumerated for it.
+- **Status:** filed as #402 under #183, 2026-10-22
+
+### [2026-10-22] #376 gains an instance: the only test file of a change is rated `separable`
+- **Kind:** filing (comment on #376)
+- **Found during:** #398, Gate 2, run 1
+- **Where:** `dogfood-logs/398-gate2-run1/`, run `fa81be2b2dc8c191`
+- **Severity:** nice-to-have
+- **Drafted fix:** comment on #376 (a test file cited as evidence for an
+  obligation is reported as a separable unrequested change):
+
+  > Another instance at #398's Gate 2, run `fa81be2b2dc8c191`
+  > (`dogfood-logs/398-gate2-run1/`). `tests/test_env_and_keys.py` is the only
+  > test file in the change and is cited as evidence by eight of the twelve
+  > obligations, yet it is rated `[separable]`: *"The obligations ask for the
+  > behavior, but they do not require this specific test artifact set or its
+  > breadth."*
+- **Status:** filed as a comment on #376, 2026-10-22
+
+### [2026-10-22] A dependency the delivered code imports is rated a `separable` unrequested change
+- **Kind:** filing
+- **Found during:** #398, Gate 2, run 1
+- **Where:** unrequested-change disposition; `dogfood-logs/398-gate2-run1/`
+- **Severity:** nice-to-have
+- **What's wrong:** declaring `python-dotenv` in `pyproject.toml` was rated
+  `[separable]`: *"they do not require introducing this specific dependency or
+  changing packaging metadata."* `cli.py::load_env_file` imports `dotenv`
+  directly, so the declaration is what makes an install correct; without it
+  the code works only because litellm happens to depend on the same package.
+- **Why I didn't act:** disposition judgement is outside #398.
+- **Drafted fix:** file as a sub-issue of #185, the findings and verdict umbrella:
+
+  > **A dependency the delivered code imports is rated a `separable` unrequested change**
+  >
+  > Child of #185. Found at #398's Gate 2, run `fa81be2b2dc8c191`
+  > (`dogfood-logs/398-gate2-run1/`).
+  >
+  > The change adds `python-dotenv` to `pyproject.toml`'s dependencies. The
+  > disposition is `separable`: *"they do not require introducing this specific
+  > dependency or changing packaging metadata."* But the same change adds
+  > `from dotenv import load_dotenv` in `cli.py::load_env_file`, the function
+  > that delivers the mandate's first requirement. A dependency the delivered
+  > code imports is in service of that code by construction; reverting it alone
+  > leaves the code relying on another package's dependencies.
+  >
+  > Related: #375 (a backward-compatible parameter that delivers an obligation
+  > is rated a risky unrequested change), the same failure to follow a change
+  > to the code that needs it.
+  >
+  > **Acceptance:** a declaration of a package the change's own code imports is
+  > `in_service` of the obligations that code addresses.
+- **Status:** filed as #403 under #185, 2026-10-22
+
+### [2026-10-23] One obligation contains another whole and adds a clause
+- **Kind:** filing
+- **Found during:** #405, Gate 1 runs 2 and 3
+- **Where:** `src/acceptance/requirement/` decomposition; run `4fe56787714b80f4`
+  (`dogfood-logs/405-gate1-run3/`)
+- **Severity:** nice-to-have
+- **What's wrong:** the sentence "Each run prints … the names of the
+  environment variables passed to the tests; it never prints their values"
+  yields `print-env-var-names` ("Each test run prints the names of the
+  environment variables passed to the tests") and `hide-env-var-values` ("Each
+  test run prints the names of the environment variables passed to the tests,
+  while hiding their values"). The second contains the first and adds one
+  clause, so the names requirement is stated twice.
+- **Why I didn't act:** decomposition is outside #405.
+- **Drafted fix:** a comment on #277 (one requirement yields two obligations
+  stating the same property, differing only in voice), not a new issue:
+
+  > A related shape, found at #405's Gate 1 (run `4fe56787714b80f4`,
+  > `dogfood-logs/405-gate1-run3/`): not a restatement in another voice, but
+  > containment. `hide-env-var-values` reads "Each test run prints the names of
+  > the environment variables passed to the tests, while hiding their values",
+  > which is the whole of its sibling `print-env-var-names` plus one clause. The
+  > second obligation should state only that values are never printed. It held
+  > across two runs with `--continue`, so it is not run-to-run noise.
+- **Status:** filed (#277 comment, approved 2026-10-23). Note: run 4 (`09cb6b6fd9b02ac6`), after an unrelated edit
+  to the task file, re-derived this requirement and produced
+  `never-print-env-var-values`, which states only the values clause. So it
+  held across two runs and then cleared.
+
+### [2026-10-23] A clause gets no obligation; its slot carries a restatement of a sibling
+- **Kind:** filing
+- **Found during:** #405, Gate 1 run 4
+- **Where:** `src/acceptance/requirement/` decomposition; run `09cb6b6fd9b02ac6`
+  (`dogfood-logs/405-gate1-run4/`)
+- **Severity:** should-fix
+- **What's wrong:** "the tool then runs up to that many" has no obligation.
+  `per-copy-database-selection` restates `env-var-identifies-test-copy` plus
+  its purpose clause instead.
+- **Why I didn't act:** decomposition is outside #405.
+- **Drafted fix:** a comment on #386 (a listed item gets no obligation, and its
+  id carries a duplicate of another obligation's text):
+
+  > A second instance, in prose rather than a list, at #405's Gate 1 (run
+  > `09cb6b6fd9b02ac6`, `dogfood-logs/405-gate1-run4/`). The requirement: "When
+  > setting the test command, the user may say how many copies can safely run
+  > at once; the tool then runs up to that many, and tells each copy which one
+  > it is through an environment variable, so that a project can give each copy
+  > its own database." Four obligations came back. None states "the tool runs
+  > up to that many copies at once"; `test-command-parallel-copies-limit` only
+  > says the configuration includes the limit. The fourth,
+  > `per-copy-database-selection`, restates `env-var-identifies-test-copy` and
+  > adds the purpose clause. So a real behaviour is lost and its place is taken
+  > by a duplicate, which is #386's shape.
+- **Status:** filed (#386 comment, approved 2026-10-23).
+
+### [2026-10-23] An enumerated defect is the code's documented design, not a violation
+- **Kind:** filing
+- **Found during:** #405, Gate 2 run 1 (`18c717ef086fedb2`, `dogfood-logs/405-gate2-run1/`)
+- **Where:** defect enumeration; `src/acceptance/execution/sandbox.py::_collect_in_workspace`
+- **Severity:** should-fix
+- **What's wrong:** `pytest-collected-tests-match-requested-tests` was rated
+  partially supported because one enumerated defect,
+  `collection-file-not-read-on-failure`, went uncaught. That "defect" is the
+  documented design: when a joint collection fails, the partial list is
+  discarded and files are admitted one at a time, because a set must collect
+  jointly or the run dies.
+- **Why I didn't act:** defect enumeration is outside #405. Owner agreed to
+  attribute it, 2026-10-23.
+- **Drafted fix:** a comment on #283 (a prescribed test's target defect does
+  not always violate the obligation):
+
+  > Another instance at #405's Gate 2 (run `18c717ef086fedb2`,
+  > `dogfood-logs/405-gate2-run1/`). Obligation
+  > `pytest-collected-tests-match-requested-tests`; enumerated defect
+  > `collection-file-not-read-on-failure`: "if pytest exits nonzero … the code
+  > falls back to an empty collected set instead of preserving the collected
+  > names it did obtain". That is `_collect_in_workspace`'s documented design:
+  > a joint collection that fails says nothing about which ids collect
+  > *together*, so it retries file by file. Implementing the "fix" would admit
+  > ids that kill the run. The obligation is met either way, and the rating
+  > dropped to partially supported on a defect that is not one.
+  >
+  > Run 2 (`0cf1a8e59e50a913`, `dogfood-logs/405-gate2-run2/`) repeated it and
+  > added an inverted one. Obligation
+  > `add-only-test-selection-plugin-and-cache-options` says the tool adds only
+  > the tests, its plugin, and the listing/cache options. The change removed
+  > `--no-header` to satisfy exactly that. The enumerated defect: "the
+  > test-command builder can omit the `--no-header` option", with the
+  > recommendation "a correct implementation must include `--no-header`". The
+  > defect was built from the diff's removed line and contradicts the
+  > obligation it is filed under.
+- **Status:** filed (#283 comment, approved 2026-10-23).
+
+### [2026-10-23] A test asserting the whole output by equality is judged not to catch an extra-output defect
+- **Kind:** filing
+- **Found during:** #405, Gate 2 run 3 (`a177c6062ee33dc7`, `dogfood-logs/405-gate2-run3/`)
+- **Where:** evidence judgement (static pair judge)
+- **Severity:** should-fix
+- **What's wrong:** `run-tests-with-exact-command` stayed partially supported
+  because `extra-flags-added-to-user-command` ("the test-command path can
+  append extra pytest options beyond …") was judged uncaught by every mapped
+  test. Two mapped tests compare the entire command string with `==`, so any
+  extra flag fails them. The same run's injection reports `[killed, NOT
+  COUNTED]` for that defect: the edit was caught, but verification is off, so
+  the static verdict stands.
+- **Why I didn't act:** evidence judgement is outside #405.
+- **Drafted fix:** file as a sub-issue of #183 (evidence judgement):
+
+  > **An exact-equality assertion is judged not to catch an "extra content"
+  > defect**
+  >
+  > Child of #183. Found at #405's Gate 2, run `a177c6062ee33dc7`
+  > (`dogfood-logs/405-gate2-run3/`).
+  >
+  > Defect `run-tests-with-exact-command/extra-flags-added-to-user-command`:
+  > the built command gains pytest options beyond the allowed ones. Mapped
+  > tests `test_the_command_gets_only_the_plugin_the_cache_switch_and_the_tests`
+  > and `test_listing_tests_adds_only_collect_only_to_that` assert
+  > `command == "<the exact expected string>"`. Any appended flag makes them
+  > fail, yet both pairs were judged not to kill the defect. The run's own
+  > injection killed it (`[killed, NOT COUNTED]`, uncounted only because edit
+  > verification is off), so the static verdict contradicts an observation
+  > the review already holds.
+  >
+  > **Acceptance:** a test whose assertion is equality with a fixed expected
+  > value is judged to kill a defect that adds content to that value.
+- **Status:** filed as #406, sub-issue of #183 (approved 2026-10-23).
+
+### [2026-10-23] A recommendation prescribes, assertion for assertion, a test already mapped
+- **Kind:** filing
+- **Found during:** #405, Gate 2 run 4 (`4907b8a4e90e2e8a`, `dogfood-logs/405-gate2-run4/`)
+- **Where:** evidence judgement / recommendation
+- **Severity:** should-fix
+- **What's wrong:** `print-test-command-each-run` is partially supported, and
+  its recommendation's four required assertions (no saved command, capture
+  stderr, the interpreter plus `-m pytest` and "locked down", the
+  variable-names line) are exactly those of the mapped test
+  `test_check_with_no_command_runs_locked_down_and_says_so`.
+- **Why I didn't act:** outside #405.
+- **Drafted fix:** a comment on #225 (a rating falls as its evidence improves,
+  and the recommendation prescribes a test already in the strength call's own
+  mapped set):
+
+  > Another instance at #405's Gate 2. Run 3 (`a177c6062ee33dc7`) recommended
+  > a test for `print-test-command-each-run` asserting the locked-down command
+  > line and the variable-names line. That test was written as
+  > `test_check_with_no_command_runs_locked_down_and_says_so`; run 4
+  > (`4907b8a4e90e2e8a`) maps it to the obligation, keeps the rating at
+  > partially supported, and recommends it again with the same four required
+  > assertions (`acceptance recommendation --criterion
+  > print-test-command-each-run`). Followed literally, the gate cannot close.
+- **Status:** filed (#225 comment, approved 2026-10-23).
+
+### [2026-10-23] A change the delivered code needs at run time is rated `separable`
+- **Kind:** filing
+- **Found during:** #405, Gate 2 run 1 (`18c717ef086fedb2`)
+- **Where:** unrequested-change disposition; `src/acceptance/mutation/workspace.py`
+- **Severity:** should-fix
+- **What's wrong:** linking `.venv` into the copies where broken code is
+  tested was rated `[separable]`: "they do not require this specific
+  workspace-linking strategy". Without it the user's command names an
+  interpreter that does not exist in the copy, and `use-project-dependencies`
+  fails there. The disposition judged the mechanism, not whether an obligation
+  needs it.
+- **Why I didn't act:** disposition judgement is outside #405. Owner agreed
+  to attribute it, 2026-10-23.
+- **Drafted fix:** a comment on #375 (a backward-compatible parameter that
+  delivers an obligation is rated a risky unrequested change):
+
+  > Same failure at #405's Gate 2 (run `18c717ef086fedb2`,
+  > `dogfood-logs/405-gate2-run1/`), rated `separable` this time. The change
+  > links `.venv` into the copies where mutants run; the reason given is that
+  > the obligations "do not require this specific workspace-linking strategy".
+  > But without some way for the copy to reach the project's interpreter,
+  > `use-project-dependencies` is false in every copy. "Not this specific
+  > mechanism" is true of every implementation, so it cannot be what decides
+  > `separable`.
+- **Status:** filed (#375 comment, approved 2026-10-23).
+
+### [2026-10-23] Two sandbox tests leave the network block installed in the suite's own process
+- **Kind:** defect
+- **Found during:** #405, full suite after Gate 2 run 1
+- **Where:** `tests/test_execution_sandbox.py:192` and `:485`
+- **Severity:** should-fix
+- **What's wrong:** both call `netblock.pytest_configure(_Config())` directly,
+  which runs `install_network_block()` in the pytest process and never undoes
+  it. Every test that runs afterwards has `socket.create_connection` replaced.
+  It surfaced as an order-dependent failure of a #405 test that inspected the
+  process's own socket functions.
+- **Why I didn't act:** predates #405; the #405 test was corrected instead.
+- **Drafted fix:** in both tests, `monkeypatch.setenv(netblock.ALLOW_NETWORK_VAR,
+  "1")` (added by #405) so the call under test skips the block, which neither
+  test is about; or `monkeypatch.setattr` the four `socket` attributes so they
+  are restored at teardown.
+- **Status:** filed as #409, sub-issue of #184 (approved 2026-10-23); next task.

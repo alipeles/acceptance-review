@@ -1,0 +1,77 @@
+Requirements: 8   with obligations: 7   deliberately none: 1
+
+[task-01] The benchmark runner, `run_case` in `src/acceptance/benchmark/runner.py`,
+    feeds a benchmark case's task file, repository and revisions through the full
+    checker and returns a scored copy of the case.
+    -> run-case-feeds-full-checker  [functional/explicit]
+       `run_case` in `src/acceptance/benchmark/runner.py` feeds a benchmark case's task
+       file, repository, and revisions through the full checker.
+    -> returns-scored-copy-of-case  [functional/explicit]
+       Return a scored copy of the case.
+
+[task-02] `run_case` must refuse a case whose task file yields no requirements, raising
+    the same `EmptyRequirementRegistryError` the corpus case builders raise, before any
+    checker stage runs. A case whose task file yields requirements runs through the
+    checker and is scored.
+    -> refuse-empty-requirement-task-file  [functional/explicit]
+       `run_case` refuses a case whose task file yields no requirements, raising the
+       same `EmptyRequirementRegistryError` the corpus case builders raise, before any
+       checker stage runs.
+    -> run-through-checker  [functional/explicit]
+       A case whose task file yields requirements runs through the checker.
+    -> is-scored  [functional/explicit]
+       The requirement is scored.
+    ?  task-02-span-02-disagreement
+       The coverage step and the call asked about this span alone disagreed: the first
+       found 'before any checker stage runs' uncovered by the obligations already
+       derived, the second derived neither an obligation nor an open question from it.
+       Does this span state a property of its own that must be delivered?
+
+[task-03] The runner's acceptance test, which runs a checker that finds nothing over a
+    missed-obligation archetype case and asserts an all-miss gap score, must run over a
+    task file that yields at least one requirement. A companion regression test must run
+    the same case through a checker that reports the labelled gap, and show the gap
+    recall is then non-zero, so the all-miss assertion is shown to depend on the
+    checker's output and not on the input.
+    -> all-miss-assertion-depends-on-checker-output  [functional/explicit]
+       The all-miss assertion is demonstrated to depend on the checker's output rather
+       than on the input task file.
+
+[constraint-01] The refusal uses the existing `require_nonempty_registry` check, so the
+    runner and the corpus case builders agree on what counts as a readable task file.
+    -> use-existing-require-nonempty-registry-check  [compatibility/explicit]
+       The refusal uses the existing `require_nonempty_registry` check.
+
+[exclusion-01] The synthetic cases in the scoring, alignment and case tests, which build
+    scored cases without calling `run_case`.
+    -> exclude-synthetic-cases-from-run_case  [compatibility/explicit]
+       The change does not affect the synthetic cases in the scoring, alignment, and
+       case tests that build scored cases without calling `run_case`.
+
+[exclusion-02] The corpus case builders, which already refuse an unreadable task file.
+    -> corpus-case-builders-unchanged  [functional/explicit]
+       The corpus case builders are not changed by this task.
+
+[completion-01] Implementation
+    -- no obligation, deliberately
+       The requirement is only the section marker "Implementation" standing alone, with
+       no requirement text under it.
+
+[completion-02] Regression test
+    -> regression-test  [test_demand/explicit]
+       A regression test asserts that the runner's acceptance test runs over a task file
+       that yields at least one requirement, and that a companion regression test shows
+       the gap recall is non-zero when the checker reports the labelled gap.
+
+run edecd4a5afc61eb9
+  continuing 1e7bbe3565b4af18
+  requirements: 0 derived, 7 carried, 1 revised; 5 decompose call(s)
+  continue this run with: --continue edecd4a5afc61eb9
+Model usage by stage:
+  stage                        model                                     calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  ----------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    openai/gpt-5.4-mini     4 (4 live / 0 replayed)  21,366     451   24.0%   $0.0146   $0.0146           6.0s
+  decompose-summary            openai/gpt-5.4          1 (1 live / 0 replayed)     929     530    0.0%   $0.0103   $0.0103           7.1s
+  obligation linking           voyage/voyage-3.5-lite  1 (1 live / 0 replayed)     408       0       —   $0.0000   $0.0000           0.6s
+  requirement carry alignment  openai/gpt-5.4-mini     1 (1 live / 0 replayed)     352      24    0.0%   $0.0004   $0.0004           4.5s
+  this run spent $0.0253 on 7 live call(s); the evidence cost $0.0253 to record (0 call(s) replayed at no cost to this run)

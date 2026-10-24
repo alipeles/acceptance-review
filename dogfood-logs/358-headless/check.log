@@ -1,0 +1,266 @@
+Task completion: INCOMPLETE
+
+1 obligation(s) with non-discriminating test evidence (preserve-existing-prefilter-rules-for-python-only-defects).
+
+Obligations:
+
+  1. The reachability prefilter excludes a (defect, test) pair from judgement only when it can prove the test has no path to the defect.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/defects/reachability.py#@@ -36,17 +36,20 @@ routing through a module it imports, or by receiving a pytest fixture. Close all
+         1.2  src/acceptance/defects/reachability.py#@@ -259,6 +262,8 @@ def _exclusion_reason(pair: Pair, prover: _Prover) -> str | None:
+       test evidence: strongly supported — kills 2 of 2 enumerated defects (static prediction)  [tier: static]
+         1.3  tests/defects/test_reachability.py::test_judges_when_any_implicated_file_is_not_python
+
+  2. The reachability prefilter's proof is limited to defects that live in Python modules because it follows imports, fixtures, and Python names.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/defects/reachability.py#@@ -259,6 +262,8 @@ def _exclusion_reason(pair: Pair, prover: _Prover) -> str | None:
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  3. When any implicated file in a defect is not a Python module, the prefilter makes no exclusion for that defect.
+       requirements: task-02
+       code evidence: addressed
+         3.1  src/acceptance/defects/reachability.py#@@ -259,6 +262,8 @@ def _exclusion_reason(pair: Pair, prover: _Prover) -> str | None:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         3.2  tests/defects/test_reachability.py::test_judges_a_test_that_reads_a_non_python_implicated_file
+         3.3  tests/defects/test_reachability.py::test_judges_when_any_implicated_file_is_not_python
+
+  4. Every pair associated with the defect is sent to the judge when the defect has any implicated file that is not a Python module.
+       requirements: task-02
+       code evidence: addressed
+         4.1  src/acceptance/defects/reachability.py#@@ -259,6 +262,8 @@ def _exclusion_reason(pair: Pair, prover: _Prover) -> str | None:
+       test evidence: strongly supported — kills 1 of 1 enumerated defects (static prediction)  [tier: static]
+         4.2  tests/defects/test_reachability.py::test_judges_when_any_implicated_file_is_not_python
+
+  5. Preserve the existing prefiltering rules for defects whose implicated files are all Python modules.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/defects/reachability.py#@@ -259,6 +262,8 @@ def _exclusion_reason(pair: Pair, prover: _Prover) -> str | None:
+       test evidence: unsupported — kills 0 of 1 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: Defects with only Python-module implicated files continue to be prefiltered by the existing rules.
+           inputs:  A pair where the defect implicates only Python files, but one implicated path is a Python module that is not a source file in the repo root convention used by the reachability logic (for example, a package module under a subdirectory such as `pkg/helpers.py`), and the test is still unreachable by the existing rules because it is defined elsewhere, imports no first-party modules, takes no fixtures, uses no dynamic import/eval, and references none of the defect names. The input must make the correct implementation prefilter the pair while the defective implementation returns it to judging.
+           detects: The new non-Python-file early return can stop prefiltering for defects that still have only Python-module implicated files, because the check treats any non-.py path in the implicated set as a blocker even when the defect is otherwise covered by the existing rules.
+           full detail: acceptance recommendation --criterion preserve-existing-prefilter-rules-for-python-only-defects
+
+  6. A test opens a non-Python file by path and asserts on its content, and a defect implicating that file is judged rather than prefiltered.
+       requirements: task-03
+       code evidence: not required — The requirement itself demands a test be judged; the obligation is satisfied by the presence and evaluation of that test, not by a source change.
+       test evidence: indeterminate — no way this change could fail the criterion was enumerated for it  [tier: static]
+         (no mapped test)
+
+  7. The requirement is not prefiltered.
+       requirements: task-03
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: not required — This is a scope/control condition on the review pipeline, and the delivered change can be checked directly from the code path rather than by a test.
+
+  8. The change does not treat a test as reaching a file solely because the test source names that file's path.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 4 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion about analysis behavior, so the review checks the implementation change itself rather than a separate test.
+
+  9. The change does not alter the judge, the defect builder, or how prefiltered pairs are scored.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 4 changes across 2 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion, so the repository itself must show that the change does not touch the judge, the defect builder, or prefiltered-pair scoring.
+
+Mandate coverage: 5 of 5 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The new early return excludes any defect that mentions a non-Python file from reachability analysis, even when the pair might still be provably unreachable through the Python files alone. The obligations require no exclusion for non-Python implicated files and preserving existing prefilter rules for Python-only defects, but they do not require this blanket short-circuit for mixed-file defects.
+       src/acceptance/defects/reachability.py#@@ -259,6 +262,8 @@ def _exclusion_reason(pair: Pair, prover: _Prover) -> str | None:
+  2. [separable] The added tests assert the new blanket behavior for mixed Python/non-Python defects, but no obligation requires changing the prefilter to treat all such defects as judged; the requested test demand only covers a test that opens a non-Python file by path and a defect implicating that file being judged rather than prefiltered.
+       tests/defects/test_reachability.py#@@ -190,6 +190,47 @@ def test_judges_when_the_module_imports_relatively(tmp_path):
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  no-judgement-except-proven-unreachable
+    [scope_too_narrow] no-judgement-except-proven-unreachable/non-python-defect-file-still-excluded
+      The new non-Python-file check only looks at the defect's implicated files, so a (defect, test) pair can still be excluded when the defect lives in a mix of Python and non-Python files and the prefilter has not proved the test has no path to the defect.
+      src/acceptance/defects/reachability.py#2
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+    [unenforced_on_one_path] no-judgement-except-proven-unreachable/non-python-file-check-misses-other-paths
+      The added suffix check can return None before the rest of the reachability proof runs, so a pair can be excluded on this route without the prefilter actually proving unreachable through the other reachability conditions.
+      src/acceptance/defects/reachability.py#2
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  python-module-limited-proof
+    none enumerated: No static defect is plausible here: the added guard in _exclusion_reason explicitly returns None whenever any implicated file is not a .py file, so the reachability proof is limited to Python-module defects and non-Python files are excluded from the proof by construction. The surrounding docstring edits only renumber the explanation and do not widen the proof.
+
+  no-exclusion-for-non-python-implicated-files
+    [condition_inverted] no-exclusion-for-non-python-implicated-files/non-python-files-still-excluded
+      The new non-Python-file guard returns early, so defects that implicate a Markdown, config, or data file are excluded instead of being sent onward.
+      src/acceptance/defects/reachability.py#2
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  all-pairs-sent-to-judge-for-defect
+    [scope_too_narrow] all-pairs-sent-to-judge-for-defect/non-python-file-short-circuits-all-pairs
+      The new non-Python-file check stops exclusion for any defect that mentions a Markdown, config, or data file, but it does not ensure that every pair for that defect is still sent to the judge.
+      src/acceptance/defects/reachability.py#2
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+  preserve-existing-prefilter-rules-for-python-only-defects
+    [scope_too_narrow] preserve-existing-prefilter-rules-for-python-only-defects/python-only-check-too-broad
+      The new non-Python-file early return can stop prefiltering for defects that still have only Python-module implicated files, because the check treats any non-.py path in the implicated set as a blocker even when the defect is otherwise covered by the existing rules.
+      src/acceptance/defects/reachability.py#2
+      pairs: 10 put to the model, 0 skipped once the defect was covered
+
+  not-prefiltered
+    none enumerated: No static defect is plausible from the shown change: the criterion is about the review input being passed through without prefiltering, and the diff only adds a reachability exclusion for non-Python implicated files plus renumbers comments. There is no changed path here that filters the requirement out of the review input, so there is nothing concrete to inspect as a failure mode.
+
+  exclude-path-name-as-reachability
+    [scope_too_narrow] exclude-path-name-as-reachability/non-python-paths-still-count-as-reachability
+      The new non-Python-file guard only excludes files with a suffix other than .py, so a test that mentions a path to a Python file by name can still be treated as reaching that file solely from the path mention.
+      src/acceptance/defects/reachability.py#2
+      pairs: 10 put to the model, 0 skipped once the defect was covered
+
+  no-change-to-judge-defect-builder-or-scoring
+    [other] no-change-to-judge-defect-builder-or-scoring/non-python-file-exclusion-added
+      The exclusion logic now treats any implicated non-Python file as an automatic early return, so a change to the defect builder can alter which prefiltered pairs are scored by excluding cases that were previously judged.
+      src/acceptance/defects/reachability.py#2
+      pairs: 2 put to the model, 0 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [passed_under_edit] all-pairs-sent-to-judge-for-defect/non-python-file-short-circuits-all-pairs x 8 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] no-change-to-judge-defect-builder-or-scoring/non-python-file-exclusion-added x 8 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] no-exclusion-for-non-python-implicated-files/non-python-files-still-excluded x 8 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] no-judgement-except-proven-unreachable/non-python-defect-file-still-excluded x 8 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] no-judgement-except-proven-unreachable/non-python-file-check-misses-other-paths x 8 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+
+Running the project's tests:
+  the project's tests were run: 7 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [killed, NOT COUNTED] all-pairs-sent-to-judge-for-defect/non-python-file-short-circuits-all-pairs
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/defects/reachability.py lines 265..266 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/defects/reachability.py lines 265-266:
+           -     if any(Path(path).suffix != ".py" for path in files):
+           -         return None  # a test reads a non-Python file by path, which no import shows
+           +     if any(Path(path).suffix != ".py" for path in files):
+           +         return None  # a test reads a non-Python file by path, which no import shows
+    injected at src/acceptance/defects/reachability.py lines 265-266:
+      -     if any(Path(path).suffix != ".py" for path in files):
+      -         return None  # a test reads a non-Python file by path, which no import shows
+      +     if any(Path(path).suffix != ".py" for path in files):
+      +         return ""
+    caught by (2):
+      tests/defects/test_reachability.py::test_judges_a_test_that_reads_a_non_python_implicated_file
+      tests/defects/test_reachability.py::test_judges_when_any_implicated_file_is_not_python
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 8 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] exclude-path-name-as-reachability/non-python-paths-still-count-as-reachability
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/defects/reachability.py lines 265-266:
+      -     if any(Path(path).suffix != ".py" for path in files):
+      -         return None  # a test reads a non-Python file by path, which no import shows
+      +     if any(Path(path).suffix == ".py" for path in files):
+      +         return None  # a test reads a Python file by path, which no import shows
+    caught by (2):
+      tests/defects/test_reachability.py::test_excludes_and_records_the_one_provable_shape
+      tests/defects/test_reachability.py::test_judges_a_test_that_reads_a_non_python_implicated_file
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 10 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] no-change-to-judge-defect-builder-or-scoring/non-python-file-exclusion-added
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/defects/reachability.py lines 265-266:
+      -     if any(Path(path).suffix != ".py" for path in files):
+      -         return None  # a test reads a non-Python file by path, which no import shows
+      (lines deleted)
+    caught by (2):
+      tests/defects/test_reachability.py::test_judges_a_test_that_reads_a_non_python_implicated_file
+      tests/defects/test_reachability.py::test_judges_when_any_implicated_file_is_not_python
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 8 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] no-exclusion-for-non-python-implicated-files/non-python-files-still-excluded
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/defects/reachability.py lines 265-266:
+      -     if any(Path(path).suffix != ".py" for path in files):
+      -         return None  # a test reads a non-Python file by path, which no import shows
+      +     if any(Path(path).suffix != ".py" for path in files):
+      +         pass  # a test reads a non-Python file by path, which no import shows
+    caught by (2):
+      tests/defects/test_reachability.py::test_judges_a_test_that_reads_a_non_python_implicated_file
+      tests/defects/test_reachability.py::test_judges_when_any_implicated_file_is_not_python
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 8 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] no-judgement-except-proven-unreachable/non-python-defect-file-still-excluded
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (changed_nothing): the replacement for src/acceptance/defects/reachability.py lines 265..266 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/defects/reachability.py lines 265-266:
+           -     if any(Path(path).suffix != ".py" for path in files):
+           -         return None  # a test reads a non-Python file by path, which no import shows
+           +     if any(Path(path).suffix != ".py" for path in files):
+           +         return None  # a test reads a non-Python file by path, which no import shows
+    injected at src/acceptance/defects/reachability.py lines 265-266:
+      -     if any(Path(path).suffix != ".py" for path in files):
+      -         return None  # a test reads a non-Python file by path, which no import shows
+      +     if any(Path(path).suffix != ".py" for path in files):
+      +         return "the defect's files include a non-Python file"
+    caught by (2):
+      tests/defects/test_reachability.py::test_judges_a_test_that_reads_a_non_python_implicated_file
+      tests/defects/test_reachability.py::test_judges_when_any_implicated_file_is_not_python
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 8 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] no-judgement-except-proven-unreachable/non-python-file-check-misses-other-paths
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/defects/reachability.py lines 265-266:
+      -     if any(Path(path).suffix != ".py" for path in files):
+      -         return None  # a test reads a non-Python file by path, which no import shows
+      +     if any(Path(path).suffix != ".py" for path in files):
+      +         pass  # a test reads a non-Python file by path, which no import shows
+    caught by (2):
+      tests/defects/test_reachability.py::test_judges_a_test_that_reads_a_non_python_implicated_file
+      tests/defects/test_reachability.py::test_judges_when_any_implicated_file_is_not_python
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 2 put to the model, 8 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] preserve-existing-prefilter-rules-for-python-only-defects/python-only-check-too-broad
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/defects/reachability.py lines 265-266:
+      -     if any(Path(path).suffix != ".py" for path in files):
+      -         return None  # a test reads a non-Python file by path, which no import shows
+      +     if any(Path(path).suffix != ".py" for path in files if "/" not in path and "\\" not in path):
+      +         return None  # a test reads a non-Python file by path, which no import shows
+    no test caught it; 10 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 10 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>
+run c69a1f9f6d3082e3
+  continue this run with: --continue c69a1f9f6d3082e3
+Model usage by stage:
+  stage                         model                                                            calls  prompt  output  cached  this run  recorded  time this run
+  ----------------------------  -------------------------------------------  -------------------------  ------  ------  ------  --------  --------  -------------
+  decompose                     openai/gpt-5.4-mini                          10 (0 live / 10 replayed)  54,239   1,656    0.0%   $0.0000   $0.0481              —
+  decompose-summary             openai/gpt-5.4                                 3 (0 live / 3 replayed)   2,541   1,092    0.0%   $0.0000   $0.0227              —
+  obligation linking            voyage/voyage-3.5-lite, openai/gpt-5.4-mini    2 (0 live / 2 replayed)   1,234      89    0.0%   $0.0000   $0.0010              —
+  defect enumeration            openai/gpt-5.4-mini                            8 (8 live / 0 replayed)  14,645   1,442    0.0%   $0.0175   $0.0175          46.2s
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, openai/gpt-5.4-mini    9 (9 live / 0 replayed)  13,465   1,687    0.0%   $0.0160   $0.0160          12.1s
+  coverage classification       openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   2,801     573    0.0%   $0.0047   $0.0047           2.7s
+  unrequested-change detection  openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   2,262     214    0.0%   $0.0027   $0.0027           1.4s
+  disposition judgment          openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   1,756      74    0.0%   $0.0016   $0.0016           0.8s
+  test recommendation           openai/gpt-5.4-mini                            1 (1 live / 0 replayed)   1,910     375    0.0%   $0.0031   $0.0031           2.1s
+  mutation descriptor           openai/gpt-5.4-mini                            9 (9 live / 0 replayed)  17,570     838   20.4%   $0.0145   $0.0145          11.0s
+  this run spent $0.0601 on 30 live call(s); the evidence cost $0.1320 to record (15 call(s) replayed at no cost to this run)
