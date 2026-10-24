@@ -308,15 +308,19 @@ def _ask_about(
     allowed = {"region_label": [region.label for region in offered] + [""]}
     constrained = constrain(_Descriptor, allowed)
 
-    subject = _subject(defect, offered, sources)
+    subject = _defect_text(defect)
     context = render_contexts(contexts_for(region_spans(offered), surrounding))
     if context:
         subject = f"{subject}\n\n{context}"
     if previous:
         subject = f"{subject}\n\n{_earlier_candidates(previous)}"
+    # The regions' source goes in the reusable opening, not the subject: defects
+    # implicating the same regions then send the same opening, and their calls
+    # can share it instead of each repeating it (#414).
     messages = assemble(
         [
             Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+            Block(BlockKind.REGIONS, _regions(offered, sources)),
             Block(BlockKind.SUBJECT, subject),
         ]
     )
@@ -395,13 +399,19 @@ def _span_from(
 
 
 def _subject(defect: Defect, regions: Sequence[Region], sources: dict[str, str]) -> str:
-    """The defect and the numbered source of each region it named.
+    """The defect and the numbered source of each region it named, as one text.
 
-    Numbered because the answer is a line span and the model has no other way to
-    name one. The numbers are absolute — the file's own — so that the answer
-    needs no translation on the way back, and an off-by-one in this rendering
-    cannot quietly become an off-by-one in the mutant.
+    The coding-agent stage's prompt (`agent.py`). This stage no longer sends it
+    as one piece: it sends `_defect_text` and `_regions` separately, so that the
+    regions can sit in the reusable opening.
     """
+    return "\n".join(
+        [_defect_text(defect), "", "## Regions it implicates", *_region_lines(regions, sources)]
+    )
+
+
+def _defect_text(defect: Defect) -> str:
+    """The defect itself, which is what only this call carries."""
     lines = [
         "## The defect",
         f"id: {defect.id}",
@@ -413,14 +423,32 @@ def _subject(defect: Defect, regions: Sequence[Region], sources: dict[str, str])
     if defect.expected_behavior and defect.defective_behavior:
         lines.append(f"EXPECTED: {defect.expected_behavior}")
         lines.append(f"DEFECTIVE: {defect.defective_behavior}")
-    lines += ["", "## Regions it implicates"]
+    return "\n".join(lines)
+
+
+def _regions(regions: Sequence[Region], sources: dict[str, str]) -> str:
+    """The numbered source of each region the defect named.
+
+    Numbered because the answer is a line span and the model has no other way to
+    name one. The numbers are absolute — the file's own — so that the answer
+    needs no translation on the way back, and an off-by-one in this rendering
+    cannot quietly become an off-by-one in the mutant.
+
+    Renders nothing about the defect, so two defects naming the same regions
+    get byte-identical text.
+    """
+    return "\n".join(["## Regions the defect implicates", *_region_lines(regions, sources)])
+
+
+def _region_lines(regions: Sequence[Region], sources: dict[str, str]) -> list[str]:
+    lines: list[str] = []
     for region in regions:
         lines.append("")
         lines.append(
             f"### [{region.label}] {region.path} lines {region.start_line}-{region.end_line}"
         )
         lines.append(_numbered(sources[region.path], region))
-    return "\n".join(lines)
+    return lines
 
 
 #: What the model is told about each kind of refusal. Fixed sentences, not the

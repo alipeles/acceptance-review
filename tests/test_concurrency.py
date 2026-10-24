@@ -19,7 +19,48 @@ import time
 
 import pytest
 
-from acceptance.concurrency import DEFAULT_MAX_IN_FLIGHT, flatten, map_calls
+from acceptance.concurrency import (
+    DEFAULT_MAX_IN_FLIGHT,
+    flatten,
+    map_calls,
+    map_calls_opening_first,
+)
+
+
+def test_each_openings_first_call_finishes_before_the_rest_of_its_group_start():
+    """A cache write lands when its call completes, so the rest of a group must
+    start after its first call has finished, or every one of them misses."""
+    events: list[tuple[str, int]] = []
+    lock = threading.Lock()
+
+    def call(n: int) -> int:
+        with lock:
+            events.append(("start", n))
+        time.sleep(0.02)
+        with lock:
+            events.append(("end", n))
+        return n
+
+    items = [0, 1, 2, 3, 4, 5]
+    opening = {0: "a", 1: "a", 2: "b", 3: "a", 4: "b", 5: "b"}
+
+    map_calls_opening_first(items, call, opening=opening.__getitem__)
+
+    leaders = {0, 2}
+    for n in set(items) - leaders:
+        leader = 0 if opening[n] == "a" else 2
+        assert events.index(("end", leader)) < events.index(("start", n))
+
+
+def test_opening_first_still_returns_input_order():
+    opening = {0: "a", 1: "b", 2: "a", 3: "b"}
+
+    assert map_calls_opening_first([0, 1, 2, 3], lambda n: n * 10, opening.__getitem__) == [
+        0,
+        10,
+        20,
+        30,
+    ]
 
 
 def test_results_come_back_in_input_order_not_completion_order():

@@ -11,6 +11,10 @@ A thin layer between the checker's judgments and whatever model produces them:
 - **Replay-first.** Every prompt/response is recorded to a transcript store
   keyed by request content. In `REPLAY` mode no live call is made at all — a
   missing transcript is an error, not a silent fallback to the network.
+- **Reusable openings marked per model.** On Anthropic models the client marks
+  where a request's reusable opening ends (`mark_reusable_opening`), when the
+  opening is at least that model's documented minimum. Anthropic ignores a
+  breakpoint below the minimum and caches nothing; it does not reject one.
 
 Transcripts deliberately record no wall-clock time and no run identifiers, so
 re-running the same input reproduces byte-identical state (M0.5's acceptance
@@ -191,15 +195,37 @@ def _default_completion_fn(**kwargs: Any) -> Any:
     return litellm.completion(drop_params=True, **kwargs)
 
 
-#: The shortest opening each provider family will reuse, in tokens. Below it a
-#: marker buys nothing, and Anthropic rejects a breakpoint under its minimum
-#: outright rather than ignoring it. Values are per model family and change with
-#: the provider's terms, so this is a table to be re-checked, not a constant.
-#: Read from the providers' documentation on 2026-08-20.
+#: The shortest opening each Anthropic model will reuse, in tokens, keyed by the
+#: model name with its provider prefix and `claude-` removed. Below the minimum a
+#: marker buys nothing: Anthropic ignores the breakpoint and caches nothing,
+#: with no error. Values are per model and change with the provider's terms, and
+#: they do not fall monotonically across generations, so this is a table to be
+#: re-checked, not a constant. Read from Anthropic's documentation on 2026-10-24.
+#: The longest key the model name starts with wins, so `sonnet-5-5` is not read
+#: as `sonnet-5`, and a dated snapshot matches its family.
 _MIN_REUSABLE_OPENING_TOKENS = {
-    "anthropic": 1024,
-    "anthropic-haiku": 2048,
+    "opus-5-5": 512,
+    "opus-5": 512,
+    "sonnet-5-5": 512,
+    "haiku-5-5": 512,
+    "fable": 512,
+    "mythos": 512,
+    "opus-4-8": 1024,
+    "sonnet-5": 1024,
+    "sonnet-4": 1024,
+    "opus-4-1": 1024,
+    "opus-4": 1024,
+    "opus-4-7": 2048,
+    "haiku-3-5": 2048,
+    "opus-4-6": 4096,
+    "opus-4-5": 4096,
+    "haiku-4-5": 4096,
 }
+
+#: For a model the table does not name. The lowest documented minimum, because
+#: a breakpoint under the real one is ignored at no cost, while one left off
+#: an opening that would have qualified loses the saving.
+_DEFAULT_MIN_REUSABLE_OPENING_TOKENS = 512
 
 
 def _needs_explicit_marker(model: str) -> bool:
@@ -215,9 +241,11 @@ def _needs_explicit_marker(model: str) -> bool:
 
 
 def _minimum_reusable_opening(model: str) -> int:
-    if "haiku" in model.lower():
-        return _MIN_REUSABLE_OPENING_TOKENS["anthropic-haiku"]
-    return _MIN_REUSABLE_OPENING_TOKENS["anthropic"]
+    name = model.split("/", 1)[-1].lower().removeprefix("claude-")
+    matches = [key for key in _MIN_REUSABLE_OPENING_TOKENS if name.startswith(key)]
+    if not matches:
+        return _DEFAULT_MIN_REUSABLE_OPENING_TOKENS
+    return _MIN_REUSABLE_OPENING_TOKENS[max(matches, key=len)]
 
 
 def mark_reusable_opening(messages: list[dict], model: str) -> list[dict]:

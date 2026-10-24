@@ -48,7 +48,7 @@ validates.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Hashable, Iterable, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from typing import TypeVar
 
@@ -88,6 +88,41 @@ def map_calls(
         return [call(item) for item in ordered]
     with ThreadPoolExecutor(max_workers=min(max_in_flight, len(ordered))) as pool:
         return list(pool.map(call, ordered))
+
+
+def map_calls_opening_first(
+    items: Sequence[T],
+    call: Callable[[T], R],
+    opening: Callable[[T], Hashable],
+    max_in_flight: int = DEFAULT_MAX_IN_FLIGHT,
+) -> list[R]:
+    """`map_calls`, but each distinct opening's first call goes out before the rest.
+
+    A provider can read a repeated opening from its cache only once some call
+    has written it there, and a write lands when that call completes. Sent all
+    at once, the first `max_in_flight` calls over a new opening all start before
+    any write has landed, so every one of them misses (#414). Sending one call
+    per opening first, then the rest, means the rest can read what it wrote.
+
+    `opening` names the part of an item's request the calls share. Items that
+    share none get a key of their own and lose nothing but ordering.
+
+    Changes only when calls are sent, never what they say, and results still
+    come back in input order (rule 1).
+    """
+    ordered = list(items)
+    first_of: dict[Hashable, int] = {}
+    for index, item in enumerate(ordered):
+        first_of.setdefault(opening(item), index)
+    leaders = sorted(first_of.values())
+    lead = set(leaders)
+    followers = [index for index in range(len(ordered)) if index not in lead]
+
+    results: dict[int, R] = {}
+    for indexes in (leaders, followers):
+        answers = map_calls([ordered[i] for i in indexes], call, max_in_flight)
+        results.update(zip(indexes, answers))
+    return [results[index] for index in range(len(ordered))]
 
 
 def flatten(results: Iterable[Iterable[R]]) -> list[R]:
