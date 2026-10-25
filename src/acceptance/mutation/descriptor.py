@@ -210,6 +210,7 @@ def build_descriptors(
         lambda defect: _ask_about(
             defect, regions_by_defect[defect.id], sources, client, surrounding
         ),
+        max_in_flight=client.calls_in_flight,
     )
 
     built: dict[str, DescriptorAnswer] = {defect.id: None for defect in defects}

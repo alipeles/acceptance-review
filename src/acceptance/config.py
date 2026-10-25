@@ -29,7 +29,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from acceptance.defects.pair_mapping import DEFAULT_TESTS_PER_BATCH
 from acceptance.defects.pair_ranking import DEFAULT_STOP_AFTER_KILLS
@@ -211,6 +211,14 @@ class RunConfig(BaseModel):
     # determinism control: it changes how a request is sent, never what it
     # says, so it reaches no request key and no provenance.
     batch: bool = False
+    # One batcher per run, shared by every client the run builds, so calls from
+    # two of them still go out in one batch.
+    _batcher: MessageBatcher | None = PrivateAttr(default=None)
+
+    def _run_batcher(self) -> MessageBatcher:
+        if self._batcher is None:
+            self._batcher = MessageBatcher()
+        return self._batcher
 
     def build_client(
         self,
@@ -230,7 +238,7 @@ class RunConfig(BaseModel):
             embedding_model=self.embedding_model,
             stage_models=self.stage_models,
             stage_reasoning=self.stage_reasoning,
-            batcher=MessageBatcher() if self.batch else None,
+            batcher=self._run_batcher() if self.batch else None,
         )
 
 

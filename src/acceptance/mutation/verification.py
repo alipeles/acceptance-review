@@ -122,7 +122,11 @@ def verify_edits(
     Edits are checked concurrently and returned in input order, so two runs over
     the same input record the same thing (`concurrency.py`, rule 2).
     """
-    return map_calls(list(items), lambda item: _ask(item[0], item[1], item[2], client, surrounding))
+    return map_calls(
+        list(items),
+        lambda item: _ask(item[0], item[1], item[2], client, surrounding),
+        max_in_flight=client.calls_in_flight,
+    )
 
 
 def verify_attempts(

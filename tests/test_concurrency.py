@@ -21,7 +21,6 @@ import pytest
 
 from acceptance.concurrency import (
     DEFAULT_MAX_IN_FLIGHT,
-    calls_in_flight,
     flatten,
     map_calls,
 )
@@ -147,20 +146,14 @@ def _peak(items: int, **kwargs) -> int:
     return peak
 
 
-def test_a_runs_limit_applies_where_a_call_site_names_none():
-    with calls_in_flight(20):
-        assert _peak(20) > DEFAULT_MAX_IN_FLIGHT
-    assert _peak(20) <= DEFAULT_MAX_IN_FLIGHT
+def test_no_limit_is_the_default_limit():
+    """What a stage gets from a client that does not batch."""
+    assert _peak(20, max_in_flight=None) <= DEFAULT_MAX_IN_FLIGHT
 
 
-def test_a_call_site_that_names_its_own_limit_keeps_it_inside_a_runs_limit():
-    with calls_in_flight(20):
-        assert _peak(20, max_in_flight=2) <= 2
-
-
-def test_no_runs_limit_leaves_the_default():
-    with calls_in_flight(None):
-        assert _peak(20) <= DEFAULT_MAX_IN_FLIGHT
+def test_a_limit_above_the_default_runs_more_at_once():
+    """What a stage gets from a client that batches (#414)."""
+    assert _peak(20, max_in_flight=20) > DEFAULT_MAX_IN_FLIGHT
 
 
 def test_the_default_limit_is_more_than_one():

@@ -18,14 +18,9 @@ comparison → completion verdict.
 
 from __future__ import annotations
 
-import functools
-import inspect
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any
 
 from acceptance.change.context import retrieve_context
-from acceptance.concurrency import calls_in_flight
 from acceptance.config import (
     DEFAULT_LINK_DISTANCE_THRESHOLD,
     DEFAULT_LINK_PAIR_BATCH_SIZE,
@@ -391,26 +386,6 @@ def _sources_for(regions_by_defect: dict, repo: Path) -> dict[str, str]:
     return sources
 
 
-def _at_the_clients_concurrency(review: Callable[..., Review]) -> Callable[..., Review]:
-    """Run the review with as many calls in flight as its client asks for.
-
-    A client sending its calls through the Message Batches API asks for many
-    more than the default (#414); every other client asks for nothing and the
-    review runs exactly as before.
-    """
-    signature = inspect.signature(review)
-
-    @functools.wraps(review)
-    def run(*args: Any, **kwargs: Any) -> Review:
-        client = signature.bind(*args, **kwargs).arguments["client"]
-        # A stand-in client with no opinion runs at the default, as before.
-        with calls_in_flight(getattr(client, "calls_in_flight", None)):
-            return review(*args, **kwargs)
-
-    return run
-
-
-@_at_the_clients_concurrency
 def run_review(
     task_text: str,
     change_set: ChangeSet,

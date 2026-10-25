@@ -170,7 +170,9 @@ def recommend_tests(
     # prescribes for its own defects and reads no other batch's answer.
     batches = partition(pending, batch_size, key=lambda defect: defect.id)
     answers = map_calls(
-        batches, lambda batch: _ask(batch, criterion_by_obligation, change_set, client)
+        batches,
+        lambda batch: _ask(batch, criterion_by_obligation, change_set, client),
+        max_in_flight=client.calls_in_flight,
     )
 
     recommendations: list[TestRecommendation] = []

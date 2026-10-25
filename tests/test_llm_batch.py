@@ -10,7 +10,10 @@ a direct call and a batched one can be compared request for request.
 
 from __future__ import annotations
 
+import ast
 import json
+import threading
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -18,16 +21,19 @@ import pytest
 from litellm.llms.custom_httpx.http_handler import HTTPHandler
 from pydantic import BaseModel
 
-from acceptance import cli, concurrency, llm, llm_batch
+from acceptance import cli, llm, llm_batch
+from acceptance.benchmark import instability
 from acceptance.benchmark.fixtures import build_benchmark_case
 from acceptance.benchmark.instability import measure_instability
 from acceptance.benchmark.runner import run_case
 from acceptance.change.diff import extract_change_set
-from acceptance.concurrency import DEFAULT_MAX_IN_FLIGHT, calls_in_flight, map_calls
+from acceptance.concurrency import DEFAULT_MAX_IN_FLIGHT, map_calls
 from acceptance.config import DEFAULT_MODEL, RunConfig, provenance_for
 from acceptance.llm import LLMError, Mode, ModelClient, request_key
 from acceptance.llm_batch import BATCH_CALLS_IN_FLIGHT, MessageBatcher
 from acceptance.pipeline import run_review
+from acceptance.requirement.obligations import decompose
+from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import Component, EvidenceTier, Finding, Link, Review
 from tests.support import (
     _EMPTY_BY_SCHEMA,
@@ -262,8 +268,11 @@ def test_concurrent_calls_go_out_together_as_one_batch(tmp_path, provider):
     client = _client(tmp_path, batch=True)
     questions = [[{"role": "user", "content": f"Is obligation {n} supported?"}] for n in range(20)]
 
-    with calls_in_flight(client.calls_in_flight):
-        answers = map_calls(questions, lambda messages: client.complete(messages, Verdict))
+    answers = map_calls(
+        questions,
+        lambda messages: client.complete(messages, Verdict),
+        max_in_flight=client.calls_in_flight,
+    )
 
     assert len(answers) == 20
     assert [len(batch["requests"]) for batch in provider.batches] == [20]
@@ -272,8 +281,11 @@ def test_concurrent_calls_go_out_together_as_one_batch(tmp_path, provider):
 def test_identical_requests_waiting_together_share_one_request_in_the_batch(tmp_path, provider):
     client = _client(tmp_path, batch=True)
 
-    with calls_in_flight(client.calls_in_flight):
-        first, second = map_calls([MESSAGES, MESSAGES], lambda m: client.complete(m, Verdict))
+    first, second = map_calls(
+        [MESSAGES, MESSAGES],
+        lambda m: client.complete(m, Verdict),
+        max_in_flight=client.calls_in_flight,
+    )
 
     assert first == second
     assert [len(batch["requests"]) for batch in provider.batches] == [1]
@@ -403,33 +415,6 @@ def test_the_instability_experiment_batches_when_asked(tmp_path, batch):
     assert seen[0].batch is batch
 
 
-def test_a_batching_review_runs_its_stages_with_many_calls_in_flight(monkeypatch, tmp_path):
-    """The wiring: `run_review` must raise the limit for a batching client, or
-    every stage goes out eight calls to a batch."""
-    limits: list = []
-    client = client_dispatching(_JUDGMENTS)
-    answer = client._completion_fn
-
-    def watching(**kwargs):
-        limits.append(concurrency._run_limit)
-        return answer(**kwargs)
-
-    client._completion_fn = watching
-    monkeypatch.setattr(ModelClient, "calls_in_flight", property(lambda self: 512))
-
-    repo, base, head = _repo(tmp_path)
-    run_review(
-        task_text=_TASK,
-        change_set=extract_change_set(repo, base, head),
-        repo=repo,
-        client=client,
-        reviewed_revision=head,
-    )
-
-    assert limits and set(limits) == {512}
-    assert concurrency._run_limit is None
-
-
 def test_the_default_model_is_one_that_batches():
     """Batching applies to Anthropic models only, and the default is one."""
     assert llm._needs_explicit_marker(DEFAULT_MODEL)
@@ -501,16 +486,6 @@ def test_an_embedding_in_a_batched_run_is_sent_directly_and_says_nothing_of_batc
     assert provider.batches == []
 
 
-class _ReviewClient(ModelClient):
-    """A client whose `calls_in_flight` is what the test says."""
-
-    limit: int | None = None
-
-    @property
-    def calls_in_flight(self) -> int | None:
-        return self.limit
-
-
 def _review_arguments(tmp_path) -> dict:
     repo, base, head = _repo(tmp_path)
     return {
@@ -519,49 +494,6 @@ def _review_arguments(tmp_path) -> dict:
         "repo": repo,
         "reviewed_revision": head,
     }
-
-
-def _watching(client: ModelClient, limits: list) -> None:
-    answer = client._completion_fn
-
-    def watching(**kwargs):
-        limits.append(concurrency._run_limit)
-        return answer(**kwargs)
-
-    client._completion_fn = watching
-
-
-@pytest.mark.parametrize("positional", [True, False])
-def test_a_review_finds_its_client_however_it_was_passed(tmp_path, positional):
-    limits: list = []
-    client = client_dispatching(_JUDGMENTS)
-    client.__class__ = _ReviewClient
-    client.limit = 512
-    _watching(client, limits)
-    arguments = _review_arguments(tmp_path)
-
-    if positional:
-        run_review(
-            arguments["task_text"],
-            arguments["change_set"],
-            arguments["repo"],
-            client,
-            arguments["reviewed_revision"],
-        )
-    else:
-        run_review(client=client, **arguments)
-
-    assert limits and set(limits) == {512}
-
-
-def test_a_review_whose_client_names_no_limit_runs_at_the_default(tmp_path):
-    limits: list = []
-    client = client_dispatching(_JUDGMENTS)
-    _watching(client, limits)
-
-    run_review(client=client, **_review_arguments(tmp_path))
-
-    assert limits and set(limits) == {None}
 
 
 def _answering_as_the_pipeline_double(body: dict) -> str:
@@ -601,3 +533,113 @@ def test_two_recorded_reviews_are_byte_identical_whichever_way_their_calls_were_
     assert one == two
     # The first run's calls went the way it was configured to send them.
     assert bool(provider.batches) is first and bool(provider.direct) is not first
+
+
+def test_clients_built_from_one_configuration_share_one_batch(tmp_path, provider):
+    """A script that builds several clients from one run's configuration still
+    sends that run's waiting calls as one batch."""
+    config = RunConfig(mode=Mode.RECORD, transcript_root=tmp_path, batch=True)
+    clients = [config.build_client(), config.build_client()]
+    questions = [
+        (clients[n % 2], [{"role": "user", "content": f"Is obligation {n} supported?"}])
+        for n in range(10)
+    ]
+
+    map_calls(
+        questions,
+        lambda item: item[0].complete(item[1], Verdict),
+        max_in_flight=BATCH_CALLS_IN_FLIGHT,
+    )
+
+    assert [len(batch["requests"]) for batch in provider.batches] == [10]
+
+
+@pytest.mark.parametrize("batch", [True, False])
+def test_the_instability_experiments_own_client_batches_when_asked(monkeypatch, tmp_path, batch):
+    """The path a script takes when it supplies no client of its own."""
+    seen: dict = {}
+
+    def fake_classify_case(_case, client, *_args, **_kwargs):
+        seen["client"] = client
+        raise _Stop
+
+    monkeypatch.setattr(instability, "classify_case", fake_classify_case)
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+
+    with pytest.raises(_Stop):
+        instability.run_once(
+            case, instability.RunKey(model=DEFAULT_MODEL, seed=None, index=0), batch=batch
+        )
+
+    assert seen["client"].calls_in_flight == (BATCH_CALLS_IN_FLIGHT if batch else None)
+
+
+# Calls whose limit is about something other than the model provider, and so
+# deliberately not the client's: the mutation runner's is sized for CPUs, and
+# Jev is not a Claude model, so its calls are never batched.
+_OWN_LIMITS = {
+    ("mutation/runner.py", "_attempt("),
+    ("defects/pair_mapping.py", "ask_jev"),
+}
+
+
+def _map_calls_sites() -> list[tuple[str, str, ast.Call]]:
+    root = Path(llm.__file__).resolve().parent
+    sites = []
+    for path in sorted(root.rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "map_calls"
+            ):
+                sites.append((path.relative_to(root).as_posix(), ast.unparse(node), node))
+    return sites
+
+
+def test_every_stage_runs_as_many_calls_at_once_as_its_client_asks():
+    """The wiring. A stage that drops its client's limit sends a batching run's
+    calls out eight to a batch, each batch waiting minutes, and no unit test of
+    `map_calls` or the client would notice."""
+    sites = _map_calls_sites()
+    assert len(sites) >= 8, "the scan found too few call sites to be looking in the right place"
+
+    missing = []
+    for path, source, node in sites:
+        if any(path == own and name in source for own, name in _OWN_LIMITS):
+            continue
+        limits = [k for k in node.keywords if k.arg == "max_in_flight"]
+        if not limits or not ast.unparse(limits[0].value).endswith(".calls_in_flight"):
+            missing.append(f"{path}: {source[:80]}")
+    assert missing == []
+
+
+def test_a_batching_client_decomposes_more_than_the_default_at_once(tmp_path):
+    """The same claim, observed: a task of twenty requirements is asked about
+    twenty at a time by a client that batches, and eight at a time otherwise."""
+    task = "# Task\nDo things.\n\n## Constraints\n" + "".join(
+        f"- The tool does thing {n}.\n" for n in range(20)
+    )
+
+    def peak_for(limit: int | None) -> int:
+        client = client_dispatching({})
+        client.__class__ = type("_Limited", (ModelClient,), {"calls_in_flight": limit})
+        answer = client._completion_fn
+        in_flight, peak, lock = [0], [0], threading.Lock()
+
+        def watched(**kwargs):
+            with lock:
+                in_flight[0] += 1
+                peak[0] = max(peak[0], in_flight[0])
+            time.sleep(0.05)
+            with lock:
+                in_flight[0] -= 1
+            return answer(**kwargs)
+
+        client._completion_fn = watched
+        decompose(parse_task_file(task), client)
+        return peak[0]
+
+    assert peak_for(None) <= DEFAULT_MAX_IN_FLIGHT
+    assert peak_for(BATCH_CALLS_IN_FLIGHT) > DEFAULT_MAX_IN_FLIGHT

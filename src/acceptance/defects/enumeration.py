@@ -373,6 +373,7 @@ def enumerate_defects(
     answers = map_calls(
         to_ask,
         lambda item: _ask_about(item[1], visible, label_to_ref, item[2], client, item[3]),
+        max_in_flight=client.calls_in_flight,
     )
     for (slot, _, _, _), (defect_set, scanned) in zip(to_ask, answers):
         # Recorded here rather than inside the call, so the log reads in
