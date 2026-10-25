@@ -7635,7 +7635,7 @@ the record.
   > the offered region, in the same file, states the expected behaviour — either
   > the judge sees enough of the file to know, or a claim made from a partial
   > view is labelled as such rather than as a finding.
-- **Status:** open
+- **Status:** filed 2026-10-25 as #424, a sub-issue of #183.
 
 ### [2026-10-24] Decision: add the `anthropic` SDK to send Message Batches
 - **Kind:** decision
