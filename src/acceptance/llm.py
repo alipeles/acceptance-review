@@ -11,6 +11,14 @@ A thin layer between the checker's judgments and whatever model produces them:
 - **Replay-first.** Every prompt/response is recorded to a transcript store
   keyed by request content. In `REPLAY` mode no live call is made at all — a
   missing transcript is an error, not a silent fallback to the network.
+- **Reusable openings marked per model.** On Anthropic models the client marks
+  where a request's reusable opening ends (`mark_reusable_opening`), when the
+  opening is at least that model's documented minimum. Anthropic ignores a
+  breakpoint below the minimum and caches nothing; it does not reject one.
+- **Optionally batched.** A client given a `MessageBatcher` sends its live
+  Anthropic calls through the Message Batches API at half price (#414; see
+  `llm_batch`). The request key is the same either way, so a batched recording
+  replays like any other; the recording notes `sent_via: "batch"`.
 
 Transcripts deliberately record no wall-clock time and no run identifiers, so
 re-running the same input reproduces byte-identical state (M0.5's acceptance
@@ -35,6 +43,12 @@ from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from acceptance.llm_batch import (
+    BATCH_CALLS_IN_FLIGHT,
+    BATCH_PRICE_FACTOR,
+    SENT_VIA_BATCH,
+    MessageBatcher,
+)
 from acceptance.request_blocks import reusable_opening
 from acceptance.serialization import canonical_json
 
@@ -191,15 +205,37 @@ def _default_completion_fn(**kwargs: Any) -> Any:
     return litellm.completion(drop_params=True, **kwargs)
 
 
-#: The shortest opening each provider family will reuse, in tokens. Below it a
-#: marker buys nothing, and Anthropic rejects a breakpoint under its minimum
-#: outright rather than ignoring it. Values are per model family and change with
-#: the provider's terms, so this is a table to be re-checked, not a constant.
-#: Read from the providers' documentation on 2026-08-20.
+#: The shortest opening each Anthropic model will reuse, in tokens, keyed by the
+#: model name with its provider prefix and `claude-` removed. Below the minimum a
+#: marker buys nothing: Anthropic ignores the breakpoint and caches nothing,
+#: with no error. Values are per model and change with the provider's terms, and
+#: they do not fall monotonically across generations, so this is a table to be
+#: re-checked, not a constant. Read from Anthropic's documentation on 2026-10-24.
+#: The longest key the model name starts with wins, so `sonnet-5-5` is not read
+#: as `sonnet-5`, and a dated snapshot matches its family.
 _MIN_REUSABLE_OPENING_TOKENS = {
-    "anthropic": 1024,
-    "anthropic-haiku": 2048,
+    "opus-5-5": 512,
+    "opus-5": 512,
+    "sonnet-5-5": 512,
+    "haiku-5-5": 512,
+    "fable": 512,
+    "mythos": 512,
+    "opus-4-8": 1024,
+    "sonnet-5": 1024,
+    "sonnet-4": 1024,
+    "opus-4-1": 1024,
+    "opus-4": 1024,
+    "opus-4-7": 2048,
+    "haiku-3-5": 2048,
+    "opus-4-6": 4096,
+    "opus-4-5": 4096,
+    "haiku-4-5": 4096,
 }
+
+#: For a model the table does not name. The lowest documented minimum, because
+#: a breakpoint under the real one is ignored at no cost, while one left off
+#: an opening that would have qualified loses the saving.
+_DEFAULT_MIN_REUSABLE_OPENING_TOKENS = 512
 
 
 def _needs_explicit_marker(model: str) -> bool:
@@ -215,9 +251,16 @@ def _needs_explicit_marker(model: str) -> bool:
 
 
 def _minimum_reusable_opening(model: str) -> int:
-    if "haiku" in model.lower():
-        return _MIN_REUSABLE_OPENING_TOKENS["anthropic-haiku"]
-    return _MIN_REUSABLE_OPENING_TOKENS["anthropic"]
+    # The family and version follow `claude-` however the model is routed:
+    # `anthropic/claude-…`, Bedrock's `…anthropic.claude-…`, Vertex's
+    # `vertex_ai/claude-…`. Reading from there keeps the table independent of
+    # the route, so a model reached another way gets its own minimum.
+    name = model.rsplit("/", 1)[-1].lower()
+    name = name.split("claude-", 1)[1] if "claude-" in name else name
+    matches = [key for key in _MIN_REUSABLE_OPENING_TOKENS if name.startswith(key)]
+    if not matches:
+        return _DEFAULT_MIN_REUSABLE_OPENING_TOKENS
+    return _MIN_REUSABLE_OPENING_TOKENS[max(matches, key=len)]
 
 
 def mark_reusable_opening(messages: list[dict], model: str) -> list[dict]:
@@ -577,8 +620,13 @@ class ModelClient:
         stage_models: Mapping[str, str] | None = None,
         stage_reasoning: Mapping[str, ReasoningEffort] | None = None,
         key_check: Callable[[str], list[str]] | None = None,
+        batcher: MessageBatcher | None = None,
     ) -> None:
         self.model = model
+        # Live Anthropic completions go through the Message Batches API when
+        # set (#414). Not a determinism control: it changes how a request is
+        # sent, never what it says, so it reaches no request key.
+        self._batcher = batcher
         # Stages that name their own model (#317). A stage absent from this map
         # runs on `model`, which is what almost every stage does; the map exists
         # because a judgment can genuinely need a different judge. #317's summary
@@ -645,6 +693,15 @@ class ModelClient:
         # One entry per completed call, completion or embedding, as
         # {stage, key, served_from, usage} — see `observed_calls` (#264).
         self._observed_calls: list[dict[str, Any]] = []
+
+    @property
+    def calls_in_flight(self) -> int | None:
+        """How many calls a stage should have in flight at once, if not the default.
+
+        Batching needs many: a call waits minutes for its batch, so calls held
+        to the usual eight would go out as one small batch after another.
+        """
+        return BATCH_CALLS_IN_FLIGHT if self._batcher is not None else None
 
     def model_for(self, stage: str | None) -> str:
         """The model this stage runs on: its own if it names one, else the run's."""
@@ -1255,6 +1312,18 @@ class ModelClient:
                 "to a model that accepts one."
             )
 
+        # Only an Anthropic model can be batched here, and only through
+        # LiteLLM's HTTP client, which is what the batcher replaces. A stage on
+        # another provider is sent directly even in a batched run. So is a call
+        # through an injected completion function: it never reaches LiteLLM's
+        # HTTP client, and a recording saying it was batched would be false.
+        batched = (
+            self._batcher is not None
+            and self._completion_fn is _default_completion_fn
+            and _needs_explicit_marker(request["model"])
+        )
+        transport = {"client": self._batcher.transport()} if batched else {}
+
         response = self._call_provider(
             self._completion_fn,
             "completion",
@@ -1284,6 +1353,7 @@ class ModelClient:
                 },
             },
             **requested,
+            **transport,
         )
 
         record = {
@@ -1300,6 +1370,13 @@ class ModelClient:
             # which have no provider to drop anything.
             "controls_applied": applied,
         }
+        if batched:
+            # Only on a batched call, so a direct recording keeps exactly the
+            # fields it always had. LiteLLM priced the reply at the direct
+            # rate, not knowing it was batched.
+            record["sent_via"] = SENT_VIA_BATCH
+            if "cost_usd" in record["usage"]:
+                record["usage"]["cost_usd"] *= BATCH_PRICE_FACTOR
         return record
 
     @staticmethod

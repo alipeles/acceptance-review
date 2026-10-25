@@ -120,6 +120,12 @@ class BlockKind(Enum):
     #: Shared by every call *that stage* makes and by no other stage's.
     INSTRUCTIONS = 30
 
+    #: The numbered source of the regions a mutation descriptor call is about
+    #: (#414). Every defect implicating the same regions carries the same text,
+    #: so it is shared by fewer calls than the stage's instructions and by more
+    #: than one call's subject.
+    REGIONS = 35
+
     #: What this one call is about: its batch, its criteria, the single change
     #: being judged. Shared with nothing, so it goes last.
     SUBJECT = 40

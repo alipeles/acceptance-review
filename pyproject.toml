@@ -27,6 +27,11 @@ license = { text = "MIT" }
 dependencies = [
     "pydantic>=2",
     "litellm>=1.106,<1.107",
+    # Creates and reads Message Batches for a run with `RunConfig.batch` on
+    # (#414). LiteLLM 1.106 can retrieve an Anthropic batch but not create one.
+    # Imported only when a batch is sent. Bounded at the next major release,
+    # which is where the SDK's breaking changes land.
+    "anthropic>=2.3,<3",
     "markdown-it-py>=3",
     "pathspec>=0.12",
     # Loads the working directory's `.env` (#398). LiteLLM already depends on

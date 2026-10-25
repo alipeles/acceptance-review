@@ -407,7 +407,9 @@ def _decide_all(
             label=f"{pair.defect.id}/{pair.test.test_id}",
         ).fails
 
-    answered = dict(zip(model_order, map_calls(model_order, ask_model)))
+    answered = dict(
+        zip(model_order, map_calls(model_order, ask_model, max_in_flight=client.calls_in_flight))
+    )
 
     decisions: list[_Decision] = []
     for index, (pair, _, _) in enumerate(items):

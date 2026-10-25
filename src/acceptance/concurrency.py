@@ -70,7 +70,7 @@ DEFAULT_MAX_IN_FLIGHT = 8
 def map_calls(
     items: Sequence[T],
     call: Callable[[T], R],
-    max_in_flight: int = DEFAULT_MAX_IN_FLIGHT,
+    max_in_flight: int | None = None,
 ) -> list[R]:
     """Run `call` over `items` concurrently, in input order.
 
@@ -80,7 +80,15 @@ def map_calls(
     One item, or a limit of one, runs inline. That is not only an optimisation:
     it keeps the single-call path free of a thread, so a stack trace from a
     stage that issues one call reads the way it always did.
+
+    `None` means `DEFAULT_MAX_IN_FLIGHT`. A stage passes its client's
+    `calls_in_flight`, which is `None` unless the client batches (#414): a
+    batched call waits minutes for its batch, and a batch holds only the calls
+    in flight when it went out, so at eight a stage would go out as one small
+    batch after another.
     """
+    if max_in_flight is None:
+        max_in_flight = DEFAULT_MAX_IN_FLIGHT
     if max_in_flight < 1:
         raise ValueError(f"max_in_flight must be at least 1, got {max_in_flight}")
     ordered = list(items)

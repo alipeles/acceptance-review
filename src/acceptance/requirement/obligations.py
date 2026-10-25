@@ -1118,6 +1118,7 @@ def decompose(
             plan.revised,
             batch.request_partition(),
         ),
+        max_in_flight=client.calls_in_flight,
     )
 
     for batch, (result, scanned) in zip(batches, answers):
@@ -1177,7 +1178,7 @@ def decompose(
                 {"size": ONE_REQUIREMENT_PER_CALL},
             )
 
-        span_answers = map_calls(uncovered, _ask_span)
+        span_answers = map_calls(uncovered, _ask_span, max_in_flight=client.calls_in_flight)
         for (span, decision), (authored, scanned) in zip(uncovered, span_answers):
             calls_issued += 1
             if unusable_answers is not None:

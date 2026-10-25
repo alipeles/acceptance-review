@@ -92,7 +92,7 @@ def _candidate_tests(**kwargs) -> list[str]:
     those.
     """
     for message in kwargs.get("messages") or []:
-        content = message.get("content", "")
+        content = message_text(message)
         if "## Candidate tests" not in content:
             continue
         tail = content.split("## Candidate tests", 1)[1]
@@ -114,7 +114,7 @@ def _pairs_asked_about(**kwargs) -> list[str]:
     """
     found: list[str] = []
     for message in kwargs.get("messages") or []:
-        for line in message.get("content", "").splitlines():
+        for line in message_text(message).splitlines():
             stripped = line.strip()
             if stripped.startswith("[") and stripped.endswith("]"):
                 pair_id = stripped[1:-1]
@@ -136,7 +136,7 @@ def _tests_offered(**kwargs) -> list[str]:
     heading = "### test "
     found: list[str] = []
     for message in kwargs.get("messages") or []:
-        for line in message.get("content", "").splitlines():
+        for line in message_text(message).splitlines():
             if line.startswith(heading):
                 test_id = line[len(heading) :].strip()
                 if test_id and test_id not in found:
@@ -267,7 +267,7 @@ def _registry_from_prompt(**kwargs) -> list[dict]:
     `_unique` would rename the copies.
     """
     for message in reversed(kwargs.get("messages") or []):
-        lines = message.get("content", "").splitlines()
+        lines = message_text(message).splitlines()
         found: list[dict] = []
         for line in lines:
             match = _REGISTRY_LINE.match(line)
@@ -449,7 +449,7 @@ def _summary_text(**kwargs) -> str:
     summary last, under a `The summary:` line.
     """
     for message in reversed(kwargs.get("messages") or []):
-        content = message.get("content", "")
+        content = message_text(message)
         if "The summary:" in content:
             return content.split("The summary:", 1)[1].strip()
     return ""

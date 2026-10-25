@@ -22,6 +22,9 @@ SOURCE = "def amortize(principal, months):\n    payment = principal / months\n  
 class FakeClient:
     """Returns a queued answer per call and records what it was asked."""
 
+    # As a client that does not batch: the stage runs at the default limit.
+    calls_in_flight = None
+
     def __init__(self, *answers):
         self._answers = list(answers)
         self.calls = []
@@ -239,6 +242,39 @@ class TestWhatTheCallIsOffered:
         build_descriptors([_defect()], {"d1": [_region()]}, {"loan.py": SOURCE}, client)
         subject = "\n".join(message["content"] for message in client.calls[0]["messages"])
         assert "EXPECTED:" not in subject.split("## The defect", 1)[1]
+
+    def test_defects_naming_the_same_region_share_its_source_in_the_reusable_opening(self):
+        """#414. The region's numbered source is in the opening, which is the
+        same bytes for every defect naming that region, and not in the part of
+        the call each defect carries alone."""
+        from acceptance.request_blocks import reusable_opening
+
+        client = FakeClient(_edit(), _edit())
+        second = _defect("d2").model_copy(update={"description": "months is off by one"})
+        build_descriptors(
+            [_defect(), second],
+            {"d1": [_region()], "d2": [_region()]},
+            {"loan.py": SOURCE},
+            client,
+        )
+        first_call, second_call = (call["messages"] for call in client.calls)
+
+        assert reusable_opening(first_call) == reusable_opening(second_call)
+        opening = "\n".join(message["content"] for message in reusable_opening(first_call))
+        assert "2 |     payment = principal / months" in opening
+        assert "the payment ignores interest" not in opening
+        assert "2 |     payment" not in first_call[-1]["content"]
+        assert "the payment ignores interest" in first_call[-1]["content"]
+
+    def test_the_coding_agent_still_gets_the_defect_and_regions_as_one_text(self):
+        """The agent stage reuses `_subject`, and its prompt is not changed by
+        moving this stage's regions into the opening."""
+        from acceptance.mutation.descriptor import _subject
+
+        text = _subject(_defect(), [_region()], {"loan.py": SOURCE})
+
+        assert text.index("## The defect") < text.index("## Regions it implicates")
+        assert "2 |     payment = principal / months" in text
 
     def test_the_stage_is_named_for_attribution(self):
         client = FakeClient(_edit())

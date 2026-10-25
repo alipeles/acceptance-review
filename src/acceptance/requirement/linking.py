@@ -543,7 +543,7 @@ def link_duplicate_obligations(
     # Batches are issued CONCURRENTLY and consumed in batch order. Each batch
     # judges its own pairs and reads no other batch's answer.
     batches = partition(askable, pair_batch_size, key=lambda pair: pair[0])
-    answers = map_calls(batches, _ask)
+    answers = map_calls(batches, _ask, max_in_flight=client.calls_in_flight)
 
     fresh_decisions: list[MergeDecision] = []
     for batch, (result, scanned) in zip(batches, answers):

@@ -19,7 +19,11 @@ import time
 
 import pytest
 
-from acceptance.concurrency import DEFAULT_MAX_IN_FLIGHT, flatten, map_calls
+from acceptance.concurrency import (
+    DEFAULT_MAX_IN_FLIGHT,
+    flatten,
+    map_calls,
+)
 
 
 def test_results_come_back_in_input_order_not_completion_order():
@@ -122,6 +126,34 @@ def test_a_limit_below_one_is_refused():
 
 def test_flatten_preserves_order_across_batches():
     assert flatten([[1, 2], [], [3], [4, 5]]) == [1, 2, 3, 4, 5]
+
+
+def _peak(items: int, **kwargs) -> int:
+    in_flight = 0
+    peak = 0
+    lock = threading.Lock()
+
+    def watched(_: int) -> None:
+        nonlocal in_flight, peak
+        with lock:
+            in_flight += 1
+            peak = max(peak, in_flight)
+        time.sleep(0.05)
+        with lock:
+            in_flight -= 1
+
+    map_calls(list(range(items)), watched, **kwargs)
+    return peak
+
+
+def test_no_limit_is_the_default_limit():
+    """What a stage gets from a client that does not batch."""
+    assert _peak(20, max_in_flight=None) <= DEFAULT_MAX_IN_FLIGHT
+
+
+def test_a_limit_above_the_default_runs_more_at_once():
+    """What a stage gets from a client that batches (#414)."""
+    assert _peak(20, max_in_flight=20) > DEFAULT_MAX_IN_FLIGHT
 
 
 def test_the_default_limit_is_more_than_one():

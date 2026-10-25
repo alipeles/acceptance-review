@@ -62,6 +62,7 @@ from acceptance.benchmark.coverage import classify_case
 from acceptance.benchmark.scoring import MetricStats, metric_stats
 from acceptance.config import DEFAULT_MODEL, Mode, RunConfig
 from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.llm_batch import MessageBatcher
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import Review
 
@@ -723,9 +724,14 @@ def run_once(
     run: RunKey,
     transcript_root: Path | None = None,
     client_factory: Callable[[RunConfig], ObservingClient] | None = None,
+    batch: bool = False,
 ) -> RunSnapshot:
-    """One independent draw over `case`, snapshotted."""
-    config = RunConfig(model=run.model, mode=Mode.RECORD, seed=run.seed)
+    """One independent draw over `case`, snapshotted.
+
+    `batch` sends the draw's live calls through the Message Batches API, at
+    half the price (#414); see `RunConfig.batch`.
+    """
+    config = RunConfig(model=run.model, mode=Mode.RECORD, seed=run.seed, batch=batch)
     if transcript_root is not None:
         config = config.model_copy(update={"transcript_root": transcript_root})
 
@@ -816,6 +822,7 @@ def measure_instability(
     comparison_client: ModelClient | None = None,
     transcript_root: Path | None = None,
     client_factory: Callable[[RunConfig], ObservingClient] | None = None,
+    batch: bool = False,
 ) -> InstabilityReport:
     """Measure how far this reviewer's judgements move over one input.
 
@@ -836,6 +843,8 @@ def measure_instability(
         model=models[0],
         mode=Mode.RECORD,
         store=RunConfig(model=models[0], mode=Mode.RECORD).build_client().store,
+        # Its comparisons batch when the runs do (#414).
+        batcher=MessageBatcher() if batch else None,
     )
 
     per_model: list[ModelInstability] = []
@@ -847,6 +856,7 @@ def measure_instability(
                 RunKey(model=model, seed=seed, index=index),
                 transcript_root=transcript_root,
                 client_factory=client_factory,
+                batch=batch,
             )
             for index, seed in enumerate(seeds)
         ]
@@ -862,6 +872,7 @@ def measure_instability(
             RunKey(model=models[0], seed=seeds[0], index=0, perturbed=True),
             transcript_root=transcript_root,
             client_factory=client_factory,
+            batch=batch,
         )
         perturbation_result = _perturbation_result(
             perturbation.name, first_baseline, perturbed, comparison_client

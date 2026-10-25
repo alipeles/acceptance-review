@@ -1,31 +1,28 @@
 # Task
 
-The defect-to-test pair judgement, "if the delivered code had this defect,
-would this test fail?", is decided by Jev first, and by Claude Sonnet 5.5 only
-for the pairs Jev is unsure of. This replaces today's judge, which asks the
-default model about up to 40 pairs in one call.
+The shortest opening the client marks as reusable follows Anthropic's current
+documented minimum for each model: 512 tokens for Claude Sonnet 5.5, Opus 5.5 and
+Haiku 5.5. The module documentation says that Anthropic ignores a breakpoint
+below the minimum, rather than that it rejects one.
 
-Jev is asked about one pair at a time, with targeted context: the function
-holding the defect with the defect's lines marked, the test with its file's
-imports and the helpers it uses, and the project code the test calls.
-`docs/experiments/jev/m52/targeted_prompt.py` is the experiment's version of
-that context. Jev's probability that the test fails decides the pair on its own
-at 0.34 or more (the test fails) and at 0.24 or less (the test survives).
+In the mutation descriptor stage, a region's numbered source sits in the reusable
+opening, so calls for defects in the same region share it instead of each
+repeating it.
 
-A pair whose probability falls between those two goes to Sonnet, one pair per
-call, with the requirement text, the original code and the defect's
-description. Sonnet answers yes or no in a schema-constrained response; no
-token probability is read. When Sonnet gives no usable answer, Jev's
-probability decides the pair at 0.5.
+A run can opt in to sending its calls to Claude models through the Message
+Batches API. The setting belongs to the run's configuration and is off by
+default, so `acceptance check` and `acceptance decompose` keep calling the model
+directly.
+Benchmark scoring and experiment scripts can switch it on.
 
-Jev is a provider in `llm.py`, recorded and replayed like any other. Its
-probability is recorded with its call, so replaying a recorded review
-reproduces every decision with no live call, and two recorded runs over the
-same input produce byte-identical review state.
-
-A verdict Jev decides keeps the static evidence tier and records that it
-carries no reasoning.
+How a call was sent does not change what was asked: a batched request is recorded
+under the same key as the same request sent directly, and its recording replays
+with no live call. The recording notes that it was sent through a batch. Two
+recorded runs over the same input still produce byte-identical review state
+whichever way their calls were sent.
 
 ## Scope exclusions
-- Re-fitting the 0.34 and 0.24 cut-offs.
-- Changing how defects are enumerated, or which pairs reach the judge.
+- Changing how live review runs split their requests into partitions.
+- Reporting spend per run.
+- Re-measuring benchmark figures on Claude.
+- Changing any prompt or response schema other than the mutation descriptor's.

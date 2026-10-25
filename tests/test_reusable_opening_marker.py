@@ -8,9 +8,10 @@ no parameter at all.
 
 Two constraints of the mandate live here. The client marks it and no
 request-building code does; and the client does not mark an opening shorter than
-the shortest one the provider in use can reuse — below that minimum Anthropic
-rejects the breakpoint outright, so an over-eager marker is an error rather than
-a wasted hint.
+the shortest one the model in use can reuse. Below that minimum Anthropic
+ignores the breakpoint, with no error, so a marker there is a wasted hint. The
+minimum is per model and is not monotonic across generations, which is why it
+is a table (#414).
 
 A third property is load-bearing and easy to lose: the marker must not reach the
 hashed request. It is provider-specific, so hashing it would make the same review
@@ -20,7 +21,9 @@ the minimum changed.
 
 from __future__ import annotations
 
-from acceptance.llm import mark_reusable_opening
+import pytest
+
+from acceptance.llm import _minimum_reusable_opening, mark_reusable_opening
 from acceptance.request_blocks import Block, BlockKind, assemble
 
 _LONG = "sentence about the diff. " * 800  # comfortably over any provider minimum
@@ -65,22 +68,60 @@ def test_a_provider_that_needs_no_breakpoint_is_sent_the_request_untouched():
     assert mark_reusable_opening(messages, "openai/gpt-5.4-mini") == messages
 
 
-def test_an_opening_below_the_providers_minimum_is_left_unmarked():
-    """The mandate's `constraint-06`. Anthropic refuses a breakpoint under 1,024
-    tokens, so marking a short opening turns a missed saving into a failed
-    call."""
-    marked = mark_reusable_opening(_request(_SHORT), "anthropic/claude-sonnet-5")
+def test_an_opening_below_the_models_minimum_is_left_unmarked():
+    """The mandate's `constraint-06`. Anthropic ignores a breakpoint under the
+    model's minimum, so a marker there buys nothing."""
+    marked = mark_reusable_opening(_request(_SHORT), "anthropic/claude-sonnet-5-5")
 
     assert _markers(marked) == []
 
 
-def test_the_haiku_minimum_is_higher_than_the_sonnet_one():
-    """Not a detail: an opening between the two minimums is markable on one model
-    and not on the other, and the table is what keeps that straight."""
-    between = "word " * 1500  # over 1,024 tokens, under 2,048
+@pytest.mark.parametrize(
+    "model",
+    ["anthropic/claude-sonnet-5-5", "anthropic/claude-opus-5-5", "anthropic/claude-haiku-5-5"],
+)
+def test_the_current_models_mark_an_opening_over_512_tokens(model):
+    """Anthropic's documented minimum for Claude Sonnet 5.5, Opus 5.5 and Haiku
+    5.5 is 512 tokens (#414). Under the old flat 1,024, every opening between
+    the two went unmarked and never cached."""
+    between = "word " * 700  # about 700 tokens: over 512, under 1,024
 
-    assert _markers(mark_reusable_opening(_request(between), "anthropic/claude-sonnet-5"))
-    assert not _markers(mark_reusable_opening(_request(between), "anthropic/claude-haiku-4-5"))
+    assert _markers(mark_reusable_opening(_request(between), model))
+
+
+@pytest.mark.parametrize(
+    ("model", "minimum"),
+    [
+        ("anthropic/claude-sonnet-5-5", 512),
+        ("anthropic/claude-opus-5-5", 512),
+        ("anthropic/claude-haiku-5-5", 512),
+        ("anthropic/claude-sonnet-5", 1024),
+        ("anthropic/claude-opus-4-8", 1024),
+        ("anthropic/claude-opus-4-7", 2048),
+        ("anthropic/claude-haiku-4-5", 4096),
+        ("anthropic/claude-haiku-4-5-20251001", 4096),
+        # The same models reached by other routes keep their own minimums.
+        ("anthropic.claude-sonnet-5-5", 512),
+        ("bedrock/anthropic.claude-opus-4-7", 2048),
+        ("bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0", 4096),
+        ("vertex_ai/claude-haiku-5-5", 512),
+        ("ANTHROPIC/CLAUDE-OPUS-4-7", 2048),
+    ],
+)
+def test_each_model_gets_its_own_minimum(model, minimum):
+    """The longest matching name wins, so `sonnet-5-5` is not read as `sonnet-5`
+    and a dated snapshot gets its family's minimum. The minimum does not fall
+    monotonically: Haiku 4.5's is eight times Haiku 5.5's."""
+    assert _minimum_reusable_opening(model) == minimum
+
+
+def test_an_opening_between_two_models_minimums_is_marked_on_one_only():
+    """Not a detail: an opening between two minimums is markable on one model
+    and not on the other, and the table is what keeps that straight."""
+    between = "word " * 700  # over 512 tokens, under 1,024
+
+    assert _markers(mark_reusable_opening(_request(between), "anthropic/claude-sonnet-5-5"))
+    assert not _markers(mark_reusable_opening(_request(between), "anthropic/claude-sonnet-5"))
 
 
 def test_marking_does_not_mutate_the_messages_it_was_given():
