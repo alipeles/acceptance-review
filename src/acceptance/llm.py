@@ -15,6 +15,10 @@ A thin layer between the checker's judgments and whatever model produces them:
   where a request's reusable opening ends (`mark_reusable_opening`), when the
   opening is at least that model's documented minimum. Anthropic ignores a
   breakpoint below the minimum and caches nothing; it does not reject one.
+- **Optionally batched.** A client given a `MessageBatcher` sends its live
+  Anthropic calls through the Message Batches API at half price (#414; see
+  `llm_batch`). The request key is the same either way, so a batched recording
+  replays like any other; the recording notes `sent_via: "batch"`.
 
 Transcripts deliberately record no wall-clock time and no run identifiers, so
 re-running the same input reproduces byte-identical state (M0.5's acceptance
@@ -39,6 +43,12 @@ from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from acceptance.llm_batch import (
+    BATCH_CALLS_IN_FLIGHT,
+    BATCH_PRICE_FACTOR,
+    SENT_VIA_BATCH,
+    MessageBatcher,
+)
 from acceptance.request_blocks import reusable_opening
 from acceptance.serialization import canonical_json
 
@@ -605,8 +615,13 @@ class ModelClient:
         stage_models: Mapping[str, str] | None = None,
         stage_reasoning: Mapping[str, ReasoningEffort] | None = None,
         key_check: Callable[[str], list[str]] | None = None,
+        batcher: MessageBatcher | None = None,
     ) -> None:
         self.model = model
+        # Live Anthropic completions go through the Message Batches API when
+        # set (#414). Not a determinism control: it changes how a request is
+        # sent, never what it says, so it reaches no request key.
+        self._batcher = batcher
         # Stages that name their own model (#317). A stage absent from this map
         # runs on `model`, which is what almost every stage does; the map exists
         # because a judgment can genuinely need a different judge. #317's summary
@@ -673,6 +688,15 @@ class ModelClient:
         # One entry per completed call, completion or embedding, as
         # {stage, key, served_from, usage} — see `observed_calls` (#264).
         self._observed_calls: list[dict[str, Any]] = []
+
+    @property
+    def calls_in_flight(self) -> int | None:
+        """How many calls a stage should have in flight at once, if not the default.
+
+        Batching needs many: a call waits minutes for its batch, so calls held
+        to the usual eight would go out as one small batch after another.
+        """
+        return BATCH_CALLS_IN_FLIGHT if self._batcher is not None else None
 
     def model_for(self, stage: str | None) -> str:
         """The model this stage runs on: its own if it names one, else the run's."""
@@ -1283,6 +1307,12 @@ class ModelClient:
                 "to a model that accepts one."
             )
 
+        # Only an Anthropic model can be batched here, and only through
+        # LiteLLM's HTTP client, which is what the batcher replaces. A stage on
+        # another provider is sent directly even in a batched run.
+        batched = self._batcher is not None and _needs_explicit_marker(request["model"])
+        transport = {"client": self._batcher.transport()} if batched else {}
+
         response = self._call_provider(
             self._completion_fn,
             "completion",
@@ -1312,6 +1342,7 @@ class ModelClient:
                 },
             },
             **requested,
+            **transport,
         )
 
         record = {
@@ -1328,6 +1359,13 @@ class ModelClient:
             # which have no provider to drop anything.
             "controls_applied": applied,
         }
+        if batched:
+            # Only on a batched call, so a direct recording keeps exactly the
+            # fields it always had. LiteLLM priced the reply at the direct
+            # rate, not knowing it was batched.
+            record["sent_via"] = SENT_VIA_BATCH
+            if "cost_usd" in record["usage"]:
+                record["usage"]["cost_usd"] *= BATCH_PRICE_FACTOR
         return record
 
     @staticmethod

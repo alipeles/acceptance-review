@@ -21,6 +21,7 @@ import pytest
 
 from acceptance.concurrency import (
     DEFAULT_MAX_IN_FLIGHT,
+    calls_in_flight,
     flatten,
     map_calls,
     map_calls_opening_first,
@@ -163,6 +164,40 @@ def test_a_limit_below_one_is_refused():
 
 def test_flatten_preserves_order_across_batches():
     assert flatten([[1, 2], [], [3], [4, 5]]) == [1, 2, 3, 4, 5]
+
+
+def _peak(items: int, **kwargs) -> int:
+    in_flight = 0
+    peak = 0
+    lock = threading.Lock()
+
+    def watched(_: int) -> None:
+        nonlocal in_flight, peak
+        with lock:
+            in_flight += 1
+            peak = max(peak, in_flight)
+        time.sleep(0.05)
+        with lock:
+            in_flight -= 1
+
+    map_calls(list(range(items)), watched, **kwargs)
+    return peak
+
+
+def test_a_runs_limit_applies_where_a_call_site_names_none():
+    with calls_in_flight(20):
+        assert _peak(20) > DEFAULT_MAX_IN_FLIGHT
+    assert _peak(20) <= DEFAULT_MAX_IN_FLIGHT
+
+
+def test_a_call_site_that_names_its_own_limit_keeps_it_inside_a_runs_limit():
+    with calls_in_flight(20):
+        assert _peak(20, max_in_flight=2) <= 2
+
+
+def test_no_runs_limit_leaves_the_default():
+    with calls_in_flight(None):
+        assert _peak(20) <= DEFAULT_MAX_IN_FLIGHT
 
 
 def test_the_default_limit_is_more_than_one():

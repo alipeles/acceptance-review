@@ -40,6 +40,7 @@ from acceptance.llm import (
     ReasoningEffort,
     TranscriptStore,
 )
+from acceptance.llm_batch import MessageBatcher
 from acceptance.review_state import (
     DeterminismControls,
     LinkPrefilter,
@@ -203,6 +204,13 @@ class RunConfig(BaseModel):
     # feed build_client() or provenance_for(). If we later want it recorded for
     # traceability, that is a deliberate addition to ReviewProvenance.
     scope_expansion_policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT
+    # Send live Anthropic calls through the Message Batches API, at half the
+    # price and minutes rather than seconds per call (#414). Off by default, so
+    # `acceptance check` and `decompose`, which someone is waiting on, call the
+    # model directly; benchmark scoring and experiment scripts turn it on. Not a
+    # determinism control: it changes how a request is sent, never what it
+    # says, so it reaches no request key and no provenance.
+    batch: bool = False
 
     def build_client(
         self,
@@ -222,6 +230,7 @@ class RunConfig(BaseModel):
             embedding_model=self.embedding_model,
             stage_models=self.stage_models,
             stage_reasoning=self.stage_reasoning,
+            batcher=MessageBatcher() if self.batch else None,
         )
 
 

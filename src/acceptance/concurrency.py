@@ -48,8 +48,9 @@ validates.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Hashable, Iterable, Sequence
+from collections.abc import Callable, Hashable, Iterable, Iterator, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from typing import TypeVar
 
 T = TypeVar("T")
@@ -66,11 +67,34 @@ R = TypeVar("R")
 # request: changing it changes when calls are sent, never what they say.
 DEFAULT_MAX_IN_FLIGHT = 8
 
+# The limit a call site gets when it names none, while a run says otherwise.
+# Set only by `calls_in_flight`, for the length of one review.
+_run_limit: int | None = None
+
+
+@contextmanager
+def calls_in_flight(limit: int | None) -> Iterator[None]:
+    """Within the block, stages that name no limit run `limit` calls at once.
+
+    For a run whose calls go through the Message Batches API (#414): each call
+    waits minutes for its batch, and a batch holds as many requests as were in
+    flight when it went out, so at the default of eight a stage would be sent
+    as one small batch after another. `None` leaves the default alone. A call
+    site that names its own limit keeps it, since that limit is about
+    something other than the provider.
+    """
+    global _run_limit
+    previous, _run_limit = _run_limit, (limit if limit is not None else _run_limit)
+    try:
+        yield
+    finally:
+        _run_limit = previous
+
 
 def map_calls(
     items: Sequence[T],
     call: Callable[[T], R],
-    max_in_flight: int = DEFAULT_MAX_IN_FLIGHT,
+    max_in_flight: int | None = None,
 ) -> list[R]:
     """Run `call` over `items` concurrently, in input order.
 
@@ -80,7 +104,12 @@ def map_calls(
     One item, or a limit of one, runs inline. That is not only an optimisation:
     it keeps the single-call path free of a thread, so a stack trace from a
     stage that issues one call reads the way it always did.
+
+    With no limit named, the run's limit applies (`calls_in_flight`), and
+    otherwise `DEFAULT_MAX_IN_FLIGHT`.
     """
+    if max_in_flight is None:
+        max_in_flight = _run_limit if _run_limit is not None else DEFAULT_MAX_IN_FLIGHT
     if max_in_flight < 1:
         raise ValueError(f"max_in_flight must be at least 1, got {max_in_flight}")
     ordered = list(items)
@@ -94,7 +123,7 @@ def map_calls_opening_first(
     items: Sequence[T],
     call: Callable[[T], R],
     opening: Callable[[T], Hashable],
-    max_in_flight: int = DEFAULT_MAX_IN_FLIGHT,
+    max_in_flight: int | None = None,
 ) -> list[R]:
     """`map_calls`, but each distinct opening's first call goes out before the rest.
 
