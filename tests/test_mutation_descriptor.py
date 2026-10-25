@@ -22,6 +22,9 @@ SOURCE = "def amortize(principal, months):\n    payment = principal / months\n  
 class FakeClient:
     """Returns a queued answer per call and records what it was asked."""
 
+    # As a client that does not batch: the stage runs at the default limit.
+    calls_in_flight = None
+
     def __init__(self, *answers):
         self._answers = list(answers)
         self.calls = []
