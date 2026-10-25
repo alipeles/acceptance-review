@@ -251,7 +251,12 @@ def _needs_explicit_marker(model: str) -> bool:
 
 
 def _minimum_reusable_opening(model: str) -> int:
-    name = model.split("/", 1)[-1].lower().removeprefix("claude-")
+    # The family and version follow `claude-` however the model is routed:
+    # `anthropic/claude-…`, Bedrock's `…anthropic.claude-…`, Vertex's
+    # `vertex_ai/claude-…`. Reading from there keeps the table independent of
+    # the route, so a model reached another way gets its own minimum.
+    name = model.rsplit("/", 1)[-1].lower()
+    name = name.split("claude-", 1)[1] if "claude-" in name else name
     matches = [key for key in _MIN_REUSABLE_OPENING_TOKENS if name.startswith(key)]
     if not matches:
         return _DEFAULT_MIN_REUSABLE_OPENING_TOKENS
@@ -1309,8 +1314,14 @@ class ModelClient:
 
         # Only an Anthropic model can be batched here, and only through
         # LiteLLM's HTTP client, which is what the batcher replaces. A stage on
-        # another provider is sent directly even in a batched run.
-        batched = self._batcher is not None and _needs_explicit_marker(request["model"])
+        # another provider is sent directly even in a batched run. So is a call
+        # through an injected completion function: it never reaches LiteLLM's
+        # HTTP client, and a recording saying it was batched would be false.
+        batched = (
+            self._batcher is not None
+            and self._completion_fn is _default_completion_fn
+            and _needs_explicit_marker(request["model"])
+        )
         transport = {"client": self._batcher.transport()} if batched else {}
 
         response = self._call_provider(

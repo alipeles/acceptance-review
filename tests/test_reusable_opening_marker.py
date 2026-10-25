@@ -100,6 +100,12 @@ def test_the_current_models_mark_an_opening_over_512_tokens(model):
         ("anthropic/claude-opus-4-7", 2048),
         ("anthropic/claude-haiku-4-5", 4096),
         ("anthropic/claude-haiku-4-5-20251001", 4096),
+        # The same models reached by other routes keep their own minimums.
+        ("anthropic.claude-sonnet-5-5", 512),
+        ("bedrock/anthropic.claude-opus-4-7", 2048),
+        ("bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0", 4096),
+        ("vertex_ai/claude-haiku-5-5", 512),
+        ("ANTHROPIC/CLAUDE-OPUS-4-7", 2048),
     ],
 )
 def test_each_model_gets_its_own_minimum(model, minimum):

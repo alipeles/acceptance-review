@@ -403,7 +403,8 @@ def _at_the_clients_concurrency(review: Callable[..., Review]) -> Callable[..., 
     @functools.wraps(review)
     def run(*args: Any, **kwargs: Any) -> Review:
         client = signature.bind(*args, **kwargs).arguments["client"]
-        with calls_in_flight(client.calls_in_flight):
+        # A stand-in client with no opinion runs at the default, as before.
+        with calls_in_flight(getattr(client, "calls_in_flight", None)):
             return review(*args, **kwargs)
 
     return run

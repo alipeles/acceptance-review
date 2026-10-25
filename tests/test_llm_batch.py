@@ -29,7 +29,12 @@ from acceptance.llm import LLMError, Mode, ModelClient, request_key
 from acceptance.llm_batch import BATCH_CALLS_IN_FLIGHT, MessageBatcher
 from acceptance.pipeline import run_review
 from acceptance.review_state import Component, EvidenceTier, Finding, Link, Review
-from tests.support import client_dispatching
+from tests.support import (
+    _EMPTY_BY_SCHEMA,
+    _completed,
+    client_dispatching,
+    constant_embedding_fn,
+)
 from tests.test_pipeline_request_openings import _JUDGMENTS, _TASK, _repo
 
 
@@ -54,6 +59,9 @@ class FakeProvider:
 
     def __init__(self) -> None:
         self.calls = 0
+        # Answers a native request body with the reply's text; unset, the
+        # provider answers every call as a `Verdict`.
+        self.responder = None
         self.direct: list[dict] = []
         self.direct_headers: list[dict] = []
         self.batches: list[dict] = []
@@ -66,7 +74,10 @@ class FakeProvider:
 
     def message(self, body: dict) -> dict:
         self.calls += 1
-        text = json.dumps({"supported": True, "rationale": f"answer #{self.calls}"})
+        if self.responder is not None:
+            text = self.responder(body)
+        else:
+            text = json.dumps({"supported": True, "rationale": f"answer #{self.calls}"})
         return {
             "id": f"msg_{self.calls}",
             "type": "message",
@@ -423,3 +434,170 @@ def test_the_default_model_is_one_that_batches():
     """Batching applies to Anthropic models only, and the default is one."""
     assert llm._needs_explicit_marker(DEFAULT_MODEL)
     assert DEFAULT_MAX_IN_FLIGHT < BATCH_CALLS_IN_FLIGHT
+
+
+def test_a_client_with_batching_off_sends_directly_and_creates_no_batch(tmp_path, provider):
+    """What `check` and `decompose` get: the default configuration, on the
+    default Claude model, through the real provider path."""
+    RunConfig(mode=Mode.RECORD, transcript_root=tmp_path).build_client().complete(MESSAGES, Verdict)
+
+    assert len(provider.direct) == 1
+    assert provider.batches == []
+
+
+def test_an_injected_completion_function_is_never_batched(tmp_path):
+    """It never reaches LiteLLM's HTTP client, so a recording saying it was
+    batched would be false, and handing it a transport it cannot use would
+    break it."""
+    seen: list[dict] = []
+
+    def completion_fn(**kwargs):
+        seen.append(kwargs)
+        return SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content='{"supported": true, "rationale": "ok"}')
+                )
+            ],
+            usage=SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2),
+        )
+
+    client = ModelClient(
+        model=DEFAULT_MODEL,
+        mode=Mode.RECORD,
+        store=llm.TranscriptStore(tmp_path),
+        completion_fn=completion_fn,
+        batcher=MessageBatcher(sdk_client=object()),
+    )
+    client.complete(MESSAGES, Verdict)
+
+    assert "client" not in seen[0]
+    assert "sent_via" not in _record(client)
+
+
+def test_a_batched_call_answered_on_a_second_attempt_is_recorded_as_batched(tmp_path, provider):
+    provider.outcomes = ["overloaded_error"]
+    client = _client(tmp_path, batch=True)
+
+    client.complete(MESSAGES, Verdict)
+
+    assert len(provider.batches) == 2 and provider.direct == []
+    assert _record(client)["sent_via"] == "batch"
+
+
+def test_an_embedding_in_a_batched_run_is_sent_directly_and_says_nothing_of_batches(
+    tmp_path, provider
+):
+    """The Message Batches API carries Claude completions only."""
+    client = _client(tmp_path, batch=True)
+    client._embedding_fn = constant_embedding_fn
+    client._embedding_key_check = None
+
+    client.embed(["one text"], stage="obligation linking")
+
+    records = [json.loads(path.read_text()) for path in tmp_path.glob("*.json")]
+    assert len(records) == 1
+    assert "sent_via" not in records[0]
+    assert provider.batches == []
+
+
+class _ReviewClient(ModelClient):
+    """A client whose `calls_in_flight` is what the test says."""
+
+    limit: int | None = None
+
+    @property
+    def calls_in_flight(self) -> int | None:
+        return self.limit
+
+
+def _review_arguments(tmp_path) -> dict:
+    repo, base, head = _repo(tmp_path)
+    return {
+        "task_text": _TASK,
+        "change_set": extract_change_set(repo, base, head),
+        "repo": repo,
+        "reviewed_revision": head,
+    }
+
+
+def _watching(client: ModelClient, limits: list) -> None:
+    answer = client._completion_fn
+
+    def watching(**kwargs):
+        limits.append(concurrency._run_limit)
+        return answer(**kwargs)
+
+    client._completion_fn = watching
+
+
+@pytest.mark.parametrize("positional", [True, False])
+def test_a_review_finds_its_client_however_it_was_passed(tmp_path, positional):
+    limits: list = []
+    client = client_dispatching(_JUDGMENTS)
+    client.__class__ = _ReviewClient
+    client.limit = 512
+    _watching(client, limits)
+    arguments = _review_arguments(tmp_path)
+
+    if positional:
+        run_review(
+            arguments["task_text"],
+            arguments["change_set"],
+            arguments["repo"],
+            client,
+            arguments["reviewed_revision"],
+        )
+    else:
+        run_review(client=client, **arguments)
+
+    assert limits and set(limits) == {512}
+
+
+def test_a_review_whose_client_names_no_limit_runs_at_the_default(tmp_path):
+    limits: list = []
+    client = client_dispatching(_JUDGMENTS)
+    _watching(client, limits)
+
+    run_review(client=client, **_review_arguments(tmp_path))
+
+    assert limits and set(limits) == {None}
+
+
+def _answering_as_the_pipeline_double(body: dict) -> str:
+    """Answer a native request the way `client_dispatching(_JUDGMENTS)` does."""
+    schema = body["output_format"]["schema"]
+    messages = [{"role": "system", "content": body.get("system", "")}, *body["messages"]]
+    kwargs = {
+        "messages": messages,
+        "response_format": {"json_schema": {"name": schema["title"], "schema": schema}},
+    }
+    responses = {**_EMPTY_BY_SCHEMA, **_JUDGMENTS}
+    return json.dumps(_completed(responses[schema["title"]], **kwargs))
+
+
+@pytest.mark.parametrize(("first", "second"), [(True, False), (False, True)])
+def test_two_recorded_reviews_are_byte_identical_whichever_way_their_calls_were_sent(
+    tmp_path, provider, first, second
+):
+    """The whole pipeline, recorded once each way into one transcript root:
+    nothing about how a call was sent, its note or its halved price, reaches
+    the review state."""
+    provider.responder = _answering_as_the_pipeline_double
+    arguments = _review_arguments(tmp_path)
+
+    def review(batch: bool) -> str:
+        client = _client(tmp_path / "transcripts", batch=batch)
+        client._embedding_fn = constant_embedding_fn
+        client._embedding_key_check = None
+        return run_review(client=client, **arguments).to_canonical_json()
+
+    one = review(first)
+    calls = provider.calls
+    two = review(second)
+
+    assert calls > 0
+    assert provider.calls == calls, "the second run should have replayed every call"
+    assert one == two
+    # The first run's calls went the way it was configured to send them.
+    assert bool(provider.batches) is first and bool(provider.direct) is not first
