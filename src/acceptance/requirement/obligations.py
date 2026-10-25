@@ -79,7 +79,7 @@ from acceptance.review_state import (
     RequirementRef,
     RequirementSection,
 )
-from acceptance.source_ref import find_span
+from acceptance.source_ref import TextSpan, find_span
 from acceptance.supplied_ids import (
     UnusableAnswer,
     UnusableAnswerLog,
@@ -519,6 +519,7 @@ def _user_prompt(
     registry: list[RequirementRef],
     answer_for: str,
     revisions: dict[str, RequirementDerivation] | None = None,
+    context: list[TextSpan] | None = None,
 ) -> str:
     """The identified requirements, as typed fields — all of them, every call.
 
@@ -545,8 +546,13 @@ def _user_prompt(
     `task-*` requirement in their ANSWERING set derived an obligation for a
     requirement they had only been shown
     (`docs/experiments/317-over-answering/findings.md` §2).
+
+    `context` is the task file's `## Context` section (#212), shown ahead of the
+    requirements and outside their list: it has no id, so it can be neither
+    answered for nor mistaken for a requirement that is only being shown.
     """
     lines = [
+        *_context_block(context or []),
         "The complete set of requirements in this task file, for context:",
         "",
     ]
@@ -571,6 +577,38 @@ def _user_prompt(
     )
     lines.extend(_revision_block(revisions or {}, {answer_for}))
     return "\n".join(lines)
+
+
+def _context_block(context: list[TextSpan]) -> list[str]:
+    """The task file's background, labelled as background, or nothing at all.
+
+    **Empty when the file has no Context section**, so such a file produces a
+    prompt byte-identical to the one this stage produced before the section
+    existed, and every recorded transcript still replays — the same rule
+    `_revision_block` follows.
+
+    Shown rather than withheld: the decomposer needs the background to read the
+    mandate well, and withholding it would trade background-as-obligation for a
+    decomposition made without knowing what the change is for.
+    """
+    if not context:
+        return []
+    lines = [
+        "BACKGROUND",
+        "",
+        (
+            "The task file gives this background to explain the mandate. It is not "
+            "a requirement: it has no id, it needs no disposition, and no obligation "
+            "is derived from it. Use it only to understand the requirements below. "
+            "Where it describes how the system behaves today, that is the starting "
+            "point the change is made from, not a property the change must keep."
+        ),
+        "",
+    ]
+    for block in context:
+        lines.append(block.text)
+        lines.append("")
+    return lines
 
 
 def _revision_block(
@@ -830,6 +868,7 @@ def _ask_about(
     quotes: list[str],
     revisions: dict[str, RequirementDerivation],
     partition_descriptor: dict,
+    context: list[TextSpan],
 ) -> tuple[_Decomposition, list[UnusableAnswer]]:
     """One call, about `requirement` alone, quoting only `quotes`.
 
@@ -847,7 +886,7 @@ def _ask_about(
     messages = assemble(
         [
             Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
-            Block(BlockKind.SUBJECT, _user_prompt(shown, requirement.id, revisions)),
+            Block(BlockKind.SUBJECT, _user_prompt(shown, requirement.id, revisions, context)),
         ]
     )
     # Both id fields are constrained, and `source_quote` is the one that matters.
@@ -1117,6 +1156,7 @@ def decompose(
             quotable_spans(batch.items[0].text),
             plan.revised,
             batch.request_partition(),
+            parsed.context,
         ),
         max_in_flight=client.calls_in_flight,
     )
@@ -1176,6 +1216,7 @@ def decompose(
                 [offerable(decision.text)],
                 {},
                 {"size": ONE_REQUIREMENT_PER_CALL},
+                parsed.context,
             )
 
         span_answers = map_calls(uncovered, _ask_span, max_in_flight=client.calls_in_flight)

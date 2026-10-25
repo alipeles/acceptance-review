@@ -135,6 +135,17 @@ Add support for indirect circular references.
 - Documentation update
 ```
 
+A task file may also carry an optional `## Context` section, for background that explains the mandate without being part of it: the problem being fixed, how the system behaves today, measurements already taken. Context is read and shown to the decomposer, labelled as background and kept apart from the requirements. It is not a requirement: it gets no requirement id and no disposition, produces no obligation, and does not count toward mandate coverage. Text the author wants checked belongs under `# Task` or `## Constraints`; text that only explains why belongs under `## Context`.
+
+```markdown
+# Task
+Report every indirect circular reference with its complete cycle path.
+
+## Context
+Today only direct cycles (A1 refers to A1) are detected. An indirect cycle
+(A1 → B1 → A1) evaluates until the recursion limit and fails with a stack error.
+```
+
 ### 7.2 GitHub requirement source
 
 Default is the linked Issue: title, description, explicit acceptance criteria, clarifying comments, examples, linked specs, related issues. The product **snapshots** the material used so the basis of a decision stays inspectable if the issue later changes.

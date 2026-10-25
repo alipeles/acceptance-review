@@ -1,8 +1,8 @@
 """Task-file ingestion (M1.1, §7.1).
 
 Parses the local task file (`current-task.md`) into structured fields — the
-task behavior, its constraints, scope exclusions, and completion expectations —
-each carrying a `TextSpan` back to the exact source it came from. Preserving
+task behavior, its constraints, scope exclusions, completion expectations, and
+any background under `## Context` — each carrying a `TextSpan` back to the exact source it came from. Preserving
 that source reference is the CLAUDE.md invariant that findings link to exact
 requirement text: every later obligation (M1.2+) traces through these spans to
 the words in the task file.
@@ -28,6 +28,7 @@ _CONSTRAINTS = {"constraints"}
 _COMPLETION = {"completion expectations"}
 _EXCLUSIONS = {"scope exclusions", "exclusions"}
 _TASK = {"task"}
+_CONTEXT = {"context"}
 
 # Container nodes: they hold blocks rather than being one, so they are
 # descended into rather than spanned. Spanning a container would double-count
@@ -51,7 +52,14 @@ class ParsedTaskFile(PersistableModel):
     obligation is recorded rather than dropped — the parse cannot be trusted to
     be complete, so it has to say what it did not take.
 
-    The unit of all five lists is a **block** — an AST leaf, not a semantic
+    `context` is everything under a `## Context` heading: background that
+    informs the decomposition without being a requirement (#212) — the problem
+    being fixed, how the system behaves today, measurements already taken. It is
+    read, so it is not `unclaimed`; it is not mandate, so `build_registry` never
+    gives it a requirement id. Without the section, an author describing today's
+    behaviour under `# Task` routinely got an obligation to keep it.
+
+    The unit of all six lists is a **block** — an AST leaf, not a semantic
     requirement — and every non-whitespace, non-heading block of the file is
     inside one of them (DR-216 decision 1). That total-coverage property is what
     lets `unread_source` report zero and mean it; before #216 a block nested
@@ -66,6 +74,7 @@ class ParsedTaskFile(PersistableModel):
     constraints: list[TextSpan] = Field(default_factory=list)
     scope_exclusions: list[TextSpan] = Field(default_factory=list)
     completion_expectations: list[TextSpan] = Field(default_factory=list)
+    context: list[TextSpan] = Field(default_factory=list)
     unclaimed: list[TextSpan] = Field(default_factory=list)
 
 
@@ -80,6 +89,15 @@ def parse_task_file(text: str) -> ParsedTaskFile:
         if node.type == "heading":
             # Headings are structure, not requirements, and are never unclaimed.
             section = _inline_content(node).strip().lower()
+        elif section in _CONTEXT:
+            # Every block kind, not only paragraphs: background is often a
+            # measurement table or a quoted log, and it is read either way.
+            if node.type == "paragraph":
+                result.context.append(_span(text, line_offsets, node))
+            elif node.type in _LISTS:
+                _emit_list(text, line_offsets, node, result.context)
+            else:
+                result.context.append(_block_span(text, line_offsets, node))
         elif node.type == "paragraph":
             target = result.behavior if section in _TASK else result.unclaimed
             target.append(_span(text, line_offsets, node))

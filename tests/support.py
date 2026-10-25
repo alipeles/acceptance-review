@@ -630,6 +630,27 @@ def client_returning(
     )
 
 
+def client_returning_capturing_prompts(
+    response: dict, summary: dict | None = None
+) -> tuple[ModelClient, list[dict]]:
+    """`client_returning`, also recording what each call sent.
+
+    Each entry is `{"schema": <response schema name>, "prompt": <text sent>}`, in
+    the order the calls arrived. For a test about what a stage put IN front of
+    the model, which a fixed response alone cannot show.
+    """
+    sent: list[dict] = []
+
+    def completion_fn(**kwargs):
+        sent.append({"schema": _schema_name(**kwargs), "prompt": sent_text(kwargs["messages"])})
+        chosen = response
+        if _schema_name(**kwargs) == "_SummarySpans":
+            chosen = summary if summary is not None else {}
+        return _fake_response(json.dumps(_completed(chosen, **kwargs)))
+
+    return model_client_with(completion_fn), sent
+
+
 def model_client_with(completion_fn, model: str = _DEFAULT_MODEL, embedding_fn=None) -> ModelClient:
     """A client backed by a caller-supplied `completion_fn`.
 
