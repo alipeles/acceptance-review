@@ -38,7 +38,7 @@ from tests.defects.test_pair_mapping import (
     _test,
     _tmp,
 )
-from tests.support import client_dispatching, embedding_fn_for
+from tests.support import FakeJev, client_dispatching, embedding_fn_for
 
 _DEFECT = "daily-rate-d1"
 _DESCRIPTION = "divides by 30"
@@ -99,6 +99,7 @@ def _run(tmp_path, count=10, kills=None, stop_after_kills=1, tests_per_batch=2, 
         repo=_repo(tmp_path, {"test_billing.py": "x"}),
         tests_per_batch=tests_per_batch,
         stop_after_kills=stop_after_kills,
+        jev=judge.jev,
         **kwargs,
     )
     return result, judge
@@ -119,8 +120,9 @@ def _covered(result) -> list[UnjudgedPair]:
 def test_tests_are_asked_most_similar_first(tmp_path):
     _, judge = _run(tmp_path, kills=_kills_at(3))
 
-    # The first round is the two most similar; a request lists its tests by id.
-    assert set(judge.requests[0]["test_id"]) == {_id(1), _id(2)}
+    # The first round is the two most similar. One pair per call, issued
+    # concurrently, so the round is the first two calls in either order.
+    assert {r["test_id"][0] for r in judge.requests[:2]} == {_id(1), _id(2)}
 
 
 def test_a_covered_defect_is_asked_no_further(tmp_path):
@@ -201,6 +203,7 @@ def test_turned_off_it_asks_every_pair_in_one_pass_and_embeds_nothing(tmp_path):
         repo=_repo(tmp_path, {"test_billing.py": "x"}),
         tests_per_batch=2,
         stop_after_kills=None,
+        jev=judge.jev,
     )
 
     assert len(judge.pairs_asked()) == 10
@@ -368,35 +371,17 @@ def _built_with_tests(tmp_path, count: int):
     return repo, base, git("rev-parse", "HEAD")
 
 
-def _every_test_kills(count: int) -> dict:
-    return {
-        "tests": [
-            {
-                "test_id": f"test_billing.py::test_prorate_{n}",
-                "defects": [
-                    {"defect_id": "daily-rate/divides-by-thirty", "fails": True, "reason": "r"}
-                ],
-            }
-            for n in range(count)
-        ]
-    }
-
-
 def _pipeline_review(tmp_path, **kwargs):
     repo, base, head = _built_with_tests(tmp_path, 6)
-    client = client_dispatching(
-        {
-            "_Decomposition": _DECOMPOSITION,
-            "_Enumeration": _ENUMERATED,
-            "_PairVerdicts": _every_test_kills(6),
-        }
-    )
+    client = client_dispatching({"_Decomposition": _DECOMPOSITION, "_Enumeration": _ENUMERATED})
     return run_review(
         task_text=_TASK,
         change_set=extract_change_set(repo, base, head),
         repo=repo,
         client=client,
         reviewed_revision=head,
+        # Every test kills.
+        jev=FakeJev(lambda defect, test_name: 0.9),
         **kwargs,
     )
 

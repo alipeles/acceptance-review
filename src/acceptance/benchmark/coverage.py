@@ -27,7 +27,7 @@ from acceptance.benchmark.case import BenchmarkCase
 from acceptance.benchmark.hooks import scored_copy
 from acceptance.change.diff import extract_change_set
 from acceptance.config import ScopeExpansionPolicy
-from acceptance.defects.pair_mapping import DEFAULT_PAIR_BATCH_SIZE
+from acceptance.jev import JevProvider
 from acceptance.llm import ModelClient
 from acceptance.pipeline import run_review
 
@@ -36,11 +36,13 @@ def classify_case(
     case: BenchmarkCase,
     client: ModelClient,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
-    pair_batch_size: int = DEFAULT_PAIR_BATCH_SIZE,
+    jev: JevProvider | None = None,
 ) -> BenchmarkCase:
     """Run the shared review pipeline over a case's diff and return a scored
     copy of `case`. The benchmark's adapter around `run_review` — every
-    capability the CLI runs is scored here, by construction."""
+    capability the CLI runs is scored here, by construction.
+
+    `jev` replaces the pair judge's first provider (#385), for tests."""
     repo = Path(case.inputs.repo)
     change_set = extract_change_set(repo, case.inputs.base_revision, case.inputs.head_revision)
     review = run_review(
@@ -51,6 +53,6 @@ def classify_case(
         reviewed_revision=case.inputs.head_revision,
         declaration_text=case.inputs.declaration_text,
         policy=policy,
-        pair_batch_size=pair_batch_size,
+        jev=jev,
     )
     return scored_copy(case, review)

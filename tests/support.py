@@ -18,6 +18,7 @@ import tempfile
 from types import SimpleNamespace
 
 from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
+from acceptance.jev import JevProvider
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_state import Obligation, ObligationType
 
@@ -832,13 +833,11 @@ _EMPTY_BY_SCHEMA = {
         "defects": [],
         "reason": "No defects were enumerated by this test's model double.",
     },
-    # Pair judgement (#314). No tests answered about, which is the right default
-    # for a stage whose input is empty in most fixtures: with the enumeration
-    # default above producing no defects, no pair is ever formed, so a double
-    # that answered anything here would be answering about pairs that do not
-    # exist. Named `_PairVerdicts` rather than `_Verdicts` because linking
-    # already owns that name and this table is keyed by schema name.
-    "_PairVerdicts": {"tests": []},
+    # Pair judgement's fallback (#385): the model is asked about one pair only
+    # when Jev is unsure, and answers yes or no. With the enumeration default
+    # above producing no defects, no pair is ever formed in most fixtures, and
+    # a test about pair verdicts passes a `FakeJev` that decides on its own.
+    "_Fails": {"fails": False},
     "_Mappings": {"mappings": []},
     "_Discrimination": {"discriminations": []},
     "_Coverage": {"classifications": []},
@@ -847,6 +846,39 @@ _EMPTY_BY_SCHEMA = {
     "_Recommendations": {"recommendations": []},
     "_Mismatches": {"mismatches": []},
 }
+
+
+class FakeJev(JevProvider):
+    """Jev, answered by a rule instead of the service (#385).
+
+    `probability(defect, test_name)` gets the defect as Jev is shown it — its
+    description first, then its expected and defective behaviour — and the
+    test's name, because the request carries no ids. Every state Jev was sent is
+    kept in `states`, so a test can assert on what Jev was shown and on how many
+    pairs it was asked about.
+
+    It goes through `JevProvider` and so through `replay_or_run`, recorded in
+    the client's store like the real thing: a fake that bypassed recording
+    would leave the replay path untested by every test that uses it.
+    """
+
+    def __init__(self, probability=lambda defect, test_name: 0.1):
+        self.states: list[dict] = []
+        self._probability = probability
+        super().__init__(post_fn=self._post)
+
+    def _post(self, url, body, headers):
+        state = body["state"]
+        self.states.append(state)
+        return 200, {
+            "answers": {"fails": {"noul": self._probability(state["defect"], state["test_name"])}},
+            "model": "jev-test-double",
+            "usage": {"input_tokens": 100, "output_tokens": 1},
+        }
+
+    def pairs_asked(self) -> list[tuple[str, str]]:
+        """(first line of the defect, test name) for every call, in call order."""
+        return [(state["defect"].splitlines()[0], state["test_name"]) for state in self.states]
 
 
 def client_finding_nothing(

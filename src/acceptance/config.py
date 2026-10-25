@@ -31,7 +31,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from acceptance.defects.pair_mapping import DEFAULT_PAIR_BATCH_SIZE, DEFAULT_TESTS_PER_BATCH
+from acceptance.defects.pair_mapping import DEFAULT_TESTS_PER_BATCH
 from acceptance.defects.pair_ranking import DEFAULT_STOP_AFTER_KILLS
 from acceptance.llm import (
     DEFAULT_TRANSCRIPT_ROOT,
@@ -76,10 +76,10 @@ DEFAULT_STAGE_MODELS: dict[str, str] = {}
 # correct: a determinism control changed, so recordings must be re-verified.
 DEFAULT_SEED = 0
 
-# The pair stage's batch size lives with that stage
-# (`defects/pair_mapping.py::DEFAULT_PAIR_BATCH_SIZE`) and is re-exported
-# through `RunConfig` below. `DEFAULT_MAPPING_BATCH_SIZE` used to sit here and
-# size the test-to-criterion mapping call (DR-164); #316 deleted that stage.
+# There is no pair batch size any more (#385). The pair judge asks Jev, then
+# the model, about one pair per call, so there is no batch to size.
+# `DEFAULT_MAPPING_BATCH_SIZE` used to sit here and size the test-to-criterion
+# mapping call (DR-164); #316 deleted that stage.
 
 # There is no decompose batch size any more (#317). Derivation issues one call
 # per requirement, and that is not a knob: it is what lets `source_quote` be an
@@ -173,20 +173,12 @@ class RunConfig(BaseModel):
     temperature: float = 0.0
     seed: int | None = DEFAULT_SEED
     transcript_root: Path = Field(default=DEFAULT_TRANSCRIPT_ROOT)
-    # A determinism control, but a stage-level one: it partitions the request
-    # rather than parameterising the provider call, so it reaches the pair
-    # stage through the pipeline instead of through build_client().
-    #
-    # It used to be `mapping_batch_size` and steer the test-to-criterion
-    # mapper. #316 deleted that stage, and a control that reaches no stage is
-    # worse than no control: it accepts a value, records nothing, and reads
-    # as a knob that was turned.
-    pair_batch_size: int = Field(default=DEFAULT_PAIR_BATCH_SIZE, ge=1)
-    # How many tests share one pair request. A determinism control like the batch
-    # size beside it, hashed into the pair request for the same reason, and
-    # separate from it because the two do different things: `pair_batch_size`
-    # caps judgements per response, this one shapes the rectangle those
-    # judgements are drawn from. See `pair_mapping.py::_batches`.
+    # How many of a defect's tests the pair judge's first ranked round asks
+    # about (#348); each later round doubles it. It used to also set how many
+    # tests shared one request, and `pair_batch_size` beside it capped
+    # judgements per request. #385 made every request one pair, so the batch
+    # size went: a control that reaches no stage accepts a value, records
+    # nothing, and reads as a knob that was turned.
     tests_per_batch: int = Field(default=DEFAULT_TESTS_PER_BATCH, ge=1)
     # How many of a defect's tests must be recorded as catching it before the
     # pair judge stops asking about it, walking its tests in similarity order

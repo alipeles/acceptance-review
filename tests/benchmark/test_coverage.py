@@ -33,6 +33,7 @@ from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL, RunConfig
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_store import ReviewStore
 from tests.support import (
+    FakeJev,
     _EMPTY_BY_SCHEMA,
     WHOLE_SUMMARY_UNCOVERED,
     _completed,
@@ -735,31 +736,19 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
     assert review.completion is not None  # the verdict was derived
 
 
-def test_the_shared_pipeline_partitions_the_pair_call(tmp_path):
-    """The batching mechanism has its own unit tests; this pins that the
-    pipeline actually *calls* it, and that the batch-size control reaches it
-    rather than stopping at the signature. A partitioner nothing routes through
-    is the exact shape of hole defect injection keeps finding here.
+def test_the_benchmark_judges_pairs_through_jev(tmp_path):
+    """The benchmark runs the CLI's pipeline, so its pairs go to Jev too (#385).
 
-    The control moved with the stage (#316). It used to size the
-    test-to-criterion mapping call and is now `pair_batch_size`, sizing the
-    (defect, test) judgement — the flag was repointed rather than left accepting
-    a value that reached nothing.
+    Pinned through `classify_case` rather than `run_review`, because the
+    benchmark's adapter is where a provider argument could silently stop.
     """
     case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
-    pair_calls: list[list[str]] = []
+    pair_calls: list = []
 
     def completion_fn(**kwargs):
         spec = kwargs["response_format"]["json_schema"]
-        if spec["name"] == "_PairVerdicts":
-            # Every pair the call is allowed to answer about, as (test, defect).
-            pair_calls.append(
-                [
-                    (test_id, defect_id)
-                    for test_id in _tests_offered(**kwargs)
-                    for defect_id in _supplied_enum("defect_id", **kwargs)
-                ]
-            )
+        if spec["name"] == "_Fails":
+            pair_calls.append(kwargs["messages"])
         if spec["name"] == "_Decomposition":
             # Real criteria, because pairs are (defect, test) and defects hang
             # off criteria: the default double decomposes to nothing, so there
@@ -793,34 +782,22 @@ def test_the_shared_pipeline_partitions_the_pair_call(tmp_path):
             )
         return _fake_response(json.dumps(_completed(_EMPTY_BY_SCHEMA[spec["name"]], **kwargs)))
 
-    def run(batch_size):
-        pair_calls.clear()
-        client = ModelClient(
-            model=DEFAULT_MODEL,
-            mode=Mode.RECORD,
-            store=TranscriptStore(str(tmp_path / f"transcripts-{batch_size}")),
-            completion_fn=completion_fn,
-            # Two criteria means the linking stage runs, and #259's prefilter
-            # embeds them before it asks anything.
-            embedding_model=DEFAULT_EMBEDDING_MODEL,
-            embedding_fn=constant_embedding_fn,
-        )
-        classify_case(case, client, pair_batch_size=batch_size)
-        return [list(ids) for ids in pair_calls]
-
-    one_per_call = run(1)
-    batched = run(500)
-
-    # The control reaches the stage: a smaller batch means more calls. Since
-    # #324 a request may span several tests, so the floor is no longer one call
-    # per test — but a batch size of one still forces one judgement per call.
-    assert len(one_per_call) > len(batched) > 0
-    assert all(len(pairs) == 1 for pairs in one_per_call)
-    # The same pairs judged either way. Partitioning changes the asking, not the
-    # question, which is what makes the control safe to turn.
-    assert sorted(p for call in one_per_call for p in call) == sorted(
-        p for call in batched for p in call
+    client = ModelClient(
+        model=DEFAULT_MODEL,
+        mode=Mode.RECORD,
+        store=TranscriptStore(str(tmp_path / "transcripts")),
+        completion_fn=completion_fn,
+        # Two criteria means the linking stage runs, and #259's prefilter
+        # embeds them before it asks anything.
+        embedding_model=DEFAULT_EMBEDDING_MODEL,
+        embedding_fn=constant_embedding_fn,
     )
+    jev = FakeJev()
+    scored = classify_case(case, client, jev=jev)
+
+    assert jev.states, "the benchmark judged no pair through Jev"
+    assert pair_calls == [], "Jev was certain on every pair, so the model was asked about none"
+    assert scored is not None
 
 
 def test_neither_the_pipeline_nor_the_cli_writes_into_the_reviewed_repo(tmp_path):
