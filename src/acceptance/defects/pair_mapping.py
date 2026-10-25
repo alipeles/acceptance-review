@@ -342,52 +342,103 @@ class _Decision:
         self.unusable = unusable
 
 
-def _decide(
-    pair: Pair,
-    requirement: str,
-    context: TargetedContext,
+def _decide_all(
+    items: list[tuple[Pair, str, TargetedContext]],
     client: ModelClient,
     jev: JevProvider,
-) -> _Decision:
-    """Jev, then the model if Jev is unsure. Records nothing (`concurrency.py`,
-    rule 2): calls finish in any order, and the caller records in pair order."""
-    label = f"{pair.defect.id}/{pair.test.test_id}"
-    probability = jev.ask(
-        client, _jev_state(pair, requirement, context), _JEV_QUESTIONS, JEV_STAGE, label=label
-    )["fails"].probability
-    if probability >= JEV_FAILS_AT:
-        return _Decision(True, PairJudge.JEV, probability)
-    if probability <= JEV_SURVIVES_AT:
-        return _Decision(False, PairJudge.JEV, probability)
+) -> list[_Decision]:
+    """Jev, then the model where Jev is unsure, for every (pair, requirement,
+    context) in `items`, returned in the same order.
 
-    answer = client.complete(
-        assemble(
-            [
-                Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
-                Block(BlockKind.SUBJECT, _subject(pair, requirement, context)),
-            ]
-        ),
-        _Fails,
-        parse_as=_LenientFails,
-        stage=_STAGE,
-        label=label,
-    )
-    if isinstance(answer.fails, bool):
-        return _Decision(answer.fails, PairJudge.MODEL, probability)
-    return _Decision(
-        None,
-        PairJudge.MODEL,
-        probability,
-        UnusableAnswer(
-            stage=_STAGE,
-            field="fails",
-            returned_id=label,
-            reason=(
-                f"the answer carried no yes or no ({answer.fails!r}), and Jev was unsure "
-                f"({probability:.3f}), so the pair has no verdict"
+    **Each distinct question is asked once.** Two pairs can put the same
+    question: two defects with the same description and regions, against the
+    same test. Asked concurrently, both would miss the store, both would call,
+    and the recording would keep whichever answer was written last — so the run
+    that recorded would use two answers where its replay uses one, and the two
+    would differ (found scoring #385 on DR-379's held-out cases, where two
+    mutants of one bug read identically once described). Asking once and
+    sharing the answer makes the recording run and every replay agree.
+
+    Records nothing (`concurrency.py`, rule 2): calls finish in any order, and
+    the caller records in pair order.
+    """
+    states = [canonical_json(_jev_state(pair, req, ctx)) for pair, req, ctx in items]
+    first_by_state: dict[str, int] = {}
+    for index, state in enumerate(states):
+        first_by_state.setdefault(state, index)
+    jev_order = sorted(first_by_state.values())
+
+    def ask_jev(index: int) -> float:
+        pair, req, ctx = items[index]
+        return jev.ask(
+            client,
+            _jev_state(pair, req, ctx),
+            _JEV_QUESTIONS,
+            JEV_STAGE,
+            label=f"{pair.defect.id}/{pair.test.test_id}",
+        )["fails"].probability
+
+    asked = dict(zip(jev_order, map_calls(jev_order, ask_jev)))
+    probabilities = [asked[first_by_state[state]] for state in states]
+
+    unsure = [
+        index
+        for index, probability in enumerate(probabilities)
+        if JEV_SURVIVES_AT < probability < JEV_FAILS_AT
+    ]
+    subjects = {index: _subject(*items[index]) for index in unsure}
+    first_by_subject: dict[str, int] = {}
+    for index in unsure:
+        first_by_subject.setdefault(subjects[index], index)
+    model_order = sorted(first_by_subject.values())
+
+    def ask_model(index: int) -> object:
+        pair, _, _ = items[index]
+        return client.complete(
+            assemble(
+                [
+                    Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
+                    Block(BlockKind.SUBJECT, subjects[index]),
+                ]
             ),
-        ),
-    )
+            _Fails,
+            parse_as=_LenientFails,
+            stage=_STAGE,
+            label=f"{pair.defect.id}/{pair.test.test_id}",
+        ).fails
+
+    answered = dict(zip(model_order, map_calls(model_order, ask_model)))
+
+    decisions: list[_Decision] = []
+    for index, (pair, _, _) in enumerate(items):
+        probability = probabilities[index]
+        if probability >= JEV_FAILS_AT:
+            decisions.append(_Decision(True, PairJudge.JEV, probability))
+            continue
+        if probability <= JEV_SURVIVES_AT:
+            decisions.append(_Decision(False, PairJudge.JEV, probability))
+            continue
+        fails = answered[first_by_subject[subjects[index]]]
+        if isinstance(fails, bool):
+            decisions.append(_Decision(fails, PairJudge.MODEL, probability))
+            continue
+        decisions.append(
+            _Decision(
+                None,
+                PairJudge.MODEL,
+                probability,
+                UnusableAnswer(
+                    stage=_STAGE,
+                    field="fails",
+                    returned_id=f"{pair.defect.id}/{pair.test.test_id}",
+                    reason=(
+                        f"the answer carried no yes or no ({fails!r}), and Jev was unsure "
+                        f"({probability:.3f}), so the pair has no verdict"
+                    ),
+                ),
+            )
+        )
+    return decisions
 
 
 def judge_pairs(
@@ -641,10 +692,7 @@ def _carry_and_ask(
 
     # Issued concurrently and consumed in pair order, so the verdicts and the
     # unusable-answer log read the same however the calls finished.
-    decisions = map_calls(
-        to_ask,
-        lambda item: _decide(item[0], item[1], item[2], client, jev),
-    )
+    decisions = _decide_all([(pair, req, ctx) for pair, req, ctx, _ in to_ask], client, jev)
 
     fresh: list[PairVerdict] = []
     unjudged: list[UnjudgedPair] = []

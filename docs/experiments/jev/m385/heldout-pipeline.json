@@ -1,0 +1,770 @@
+{
+ "summary": {
+  "cases": 92,
+  "accuracy": 0.8696,
+  "accuracy_95": [
+   0.7857,
+   0.9238
+  ],
+  "experiment_figure": {
+   "accuracy": 0.859,
+   "accuracy_95": [
+    0.77,
+    0.92
+   ]
+  },
+  "decided_by_jev": 90,
+  "decided_by_model": 2,
+  "unanswered": 0,
+  "precision_on_fails": 0.8475,
+  "calls": {
+   "defect-to-test pair judgement (Jev)": 91,
+   "defect-to-test pair mapping": 2
+  },
+  "cost_usd": {
+   "defect-to-test pair judgement (Jev)": 0.008714,
+   "defect-to-test pair mapping": 0.01281
+  },
+  "cost_per_case_usd": 0.000234,
+  "jev_stage": "defect-to-test pair judgement (Jev)",
+  "model_stage": "defect-to-test pair mapping"
+ },
+ "cases": [
+  {
+   "case_id": "thefuck/2/m0/tests/test_utils.py::test_get_all_executables",
+   "killed": false,
+   "jev_probability": 0.83,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": false
+  },
+  {
+   "case_id": "thefuck/22/m1/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_with_blank",
+   "killed": false,
+   "jev_probability": 0.08,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/24/m0/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_realises_generator_only_on_demand",
+   "killed": true,
+   "jev_probability": 0.28,
+   "judged_by": "model",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/24/m2/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_remove_duplicates",
+   "killed": false,
+   "jev_probability": 0.81,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": false
+  },
+  {
+   "case_id": "thefuck/24/m3/tests/test_types.py::TestCorrectedCommand::test_equality",
+   "killed": false,
+   "jev_probability": 0.09,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/24/m3/tests/test_types.py::TestCorrectedCommand::test_hashable",
+   "killed": false,
+   "jev_probability": 0.13,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/24/m3/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_realises_generator_only_on_demand",
+   "killed": false,
+   "jev_probability": 0.46,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": false
+  },
+  {
+   "case_id": "thefuck/24/m3/tests/test_types.py::TestSortedCorrectedCommandsSequence::test_remove_duplicates",
+   "killed": false,
+   "jev_probability": 0.53,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": false
+  },
+  {
+   "case_id": "thefuck/25/m1/tests/rules/test_mkdir_p.py::test_get_new_command",
+   "killed": true,
+   "jev_probability": 0.98,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/26/m3/tests/rules/test_vagrant_up.py::test_get_new_command",
+   "killed": true,
+   "jev_probability": 0.95,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/27/m0/tests/rules/test_open.py::test_get_new_command",
+   "killed": true,
+   "jev_probability": 0.94,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/28/m2/tests/rules/test_fix_file.py::test_get_new_command_with_settings",
+   "killed": true,
+   "jev_probability": 0.83,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/30/m2/tests/rules/test_fix_file.py::test_match",
+   "killed": false,
+   "jev_probability": 0.18,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/30/m2/tests/rules/test_fix_file.py::test_no_editor",
+   "killed": true,
+   "jev_probability": 0.67,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/30/m3/tests/rules/test_fix_file.py::test_match",
+   "killed": true,
+   "jev_probability": 0.28,
+   "judged_by": "model",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/30/m3/tests/rules/test_fix_file.py::test_no_editor",
+   "killed": false,
+   "jev_probability": 0.19,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/31/m1/tests/rules/test_git_diff_staged.py::test_get_new_command",
+   "killed": true,
+   "jev_probability": 0.94,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "thefuck/32/m0/tests/rules/test_ls_lah.py::test_match",
+   "killed": true,
+   "jev_probability": 0.95,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/2/m0/tqdm/tests/tests_tqdm.py::test_si_format",
+   "killed": false,
+   "jev_probability": 0.14,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/2/m2/tqdm/tests/tests_tqdm.py::test_format_meter",
+   "killed": false,
+   "jev_probability": 0.36,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": false
+  },
+  {
+   "case_id": "tqdm/2/m2/tqdm/tests/tests_tqdm.py::test_si_format",
+   "killed": false,
+   "jev_probability": 0.11,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/3/m2/tqdm/tests/tests_tqdm.py::test_format_meter",
+   "killed": false,
+   "jev_probability": 0.07,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/3/m3/tqdm/tests/tests_tqdm.py::test_format_interval",
+   "killed": false,
+   "jev_probability": 0.04,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/4/m0/tqdm/tests/tests_tqdm.py::test_ansi_escape_codes",
+   "killed": false,
+   "jev_probability": 0.11,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/4/m0/tqdm/tests/tests_tqdm.py::test_format_meter",
+   "killed": false,
+   "jev_probability": 0.5,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": false
+  },
+  {
+   "case_id": "tqdm/9/m0/tqdm/tests/tests_tqdm.py::test_si_format",
+   "killed": true,
+   "jev_probability": 0.96,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/9/m1/tqdm/tests/tests_tqdm.py::test_min_iters",
+   "killed": false,
+   "jev_probability": 0.09,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/9/m1/tqdm/tests/tests_tqdm.py::test_si_format",
+   "killed": true,
+   "jev_probability": 0.7,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/9/m1/tqdm/tests/tests_tqdm.py::test_update",
+   "killed": false,
+   "jev_probability": 0.1,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/9/m2/tqdm/tests/tests_tqdm.py::test_min_iters",
+   "killed": false,
+   "jev_probability": 0.09,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "tqdm/9/m2/tqdm/tests/tests_tqdm.py::test_si_format",
+   "killed": true,
+   "jev_probability": 0.61,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/1/m0/test/test_utils.py::TestUtil::test_match_str",
+   "killed": true,
+   "jev_probability": 0.96,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/1/m1/test/test_utils.py::TestUtil::test_match_str",
+   "killed": true,
+   "jev_probability": 0.96,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/1/m2/test/test_utils.py::TestUtil::test_match_str",
+   "killed": true,
+   "jev_probability": 0.92,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/11/m1/test/test_utils.py::TestUtil::test_str_to_int",
+   "killed": true,
+   "jev_probability": 0.85,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/13/m0/test/test_utils.py::TestUtil::test_urljoin",
+   "killed": true,
+   "jev_probability": 0.76,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/14/m1/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters",
+   "killed": false,
+   "jev_probability": 0.05,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/14/m2/test/test_youtube_chapters.py::TestYoutubeChapters::test_youtube_chapters",
+   "killed": false,
+   "jev_probability": 0.08,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/16/m0/test/test_utils.py::TestUtil::test_dfxp2srt",
+   "killed": false,
+   "jev_probability": 0.09,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/18/m0/test/test_YoutubeDL.py::TestFormatSelection::test_format_not_available",
+   "killed": false,
+   "jev_probability": 0.07,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/18/m1/test/test_YoutubeDL.py::TestFormatSelection::test_format_not_available",
+   "killed": false,
+   "jev_probability": 0.07,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/18/m1/test/test_YoutubeDL.py::TestFormatSelection::test_invalid_format_specs",
+   "killed": false,
+   "jev_probability": 0.07,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/18/m1/test/test_YoutubeDL.py::TestFormatSelection::test_prefer_free_formats",
+   "killed": false,
+   "jev_probability": 0.08,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/18/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_do_not_override_ie_key_in_url_transparent",
+   "killed": true,
+   "jev_probability": 0.43,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/18/m2/test/test_YoutubeDL.py::TestFormatSelection::test_invalid_format_specs",
+   "killed": false,
+   "jev_probability": 0.03,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/18/m3/test/test_YoutubeDL.py::TestFormatSelection::test_prefer_free_formats",
+   "killed": false,
+   "jev_probability": 0.08,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/19/m0/test/test_YoutubeDL.py::TestYoutubeDL::test_prepare_filename",
+   "killed": false,
+   "jev_probability": 0.2,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/19/m2/test/test_YoutubeDL.py::TestYoutubeDL::test_prepare_filename",
+   "killed": true,
+   "jev_probability": 0.75,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/21/m0/test/test_utils.py::TestUtil::test_urljoin",
+   "killed": true,
+   "jev_probability": 0.94,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/21/m1/test/test_utils.py::TestUtil::test_urljoin",
+   "killed": true,
+   "jev_probability": 0.78,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/22/m2/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter",
+   "killed": true,
+   "jev_probability": 0.47,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/23/m0/test/test_utils.py::TestUtil::test_js_to_json_edgecases",
+   "killed": true,
+   "jev_probability": 0.87,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/23/m0/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "killed": true,
+   "jev_probability": 0.51,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/23/m1/test/test_utils.py::TestUtil::test_js_to_json_edgecases",
+   "killed": true,
+   "jev_probability": 0.72,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/23/m1/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "killed": true,
+   "jev_probability": 0.1,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": false
+  },
+  {
+   "case_id": "youtube-dl/23/m2/test/test_utils.py::TestUtil::test_js_to_json_edgecases",
+   "killed": true,
+   "jev_probability": 0.72,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/23/m3/test/test_utils.py::TestUtil::test_js_to_json_edgecases",
+   "killed": true,
+   "jev_probability": 0.93,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/24/m0/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter",
+   "killed": true,
+   "jev_probability": 0.67,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/24/m1/test/test_YoutubeDL.py::TestYoutubeDL::test_match_filter",
+   "killed": true,
+   "jev_probability": 0.55,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/25/m0/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "killed": true,
+   "jev_probability": 0.22,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": false
+  },
+  {
+   "case_id": "youtube-dl/25/m2/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "killed": true,
+   "jev_probability": 0.2,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": false
+  },
+  {
+   "case_id": "youtube-dl/27/m0/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr",
+   "killed": true,
+   "jev_probability": 0.93,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/27/m1/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr",
+   "killed": false,
+   "jev_probability": 0.82,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": false
+  },
+  {
+   "case_id": "youtube-dl/3/m0/test/test_utils.py::TestUtil::test_unescape_html",
+   "killed": true,
+   "jev_probability": 0.86,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/30/m0/test/test_YoutubeDL.py::TestFormatSelection::test_format_filtering",
+   "killed": true,
+   "jev_probability": 0.76,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/31/m2/test/test_utils.py::TestUtil::test_parse_duration",
+   "killed": true,
+   "jev_probability": 0.94,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/32/m0/test/test_utils.py::TestUtil::test_strip_jsonp",
+   "killed": true,
+   "jev_probability": 0.96,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/33/m2/test/test_utils.py::TestUtil::test_parse_iso8601",
+   "killed": true,
+   "jev_probability": 0.92,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/35/m2/test/test_utils.py::TestUtil::test_unified_dates",
+   "killed": false,
+   "jev_probability": 0.05,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/35/m3/test/test_utils.py::TestUtil::test_unified_dates",
+   "killed": true,
+   "jev_probability": 0.56,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/37/m1/test/test_utils.py::TestUtil::test_uppercase_escpae",
+   "killed": true,
+   "jev_probability": 0.82,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/4/m0/test/test_jsinterp.py::TestJSInterpreter::test_call",
+   "killed": true,
+   "jev_probability": 0.69,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/4/m3/test/test_jsinterp.py::TestJSInterpreter::test_call",
+   "killed": true,
+   "jev_probability": 0.6,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/40/m1/test/test_utils.py::TestUtil::test_struct_unpack",
+   "killed": false,
+   "jev_probability": 0.08,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/40/m3/test/test_utils.py::TestUtil::test_struct_unpack",
+   "killed": false,
+   "jev_probability": 0.94,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": false
+  },
+  {
+   "case_id": "youtube-dl/42/m0/test/test_utils.py::TestUtil::test_fix_xml_ampersands",
+   "killed": false,
+   "jev_probability": 0.03,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/42/m1/test/test_utils.py::TestUtil::test_fix_xml_ampersands",
+   "killed": false,
+   "jev_probability": 0.03,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/42/m3/test/test_utils.py::TestUtil::test_fix_xml_ampersands",
+   "killed": true,
+   "jev_probability": 0.98,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/43/m0/test/test_utils.py::TestUtil::test_url_basename",
+   "killed": true,
+   "jev_probability": 0.94,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/5/m1/test/test_utils.py::TestUtil::test_unified_timestamps",
+   "killed": true,
+   "jev_probability": 0.8,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/6/m1/test/test_utils.py::TestUtil::test_dfxp2srt",
+   "killed": true,
+   "jev_probability": 0.78,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/6/m1/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr",
+   "killed": false,
+   "jev_probability": 0.07,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/6/m2/test/test_utils.py::TestUtil::test_dfxp2srt",
+   "killed": true,
+   "jev_probability": 0.92,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/6/m2/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr",
+   "killed": false,
+   "jev_probability": 0.09,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/6/m3/test/test_utils.py::TestUtil::test_dfxp2srt",
+   "killed": true,
+   "jev_probability": 0.83,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/6/m3/test/test_utils.py::TestUtil::test_parse_dfxp_time_expr",
+   "killed": false,
+   "jev_probability": 0.08,
+   "judged_by": "jev",
+   "predicted": false,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/7/m1/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "killed": true,
+   "jev_probability": 0.68,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/7/m2/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "killed": false,
+   "jev_probability": 0.66,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": false
+  },
+  {
+   "case_id": "youtube-dl/7/m3/test/test_utils.py::TestUtil::test_js_to_json_realworld",
+   "killed": true,
+   "jev_probability": 0.73,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/9/m0/test/test_YoutubeDL.py::TestFormatSelection::test_youtube_format_selection",
+   "killed": true,
+   "jev_probability": 0.71,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/9/m1/test/test_YoutubeDL.py::TestFormatSelection::test_youtube_format_selection",
+   "killed": true,
+   "jev_probability": 0.71,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  },
+  {
+   "case_id": "youtube-dl/9/m2/test/test_YoutubeDL.py::TestFormatSelection::test_youtube_format_selection",
+   "killed": true,
+   "jev_probability": 0.76,
+   "judged_by": "jev",
+   "predicted": true,
+   "correct": true
+  }
+ ]
+}

@@ -1023,3 +1023,24 @@ def test_a_prefiltered_pair_is_named_in_the_report(tmp_path):
     assert "[prefiltered]" in rendered
     assert "daily-rate/divides-by-thirty x test_far_away.py::test_unrelated" in rendered
     assert "no path to the defect exists" in rendered
+
+
+def test_an_identical_question_is_asked_once_and_its_answer_shared(tmp_path):
+    """Two defects that read the same against one test put Jev the same request.
+
+    Asked concurrently, both calls missed the store, both went live, and the
+    recording kept the last answer — so the recording run used two answers where
+    its replay used one. Found scoring #385 on DR-379's held-out cases (two
+    mutants of youtube-dl bug 9: 0.74 live, 0.71 on replay). Asking once makes
+    the two runs agree, and pays for one call instead of two.
+    """
+    repo = _repo(tmp_path, {"test_billing.py": "x"})
+    judge = _Judge(unsure=lambda defect_id, test_id: True)
+    twins = _defect_set("divides by 30", "divides by 30")
+
+    result = _judged(judge, [twins], [_test("test_half_month")], repo)
+
+    assert judge.calls == 1, "Jev was asked the same question twice"
+    assert len(judge.model_requests) == 1, "the model was asked the same question twice"
+    assert [v.defect_id for v in result.verdicts] == ["daily-rate-d1", "daily-rate-d2"]
+    assert len({(v.kills, v.jev_probability, v.judged_by) for v in result.verdicts}) == 1
