@@ -1,0 +1,577 @@
+tests run with: /Users/alipeles1/code/acceptance-worktrees/385-jev-judge/.venv/bin/python -m pytest, locked down (no network; set your own command with `acceptance set-test-command`)
+environment variables passed to the tests: HOME, LANG, LC_ALL, PATH, TMPDIR, USER
+Task completion: INCOMPLETE
+
+7 obligation(s) with non-discriminating test evidence (recorded-claude-run-replays-offline, recorded-runs-byte-identical-review-state, provenance-records-claude-applied-neither-temperature-nor-seed, claude-schema-mismatch-typed-error, prompt-test-assertions-hold-on-claude-answers, openai-recordings-still-replay, model-per-stage-set-only-in-config).
+
+Obligations:
+
+  1. The default model is `anthropic/claude-sonnet-5-5`.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/config.py#@@ -39,23 +48,25 @@ from acceptance.review_state import (
+         1.2  tests/test_config.py#@@ -86,8 +86,8 @@ def test_the_default_model_is_pinned_so_changing_it_is_deliberate():
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         1.3  tests/test_cli.py::test_a_default_cli_run_on_claude_records_both_controls_as_not_applied
+         1.4  tests/test_config.py::test_the_default_model_applies_neither_seed_nor_temperature
+         1.5  tests/test_config.py::test_the_default_model_is_pinned_so_changing_it_is_deliberate
+
+  2. The summary-span stage runs on the configured default model, like every other stage, rather than on its own stage-specific model override (currently `openai/gpt-5.4`).
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/config.py#@@ -39,23 +48,25 @@ from acceptance.review_state import (
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  3. When a Claude run has a recorded transcript, replaying it is served entirely from the recording and issues no live call to Claude.
+       requirements: task-02
+       code evidence: addressed
+         3.1  src/acceptance/config.py#@@ -39,23 +48,25 @@ from acceptance.review_state import (
+         3.2  tests/test_llm.py#@@ -73,8 +74,9 @@ def test_record_mode_validates_and_persists_a_transcript(store):
+         3.3  tests/test_llm.py#@@ -82,7 +84,7 @@ def test_recorded_transcript_replays_with_zero_live_calls(store):
+         3.4  tests/prompts/test_corpus_mechanism.py#@@ -363,88 +402,94 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
+       test evidence: partially supported — kills 4 of 5 enumerated defects (static prediction)  [tier: static]
+         3.5  tests/prompts/test_disposition_prompt.py::test_the_policy_knob_actually_changes_the_models_disposition
+         3.6  tests/test_llm.py::test_harness_does_not_import_the_provider_stack
+         3.7  tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls
+         3.8  tests/test_pipeline_request_openings.py::test_content_two_requests_share_is_written_the_same_way_in_both
+         3.9  tests/test_pipeline_request_openings.py::test_the_requests_that_share_a_diff_share_a_real_opening
+         recommended test: Replaying a recorded Claude run completes and returns the recorded results while no live network or API call to Claude is made; a missing live client or network does not affect the replay.
+           inputs:  A RunConfig with the default model (anthropic/claude-sonnet-5-5), default temperature 0.0 and DEFAULT_SEED, and a tmp_path transcript root. First record one call in Mode.RECORD through a fake completion_fn that returns valid JSON and drops or ignores temperature and seed like Claude. Then build a fresh client in Mode.REPLAY over the same store, whose completion_fn raises on any call, and issue the same messages and schema. Also use the committed Claude recordings in tests/fixtures/transcripts via replaying_client().
+           detects: The documentation says temperature 0 and seed 0 are still requested and hashed so a Claude transcript keys the same way. If the Claude path omits or alters these controls, for example by dropping them because Claude ignores them, the replay key differs from the recorded key. Replay then misses.
+           full detail: acceptance recommendation --criterion recorded-claude-run-replays-offline
+
+  4. Two recorded runs over the same input produce byte-identical review state.
+       requirements: task-02
+       code evidence: addressed
+         4.1  tests/test_determinism.py#@@ -68,11 +68,11 @@ def _produce_review(config: RunConfig, completion_fn) -> Review:
+         4.2  src/acceptance/config.py#@@ -8,6 +8,15 @@ canonically (serialization.py). The alternative from §3.2 — N-sample majority
+       test evidence: partially supported — kills 1 of 3 enumerated defects (static prediction)  [tier: static]
+         4.3  tests/test_pipeline_request_openings.py::test_content_two_requests_share_is_written_the_same_way_in_both
+         recommended test: Serialized review state from two recorded runs over the same input compares equal byte for byte.
+           inputs:  The real installed litellm, queried directly with no network. Call acceptance.llm._litellm_effective_controls for DEFAULT_MODEL (anthropic/claude-sonnet-5-5) with temperature 0.0 and seed 0, and also LiteLLM's supported-params / parameter-translation path. Also parse the litellm requirement from pyproject.toml, and take the installed litellm version via importlib.metadata.
+           detects: The seed and temperature are dropped by LiteLLM only on versions 1.106 and later. With a looser or different resolved LiteLLM version, the request actually sent or hashed could differ between runs. This could change the transcript key or the recorded response shape and so the review state bytes.
+           full detail: acceptance recommendation --criterion recorded-runs-byte-identical-review-state
+
+  5. Every Claude run continues to send a request that sets temperature to 0 and seed to 0, even though Claude does not apply either parameter.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/config.py#@@ -8,6 +8,15 @@ canonically (serialization.py). The alternative from §3.2 — N-sample majority
+         5.2  tests/test_cli.py#@@ -72,6 +72,50 @@ def test_a_default_cli_run_is_seeded(git_repo, fixture_task_path, capsys, stub_m
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  6. The review's provenance records that Claude applied neither the requested temperature (0) nor the requested seed (0) for a Claude run.
+       requirements: task-02
+       code evidence: addressed
+         6.1  pyproject.toml#@@ -11,19 +11,22 @@ readme = "README.md"
+         6.2  tests/test_config.py#@@ -122,6 +122,29 @@ def test_provenance_reports_the_controls_the_provider_honoured():
+         6.3  tests/test_cli.py#@@ -72,6 +72,50 @@ def test_a_default_cli_run_is_seeded(git_repo, fixture_task_path, capsys, stub_m
+         6.4  src/acceptance/config.py#@@ -8,6 +8,15 @@ canonically (serialization.py). The alternative from §3.2 — N-sample majority
+       test evidence: unsupported — kills 0 of 4 enumerated defects (static prediction)  [tier: static]
+         (no mapped test)
+         recommended test: The review state's provenance for a Claude run contains an entry stating that Claude did not apply the temperature and did not apply the seed, even though both were requested.
+           inputs:  The default Claude client from client_finding_nothing with _litellm_effective_controls, one completed call, then provenance_for. Add contrasting stubs: a provider that drops only the seed, and one that drops only the temperature.
+           detects: The provenance entry for a Claude run might say only that the temperature was not applied, or only that the seed was not applied. The criterion requires both to be stated.
+           full detail: acceptance recommendation --criterion provenance-records-claude-applied-neither-temperature-nor-seed
+
+  7. The module documentation states that recorded transcripts, not a seed or a temperature, are what make a Claude run reproducible.
+       requirements: task-02
+       code evidence: addressed
+         7.1  src/acceptance/config.py#@@ -8,6 +8,15 @@ canonically (serialization.py). The alternative from §3.2 — N-sample majority
+       test evidence: not required — A documentation statement is confirmed by reading the module documentation in the change; a test would add nothing, as this bullet does not demand one.
+
+  8. A Claude response that does not match the stage's response schema is rejected with the same typed error that any other provider's schema-mismatched response produces.
+       requirements: task-03
+       code evidence: addressed
+         8.1  tests/test_llm.py#@@ -121,8 +123,10 @@ def test_replay_without_a_transcript_raises_rather_than_calling_live(store):
+         8.2  tests/test_llm.py#@@ -132,6 +136,21 @@ def test_malformed_json_is_rejected_with_a_typed_error(store):
+       test evidence: partially supported — kills 1 of 2 enumerated defects (static prediction)  [tier: static]
+         8.3  tests/test_llm.py::test_malformed_json_is_rejected_with_a_typed_error
+         recommended test: Feeding the Claude provider a response that violates the stage's response schema raises the same typed error class (with the same type and semantics) as a schema-violating response from another provider; it is not accepted, silently coerced, or surfaced as a different or untyped error.
+           inputs:  Run ModelClient.complete on the default model anthropic/claude-sonnet-5-5 through the real litellm path (litellm.completion with litellm's mock_response, not the stubbed completion_fn). The mock reply is JSON that parses but violates the schema, e.g. '{"supported": "yes-ish"}' against Verdict, plus a variant with a missing required field and one with non-JSON prose. Run the same inputs with openai/gpt-5.4-mini as the comparison.
+           detects: The litellm floor moves to 1.106 and the default becomes Claude. For Anthropic, litellm may validate or parse structured output itself (for example via tool-call or response_format handling). A schema-violating Claude reply could then surface as a litellm exception, such as a JSON schema validation error or a bad-request error, instead of the pipeline's typed schema-mismatch error.
+           full detail: acceptance recommendation --criterion claude-schema-mismatch-typed-error
+
+  9. Every committed prompt recording is re-recorded against the new default model, so the recorded responses and their provider/model metadata come from the new default rather than from the previous default.
+       requirements: task-04
+       code evidence: addressed
+         9.1  tests/prompts/test_corpus_mechanism.py#@@ -363,88 +402,94 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
+         9.2  tests/prompts/test_corpus_mechanism.py#@@ -453,6 +498,15 @@ _APPROVED_TRANSCRIPTS = {
+         9.3  tests/prompts/test_corpus_mechanism.py#@@ -462,17 +516,17 @@ _APPROVED_TRANSCRIPTS = {
+         9.4  tests/prompts/test_corpus_mechanism.py#@@ -196,12 +196,51 @@ def test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls(
+         9.5  tests/support.py#@@ -879,12 +898,14 @@ RECORDED_TRANSCRIPTS = pathlib.Path(__file__).parent / "fixtures" / "transcripts
+       test evidence: not required — Whether the committed recording artifacts were produced against the new default is confirmed by inspecting the recording files and their metadata in the change, and no test adds evidence beyond that.
+
+  10. Every prompt test's assertions hold when evaluated against Claude's recorded answers, so each prompt test passes against the Claude recordings made for the new default.
+       requirements: task-04
+       code evidence: addressed
+         10.1  tests/prompts/test_decomposition_prompt.py#@@ -58,30 +58,14 @@ Export invoices to a CSV file.
+         10.2  tests/prompts/test_decomposition_prompt.py#@@ -172,26 +156,13 @@ def test_every_criterion_of_the_same_shape_is_treated_the_same_way(derived):
+         10.3  tests/prompts/test_decomposition_prompt.py#@@ -206,11 +177,33 @@ def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, req
+         10.4  tests/prompts/test_decomposition_prompt.py#@@ -350,13 +343,36 @@ def test_an_exclusion_obligation_states_no_property_to_preserve(derived, require
+         10.5  tests/prompts/test_disposition_prompt.py#@@ -83,6 +83,11 @@ CLAUDE_SONNET = "anthropic/claude-sonnet-5"
+         10.6  tests/prompts/test_corpus_mechanism.py#@@ -196,12 +196,51 @@ def test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls(
+       test evidence: partially supported — kills 1 of 3 enumerated defects (static prediction)  [tier: static]
+         10.7  tests/test_cli.py::test_a_default_cli_run_on_claude_records_both_controls_as_not_applied
+         10.8  tests/test_cli.py::test_classify_replay_without_transcript_fails_cleanly
+         recommended test: Running the prompt tests against the committed Claude recordings passes with no assertion failures.
+           inputs:  The two committed _SummarySpans recordings on anthropic/claude-sonnet-5-5 for the invoice task ('Export invoices to a CSV file.' summary). Decode each recorded response and compare the span verdicts with the bullets' derived obligations. Add a synthetic degenerate answer (every span covered, then every span uncovered) as a negative control.
+           detects: The `decompose-summary` override was removed on the assumption that Sonnet 5.5 handles the summary-span stage. The prompt test for that stage may assert coverage verdicts that Claude's recorded answer does not satisfy. Claude could mark every span covered or uncovered, which is the failure the old comment describes for the smaller model.
+           full detail: acceptance recommendation --criterion prompt-test-assertions-hold-on-claude-answers
+
+  11. Recordings that were made against OpenAI models continue to replay successfully after the change, so the replay mechanism still loads and serves them as before.
+       requirements: task-04
+       code evidence: addressed
+         11.1  tests/prompts/test_corpus_mechanism.py#@@ -453,6 +498,15 @@ _APPROVED_TRANSCRIPTS = {
+         11.2  tests/support.py#@@ -879,12 +898,14 @@ RECORDED_TRANSCRIPTS = pathlib.Path(__file__).parent / "fixtures" / "transcripts
+         11.3  tests/prompts/test_disposition_prompt.py#@@ -83,6 +83,11 @@ CLAUDE_SONNET = "anthropic/claude-sonnet-5"
+       test evidence: partially supported — kills 1 of 3 enumerated defects (static prediction)  [tier: static]
+         11.4  tests/prompts/test_corpus_mechanism.py::test_the_default_model_is_one_the_corpus_actually_holds
+         recommended test: Running the prompt tests in replay mode against an existing OpenAI-model recording succeeds, with the recorded response served and no live call or recording-mismatch failure.
+           inputs:  The disposition recordings on openai/gpt-5.4-mini and any retained openai/ recordings, replayed by passing the model explicitly (as test_disposition_prompt.py does with GPT_MINI) while DEFAULT_STAGE_MODELS is empty and the default is Claude. A second check replays an openai/gpt-5.4 recording, if one is still committed, with the model named explicitly.
+           detects: The decompose-summary entry naming openai/gpt-5.4 was deleted from DEFAULT_STAGE_MODELS. Recordings of that stage made against gpt-5.4 can no longer be reached through the stage's model resolution, and the stage now requests the default model.
+           full detail: acceptance recommendation --criterion openai-recordings-still-replay
+
+  12. The committed set of prompt recordings contains at least one recording made against a provider other than the default (Claude/Anthropic).
+       requirements: task-04
+       code evidence: addressed
+         12.1  tests/prompts/test_corpus_mechanism.py#@@ -453,6 +498,15 @@ _APPROVED_TRANSCRIPTS = {
+         12.2  tests/support.py#@@ -879,12 +898,14 @@ RECORDED_TRANSCRIPTS = pathlib.Path(__file__).parent / "fixtures" / "transcripts
+       test evidence: not required — The property is settled by inspecting which recordings are committed in the change; the requirement does not ask for a test and a reader confirms it by looking at the recording set.
+
+  13. The model each stage runs on is determined solely by the configuration in `config.py`; no other location in the code selects or overrides a stage's model.
+       requirements: task-05
+       code evidence: addressed
+         13.1  src/acceptance/config.py#@@ -39,23 +48,25 @@ from acceptance.review_state import (
+         13.2  tests/prompts/test_corpus_mechanism.py#@@ -196,12 +196,51 @@ def test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls(
+       test evidence: partially supported — kills 1 of 2 enumerated defects (static prediction)  [tier: static]
+         13.3  tests/test_cli.py::test_a_default_cli_run_on_claude_records_both_controls_as_not_applied
+         recommended test: Changing a stage's model value in `config.py` changes the model that stage runs on, and no stage-specific model name is hard-coded or selected elsewhere in the source.
+           inputs:  Monkeypatch acceptance.config.DEFAULT_STAGE_MODELS (or the RunConfig stage_models default) to {'decompose-summary': 'openai/gpt-5.4'}. Build RunConfig().build_client() and run the real decompose pipeline or summary-span stage with a recording completion_fn that captures kwargs['model'] per schema. Run a second case with a different override value on a different stage, and a third with the table empty.
+           detects: DEFAULT_STAGE_MODELS is now an empty dict. The code that resolves a stage's model may read some other source, such as a RunConfig field default or a stage constant. If so, adding an entry to the table, for example restoring `decompose-summary`, would not change that stage's model.
+           full detail: acceptance recommendation --criterion model-per-stage-set-only-in-config
+
+  14. The change does not send offline runs through the Message Batches API.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 33 changes across 13 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion naming work not to be done, so it is confirmed by the absence of batch-API code in the diff and no test can demonstrate that work was not done.
+
+  15. The change does not alter where prompt-cache breakpoints are placed.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 33 changes across 13 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion naming work not to be done; a reader confirms it by finding no breakpoint-placement edits in the diff, and no test can demonstrate an absence of work.
+
+  16. The change does not add reporting of spend per run.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 33 changes across 13 files; none breaches this boundary
+       test evidence: not required — This scope exclusion names work that was not done, so no test can demonstrate its absence; a reader confirms it by inspecting the diff.
+
+  17. The change does not re-measure benchmark figures on Claude.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 33 changes across 13 files; none breaches this boundary
+       test evidence: not required — This scope exclusion names work not to be done, so no test can demonstrate the absence; a reader confirms it by checking that the diff contains no benchmark re-measurement.
+
+  18. The change does not alter any prompt or response schema.
+       requirements: exclusion-05
+       code evidence: addressed
+         examined 33 changes across 13 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion naming work not to be done; a reader confirms it by inspecting the diff, and no test can demonstrate that the work was not done.
+
+Mandate coverage: 10 of 10 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] No obligation mentions LiteLLM. The floor is raised from 1.93 to 1.106 and the ceiling from 1.97 to 1.107, a jump of many minor versions. It is plausibly needed so that LiteLLM drops the temperature Claude refuses, but the task never asked for a dependency change.
+       pyproject.toml#@@ -11,19 +11,22 @@ readme = "README.md"
+  2. [in_service] The existing checks in the decomposition prompt tests are refactored into new helper functions, `_invented_framing` and `_preservation_words_in`. That is not needed to make the assertions hold on Claude's answers.
+       tests/prompts/test_decomposition_prompt.py#@@ -206,11 +177,33 @@ def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, req
+       tests/prompts/test_decomposition_prompt.py#@@ -350,13 +343,36 @@ def test_an_exclusion_obligation_states_no_property_to_preserve(derived, require
+  3. [in_service] Two new tests rebuild the old gpt-5.4-mini answers to prove the checks still catch them. No obligation asks for them. Removing the xfails was enough to make the assertions hold on Claude.
+       tests/prompts/test_decomposition_prompt.py#@@ -206,11 +177,33 @@ def test_a_constraint_stating_a_behaviour_is_not_given_test_framing(derived, req
+       tests/prompts/test_decomposition_prompt.py#@@ -350,13 +343,36 @@ def test_an_exclusion_obligation_states_no_property_to_preserve(derived, require
+  4. [in_service] The disposition-specific enum assertion is replaced by a new generic schema-conformance helper, `_assert_answers_its_schema`. This widens what the existing test checks beyond what any obligation called for.
+       tests/prompts/test_corpus_mechanism.py#@@ -196,12 +196,51 @@ def test_a_recorded_call_completed_against_a_provider_that_rejects_our_controls(
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  default-model-is-claude-sonnet-5-5
+    [not_wired] default-model-is-claude-sonnet-5-5/runconfig-default-not-using-constant
+      DEFAULT_MODEL is changed to the Claude string, but RunConfig's `model` field default (or the CLI --model default) may still be a hardcoded or earlier-bound value such as the old OpenAI string. The resolved default for an unconfigured run would then not be Claude.
+      src/acceptance/config.py#1
+      pairs: 4 put to the model, 144 skipped once the defect was covered
+    [missing_case] default-model-is-claude-sonnet-5-5/stage-model-override-survives-for-default
+      A stage-model override or per-stage resolution path may still map a stage (such as decompose-summary) to an OpenAI model. That stage would then not resolve to the default Claude model when no model is configured.
+      src/acceptance/config.py#1
+      pairs: 4 put to the model, 144 skipped once the defect was covered
+    [other] default-model-is-claude-sonnet-5-5/model-string-not-resolvable-by-litellm
+      The identifier `anthropic/claude-sonnet-5-5` may not be a model string that the pinned LiteLLM range recognises or routes. The default would be named correctly but fail to resolve to a working provider.
+      src/acceptance/config.py#1
+      pyproject.toml#0
+      pairs: 4 put to the model, 144 skipped once the defect was covered
+
+  summary-span-uses-default-model
+    none enumerated: The change satisfies this criterion by construction. `DEFAULT_STAGE_MODELS` is now an empty dict, so the `decompose-summary` entry naming `openai/gpt-5.4` is gone. `DEFAULT_MODEL` is now `anthropic/claude-sonnet-5-5`. A stage with no override entry runs on the run's `model`, which is the stated mechanism from #317, so the summary-span stage follows the default and changing the default changes its model. The diff shows no other place that names `openai/gpt-5.4`, no remaining lookup of that key, and no code path that could still resolve to it. Any hardcoded model elsewhere would sit in code the diff does not touch, so I cannot point to it, and I will not invent a defect for it.
+
+  recorded-claude-run-replays-offline
+    [missing_case] recorded-claude-run-replays-offline/recordings-keyed-to-old-model
+      The transcript key includes the model string. Recordings made under the old default (`openai/gpt-5.4-mini`) or the old summary-span model (`openai/gpt-5.4`) do not match requests now built for `anthropic/claude-sonnet-5-5`. Replay then misses the recording and falls through to a live call to Claude.
+      src/acceptance/config.py#1
+      pairs: 12 put to the model, 136 skipped once the defect was covered
+    [scope_too_narrow] recorded-claude-run-replays-offline/summary-stage-key-changed-by-override-removal
+      `DEFAULT_STAGE_MODELS` is emptied, so `decompose-summary` now resolves to the default model. Its transcript was recorded against `openai/gpt-5.4`. Unless that stage was re-recorded, replay of that stage is not served from a recording.
+      src/acceptance/config.py#1
+      pairs: 124 put to the model, 24 skipped once the defect was covered
+    [qualifier_ignored] recorded-claude-run-replays-offline/claude-request-controls-not-hashed-consistently
+      The documentation says temperature 0 and seed 0 are still requested and hashed so a Claude transcript keys the same way. If the Claude path omits or alters these controls, for example by dropping them because Claude ignores them, the replay key differs from the recorded key. Replay then misses.
+      src/acceptance/config.py#0
+      src/acceptance/config.py#1
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+    [not_wired] recorded-claude-run-replays-offline/replay-requires-anthropic-credentials
+      Building the model client for `anthropic/...` may require an Anthropic API key or a live LiteLLM client before the recording lookup. A replay without a key or network would then fail even though a transcript exists.
+      src/acceptance/config.py#1
+      pairs: 12 put to the model, 136 skipped once the defect was covered
+    [other] recorded-claude-run-replays-offline/litellm-pin-changes-request-hash
+      The litellm pin moved from 1.93–1.96 to exactly 1.106.x. If the hashed request or replayed response shape depends on litellm behaviour such as parameter dropping or response serialisation, existing recordings may no longer match. Replay would then miss and go live.
+      pyproject.toml#0
+      pairs: 124 put to the model, 24 skipped once the defect was covered
+
+  recorded-runs-byte-identical-review-state
+    [not_wired] recorded-runs-byte-identical-review-state/controls-in-force-provenance-not-wired
+      The config.py documentation says provenance records that Claude applied neither seed nor temperature (`controls_in_force`), but the diff only edits comments and constants. If provenance construction still claims the seed and temperature were in force for Claude, or varies between runs, the serialized review state can differ between runs or carry wrong content.
+      src/acceptance/config.py#0
+      src/acceptance/config.py#1
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+    [established_not_maintained] recorded-runs-byte-identical-review-state/stage-model-removal-leaves-stale-keyed-recordings
+      The `decompose-summary` entry was removed from DEFAULT_STAGE_MODELS, so that stage now keys its requests with the default model. If the committed recordings for that stage were keyed with `openai/gpt-5.4`, or other code still reads a per-stage model, replay misses or falls back to a live call. The second run can then return different content, and the state is not byte-identical.
+      src/acceptance/config.py#1
+      pairs: 60 put to the model, 88 skipped once the defect was covered
+    [other] recorded-runs-byte-identical-review-state/litellm-version-parameter-drop-varies-request
+      The seed and temperature are dropped by LiteLLM only on versions 1.106 and later. With a looser or different resolved LiteLLM version, the request actually sent or hashed could differ between runs. This could change the transcript key or the recorded response shape and so the review state bytes.
+      pyproject.toml#0
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+
+  run-requests-temperature-0-and-seed-0
+    none enumerated: The diff never touches the code that builds request parameters. It changes DEFAULT_MODEL, empties DEFAULT_STAGE_MODELS, adds a docstring, and bumps the litellm bounds. The temperature and seed defaults sit in unchanged context just below the edited region, and nothing added makes them conditional on the provider. The new docstring says the run still requests temperature 0 and seed 0 and that LiteLLM drops them downstream, so the drop happens after our request is built and does not affect it. No changed region could stop a Claude run from carrying temperature 0 and seed 0, so no static defect is plausible here.
+
+  provenance-records-claude-applied-neither-temperature-nor-seed
+    [not_wired] provenance-records-claude-applied-neither-temperature-nor-seed/provenance-change-not-delivered
+      The only config.py changes are a docstring and the default-model constants. The docstring says provenance records `controls_in_force` as not applied, but no changed code builds that entry. The ReviewProvenance stamping is not touched, so a Claude run may still be stamped as if temperature 0 and seed 0 were applied.
+      src/acceptance/config.py#0
+      src/acceptance/config.py#1
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+    [other] provenance-records-claude-applied-neither-temperature-nor-seed/provenance-names-only-one-control
+      The provenance entry for a Claude run might say only that the temperature was not applied, or only that the seed was not applied. The criterion requires both to be stated.
+      src/acceptance/config.py#0
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] provenance-records-claude-applied-neither-temperature-nor-seed/claude-detection-too-narrow
+      The not-applied note might be keyed to the exact DEFAULT_MODEL string `anthropic/claude-sonnet-5-5`, or to the provider prefix at one call site. Other Claude models, or a per-stage model override, would then be stamped as if the controls were applied.
+      src/acceptance/config.py#1
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+    [explanation_states_wrong_cause] provenance-records-claude-applied-neither-temperature-nor-seed/provenance-ignores-litellm-actual-behavior
+      The provenance entry may be static or may blame the wrong cause, for example an unspecified provider limitation. The actual causes are that Claude has no seed and refuses temperature, and that LiteLLM drops both. The pyproject floor of 1.106 exists because older LiteLLM versions pass the temperature through, so the recorded statement can disagree with what happened on the wire.
+      src/acceptance/config.py#0
+      pyproject.toml#0
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+
+  claude-schema-mismatch-typed-error
+    [wrong_error_surfaced] claude-schema-mismatch-typed-error/litellm-native-validation-error-escapes
+      The litellm floor moves to 1.106 and the default becomes Claude. For Anthropic, litellm may validate or parse structured output itself (for example via tool-call or response_format handling). A schema-violating Claude reply could then surface as a litellm exception, such as a JSON schema validation error or a bad-request error, instead of the pipeline's typed schema-mismatch error.
+      pyproject.toml#0
+      src/acceptance/config.py#1
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+    [not_wired] claude-schema-mismatch-typed-error/claude-response-shape-not-validated-same-path
+      The diff only changes the default model, the stage-model table and the dependency pins. It adds nothing to ensure Claude's response shape, such as a tool-use block or fenced JSON, passes through the same schema validation and typed-error path as other providers. A Claude reply could be accepted or coerced without validation, or fail untyped during parsing.
+      src/acceptance/config.py#1
+      pairs: 12 put to the model, 136 skipped once the defect was covered
+
+  prompt-test-assertions-hold-on-claude-answers
+    [missing_case] prompt-test-assertions-hold-on-claude-answers/summary-span-claude-answer-fails-assertion
+      The `decompose-summary` override was removed on the assumption that Sonnet 5.5 handles the summary-span stage. The prompt test for that stage may assert coverage verdicts that Claude's recorded answer does not satisfy. Claude could mark every span covered or uncovered, which is the failure the old comment describes for the smaller model.
+      src/acceptance/config.py#1
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+    [not_wired] prompt-test-assertions-hold-on-claude-answers/stale-recordings-keyed-to-old-model
+      The default model string and the stage model table changed, but a prompt test's recording may still be keyed to the old model. A recording that was not re-recorded, or was recorded under a different model string, will not be found on replay for the new default. The test would then fail, or the summary-span stage would find no Claude transcript because it used to be keyed to `openai/gpt-5.4`.
+      src/acceptance/config.py#1
+      current-task.md#0
+      pairs: 28 put to the model, 120 skipped once the defect was covered
+    [scope_too_narrow] prompt-test-assertions-hold-on-claude-answers/prompt-assertions-not-adjusted-to-claude-output
+      Only some prompt tests may have been re-recorded or had their assertions checked against Claude's answers. Tests that assert on exact wording, counts or ordering written for OpenAI output can fail on Claude's different but valid answers. The change touches only config and dependency pins, with nothing showing the assertions were reconciled.
+      current-task.md#0
+      src/acceptance/config.py#1
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+
+  openai-recordings-still-replay
+    [prior_behavior_altered] openai-recordings-still-replay/default-model-swap-misses-openai-keys
+      DEFAULT_MODEL changed from an OpenAI model to Claude. A replay that resolves its model from the default now hashes a Claude request, so it misses the existing OpenAI recording and fails with a mismatch or tries a live call.
+      src/acceptance/config.py#1
+      pairs: 4 put to the model, 144 skipped once the defect was covered
+    [prior_behavior_removed] openai-recordings-still-replay/summary-stage-override-removed-orphans-gpt54-recordings
+      The decompose-summary entry naming openai/gpt-5.4 was deleted from DEFAULT_STAGE_MODELS. Recordings of that stage made against gpt-5.4 can no longer be reached through the stage's model resolution, and the stage now requests the default model.
+      src/acceptance/config.py#1
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+    [prior_behavior_altered] openai-recordings-still-replay/litellm-bump-breaks-old-recording-load
+      The litellm pin moves from >=1.93,<1.97 to >=1.106,<1.107. Older recordings may have been captured with a different litellm release. The newer release may change request normalisation, which feeds the request hash, or the response objects used to deserialise recorded OpenAI responses, so old recordings may stop matching or loading.
+      pyproject.toml#0
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+
+  model-per-stage-set-only-in-config
+    [other] model-per-stage-set-only-in-config/hardcoded-model-name-outside-config
+      The change edits only config.py. Another module that the diff does not touch, such as the CLI's --model default, a stage module, or the summary-span stage, may still hard-code `openai/gpt-5.4` or `openai/gpt-5.4-mini`. That module would then select a stage's model regardless of the config.py values.
+      src/acceptance/config.py#1
+      pairs: 4 put to the model, 144 skipped once the defect was covered
+    [not_wired] model-per-stage-set-only-in-config/stage-model-table-not-consulted
+      DEFAULT_STAGE_MODELS is now an empty dict. The code that resolves a stage's model may read some other source, such as a RunConfig field default or a stage constant. If so, adding an entry to the table, for example restoring `decompose-summary`, would not change that stage's model.
+      src/acceptance/config.py#1
+      pairs: 148 put to the model, 0 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [defect_already_covered] claude-schema-mismatch-typed-error/claude-response-shape-not-validated-same-path x 136 candidate test(s), ranked 13 to 148
+    not asked: the defect was already covered by tests/test_llm.py::test_malformed_json_is_rejected_with_a_typed_error
+  [defect_already_covered] default-model-is-claude-sonnet-5-5/model-string-not-resolvable-by-litellm x 144 candidate test(s), ranked 5 to 148
+    not asked: the defect was already covered by tests/test_cli.py::test_a_default_cli_run_on_claude_records_both_controls_as_not_applied, tests/test_config.py::test_the_default_model_applies_neither_seed_nor_temperature
+  [defect_already_covered] default-model-is-claude-sonnet-5-5/runconfig-default-not-using-constant x 144 candidate test(s), ranked 5 to 148
+    not asked: the defect was already covered by tests/test_cli.py::test_a_default_cli_run_on_claude_records_both_controls_as_not_applied, tests/test_config.py::test_the_default_model_is_pinned_so_changing_it_is_deliberate
+  [defect_already_covered] default-model-is-claude-sonnet-5-5/stage-model-override-survives-for-default x 144 candidate test(s), ranked 5 to 148
+    not asked: the defect was already covered by tests/test_cli.py::test_a_default_cli_run_on_claude_records_both_controls_as_not_applied
+  [defect_already_covered] model-per-stage-set-only-in-config/hardcoded-model-name-outside-config x 144 candidate test(s), ranked 5 to 148
+    not asked: the defect was already covered by tests/test_cli.py::test_a_default_cli_run_on_claude_records_both_controls_as_not_applied
+  [defect_already_covered] openai-recordings-still-replay/default-model-swap-misses-openai-keys x 144 candidate test(s), ranked 5 to 148
+    not asked: the defect was already covered by tests/prompts/test_corpus_mechanism.py::test_the_default_model_is_one_the_corpus_actually_holds
+  [defect_already_covered] prompt-test-assertions-hold-on-claude-answers/stale-recordings-keyed-to-old-model x 120 candidate test(s), ranked 29 to 148
+    not asked: the defect was already covered by tests/test_cli.py::test_a_default_cli_run_on_claude_records_both_controls_as_not_applied, tests/test_cli.py::test_classify_replay_without_transcript_fails_cleanly
+  [defect_already_covered] recorded-claude-run-replays-offline/litellm-pin-changes-request-hash x 24 candidate test(s), ranked 125 to 148
+    not asked: the defect was already covered by tests/prompts/test_disposition_prompt.py::test_the_policy_knob_actually_changes_the_models_disposition
+  [defect_already_covered] recorded-claude-run-replays-offline/recordings-keyed-to-old-model x 136 candidate test(s), ranked 13 to 148
+    not asked: the defect was already covered by tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls
+  [defect_already_covered] recorded-claude-run-replays-offline/replay-requires-anthropic-credentials x 136 candidate test(s), ranked 13 to 148
+    not asked: the defect was already covered by tests/test_llm.py::test_harness_does_not_import_the_provider_stack, tests/test_llm.py::test_recorded_transcript_replays_with_zero_live_calls
+  [defect_already_covered] recorded-claude-run-replays-offline/summary-stage-key-changed-by-override-removal x 24 candidate test(s), ranked 125 to 148
+    not asked: the defect was already covered by tests/test_pipeline_request_openings.py::test_content_two_requests_share_is_written_the_same_way_in_both, tests/test_pipeline_request_openings.py::test_the_requests_that_share_a_diff_share_a_real_opening
+  [defect_already_covered] recorded-runs-byte-identical-review-state/stage-model-removal-leaves-stale-keyed-recordings x 88 candidate test(s), ranked 61 to 148
+    not asked: the defect was already covered by tests/test_pipeline_request_openings.py::test_content_two_requests_share_is_written_the_same_way_in_both
+
+Running the project's tests:
+  the project's tests were run: 25 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [not_mutable] claude-schema-mismatch-typed-error/claude-response-shape-not-validated-same-path
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 136 skipped once the defect was covered
+    The offered region only holds the DEFAULT_MODEL constant and an empty DEFAULT_STAGE_MODELS table in config.py. It contains no response parsing or schema validation, and I cannot see the shared LLM client code. Making Claude responses bypass validation would mean changing a parsing path that lies outside this region. Editing the model strings here would not create the named defect. The defect is also about absent wiring, which has no span to replace.
+
+  [not_mutable] claude-schema-mismatch-typed-error/litellm-native-validation-error-escapes
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The offered regions are only the litellm version pin in pyproject.toml and the DEFAULT_MODEL constant in config.py. The behaviour in question is how the client call wraps litellm exceptions and where the pipeline's response validation raises the typed schema-mismatch error. That code is not shown, so I cannot tell which behaviour it has now. Neither region can make a schema-violating Claude reply raise a litellm-native exception without guessing at an edit that does not implement the named defect.
+
+  [survived, NOT COUNTED] default-model-is-claude-sonnet-5-5/model-string-not-resolvable-by-litellm
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (refused_after_run): 22 of the 148 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 56-56:
+           - DEFAULT_MODEL = "anthropic/claude-sonnet-5-5"
+           + DEFAULT_MODEL = "anthropic/claude-sonnet-5.5"
+    injected at pyproject.toml lines 29-29:
+      -     "litellm>=1.106,<1.107",
+      +     "litellm>=1.93,<1.107",
+    no test caught it; 148 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 144 skipped once the defect was covered
+
+  [not_mutable] default-model-is-claude-sonnet-5-5/runconfig-default-not-using-constant
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 144 skipped once the defect was covered
+    The offered region only shows DEFAULT_MODEL = "anthropic/claude-sonnet-5-5" and comments. The code that decides the default is not visible: the RunConfig `model` field and the CLI --model option. I can't tell whether they use DEFAULT_MODEL or a hardcoded string. Changing the constant here would not make the named defect real, so I give no edit.
+
+  [no_usable_edit] default-model-is-claude-sonnet-5-5/stage-model-override-survives-for-default
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (refused_after_run): 16 of the 148 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 69-69:
+           - DEFAULT_STAGE_MODELS: dict[str, str] = {}
+           + DEFAULT_STAGE_MODELS: dict[str, str] = {"decompose-summary": "openai/gpt-5.4"}
+      2. set aside (refused_after_run): 16 of the 148 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 69-69:
+           - DEFAULT_STAGE_MODELS: dict[str, str] = {}
+           + DEFAULT_STAGE_MODELS: dict[str, str] = {"decompose-summary": "openai/gpt-5.4"}
+      3. set aside (refused_after_run): 16 of the 148 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 69-69:
+           - DEFAULT_STAGE_MODELS: dict[str, str] = {}
+           + DEFAULT_STAGE_MODELS: dict[str, str] = {"decompose-summary": "openai/gpt-5.4-mini"}
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 144 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [not_mutable] model-per-stage-set-only-in-config/hardcoded-model-name-outside-config
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 144 skipped once the defect was covered
+    The defect concerns whether any source file outside config.py hard-codes a model name or picks a stage's model. I was shown only config.py lines 48-72. They set DEFAULT_MODEL = "anthropic/claude-sonnet-5-5" and DEFAULT_STAGE_MODELS = {}, which is consistent with the expected behaviour. I could not see the CLI --model default, the stage modules, or the summary-span stage, so I cannot tell whether any of them contains a literal model string. An edit inside this region cannot create a hard-coded model in another file, so I give no edit.
+
+  [not_mutable] model-per-stage-set-only-in-config/stage-model-table-not-consulted
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The region only shows DEFAULT_MODEL and the empty DEFAULT_STAGE_MODELS table. The code that resolves a stage's model, such as a RunConfig method or a stage lookup, is not visible. I cannot tell whether it consults the table, a field default or a stage constant, so I cannot say which behaviour the code has now. Any edit in this region would be a guess.
+
+  [already_present] openai-recordings-still-replay/default-model-swap-misses-openai-keys
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 144 skipped once the defect was covered
+    Line 56 sets DEFAULT_MODEL = "anthropic/claude-sonnet-5-5", so a replay relying on the default builds a Claude request and misses the existing OpenAI recording. That is the DEFECTIVE behaviour. The repair restores an OpenAI default model (gpt-5.4-mini, per the comment the previous default for almost every stage). (the repair failed 20 of 148 candidate tests, too many to say anything about this defect)
+
+  [not_mutable] openai-recordings-still-replay/litellm-bump-breaks-old-recording-load
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The defect is a compatibility risk in the third-party litellm 1.106 release, which may change request normalisation or response parsing. The visible region only declares the pin (`litellm>=1.106,<1.107`, line 29). Nothing in it, and no edit to it, can make replay hashing or deserialisation of old recordings fail. The pin is already at the new version, so changing it would not create the named behaviour. Checking whether old recordings still load needs running the replay suite against litellm 1.106, not editing a file.
+
+  [already_present] openai-recordings-still-replay/summary-stage-override-removed-orphans-gpt54-recordings
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    Line 69 sets DEFAULT_STAGE_MODELS to an empty dict, and the comment on lines 61-65 says the decompose-summary entry for openai/gpt-5.4 was removed in #413. The code therefore already does the DEFECTIVE behaviour: the summary stage resolves to DEFAULT_MODEL (the Claude default), so its gpt-5.4 recordings are never looked up. The edit restores the entry on that line. (the repair failed 16 of 148 candidate tests, too many to say anything about this defect)
+
+  [not_mutable] prompt-test-assertions-hold-on-claude-answers/prompt-assertions-not-adjusted-to-claude-output
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The defect concerns prompt tests' assertions against committed Claude recordings. The offered regions are a task description (current-task.md) and config constants (model default, stage model table). Neither contains any test assertion or recording, so I cannot see whether any prompt test carries an OpenAI-tuned assertion. Editing config would not make this defect real; it would change model selection, which is a different behaviour. The defect is about the state of test files and recordings outside these regions, so no single contiguous edit in the offered regions realizes it.
+
+  [not_mutable] prompt-test-assertions-hold-on-claude-answers/stale-recordings-keyed-to-old-model
+    candidate edits: 3 asked for, 2 set aside, none used
+      1. set aside (refused_after_run): 16 of the 148 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 69-69:
+           - DEFAULT_STAGE_MODELS: dict[str, str] = {}
+           + DEFAULT_STAGE_MODELS: dict[str, str] = {"decompose-summary": "openai/gpt-5.4"}
+      2. set aside (refused_after_run): 25 of the 148 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 56-56:
+           - DEFAULT_MODEL = "anthropic/claude-sonnet-5-5"
+           + DEFAULT_MODEL = "openai/gpt-5.4"
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 120 skipped once the defect was covered
+    The defect is about whether committed recording files are keyed to the old model. Those files are not in the offered regions, so I could not see which model string they are keyed under. The visible config already sets DEFAULT_MODEL to anthropic/claude-sonnet-5-5 (line 56) and leaves DEFAULT_STAGE_MODELS empty (line 69), which matches EXPECTED as far as the config goes. Changing the model constants would not make the recordings stale. It would only change the request hash, and the earlier edits of that kind were refused. I cannot confirm the recording state, so I give no edit.
+
+  [not_mutable] prompt-test-assertions-hold-on-claude-answers/summary-span-claude-answer-fails-assertion
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The region only shows the config: DEFAULT_STAGE_MODELS is empty and DEFAULT_MODEL is Claude Sonnet 5.5. Whether Claude's recorded answer for the summary-span stage satisfies the prompt test's assertions depends on the recording and the test, neither of which is visible. I cannot tell whether the code currently does the expected or the defective behaviour, so I give no edit.
+
+  [not_mutable] provenance-records-claude-applied-neither-temperature-nor-seed/claude-detection-too-narrow
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The offered region (config.py lines 48-72) only defines DEFAULT_MODEL and the empty DEFAULT_STAGE_MODELS. The code that decides whether to record the 'temperature and seed not applied' note is not visible. I cannot see whether it matches the exact default string, a provider prefix, or the effective model after --model or stage overrides, so I cannot say which behaviour the code has and will not guess an edit.
+
+  [not_mutable] provenance-records-claude-applied-neither-temperature-nor-seed/provenance-change-not-delivered
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The offered regions are only the module docstring (lines 8-22) and the default-model constants (lines 48-72). The code that builds ReviewProvenance and any `controls_in_force` entry, such as RunConfig's stamping method, is not shown. I can't tell whether it records temperature and seed as not applied for Claude. Editing the docstring or constants would not change that behaviour, so I give no edit.
+
+  [survived, NOT COUNTED] provenance-records-claude-applied-neither-temperature-nor-seed/provenance-ignores-litellm-actual-behavior
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 16-16:
+      - records that the provider applied neither (`controls_in_force`). Reproducibility
+      + records an unspecified provider limitation (`controls_in_force`). Reproducibility
+    no test caught it; 148 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [not_mutable] provenance-records-claude-applied-neither-temperature-nor-seed/provenance-names-only-one-control
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The only region offered is the module docstring (lines 8-22). It says provenance records that the provider applied neither control (`controls_in_force`), but that is prose. The code that builds `controls_in_force` and the `ReviewProvenance` entry for a Claude run is not shown, so I cannot tell whether it names temperature and seed separately or uses one combined flag. Editing the docstring would not change any behaviour.
+
+  [not_mutable] recorded-claude-run-replays-offline/claude-request-controls-not-hashed-consistently
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The offered regions are a module docstring (lines 8-22) and the model constants (lines 48-72). They state that Claude requests still carry temperature 0 and seed 0 and that these are hashed. The code that builds the request, applies temperature and seed, and computes the replay key is not shown. The default temperature and seed constants would start at line 73, just outside region #1. Editing the docstring would change only prose, not the hashing behaviour. I cannot tell whether the code currently keeps or drops the controls, so I give no edit.
+
+  [not_mutable] recorded-claude-run-replays-offline/litellm-pin-changes-request-hash
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 124 put to the model, 0 dropped as not worth asking, 24 skipped once the defect was covered
+    The only region offered is the dependency pin in pyproject.toml (line 29: litellm>=1.106,<1.107). The defect depends on whether the request hash or the deserialised recorded response changes under litellm 1.106.x. The hashing and replay code is not shown, and neither are the recordings, so I cannot tell whether replay matches under that version. Any change to the pin would be a guess at an unknown litellm behaviour, so I give no edit.
+
+  [not_mutable] recorded-claude-run-replays-offline/recordings-keyed-to-old-model
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 136 skipped once the defect was covered
+    The region only shows DEFAULT_MODEL = "anthropic/claude-sonnet-5-5" and an empty DEFAULT_STAGE_MODELS, so every stage's request is built with the new model. Whether the committed transcript recordings were re-made under that model or still sit under the old openai/gpt-5.4-mini and openai/gpt-5.4 keys depends on the recording files and the key-hashing code, and neither is shown. Without them I can't say whether the code is expected or defective, and I won't guess.
+
+  [not_mutable] recorded-claude-run-replays-offline/replay-requires-anthropic-credentials
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 136 skipped once the defect was covered
+    The offered region (src/acceptance/config.py lines 48-72) holds only the DEFAULT_MODEL string, the empty DEFAULT_STAGE_MODELS table and comments. The code that builds the Anthropic/LiteLLM client, checks credentials, and looks up the recorded transcript is not shown. I cannot tell whether replay checks for credentials before the lookup, and no edit within these constants could create that behaviour.
+
+  [already_present] recorded-claude-run-replays-offline/summary-stage-key-changed-by-override-removal
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 124 put to the model, 0 dropped as not worth asking, 24 skipped once the defect was covered
+    Line 69 sets DEFAULT_STAGE_MODELS to an empty dict, so decompose-summary already resolves to the default Claude model (anthropic/claude-sonnet-5-5). The comments say the stage's recording was made under openai/gpt-5.4, and nothing here shows it was re-recorded, so replay would miss. That matches the DEFECTIVE behaviour. The repair restores the override entry, which makes the stage resolve to openai/gpt-5.4 again and hit its recording. (the repair failed 16 of 148 candidate tests, too many to say anything about this defect)
+
+  [not_mutable] recorded-runs-byte-identical-review-state/controls-in-force-provenance-not-wired
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The defect concerns the code that builds `ReviewProvenance` and derives `controls_in_force` from the model and provider. The offered regions show only the module docstring (lines 8-22) and the model and stage-model constants (lines 48-72). I could not see `RunConfig`'s provenance construction, so I cannot tell whether it already derives `controls_in_force` deterministically for Claude. Any edit to the docstring or constants would not make the named defect real.
+
+  [survived, NOT COUNTED] recorded-runs-byte-identical-review-state/litellm-version-parameter-drop-varies-request
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at pyproject.toml lines 29-29:
+      -     "litellm>=1.106,<1.107",
+      +     "litellm>=1.93",
+    no test caught it; 148 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 148 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [no_usable_edit] recorded-runs-byte-identical-review-state/stage-model-removal-leaves-stale-keyed-recordings
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (refused_after_run): 16 of the 148 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 69-69:
+           - DEFAULT_STAGE_MODELS: dict[str, str] = {}
+           + DEFAULT_STAGE_MODELS: dict[str, str] = {"decompose-summary": "openai/gpt-5.4"}
+      2. set aside (refused_after_run): 13 of the 148 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 69-69:
+           - DEFAULT_STAGE_MODELS: dict[str, str] = {}
+           + DEFAULT_STAGE_MODELS: dict[str, str] = {"decompose-summary": "anthropic/claude-opus-5"}
+      3. set aside (refused_after_run): 24 of the 148 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/config.py lines 56-56:
+           - DEFAULT_MODEL = "anthropic/claude-sonnet-5-5"
+           + DEFAULT_MODEL = "anthropic/claude-sonnet-5-4"
+    pairs: 0 settled by the run, 60 put to the model, 0 dropped as not worth asking, 88 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+Defects the delivered code already has, as asserted by the model (static tier; needs human review):
+  openai-recordings-still-replay/default-model-swap-misses-openai-keys
+    Line 56 sets DEFAULT_MODEL = "anthropic/claude-sonnet-5-5", so a replay relying on the default builds a Claude request and misses the existing OpenAI recording. That is the DEFECTIVE behaviour. The repair restores an OpenAI default model (gpt-5.4-mini, per the comment the previous default for almost every stage). (the repair failed 20 of 148 candidate tests, too many to say anything about this defect)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/config.py lines 56-56:
+      - DEFAULT_MODEL = "anthropic/claude-sonnet-5-5"
+      + DEFAULT_MODEL = "openai/gpt-5.4-mini"
+  openai-recordings-still-replay/summary-stage-override-removed-orphans-gpt54-recordings
+    Line 69 sets DEFAULT_STAGE_MODELS to an empty dict, and the comment on lines 61-65 says the decompose-summary entry for openai/gpt-5.4 was removed in #413. The code therefore already does the DEFECTIVE behaviour: the summary stage resolves to DEFAULT_MODEL (the Claude default), so its gpt-5.4 recordings are never looked up. The edit restores the entry on that line. (the repair failed 16 of 148 candidate tests, too many to say anything about this defect)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/config.py lines 69-69:
+      - DEFAULT_STAGE_MODELS: dict[str, str] = {}
+      + DEFAULT_STAGE_MODELS: dict[str, str] = {"decompose-summary": "openai/gpt-5.4"}
+  recorded-claude-run-replays-offline/summary-stage-key-changed-by-override-removal
+    Line 69 sets DEFAULT_STAGE_MODELS to an empty dict, so decompose-summary already resolves to the default Claude model (anthropic/claude-sonnet-5-5). The comments say the stage's recording was made under openai/gpt-5.4, and nothing here shows it was re-recorded, so replay would miss. That matches the DEFECTIVE behaviour. The repair restores the override entry, which makes the stage resolve to openai/gpt-5.4 again and hit its recording. (the repair failed 16 of 148 candidate tests, too many to say anything about this defect)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/config.py lines 69-69:
+      - DEFAULT_STAGE_MODELS: dict[str, str] = {}
+      + DEFAULT_STAGE_MODELS: dict[str, str] = {"decompose-summary": "openai/gpt-5.4"}
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 553dc86baf7a47ea
+  continue this run with: --continue 553dc86baf7a47ea
+Model usage by stage:
+  stage                                model                                                                        calls     prompt  output  reasoning  cached  this run  recorded  time this run
+  -----------------------------------  ---------------------------------------------------  -----------------------------  ---------  ------  ---------  ------  --------  --------  -------------
+  decompose                            anthropic/claude-sonnet-5-5                              18 (18 live / 0 replayed)    171,080   5,149        342    0.0%   $0.4760   $0.4760         119.3s
+  decompose-summary                    anthropic/claude-sonnet-5-5                                5 (5 live / 0 replayed)      8,118   2,114          0    0.0%   $0.0374   $0.0374          21.5s
+  obligation linking                   voyage/voyage-3.5-lite                                     1 (1 live / 0 replayed)        925       0          —       —   $0.0000   $0.0000           6.1s
+  defect enumeration                   anthropic/claude-sonnet-5-5                              10 (10 live / 0 replayed)     50,164  12,342      4,723    0.0%   $0.2471   $0.2471         125.7s
+  defect-to-test pair mapping          voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5      33 (33 live / 0 replayed)    175,530   5,934      5,655    0.0%   $0.3539   $0.3539         129.5s
+  coverage classification              anthropic/claude-sonnet-5-5                                1 (1 live / 0 replayed)     21,669   3,884      1,333    0.0%   $0.0930   $0.0930          26.0s
+  unrequested-change detection         anthropic/claude-sonnet-5-5                                1 (1 live / 0 replayed)     20,558   1,484        909    0.0%   $0.0662   $0.0662          14.3s
+  test recommendation                  anthropic/claude-sonnet-5-5                                2 (2 live / 0 replayed)     40,630   8,074          0    0.0%   $0.1810   $0.1810          59.6s
+  defect-to-test pair judgement (Jev)  jev-latest                                           2316 (2316 live / 0 replayed)  7,100,443  46,320          —       —   $0.2982   $0.2982         609.7s
+  mutation descriptor                  anthropic/claude-sonnet-5-5                              32 (32 live / 0 replayed)    100,451  16,313      8,855    0.0%   $0.3640   $0.3640         179.5s
+  this run spent $2.1169 on 2419 live call(s); the evidence cost $2.1169 to record (0 call(s) replayed at no cost to this run)
+
+exit=0
