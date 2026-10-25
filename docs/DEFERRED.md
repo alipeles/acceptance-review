@@ -7831,3 +7831,39 @@ the record.
   > - Two `run_case` runs over the same case and the same transcripts produce byte-identical review state.
   > - The recorded task identifier names the case (for example its `case_id`), not a temporary file.
 - **Status:** open
+
+### [2026-10-25] Background prose not under a Context heading still becomes obligations
+- **Kind:** filing
+- **Found during:** #212, scoping before Gate 1
+- **Where:** src/acceptance/requirement/obligations.py (`_SYSTEM_PROMPT`), src/acceptance/requirement/summary.py
+- **Severity:** should-fix
+- **What's wrong:** #212 (an optional `## Context` section in task files) lets an author mark background explicitly. Its comments record five instances where unmarked background in `# Task` became an obligation, several pointing the opposite way from the mandate: #204 Gate 2 run 2 obligation 31, #144 Gate 2 run 1 obligations 13–16, #232 Gate 1 run 1 `task-02`, #269 Gate 1 run 1, #334 Gate 1 run 1 (a "When <condition>" clause), #372 Gate 1 runs 1–2 (a reason clause). Real mandates open with "X does Y today; make it do Z", so the tool must handle it without the section.
+- **Why I didn't act:** agreed with the owner to keep #212 to its Deliverable. A decomposition prompt change orphans every recorded decomposition transcript, so it should be done once, on purpose.
+- **Drafted fix:** filing, child of #181 (decomposition umbrella):
+  > **Title:** A Task paragraph describing today's behaviour yields an obligation to keep it
+  >
+  > #212 added an explicit `## Context` section. Background left under `# Task` is still read as mandate, and the obligation derived from a sentence describing current behaviour routinely requires that behaviour to continue — the opposite of the change. Instances: #204 Gate 2 run 2 (obligation 31), #144 Gate 2 run 1 (obligations 13–16), #232 Gate 1 run 1 (`task-02`), #269 Gate 1 run 1, #334 Gate 1 run 1, #372 Gate 1 runs 1–2; details in #212's comments.
+  >
+  > **Acceptance**
+  > - A Task-section paragraph describing current behaviour that the change replaces yields no obligation.
+  > - A requirement of the form "When <condition>, <requirement>" yields obligations for the requirement and none for the condition.
+  > - No obligation is derived whose satisfying evidence would be a test that the delivered change did not happen.
+  > - A regression case under `tests/fixtures/` pins each of the above.
+- **Status:** filed as #427, 2026-10-25
+
+### [2026-10-25] Nothing reports two obligations that contradict each other, or one that asserts what a Scope exclusion excludes
+- **Kind:** filing
+- **Found during:** #212, scoping before Gate 1
+- **Where:** src/acceptance/requirement/ (no current home; nearest is `linking.py`)
+- **Severity:** should-fix
+- **What's wrong:** #232 Gate 1 run 1 derived `test-assertion-derives-behaviour-obligation` and its exact negation `acceptance-test-demand-is-test` in one obligation set; #334 Gate 1 run 1 derived `candidate-edit-makes-defect-true` alongside `defect-truth-not-judged` from a Scope exclusion. Both passed through linking, mapping and coverage without comment. Linking can say "not the same requirement" but not "mutually exclusive".
+- **Why I didn't act:** a new capability, outside #212's Deliverable.
+- **Drafted fix:** filing, child of #181 (decomposition umbrella):
+  > **Title:** Mutually exclusive obligations pass through decomposition unreported
+  >
+  > Two obligations in one set can demand opposite things, and an obligation can assert a property a Scope exclusion excludes, with nothing in the report saying so. Instances: #232 Gate 1 run 1 (`test-assertion-derives-behaviour-obligation` vs `acceptance-test-demand-is-test`), #334 Gate 1 run 1 (`candidate-edit-makes-defect-true` vs `defect-truth-not-judged`). Raised in #212's comments.
+  >
+  > **Acceptance**
+  > - A pair of obligations where satisfying one rules out the other is reported as an open question naming both, with links to both requirements' text.
+  > - An obligation asserting what a Scope exclusion excludes is reported the same way.
+- **Status:** filed as #428, 2026-10-25

@@ -1,0 +1,99 @@
+run 9467b78f2b6336b7
+  requirements: 7 derived, 0 carried, 0 revised; 18 decompose call(s)
+  continue this run with: --continue 9467b78f2b6336b7
+Model usage by stage:
+  stage               model                                            calls   prompt  output  reasoning  cached  this run  recorded  time this run
+  ------------------  ---------------------------  -------------------------  -------  ------  ---------  ------  --------  --------  -------------
+  decompose           anthropic/claude-sonnet-5-5  14 (14 live / 0 replayed)  133,120   4,417        722    0.0%   $0.3748   $0.3748         106.7s
+  decompose-summary   anthropic/claude-sonnet-5-5    4 (4 live / 0 replayed)    6,142   1,876          0    0.0%   $0.0310   $0.0310          18.8s
+  obligation linking  voyage/voyage-3.5-lite         1 (1 live / 0 replayed)      811       0          —       —   $0.0000   $0.0000           1.3s
+  this run spent $0.4059 on 19 live call(s); the evidence cost $0.4059 to record (0 call(s) replayed at no cost to this run)
+Requirements: 7   with obligations: 7
+
+[task-01] A task file can carry an optional `## Context` section, for background that
+    helps a reader understand the mandate but is not itself something the change must
+    deliver: the problem being fixed, how the system behaves today, or measurements
+    already taken.
+    -> context-section-optional-background  [functional/explicit, code_and_tests]
+       A task file may carry an optional `## Context` section, and the system accepts
+       task files both with and without it; the section is treated as background
+       (problem being fixed, current behavior, measurements) and not as a deliverable of
+       the change.
+
+[task-02] Parsing a task file records the Context section as its own field, each block
+    with its span back to the source. Context is not reported as unread source, and it
+    is not a requirement: it gets no requirement id and no disposition, and adding or
+    removing it does not move the mandate coverage counts.
+    -> parse-records-context-field  [functional/explicit, code_and_tests]
+       Parsing a task file records the Context section as its own field on the parsed
+       task-file result, separate from the requirement sections and other fields.
+    -> context-blocks-carry-source-spans  [functional/explicit, code_and_tests]
+       The Context field recorded by parsing a task file holds its content as blocks,
+       and each block carries a span that points back to its location in the source task
+       file.
+    -> context-not-reported-unread  [functional/explicit, code_and_tests]
+       Context section content is not reported as unread source: when a task file is
+       parsed and the unread-source report is produced, the Context section's blocks do
+       not appear in it.
+    -> context-blocks-have-no-requirement-id-or-disposition  [functional/explicit, code_and_tests]
+       Context section blocks are recorded without requirement ids and without
+       dispositions: parsing a task file assigns no requirement id to any Context block
+       and produces no disposition for it.
+    -> context-does-not-move-coverage-counts  [invariant/explicit, code_and_tests]
+       Mandate coverage counts are independent of the Context section: adding or
+       removing Context blocks leaves the coverage counts identical.
+
+[task-03] Decomposition shows the context to the model, labelled as context and kept
+    apart from the list of requirements, so the model can use the background without
+    being asked to account for it. A task file with no Context section produces exactly
+    the same model requests and the same results as it does today.
+    -> context-shown-labelled-and-separate  [functional/explicit, code_and_tests]
+       Decomposition presents the task file's context to the model labelled as context
+       and kept apart from the list of requirements.
+    -> context-not-an-accountable-requirement  [functional/explicit, code_and_tests]
+       The context background supplied to the model is used as background only: the
+       model is not asked to account for it, so no obligation or disposition is required
+       of the model for the context content.
+    -> no-context-task-file-unchanged-behavior  [regression/explicit, code_and_tests]
+       Preserve the existing behavior for a task file with no Context section: it
+       produces exactly the same model requests and the same results as before this
+       change.
+
+[task-04] The spec's description of the task file format (§7.1) describes the Context
+    section, and the repository's contributor guide, `CLAUDE.md`, says when an author
+    should use it.
+    -> spec-7-1-describes-context-section  [docs_config/explicit, code_only]
+       The spec's description of the task file format (§7.1) includes a description of
+       the Context section.
+       why code_only: This is a documentation property of the spec text, which a reader
+       confirms by reading §7.1; no test would add anything.
+    -> claude-md-states-when-to-use-context-section  [docs_config/explicit, code_only]
+       The repository's contributor guide, CLAUDE.md, contains guidance stating when a
+       task-file author should use the Context section.
+       why code_only: This is a documentation-content property of CLAUDE.md that a
+       reader confirms by reading the file; no executable behavior exists for a test to
+       exercise.
+
+[exclusion-01] Recognising background that is not under a Context heading.
+    -> no-background-recognition-outside-context-heading  [invariant/explicit, code_only, satisfied by absence]
+       The change does not alter how background that is not under a Context heading is
+       recognised.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+
+[exclusion-02] Context sections nested inside other sections; there is one top-level
+    Context section.
+    -> no-nested-context-sections  [invariant/explicit, code_only, satisfied by absence]
+       The change does not add support for Context sections nested inside other
+       sections.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+
+[exclusion-03] Adding a Context section to the existing task files under
+    `tests/fixtures/` and `dogfood-logs/`.
+    -> no-context-added-to-existing-task-files  [invariant/explicit, code_only, satisfied by absence]
+       The change does not add a Context section to the existing task files under
+       `tests/fixtures/` and `dogfood-logs/`.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+
