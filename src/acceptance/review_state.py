@@ -234,8 +234,7 @@ class PairJudge(str, Enum):
     """
 
     JEV = "jev"
-    """Jev decided: its probability cleared a cut-off, or the model it handed
-    the pair to gave no usable answer and Jev's probability decided at 0.5."""
+    """Jev decided: its probability cleared a cut-off on its own."""
 
     MODEL = "model"
     """Jev was unsure, and the model answered yes or no."""

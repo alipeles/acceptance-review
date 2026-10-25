@@ -21,7 +21,7 @@ from acceptance.change.diff import extract_change_set
 from acceptance.pipeline import run_review
 from acceptance.report import render_report
 from acceptance.review_state import RequiredEvidence, Review
-from tests.support import client_dispatching
+from tests.support import FakeJev, client_dispatching
 
 _TASK = (
     "# Task\nThe build is clean.\n\n"
@@ -153,6 +153,9 @@ def _review(tmp_path, judgments, capture=None, touch_source=False) -> Review:
         repo=tmp_path,
         client=client_dispatching(judgments, capture=capture),
         reviewed_revision=head,
+        # Jev is sure no test catches the defect (#385), so it stays uncovered
+        # and reaches the recommendation stage.
+        jev=FakeJev(lambda defect, test_name: 0.1),
     )
 
 

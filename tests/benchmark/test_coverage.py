@@ -30,16 +30,15 @@ from acceptance.benchmark.fixtures import build_benchmark_case
 from acceptance.change.diff import extract_change_set
 from acceptance.cli import run_check
 from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL, RunConfig
+from acceptance.jev import JevProvider
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from acceptance.review_store import ReviewStore
 from tests.support import (
-    FakeJev,
     _EMPTY_BY_SCHEMA,
     WHOLE_SUMMARY_UNCOVERED,
+    FakeJev,
     _completed,
     _fake_response,
-    _supplied_enum,
-    _tests_offered,
     client_finding_nothing,
     constant_embedding_fn,
 )
@@ -157,6 +156,19 @@ def test_archetype_1_missed_obligation_yields_full_recall_and_precision(tmp_path
     assert scored.reviewer_output.completion.verdict.value == "incomplete"
 
 
+def _jev_by_state(probability) -> JevProvider:
+    """Jev answered by a rule over everything it is shown, not only the defect
+    and the test's name — for a fixture whose defects share one description."""
+
+    def post(url, body, headers):
+        return 200, {
+            "answers": {"fails": {"noul": probability(body["state"])}},
+            "usage": {"input_tokens": 100, "output_tokens": 1},
+        }
+
+    return JevProvider(post_fn=post)
+
+
 def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
     """M5.5 acceptance: the checker's own evidence-strength classification —
     fed by real M4.1 discovery + M4.2 mapping + M5.1 extraction + M5.2
@@ -210,21 +222,6 @@ def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
                 ],
                 "reason": "",
             },
-            # The two real tests catch the three implemented rules and catch
-            # nothing about returns, which is the gap archetype #1 poses.
-            "_PairVerdicts": {
-                "tests": [
-                    {
-                        "test_id": test_id,
-                        "defects": [
-                            {"defect_id": f"{oid}/is-wrong", "fails": True, "reason": "asserted"}
-                            for oid in ("show-fields", "line-total", "money-format")
-                        ]
-                        + [{"defect_id": "returns-in-parens/is-wrong", "fails": False}],
-                    }
-                    for test_id in (pos, two)
-                ]
-            },
             "_Coverage": _classification_response(
                 [
                     {"obligation_id": "show-fields", "status": "addressed"},
@@ -238,7 +235,16 @@ def test_archetype_1_evidence_agreement_reports_a_real_number(tmp_path):
         }
     )
 
-    scored = classify_case(case, client)
+    # The two real tests catch the three implemented rules and catch nothing
+    # about returns, which is the gap archetype #1 poses. Every criterion's
+    # defect has the same description, so Jev's rule tells them apart by the
+    # requirement it is shown (#385); any other test survives.
+    def probability(state):
+        if state["test_name"] not in (pos.split("::")[1], two.split("::")[1]):
+            return 0.1
+        return 0.1 if "For returns" in state["change_request"] else 0.9
+
+    scored = classify_case(case, client, jev=_jev_by_state(probability))
 
     by_id = {o.id: o for o in scored.reviewer_output.obligation_map}
     assert by_id["show-fields"].evidence_class == "strongly_supported"
@@ -678,21 +684,6 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
                 ],
                 "reason": "",
             },
-            "_PairVerdicts": {
-                "tests": [
-                    {
-                        "test_id": test_id,
-                        "defects": [
-                            {
-                                "defect_id": "show-fields/omits-a-field",
-                                "fails": True,
-                                "reason": "it asserts on the field the defect drops",
-                            },
-                            {"defect_id": "show-fields/wrong-order", "fails": False},
-                        ],
-                    }
-                ]
-            },
             "_Coverage": _classification_response(
                 [
                     {
@@ -720,7 +711,14 @@ def test_the_shared_pipeline_runs_every_stage(tmp_path):
         }
     )
 
-    review = classify_case(case, client).reviewer_output
+    # The discovered test kills "omits a field" and not "wrong order"; any
+    # other test kills nothing (#385: the verdict comes from Jev).
+    jev = FakeJev(
+        lambda defect, test_name: (
+            0.9 if defect.startswith("omits a field") and test_name == "test_positive_line" else 0.1
+        )
+    )
+    review = classify_case(case, client, jev=jev).reviewer_output
     obligation = review.obligation_map[0]
 
     assert obligation.description  # decomposition ran
@@ -880,12 +878,8 @@ def test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives(t
     """
     case = build_benchmark_case(ARCHETYPES_DIR / "04-non-discriminating-input", tmp_path / "repo")
     test_id = "test_billing.py::test_half_of_a_month"
-    defect_id = "daily-rate/hard-codes-thirty"
 
-    def _client(fails: bool):
-        verdict = {"defect_id": defect_id, "fails": fails}
-        if fails:
-            verdict["reason"] = "a non-30-day month would differ"
+    def _client():
         return _client_dispatching(
             {
                 "_Decomposition": _decomposition_response(
@@ -916,7 +910,6 @@ def test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives(t
                     ],
                     "reason": "",
                 },
-                "_PairVerdicts": {"tests": [{"test_id": test_id, "defects": [verdict]}]},
                 "_Coverage": _classification_response(
                     [{"obligation_id": "daily-rate", "status": "addressed"}]
                 ),
@@ -925,7 +918,13 @@ def test_archetype_4_cannot_reach_strongly_supported_while_its_defect_survives(t
         )
 
     def rating(fails: bool):
-        review = classify_case(case, _client(fails)).reviewer_output
+        # Jev says so, one way or the other, on archetype #4's only test (#385).
+        jev = FakeJev(
+            lambda defect, test_name: (
+                (0.9 if fails else 0.1) if test_name == test_id.split("::")[1] else 0.1
+            )
+        )
+        review = classify_case(case, _client(), jev=jev).reviewer_output
         return next(o for o in review.obligation_map if o.id == "daily-rate")
 
     surviving = rating(fails=False)

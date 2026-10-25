@@ -21,7 +21,10 @@ the test fails decides the pair on its own at `JEV_FAILS_AT` or more and at
 **The model for the pairs in between, one pair per call**, with the
 requirement text, the delivered code and the defect's description. It answers
 yes or no in a schema with nothing else in it; no token probability is read.
-When it gives no usable answer, Jev's probability decides at `NO_ANSWER_AT`.
+When it gives no usable answer, the pair is recorded as unanswered, which a
+rating counts as unknown. DR-379 had Jev's probability decide at 0.5 instead;
+in the band where the model is asked that always reads "survives", turning a
+judgement nobody obtained into a negative (owner's decision, 2026-10-25).
 
 DR-379 measured this rule against the judge it replaces: 85.9% on 92 held-out
 cases against 66.3%, at about a sixth of the cost per judgement. The cut-offs
@@ -78,7 +81,6 @@ __all__ = [
     "JEV_FAILS_AT",
     "JEV_STAGE",
     "JEV_SURVIVES_AT",
-    "NO_ANSWER_AT",
     "PAIR_STAGE_LOGIC_VERSION",
     "PairMappingResult",
     "defect_text",
@@ -98,7 +100,6 @@ JEV_STAGE = "defect-to-test pair judgement (Jev)"
 # come out differently.
 JEV_FAILS_AT = 0.34
 JEV_SURVIVES_AT = 0.24
-NO_ANSWER_AT = 0.5
 
 # Bumped when this stage's own logic changes in a way that makes a stored verdict
 # untrustworthy even though the defect and the test are untouched. 2: Jev, then
@@ -191,8 +192,8 @@ class _LenientFails(BaseModel):
     """The answer as *parsed*, admitting one the schema forbids.
 
     A reply missing `fails`, or carrying something that is not a boolean, is
-    no usable answer rather than an error that stops the review: DR-379's rule
-    has a defined outcome for it, Jev's probability at `NO_ANSWER_AT`. Parsing
+    no usable answer rather than an error that stops the review: the pair is
+    recorded as unanswered and the rest of the run goes on. Parsing
     leniently is also what lets such a reply be recorded, so a replayed review
     reaches the same outcome without a call (`llm.py::_persist_live_call` keeps
     only what parses).
@@ -314,20 +315,23 @@ def _key(client: ModelClient, pair: Pair, requirement: str, context: TargetedCon
                 "model": JEV_MODEL,
                 "fails_at": JEV_FAILS_AT,
                 "survives_at": JEV_SURVIVES_AT,
-                "no_answer_at": NO_ANSWER_AT,
             },
         },
     )
 
 
 class _Decision:
-    """One pair's outcome, handed back to the caller to record in pair order."""
+    """One pair's outcome, handed back to the caller to record in pair order.
+
+    `kills` is `None` when no judge produced an answer, and `unusable` then
+    says why.
+    """
 
     __slots__ = ("judged_by", "kills", "probability", "unusable")
 
     def __init__(
         self,
-        kills: bool,
+        kills: bool | None,
         judged_by: PairJudge,
         probability: float,
         unusable: UnusableAnswer | None = None,
@@ -371,16 +375,16 @@ def _decide(
     if isinstance(answer.fails, bool):
         return _Decision(answer.fails, PairJudge.MODEL, probability)
     return _Decision(
-        probability >= NO_ANSWER_AT,
-        PairJudge.JEV,
+        None,
+        PairJudge.MODEL,
         probability,
         UnusableAnswer(
             stage=_STAGE,
             field="fails",
             returned_id=label,
             reason=(
-                f"the answer carried no yes or no ({answer.fails!r}); Jev's probability "
-                f"{probability:.3f} decided the pair at {NO_ANSWER_AT}"
+                f"the answer carried no yes or no ({answer.fails!r}), and Jev was unsure "
+                f"({probability:.3f}), so the pair has no verdict"
             ),
         ),
     )
@@ -607,9 +611,9 @@ def _carry_and_ask(
 ) -> tuple[list[PairVerdict], list[UnjudgedPair]]:
     """The judgement itself, over exactly the pairs handed to it.
 
-    Every pair gets a verdict or the run stops: Jev always answers or raises,
-    and a model answer with no yes or no falls back to Jev's probability. So
-    nothing here is returned unjudged; the list is kept for the caller's shape.
+    A pair comes back unjudged only when Jev was unsure and the model gave no
+    usable answer: recorded as `UNANSWERED`, never defaulted to *survives*,
+    because a rating counts it as unknown and that is the honest reading.
     """
     carried: list[PairVerdict] = []
     to_ask: list[tuple[Pair, str, TargetedContext, str]] = []
@@ -643,9 +647,20 @@ def _carry_and_ask(
     )
 
     fresh: list[PairVerdict] = []
+    unjudged: list[UnjudgedPair] = []
     for (pair, _, _, key), decision in zip(to_ask, decisions):
         if decision.unusable is not None and unusable is not None:
             unusable.record([decision.unusable])
+        if decision.kills is None:
+            unjudged.append(
+                UnjudgedPair(
+                    defect_id=pair.defect.id,
+                    test_id=pair.test.test_id,
+                    cause=UnjudgedCause.UNANSWERED,
+                    reason=decision.unusable.reason if decision.unusable else "no answer",
+                )
+            )
+            continue
         fresh.append(
             PairVerdict(
                 defect_id=pair.defect.id,
@@ -658,4 +673,4 @@ def _carry_and_ask(
                 jev_probability=decision.probability,
             )
         )
-    return carried + fresh, []
+    return carried + fresh, unjudged

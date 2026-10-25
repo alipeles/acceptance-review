@@ -24,7 +24,7 @@ from acceptance.benchmark.corpus import (
 from acceptance.benchmark.coverage import classify_case
 from acceptance.benchmark.scoring import score_case_set
 from acceptance.defects.support import derive_support
-from tests.benchmark.degenerate_judges import degenerate_client
+from tests.benchmark.degenerate_judges import degenerate_client, degenerate_jev
 
 REPO = Path(__file__).resolve().parents[2]
 CASES_DIR = REPO / "tests" / "fixtures" / "rating-regression"
@@ -152,7 +152,7 @@ def _score_with(always_strong: bool, tmp_path):
             for o in _labels(case_dir)["obligations"]
         ]
         client = degenerate_client(obligations, always_strong=always_strong)
-        cases.append(classify_case(case, client))
+        cases.append(classify_case(case, client, jev=degenerate_jev(always_strong=always_strong)))
     return score_case_set(cases)
 
 
@@ -197,7 +197,11 @@ def test_every_scored_rating_is_the_arithmetic_over_that_case_s_own_verdicts(cor
         {"id": o["id"], "description": o["description"]}
         for o in _labels(CASE_DIRS[0])["obligations"]
     ]
-    scored = classify_case(case, degenerate_client(obligations, always_strong=True))
+    scored = classify_case(
+        case,
+        degenerate_client(obligations, always_strong=True),
+        jev=degenerate_jev(always_strong=True),
+    )
     review = scored.reviewer_output
 
     rated = [
@@ -299,9 +303,12 @@ def test_no_case_issues_a_live_model_call(corpus_worktrees, monkeypatch):
     # The injected stub is the only thing standing between the pipeline and a
     # provider, so wrapping it is how "no live call" becomes observable.
     monkeypatch.setattr(client, "_completion_fn", counting)
-    classify_case(case, client)
+    jev = degenerate_jev(always_strong=True)
+    classify_case(case, client, jev=jev)
 
-    assert "_Decomposition" in seen and "_PairVerdicts" in seen
+    # The pair judgement goes to Jev (#385), whose stub is the only thing
+    # between it and the service; the conftest guard fails any live Jev call.
+    assert "_Decomposition" in seen and jev.states
     assert "_Discrimination" in seen or "_Coverage" in seen
 
 
@@ -372,7 +379,11 @@ def test_running_the_suite_does_not_alter_the_judgement_stage(corpus_worktrees):
         {"id": o["id"], "description": o["description"]}
         for o in _labels(CASE_DIRS[0])["obligations"]
     ]
-    classify_case(case, degenerate_client(obligations, always_strong=True))
+    classify_case(
+        case,
+        degenerate_client(obligations, always_strong=True),
+        jev=degenerate_jev(always_strong=True),
+    )
 
     assert (_tree_digest(stage), _tree_digest(coverage_stage)) == before
 
@@ -489,7 +500,13 @@ def test_each_case_is_scored_through_score_case_itself(corpus_worktrees):
             {"id": o["id"], "description": o["description"]}
             for o in _labels(case_dir)["obligations"]
         ]
-        scored.append(classify_case(case, degenerate_client(obligations, always_strong=True)))
+        scored.append(
+            classify_case(
+                case,
+                degenerate_client(obligations, always_strong=True),
+                jev=degenerate_jev(always_strong=True),
+            )
+        )
 
     per_case = [spy(case) for case in scored]
     assert seen == [c.case_id for c in scored]
@@ -513,7 +530,11 @@ def test_no_provider_is_ever_contacted(corpus_worktrees, monkeypatch):
         {"id": o["id"], "description": o["description"]}
         for o in _labels(CASE_DIRS[0])["obligations"]
     ]
-    scored = classify_case(case, degenerate_client(obligations, always_strong=True))
+    scored = classify_case(
+        case,
+        degenerate_client(obligations, always_strong=True),
+        jev=degenerate_jev(always_strong=True),
+    )
     assert scored.reviewer_output is not None
 
 

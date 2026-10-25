@@ -18,12 +18,9 @@ from typing import Literal
 import pytest
 from pydantic import ValidationError
 
-from acceptance.defects.pair_mapping import judge_pairs
 from acceptance.evidence.discovery import DiscoveredTest, DiscoveryReason
 from acceptance.llm import StrictResponseModel, inline_schema_refs
-from acceptance.review_state import ChangeSet, Defect, DefectSet, UnjudgedCause
-from acceptance.supplied_ids import UnusableAnswerLog, constrain, scan, unsupplied
-from tests.support import client_returning
+from acceptance.supplied_ids import constrain, scan, unsupplied
 
 
 class _Item(StrictResponseModel):
@@ -183,123 +180,16 @@ def test_unsupplied_preserves_first_seen_order_without_duplicates():
     assert unsupplied(["a", "b", "a", "c"], {"b"}) == ["a", "c"]
 
 
-# --- the pair stage, where the defect is observed now ---
+# --- the pair stage no longer echoes ids ---
 #
-# The section this replaces exercised the test-to-criterion mapping stage, which
-# #316 deleted. The guarantees are the machinery's, not that stage's, so they
-# move to the partitioned stage that remains: the (defect, test) judge.
-#
-# Four of the old nine are not repeated here because
-# `tests/defects/test_pair_mapping.py` already owns them at that stage: a pair
-# the judge never answers is recorded rather than read as *survives*; one
-# misshapen answer costs only its own pair; no request carries more judgements
-# than the limit; and a criterion whose pairs went unanswered is
-# `indeterminate` rather than negatively answered.
-#
-# One is deliberately NOT ported: the mapping stage sent a byte-identical
-# response schema in every batch because #302 found a per-batch `test_id` enum
-# cost 461 of 464 calls their prompt cache. The pair stage constrains `test_id`
-# per batch, so the guarantee is false there by construction. That is a
-# difference worth measuring, not a test to rewrite into a passing shape.
-
-
-def _defect(defect_id: str, obligation_id: str = "ob-1") -> Defect:
-    return Defect(
-        id=defect_id,
-        obligation_id=obligation_id,
-        type="other",
-        description=f"{defect_id} goes wrong",
-        code_refs=[],
-    )
-
-
-def _defect_set(*defect_ids: str) -> DefectSet:
-    return DefectSet(obligation_id="ob-1", defects=[_defect(d) for d in defect_ids])
-
-
-def _judge(defect_sets, tests, client, unusable=None, batch_size=40):
-    return judge_pairs(
-        defect_sets,
-        tests,
-        ChangeSet(base_revision="a", head_revision="b", files=[]),
-        client,
-        batch_size=batch_size,
-        unusable=unusable,
-    )
-
-
-def _answer(test_id: str, entries: list[dict]) -> dict:
-    return {"tests": [{"test_id": test_id, "defects": entries}]}
-
-
-def test_a_foreign_defect_id_is_recorded_not_silently_dropped():
-    """The original defect, at the stage that inherits it. `show-fields` belongs
-    to a fixture the prompt happened to contain; filtering it out silently leaves
-    a result indistinguishable from "no test would fail on this defect"."""
-    log = UnusableAnswerLog()
-    result = _judge(
-        [_defect_set("ob-1/d1")],
-        [_test("test_cart.py::test_discount")],
-        client_returning(
-            _answer(
-                "test_cart.py::test_discount",
-                [{"defect_id": "show-fields", "fails": True, "reason": "asserts total"}],
-            )
-        ),
-        unusable=log,
-    )
-
-    assert [a.returned_id for a in log.answers] == ["show-fields"]
-    # And the pair that WAS offered carries no verdict, rather than a false one.
-    assert [v.defect_id for v in result.verdicts] == []
-    assert [(u.defect_id, u.cause) for u in result.unjudged] == [
-        ("ob-1/d1", UnjudgedCause.UNANSWERED)
-    ]
-
-
-def test_a_clean_answer_records_nothing_and_keeps_its_negative_verdicts():
-    """The guarantee must not fire spuriously: with every id honoured, a pair the
-    test would not fail on is a real, reportable negative answer rather than an
-    absence of one."""
-    log = UnusableAnswerLog()
-    result = _judge(
-        [_defect_set("ob-1/d1", "ob-1/d2")],
-        [_test("t.py::test_a")],
-        client_returning(
-            _answer(
-                "t.py::test_a",
-                [
-                    {"defect_id": "ob-1/d1", "fails": True, "reason": "asserts on it"},
-                    {"defect_id": "ob-1/d2", "fails": False},
-                ],
-            )
-        ),
-        unusable=log,
-    )
-
-    assert sorted((v.defect_id, v.kills) for v in result.verdicts) == [
-        ("ob-1/d1", True),
-        ("ob-1/d2", False),
-    ]
-    assert result.unjudged == []
-    assert not log.answers
-
-
-def test_the_schema_asked_for_differs_from_the_shape_parsed():
-    """The `parse_as` seam. Without it a provider that ignored the enum would
-    raise `SchemaValidationError` and cost the whole batch — which is exactly the
-    all-or-nothing failure the per-item recording exists to avoid."""
-    log = UnusableAnswerLog()
-
-    # Does not raise: parsed permissively, then checked per item.
-    _judge(
-        [_defect_set("ob-1/d1")],
-        [_test("t.py::test_a")],
-        client_returning(_answer("t.py::test_a", [{"defect_id": "not-supplied", "fails": False}])),
-        unusable=log,
-    )
-
-    assert [a.returned_id for a in log.answers] == ["not-supplied"]
+# Three tests used to sit here, exercising this machinery at the batched
+# (defect, test) judge: a foreign defect id recorded rather than dropped, a
+# clean answer recording nothing, and the asked-for schema differing from the
+# parsed one. #385 replaced that judge with Jev and then a yes/no model call
+# about ONE pair, whose answer names no id at all, so there is nothing at that
+# stage for the guarantee to hold over. They were deleted, not rewritten into a
+# passing shape. The wiring tests below reproduce an unobtained judgement at
+# the new pair stage instead.
 
 
 # --- the pipeline actually uses it (the wiring, not just the helper) ---
@@ -337,21 +227,14 @@ _JUDGMENTS = {
         ],
         "reason": "",
     },
-    # The defect, reproduced: an answer naming an id nobody supplied. It used to
-    # be reproduced through the test-to-criterion mapping stage, which #316
-    # deleted; the pair judge is where the same shape lands now — a verdict about
-    # `show-fields`, which was never offered, and silence about `alpha/d1`, which
-    # was.
-    "_PairVerdicts": {
-        "tests": [
-            {
-                "test_id": "test_alpha.py::test_alpha",
-                "defects": [
-                    {"defect_id": "show-fields", "fails": True, "reason": "from a fixture"}
-                ],
-            }
-        ]
-    },
+    # The defect, reproduced at the stage that inherits it. It was reproduced
+    # through the test-to-criterion mapping stage until #316 deleted it, then as
+    # a foreign defect id in the batched pair judge until #385 replaced that
+    # with Jev and a yes/no model call that names no id. Jev is unsure about the
+    # one pair (see `_review`), so the model is asked, and its answer carries no
+    # yes or no: a judgement asked for and not obtained, which is the shape the
+    # foreign id stood for.
+    "_Fails": {},
     "_Coverage": {
         "classifications": [
             {
@@ -364,7 +247,6 @@ _JUDGMENTS = {
     },
     "_Detections": {"unrequested_changes": []},
     "_Judgments": {"resolutions": []},
-    "_Recommendations": {"recommendations": []},
     "_Mismatches": {"mismatches": []},
 }
 
@@ -396,7 +278,7 @@ def _repo_with_a_change(tmp_path):
 def _review(tmp_path):
     from acceptance.change.diff import extract_change_set
     from acceptance.pipeline import run_review
-    from tests.support import client_dispatching
+    from tests.support import FakeJev, client_dispatching
 
     base, head = _repo_with_a_change(tmp_path)
     return run_review(
@@ -405,6 +287,8 @@ def _review(tmp_path):
         repo=tmp_path,
         client=client_dispatching(_JUDGMENTS),
         reviewed_revision=head,
+        # Between the cut-offs, so the model is asked about the pair.
+        jev=FakeJev(lambda defect, test_name: 0.3),
     )
 
 
@@ -416,8 +300,8 @@ def test_the_pipeline_reports_an_unusable_answer_naming_the_stage_and_the_id(tmp
 
     unusable = [f for f in review.findings if f.type == "unusable_answer"]
     assert len(unusable) == 1
-    assert "show-fields" in unusable[0].description
-    assert "mapping" in unusable[0].description
+    assert "alpha/d1/test_alpha.py::test_alpha" in unusable[0].description
+    assert "defect-to-test pair mapping" in unusable[0].description
 
 
 def test_an_unusable_answer_leaves_the_obligation_indeterminate(tmp_path):

@@ -315,8 +315,10 @@ def test_just_inside_each_cut_off_the_model_is_asked(tmp_path):
         assert len(judge.model_requests) == 1, probability
 
 
-def test_with_no_usable_answer_from_the_model_jev_decides_at_one_half(tmp_path):
-    """DR-379's last resort. Recorded as an unusable answer, never as silence."""
+def test_with_no_usable_answer_from_the_model_the_pair_is_unanswered(tmp_path):
+    """Not a verdict, and never a *survives*: a rating counts an unanswered pair
+    as unknown, which is what it is (owner's decision, 2026-10-25, departing
+    from DR-379's 0.5 fallback). Recorded as an unusable answer as well."""
     repo = _repo(tmp_path, {"test_billing.py": "x"})
     for answer in ({}, {"fails": "maybe"}, {"fails": None}):
         judge = _jev_at(0.3, model_says=lambda d, t, a=answer: a)
@@ -325,13 +327,17 @@ def test_with_no_usable_answer_from_the_model_jev_decides_at_one_half(tmp_path):
             judge, [_defect_set("divides by 30")], [_test("test_half_month")], repo, unusable=log
         )
 
-        (verdict,) = result.verdicts
-        assert verdict.kills is False, answer  # 0.3 < 0.5
-        assert verdict.judged_by is PairJudge.JEV
+        assert result.verdicts == [], answer
+        (unanswered,) = result.unjudged
+        assert unanswered.cause is UnjudgedCause.UNANSWERED
+        assert (unanswered.defect_id, unanswered.test_id) == (
+            "daily-rate-d1",
+            "test_billing.py::test_half_month",
+        )
+        assert "0.300" in unanswered.reason
         (entry,) = log.answers
         assert entry.field == "fails"
         assert entry.returned_id == "daily-rate-d1/test_billing.py::test_half_month"
-        assert "decided the pair at 0.5" in entry.reason
 
 
 def test_a_verdict_carries_no_reasoning_and_says_who_decided(tmp_path):

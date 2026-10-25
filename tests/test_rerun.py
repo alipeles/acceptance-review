@@ -375,30 +375,10 @@ _HEAD_JUDGMENTS = {
         ],
         "reason": "",
     },
-    "_PairVerdicts": {
-        "tests": [
-            {
-                "test_id": "test_rounding.py::test_rounds_to_nearest",
-                "defects": [
-                    {
-                        "defect_id": "round-nearest/wrong-rounding",
-                        "fails": True,
-                        "reason": "2.3 would return 2 either way, but 2.5 pins it.",
-                    }
-                ],
-            },
-            {
-                "test_id": "test_rounding.py::test_ties_round_to_even",
-                "defects": [
-                    {
-                        "defect_id": "ties-to-even/wrong-rounding",
-                        "fails": True,
-                        "reason": "2.5 -> 2 fails under round-half-up.",
-                    }
-                ],
-            },
-        ]
-    },
+    # No pair answers here: since #385 the pair judge asks Jev first, and the
+    # test below makes Jev certain that each criterion's test catches its defect
+    # — `test_rounds_to_nearest` pins 2.3 and 2.5, `test_ties_round_to_even`
+    # fails under round-half-up.
     "_Coverage": {
         "classifications": [
             {
@@ -422,7 +402,7 @@ _HEAD_JUDGMENTS = {
 }
 
 
-def test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict(tmp_path):
+def test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict(tmp_path, monkeypatch):
     """§13.5 #9, the M7.5 acceptance criterion.
 
     The prior review is constructed rather than produced by a first pipeline run:
@@ -439,7 +419,13 @@ def test_archetype_9_rerun_flips_the_weak_obligation_and_updates_the_verdict(tmp
     from acceptance.benchmark.fixtures import build_benchmark_case
     from acceptance.cli import run_check
     from acceptance.config import RunConfig
-    from tests.support import client_dispatching
+    from acceptance.defects import pair_mapping
+    from tests.support import FakeJev, client_dispatching
+
+    # `run_check` takes no Jev provider, so the pair judge's default one is
+    # replaced: every pair is a certain kill, which is the head this archetype
+    # poses (both tests now discriminate).
+    monkeypatch.setattr(pair_mapping, "JevProvider", lambda: FakeJev(lambda defect, test: 0.9))
 
     case = build_benchmark_case(ARCHETYPES_DIR / "09-revision-cycle", tmp_path / "repo")
     repo = Path(case.inputs.repo)

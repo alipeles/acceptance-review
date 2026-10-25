@@ -26,9 +26,14 @@ boolean produced the whole rating.
 **The steering moved from the criterion to the pair** (#316). It used to run
 through `_Mappings` (map every test to every criterion) and `_Discrimination`
 (one defect per criterion, caught or not); it now runs through `_Enumeration`
-(one defect per criterion) and `_PairVerdicts` (every pair, killed or not). The
+(one defect per criterion) and the pair judge (every pair, killed or not). The
 suite's shape is unchanged because both stages feed a pure reduce; what changed
 is which stage the boolean enters through.
+
+**Since #385 the pair verdict comes from Jev**, so a degenerate judge is a pair:
+`degenerate_client` for the model's stages and `degenerate_jev` for the pair
+judgement. Jev's probability is fixed outside both cut-offs, so Jev decides
+every pair alone and the model's yes-or-no fallback is never reached.
 
 Ids are read out of the **request schema** rather than parsed from the prompt.
 #163 constrains every id-bearing response field to the ids that call supplied,
@@ -48,9 +53,9 @@ from acceptance.config import DEFAULT_EMBEDDING_MODEL, DEFAULT_MODEL
 from acceptance.llm import Mode, ModelClient, TranscriptStore
 from tests.support import (
     _EMPTY_BY_SCHEMA,
+    FakeJev,
     _completed,
     _fake_response,
-    _tests_offered,
     constant_embedding_fn,
 )
 
@@ -143,44 +148,6 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
                 )
             )
 
-        if name == "_PairVerdicts":
-            # The verdict that steers the whole suite (#316). Every defect
-            # offered with every test gets the same fixed answer, so the only
-            # thing separating the two judges is `always_strong`.
-            #
-            # Answering for EVERY offered pair matters in its own right: a pair
-            # the response passes over is recorded as a judgement not obtained,
-            # and my derivation refuses to classify a criterion whose defects are
-            # partly unknown — so a double that skipped one would drive the run
-            # `indeterminate` rather than steering the rating this suite is about.
-            # The defect ids come off the schema; the TEST ids come off the
-            # prompt. #324 dropped the `test_id` enum for the same reason #302
-            # dropped the mapping stage's — a per-call enum is the one part of
-            # the request that changes between calls, so nothing caches — and
-            # left the test ids where the model reads them. Reading them from
-            # the schema here would silently answer for no tests at all.
-            tests = _tests_offered(**kwargs)
-            defect_ids = _enums(schema, "defect_id")
-            verdict: dict[str, Any] = {"fails": always_strong}
-            if always_strong:
-                # A killing answer carries a reason and a surviving one carries
-                # no `reason` key at all — the response is a union of the two
-                # shapes, and sending the wrong one is a validation error.
-                verdict["reason"] = "fixed verdict from a degenerate judge"
-            return _fake_response(
-                json.dumps(
-                    {
-                        "tests": [
-                            {
-                                "test_id": test_id,
-                                "defects": [{"defect_id": did, **verdict} for did in defect_ids],
-                            }
-                            for test_id in tests
-                        ]
-                    }
-                )
-            )
-
         if name == "_Coverage":
             ids = _enums(schema, "obligation_id") or [o["id"] for o in obligations]
             return _fake_response(
@@ -217,3 +184,14 @@ def degenerate_client(obligations: list[dict], *, always_strong: bool) -> ModelC
         embedding_model=DEFAULT_EMBEDDING_MODEL,
         embedding_fn=constant_embedding_fn,
     )
+
+
+def degenerate_jev(*, always_strong: bool) -> FakeJev:
+    """The pair judge half of a degenerate judge (#385).
+
+    Every pair gets the same answer, so the only thing separating the two
+    judges is `always_strong`. 0.9 and 0.1 sit outside Jev's cut-offs, so Jev
+    decides alone: a pair handed to the model would be answered by the shared
+    double's neutral default rather than by this judge's fixed mind.
+    """
+    return FakeJev(lambda defect, test_name: 0.9 if always_strong else 0.1)

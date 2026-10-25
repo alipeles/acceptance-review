@@ -35,8 +35,36 @@ from acceptance.mutation.attempt import (
 from acceptance.mutation.settings import ExecutionSettings
 from acceptance.pipeline import run_review
 from acceptance.report import render_report
-from acceptance.review_state import UnjudgedCause
-from tests.support import client_dispatching
+from acceptance.review_state import PairJudge, UnjudgedCause
+from tests.support import FakeJev, client_dispatching
+
+# The pair judge asks Jev first (#385). Jev is not a completion, so the
+# double records each call into the same `capture` list under this name, in
+# call order, beside the completions — every "was the static judge asked"
+# assertion below reads it from there.
+_JEV = "_Jev"
+#: Key in a judgments dict naming Jev's rule, `probability(defect, test_name)`.
+#: Absent, Jev answers 0.1: every pair survives, decided by Jev alone.
+_JEV_RULE = "_jev"
+
+
+class _CapturingJev(FakeJev):
+    def __init__(self, probability, capture):
+        super().__init__(probability)
+        self._capture = capture
+
+    def _post(self, url, body, headers):
+        if self._capture is not None:
+            state = body["state"]
+            self._capture.append(
+                {
+                    "schema": _JEV,
+                    "test_id": f"test_loan.py::{state['test_name']}",
+                    "prompt": "\n".join(str(value) for value in state.values()),
+                }
+            )
+        return super()._post(url, body, headers)
+
 
 _TASK = (
     "# Task\nThe schedule pays the loan off in equal monthly payments.\n\n"
@@ -166,13 +194,16 @@ def _review(
     judgments: dict | None = None,
 ):
     repo, base, head = _repo(tmp_path, head_test=head_test)
+    answers = dict(judgments or _JUDGMENTS)
+    rule = answers.pop(_JEV_RULE, lambda defect, test_name: 0.1)
     return run_review(
         task_text=_TASK,
         change_set=extract_change_set(repo, base, head),
         repo=repo,
-        client=client_dispatching(judgments or _JUDGMENTS, capture=capture),
+        client=client_dispatching(answers, capture=capture),
         reviewed_revision=head,
         execution=execution,
+        jev=_CapturingJev(rule, capture),
     )
 
 
@@ -336,7 +367,7 @@ class TestVerification:
         (obligation,) = [o for o in review.obligation_map if o.id == "equal-payments"]
         assert obligation.achieved_evidence_tier is EvidenceTier.DEFECT_KILLED
         assert obligation.evidence_class == "unsupported"
-        assert "_PairVerdicts" not in _schemas(capture)
+        assert _JEV not in _schemas(capture)
 
     def test_a_refused_edit_stays_static_and_goes_to_the_static_judge(self, tmp_path):
         capture: list = []
@@ -349,7 +380,7 @@ class TestVerification:
         (attempt,) = review.mutation_attempts
         assert attempt.verified is False
         assert "the edit changes nothing the defect names" in attempt.verification_reason
-        assert "_PairVerdicts" in _schemas(capture)
+        assert _JEV in _schemas(capture)
 
     def test_the_verifier_is_not_shown_the_tests(self, tmp_path):
         capture: list = []
@@ -470,7 +501,7 @@ class TestAnUnverifiedEditIsNotEvidence:
     def test_its_defect_still_goes_to_the_static_judge(self, tmp_path):
         capture: list = []
         self._refused(tmp_path, capture=capture)
-        assert "_PairVerdicts" in _schemas(capture)
+        assert _JEV in _schemas(capture)
 
     def test_no_executed_verdict_is_stored(self, tmp_path):
         review = self._refused(tmp_path)
@@ -488,7 +519,7 @@ class TestTheStaticJudgeSeesOnlyTheRemainder:
         than the fixture never reaching that stage."""
         capture: list = []
         _review(tmp_path, execution=None, capture=capture)
-        assert "_PairVerdicts" in _schemas(capture)
+        assert _JEV in _schemas(capture)
 
     def test_a_defect_injection_could_not_settle_reaches_the_static_judge(self, tmp_path):
         """The fallback, with execution ON — which is the case the two tests
@@ -505,7 +536,7 @@ class TestTheStaticJudgeSeesOnlyTheRemainder:
         )
         schemas = _schemas(capture)
         assert "_Descriptor" in schemas, "the tier did not run, so nothing was handed on"
-        assert "_PairVerdicts" in schemas
+        assert _JEV in schemas
 
     def test_the_unsettled_defect_is_recorded_with_its_reason(self, tmp_path):
         """The model's own reason, not a generic sentence put in its place."""
@@ -537,7 +568,7 @@ class TestAnAlreadyPresentDefect:
             capture=capture,
             judgments=_ALREADY_PRESENT,
         )
-        assert "_PairVerdicts" in _schemas(capture)
+        assert _JEV in _schemas(capture)
 
     def test_the_report_flags_it_as_a_model_asserted_claim_at_the_static_tier(self, tmp_path):
         report = render_report(
@@ -625,7 +656,7 @@ class TestAnAlreadyPresentDefect:
         # after the execution tier: the static pair judgement, which an
         # unverified result still reaches, or the ordinary rest of the review.
         next_call = schemas[schemas.index("_Descriptor") + 1]
-        assert next_call in {"_Verification", "_PairVerdicts", "_Coverage"}, (
+        assert next_call in {"_Verification", _JEV, "_Coverage"}, (
             "a model call was made between proposing the mutant and recording its "
             f"outcome: {next_call}"
         )
@@ -843,7 +874,7 @@ class TestWhenTheTestsCannotBeRunAtAll:
             capture=capture,
         )
         assert all(a.outcome is MutationOutcomeKind.NOT_ATTEMPTED for a in review.mutation_attempts)
-        assert "_PairVerdicts" in _schemas(capture)
+        assert _JEV in _schemas(capture)
 
 
 # --- the run decides which pairs are worth a model call (#340) -----------------
@@ -875,16 +906,7 @@ _DEFECT_ID = "equal-payments/wrong-payment-amount"
 #: asked after all, and the saving would be invisible.
 _JUDGE_CONFIRMS_THE_KILL = {
     **_JUDGMENTS,
-    "_PairVerdicts": {
-        "tests": [
-            {
-                "test_id": _STRICT_ID,
-                "defects": [
-                    {"defect_id": _DEFECT_ID, "fails": True, "reason": "it pins the amount"}
-                ],
-            }
-        ]
-    },
+    _JEV_RULE: lambda defect, test_name: 0.9 if _STRICT_ID.endswith(test_name) else 0.1,
 }
 
 
@@ -897,14 +919,7 @@ def _tests_put_to_the_judge(capture) -> set[str]:
     enumerates one defect, so a test absent from every pair prompt is a pair that
     was never offered.
     """
-    named: set[str] = set()
-    for call in capture:
-        if call["schema"] != "_PairVerdicts":
-            continue
-        for line in call["prompt"].splitlines():
-            if line.startswith("### test "):
-                named.add(line[len("### test ") :].strip())
-    return named
+    return {call["test_id"] for call in capture if call["schema"] == _JEV}
 
 
 class TestTheRunRoutesPairsThroughTheRealPipeline:
@@ -997,7 +1012,7 @@ class TestTheRunRoutesPairsThroughTheRealPipeline:
             execution=ExecutionSettings(),
             head_test=_TWO_TESTS,
             capture=capture,
-            judgments=_JUDGMENTS,  # no `_PairVerdicts` answer: nothing kills
+            judgments=_JUDGMENTS,  # Jev answers 0.1 everywhere: nothing kills
         )
         assert _tests_put_to_the_judge(capture) == {_LOOSE_ID, _STRICT_ID}
         assert not [e for e in review.unjudged_pairs if e.cause is UnjudgedCause.PASSED_UNDER_EDIT]
@@ -1076,7 +1091,9 @@ class TestTheRunRoutesPairsThroughTheRealPipeline:
         killing_pair = [v for v in review.pair_verdicts if v.test_id == _STRICT_ID]
         assert killing_pair, "the red test's pair must still carry a judged verdict"
         assert all(v.tier is EvidenceTier.STATIC for v in killing_pair)
-        assert all(v.reason == "it pins the amount" for v in killing_pair)
+        # The judge's answer, not the run's: Jev decided it, at the probability
+        # the double gave (#385; verdicts carry no reason any more).
+        assert all(v.judged_by is PairJudge.JEV and v.jev_probability == 0.9 for v in killing_pair)
 
 
 #: A descriptor that only adds a comment, so every candidate is refused as

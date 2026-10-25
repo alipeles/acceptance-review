@@ -37,7 +37,7 @@ from acceptance.change.diff import extract_change_set
 from acceptance.mutation.settings import ExecutionSettings
 from acceptance.pipeline import run_review
 from acceptance.report import render_report
-from tests.support import client_dispatching
+from tests.support import FakeJev, client_dispatching
 
 #: Only ever produced by running the candidate test against the tripled payment.
 #: The source carries `{schedule[0]}`, not the value, so a match is an escape.
@@ -159,6 +159,24 @@ def repo(tmp_path):
     return root, base, _git(root, "rev-parse", "HEAD")
 
 
+class _CapturingJev(FakeJev):
+    """Jev's requests go into `capture` too (#385): it is shown the test and the
+    code, so it is as much a place the edit's output could leak to as any
+    completion. It answers 0.3, inside the cut-offs, so every pair it is asked
+    about also reaches the model's fallback call and both requests are checked."""
+
+    def __init__(self, capture):
+        super().__init__(lambda defect, test_name: 0.3)
+        self._capture = capture
+
+    def _post(self, url, body, headers):
+        if self._capture is not None:
+            self._capture.append(
+                {"schema": "_Jev", "prompt": "\n".join(str(v) for v in body["state"].values())}
+            )
+        return super()._post(url, body, headers)
+
+
 def _review(repo, *, execution, capture=None):
     root, base, head = repo
     return run_review(
@@ -168,6 +186,7 @@ def _review(repo, *, execution, capture=None):
         client=client_dispatching(_JUDGMENTS, capture=capture),
         reviewed_revision=head,
         execution=execution,
+        jev=_CapturingJev(capture),
     )
 
 
