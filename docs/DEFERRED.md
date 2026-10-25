@@ -7797,3 +7797,20 @@ the record.
 - **Why I didn't act:** test convenience only; no behaviour depends on it.
 - **Drafted fix:** add `jev: JevProvider | None = None` to `run_check` and pass it through; drop the monkeypatch in tests/test_rerun.py.
 - **Status:** open
+
+### [2026-10-25] Two identical requests in flight at once record different answers
+- **Kind:** filing
+- **Found during:** #385, scoring the pipeline judge on DR-379's held-out cases
+- **Where:** src/acceptance/llm.py (`ModelClient.complete`, `ModelClient.replay_or_run`)
+- **Severity:** should-fix
+- **What's wrong:** When two concurrent calls send the identical request, both miss the store, both go live, and the store keeps whichever answer is written last. The run that recorded used both answers; its replay serves one to both. Seen at #385: two mutants of youtube-dl bug 9 got Jev probabilities 0.74 and 0.71 live and 0.71 twice on replay. #385 fixes its own stage by asking each distinct question once; every other stage that issues calls through `concurrency.map_calls` is still exposed, and on Claude (which applies no seed or temperature, #412) two live answers to one request routinely differ.
+- **Why I didn't act:** llm.py is shared with #414, which is changing the live-call path; out of scope for #385.
+- **Drafted fix:** filing, child of #184 (determinism umbrella):
+  > **Title:** Identical requests in flight together are recorded with different answers
+  >
+  > `ModelClient.complete` and `replay_or_run` read the store, call on a miss, then write. Two concurrent calls with the same request key both miss and both call, and the recording keeps the last answer written, so a recording run and its replay can disagree. Seen at #385 (`docs/experiments/jev/m385/FINDINGS.md`).
+  >
+  > **Acceptance**
+  > - Two concurrent calls with the same request key cause one provider call, and both callers receive its answer.
+  > - A run that records and its replay produce byte-identical review state when two stages' calls share a request key.
+- **Status:** open
