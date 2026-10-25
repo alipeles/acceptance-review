@@ -84,11 +84,19 @@ def parse_task_file(text: str) -> ParsedTaskFile:
 
     result = ParsedTaskFile(source=text)
     section: str | None = None
+    # The level of the Context heading while inside one. Background is often
+    # organised under its own sub-headings, and a `### Constraints` there must
+    # not turn the rest of the background into mandate.
+    context_level: int | None = None
 
     for node in tree.children:
         if node.type == "heading":
             # Headings are structure, not requirements, and are never unclaimed.
+            level = int(node.tag[1:])
+            if context_level is not None and level > context_level:
+                continue
             section = _inline_content(node).strip().lower()
+            context_level = level if section in _CONTEXT else None
         elif section in _CONTEXT:
             # Every block kind, not only paragraphs: background is often a
             # measurement table or a quoted log, and it is read either way.

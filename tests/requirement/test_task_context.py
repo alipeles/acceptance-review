@@ -19,11 +19,20 @@ What is pinned here, against the issue's Acceptance:
 
 from __future__ import annotations
 
+import json
+
 from acceptance.requirement.obligations import _context_block, _user_prompt, decompose
 from acceptance.requirement.registry import build_registry
 from acceptance.requirement.task_file import ParsedTaskFile, parse_task_file
 from acceptance.verdict import assess_mandate_coverage
-from tests.support import client_returning_capturing_prompts, uncovered_summary
+from tests.support import (
+    _completed,
+    _fake_response,
+    _schema_name,
+    model_client_with,
+    sent_text,
+    uncovered_summary,
+)
 
 _BACKGROUND = "Today the export writes amounts with as many decimals as the float has."
 
@@ -84,8 +93,22 @@ _RESPONSE = {
 
 
 def _decompose(task: str, summary: dict | None = None):
-    client, sent = client_returning_capturing_prompts(_RESPONSE, summary=summary)
-    return decompose(parse_task_file(task), client), sent
+    """Decompose `task` against `_RESPONSE`, recording what every call sent.
+
+    `client_returning`, plus a record of each call as
+    `{"schema": <response schema name>, "prompt": <text sent>}` — a fixed
+    response alone cannot show what the stage put in front of the model.
+    """
+    sent: list[dict] = []
+
+    def completion_fn(**kwargs):
+        sent.append({"schema": _schema_name(**kwargs), "prompt": sent_text(kwargs["messages"])})
+        chosen = _RESPONSE
+        if _schema_name(**kwargs) == "_SummarySpans":
+            chosen = summary if summary is not None else {}
+        return _fake_response(json.dumps(_completed(chosen, **kwargs)))
+
+    return decompose(parse_task_file(task), model_client_with(completion_fn)), sent
 
 
 def _decompose_prompts(sent: list[dict]) -> list[str]:
@@ -137,6 +160,54 @@ Measured on the last run:
     for span in parsed.context:
         assert parsed.source[span.start : span.end] == span.text
     assert parsed.unclaimed == []
+
+
+def test_a_sub_heading_inside_context_stays_context():
+    """Background organised under its own sub-headings is still background.
+    Every heading used to reset the section, so the blocks after `### Measured`
+    became unread source."""
+    task = """# Task
+Do the thing.
+
+## Context
+Why it matters.
+
+### Measured
+Nine of 29 requirements were lost.
+
+## Constraints
+- Keep it fast.
+"""
+    parsed = parse_task_file(task)
+
+    assert [c.text for c in parsed.context] == [
+        "Why it matters.",
+        "Nine of 29 requirements were lost.",
+    ]
+    assert [c.text for c in parsed.constraints] == ["Keep it fast."]
+    assert parsed.unclaimed == []
+
+
+def test_a_sub_heading_named_like_a_mandate_section_does_not_make_background_mandate():
+    """The sharp case: a `### Constraints` inside Context, describing the
+    constraints the system has TODAY, must not become constraints of the change.
+    The next heading at the Context heading's own level still ends it."""
+    task = """# Task
+Do the thing.
+
+## Context
+
+### Constraints
+- Today every call is retried three times.
+
+## Constraints
+- Keep it fast.
+"""
+    parsed = parse_task_file(task)
+
+    assert [c.text for c in parsed.context] == ["Today every call is retried three times."]
+    assert [c.text for c in parsed.constraints] == ["Keep it fast."]
+    assert [r.id for r in build_registry(parsed)] == ["task-01", "constraint-01"]
 
 
 def test_context_survives_persistence():
