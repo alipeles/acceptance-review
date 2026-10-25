@@ -7731,3 +7731,69 @@ the record.
   charges nothing for it, so mark any opening whose estimate is at least,
   say, 80% of the minimum. A wrong guess costs nothing either way.
 - **Status:** approved 2026-10-24 as a later fix; not in #414.
+
+### [2026-10-24] A sentence split into two claims with a shared subject aborts decomposition
+- **Kind:** filing
+- **Found during:** #385, Gate 1 runs 1 and 2 (`dogfood-logs/385-gate1-run{1,2}/`)
+- **Where:** src/acceptance/requirement/summary.py:191 (`_rejection`), :269 (raise)
+- **Severity:** should-fix
+- **What's wrong:** The summary step must return each part of a paragraph as an
+  exact quote. Given "Jev's probability that the test fails decides the pair on
+  its own at 0.34 or more (the test fails) and at 0.24 or less (the test
+  survives)", Claude Sonnet 5.5 split it into two claims and repeated the
+  subject in the second. That part is not an exact quote, so the run stops with
+  a SchemaValidationError and produces no decomposition at all. A second, fresh
+  live call gave the same answer, so this is stable, not chance. The docstring's
+  reason for not retrying ("with temperature and seed pinned ... would draw the
+  same answer anyway") also no longer holds on Claude, which applies neither
+  (#412, which moved model calls off OpenAI).
+- **Why I didn't act:** out of scope for #385; the owner said to proceed past
+  the broken gate.
+- **Drafted fix:** filing, child of #181 (decomposition umbrella):
+  > **Title:** Splitting one sentence into claims with a shared subject aborts
+  > the whole decomposition
+  >
+  > `requirement/summary.py::decide_spans` requires every span to be an exact
+  > substring of the paragraph and raises on the first one that is not. A
+  > sentence joining two conditions under one subject ("X decides at A or more
+  > and at B or less") is naturally split into two claims, and the model
+  > repeats the subject in the second, so the run stops with no output. Seen
+  > at #385's Gate 1, twice, on Claude Sonnet 5.5
+  > (`dogfood-logs/385-gate1-run{1,2}/`).
+  >
+  > **Acceptance**
+  > - A paragraph whose sentence joins two conditions under one subject
+  >   decomposes without stopping, and both conditions reach the obligation set.
+  > - A span that cannot be matched to the paragraph is recorded as an unusable
+  >   answer naming the span, rather than ending the run.
+- **Status:** open
+
+### [2026-10-25] The report says "put to the model" for pairs Jev decided
+- **Kind:** defect
+- **Found during:** #385, test conversion
+- **Where:** src/acceptance/report.py (`_pair_counts` and the line "pairs: N settled by the run, N put to the model, ...")
+- **Severity:** nice-to-have
+- **What's wrong:** Since #385, most pairs are decided by Jev alone and never reach the model, but the report still counts every judged pair as "put to the model". The number is right; the wording is wrong.
+- **Why I didn't act:** wording only, and tests in tests/defects/test_pair_ranking.py pin the current string; better changed with the report's other wording.
+- **Drafted fix:** say "put to the judges (N decided by Jev, M by the model)", reading `PairVerdict.judged_by`; update the two pinned strings.
+- **Status:** open
+
+### [2026-10-25] httpx is imported directly but only declared transitively
+- **Kind:** decision
+- **Found during:** #385, implementation
+- **Where:** src/acceptance/jev.py (`_default_post`); pyproject.toml
+- **Severity:** should-fix
+- **What's wrong:** Jev is called with httpx, which the project gets only because litellm depends on it. A litellm release that dropped it would break Jev at run time.
+- **Why I didn't act:** a dependency change is the owner's call, and #414 is editing the same dependency list.
+- **Drafted fix:** recommend adding `"httpx>=0.28,<1"` to `dependencies`. Rejected alternative: the standard library's urllib, which needs no new line but means writing retries and JSON handling by hand.
+- **Status:** open
+
+### [2026-10-25] `run_check` cannot be given a Jev provider
+- **Kind:** defect
+- **Found during:** #385, test conversion
+- **Where:** src/acceptance/cli.py (`run_check`)
+- **Severity:** nice-to-have
+- **What's wrong:** `run_review` and `classify_case` take `jev=`, but `run_check` does not, so a CLI-level test has to monkeypatch `pair_mapping.JevProvider` (tests/test_rerun.py does).
+- **Why I didn't act:** test convenience only; no behaviour depends on it.
+- **Drafted fix:** add `jev: JevProvider | None = None` to `run_check` and pass it through; drop the monkeypatch in tests/test_rerun.py.
+- **Status:** open
