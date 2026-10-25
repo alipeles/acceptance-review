@@ -1,0 +1,4 @@
+base: cab005d3ac0307151c9e4e83cc68d4b6489692f8
+head: afcd711ab0ec0debc1220ba563095a1a275fded6
+command: acceptance check --task current-task.md --base cab005d3ac0307151c9e4e83cc68d4b6489692f8 --mode record --continue b4a84b5d7ad8a84c
+run id: d0af3f8ef57c6bb9

@@ -7867,3 +7867,44 @@ the record.
   > - A pair of obligations where satisfying one rules out the other is reported as an open question naming both, with links to both requirements' text.
   > - An obligation asserting what a Scope exclusion excludes is reported the same way.
 - **Status:** filed as #428, 2026-10-25
+
+### [2026-10-25] A defect the code rules out is enumerated, and keeps a criterion below strongly supported
+- **Kind:** filing
+- **Found during:** #414, Gate 2 run 3 (`dogfood-logs/414-gate2-run3/`)
+- **Where:** defect enumeration (`src/acceptance/defects/enumeration.py`)
+- **Severity:** should-fix
+- **What's wrong:** for `recording-notes-batch-origin` the enumerator named a defect where "a call that really goes through a batch under a different completion path or model routing would get no note". In `ModelClient._live_call` one boolean, `batched`, decides both whether the batch transport is passed and whether `sent_via` is written, so a call cannot be batched without its note. The defect is unreachable, no test can kill it, and the criterion stays `partially_supported` (2 of 3).
+- **Why I didn't act:** a tool defect, outside #414.
+- **Drafted fix:** filing, child of #183 (evidence judgement umbrella):
+  > **Title:** Defect enumeration names a failure the shown code rules out
+  >
+  > At #414's Gate 2 run 3 the enumerator proposed, for "a batched call's recording notes that it was batched", that a batched call under another route could miss the note. The diff hunk it cites sets the note and selects the batch transport on the same condition, so the failure cannot happen, and the criterion is held at partially supported by a defect no test could kill. Related: #424 (a defect asserted from a region missing the text that rules it out), #333 (unkillable defects).
+  >
+  > **Acceptance**
+  > - A defect whose failure condition is excluded by a condition in the cited hunk is not enumerated, or is marked unreachable with the excluding line linked.
+  > - `dogfood-logs/414-gate2-run3/` re-run over the same inputs does not enumerate it.
+- **Status:** open
+
+### [2026-10-25] Comment on #180: two criteria move from strongly supported to "no plausible defect" on unchanged code
+- **Kind:** filing
+- **Found during:** #414, Gate 2 runs 2 and 3
+- **Where:** defect enumeration / `defects/support.py` rating
+- **Severity:** should-fix
+- **What's wrong:** between runs 2 and 3 of #414's Gate 2, the code behind `batched-request-same-recording-key` (its hunks are all in `llm.py`) did not change at all, and the `batch: bool = False` default behind `batch-api-opt-in-off-by-default` did not change either, though other lines of `config.py` did. Run 2 enumerated 3 and 5 defects for them and rated both strongly supported; run 3 enumerated none and rated both "no plausible defect — test evidence is not obtainable here". The second reads as a weaker result, and the evidence did not change to earn it.
+- **Why I didn't act:** a tool defect, outside #414.
+- **Drafted fix:** comment on #180 (evidence ratings unstable across runs):
+  > Another case, in the other direction from this issue's corpus. #414's Gate 2 runs 2 and 3 (`dogfood-logs/414-gate2-run2/`, `-run3/`) rated `batched-request-same-recording-key` and `batch-api-opt-in-off-by-default` strongly supported (3 and 5 enumerated defects, all killed), then "no plausible defect" (none enumerated). The first criterion's code, all in `llm.py`, did not change between the runs; for the second, the default it is about did not change, though other lines of `config.py` did. What moved is the enumerator's output, not the judge's.
+- **Status:** open
+
+### [2026-10-25] An enabling mechanism the mandate needs but does not name is rated a risky unrequested change, whatever its design
+- **Kind:** filing (needs your call)
+- **Found during:** #414, Gate 2 runs 1–3
+- **Where:** unrequested-change detection (`src/acceptance/coverage/unrequested.py`)
+- **Severity:** nice-to-have
+- **What's wrong:** a batched run needs many calls in flight, or each stage goes out eight calls per batch, each batch waiting minutes. The task file asks for batching, not for that limit. Three designs for raising it were each rated `risky` unrequested: module state plus a context manager (run 2), a `run_review` wrapper (runs 1 and 2), and each stage passing `client.calls_in_flight` (run 3). Run 2's rating was right about the module state and I removed it; run 3's is about the change being unrequested at all.
+- **Why I didn't act:** whether a mechanism the deliverable cannot work without counts as unrequested is a policy question (DR-081's expansion line), not a #414 fix.
+- **Drafted fix:** my recommendation is **won't fix** — the honest remedy is a task file that states it, and the rating told me so. If you disagree, filing, child of #185 (findings and verdict umbrella):
+  > **Title:** A change the requested behaviour depends on is rated unrequested
+  >
+  > At #414's Gate 2 the in-flight limit for batched runs was rated `risky` and unrequested in three consecutive runs under three designs. Batching is requested and cannot meet its purpose without the limit. The detector should be able to say "in service of obligation X" for a change the obligation cannot be met without, rather than rating it as scope expansion.
+- **Status:** open
