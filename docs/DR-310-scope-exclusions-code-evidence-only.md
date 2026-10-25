@@ -113,3 +113,20 @@ recorded answers the linking prompt tests all still pass, including
 hand-written fixture in `tests/requirement/test_linking.py` merged a
 `functional` behaviour with a `regression` "A test asserts that…" — a pair
 #232 already meant to forbid — and was rewritten as a same-type duplicate.
+
+## Accepted limits
+
+Accepted by the owner at #310's Gate 2, run 2 (`c2c01d78f9d16af2`), as design
+rather than gaps to close:
+
+- An exclusion obligation's *wording* is still the model's. Nothing in code
+  forces "The change does not …"; the prompt asks for it and the coverage mark
+  (Decision 2) makes the verdict independent of it.
+- Equal coverage status for equal evidence across a run's exclusions is the
+  model's judgement, steered by the mark and the prompt. Code cannot normalise
+  statuses without overriding a real breach.
+- The trailing-clause prompt edit (Decision 3) is not shown to change Sonnet
+  5.5's behaviour, which was already correct on the two cases tried.
+
+Gate 2 rates the three obligations stating these properties "partially
+addressed" for exactly these reasons.

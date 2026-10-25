@@ -11,7 +11,7 @@ attributable.
 
 from __future__ import annotations
 
-from acceptance.requirement.ledger import LedgerStore
+from acceptance.requirement.ledger import LedgerEntry, LedgerStore, MergeDecision
 from acceptance.requirement.linking import (
     _confirmed_clusters,
     _pairs,
@@ -740,6 +740,31 @@ def test_two_obligations_of_different_types_are_not_merged_even_if_confirmed():
     )
 
     assert [obligation.id for obligation in linked.obligations] == ["alpha", "beta"]
+
+
+def test_a_carried_merge_of_two_types_does_not_merge_them_either():
+    """A merge can also arrive from the previous run's ledger (#269). Carried
+    decisions are looked up only for pairs the guard admits, so a recorded
+    `same_requirement=True` over two types must not merge them now — the rule
+    holds on every route, not only when the model is asked."""
+    decomposition = _typed_decomposition(
+        ("constraint-01", "alpha", ObligationType.FUNCTIONAL),
+        ("constraint-02", "beta", ObligationType.INVARIANT),
+    )
+    alpha, beta = decomposition.obligations
+    prior = LedgerEntry(run_id="prior", merge_decisions=[MergeDecision.between(alpha, beta, True)])
+
+    linked = link_duplicate_obligations(
+        decomposition,
+        _client_confirming(["alpha", "beta"], {frozenset(("alpha", "beta"))}),
+        prior=prior,
+    )
+
+    assert [obligation.id for obligation in linked.obligations] == ["alpha", "beta"]
+    assert [obligation.type for obligation in linked.obligations] == [
+        ObligationType.FUNCTIONAL,
+        ObligationType.INVARIANT,
+    ]
 
 
 def test_two_obligations_of_the_same_type_still_merge():
