@@ -1,0 +1,1271 @@
+tests run with: /Users/alipeles1/code/acceptance-worktrees/414-batches-and-cache/.venv/bin/python -m pytest, locked down (no network; set your own command with `acceptance set-test-command`)
+environment variables passed to the tests: HOME, LANG, LC_ALL, PATH, TMPDIR, USER
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm.turn_on_debug()'.
+
+Task completion: INCOMPLETE
+
+8 obligation(s) with non-discriminating test evidence (min-reusable-prefix-per-model, pair-mapping-cache-hit-on-shared-opening, batch-api-opt-in, batch-setting-in-run-config-default-off, check-and-decompose-call-model-directly-by-default, batch-opt-in-switchable-by-scripts, recording-notes-batch-origin, identical-review-state-across-send-modes).
+
+Obligations:
+
+  1. The client's minimum prefix length for marking an opening as reusable (cacheable) is 512 tokens for each of Claude Sonnet 5.5, Opus 5.5 and Haiku 5.5, following Anthropic's documented minimum for each model.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/llm.py#@@ -191,16 +205,38 @@ def _default_completion_fn(**kwargs: Any) -> Any:
+         1.2  src/acceptance/llm.py#@@ -215,9 +251,11 @@ def _needs_explicit_marker(model: str) -> bool:
+       test evidence: partially supported — kills 1 of 3 enumerated defects (static prediction)  [tier: static]
+         1.3  tests/test_reusable_opening_marker.py::test_the_current_models_mark_an_opening_over_512_tokens
+         recommended test: For each of Claude Sonnet 5.5, Opus 5.5 and Haiku 5.5, an opening of 512 tokens is marked reusable and an opening shorter than 512 tokens is not marked reusable.
+           inputs:  Model id strings in other provider forms: 'anthropic.claude-sonnet-5-5', 'bedrock/anthropic.claude-opus-5-5', 'vertex_ai/claude-haiku-5-5', 'bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0', plus the 'anthropic/claude-...' control and uppercase variants. Pair with a model whose true minimum differs from the 512 default (haiku-4-5 => 4096, opus-4-7 => 2048).
+           detects: The model name is normalised only by splitting on the first '/' and stripping a leading 'claude-'. Ids with other provider forms, such as 'anthropic.claude-sonnet-5-5' or a 'bedrock/anthropic.claude-...' route, keep a prefix that matches no table key. They fall back to the default, and Sonnet 5.5, Opus 5.5 and Haiku 5.5 would get the wrong minimum if the default and the documented value ever differ.
+           full detail: acceptance recommendation --criterion min-reusable-prefix-per-model
+
+  2. The module documentation states that Anthropic ignores a cache breakpoint placed below the model's minimum token count, rather than stating that it rejects one.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/llm.py#@@ -11,6 +11,14 @@ A thin layer between the checker's judgments and whatever model produces them:
+         2.2  src/acceptance/llm.py#@@ -191,16 +205,38 @@ def _default_completion_fn(**kwargs: Any) -> Any:
+       test evidence: not required — The obligation concerns the wording of the module documentation, which a reader confirms by inspecting the docstring; no runtime behavior exists for a test to exercise.
+
+  3. When the defect-to-test pair mapping stage is called repeatedly and the calls share an opening, the later calls are served from the cache rather than recomputed.
+       requirements: task-02
+       code evidence: addressed
+         3.1  src/acceptance/concurrency.py#@@ -90,6 +119,41 @@ def map_calls(
+         3.2  src/acceptance/defects/pair_mapping.py#@@ -52,7 +52,7 @@ from typing import Literal
+         3.3  src/acceptance/defects/pair_mapping.py#@@ -765,9 +765,16 @@ def _carry_and_ask(
+       test evidence: partially supported — kills 4 of 5 enumerated defects (static prediction)  [tier: static]
+         3.4  tests/defects/test_pair_mapping.py::test_calls_sharing_a_defect_list_wait_for_the_first_of_them
+         3.5  tests/test_concurrency.py::test_each_openings_first_call_finishes_before_the_rest_of_its_group_start
+         3.6  tests/test_mutation_pipeline_wiring.py::TestVerification::test_the_default_runs_but_verifies_nothing
+         3.7  tests/test_pipeline_request_openings.py::test_no_request_places_content_unique_to_it_ahead_of_content_it_shares
+         3.8  tests/test_reusable_opening_marker.py::test_an_opening_between_two_models_minimums_is_marked_on_one_only
+         3.9  tests/test_reusable_opening_marker.py::test_each_model_gets_its_own_minimum
+         3.10  tests/test_reusable_opening_marker.py::test_the_current_models_mark_an_opening_over_512_tokens
+         3.11  tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+         recommended test: A second call to the pair mapping stage with the same opening returns the cached result, with no repeated underlying mapping work (such as a model call) and a result equal to the first call's.
+           inputs:  A pair-mapping run (_carry_and_ask via the _judged helper) with a batching client (MessageBatcher with fake sdk) over several tests sharing one defect list with tests_per_batch=1, and an instrumented fake batch endpoint recording each batch's creation order and request custom_ids. Include a case with identical request bodies for two batches.
+           detects: In a batched run, requests in one batch are processed independently and a cache write only lands after processing. Even with leaders sent first, the batcher queues requests and sends them after a quiet period. Followers that fall into the same batch as the leaders, or identical requests that are deduplicated by custom_id, may not read the leaders' cache entry.
+           full detail: acceptance recommendation --criterion pair-mapping-cache-hit-on-shared-opening
+
+  4. In the mutation descriptor stage, a region's numbered source is placed in the reusable opening of the prompt, so that calls for defects in the same region share that opening rather than each call repeating the numbered source in its own non-shared portion.
+       requirements: task-03
+       code evidence: addressed
+         4.1  src/acceptance/mutation/descriptor.py#@@ -308,15 +308,19 @@ def _ask_about(
+         4.2  src/acceptance/mutation/descriptor.py#@@ -395,13 +399,19 @@ def _span_from(
+         4.3  src/acceptance/mutation/descriptor.py#@@ -413,14 +423,32 @@ def _subject(defect: Defect, regions: Sequence[Region], sources: dict[str, str])
+         4.4  src/acceptance/request_blocks.py#@@ -120,6 +120,12 @@ class BlockKind(Enum):
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         4.5  tests/test_mutation_descriptor.py::TestWhatTheCallIsOffered::test_defects_naming_the_same_region_share_its_source_in_the_reusable_opening
+         4.6  tests/test_pipeline_request_openings.py::test_the_requests_that_share_a_diff_share_a_real_opening
+
+  5. A run can opt in to sending its model calls through the Message Batches API; when opted in, the run's model calls are submitted via the Message Batches API.
+       requirements: task-04
+       code evidence: addressed
+         5.1  src/acceptance/llm_batch.py#@@ -0,0 +1,273 @@
+         5.2  src/acceptance/config.py#@@ -230,6 +238,7 @@ class RunConfig(BaseModel):
+         5.3  src/acceptance/llm.py#@@ -577,8 +615,13 @@ class ModelClient:
+         5.4  src/acceptance/llm.py#@@ -1255,6 +1307,12 @@ class ModelClient:
+         5.5  src/acceptance/llm.py#@@ -1284,6 +1342,7 @@ class ModelClient:
+         5.6  pyproject.toml#@@ -27,6 +27,11 @@ license = { text = "MIT" }
+       test evidence: partially supported — kills 3 of 5 enumerated defects (static prediction)  [tier: static]
+         5.7  tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+         5.8  tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on
+         5.9  tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to
+         5.10  tests/test_llm_batch.py::test_concurrent_calls_go_out_together_as_one_batch
+         5.11  tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+         5.12  tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+         recommended test: A run configured with batch mode enabled submits its model calls through the Message Batches API rather than the direct messages endpoint.
+           inputs:  Call run_review (decorated by _at_the_clients_concurrency) in three forms: client passed positionally, client passed as keyword, and a client object lacking a `calls_in_flight` attribute (e.g. a simple stub/dispatching client or a client=None default path). Include a batching client case asserting the raised limit.
+           detects: The `_at_the_clients_concurrency` wrapper reads `bound.arguments["client"]`. If a caller omits `client` and relies on a default, or the client lacks `calls_in_flight`, the review fails or the batch concurrency is not raised. A review then submits batches of eight at a time, or raises.
+           full detail: acceptance recommendation --criterion batch-api-opt-in
+
+  6. The opt-in setting for sending model calls through the Message Batches API is part of the run's configuration and its default value is off.
+       requirements: task-04
+       code evidence: addressed
+         6.1  src/acceptance/config.py#@@ -211,6 +212,13 @@ class RunConfig(BaseModel):
+       test evidence: partially supported — kills 5 of 6 enumerated defects (static prediction)  [tier: static]
+         6.2  tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it
+         6.3  tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+         6.4  tests/test_llm_batch.py::test_a_batching_review_runs_its_stages_with_many_calls_in_flight
+         6.5  tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on
+         6.6  tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to
+         6.7  tests/test_llm_batch.py::test_check_does_not_batch
+         6.8  tests/test_llm_batch.py::test_decompose_does_not_batch
+         6.9  tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+         6.10  tests/test_llm_batch.py::test_the_instability_experiment_batches_when_asked
+         recommended test: A run constructed with default configuration has the batch setting disabled, and the setting is read from the run's configuration rather than from a separate mechanism; enabling it in the run's configuration turns batching on.
+           inputs:  RunConfig(batch=True, model='openai/gpt-5.4-mini') built via build_client(), with a capturing completion_fn injected, then complete() called; plus RunConfig(batch=True) with default Anthropic model for contrast.
+           detects: With batching enabled, the live-call path routes through the batcher only for models that need an explicit cache marker, which means Anthropic models. Calls to any other provider are sent directly even though the run's configuration has batching on.
+           full detail: acceptance recommendation --criterion batch-setting-in-run-config-default-off
+
+  7. With the batch setting at its default (off), `acceptance check` and `acceptance decompose` send their model calls directly to the model and not through the Message Batches API.
+       requirements: task-04
+       code evidence: addressed
+         7.1  src/acceptance/config.py#@@ -211,6 +212,13 @@ class RunConfig(BaseModel):
+         7.2  src/acceptance/config.py#@@ -230,6 +238,7 @@ class RunConfig(BaseModel):
+       test evidence: partially supported — kills 4 of 5 enumerated defects (static prediction)  [tier: static]
+         7.3  tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it
+         7.4  tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on
+         7.5  tests/test_llm_batch.py::test_check_does_not_batch
+         7.6  tests/test_llm_batch.py::test_decompose_does_not_batch
+         recommended test: Running `acceptance check` or `acceptance decompose` without enabling the batch setting issues direct model calls, and no batch is created or submitted.
+           inputs:  A ModelClient with batcher=None and an Anthropic model (default RunConfig client), in RECORD mode, using the provider fixture so direct vs batch endpoints are distinguishable; and a capturing completion_fn variant.
+           detects: The decision in `_live_call` to replace LiteLLM's HTTP transport with the batch transport does not depend on the client's batcher being set. A client with no batcher could still route Anthropic calls to the Message Batches API, or fail on a missing batcher.
+           full detail: acceptance recommendation --criterion check-and-decompose-call-model-directly-by-default
+
+  8. Benchmark scoring and experiment scripts can enable the run-configuration setting that sends the run's model calls through the Message Batches API.
+       requirements: task-04
+       code evidence: addressed
+         8.1  src/acceptance/config.py#@@ -211,6 +212,13 @@ class RunConfig(BaseModel):
+         8.2  src/acceptance/benchmark/instability.py#@@ -723,9 +723,14 @@ def run_once(
+         8.3  src/acceptance/benchmark/instability.py#@@ -816,6 +821,7 @@ def measure_instability(
+         8.4  src/acceptance/benchmark/instability.py#@@ -847,6 +853,7 @@ def measure_instability(
+         8.5  src/acceptance/benchmark/instability.py#@@ -862,6 +869,7 @@ def measure_instability(
+       test evidence: partially supported — kills 5 of 6 enumerated defects (static prediction)  [tier: static]
+         8.6  tests/test_llm_batch.py::test_a_batched_request_that_got_no_answer_is_asked_again
+         8.7  tests/test_llm_batch.py::test_a_batched_request_that_never_gets_an_answer_fails_rather_than_hangs
+         8.8  tests/test_llm_batch.py::test_a_refused_batched_request_fails_without_being_asked_again
+         8.9  tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to
+         8.10  tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+         8.11  tests/test_llm_batch.py::test_the_instability_experiment_batches_when_asked
+         recommended test: A benchmark scoring or experiment script sets the batch setting in the run configuration to on, and that run's model calls are then sent through the Message Batches API.
+           inputs:  A RunConfig(batch=True) client with run model non-Anthropic (openai/gpt-5.4-mini) and a stage override, plus an embedding call (client.embed or equivalent) on the same client, using capturing completion/embedding fns and the fake provider's batch endpoints.
+           detects: Batching applies only when _needs_explicit_marker(model) is true, meaning the model is Anthropic. Calls to other providers' models, and embedding calls, go directly even with batch on, so not all of the run's model calls go through the Message Batches API.
+           full detail: acceptance recommendation --criterion batch-opt-in-switchable-by-scripts
+
+  9. A batched request is recorded under the same key as the same request sent directly, so the recording key depends only on what was asked and not on whether the call was sent through a batch or directly.
+       requirements: task-05
+       code evidence: addressed
+         9.1  src/acceptance/llm.py#@@ -577,8 +615,13 @@ class ModelClient:
+         9.2  src/acceptance/llm.py#@@ -1255,6 +1307,12 @@ class ModelClient:
+         9.3  src/acceptance/config.py#@@ -211,6 +212,13 @@ class RunConfig(BaseModel):
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         9.4  tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+         9.5  tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+         9.6  tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+         9.7  tests/test_llm_batch.py::test_two_recorded_runs_are_byte_identical_whichever_way_their_calls_were_sent
+
+  10. A recording made from a batched request replays without making any live call.
+       requirements: task-05
+       code evidence: addressed
+         10.1  src/acceptance/llm.py#@@ -1300,6 +1359,13 @@ class ModelClient:
+         10.2  src/acceptance/llm.py#@@ -11,6 +11,14 @@ A thin layer between the checker's judgments and whatever model produces them:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         10.3  tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+         10.4  tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+         10.5  tests/test_llm_batch.py::test_two_recorded_runs_are_byte_identical_whichever_way_their_calls_were_sent
+
+  11. A recording of a request that was sent through a batch carries a note indicating it was sent through a batch.
+       requirements: task-05
+       code evidence: addressed
+         11.1  src/acceptance/llm.py#@@ -1300,6 +1359,13 @@ class ModelClient:
+         11.2  src/acceptance/llm_batch.py#@@ -0,0 +1,273 @@
+       test evidence: partially supported — kills 3 of 4 enumerated defects (static prediction)  [tier: static]
+         11.3  tests/test_llm_batch.py::test_a_batched_recording_says_so_and_a_direct_one_has_its_usual_fields
+         recommended test: Inspecting the recording of a batched request shows a note/marker that it was sent via a batch, while the recording of a directly sent request carries no such note.
+           inputs:  A batching client in RECORD mode where (a) the first batched attempt fails transiently (provider.outcomes=['overloaded_error']) then succeeds on retry, (b) a replay of an existing batched recording by both batch and direct clients, and (c) a batched run mixing an Anthropic stage (batched) with a non-Anthropic stage (direct). Nonzero cost_usd from the fake provider.
+           detects: The note is added unconditionally on `batched`, but if the batched call fails over or is retried via a direct path, or if the response is served from the replay path, the recording still claims batch, or a directly sent request in a batched run could be recorded as batched. Also cost is halved on the same condition, so note and pricing could mis-indicate origin.
+           full detail: acceptance recommendation --criterion recording-notes-batch-origin
+
+  12. Two recorded runs over the same input produce byte-identical review state, whether their calls were sent directly or through a batch.
+       requirements: task-05
+       code evidence: addressed
+         12.1  src/acceptance/config.py#@@ -211,6 +212,13 @@ class RunConfig(BaseModel):
+         12.2  src/acceptance/llm.py#@@ -1255,6 +1307,12 @@ class ModelClient:
+         12.3  src/acceptance/llm.py#@@ -1300,6 +1359,13 @@ class ModelClient:
+       test evidence: partially supported — kills 3 of 4 enumerated defects (static prediction)  [tier: static]
+         12.4  tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+         12.5  tests/test_llm_batch.py::test_two_recorded_runs_are_byte_identical_whichever_way_their_calls_were_sent
+         recommended test: Recording the same input twice, with calls sent directly in one run and through a batch in the other (or any mix), yields review state files that compare byte-for-byte equal.
+           inputs:  Record the same input twice into one transcript root with different send modes (batched first then direct, direct then batched, and batched twice), using real review state: a Review built via provenance_for(client) from a completion, plus an actual run_review pass on the _repo fixture with both modes. Ensure the fake provider's usage yields nonzero cost_usd.
+           detects: A batched live call adds a `sent_via: "batch"` field to the recorded transcript and multiplies `usage.cost_usd` by 0.5. A direct call records neither. If the transcript or its usage feeds the review state, two recordings of the same input differ byte-for-byte depending on send mode.
+           full detail: acceptance recommendation --criterion identical-review-state-across-send-modes
+
+  13. The change does not alter how live review runs split their requests into partitions.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 46 changes across 17 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, and a test cannot demonstrate that partitioning logic was left unmodified; a reader confirms it by inspecting the diff.
+
+  14. The change does not add reporting of spend per run.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 46 changes across 17 files; none breaches this boundary
+       test evidence: not required — This scope exclusion is satisfied by work not done, so no test can demonstrate the absence of spend reporting; a reader confirms it by inspecting the diff.
+
+  15. The change does not re-measure benchmark figures on Claude.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 46 changes across 17 files; none breaches this boundary
+       test evidence: not required — This is a scope exclusion naming work not done; no test can demonstrate an absence, and a reader confirms it by inspecting the diff.
+
+  16. The change does not alter any prompt or response schema other than the mutation descriptor's.
+       requirements: exclusion-04
+       code evidence: addressed
+         examined 46 changes across 17 files; none breaches this boundary
+       test evidence: not required — The exclusion names work (editing other prompts or response schemas) whose absence a reader confirms by inspecting the diff, so no test is owed.
+
+Mandate coverage: 9 of 9 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] Rewrites the whole minimum-reusable-opening table beyond the 512 values for the three 5.5 models. It adds many other model families, changes the lookup to longest-prefix matching, and sets a new 512 default for unknown models. No obligation asks for this.
+       src/acceptance/llm.py#@@ -191,16 +205,38 @@ def _default_completion_fn(**kwargs: Any) -> Any:
+       src/acceptance/llm.py#@@ -215,9 +251,11 @@ def _needs_explicit_marker(model: str) -> bool:
+  2. [in_service] Changes the public `map_calls` signature, making `max_in_flight` optional and defaulting to None. Adds a global run-level concurrency override (`calls_in_flight` context manager, module-level `_run_limit`). This alters the concurrency behaviour of every stage when batching is on. Obligations only ask for an opt-in and recordings, not a concurrency override.
+       src/acceptance/concurrency.py#@@ -48,8 +48,9 @@ validates.
+       src/acceptance/concurrency.py#@@ -66,11 +67,34 @@ R = TypeVar("R")
+       src/acceptance/concurrency.py#@@ -80,7 +104,12 @@ def map_calls(
+  3. [risky] Wraps `run_review` in a decorator that uses `inspect` to find the client and set the concurrency limit. This is extra plumbing for the unrequested concurrency override.
+       src/acceptance/pipeline.py#@@ -18,9 +18,14 @@ comparison → completion verdict.
+       src/acceptance/pipeline.py#@@ -385,6 +390,25 @@ def _sources_for(regions_by_defect: dict, repo: Path) -> dict[str, str]:
+  4. [in_service] Adds a `calls_in_flight` property to ModelClient. It exists only to support the batched-concurrency override and is not requested.
+       src/acceptance/llm.py#@@ -646,6 +689,15 @@ class ModelClient:
+  5. [in_service] Adds the `anthropic` SDK as a runtime dependency. The batch obligation does not name the SDK as the mechanism, although batch creation plausibly needs it.
+       pyproject.toml#@@ -27,6 +27,11 @@ license = { text = "MIT" }
+  6. [in_service] Halves the recorded cost_usd for batched calls. Pricing adjustment is not requested; the obligations only ask for a batch-origin note in the recording.
+       src/acceptance/llm.py#@@ -1300,6 +1359,13 @@ class ModelClient:
+  7. [in_service] Adds a `batch` parameter to the benchmark instability experiment API (`run_once`, `measure_instability`). The obligations only require scripts to be able to enable the RunConfig setting, not new parameters on these functions.
+       src/acceptance/benchmark/instability.py#@@ -723,9 +723,14 @@ def run_once(
+       src/acceptance/benchmark/instability.py#@@ -816,6 +821,7 @@ def measure_instability(
+       src/acceptance/benchmark/instability.py#@@ -847,6 +853,7 @@ def measure_instability(
+       src/acceptance/benchmark/instability.py#@@ -862,6 +869,7 @@ def measure_instability(
+  8. [in_service] Adds a new BlockKind.REGIONS enum member. The obligation only requires regions to sit in the reusable opening. A new block kind could be a way to do that, but it is a public enum addition.
+       src/acceptance/request_blocks.py#@@ -120,6 +120,12 @@ class BlockKind(Enum):
+  9. [in_service] Refactors `_subject` into `_defect_text`, `_regions` and `_region_lines`, and keeps `_subject` for the agent stage. This is a refactor supporting the requested move, but it adds helper structure beyond what is needed.
+       src/acceptance/mutation/descriptor.py#@@ -395,13 +399,19 @@ def _span_from(
+       src/acceptance/mutation/descriptor.py#@@ -413,14 +423,32 @@ def _subject(defect: Defect, regions: Sequence[Region], sources: dict[str, str])
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  min-reusable-prefix-per-model
+    [boundary_wrong_side] min-reusable-prefix-per-model/opening-at-minimum-not-marked
+      The comparison between the opening's token count and the model's minimum may be strict (>) rather than inclusive (>=). An opening of exactly 512 tokens would then go unmarked for Sonnet 5.5, Opus 5.5 and Haiku 5.5. The diff changes only the minimum lookup, so the comparison in mark_reusable_opening is where this would show.
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#2
+      pairs: 317 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] min-reusable-prefix-per-model/dotted-sonnet-5-5-matches-sonnet-5
+      The lookup uses name.startswith(key) on a hyphenated table. A model id written with a dot, such as claude-sonnet-5.5, does not match the 'sonnet-5-5' key but does match the 'sonnet-5' prefix. The minimum for Sonnet 5.5 would then be 1024 instead of 512, and a 512-token opening would go unmarked. The same naming issue could leave Haiku 5.5 and Opus 5.5 on the fallback default, or let them resolve to the wrong entry.
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#2
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [scope_too_narrow] min-reusable-prefix-per-model/provider-prefix-parsing-misses-model-name
+      The model name is normalised only by splitting on the first '/' and stripping a leading 'claude-'. Ids with other provider forms, such as 'anthropic.claude-sonnet-5-5' or a 'bedrock/anthropic.claude-...' route, keep a prefix that matches no table key. They fall back to the default, and Sonnet 5.5, Opus 5.5 and Haiku 5.5 would get the wrong minimum if the default and the documented value ever differ.
+      src/acceptance/llm.py#3
+      pairs: 317 put to the model, 0 skipped once the defect was covered
+
+  pair-mapping-cache-hit-on-shared-opening
+    [scope_too_narrow] pair-mapping-cache-hit-on-shared-opening/opening-key-differs-from-real-opening
+      Calls are grouped by the text of the defects block alone. If the request's reusable opening also contains other per-batch content (the tests block, or a schema built from batch ids), calls with equal keys do not share a byte-identical opening. The designated first call then writes a different prefix from the one the followers read, and the followers miss.
+      src/acceptance/defects/pair_mapping.py#1
+      pairs: 12 put to the model, 305 skipped once the defect was covered
+    [condition_inverted] pair-mapping-cache-hit-on-shared-opening/followers-not-held-until-leaders-complete
+      The ordering that lets later calls hit the cache depends on followers starting only after every leader has returned. If leaders and followers were mapped together or in the wrong order, the first calls for an opening would all start before any cache write lands and would all miss.
+      src/acceptance/concurrency.py#3
+      src/acceptance/defects/pair_mapping.py#1
+      pairs: 4 put to the model, 4 skipped once the defect was covered
+    [missing_case] pair-mapping-cache-hit-on-shared-opening/opening-minimum-table-misclassifies-model
+      The minimum reusable opening size is found by longest-prefix matching on the model name. A model whose name merely begins with a shorter key (for example a later minor version, or a model the table does not name) gets the wrong minimum. When the minimum is too high, the breakpoint is not set and nothing is cached. When it is too low, the marker is ignored by the provider.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 4 put to the model, 5 skipped once the defect was covered
+    [other] pair-mapping-cache-hit-on-shared-opening/batched-calls-bypass-cache-sharing
+      In a batched run, requests in one batch are processed independently and a cache write only lands after processing. Even with leaders sent first, the batcher queues requests and sends them after a quiet period. Followers that fall into the same batch as the leaders, or identical requests that are deduplicated by custom_id, may not read the leaders' cache entry.
+      src/acceptance/llm_batch.py#0
+      src/acceptance/llm.py#6
+      pairs: 317 put to the model, 0 skipped once the defect was covered
+    [not_wired] pair-mapping-cache-hit-on-shared-opening/pipeline-wrapper-assumes-client-attribute
+      The run_review wrapper reads `client.calls_in_flight` from the bound arguments. A client that lacks the attribute, or a call that omits the argument, breaks the review before any pair mapping runs. The concurrency limit is also only set for this entry point.
+      src/acceptance/pipeline.py#1
+      src/acceptance/llm.py#5
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+
+  region-source-in-shared-opening
+    [not_wired] region-source-in-shared-opening/regions-block-outside-opening
+      The new REGIONS block (kind 35) is added to the descriptor prompt, but the logic that decides where the reusable opening ends may not include it. If the opening is taken only up to INSTRUCTIONS, or the cache marker is placed before REGIONS, the numbered source stays in the non-shared portion and is repeated by every call.
+      src/acceptance/request_blocks.py#0
+      src/acceptance/mutation/descriptor.py#0
+      pairs: 11 put to the model, 306 skipped once the defect was covered
+    [qualifier_ignored] region-source-in-shared-opening/context-duplicates-source-in-subject
+      The subject still gets the rendered surrounding context (`render_contexts(contexts_for(region_spans(offered), surrounding))`), which can contain the same region source or overlapping lines. The numbered source then appears again in each call's per-defect portion, not only in the shared opening.
+      src/acceptance/mutation/descriptor.py#0
+      pairs: 4 put to the model, 3 skipped once the defect was covered
+    [scope_too_narrow] region-source-in-shared-opening/region-order-or-set-varies-per-defect
+      The REGIONS text is built from `offered`, which is per defect. Defects in the same region may list regions in a different order, or offer a different set, so the rendered text differs byte for byte. The openings are then not identical and are not shared across those calls.
+      src/acceptance/mutation/descriptor.py#0
+      src/acceptance/mutation/descriptor.py#2
+      pairs: 28 put to the model, 289 skipped once the defect was covered
+    [other] region-source-in-shared-opening/defect-specific-text-in-regions-block
+      The shared REGIONS text could contain defect-specific content, such as the heading or labels that vary by defect, so it is not identical across calls over the same region.
+      src/acceptance/mutation/descriptor.py#2
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+
+  batch-api-opt-in
+    [scope_too_narrow] batch-api-opt-in/non-anthropic-stage-sent-directly
+      Batching is gated on `_needs_explicit_marker(request["model"])`, so any call whose model that predicate does not recognise as Anthropic (for example a stage model override, or an Anthropic model reached under a different provider prefix) goes to the direct endpoint even though the run has batch enabled.
+      src/acceptance/llm.py#6
+      pairs: 317 put to the model, 0 skipped once the defect was covered
+    [missing_case] batch-api-opt-in/transport-ignores-json-kwarg
+      `BatchTransport.post` reads the request body only from `data` and swallows every other keyword in `**_`. If LiteLLM passes the Anthropic request as `json=`, the body is serialised as `null` or an empty payload, so a bad request is queued instead of the real one. The request may also never reach the batcher.
+      src/acceptance/llm_batch.py#0
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [not_wired] batch-api-opt-in/batch-flag-not-reaching-client
+      `RunConfig.batch` only has an effect through `build_client()` creating a `MessageBatcher`. Clients created by other routes (a custom `client_factory`, direct `ModelClient(...)` construction, or entry points that never set `batch`) ignore the flag. Only `run_once` and `measure_instability` forward it, and no CLI or other caller does, so a run cannot actually opt in from those paths.
+      src/acceptance/config.py#1
+      src/acceptance/config.py#2
+      src/acceptance/benchmark/instability.py#0
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      pairs: 11 put to the model, 306 skipped once the defect was covered
+    [not_wired] batch-api-opt-in/injected-client-not-used-by-litellm
+      The batch transport is handed to the completion function as the `client=` keyword. If `_completion_fn` or the LiteLLM Anthropic path does not use an injected client of that type, the request is sent directly while the recording is still marked `sent_via: batch`.
+      src/acceptance/llm.py#6
+      src/acceptance/llm.py#7
+      src/acceptance/llm.py#8
+      pairs: 4 put to the model, 10 skipped once the defect was covered
+    [other] batch-api-opt-in/review-wrapper-bind-fails-without-client
+      The `_at_the_clients_concurrency` wrapper reads `bound.arguments["client"]`. If a caller omits `client` and relies on a default, or the client lacks `calls_in_flight`, the review fails or the batch concurrency is not raised. A review then submits batches of eight at a time, or raises.
+      src/acceptance/pipeline.py#1
+      src/acceptance/llm.py#5
+      pairs: 317 put to the model, 0 skipped once the defect was covered
+
+  batch-setting-in-run-config-default-off
+    [other] batch-setting-in-run-config-default-off/batch-default-on
+      The `RunConfig.batch` field could default to True, so a run built with default configuration would send calls through the Message Batches API.
+      src/acceptance/config.py#1
+      pairs: 4 put to the model, 6 skipped once the defect was covered
+    [condition_inverted] batch-setting-in-run-config-default-off/build-client-batcher-inverted
+      `build_client` could attach the `MessageBatcher` when `self.batch` is False and omit it when True, so the setting acts backwards.
+      src/acceptance/config.py#2
+      pairs: 4 put to the model, 16 skipped once the defect was covered
+    [not_wired] batch-setting-in-run-config-default-off/batch-flag-not-passed-to-client
+      The `batch` field exists on `RunConfig`, but the client built from it might not receive it, or a client might be constructed some other way that ignores the field. Enabling the setting would then change nothing.
+      src/acceptance/config.py#2
+      src/acceptance/llm.py#4
+      src/acceptance/llm.py#6
+      pairs: 4 put to the model, 14 skipped once the defect was covered
+    [not_wired] batch-setting-in-run-config-default-off/benchmark-batch-flag-dropped
+      The instability benchmark's `batch` parameter might not reach the `RunConfig` it constructs. This can happen in `run_once`, or in `measure_instability` at either its baseline-run or perturbed-run call site. The run would then silently use the default off setting even when batching is requested.
+      src/acceptance/benchmark/instability.py#0
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [scope_too_narrow] batch-setting-in-run-config-default-off/batch-only-anthropic-calls
+      With batching enabled, the live-call path routes through the batcher only for models that need an explicit cache marker, which means Anthropic models. Calls to any other provider are sent directly even though the run's configuration has batching on.
+      src/acceptance/llm.py#6
+      pairs: 317 put to the model, 0 skipped once the defect was covered
+    [not_wired] batch-setting-in-run-config-default-off/in-flight-limit-not-applied-to-review
+      The raised concurrency for batched runs depends on the `run_review` wrapper reading `client.calls_in_flight`. If the wrapper cannot find the client argument, or other entry points bypass it, stages stay at the default limit of eight and batching degrades to many small batches.
+      src/acceptance/pipeline.py#1
+      src/acceptance/concurrency.py#2
+      src/acceptance/llm.py#5
+      pairs: 12 put to the model, 305 skipped once the defect was covered
+
+  check-and-decompose-call-model-directly-by-default
+    [condition_inverted] check-and-decompose-call-model-directly-by-default/batch-default-enabled
+      The `RunConfig.batch` field defaults to True, or the default is otherwise flipped. `acceptance check` and `acceptance decompose` build a default RunConfig, so they would batch every live Anthropic call without being asked.
+      src/acceptance/config.py#1
+      pairs: 4 put to the model, 6 skipped once the defect was covered
+    [condition_inverted] check-and-decompose-call-model-directly-by-default/build-client-always-creates-batcher
+      `build_client` passes a MessageBatcher to the ModelClient regardless of `self.batch`, or the conditional is inverted. A default run would then carry a batcher and send its calls through the batch path.
+      src/acceptance/config.py#2
+      pairs: 4 put to the model, 16 skipped once the defect was covered
+    [qualifier_ignored] check-and-decompose-call-model-directly-by-default/live-call-swaps-transport-without-batcher-guard
+      The decision in `_live_call` to replace LiteLLM's HTTP transport with the batch transport does not depend on the client's batcher being set. A client with no batcher could still route Anthropic calls to the Message Batches API, or fail on a missing batcher.
+      src/acceptance/llm.py#6
+      src/acceptance/llm.py#7
+      pairs: 317 put to the model, 0 skipped once the defect was covered
+    [not_wired] check-and-decompose-call-model-directly-by-default/cli-check-decompose-enable-batch
+      The check and decompose entry points may build their RunConfig, or construct their ModelClient directly, in a way that enables batching or carries a batcher. For example, they might share a config path with benchmark or experiment scripts that set `batch=True`. The diff does not show the CLI paths that guarantee these commands stay on direct calls.
+      src/acceptance/config.py#1
+      src/acceptance/config.py#2
+      src/acceptance/benchmark/instability.py#0
+      pairs: 4 put to the model, 6 skipped once the defect was covered
+    [scope_too_narrow] check-and-decompose-call-model-directly-by-default/instability-batch-default-true
+      `run_once` and `measure_instability` thread a `batch` parameter into RunConfig. If its default were True, or if it were passed on without regard to the caller, a default run would be batched.
+      src/acceptance/benchmark/instability.py#0
+      src/acceptance/benchmark/instability.py#1
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 3 skipped once the defect was covered
+
+  batch-opt-in-switchable-by-scripts
+    [not_wired] batch-opt-in-switchable-by-scripts/batch-flag-lost-in-client-factory
+      run_once builds a RunConfig with batch set, but when a client_factory is supplied the factory may build the client without using config.build_client(). The batch flag then never produces a MessageBatcher, and the run's calls go out directly.
+      src/acceptance/benchmark/instability.py#0
+      src/acceptance/config.py#2
+      pairs: 19 put to the model, 298 skipped once the defect was covered
+    [scope_too_narrow] batch-opt-in-switchable-by-scripts/batch-not-threaded-through-benchmark-entrypoints
+      The batch parameter is added only to run_once and measure_instability, and defaults to False. Other benchmark scoring entry points that construct a RunConfig may not accept or forward it, so a scoring script has no way to switch batching on.
+      src/acceptance/benchmark/instability.py#0
+      src/acceptance/benchmark/instability.py#1
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [scope_too_narrow] batch-opt-in-switchable-by-scripts/batching-limited-to-anthropic-completions
+      Batching applies only when _needs_explicit_marker(model) is true, meaning the model is Anthropic. Calls to other providers' models, and embedding calls, go directly even with batch on, so not all of the run's model calls go through the Message Batches API.
+      src/acceptance/llm.py#6
+      src/acceptance/config.py#2
+      pairs: 317 put to the model, 0 skipped once the defect was covered
+    [not_wired] batch-opt-in-switchable-by-scripts/transport-client-not-honoured-by-provider-call
+      The batch transport is injected as a `client` kwarg to the completion function. If LiteLLM's Anthropic path, _call_provider, or drop_params ignores or strips that kwarg, the HTTP post never reaches the batcher and the call goes directly to /v1/messages.
+      src/acceptance/llm.py#6
+      src/acceptance/llm.py#7
+      src/acceptance/llm_batch.py#0
+      pairs: 4 put to the model, 10 skipped once the defect was covered
+    [missing_case] batch-opt-in-switchable-by-scripts/batch-transport-intercepts-only-sync-post
+      BatchTransport overrides only the synchronous post(url, data, headers). If LiteLLM calls it with json= rather than data=, or uses a streaming or async path, the call bypasses the batcher or fails.
+      src/acceptance/llm_batch.py#0
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [not_wired] batch-opt-in-switchable-by-scripts/run-concurrency-only-applied-in-run-review
+      The raised in-flight limit for batched runs is applied only by the decorator on run_review. Stages outside run_review, or scripts that call stages directly, keep the default of eight in flight, so their batched calls go out as many small batches. If the client lacks a calls_in_flight attribute, the decorator also fails.
+      src/acceptance/pipeline.py#1
+      src/acceptance/concurrency.py#1
+      src/acceptance/llm.py#5
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+
+  batched-request-same-recording-key
+    [other] batched-request-same-recording-key/transport-kwarg-in-request-key
+      The batch transport client is passed to the completion function in the same kwargs the request key is derived from. If the key is hashed from those kwargs, a batched call and a direct call of the same question get different keys.
+      src/acceptance/llm.py#6
+      src/acceptance/llm.py#7
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [other] batched-request-same-recording-key/batch-flag-reaches-key-or-provenance
+      RunConfig.batch and the batcher are set on the config and client. If the batch flag, or the batcher's presence, is folded into determinism controls, the provenance or the request-key inputs, the key will differ between batched and direct runs.
+      src/acceptance/config.py#1
+      src/acceptance/config.py#2
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 7 skipped once the defect was covered
+    [established_not_maintained] batched-request-same-recording-key/sent-via-field-affects-lookup
+      A batched recording gains a `sent_via` field and a halved cost_usd. If lookup or replay validation treats these as part of the recording's identity or content check, a batched recording would not be found or accepted when the request is looked up directly, and the reverse.
+      src/acceptance/llm.py#8
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [unenforced_on_one_path] batched-request-same-recording-key/batched-request-body-differs-from-direct
+      The batched path builds its request through the same LiteLLM call but reaches the key through a different route. If the opening marker or the minimum-opening decision depends on the path, the marked messages differ between batched and direct calls, and so would a key derived from the marked request.
+      src/acceptance/llm.py#3
+      src/acceptance/llm.py#6
+      src/acceptance/llm_batch.py#0
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+
+  batched-recording-replays-offline
+    [wrong_output_shape] batched-recording-replays-offline/sent-via-field-breaks-replay-load
+      A batched recording gains an extra top-level `sent_via` field. If the transcript store's loader or replay path validates the record against a fixed shape (strict or forbid-extra, or a fixed key set), it rejects or mishandles a batched recording. Replay then errors or falls through instead of returning the recorded response.
+      src/acceptance/llm.py#8
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [other] batched-recording-replays-offline/batch-transport-leaks-into-request-key
+      A batched call passes an extra `client` transport kwarg to the provider call, and the record gets batch-specific content. If the request key or recorded request is computed from kwargs that include the transport, or from the batched flag, a batched call gets a different key from the direct call. A replay run, which builds its request without a batcher, then looks up a key that does not match the stored recording and misses.
+      src/acceptance/llm.py#6
+      src/acceptance/llm.py#7
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [other] batched-recording-replays-offline/batch-flag-reaches-config-identity
+      `RunConfig.batch` is a new config field. If config serialization, provenance or the transcript lookup uses a full config dump or hash, the batch flag enters it. A replay config with a different `batch` value then no longer matches the recording made with batching on.
+      src/acceptance/config.py#1
+      src/acceptance/config.py#2
+      src/acceptance/llm.py#4
+      pairs: 4 put to the model, 7 skipped once the defect was covered
+
+  recording-notes-batch-origin
+    [scope_too_narrow] recording-notes-batch-origin/batched-flag-ignores-model-provider
+      The `batched` flag that gates both the transport and the `sent_via` note is true only when a batcher is set and the model needs an explicit marker (is Anthropic). A call that was sent through the batch path on any other model would carry no note, or a call on a non-Anthropic model never batches at all, so the note's presence depends on a model-name check rather than on whether the batch transport actually carried the request.
+      src/acceptance/llm.py#6
+      src/acceptance/llm.py#8
+      pairs: 11 put to the model, 306 skipped once the defect was covered
+    [not_wired] recording-notes-batch-origin/sent-via-not-in-recorded-transcript
+      The `sent_via` field is added to the `record` dict returned from the live-call method, but nothing shown ensures that this dict is what is persisted to the transcript store. If the persisted recording is built from selected fields, the note never reaches the stored recording.
+      src/acceptance/llm.py#8
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [other] recording-notes-batch-origin/note-added-only-when-record-built-after-transport
+      The note is added unconditionally on `batched`, but if the batched call fails over or is retried via a direct path, or if the response is served from the replay path, the recording still claims batch, or a directly sent request in a batched run could be recorded as batched. Also cost is halved on the same condition, so note and pricing could mis-indicate origin.
+      src/acceptance/llm.py#6
+      src/acceptance/llm.py#8
+      pairs: 317 put to the model, 0 skipped once the defect was covered
+    [wrong_output_shape] recording-notes-batch-origin/sent-via-value-mismatch
+      The note's value comes from the constant SENT_VIA_BATCH; if the constant's value differs from the documented "batch" string or the key name differs, the marker would be in the wrong form for consumers inspecting the recording.
+      src/acceptance/llm_batch.py#0
+      src/acceptance/llm.py#8
+      pairs: 4 put to the model, 3 skipped once the defect was covered
+
+  identical-review-state-across-send-modes
+    [unenforced_on_one_path] identical-review-state-across-send-modes/batched-record-differs-in-sent-via-and-cost
+      A batched live call adds a `sent_via: "batch"` field to the recorded transcript and multiplies `usage.cost_usd` by 0.5. A direct call records neither. If the transcript or its usage feeds the review state, two recordings of the same input differ byte-for-byte depending on send mode.
+      src/acceptance/llm.py#8
+      pairs: 317 put to the model, 0 skipped once the defect was covered
+    [unenforced_on_one_path] identical-review-state-across-send-modes/identical-requests-share-one-batched-answer
+      The batcher keys requests by a hash of the body and gives identical requests one shared future and one answer. Sent directly, two identical requests are two independent model calls. Any nondeterminism in the provider's responses means the batched run reuses one draw where the direct run has two, so the review state can differ.
+      src/acceptance/llm_batch.py#0
+      pairs: 4 put to the model, 313 skipped once the defect was covered
+    [unenforced_on_one_path] identical-review-state-across-send-modes/observed-call-order-and-cache-usage-depend-on-send-mode
+      Batched calls complete in arbitrary order and wait minutes, and the in-flight limit changes from 8 to 512. If the observed-calls list or per-call usage (cache read/write tokens) is part of the state, its order and values vary with send mode. Batched cache behaviour also differs from direct behaviour.
+      src/acceptance/concurrency.py#1
+      src/acceptance/concurrency.py#3
+      src/acceptance/llm.py#5
+      src/acceptance/llm_batch.py#0
+      pairs: 20 put to the model, 297 skipped once the defect was covered
+    [other] identical-review-state-across-send-modes/batched-reply-normalised-differently-from-direct-reply
+      The batched reply is the Message from the batch results, serialised with `to_dict(mode="json")`, and fed to LiteLLM as an HTTP 200 response. A direct call is parsed from the live HTTP response. The two JSON forms can differ in fields such as null fields, usage, stop reasons, or structured-output content. The parsed content or usage recorded in state could then differ by send mode.
+      src/acceptance/llm_batch.py#0
+      src/acceptance/llm.py#6
+      pairs: 28 put to the model, 289 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [passed_under_edit] batch-api-opt-in/injected-client-not-used-by-litellm x 303 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 8 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] batch-opt-in-switchable-by-scripts/transport-client-not-honoured-by-provider-call x 303 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 8 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] batch-setting-in-run-config-default-off/batch-default-on x 307 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 4 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] batch-setting-in-run-config-default-off/batch-flag-not-passed-to-client x 299 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 12 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] batch-setting-in-run-config-default-off/build-client-batcher-inverted x 297 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 14 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] batched-recording-replays-offline/batch-flag-reaches-config-identity x 306 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 5 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] batched-request-same-recording-key/batch-flag-reaches-key-or-provenance x 306 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 5 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] check-and-decompose-call-model-directly-by-default/batch-default-enabled x 307 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 4 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] check-and-decompose-call-model-directly-by-default/build-client-always-creates-batcher x 297 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 14 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] check-and-decompose-call-model-directly-by-default/cli-check-decompose-enable-batch x 307 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 4 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] check-and-decompose-call-model-directly-by-default/instability-batch-default-true x 310 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] pair-mapping-cache-hit-on-shared-opening/followers-not-held-until-leaders-complete x 309 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] pair-mapping-cache-hit-on-shared-opening/opening-minimum-table-misclassifies-model x 308 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 3 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] recording-notes-batch-origin/sent-via-value-mismatch x 310 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] region-source-in-shared-opening/context-duplicates-source-in-subject x 310 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] batch-api-opt-in/batch-flag-not-reaching-client x 306 candidate test(s), ranked 6 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on, tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to
+  [defect_already_covered] batch-api-opt-in/injected-client-not-used-by-litellm x 10 candidate test(s), ranked 9 to 275
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly, tests/test_llm_batch.py::test_concurrent_calls_go_out_together_as_one_batch, tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch, tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+  [defect_already_covered] batch-api-opt-in/transport-ignores-json-kwarg x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+  [defect_already_covered] batch-opt-in-switchable-by-scripts/batch-flag-lost-in-client-factory x 298 candidate test(s), ranked 14 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to
+  [defect_already_covered] batch-opt-in-switchable-by-scripts/batch-not-threaded-through-benchmark-entrypoints x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to, tests/test_llm_batch.py::test_the_instability_experiment_batches_when_asked
+  [defect_already_covered] batch-opt-in-switchable-by-scripts/batch-transport-intercepts-only-sync-post x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_request_that_got_no_answer_is_asked_again, tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+  [defect_already_covered] batch-opt-in-switchable-by-scripts/run-concurrency-only-applied-in-run-review x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to
+  [defect_already_covered] batch-opt-in-switchable-by-scripts/transport-client-not-honoured-by-provider-call x 10 candidate test(s), ranked 6 to 312
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_request_that_got_no_answer_is_asked_again, tests/test_llm_batch.py::test_a_batched_request_that_never_gets_an_answer_fails_rather_than_hangs, tests/test_llm_batch.py::test_a_refused_batched_request_fails_without_being_asked_again, tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+  [defect_already_covered] batch-setting-in-run-config-default-off/batch-default-on x 6 candidate test(s), ranked 137 to 279
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it, tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on, tests/test_llm_batch.py::test_check_does_not_batch, tests/test_llm_batch.py::test_decompose_does_not_batch
+  [defect_already_covered] batch-setting-in-run-config-default-off/batch-flag-not-passed-to-client x 14 candidate test(s), ranked 12 to 252
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly, tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on, tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to
+  [defect_already_covered] batch-setting-in-run-config-default-off/benchmark-batch-flag-dropped x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_the_instability_experiment_batches_when_asked
+  [defect_already_covered] batch-setting-in-run-config-default-off/build-client-batcher-inverted x 16 candidate test(s), ranked 7 to 300
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly, tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on, tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+  [defect_already_covered] batch-setting-in-run-config-default-off/in-flight-limit-not-applied-to-review x 305 candidate test(s), ranked 6 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batching_review_runs_its_stages_with_many_calls_in_flight
+  [defect_already_covered] batched-recording-replays-offline/batch-flag-reaches-config-identity x 7 candidate test(s), ranked 21 to 256
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly, tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call, tests/test_llm_batch.py::test_two_recorded_runs_are_byte_identical_whichever_way_their_calls_were_sent
+  [defect_already_covered] batched-recording-replays-offline/batch-transport-leaks-into-request-key x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly, tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call, tests/test_llm_batch.py::test_two_recorded_runs_are_byte_identical_whichever_way_their_calls_were_sent
+  [defect_already_covered] batched-recording-replays-offline/sent-via-field-breaks-replay-load x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+  [defect_already_covered] batched-request-same-recording-key/batch-flag-reaches-key-or-provenance x 7 candidate test(s), ranked 31 to 265
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly, tests/test_llm_batch.py::test_two_recorded_runs_are_byte_identical_whichever_way_their_calls_were_sent
+  [defect_already_covered] batched-request-same-recording-key/batched-request-body-differs-from-direct x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly, tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+  [defect_already_covered] batched-request-same-recording-key/sent-via-field-affects-lookup x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+  [defect_already_covered] batched-request-same-recording-key/transport-kwarg-in-request-key x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+  [defect_already_covered] check-and-decompose-call-model-directly-by-default/batch-default-enabled x 6 candidate test(s), ranked 79 to 298
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it, tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on, tests/test_llm_batch.py::test_check_does_not_batch, tests/test_llm_batch.py::test_decompose_does_not_batch
+  [defect_already_covered] check-and-decompose-call-model-directly-by-default/build-client-always-creates-batcher x 16 candidate test(s), ranked 8 to 311
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it, tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on
+  [defect_already_covered] check-and-decompose-call-model-directly-by-default/cli-check-decompose-enable-batch x 6 candidate test(s), ranked 82 to 229
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_check_does_not_batch, tests/test_llm_batch.py::test_decompose_does_not_batch
+  [defect_already_covered] check-and-decompose-call-model-directly-by-default/instability-batch-default-true x 3 candidate test(s), ranked 246 to 301
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it
+  [defect_already_covered] identical-review-state-across-send-modes/batched-reply-normalised-differently-from-direct-reply x 289 candidate test(s), ranked 29 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_two_recorded_runs_are_byte_identical_whichever_way_their_calls_were_sent
+  [defect_already_covered] identical-review-state-across-send-modes/identical-requests-share-one-batched-answer x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+  [defect_already_covered] identical-review-state-across-send-modes/observed-call-order-and-cache-usage-depend-on-send-mode x 297 candidate test(s), ranked 14 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_two_recorded_runs_are_byte_identical_whichever_way_their_calls_were_sent
+  [defect_already_covered] min-reusable-prefix-per-model/dotted-sonnet-5-5-matches-sonnet-5 x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_reusable_opening_marker.py::test_the_current_models_mark_an_opening_over_512_tokens
+  [defect_already_covered] pair-mapping-cache-hit-on-shared-opening/followers-not-held-until-leaders-complete x 4 candidate test(s), ranked 261 to 300
+    not asked: the defect was already covered by tests/defects/test_pair_mapping.py::test_calls_sharing_a_defect_list_wait_for_the_first_of_them, tests/test_concurrency.py::test_each_openings_first_call_finishes_before_the_rest_of_its_group_start
+  [defect_already_covered] pair-mapping-cache-hit-on-shared-opening/opening-key-differs-from-real-opening x 305 candidate test(s), ranked 13 to 317
+    not asked: the defect was already covered by tests/test_pipeline_request_openings.py::test_no_request_places_content_unique_to_it_ahead_of_content_it_shares
+  [defect_already_covered] pair-mapping-cache-hit-on-shared-opening/opening-minimum-table-misclassifies-model x 5 candidate test(s), ranked 196 to 275
+    not asked: the defect was already covered by tests/test_reusable_opening_marker.py::test_an_opening_between_two_models_minimums_is_marked_on_one_only, tests/test_reusable_opening_marker.py::test_each_model_gets_its_own_minimum, tests/test_reusable_opening_marker.py::test_the_current_models_mark_an_opening_over_512_tokens
+  [defect_already_covered] pair-mapping-cache-hit-on-shared-opening/pipeline-wrapper-assumes-client-attribute x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_mutation_pipeline_wiring.py::TestVerification::test_the_default_runs_but_verifies_nothing, tests/test_stage_attribution.py::test_two_runs_whose_calls_cost_different_amounts_still_agree_byte_for_byte
+  [defect_already_covered] recording-notes-batch-origin/batched-flag-ignores-model-provider x 306 candidate test(s), ranked 6 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_recording_says_so_and_a_direct_one_has_its_usual_fields
+  [defect_already_covered] recording-notes-batch-origin/sent-via-not-in-recorded-transcript x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_recording_says_so_and_a_direct_one_has_its_usual_fields
+  [defect_already_covered] recording-notes-batch-origin/sent-via-value-mismatch x 3 candidate test(s), ranked 173 to 283
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_recording_says_so_and_a_direct_one_has_its_usual_fields
+  [defect_already_covered] region-source-in-shared-opening/context-duplicates-source-in-subject x 3 candidate test(s), ranked 247 to 287
+    not asked: the defect was already covered by tests/test_mutation_descriptor.py::TestWhatTheCallIsOffered::test_defects_naming_the_same_region_share_its_source_in_the_reusable_opening
+  [defect_already_covered] region-source-in-shared-opening/defect-specific-text-in-regions-block x 313 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_mutation_descriptor.py::TestWhatTheCallIsOffered::test_defects_naming_the_same_region_share_its_source_in_the_reusable_opening
+  [defect_already_covered] region-source-in-shared-opening/region-order-or-set-varies-per-defect x 289 candidate test(s), ranked 29 to 317
+    not asked: the defect was already covered by tests/test_pipeline_request_openings.py::test_the_requests_that_share_a_diff_share_a_real_opening
+  [defect_already_covered] region-source-in-shared-opening/regions-block-outside-opening x 306 candidate test(s), ranked 5 to 317
+    not asked: the defect was already covered by tests/test_mutation_descriptor.py::TestWhatTheCallIsOffered::test_defects_naming_the_same_region_share_its_source_in_the_reusable_opening
+
+Running the project's tests:
+  the project's tests were run: 49 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [killed, NOT COUNTED] batch-api-opt-in/batch-flag-not-reaching-client
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 733-733:
+      -     config = RunConfig(model=run.model, mode=Mode.RECORD, seed=run.seed, batch=batch)
+      +     config = RunConfig(model=run.model, mode=Mode.RECORD, seed=run.seed)
+    caught by (1):
+      tests/test_llm_batch.py::test_the_instability_experiment_batches_when_asked
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 11 put to the model, 0 dropped as not worth asking, 306 skipped once the defect was covered
+
+  [killed, NOT COUNTED] batch-api-opt-in/injected-client-not-used-by-litellm
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1345-1345:
+      -             **transport,
+      (lines deleted)
+    caught by (8):
+      tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+      tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+      tests/test_llm_batch.py::test_a_batched_request_that_got_no_answer_is_asked_again
+      tests/test_llm_batch.py::test_a_batched_request_that_never_gets_an_answer_fails_rather_than_hangs
+      tests/test_llm_batch.py::test_a_refused_batched_request_fails_without_being_asked_again
+      tests/test_llm_batch.py::test_concurrent_calls_go_out_together_as_one_batch
+      tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+      tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 303 dropped as not worth asking, 10 skipped once the defect was covered
+
+  [survived, NOT COUNTED] batch-api-opt-in/non-anthropic-stage-sent-directly
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1313-1313:
+      -         batched = self._batcher is not None and _needs_explicit_marker(request["model"])
+      +         batched = self._batcher is not None and request["model"].startswith("anthropic/")
+    no test caught it; 311 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 317 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] batch-api-opt-in/review-wrapper-bind-fails-without-client
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/pipeline.py lines 404-404:
+      -         client = signature.bind(*args, **kwargs).arguments["client"]
+      +         client = kwargs["client"]
+    no test caught it; 311 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 317 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [already_present] batch-api-opt-in/transport-ignores-json-kwarg
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    Lines 266-267 take the body only from `data` and discard every other keyword in `**_`. A request passed as `json=` therefore reaches `json.dumps(None)` and `null` is queued. The repair falls back to the `json` keyword when `data` is None. It reads the keyword through `**kwargs` because a parameter named `json` would shadow the `json` module used on the next line.
+
+  [killed, NOT COUNTED] batch-opt-in-switchable-by-scripts/batch-flag-lost-in-client-factory
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 733-733:
+      -     config = RunConfig(model=run.model, mode=Mode.RECORD, seed=run.seed, batch=batch)
+      +     config = RunConfig(model=run.model, mode=Mode.RECORD, seed=run.seed, batch=batch and client_factory is None)
+    caught by (1):
+      tests/test_llm_batch.py::test_the_instability_experiment_batches_when_asked
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 19 put to the model, 0 dropped as not worth asking, 298 skipped once the defect was covered
+
+  [not_mutable] batch-opt-in-switchable-by-scripts/batch-not-threaded-through-benchmark-entrypoints
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    The offered regions are only run_once and measure_instability, and both already accept and forward batch (run_once line 733, measure_instability lines 824, 856 and 872). The defect is about other benchmark scoring and experiment entry points that build a RunConfig, and none of them are shown. I cannot tell whether they forward batch. Removing batch from the instability path would break the instability path instead of creating the named defect, so I give no edit.
+
+  [already_present] batch-opt-in-switchable-by-scripts/batch-transport-intercepts-only-sync-post
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    BatchTransport.post (lines 266-267) accepts only data= and swallows every other keyword in **_. A request passed as json= is dropped, so the body becomes json.dumps(None) == "null" and the batcher queues garbage. Async and streaming paths are not overridden at all. This is the defective behaviour. The repair makes post fall back to the json= keyword when data is None. I could not see how LiteLLM calls the transport, so the async and streaming gaps are not repaired.
+
+  [already_present] batch-opt-in-switchable-by-scripts/batching-limited-to-anthropic-completions
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 317 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    Line 1313 sets `batched = self._batcher is not None and _needs_explicit_marker(request["model"])`, so a batched run only batches Anthropic completions and sends other providers' completions directly. That is the DEFECTIVE behaviour. The repair drops the Anthropic-only condition, so every live completion goes through the batcher when batch is on. Embedding calls take a different path outside the offered regions, so this edit does not change them.
+
+  [already_present] batch-opt-in-switchable-by-scripts/run-concurrency-only-applied-in-run-review
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    The code already does the DEFECTIVE behaviour. `_run_limit` in concurrency.py is set only by `calls_in_flight` (lines 86-91). The only caller is the `run` wrapper in pipeline.py:405, which `run_review` uses. `map_calls` (line 112) falls back to the default of eight whenever `_run_limit` is None. A script calling a stage directly therefore gets eight in flight. The wrapper also reads `client.calls_in_flight` with no fallback. The repair makes a batched client raise the process-wide run limit when it is constructed, so direct stage calls get the batching limit. This is a blunt, leaky fix that does not touch the wrapper's attribute access. A cleaner fix would need coordinated edits across several files.
+
+  [killed, NOT COUNTED] batch-opt-in-switchable-by-scripts/transport-client-not-honoured-by-provider-call
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1345-1345:
+      -             **transport,
+      (lines deleted)
+    caught by (8):
+      tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+      tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+      tests/test_llm_batch.py::test_a_batched_request_that_got_no_answer_is_asked_again
+      tests/test_llm_batch.py::test_a_batched_request_that_never_gets_an_answer_fails_rather_than_hangs
+      tests/test_llm_batch.py::test_a_refused_batched_request_fails_without_being_asked_again
+      tests/test_llm_batch.py::test_concurrent_calls_go_out_together_as_one_batch
+      tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+      tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 303 dropped as not worth asking, 10 skipped once the defect was covered
+
+  [killed, NOT COUNTED] batch-setting-in-run-config-default-off/batch-default-on
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 221-221:
+      -     batch: bool = False
+      +     batch: bool = True
+    caught by (4):
+      tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it
+      tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on
+      tests/test_llm_batch.py::test_check_does_not_batch
+      tests/test_llm_batch.py::test_decompose_does_not_batch
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 307 dropped as not worth asking, 6 skipped once the defect was covered
+
+  [killed, NOT COUNTED] batch-setting-in-run-config-default-off/batch-flag-not-passed-to-client
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 241-241:
+      -             batcher=MessageBatcher() if self.batch else None,
+      +             batcher=None,
+    caught by (12):
+      tests/test_llm_batch.py::test_a_batched_call_is_priced_at_half_the_direct_price
+      tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+      tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+      tests/test_llm_batch.py::test_a_batched_recording_says_so_and_a_direct_one_has_its_usual_fields
+      tests/test_llm_batch.py::test_a_batched_request_that_got_no_answer_is_asked_again
+      tests/test_llm_batch.py::test_a_batched_request_that_never_gets_an_answer_fails_rather_than_hangs
+      tests/test_llm_batch.py::test_a_refused_batched_request_fails_without_being_asked_again
+      tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on
+      tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to
+      tests/test_llm_batch.py::test_concurrent_calls_go_out_together_as_one_batch
+      tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+      tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 299 dropped as not worth asking, 14 skipped once the defect was covered
+
+  [already_present] batch-setting-in-run-config-default-off/batch-only-anthropic-calls
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 317 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    Line 1313 gates batching on `_needs_explicit_marker(request["model"])`, so with batching on, only Anthropic models go through the batcher and others are sent directly. That is the DEFECTIVE behavior. The repair drops the model check so every call uses the batch transport when a batcher is configured.
+
+  [survived, NOT COUNTED] batch-setting-in-run-config-default-off/benchmark-batch-flag-dropped
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 872-872:
+      -             batch=batch,
+      (lines deleted)
+    no test caught it; 311 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+
+  [killed, NOT COUNTED] batch-setting-in-run-config-default-off/build-client-batcher-inverted
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 241-241:
+      -             batcher=MessageBatcher() if self.batch else None,
+      +             batcher=MessageBatcher() if not self.batch else None,
+    caught by (14):
+      tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it
+      tests/test_llm_batch.py::test_a_batched_call_is_priced_at_half_the_direct_price
+      tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+      tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+      tests/test_llm_batch.py::test_a_batched_recording_says_so_and_a_direct_one_has_its_usual_fields
+      tests/test_llm_batch.py::test_a_batched_request_that_got_no_answer_is_asked_again
+      tests/test_llm_batch.py::test_a_batched_request_that_never_gets_an_answer_fails_rather_than_hangs
+      tests/test_llm_batch.py::test_a_refused_batched_request_fails_without_being_asked_again
+      tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on
+      tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to
+      tests/test_llm_batch.py::test_check_does_not_batch
+      tests/test_llm_batch.py::test_concurrent_calls_go_out_together_as_one_batch
+      tests/test_llm_batch.py::test_decompose_does_not_batch
+      tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 297 dropped as not worth asking, 16 skipped once the defect was covered
+
+  [killed, NOT COUNTED] batch-setting-in-run-config-default-off/in-flight-limit-not-applied-to-review
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/concurrency.py lines 112-112:
+      -         max_in_flight = _run_limit if _run_limit is not None else DEFAULT_MAX_IN_FLIGHT
+      +         max_in_flight = DEFAULT_MAX_IN_FLIGHT
+    caught by (2):
+      tests/test_concurrency.py::test_a_runs_limit_applies_where_a_call_site_names_none
+      tests/test_llm_batch.py::test_concurrent_calls_go_out_together_as_one_batch
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+
+  [killed, NOT COUNTED] batched-recording-replays-offline/batch-flag-reaches-config-identity
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 620-620:
+      -         self.model = model
+      +         self.model = model + (":batch" if batcher is not None else "")
+    caught by (5):
+      tests/test_llm_batch.py::test_a_batched_call_is_priced_at_half_the_direct_price
+      tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+      tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+      tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+      tests/test_llm_batch.py::test_two_recorded_runs_are_byte_identical_whichever_way_their_calls_were_sent
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 306 dropped as not worth asking, 7 skipped once the defect was covered
+
+  [survived, NOT COUNTED] batched-recording-replays-offline/batch-transport-leaks-into-request-key
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1314-1314:
+      -         transport = {"client": self._batcher.transport()} if batched else {}
+      +         transport = {"client": self._batcher.transport()} if batched else {}
+      +         request = {**request, "batched": batched}
+    no test caught it; 311 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+
+  [not_mutable] batched-recording-replays-offline/sent-via-field-breaks-replay-load
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    The only code shown is ModelClient._live_call, which adds top-level `sent_via` (line 1366) when `batched` is true. The transcript store's loader and replay path are not shown, so I cannot see whether they validate records against a fixed key set or forbid extra fields. Whether replay currently accepts the field or rejects it depends on that code. Any edit to the shown region would be a guess about unseen validation.
+
+  [killed, NOT COUNTED] batched-request-same-recording-key/batch-flag-reaches-key-or-provenance
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 624-624:
+      -         self._batcher = batcher
+      +         self._batcher = batcher
+      +         if batcher is not None:
+      +             self.model = f"{model}+batch"
+    caught by (5):
+      tests/test_llm_batch.py::test_a_batched_call_is_priced_at_half_the_direct_price
+      tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+      tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+      tests/test_llm_batch.py::test_the_batch_carries_the_request_a_direct_call_sends
+      tests/test_llm_batch.py::test_two_recorded_runs_are_byte_identical_whichever_way_their_calls_were_sent
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 306 dropped as not worth asking, 7 skipped once the defect was covered
+
+  [survived, NOT COUNTED] batched-request-same-recording-key/batched-request-body-differs-from-direct
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm_batch.py lines 173-173:
+      -                 self._queued.setdefault(beta, {})[custom_id] = json.loads(body)
+      +                 self._queued.setdefault(beta, {})[custom_id] = json.loads(
+      +                     body, object_hook=lambda d: {k: v for k, v in d.items() if k != "cache_control"}
+      +                 )
+    no test caught it; 311 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+
+  [not_mutable] batched-request-same-recording-key/sent-via-field-affects-lookup
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    The offered region only builds the record in _live_call. It adds `sent_via` and scales `cost_usd` after the call, and it never reads or compares the key. The defect is about how lookup or replay validation treats those fields, and that code (the recording lookup, replay, and any request-versus-record check) is not shown. I cannot say whether the code currently matches EXPECTED or DEFECTIVE. Any edit inside this region would be a guess about the unseen validation path.
+
+  [not_mutable] batched-request-same-recording-key/transport-kwarg-in-request-key
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    The code currently does the EXPECTED behaviour. `_live_call` receives `key` as a parameter, already computed by the caller from `request` (model, messages, schema, controls). The `client` transport is added only to the provider call kwargs (`**transport`, line 1345), and the record stores `request` unchanged. To make the key depend on the transport client, the key derivation would have to change in the caller (`_persist_live_call` or the key function), which is outside the offered regions. Editing only inside `_live_call` cannot change how the key is computed, and putting the client into `request` after the key exists would not make the defect real. So I decline rather than invent an unfaithful edit.
+
+  [killed, NOT COUNTED] check-and-decompose-call-model-directly-by-default/batch-default-enabled
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 221-221:
+      -     batch: bool = False
+      +     batch: bool = True
+    caught by (4):
+      tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it
+      tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on
+      tests/test_llm_batch.py::test_check_does_not_batch
+      tests/test_llm_batch.py::test_decompose_does_not_batch
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 307 dropped as not worth asking, 6 skipped once the defect was covered
+
+  [killed, NOT COUNTED] check-and-decompose-call-model-directly-by-default/build-client-always-creates-batcher
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 241-241:
+      -             batcher=MessageBatcher() if self.batch else None,
+      +             batcher=MessageBatcher() if not self.batch else None,
+    caught by (14):
+      tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it
+      tests/test_llm_batch.py::test_a_batched_call_is_priced_at_half_the_direct_price
+      tests/test_llm_batch.py::test_a_batched_call_is_recorded_under_the_key_of_the_same_call_sent_directly
+      tests/test_llm_batch.py::test_a_batched_recording_replays_with_no_live_call
+      tests/test_llm_batch.py::test_a_batched_recording_says_so_and_a_direct_one_has_its_usual_fields
+      tests/test_llm_batch.py::test_a_batched_request_that_got_no_answer_is_asked_again
+      tests/test_llm_batch.py::test_a_batched_request_that_never_gets_an_answer_fails_rather_than_hangs
+      tests/test_llm_batch.py::test_a_refused_batched_request_fails_without_being_asked_again
+      tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on
+      tests/test_llm_batch.py::test_benchmark_scoring_batches_when_its_configuration_says_to
+      tests/test_llm_batch.py::test_check_does_not_batch
+      tests/test_llm_batch.py::test_concurrent_calls_go_out_together_as_one_batch
+      tests/test_llm_batch.py::test_decompose_does_not_batch
+      tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 297 dropped as not worth asking, 16 skipped once the defect was covered
+
+  [killed, NOT COUNTED] check-and-decompose-call-model-directly-by-default/cli-check-decompose-enable-batch
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 221-221:
+      -     batch: bool = False
+      +     batch: bool = True
+    caught by (4):
+      tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it
+      tests/test_llm_batch.py::test_batching_is_off_unless_a_run_turns_it_on
+      tests/test_llm_batch.py::test_check_does_not_batch
+      tests/test_llm_batch.py::test_decompose_does_not_batch
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 307 dropped as not worth asking, 6 skipped once the defect was covered
+
+  [killed, NOT COUNTED] check-and-decompose-call-model-directly-by-default/instability-batch-default-true
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 726-726:
+      -     batch: bool = False,
+      +     batch: bool = True,
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_default_client_is_configured_as_run_config_builds_it
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 310 dropped as not worth asking, 3 skipped once the defect was covered
+
+  [no_usable_edit] check-and-decompose-call-model-directly-by-default/live-call-swaps-transport-without-batcher-guard
+    candidate edits: 3 asked for, 3 set aside, none used
+      1. set aside (refused_after_run): 84 of the 311 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/llm.py lines 1313-1313:
+           -         batched = self._batcher is not None and _needs_explicit_marker(request["model"])
+           +         batched = _needs_explicit_marker(request["model"])
+      2. set aside (refused_after_run): 84 of the 311 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/llm.py lines 1314-1314:
+           -         transport = {"client": self._batcher.transport()} if batched else {}
+           +         transport = {"client": self._batcher.transport()} if _needs_explicit_marker(request["model"]) else {}
+      3. set aside (refused_after_run): 85 of the 311 candidate tests failed under the edit, more than 7.5% of them. An edit that makes one defect true fails the tests near it; one that fails this many has broken something shared, so the failures say nothing about the named defect and no kill is counted.
+         at src/acceptance/llm.py lines 1313-1313:
+           -         batched = self._batcher is not None and _needs_explicit_marker(request["model"])
+           +         batched = self._batcher is not None or _needs_explicit_marker(request["model"])
+    pairs: 0 settled by the run, 317 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    all 3 candidate edit(s) asked for were set aside (3 refused_after_run). That is a fact about these candidates, not about the defect, which goes to the static judge like any defect with no usable edit.
+
+  [already_present] identical-review-state-across-send-modes/batched-record-differs-in-sent-via-and-cost
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 317 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    Lines 1362-1368 add record["sent_via"] = SENT_VIA_BATCH and multiply usage.cost_usd by BATCH_PRICE_FACTOR when the call was batched, so a batched record differs from a direct one. The repair deletes that block so both send modes produce the same record. The `batched` variable is still used for the transport above, so the module stays valid.
+
+  [survived, NOT COUNTED] identical-review-state-across-send-modes/batched-reply-normalised-differently-from-direct-reply
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm_batch.py lines 122-124:
+      -     if isinstance(message, dict):
+      -         return message
+      -     return message.to_dict(mode="json")
+      +     if isinstance(message, dict):
+      +         return {k: v for k, v in message.items() if v is not None}
+      +     return message.to_dict(mode="json", exclude_none=True)
+    no test caught it; 311 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 289 skipped once the defect was covered
+
+  [already_present] identical-review-state-across-send-modes/identical-requests-share-one-batched-answer
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    Lines 167-173 already do the DEFECTIVE behaviour. custom_id is a hash of the body and beta, and send() reuses the existing future from self._waiting when the id matches. Identical requests therefore become one batch entry and share one answer. The repair gives each send() call a unique custom_id (a 32-character uuid hex, within the 64-character limit) and always creates a new future and queue entry, so each identical request gets its own call and answer.
+
+  [killed, NOT COUNTED] identical-review-state-across-send-modes/observed-call-order-and-cache-usage-depend-on-send-mode
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/concurrency.py lines 151-151:
+      -     for indexes in (leaders, followers):
+      +     for indexes in (leaders + followers,):
+    caught by (2):
+      tests/defects/test_pair_mapping.py::test_calls_sharing_a_defect_list_wait_for_the_first_of_them
+      tests/test_concurrency.py::test_each_openings_first_call_finishes_before_the_rest_of_its_group_start
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 20 put to the model, 0 dropped as not worth asking, 297 skipped once the defect was covered
+
+  [already_present] min-reusable-prefix-per-model/dotted-sonnet-5-5-matches-sonnet-5
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    Line 254 only lowercases the name and strips the provider and `claude-` prefixes, and line 255 matches with startswith against hyphenated keys. A dotted id such as `claude-sonnet-5.5` becomes `sonnet-5.5`, which does not start with `sonnet-5-5` but does start with `sonnet-5`, so it resolves to 1024 instead of 512. The repair normalizes dots to hyphens before matching, so dotted Sonnet, Opus and Haiku 5.5 ids resolve to the 5-5 entries.
+
+  [not_mutable] min-reusable-prefix-per-model/opening-at-minimum-not-marked
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 317 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The defect is about the comparison between the opening's token count and the minimum, which sits in mark_reusable_opening. Only its signature (line 261) is shown, and the call at line 287 that fetches `minimum`. The comparison is not in either offered region, so I cannot tell whether it uses > or >=. _minimum_reusable_opening only returns the table value (512 for the 5.5 models), and changing it would not be the named comparison defect. I give no edit rather than guess.
+
+  [already_present] min-reusable-prefix-per-model/provider-prefix-parsing-misses-model-name
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 317 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    Line 254 only splits on the first '/' and strips a leading 'claude-', so 'anthropic.claude-sonnet-5-5' or 'bedrock/anthropic.claude-...' keep a prefix that matches no table key and fall to the default (line 257). This is the DEFECTIVE behaviour. The repair normalises the name by taking the last path segment and stripping 'anthropic.' and 'claude-' prefixes.
+
+  [not_mutable] pair-mapping-cache-hit-on-shared-opening/batched-calls-bypass-cache-sharing
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 317 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The leader/follower ordering lives in the caller that sequences the pair-mapping stage, which is not among the regions shown. The batcher has no notion of leaders or followers. Each send() blocks until its own batch has ended and its answer is back. So followers only join a leaders' batch if the caller submits them concurrently, and I cannot see whether it does. I also could not find a small edit in the batcher or in _live_call that would make followers share a batch with leaders if the caller waits for the leaders first. I am giving no edit rather than guessing.
+
+  [killed, NOT COUNTED] pair-mapping-cache-hit-on-shared-opening/followers-not-held-until-leaders-complete
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/concurrency.py lines 151-151:
+      -     for indexes in (leaders, followers):
+      +     for indexes in (followers, leaders):
+    caught by (2):
+      tests/defects/test_pair_mapping.py::test_calls_sharing_a_defect_list_wait_for_the_first_of_them
+      tests/test_concurrency.py::test_each_openings_first_call_finishes_before_the_rest_of_its_group_start
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 309 dropped as not worth asking, 4 skipped once the defect was covered
+
+  [survived, NOT COUNTED] pair-mapping-cache-hit-on-shared-opening/opening-key-differs-from-real-opening
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/defects/pair_mapping.py lines 777-777:
+      -         opening=lambda batch: _defects_block(list(batch.items)).text,
+      +         opening=lambda batch: _defects_block(list(batch.items)[:1]).text,
+    no test caught it; 311 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 305 skipped once the defect was covered
+
+  [killed, NOT COUNTED] pair-mapping-cache-hit-on-shared-opening/opening-minimum-table-misclassifies-model
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 258-258:
+      -     return _MIN_REUSABLE_OPENING_TOKENS[max(matches, key=len)]
+      +     return _MIN_REUSABLE_OPENING_TOKENS[min(matches, key=len)]
+    caught by (3):
+      tests/test_reusable_opening_marker.py::test_an_opening_between_two_models_minimums_is_marked_on_one_only
+      tests/test_reusable_opening_marker.py::test_each_model_gets_its_own_minimum
+      tests/test_reusable_opening_marker.py::test_the_current_models_mark_an_opening_over_512_tokens
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 308 dropped as not worth asking, 5 skipped once the defect was covered
+
+  [already_present] pair-mapping-cache-hit-on-shared-opening/pipeline-wrapper-assumes-client-attribute
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    Line 404 indexes bound arguments with ["client"], which raises KeyError if the call omits the argument. Line 405 reads client.calls_in_flight directly, which raises AttributeError for a client without that attribute. The code already does the DEFECTIVE behaviour. The repair uses .get("client") and getattr(..., None), so any client runs with the default concurrency (None, the value ModelClient already returns when it has no batcher).
+
+  [killed, NOT COUNTED] recording-notes-batch-origin/batched-flag-ignores-model-provider
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1313-1314:
+      -         batched = self._batcher is not None and _needs_explicit_marker(request["model"])
+      -         transport = {"client": self._batcher.transport()} if batched else {}
+      +         batched = self._batcher is not None and _needs_explicit_marker(request["model"])
+      +         transport = {"client": self._batcher.transport()} if self._batcher is not None else {}
+    caught by (1):
+      tests/test_llm_batch.py::test_a_stage_on_another_provider_is_sent_directly_in_a_batched_run
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 11 put to the model, 0 dropped as not worth asking, 306 skipped once the defect was covered
+
+  [killed, NOT COUNTED] recording-notes-batch-origin/note-added-only-when-record-built-after-transport
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 1362-1362:
+      -         if batched:
+      +         if self._batcher is not None:
+    caught by (1):
+      tests/test_llm_batch.py::test_a_stage_on_another_provider_is_sent_directly_in_a_batched_run
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 317 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [not_mutable] recording-notes-batch-origin/sent-via-not-in-recorded-transcript
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    The shown region only builds the record and adds `sent_via` (line 1366) before returning it. The defect concerns what happens afterwards. `_persist_live_call` calls `_live_call` at line 1281, but I cannot see the lines after that call, so I cannot tell whether it writes the returned record whole or rebuilds it from selected fields. Deleting `sent_via` inside `_live_call` would not be the named defect. It would remove the feature itself and leave the persistence question unanswered.
+
+  [killed, NOT COUNTED] recording-notes-batch-origin/sent-via-value-mismatch
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm_batch.py lines 56-56:
+      - SENT_VIA_BATCH = "batch"
+      + SENT_VIA_BATCH = "batched"
+    caught by (1):
+      tests/test_llm_batch.py::test_a_batched_recording_says_so_and_a_direct_one_has_its_usual_fields
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 310 dropped as not worth asking, 3 skipped once the defect was covered
+
+  [killed, NOT COUNTED] region-source-in-shared-opening/context-duplicates-source-in-subject
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/mutation/descriptor.py lines 311-311:
+      -     subject = _defect_text(defect)
+      +     subject = f"{_defect_text(defect)}\n\n{_regions(offered, sources)}"
+    caught by (1):
+      tests/test_mutation_descriptor.py::TestWhatTheCallIsOffered::test_defects_naming_the_same_region_share_its_source_in_the_reusable_opening
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 310 dropped as not worth asking, 3 skipped once the defect was covered
+
+  [not_mutable] region-source-in-shared-opening/defect-specific-text-in-regions-block
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 313 skipped once the defect was covered
+    Lines 429-451 show that `_regions` and `_region_lines` take only `regions` and `sources`, and the output depends only on those (label, path, line span, numbered source), so the code currently does the EXPECTED behaviour. Making the output defect-specific would mean passing the defect into `_regions` and changing its caller or callers elsewhere, which is a coordinated multi-site edit. Inside the offered region the defect object is not in scope. Any edit that made the text vary by something else, such as a counter or an object id, would not be the named defect, so I decline.
+
+  [already_present] region-source-in-shared-opening/region-order-or-set-varies-per-defect
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 289 skipped once the defect was covered
+    Line 307 builds `offered` by filtering the defect's own `regions` list without reordering it. Line 323 passes `offered` straight to `_regions`, which renders the regions in that order. Nothing sorts or canonicalises them, so defects over the same regions listed in a different order, or with a different offered set, get different REGIONS text. That is the DEFECTIVE behaviour. The repair sorts the regions by label when rendering the REGIONS block. This fixes the ordering variance but not any difference in the offered set.
+
+  [killed, NOT COUNTED] region-source-in-shared-opening/regions-block-outside-opening
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/request_blocks.py lines 123-131:
+      -     #: The numbered source of the regions a mutation descriptor call is about
+      -     #: (#414). Every defect implicating the same regions carries the same text,
+      -     #: so it is shared by fewer calls than the stage's instructions and by more
+      -     #: than one call's subject.
+      -     REGIONS = 35
+      - 
+      -     #: What this one call is about: its batch, its criteria, the single change
+      -     #: being judged. Shared with nothing, so it goes last.
+      -     SUBJECT = 40
+      +     #: What this one call is about: its batch, its criteria, the single change
+      +     #: being judged. Shared with nothing, so it goes last.
+      +     SUBJECT = 40
+      + 
+      +     #: The numbered source of the regions a mutation descriptor call is about
+      +     #: (#414). Every defect implicating the same regions carries the same text,
+      +     #: so it is shared by fewer calls than the stage's instructions and by more
+      +     #: than one call's subject.
+      +     REGIONS = 45
+    caught by (1):
+      tests/test_request_blocks.py::test_a_block_kind_carried_by_more_requests_sorts_before_one_carried_by_fewer
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 11 put to the model, 0 dropped as not worth asking, 306 skipped once the defect was covered
+
+Defects the delivered code already has, as asserted by the model (static tier; needs human review):
+  batch-api-opt-in/transport-ignores-json-kwarg
+    Lines 266-267 take the body only from `data` and discard every other keyword in `**_`. A request passed as `json=` therefore reaches `json.dumps(None)` and `null` is queued. The repair falls back to the `json` keyword when `data` is None. It reads the keyword through `**kwargs` because a parameter named `json` would shadow the `json` module used on the next line.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/llm_batch.py lines 266-267:
+      -         def post(self, url: str, data: Any = None, headers: Any = None, **_: Any) -> Any:  # type: ignore[override]
+      -             body = data if isinstance(data, str) else json.dumps(data)
+      +         def post(self, url: str, data: Any = None, headers: Any = None, **kwargs: Any) -> Any:  # type: ignore[override]
+      +             if data is None:
+      +                 data = kwargs.get("json")
+      +             body = data if isinstance(data, str) else json.dumps(data)
+  batch-opt-in-switchable-by-scripts/batch-transport-intercepts-only-sync-post
+    BatchTransport.post (lines 266-267) accepts only data= and swallows every other keyword in **_. A request passed as json= is dropped, so the body becomes json.dumps(None) == "null" and the batcher queues garbage. Async and streaming paths are not overridden at all. This is the defective behaviour. The repair makes post fall back to the json= keyword when data is None. I could not see how LiteLLM calls the transport, so the async and streaming gaps are not repaired.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/llm_batch.py lines 266-267:
+      -         def post(self, url: str, data: Any = None, headers: Any = None, **_: Any) -> Any:  # type: ignore[override]
+      -             body = data if isinstance(data, str) else json.dumps(data)
+      +         def post(self, url: str, data: Any = None, headers: Any = None, **kw: Any) -> Any:  # type: ignore[override]
+      +             if data is None:
+      +                 data = kw.get("json")
+      +             body = data if isinstance(data, str) else json.dumps(data)
+  batch-opt-in-switchable-by-scripts/batching-limited-to-anthropic-completions
+    Line 1313 sets `batched = self._batcher is not None and _needs_explicit_marker(request["model"])`, so a batched run only batches Anthropic completions and sends other providers' completions directly. That is the DEFECTIVE behaviour. The repair drops the Anthropic-only condition, so every live completion goes through the batcher when batch is on. Embedding calls take a different path outside the offered regions, so this edit does not change them.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/test_llm_batch.py::test_a_stage_on_another_provider_is_sent_directly_in_a_batched_run
+    repair at src/acceptance/llm.py lines 1313-1313:
+      -         batched = self._batcher is not None and _needs_explicit_marker(request["model"])
+      +         batched = self._batcher is not None
+  batch-opt-in-switchable-by-scripts/run-concurrency-only-applied-in-run-review
+    The code already does the DEFECTIVE behaviour. `_run_limit` in concurrency.py is set only by `calls_in_flight` (lines 86-91). The only caller is the `run` wrapper in pipeline.py:405, which `run_review` uses. `map_calls` (line 112) falls back to the default of eight whenever `_run_limit` is None. A script calling a stage directly therefore gets eight in flight. The wrapper also reads `client.calls_in_flight` with no fallback. The repair makes a batched client raise the process-wide run limit when it is constructed, so direct stage calls get the batching limit. This is a blunt, leaky fix that does not touch the wrapper's attribute access. A cleaner fix would need coordinated edits across several files.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/test_llm_batch.py::test_a_batching_review_runs_its_stages_with_many_calls_in_flight
+    repair at src/acceptance/llm.py lines 690-690:
+      -         self._observed_calls: list[dict[str, Any]] = []
+      +         self._observed_calls: list[dict[str, Any]] = []
+      +         if batcher is not None:
+      +             from acceptance import concurrency
+      + 
+      +             concurrency._run_limit = BATCH_CALLS_IN_FLIGHT
+  batch-setting-in-run-config-default-off/batch-only-anthropic-calls
+    Line 1313 gates batching on `_needs_explicit_marker(request["model"])`, so with batching on, only Anthropic models go through the batcher and others are sent directly. That is the DEFECTIVE behavior. The repair drops the model check so every call uses the batch transport when a batcher is configured.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/test_llm_batch.py::test_a_stage_on_another_provider_is_sent_directly_in_a_batched_run
+    repair at src/acceptance/llm.py lines 1313-1313:
+      -         batched = self._batcher is not None and _needs_explicit_marker(request["model"])
+      +         batched = self._batcher is not None
+  identical-review-state-across-send-modes/batched-record-differs-in-sent-via-and-cost
+    Lines 1362-1368 add record["sent_via"] = SENT_VIA_BATCH and multiply usage.cost_usd by BATCH_PRICE_FACTOR when the call was batched, so a batched record differs from a direct one. The repair deletes that block so both send modes produce the same record. The `batched` variable is still used for the transport above, so the module stays valid.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/test_llm_batch.py::test_a_batched_call_is_priced_at_half_the_direct_price
+      tests/test_llm_batch.py::test_a_batched_recording_says_so_and_a_direct_one_has_its_usual_fields
+    repair at src/acceptance/llm.py lines 1362-1368:
+      -         if batched:
+      -             # Only on a batched call, so a direct recording keeps exactly the
+      -             # fields it always had. LiteLLM priced the reply at the direct
+      -             # rate, not knowing it was batched.
+      -             record["sent_via"] = SENT_VIA_BATCH
+      -             if "cost_usd" in record["usage"]:
+      -                 record["usage"]["cost_usd"] *= BATCH_PRICE_FACTOR
+  identical-review-state-across-send-modes/identical-requests-share-one-batched-answer
+    Lines 167-173 already do the DEFECTIVE behaviour. custom_id is a hash of the body and beta, and send() reuses the existing future from self._waiting when the id matches. Identical requests therefore become one batch entry and share one answer. The repair gives each send() call a unique custom_id (a 32-character uuid hex, within the 64-character limit) and always creates a new future and queue entry, so each identical request gets its own call and answer.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/test_llm_batch.py::test_identical_requests_waiting_together_share_one_request_in_the_batch
+    repair at src/acceptance/llm_batch.py lines 167-173:
+      -         custom_id = _custom_id(body, beta)
+      -         with self._lock:
+      -             future = self._waiting.get(custom_id)
+      -             if future is None:
+      -                 future = Future()
+      -                 self._waiting[custom_id] = future
+      -                 self._queued.setdefault(beta, {})[custom_id] = json.loads(body)
+      +         import uuid
+      + 
+      +         custom_id = uuid.uuid4().hex
+      +         with self._lock:
+      +             future = Future()
+      +             self._waiting[custom_id] = future
+      +             self._queued.setdefault(beta, {})[custom_id] = json.loads(body)
+  min-reusable-prefix-per-model/dotted-sonnet-5-5-matches-sonnet-5
+    Line 254 only lowercases the name and strips the provider and `claude-` prefixes, and line 255 matches with startswith against hyphenated keys. A dotted id such as `claude-sonnet-5.5` becomes `sonnet-5.5`, which does not start with `sonnet-5-5` but does start with `sonnet-5`, so it resolves to 1024 instead of 512. The repair normalizes dots to hyphens before matching, so dotted Sonnet, Opus and Haiku 5.5 ids resolve to the 5-5 entries.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/llm.py lines 254-254:
+      -     name = model.split("/", 1)[-1].lower().removeprefix("claude-")
+      +     name = model.split("/", 1)[-1].lower().replace(".", "-").removeprefix("claude-")
+  min-reusable-prefix-per-model/provider-prefix-parsing-misses-model-name
+    Line 254 only splits on the first '/' and strips a leading 'claude-', so 'anthropic.claude-sonnet-5-5' or 'bedrock/anthropic.claude-...' keep a prefix that matches no table key and fall to the default (line 257). This is the DEFECTIVE behaviour. The repair normalises the name by taking the last path segment and stripping 'anthropic.' and 'claude-' prefixes.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/llm.py lines 254-254:
+      -     name = model.split("/", 1)[-1].lower().removeprefix("claude-")
+      +     name = model.lower()
+      +     for prefix in ("claude-", "anthropic.claude-"):
+      +         name = name.rsplit("/", 1)[-1]
+      +         if name.startswith(prefix):
+      +             name = name.removeprefix(prefix)
+      +     name = name.rsplit("/", 1)[-1].removeprefix("anthropic.").removeprefix("claude-")
+  pair-mapping-cache-hit-on-shared-opening/pipeline-wrapper-assumes-client-attribute
+    Line 404 indexes bound arguments with ["client"], which raises KeyError if the call omits the argument. Line 405 reads client.calls_in_flight directly, which raises AttributeError for a client without that attribute. The code already does the DEFECTIVE behaviour. The repair uses .get("client") and getattr(..., None), so any client runs with the default concurrency (None, the value ModelClient already returns when it has no batcher).
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/pipeline.py lines 404-405:
+      -         client = signature.bind(*args, **kwargs).arguments["client"]
+      -         with calls_in_flight(client.calls_in_flight):
+      +         client = signature.bind(*args, **kwargs).arguments.get("client")
+      +         with calls_in_flight(getattr(client, "calls_in_flight", None)):
+  region-source-in-shared-opening/region-order-or-set-varies-per-defect
+    Line 307 builds `offered` by filtering the defect's own `regions` list without reordering it. Line 323 passes `offered` straight to `_regions`, which renders the regions in that order. Nothing sorts or canonicalises them, so defects over the same regions listed in a different order, or with a different offered set, get different REGIONS text. That is the DEFECTIVE behaviour. The repair sorts the regions by label when rendering the REGIONS block. This fixes the ordering variance but not any difference in the offered set.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/mutation/descriptor.py lines 323-323:
+      -             Block(BlockKind.REGIONS, _regions(offered, sources)),
+      +             Block(BlockKind.REGIONS, _regions(sorted(offered, key=lambda r: r.label), sources)),
+
+Candidate tests set aside (no conclusion rests on these):
+  [failed: CalledProcessError] tests/benchmark/test_rating_regression.py::test_cases_carry_only_their_run_input_not_resumed_state
+    the test failed against the code as delivered
+    it failed with: subprocess.CalledProcessError: Command '['git', 'worktree', 'add', '--detach', '--quiet', '/private/tmp/claude-501/pytest-of-alipeles/pytest-611/test_cases_carry_only_their_ru0/wt0', '7de7d718ff8b3e51d9a1f2effbea01578a7cd02f']' returned non-zero exit status 128.
+  [failed: CalledProcessError] tests/benchmark/test_rating_regression.py::test_running_the_suite_does_not_alter_the_judgement_stage
+    the test failed against the code as delivered
+    it failed with: subprocess.CalledProcessError: Command '['git', 'worktree', 'add', '--detach', '--quiet', '/private/tmp/claude-501/pytest-of-alipeles/pytest-611/test_running_the_suite_does_no0/wt0', '41cd0daf6733f6cb3c86c0329dd517ff2640fa97']' returned non-zero exit status 128.
+  [failed: AssertionError] tests/benchmark/test_corpus.py::test_every_head_revision_is_kept_alive_by_a_tag
+    the test passes in the project but not in an unmodified copy of it, so a failure under an injected defect could not be attributed to the defect. In the copy it was: failed
+    it failed with: AssertionError: corpus/163-gate2-run1 is missing; 163-gate2-run1 will not survive a clone / assert 128 == 0 / +  where 128 = CompletedProcess(args=['git', 'rev-parse', '--verify', '--quiet', 'corpus/163-gate2-run1^{commit}'], returncode=128, stdout='', stderr='fatal: not a git repository (or any of the parent directories): .git\n').returncode
+  [failed: UnresolvableRevisionError] tests/benchmark/test_corpus.py::test_the_case_carries_the_task_file_the_run_was_actually_given
+    the test passes in the project but not in an unmodified copy of it, so a failure under an injected defect could not be attributed to the defect. In the copy it was: failed
+    it failed with: acceptance.benchmark.corpus.UnresolvableRevisionError: case '167-gate2-run3' names revision '839ea47', which this repository no longer resolves. The corpus cases are pinned to real history; a rewritten or pruned commit breaks them by design rather than shrinking the suite silently.
+  [failed: UnresolvableRevisionError] tests/benchmark/test_corpus.py::test_the_worktree_holds_the_tree_as_it_was_not_as_it_is
+    the test passes in the project but not in an unmodified copy of it, so a failure under an injected defect could not be attributed to the defect. In the copy it was: failed
+    it failed with: acceptance.benchmark.corpus.UnresolvableRevisionError: case '167-gate2-run3' names revision '839ea47', which this repository no longer resolves. The corpus cases are pinned to real history; a rewritten or pruned commit breaks them by design rather than shrinking the suite silently.
+  [failed: CalledProcessError] tests/benchmark/test_rating_regression.py::test_the_scoreboard_is_committed_as_fixtures_for_every_run
+    the test passes in the project but not in an unmodified copy of it, so a failure under an injected defect could not be attributed to the defect. In the copy it was: failed
+    it failed with: subprocess.CalledProcessError: Command '['git', 'ls-files', 'tests/fixtures/rating-regression']' returned non-zero exit status 128.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 3ae1a86e857c8a45
+  continuing b1b2749ff056bea4
+  continue this run with: --continue 3ae1a86e857c8a45
+Model usage by stage:
+  stage                         model                                                                      calls     prompt   output  reasoning  cached  this run  recorded  time this run
+  ----------------------------  ---------------------------------------------------  ---------------------------  ---------  -------  ---------  ------  --------  --------  -------------
+  obligation linking            voyage/voyage-3.5-lite                                   1 (0 live / 1 replayed)        963        0          —       —   $0.0000   $0.0000              —
+  defect enumeration            anthropic/claude-sonnet-5-5                            11 (11 live / 0 replayed)    179,523   22,008      8,638    0.0%   $0.6669   $0.6669         202.7s
+  defect-to-test pair mapping   voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5  722 (722 live / 0 replayed)  1,986,698  253,374      8,141   14.9%   $6.1641   $6.1641        2834.8s
+  coverage classification       anthropic/claude-sonnet-5-5                              1 (1 live / 0 replayed)     31,256    2,155          0    0.0%   $0.0997   $0.0997          13.8s
+  unrequested-change detection  anthropic/claude-sonnet-5-5                              1 (1 live / 0 replayed)     30,202    1,244          0    0.0%   $0.0879   $0.0879          10.1s
+  disposition judgment          anthropic/claude-sonnet-5-5                              2 (2 live / 0 replayed)      5,702      597        259   40.7%   $0.0141   $0.0141           8.4s
+  test recommendation           anthropic/claude-sonnet-5-5                              1 (1 live / 0 replayed)     30,813    5,638          0    0.0%   $0.1323   $0.1323          40.9s
+  mutation descriptor           anthropic/claude-sonnet-5-5                            51 (51 live / 0 replayed)    296,994   32,482     20,254   11.9%   $0.9226   $0.9226         393.3s
+  this run spent $8.0876 on 789 live call(s); the evidence cost $8.0877 to record (1 call(s) replayed at no cost to this run)
+

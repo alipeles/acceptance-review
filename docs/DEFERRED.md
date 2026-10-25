@@ -7814,3 +7814,20 @@ the record.
   > - Two concurrent calls with the same request key cause one provider call, and both callers receive its answer.
   > - A run that records and its replay produce byte-identical review state when two stages' calls share a request key.
 - **Status:** open
+
+### [2026-10-25] A benchmark case run twice never produces byte-identical review state
+- **Kind:** filing
+- **Found during:** #414, Gate 2 (the batched offline run for acceptance item 1)
+- **Where:** `src/acceptance/benchmark/runner.py:40`
+- **Severity:** should-fix
+- **What's wrong:** `run_case` writes the task text to a fresh `NamedTemporaryFile` on every run and passes that path to `run_check`, which records it as the review's `task_source.identifier`. Two runs of one case over the same recordings therefore differ in that field, and nothing else: at #414, a batched recording replayed twice through `run_case` differed only in `/var/folders/.../tmpjsowwg6z.md` versus `.../tmpppofto0w.md`; with the task at a fixed path the two replays were byte-identical (43,587 bytes).
+- **Why I didn't act:** predates #414 and is outside its scope; #414 showed its own claim with a fixed path instead.
+- **Drafted fix:** filing, child of #186 (benchmark umbrella):
+  > **Title:** `run_case` records a random temporary path as the task identifier, so two runs of one case never match
+  >
+  > `benchmark/runner.py::run_case` writes `case.inputs.task_text` to a new `NamedTemporaryFile` per run, and the path becomes `task_source.identifier` in the review. Two runs over the same case and the same recordings are never byte-identical, which M0.5's determinism claim needs and which a benchmark comparing two runs of one case would trip over. Seen at #414's Gate 2.
+  >
+  > **Acceptance**
+  > - Two `run_case` runs over the same case and the same transcripts produce byte-identical review state.
+  > - The recorded task identifier names the case (for example its `case_id`), not a temporary file.
+- **Status:** open
