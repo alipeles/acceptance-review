@@ -29,6 +29,7 @@ _COMPLETION = {"completion expectations"}
 _EXCLUSIONS = {"scope exclusions", "exclusions"}
 _TASK = {"task"}
 _CONTEXT = {"context"}
+_MANDATE_SECTIONS = _TASK | _CONSTRAINTS | _EXCLUSIONS | _COMPLETION
 
 # Container nodes: they hold blocks rather than being one, so they are
 # descended into rather than spanned. Spanning a container would double-count
@@ -85,17 +86,24 @@ def parse_task_file(text: str) -> ParsedTaskFile:
     result = ParsedTaskFile(source=text)
     section: str | None = None
     # The level of the Context heading while inside one. Background is often
-    # organised under its own sub-headings, and a `### Constraints` there must
-    # not turn the rest of the background into mandate.
+    # organised under its own sub-headings, so a deeper heading such as
+    # `### Measured` stays inside Context.
     context_level: int | None = None
 
     for node in tree.children:
         if node.type == "heading":
             # Headings are structure, not requirements, and are never unclaimed.
             level = int(node.tag[1:])
-            if context_level is not None and level > context_level:
+            name = _inline_content(node).strip().lower()
+            # A deeper heading that names a mandate section ends Context anyway.
+            # Guessing wrong that way promotes background to a visible, noisy
+            # requirement; guessing wrong the other way would swallow a real
+            # requirement with no id and no report — the asymmetry DR-216
+            # decision 2 settles the same way.
+            nested = context_level is not None and level > context_level
+            if nested and name not in _MANDATE_SECTIONS:
                 continue
-            section = _inline_content(node).strip().lower()
+            section = name
             context_level = level if section in _CONTEXT else None
         elif section in _CONTEXT:
             # Every block kind, not only paragraphs: background is often a

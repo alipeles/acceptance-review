@@ -519,7 +519,6 @@ def _user_prompt(
     registry: list[RequirementRef],
     answer_for: str,
     revisions: dict[str, RequirementDerivation] | None = None,
-    context: list[TextSpan] | None = None,
 ) -> str:
     """The identified requirements, as typed fields — all of them, every call.
 
@@ -547,12 +546,11 @@ def _user_prompt(
     requirement they had only been shown
     (`docs/experiments/317-over-answering/findings.md` §2).
 
-    `context` is the task file's `## Context` section (#212), shown ahead of the
-    requirements and outside their list: it has no id, so it can be neither
-    answered for nor mistaken for a requirement that is only being shown.
+    The task file's `## Context` section is not here: it travels in a block of
+    its own (`_context_text`), so it cannot be read as one more listed
+    requirement.
     """
     lines = [
-        *_context_block(context or []),
         "The complete set of requirements in this task file, for context:",
         "",
     ]
@@ -579,22 +577,26 @@ def _user_prompt(
     return "\n".join(lines)
 
 
-def _context_block(context: list[TextSpan]) -> list[str]:
-    """The task file's background, labelled as background, or nothing at all.
+def _context_text(context: list[TextSpan]) -> str:
+    """The task file's background, labelled as background, or nothing at all (#212).
 
-    **Empty when the file has no Context section**, so such a file produces a
-    prompt byte-identical to the one this stage produced before the section
-    existed, and every recorded transcript still replays — the same rule
-    `_revision_block` follows.
+    Sent as its own `TASK_CONTEXT` block, which `assemble` places in a different
+    message from the requirement list. Its separation is therefore the request's
+    structure, not only the label at its head.
+
+    **Empty when the file has no Context section**, and `assemble` drops an
+    empty block, so such a file produces a request byte-identical to the one
+    this stage produced before the section existed, and every recorded
+    transcript still replays — the same rule `_revision_block` follows.
 
     Shown rather than withheld: the decomposer needs the background to read the
     mandate well, and withholding it would trade background-as-obligation for a
     decomposition made without knowing what the change is for.
     """
     if not context:
-        return []
+        return ""
     lines = [
-        "BACKGROUND",
+        "TASK CONTEXT",
         "",
         (
             "The task file gives this background to explain the mandate. It is not "
@@ -603,12 +605,11 @@ def _context_block(context: list[TextSpan]) -> list[str]:
             "Where it describes how the system behaves today, that is the starting "
             "point the change is made from, not a property the change must keep."
         ),
-        "",
     ]
     for block in context:
-        lines.append(block.text)
         lines.append("")
-    return lines
+        lines.append(block.text)
+    return "\n".join(lines)
 
 
 def _revision_block(
@@ -886,7 +887,8 @@ def _ask_about(
     messages = assemble(
         [
             Block(BlockKind.INSTRUCTIONS, _SYSTEM_PROMPT),
-            Block(BlockKind.SUBJECT, _user_prompt(shown, requirement.id, revisions, context)),
+            Block(BlockKind.TASK_CONTEXT, _context_text(context)),
+            Block(BlockKind.SUBJECT, _user_prompt(shown, requirement.id, revisions)),
         ]
     )
     # Both id fields are constrained, and `source_quote` is the one that matters.
