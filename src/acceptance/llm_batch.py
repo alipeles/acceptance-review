@@ -121,7 +121,7 @@ def _custom_id(body: str, beta: str | None) -> str:
 def _as_dict(message: Any) -> dict:
     if isinstance(message, dict):
         return message
-    return message.to_dict()
+    return message.to_dict(mode="json")
 
 
 class MessageBatcher:
