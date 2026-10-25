@@ -643,3 +643,42 @@ def test_a_batching_client_decomposes_more_than_the_default_at_once(tmp_path):
 
     assert peak_for(None) <= DEFAULT_MAX_IN_FLIGHT
     assert peak_for(BATCH_CALLS_IN_FLIGHT) > DEFAULT_MAX_IN_FLIGHT
+
+
+@pytest.mark.parametrize("copied_after_first_client", [True, False])
+def test_a_copied_configuration_batches_on_its_own(tmp_path, copied_after_first_client):
+    """Whenever the copy was made: its clients share its batcher, never the
+    original's."""
+    config = RunConfig(mode=Mode.RECORD, transcript_root=tmp_path, batch=True)
+    if copied_after_first_client:
+        original = config.build_client()
+        copy = config.model_copy(update={"transcript_root": tmp_path / "other"})
+    else:
+        copy = config.model_copy(update={"transcript_root": tmp_path / "other"})
+        original = config.build_client()
+
+    assert copy.build_client()._batcher is copy.build_client()._batcher
+    assert copy.build_client()._batcher is not original._batcher
+    assert config.build_client()._batcher is original._batcher
+
+
+def test_the_instability_experiments_comparisons_batch_when_its_runs_do(monkeypatch, tmp_path):
+    seen: dict = {}
+
+    def fake_run_once(*_args, **_kwargs):
+        raise _Stop
+
+    monkeypatch.setattr(instability, "run_once", fake_run_once)
+    original = instability.ModelClient
+
+    def recording_client(*args, **kwargs):
+        seen["batcher"] = kwargs.get("batcher")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(instability, "ModelClient", recording_client)
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+
+    for batch in (True, False):
+        with pytest.raises(_Stop):
+            measure_instability(case, runs_per_model=2, batch=batch)
+        assert (seen["batcher"] is not None) is batch

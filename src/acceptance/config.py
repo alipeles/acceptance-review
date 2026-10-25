@@ -220,6 +220,15 @@ class RunConfig(BaseModel):
             self._batcher = MessageBatcher()
         return self._batcher
 
+    def model_copy(self, *args: Any, **kwargs: Any) -> RunConfig:
+        # A copy is another configuration, and gets a batcher of its own.
+        # Pydantic copies private state shallowly, so without this a copy made
+        # after the first client shares the original's batcher, and one made
+        # before does not: which one you got would depend on timing.
+        copy = super().model_copy(*args, **kwargs)
+        copy._batcher = None
+        return copy
+
     def build_client(
         self,
         completion_fn: Callable[..., Any] | None = None,

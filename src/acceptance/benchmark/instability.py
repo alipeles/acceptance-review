@@ -62,6 +62,7 @@ from acceptance.benchmark.coverage import classify_case
 from acceptance.benchmark.scoring import MetricStats, metric_stats
 from acceptance.config import DEFAULT_MODEL, Mode, RunConfig
 from acceptance.llm import ModelClient, StrictResponseModel
+from acceptance.llm_batch import MessageBatcher
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import Review
 
@@ -842,6 +843,8 @@ def measure_instability(
         model=models[0],
         mode=Mode.RECORD,
         store=RunConfig(model=models[0], mode=Mode.RECORD).build_client().store,
+        # Its comparisons batch when the runs do (#414).
+        batcher=MessageBatcher() if batch else None,
     )
 
     per_model: list[ModelInstability] = []
