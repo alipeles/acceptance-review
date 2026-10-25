@@ -12,7 +12,8 @@ In the mutation descriptor stage, a region's numbered source sits in the reusabl
 opening, so calls for defects in the same region share it instead of each
 repeating it.
 
-A run can opt in to sending its model calls through the Message Batches API. The
+A run can opt in to sending its calls to Claude models through the Message
+Batches API. The
 setting belongs to the run's configuration and is off by default, so
 `acceptance check` and `acceptance decompose` keep calling the model directly.
 Benchmark scoring and experiment scripts can switch it on.
