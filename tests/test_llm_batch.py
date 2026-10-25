@@ -11,6 +11,7 @@ a direct call and a batched one can be compared request for request.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -18,6 +19,9 @@ from litellm.llms.custom_httpx.http_handler import HTTPHandler
 from pydantic import BaseModel
 
 from acceptance import cli, concurrency, llm, llm_batch
+from acceptance.benchmark.fixtures import build_benchmark_case
+from acceptance.benchmark.instability import measure_instability
+from acceptance.benchmark.runner import run_case
 from acceptance.change.diff import extract_change_set
 from acceptance.concurrency import DEFAULT_MAX_IN_FLIGHT, calls_in_flight, map_calls
 from acceptance.config import DEFAULT_MODEL, RunConfig, provenance_for
@@ -35,6 +39,8 @@ class Verdict(BaseModel):
 
 
 MESSAGES = [{"role": "user", "content": "Is obligation 1 supported?"}]
+
+ARCHETYPES_DIR = Path(__file__).resolve().parent / "fixtures" / "archetypes"
 
 _DIRECT_FIELDS = {"request", "response", "usage", "stop_reason", "controls_applied"}
 
@@ -349,6 +355,41 @@ def test_decompose_does_not_batch(monkeypatch, tmp_path):
     cli.main(["decompose", "--task", str(tmp_path / "t.md")])
 
     assert seen["client"].calls_in_flight is None
+
+
+class _Stop(Exception):
+    pass
+
+
+def test_benchmark_scoring_batches_when_its_configuration_says_to(monkeypatch, tmp_path):
+    seen: dict = {}
+
+    def fake_run_review(**kwargs):
+        seen["client"] = kwargs["client"]
+        raise _Stop
+
+    monkeypatch.setattr(cli, "run_review", fake_run_review)
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+
+    with pytest.raises(_Stop):
+        run_case(case, config=RunConfig(batch=True, transcript_root=tmp_path / "t"))
+
+    assert seen["client"].calls_in_flight == BATCH_CALLS_IN_FLIGHT
+
+
+@pytest.mark.parametrize("batch", [True, False])
+def test_the_instability_experiment_batches_when_asked(tmp_path, batch):
+    seen: list[RunConfig] = []
+
+    def factory(config: RunConfig):
+        seen.append(config)
+        raise _Stop
+
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+    with pytest.raises(_Stop):
+        measure_instability(case, runs_per_model=2, client_factory=factory, batch=batch)
+
+    assert seen[0].batch is batch
 
 
 def test_a_batching_review_runs_its_stages_with_many_calls_in_flight(monkeypatch, tmp_path):
