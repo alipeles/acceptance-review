@@ -13,6 +13,25 @@ import pytest
 os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
 
+@pytest.fixture(autouse=True)
+def _no_live_jev(monkeypatch):
+    """Turn any live Jev call into a failure that names the forgotten fake (#385).
+
+    Jev is not reached through LiteLLM, so nothing else stops a test that
+    forms pairs without passing a `FakeJev` from calling the real service — or,
+    on a machine with the key set, from paying for it.
+    """
+    from acceptance import jev
+
+    def refuse(url, body, headers):
+        raise AssertionError(
+            "a test reached the live Jev service; pass `jev=FakeJev(...)` "
+            "(tests/support.py) to run_review, judge_pairs or classify_case"
+        )
+
+    monkeypatch.setattr(jev, "_default_post", refuse)
+
+
 def _git(repo: Path, *args: str) -> None:
     subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, text=True)
 

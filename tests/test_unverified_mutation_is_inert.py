@@ -50,7 +50,7 @@ from acceptance.review_state import (
     Obligation,
     ObligationType,
 )
-from tests.support import client_dispatching
+from tests.support import FakeJev, client_dispatching
 
 # --- the chokepoint ---------------------------------------------------------
 
@@ -252,19 +252,6 @@ _JUDGMENTS = {
         "decline": "none",
         "reason": "",
     },
-    # The static judge answers, and says the test does not catch the defect.
-    # Load-bearing for the comparison below: with no answer here the pair is
-    # recorded unanswered, which pins the criterion at `indeterminate` and the
-    # static tier whatever execution produced — so the comparison would pass
-    # even with the gate removed. I verified that, and it is why this is here.
-    "_PairVerdicts": {
-        "tests": [
-            {
-                "test_id": "test_loan.py::test_returns_a_payment_for_each_month",
-                "defects": [{"defect_id": "equal-payments/wrong-payment-amount", "fails": False}],
-            }
-        ]
-    },
     # Verification runs -- the tier runs only when it is on -- and REFUSES this
     # edit. That is what makes an observed-but-unverified result reachable
     # through the pipeline at all, since `decide_execution` declines the run
@@ -321,7 +308,18 @@ _VERIFIED = {
 }
 
 
-def _review(repo, *, execution, capture=None, judgments=None):
+def _surviving_jev() -> FakeJev:
+    """The static judge answers, and says the test does not catch the defect.
+
+    Load-bearing for the comparison below: with no verdict the criterion would
+    sit at `indeterminate` and the static tier whatever execution produced — so
+    the comparison would pass even with the gate removed. 0.1 is below Jev's
+    "survives" cut-off, so Jev decides alone (#385).
+    """
+    return FakeJev(lambda defect, test_name: 0.1)
+
+
+def _review(repo, *, execution, capture=None, judgments=None, jev=None):
     root, base, head = repo
     return run_review(
         task_text=_TASK,
@@ -330,6 +328,7 @@ def _review(repo, *, execution, capture=None, judgments=None):
         client=client_dispatching(judgments or _JUDGMENTS, capture=capture),
         reviewed_revision=head,
         execution=execution,
+        jev=jev or _surviving_jev(),
     )
 
 
@@ -364,9 +363,14 @@ class TestThroughTheWholeReview:
         hint. It is given the defect, and no trace of what was injected or of
         what the tests did about it."""
         capture: list = []
-        _review(repo, execution=ExecutionSettings(verify_edits=True), capture=capture)
-        prompts = [c["prompt"] for c in capture if c["schema"] == "_PairVerdicts"]
-        assert prompts, "the static judge was never asked, so there is no request to inspect"
+        # Unsure (between Jev's cut-offs), so BOTH static judges are asked and
+        # both requests can be inspected: Jev's state and the model's prompt.
+        jev = FakeJev(lambda defect, test_name: 0.3)
+        _review(repo, execution=ExecutionSettings(verify_edits=True), capture=capture, jev=jev)
+        model_prompts = [c["prompt"] for c in capture if c["schema"] == "_Fails"]
+        assert jev.states, "Jev was never asked, so there is no request to inspect"
+        assert model_prompts, "the model was never asked, so there is no request to inspect"
+        prompts = model_prompts + ["\n".join(state.values()) for state in jev.states]
         for prompt in prompts:
             assert "months - 1" not in prompt, "the injected replacement reached the judge"
             assert "killed" not in prompt
@@ -399,6 +403,7 @@ class TestThroughTheWholeReview:
             client=client_dispatching(judgments),
             reviewed_revision=head,
             execution=ExecutionSettings(verify_edits=True),
+            jev=_surviving_jev(),
         )
         report = render_report(review)
         assert "[killed]" in report

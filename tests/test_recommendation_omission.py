@@ -23,7 +23,7 @@ from acceptance.pipeline import run_review
 from acceptance.recommendation import lookup, render_json, render_text
 from acceptance.report import render_report
 from acceptance.review_state import Review, UnobtainedRecommendation
-from tests.support import client_dispatching
+from tests.support import FakeJev, client_dispatching
 
 _TASK = (
     "# Task\nThe build is clean.\n\n"
@@ -98,7 +98,7 @@ def _judgments(recommendations: list[dict]) -> dict:
             "requirement_dispositions": [],
         },
         # One enumerated way to fail per criterion, and no pair verdict killing
-        # it, so every criterion that requires tests carries one uncovered
+        # it (see `_review`'s Jev), so every criterion that requires tests carries one uncovered
         # defect — which is what reaches the recommendation stage since #316.
         # `obligation_id` is filled per call by the double, because the
         # enumerator answers for one criterion at a time.
@@ -172,6 +172,9 @@ def _review(tmp_path, recommendations: list[dict]) -> Review:
         repo=tmp_path,
         client=client_dispatching(_judgments(recommendations)),
         reviewed_revision=head,
+        # Jev is sure no test catches any defect (#385), so every criterion that
+        # requires tests carries one uncovered defect for the prescriber.
+        jev=FakeJev(lambda defect, test_name: 0.1),
     )
 
 

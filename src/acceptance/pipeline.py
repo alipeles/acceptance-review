@@ -42,9 +42,9 @@ from acceptance.coverage.recommendations import recommend_tests
 from acceptance.coverage.unrequested import detect_unrequested_changes
 from acceptance.defects.enumeration import enumerate_defects
 from acceptance.defects.pair_mapping import (
-    DEFAULT_PAIR_BATCH_SIZE,
     DEFAULT_TESTS_PER_BATCH,
     judge_pairs,
+    requirement_text,
 )
 from acceptance.defects.pair_ranking import DEFAULT_STOP_AFTER_KILLS
 from acceptance.defects.support import (
@@ -55,6 +55,7 @@ from acceptance.defects.support import (
 from acceptance.evidence.discovery import discover_tests
 from acceptance.evidence.extraction import extract_test_evidence
 from acceptance.evidence_tier import Component, EvidenceTier
+from acceptance.jev import JevProvider
 from acceptance.llm import ModelClient
 from acceptance.mutation.agent import AgentDescriptorBuilder, make_agent
 from acceptance.mutation.attempt import MutationAttempt
@@ -393,7 +394,6 @@ def run_review(
     reviewed_revision: str,
     declaration_text: str | None = None,
     policy: ScopeExpansionPolicy = ScopeExpansionPolicy.STRICT,
-    pair_batch_size: int = DEFAULT_PAIR_BATCH_SIZE,
     tests_per_batch: int = DEFAULT_TESTS_PER_BATCH,
     stop_after_kills: int | None = DEFAULT_STOP_AFTER_KILLS,
     link_pair_batch_size: int = DEFAULT_LINK_PAIR_BATCH_SIZE,
@@ -403,8 +403,12 @@ def run_review(
     ledger_prior: LedgerEntry | None = None,
     ledger_sink: list | None = None,
     execution: ExecutionSettings | None = None,
+    jev: JevProvider | None = None,
 ) -> Review:
     """Run the full static review pipeline and return the assembled Review.
+
+    `jev` replaces the provider the pair judge asks first (#385), for tests;
+    `None` calls Jev itself, recorded and replayed through `client`.
 
     With `prior`, this is an incremental re-run (M7.5): obligations the new work
     could not have affected keep their prior judgments and the per-obligation
@@ -539,7 +543,6 @@ def run_review(
         change_set,
         client,
         repo=repo,
-        batch_size=pair_batch_size,
         tests_per_batch=tests_per_batch,
         unusable=unusable,
         prior=list(ledger_prior.pair_verdicts) if ledger_prior is not None else None,
@@ -556,6 +559,9 @@ def run_review(
         # composes with them rather than replacing either — they decide which
         # pairs reach the judge, this decides the order and where to stop.
         stop_after_kills=stop_after_kills,
+        # Both judges are shown the requirement a defect threatens (#385).
+        requirements={o.id: requirement_text(o) for o in needs_tests},
+        jev=jev,
     )
     # One list, two provenances. `PairVerdict.tier` is what tells them apart, and
     # `derive_support` reduces both with the same arithmetic — which is what

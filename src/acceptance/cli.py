@@ -26,7 +26,6 @@ from acceptance.config import (
     DEFAULT_EMBEDDING_MODEL,
     DEFAULT_LINK_DISTANCE_THRESHOLD,
     DEFAULT_MODEL,
-    DEFAULT_PAIR_BATCH_SIZE,
     DEFAULT_SEED,
     DEFAULT_STOP_AFTER_KILLS,
     DEFAULT_TESTS_PER_BATCH,
@@ -242,7 +241,6 @@ def run_check(
         reviewed_revision=reviewed_revision,
         declaration_text=declaration_text,
         policy=config.scope_expansion_policy,
-        pair_batch_size=config.pair_batch_size,
         tests_per_batch=config.tests_per_batch,
         stop_after_kills=config.stop_after_kills,
         link_pair_batch_size=config.link_pair_batch_size,
@@ -805,25 +803,13 @@ def _add_model_flags(parser: argparse.ArgumentParser, default_mode: str) -> None
         "--temperature", type=float, default=0.0, help="Model temperature (default: 0.0)."
     )
     parser.add_argument(
-        "--pair-batch-size",
-        type=int,
-        default=DEFAULT_PAIR_BATCH_SIZE,
-        help=(
-            "(defect, test) pairs judged per call (determinism; default: "
-            f"{DEFAULT_PAIR_BATCH_SIZE}). Changing it invalidates recorded "
-            "pair-judgement transcripts."
-        ),
-    )
-    parser.add_argument(
         "--tests-per-batch",
         type=int,
         default=DEFAULT_TESTS_PER_BATCH,
         help=(
-            "Tests sharing one pair-judgement call (determinism; default: "
-            f"{DEFAULT_TESTS_PER_BATCH}). Does NOT change how many judgements a "
-            "response carries — --pair-batch-size still caps that, so more tests "
-            "per call means fewer defects offered with each. Changing it "
-            "invalidates recorded pair-judgement transcripts."
+            "How many of a defect's tests the pair judge's first ranked round "
+            f"asks about (default: {DEFAULT_TESTS_PER_BATCH}); each later round "
+            "doubles it. Has no effect with --full-pair-sweep."
         ),
     )
     parser.add_argument(
@@ -1120,7 +1106,6 @@ def main(argv: list[str] | None = None) -> int:
             mode=Mode(args.mode),
             seed=_seed_from(args),
             temperature=args.temperature,
-            pair_batch_size=args.pair_batch_size,
             tests_per_batch=args.tests_per_batch,
             stop_after_kills=None if args.full_pair_sweep else args.stop_after_kills,
             embedding_model=args.embedding_model,
@@ -1198,7 +1183,6 @@ def main(argv: list[str] | None = None) -> int:
             mode=Mode(args.mode),
             seed=_seed_from(args),
             temperature=args.temperature,
-            pair_batch_size=args.pair_batch_size,
             tests_per_batch=args.tests_per_batch,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,
@@ -1250,7 +1234,6 @@ def main(argv: list[str] | None = None) -> int:
             mode=Mode(args.mode),
             seed=_seed_from(args),
             temperature=args.temperature,
-            pair_batch_size=args.pair_batch_size,
             tests_per_batch=args.tests_per_batch,
             embedding_model=args.embedding_model,
             link_distance_threshold=args.link_distance_threshold,

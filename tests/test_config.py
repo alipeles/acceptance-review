@@ -4,7 +4,6 @@ import pytest
 from pydantic import ValidationError
 
 from acceptance.config import (
-    DEFAULT_PAIR_BATCH_SIZE,
     RunConfig,
     ScopeExpansionPolicy,
     provenance_for,
@@ -154,15 +153,11 @@ def test_provenance_of_a_run_that_made_no_model_call_is_indeterminate():
     assert provenance.determinism() == "indeterminate"
 
 
-def test_the_pair_batch_size_is_a_run_control_with_a_fixed_default():
-    """The control moved with its stage (#316). It used to size the
-    test-to-criterion mapping call; that stage is gone, and the flag was
-    repointed at the (defect, test) judgement rather than left accepting a value
-    that reached nothing."""
-    assert RunConfig().pair_batch_size == DEFAULT_PAIR_BATCH_SIZE
-
+def test_there_is_no_pair_batch_size_any_more():
+    """#385 made every pair request one pair, so the control went rather than
+    stay accepting a value that reaches nothing. `extra="forbid"` refuses it."""
     with pytest.raises(ValidationError):
-        RunConfig(pair_batch_size=0)  # a batch must hold something
+        RunConfig(pair_batch_size=40)
 
 
 def test_provenance_reports_the_partition_size_the_run_actually_used():

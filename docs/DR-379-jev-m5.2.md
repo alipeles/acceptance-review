@@ -86,3 +86,13 @@ applies; with no usable answer, Jev's probability still decides at 0.5. Jev's
 own cut-offs (0.34 and 0.24) are unchanged. The held-out figures above were
 measured with Mini and are not re-measured here; #385's benchmark acceptance
 item is the check.
+
+## Amended 2026-10-25
+
+When Jev is unsure and the model gives no usable yes or no, the pair is now
+recorded as unanswered, which a rating counts as unknown, instead of letting
+Jev's probability decide at 0.5. In the band where the model is asked
+(between 0.24 and 0.34) the 0.5 rule always read "survives", so an
+obligation could be rated unsupported on a judgement nobody obtained, against
+the rule that uncertainty is reported as uncertainty. Owner's decision, during
+#385, which wires Jev into the pipeline.

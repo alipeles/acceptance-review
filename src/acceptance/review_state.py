@@ -223,6 +223,23 @@ class DefectSet(_Model):
     carried_from: str | None = None
 
 
+class PairJudge(str, Enum):
+    """Which judge decided a pair by reading it (#385).
+
+    Neither gives reasoning. Jev answers with a probability and nothing else;
+    the model it hands its uncertain pairs to answers yes or no in a schema with
+    no room for a reason. So a verdict either one produced carries an empty
+    `reason`, and this field is what says that the emptiness is by design rather
+    than a reason lost on the way.
+    """
+
+    JEV = "jev"
+    """Jev decided: its probability cleared a cut-off on its own."""
+
+    MODEL = "model"
+    """Jev was unsure, and the model answered yes or no."""
+
+
 class PairVerdict(_Model):
     """Whether one test would fail if the code contained one defect (#314).
 
@@ -268,6 +285,12 @@ class PairVerdict(_Model):
     test_digest: str = ""
     carry_key: str = ""
     carried_from: str | None = None
+    # Who decided a STATIC verdict, and Jev's probability that the test fails
+    # (#385). `None` for a verdict observed by running the tests, and for one
+    # recorded before Jev judged pairs, whose `reason` came from a model that
+    # wrote one. Defaulted, so older reviews and ledgers read back unchanged.
+    judged_by: PairJudge | None = None
+    jev_probability: float | None = None
 
 
 class UnjudgedCause(str, Enum):
