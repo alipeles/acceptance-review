@@ -1,28 +1,27 @@
 # Task
 
-The shortest opening the client marks as reusable follows Anthropic's current
-documented minimum for each model: 512 tokens for Claude Sonnet 5.5, Opus 5.5 and
-Haiku 5.5. The module documentation says that Anthropic ignores a breakpoint
-below the minimum, rather than that it rejects one.
+A task file can carry an optional `## Context` section, for background that
+helps a reader understand the mandate but is not itself something the change
+must deliver: the problem being fixed, how the system behaves today, or
+measurements already taken.
 
-In the mutation descriptor stage, a region's numbered source sits in the reusable
-opening, so calls for defects in the same region share it instead of each
-repeating it.
+Parsing a task file records the Context section as its own field, each block
+with its span back to the source. Context is not reported as unread source, and
+it is not a requirement: it gets no requirement id and no disposition, and
+adding or removing it does not move the mandate coverage counts.
 
-A run can opt in to sending its calls to Claude models through the Message
-Batches API. The setting belongs to the run's configuration and is off by
-default, so `acceptance check` and `acceptance decompose` keep calling the model
-directly.
-Benchmark scoring and experiment scripts can switch it on.
+Decomposition shows the context to the model, labelled as context and kept
+apart from the list of requirements, so the model can use the background
+without being asked to account for it. A task file with no Context section
+produces exactly the same model requests and the same results as it does today.
 
-How a call was sent does not change what was asked: a batched request is recorded
-under the same key as the same request sent directly, and its recording replays
-with no live call. The recording notes that it was sent through a batch. Two
-recorded runs over the same input still produce byte-identical review state
-whichever way their calls were sent.
+The spec's description of the task file format (§7.1) describes the Context
+section, and the repository's contributor guide, `CLAUDE.md`, says when an
+author should use it.
 
 ## Scope exclusions
-- Changing how live review runs split their requests into partitions.
-- Reporting spend per run.
-- Re-measuring benchmark figures on Claude.
-- Changing any prompt or response schema other than the mutation descriptor's.
+- Recognising background that is not under a Context heading.
+- Context sections nested inside other sections; there is one top-level Context
+  section.
+- Adding a Context section to the existing task files under `tests/fixtures/`
+  and `dogfood-logs/`.
