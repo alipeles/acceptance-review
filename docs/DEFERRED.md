@@ -7597,11 +7597,13 @@ the record.
 - **What's wrong:** defect
   `scope-exclusion-bullets-become-absence-obligations/prompt-positive-reframing-still-possible`
   was reported as already present: "Nothing visible requires one obligation per
-  bullet or forbids merging or dropping bullets". The decomposition prompt does
-  require it ("Every bullet under it is `yielded`, and produces EXACTLY ONE
-  obligation"), about 50 lines above the region the judge was shown, and the
-  code rejects a response that leaves any requirement undisposed (M1.2.r2). The
-  claim lands in a section marked "needs human review", so it stops a gate. In
+  bullet or forbids merging or dropping bullets". Neither is a defect. Dropping
+  is impossible: the prompt says every bullet "is `yielded`, and produces EXACTLY
+  ONE obligation", about 50 lines above the region the judge was shown, and the
+  code rejects a response that leaves any requirement undisposed (M1.2.r2).
+  Merging a duplicated exclusion is wanted (owner, 2026-10-24) and happens later,
+  in linking. The claim lands in a section marked "needs human review", so it
+  stops a gate. In
   the same run, the reason for `description-wording-left-to-model` degenerated
   into a dozen repeated sentences ("No repair is offered beyond this.Reporting
   defective as required.…").
@@ -7616,10 +7618,13 @@ the record.
   >
   > The mutation descriptor is shown only the regions offered for a defect. For
   > `prompt-positive-reframing-still-possible` it was shown lines 288-307 of the
-  > decomposition prompt and concluded that nothing requires one obligation per
-  > scope-exclusion bullet. Lines 238-240 of the same prompt say exactly that,
-  > and `RequirementDisposition` validation rejects a response that drops a
-  > requirement. The "already present" claim is then reported under "Defects the
+  > decomposition prompt and concluded that nothing stops a scope-exclusion
+  > bullet being dropped or merged with a sibling. Dropping cannot happen: lines
+  > 238-240 of the same prompt require an obligation per bullet, and
+  > `RequirementDisposition` validation rejects a response that drops a
+  > requirement. Merging a duplicated exclusion is intended and is done later by
+  > `requirement/linking.py`, so it is not a defect either. The "already present"
+  > claim is then reported under "Defects the
   > delivered code already has … needs human review", which stops a gate on a
   > claim the repository refutes.
   >
