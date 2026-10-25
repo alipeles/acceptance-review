@@ -412,84 +412,100 @@ def test_a_known_defect_survives_an_unrelated_prompt_edit(tmp_path):
 # gpt-5.4-mini and claude-sonnet-5 disposition recordings stay because
 # `test_disposition_prompt.py` names those models outright.
 #
+# **#310 re-recorded the decomposition side and added one `_Coverage`
+# recording.** The decomposition prompt changed (a scope exclusion's trailing
+# clause, and code-only evidence set from the heading), and the invoice task
+# gained a fifth exclusion, so all 19 + 2 + 1 recordings on that side were
+# replaced: 20 decomposition calls now, one more bullet. `test_coverage_prompt.py`
+# is the first recorded coverage test, over archetype 01 (`receipt.py`).
+#
 # Grouped by response schema and model, and generated from what was recorded
 # rather than hand-listed — the ids are request hashes, so they are not
 # authorable by hand and carry no meaning beyond identity.
 _APPROVED_TRANSCRIPTS = {
-    # _Decomposition, anthropic/claude-sonnet-5-5 — 19 recording(s)
-    "08129e38374e9e0ea96d6a3f0d21178d090cae679769d7acec9a2adafcde67c2.json": (
+    # _Coverage, anthropic/claude-sonnet-5-5 — 1 recording(s)
+    "86fb25946a04e858fcbcec297e1d5a254f7ab3fbbe892b8a2d5a9dabb08eadc8.json": (
+        "receipt.py",
+        "format_line",
+    ),
+    # _Decomposition, anthropic/claude-sonnet-5-5 — 20 recording(s)
+    "01a15cd47f36d13ff35c18d8e0ed27f150766c004e8540a2873116b37819e2cd.json": (
         "invoice",
         "CSV",
     ),
-    "09191a9cd2f4a10ab57bd719da338d68c7c05b6bc2153779dd62b40edc2306c1.json": (
+    "0dac950070fc3d1c59ff07c9018b6489436888b75ae2e52655e7b58677e73736.json": (
         "invoice",
         "CSV",
     ),
-    "12a9b7d3e58b881d4b2d13299ce8c6f1fcaee924fbf528dd7854f28168fc86bb.json": (
+    "29856209d98001391cc37c5dd2e14ff44cef5465c897f379a193de73318061e1.json": (
         "invoice",
         "CSV",
     ),
-    "1af4d4e3fd02a3d7aa3111331ab697145887c01f7147ca177d814c34f303cc05.json": (
+    "3389ee6adf34770109d86e5cfafa8bc4c18b113395e595d7a50b941c34298f10.json": (
         "invoice",
         "CSV",
     ),
-    "1ebe046143ede6d4fff427ea3a0fdfc5fb036d5bfbb0c24b9205ef7123cf84fc.json": (
+    "37d20b5858bee95620079b099a0893d86e80dcab8ca211b2e372146586e6d40f.json": (
         "invoice",
         "CSV",
     ),
-    "26cff79a8c2d01dc660cc0baee07cfe8a03df02afcb7345191da691fd6e1c7bb.json": (
+    "405fac488a6033575cd62ec510baba3ba6a87ad1335ecac15a04a296a2772c5b.json": (
         "invoice",
         "CSV",
     ),
-    "26e47cbb014850d4d99cbea447c472c5f560fe901355e99916041a64d8db88a9.json": (
+    "59f64c56af7e03fde16bbc6c628d2113af937aac2903d752fb00a560d452ba0a.json": (
         "invoice",
         "CSV",
     ),
-    "3ced417e1a972253fabf1885472e57b5c21a1dd586d959afb04f74422998412c.json": (
+    "5a8fcc7734146dc3dda4567620343b993f2c14560773b0c3100882f0bdcfebd8.json": (
         "invoice",
         "CSV",
     ),
-    "43cf1711f98282f03ab6cd8206ab1798a25d8746ef970aecf4d63a6583fe6f7f.json": (
+    "5d38efec3a13aa25c8e9261f0ab9e5adf10857ca863c17205c81808011e334cf.json": (
         "invoice",
         "CSV",
     ),
-    "4578658bac07af2262c162675a937dd6858133b73fb2c9c7f5a44fbf5509e59b.json": (
+    "685ebea8e17d25e8b5d7283381e2be88bf3c84867444f52e439f501945d7c999.json": (
         "invoice",
         "CSV",
     ),
-    "5b000466c2889ca38766fc30f35a35ff78b3fdac14143eac08189da24361cd9a.json": (
+    "6bde133df6b80cd87ddc2d8505d60ca3f6227bc04dfa793404ed3a54bb08c8bc.json": (
         "invoice",
         "CSV",
     ),
-    "620ed870be83b339088ff9a9c374f72424e145e9d8d90515495eafd645c3e3e4.json": (
+    "81f0c55d7ec60c025a723effa736bee33c2eeadcca2d285d5d71754d076dedeb.json": (
         "invoice",
         "CSV",
     ),
-    "6dd9228b2c407d6a796ed80293b8683fba7c2d0198ff1c8eb018ddc076c99d0b.json": (
+    "83133947905ec9a6c1ee988a6243781a9cde7762716b4abb80aad0b2ff48c2e0.json": (
         "invoice",
         "CSV",
     ),
-    "91b7e997fd48f5ed8f8e6004257e5e37c136551e22fa8cb73168e80e91515c33.json": (
+    "8cdbd4b31a07faca0a4ffeb221957ff11ca6779c0217bc3a1e79224a47a56a14.json": (
         "invoice",
         "CSV",
     ),
-    "b832b74904e872e25c33fde96eeecf76e02f044cbaa00cf5adc1c2a79acd71fe.json": (
+    "d0837638cce2686df90558a453c9f20b863de29b60ef61b44e2d844fdcb9e45b.json": (
         "invoice",
         "CSV",
     ),
-    "cd47a7de3694c8523165e1a0c4ab3de6dd89d2763d7ea4cfc6d2a8d4a53e385c.json": (
+    "d2de3d541b38e8158637822db06ebb688d64a75106b2f6c80a1089123b9b7e9a.json": (
         "invoice",
         "CSV",
     ),
-    "d70fa50663327c72d6723f00137d2012d0200b6cfa183c04b99eb60d727e597d.json": (
+    "e4b30df40934870c54b5154b5690d1745602ef14c2f0217c1dca71d432a13725.json": (
         "invoice",
         "CSV",
     ),
-    "ddf38aff642c804c39fd4491957837e34fb1ee25773304415fad92754a625586.json": (
+    "f0690d5f56d25b8085f8b9ecea0005017e6550621a1958ba1cfd2bc5742609ce.json": (
         "invoice",
         "CSV",
     ),
-    "eea626d51e8fe03b829be25c1c8f79fe89d65d802ebe7a60389d4b92607e5281.json": (
+    "f16d2ea5e209a8b5ae71bb7d4c74a981325d83bed0f99f57aae2af15c33ba138.json": (
+        "invoice",
+        "CSV",
+    ),
+    "f91bd26bb105e9c06ca3d819cb55673e68ef083e0a1e2ea2090bf0a75fa3bc06.json": (
         "invoice",
         "CSV",
     ),
@@ -517,16 +533,16 @@ _APPROVED_TRANSCRIPTS = {
         "ship_order",
     ),
     # _SummarySpans, anthropic/claude-sonnet-5-5 — 2 recording(s)
-    "9db5b050af953e853d357d411553fa5b810b12b3c1799bab309c0adcd306683a.json": (
+    "0684a26bd5748a3e1537aeeb9f1018c9a3f47cb196403b95ac5d41080aef7842.json": (
         "invoice",
         "CSV",
     ),
-    "bd04e902bdedf1240fabe5cd42f3686e9b833af0da4898216003cfc31569f463.json": (
+    "34f2ad5850c880e9b84b4067200abf77e74d79bec6f997934e2be6ed6bd21938.json": (
         "invoice",
         "CSV",
     ),
     # _Verdicts, anthropic/claude-sonnet-5-5 — 1 recording(s)
-    "bd4336709cb38972e2744cdd989eb389a510441905de74065ea23dd30b866a6b.json": (
+    "b78224190677622930b87ad28b405f4bf770997c42f5fb20ac7d2ee7d1f30753.json": (
         "invoice",
         "CSV",
     ),
@@ -602,6 +618,7 @@ def test_only_the_designated_capability_uses_recorded_responses():
 
     assert users == {
         "prompts/test_corpus_mechanism.py",
+        "prompts/test_coverage_prompt.py",
         "prompts/test_decomposition_prompt.py",
         "prompts/test_disposition_prompt.py",
         "prompts/test_linking_prompt.py",

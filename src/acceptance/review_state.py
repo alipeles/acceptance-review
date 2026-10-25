@@ -807,12 +807,11 @@ class Obligation(_Model):
     required_evidence_reason: str = ""
     # Whether this obligation is satisfied by work NOT done, rather than by work
     # present. Structural — it comes from the mandate's scope-exclusion heading,
-    # never from a model judgement — and deliberately independent of
-    # `required_evidence`: a behavioural exclusion ("pagination is unchanged")
-    # is satisfied by an absence AND may still want a regression test, while a
-    # version pin requires code evidence that is emphatically present. Conflating
-    # the two would strip a pin's citations on the reasoning that a boundary has
-    # none (#266).
+    # never from a model judgement — and still a separate field from
+    # `required_evidence`. Every exclusion is `code_only` (DR-310), but not every
+    # `code_only` obligation is an exclusion: a version pin requires code
+    # evidence that is emphatically present. Conflating the two would strip a
+    # pin's citations on the reasoning that a boundary has none (#266).
     satisfied_by_absence: bool = False
     # #153: the scope a non-violation claim covered, as "path#hunk" refs. Empty
     # for every ordinary obligation, whose evidence is `coverage_refs` instead.

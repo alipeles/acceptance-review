@@ -1,28 +1,23 @@
 # Task
 
-The default model becomes `anthropic/claude-sonnet-5-5`, and the summary-span
-stage, which today names `openai/gpt-5.4` as its own model, runs on the default
-like every other stage.
+Every bullet under a task file's `## Scope exclusions` heading becomes an
+obligation saying the change does not do the excluded work. That holds when the
+bullet ends with a clause explaining the exclusion, such as "Model calls issued
+by the measurement harness, which is not part of a review run." Today a bullet
+like that sometimes becomes an obligation describing the excluded work as
+something the change must do, and the review then reports it as not addressed.
 
-A recorded Claude run replays with no live call, and two recorded runs over the
-same input produce byte-identical review state. The run still requests
-temperature 0 and seed 0, and the review's provenance records that Claude
-applied neither. The module documentation states that recorded transcripts,
-not a seed or a temperature, are what make a Claude run reproducible.
+An obligation that comes from a scope exclusion requires code evidence only,
+never a test. Within one review, two such obligations whose code evidence is the
+same get the same coverage status.
 
-A Claude response that does not match the stage's response schema is rejected
-with the same typed error as any other provider's.
+When duplicate obligations are merged, a scope-exclusion obligation merges only
+with another scope-exclusion obligation, and any other obligation merges only
+with one of the same type.
 
-The committed prompt recordings are re-recorded against the new default, and
-each prompt test's assertions hold on Claude's answers. Recordings made against
-OpenAI models still replay, and the committed set keeps at least one recording
-from a provider other than the default.
-
-Which model each stage runs on is set only in `config.py`.
+A regression case in the decomposition prompt tests covers a scope-exclusion
+bullet that ends with an explanatory clause.
 
 ## Scope exclusions
-- Sending offline runs through the Message Batches API.
-- Changing where prompt-cache breakpoints are placed.
-- Reporting spend per run.
-- Re-measuring benchmark figures on Claude.
-- Changing any prompt or response schema.
+- Which evidence obligations from the other sections of a task file require.
+- Which model each stage calls.

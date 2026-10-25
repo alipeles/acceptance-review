@@ -122,6 +122,13 @@ Some obligations state that the change does NOT do some particular work — "The
 change does not alter how the invoice list is paginated". These are satisfied by
 an ABSENCE, and they are the sharpest case of the rule above.
 
+Every obligation marked `(scope exclusion: ...)` in the list is one of these,
+however its description happens to be worded. The quoted text names the work
+the change must not do; judge the obligation against THAT. If the description
+reads as work to do — "The change excludes X from Y" — it is a mis-worded
+boundary, not a request for X: it is `addressed` when no hunk does the excluded
+work, exactly like its siblings.
+
 - `addressed` means you compared every hunk you were shown against the boundary
   and none of them does the excluded work. Leave `diff_refs` EMPTY. There is no
   hunk that "supports" it: listing the changes you examined would read as

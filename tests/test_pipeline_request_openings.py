@@ -25,7 +25,7 @@ from acceptance.change.diff import extract_change_set
 from acceptance.coverage.prompt import diff_block
 from acceptance.pipeline import run_review
 from acceptance.request_blocks import REUSABLE_OPENING_MESSAGES, SHARED_PREAMBLE
-from tests.support import client_dispatching, sent_text
+from tests.support import client_dispatching, message_text, sent_text
 
 _TASK = """# Task
 Format money amounts correctly.
@@ -202,7 +202,9 @@ def test_content_two_requests_share_is_written_the_same_way_in_both(tmp_path):
     # block follows the diff, which is each stage's own instructions and differs
     # legitimately. The claim is narrower: the diff block itself is the same
     # bytes, and it sits at the head of the opening's user message.
-    wrong = [r["schema"] for r in with_diff if not r["messages"][1]["content"].startswith(expected)]
+    wrong = [
+        r["schema"] for r in with_diff if not message_text(r["messages"][1]).startswith(expected)
+    ]
     assert not wrong, (
         f"{len(wrong)} of {len(with_diff)} requests carrying a diff do not open with the "
         f"shared rendering of it: {wrong}. A provider reuses a repeated opening only "

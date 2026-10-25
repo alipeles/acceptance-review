@@ -80,10 +80,23 @@ def obligations_block(obligations: list[Obligation]) -> Block:
     producing one block *kind*, not a guarantee that the bytes match. When the
     sets do coincide the blocks are equal and the prefix is shared; when they do
     not, the diff above them is still shared, which is the larger half.
+
+    An obligation satisfied by absence is marked as a scope exclusion and carries
+    the bullet it came from (#310). Without the mark a stage could tell a
+    boundary only from its wording, so an exclusion the decomposer happened to
+    word as work to do was judged as work to do, and reported not addressed
+    beside siblings with the same evidence. The parse already knows; the block
+    says so rather than leaving the model to re-derive it.
     """
     lines = ["## Obligations", ""]
     for obligation in obligations:
-        lines.append(f"- id={obligation.id} [{obligation.type.value}]: {obligation.description}")
+        marker = ""
+        if obligation.satisfied_by_absence:
+            excluded = " ".join(span.text for span in obligation.source_spans)
+            marker = f" (scope exclusion: {excluded!r})" if excluded else " (scope exclusion)"
+        lines.append(
+            f"- id={obligation.id} [{obligation.type.value}]{marker}: {obligation.description}"
+        )
     return Block(BlockKind.OBLIGATIONS, "\n".join(lines))
 
 
