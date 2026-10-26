@@ -25,7 +25,7 @@ from acceptance.llm import (
     TranscriptStore,
     _extract_usage,
 )
-from acceptance.usage import _PIPELINE_ORDER, is_claude, render, summarize
+from acceptance.usage import _PIPELINE_ORDER, is_claude, render, report, summarize
 
 
 def _call(stage, served_from, **usage):
@@ -299,6 +299,20 @@ def test_claude_spend_is_a_figure_of_its_own_beside_other_providers():
     assert usage.claude_run_spend_usd == pytest.approx(0.10)
     assert usage.claude_evidence_cost_usd == pytest.approx(0.50)
     assert "of which Claude credits: $0.1000 this run, $0.5000 recorded" in render(usage)
+
+
+def test_report_prints_the_same_footer_on_stderr_even_for_no_call(capsys):
+    report([])
+
+    captured = capsys.readouterr()
+    assert captured.err == render(summarize([])) + "\n"
+    assert captured.out == ""
+
+
+def test_a_call_that_names_no_stage_is_still_counted():
+    usage = summarize([{"key": "k", "served_from": SERVED_FROM_PROVIDER, "usage": {}}])
+
+    assert usage.provider_calls == 1
 
 
 def test_a_run_with_no_claude_call_reports_no_claude_credits():

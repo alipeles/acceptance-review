@@ -46,6 +46,8 @@ from acceptance.benchmark.instability import (
 )
 from acceptance.config import Mode, RunConfig
 from acceptance.llm import SERVED_FROM_RECORDING
+from acceptance.usage import render as render_usage
+from acceptance.usage import summarize as summarize_usage
 
 _EMPTY_BY_SCHEMA = {
     "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
@@ -528,14 +530,10 @@ def test_measure_instability_varies_the_seed_across_runs(tmp_path):
     assert len({seed for seed, _ in calls}) == 2
 
 
-def test_the_measurement_prints_spend_for_every_call_it_made(tmp_path, capsys):
-    """When it finishes, the table on stderr counts every draw's calls and the
-    comparison client's too, live and replayed apart, with Claude's figure (#415)."""
-    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
-    calls: list = []
+def _comparison_with_one_replayed_call():
+    """A comparison client already holding one replayed, priced Claude call: if
+    the measurement left that client out, the call would be missing from the table."""
     comparison = client_finding_nothing()
-    # One replayed, priced call already on the comparison client: if the
-    # measurement left that client out, this call would be missing from the table.
     comparison._observed_calls.append(
         {
             "stage": "comparison probe",
@@ -546,22 +544,66 @@ def test_the_measurement_prints_spend_for_every_call_it_made(tmp_path, capsys):
             "seconds": None,
         }
     )
+    return comparison
+
+
+def test_the_measurement_prints_spend_for_every_call_it_made(tmp_path, capsys):
+    """When it finishes, the table on stderr is exactly the one `acceptance
+    check` prints, over every client the measurement spent through: each draw's,
+    the perturbed run's and the comparison client's (#415)."""
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+    calls: list = []
+    built: list = []
+    observing = _observing_factory(calls)
+
+    def factory(config):
+        client = observing(config)
+        built.append(client)
+        return client
+
+    comparison = _comparison_with_one_replayed_call()
+
+    measure_instability(
+        case,
+        runs_per_model=2,
+        perturbation=Perturbation(name="noop", apply=lambda c: c),
+        comparison_client=comparison,
+        client_factory=factory,
+    )
+
+    assert len(built) == 3, "two draws and the perturbed run"
+    every_call = [call for client in (comparison, *built) for call in client.observed_calls]
+    printed = capsys.readouterr().err
+    assert printed == render_usage(summarize_usage(every_call)) + "\n"
+    counts = [tuple(map(int, row)) for row in re.findall(r"(\d+) live / (\d+) replayed", printed)]
+    assert sum(live for live, _ in counts) == len(calls) > 0
+    assert sum(replayed for _, replayed in counts) == 1
+    assert "of which Claude credits: $0.0000 this run, $0.2500 recorded" in printed
+
+
+def test_a_client_every_draw_shares_has_its_calls_counted_once(tmp_path, capsys):
+    """A `client_factory` may hand every draw the same client; its calls are the
+    calls made, not that many times over."""
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+    calls: list = []
+    shared: list = []
+
+    def factory(config):
+        if not shared:
+            shared.append(_observing_factory(calls)(config))
+        return shared[0]
 
     measure_instability(
         case,
         runs_per_model=2,
         perturbation=None,
-        comparison_client=comparison,
-        client_factory=_observing_factory(calls),
+        comparison_client=client_finding_nothing(),
+        client_factory=factory,
     )
 
     printed = capsys.readouterr().err
-    assert "Model usage by stage:" in printed
-    counts = [tuple(map(int, row)) for row in re.findall(r"(\d+) live / (\d+) replayed", printed)]
-    assert sum(live for live, _ in counts) == len(calls) > 0
-    assert sum(replayed for _, replayed in counts) == 1
-    assert "comparison probe" in printed
-    assert "of which Claude credits: $0.0000 this run, $0.2500 recorded" in printed
+    totals = [int(n) for n in re.findall(r"(\d+) \(\d+ live / \d+ replayed\)", printed)]
+    assert sum(totals) == len(shared[0].observed_calls) > 0
 
 
 def test_measure_instability_records_the_conditions_that_produced_it(tmp_path):

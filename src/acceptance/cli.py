@@ -67,8 +67,9 @@ from acceptance.rerun import find_prior_review, task_digest
 from acceptance.review_state import ChangeSet, OpenQuestion, Review
 from acceptance.review_store import ReviewStore
 from acceptance.supplied_ids import UnusableAnswerLog
+from acceptance.usage import render as render_usage
 from acceptance.usage import render_per_label
-from acceptance.usage import report as report_usage
+from acceptance.usage import summarize as summarize_usage
 
 
 class CliError(Exception):
@@ -363,7 +364,7 @@ def _report_usage(client: ModelClient) -> None:
     replayed run spends nothing where the run that recorded it spent money. The
     §16 report and the persisted review never see this (#264).
     """
-    report_usage(client.observed_calls)
+    print(render_usage(summarize_usage(client.observed_calls)), file=sys.stderr)
     # Per defect, beside the one-call builder's, only when a defect reached the
     # coding agent (#338): what the fallback costs is the question it answers.
     by_defect = render_per_label(
