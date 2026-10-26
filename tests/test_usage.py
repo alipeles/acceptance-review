@@ -343,6 +343,21 @@ def test_an_observed_call_carries_the_provider_its_model_name_states():
     assert [call["provider"] for call in client.observed_calls] == ["anthropic"]
 
 
+def test_a_replayed_call_carries_its_provider_so_its_recorded_cost_counts():
+    """A replayed Anthropic call cost this run nothing, but its recorded cost is
+    Anthropic credits all the same."""
+    store = TranscriptStore(tempfile.mkdtemp())
+    usage = SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2)
+    _client(usage, store).complete(_MESSAGES, _Answer)
+    replaying = ModelClient(model=DEFAULT_MODEL, mode=Mode.REPLAY, store=store)
+
+    replaying.complete(_MESSAGES, _Answer)
+
+    [call] = replaying.observed_calls
+    assert call["served_from"] == SERVED_FROM_RECORDING
+    assert call["provider"] == "anthropic"
+
+
 def test_an_observed_embedding_carries_the_provider_its_model_name_states():
     client = ModelClient(
         model=DEFAULT_MODEL,

@@ -439,6 +439,8 @@ def test_the_instability_experiment_batches_when_asked(tmp_path, batch):
         ("voyage/voyage-3.5-lite", "voyage"),
         ("claude-sonnet-5-5", None),
         ("jev-latest", None),
+        ("/claude-sonnet-5-5", None),
+        (" /claude-sonnet-5-5", None),
     ],
 )
 def test_the_provider_is_the_one_the_model_name_states(model, provider):

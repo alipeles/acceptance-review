@@ -101,6 +101,8 @@ class StageUsage(BaseModel):
     # The same two figures over calls billed to Anthropic's own API (#415).
     anthropic_run_spend_usd: float = 0.0
     anthropic_evidence_cost_usd: float = 0.0
+    other_run_spend_usd: float = 0.0
+    other_evidence_cost_usd: float = 0.0
     # Summed provider time over this run's LIVE calls (#334), measured in
     # memory and never written to a transcript. None when the stage made no
     # live call. A sum, not elapsed time: calls in a stage run concurrently, so
@@ -156,6 +158,14 @@ class RunUsage(BaseModel):
     @property
     def anthropic_evidence_cost_usd(self) -> float:
         return sum(stage.anthropic_evidence_cost_usd for stage in self.stages)
+
+    @property
+    def other_run_spend_usd(self) -> float:
+        return sum(stage.other_run_spend_usd for stage in self.stages)
+
+    @property
+    def other_evidence_cost_usd(self) -> float:
+        return sum(stage.other_evidence_cost_usd for stage in self.stages)
 
     @property
     def provider_calls(self) -> int:
@@ -237,10 +247,16 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
             stage.evidence_cost_usd += cost
             if from_provider:
                 stage.run_spend_usd += cost
+            # Each call into exactly one of the two, summed directly, so neither
+            # figure is the other subtracted from a total (which can print -0.0000).
             if call.get("provider") == ANTHROPIC:
                 stage.anthropic_evidence_cost_usd += cost
                 if from_provider:
                     stage.anthropic_run_spend_usd += cost
+            else:
+                stage.other_evidence_cost_usd += cost
+                if from_provider:
+                    stage.other_run_spend_usd += cost
 
     return RunUsage(stages=[by_stage[name] for name in sorted(by_stage, key=_position)])
 
@@ -323,8 +339,8 @@ def render(usage: RunUsage) -> str:
         f"${usage.anthropic_evidence_cost_usd:.4f} recorded"
     )
     lines.append(
-        f"  other providers: ${usage.run_spend_usd - usage.anthropic_run_spend_usd:.4f} this run, "
-        f"${usage.evidence_cost_usd - usage.anthropic_evidence_cost_usd:.4f} recorded"
+        f"  other providers: ${usage.other_run_spend_usd:.4f} this run, "
+        f"${usage.other_evidence_cost_usd:.4f} recorded"
     )
     return "\n".join(lines)
 

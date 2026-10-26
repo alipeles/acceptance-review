@@ -255,7 +255,8 @@ def provider_of(model: str) -> str | None:
     a replayed run builds its requests without importing it.
     """
     head, separator, _ = model.partition("/")
-    return head if separator else None
+    # `/claude-x` has a separator and still names nobody.
+    return head if separator and head.strip() else None
 
 
 def is_anthropic_api(model: str) -> bool:
