@@ -17,6 +17,12 @@ reported, separately and by name:
 `run_spend_usd <= evidence_cost_usd` always, and on a fully replayed run the
 first is zero while the second is not.
 
+Both are also kept for Claude calls alone (#415): a run's total mixes Claude with
+embeddings and Jev, and what a run consumed of the Claude credits is a figure
+that has to be read off on its own. A batched call already carries its billed
+price, half the direct one, from the moment it was recorded (#414), so nothing
+here re-prices it.
+
 **None of this may enter review state or the rendered report.** Cost varies
 between two recordings of the same review, so a byte-identical rerun (M0.5) is
 impossible if it does. This module is consumed by the CLI, which prints it to
@@ -25,6 +31,7 @@ stderr for exactly the reason the run id goes there.
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Iterable, Mapping
 from typing import Any
 
@@ -89,6 +96,9 @@ class StageUsage(BaseModel):
     cache_write_tokens: int = 0
     run_spend_usd: float = 0.0
     evidence_cost_usd: float = 0.0
+    # The same two figures over this stage's Claude calls only (#415).
+    claude_run_spend_usd: float = 0.0
+    claude_evidence_cost_usd: float = 0.0
     # Summed provider time over this run's LIVE calls (#334), measured in
     # memory and never written to a transcript. None when the stage made no
     # live call. A sum, not elapsed time: calls in a stage run concurrently, so
@@ -138,6 +148,14 @@ class RunUsage(BaseModel):
         return sum(stage.evidence_cost_usd for stage in self.stages)
 
     @property
+    def claude_run_spend_usd(self) -> float:
+        return sum(stage.claude_run_spend_usd for stage in self.stages)
+
+    @property
+    def claude_evidence_cost_usd(self) -> float:
+        return sum(stage.claude_evidence_cost_usd for stage in self.stages)
+
+    @property
     def provider_calls(self) -> int:
         return sum(stage.provider_calls for stage in self.stages)
 
@@ -158,6 +176,18 @@ def _number(usage: Mapping[str, Any], name: str) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     return value
+
+
+def is_claude(model: Any) -> bool:
+    """Whether a recorded model name is a Claude model.
+
+    Read off the name's last segment, so both `anthropic/claude-sonnet-5-5` and a
+    bare `claude-sonnet-5-5` count, while `voyage/…` embeddings and Jev do not. A
+    call with no recorded model — a transcript from before models were tracked —
+    is not counted as Claude: the figure would otherwise claim credits nobody can
+    attribute.
+    """
+    return isinstance(model, str) and model.rsplit("/", 1)[-1].startswith("claude")
 
 
 def _position(stage: str) -> tuple[int, str]:
@@ -217,6 +247,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
             stage.evidence_cost_usd += cost
             if from_provider:
                 stage.run_spend_usd += cost
+            if is_claude(model):
+                stage.claude_evidence_cost_usd += cost
+                if from_provider:
+                    stage.claude_run_spend_usd += cost
 
     return RunUsage(stages=[by_stage[name] for name in sorted(by_stage, key=_position)])
 
@@ -294,7 +328,21 @@ def render(usage: RunUsage) -> str:
         f"the evidence cost ${usage.evidence_cost_usd:.4f} to record "
         f"({usage.replayed_calls} call(s) replayed at no cost to this run)"
     )
+    lines.append(
+        f"  of which Claude credits: ${usage.claude_run_spend_usd:.4f} this run, "
+        f"${usage.claude_evidence_cost_usd:.4f} recorded"
+    )
     return "\n".join(lines)
+
+
+def report(calls: Iterable[Mapping[str, Any]]) -> None:
+    """Print the footer for `calls` on stderr, where every run reports its spend.
+
+    stderr because cost is not reproducible — a replayed run spends nothing where
+    the run that recorded it spent money — and stdout is what two runs over the
+    same input must produce byte-identically.
+    """
+    print(render(summarize(calls)), file=sys.stderr)
 
 
 class LabelUsage(BaseModel):

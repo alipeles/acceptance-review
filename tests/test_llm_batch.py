@@ -35,6 +35,7 @@ from acceptance.pipeline import run_review
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import Component, EvidenceTier, Finding, Link, Review
+from acceptance.usage import summarize as summarize_usage
 from tests.support import (
     _EMPTY_BY_SCHEMA,
     _completed,
@@ -232,6 +233,20 @@ def test_a_batched_call_is_priced_at_half_the_direct_price(tmp_path, provider):
     # Only the price moves; the token counts are what the provider reported.
     for name in ("prompt_tokens", "completion_tokens"):
         assert _record(batched)["usage"][name] == _record(direct)["usage"][name]
+
+
+def test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at(tmp_path, provider):
+    """The spend table reads the batch price off the call, not the direct one (#415)."""
+    batched = _client(tmp_path / "batched", batch=True)
+    direct = _client(tmp_path / "direct", batch=False)
+    batched.complete(MESSAGES, Verdict)
+    direct.complete(MESSAGES, Verdict)
+
+    direct_spend = summarize_usage(direct.observed_calls).claude_run_spend_usd
+    assert direct_spend > 0
+    assert summarize_usage(batched.observed_calls).claude_run_spend_usd == pytest.approx(
+        direct_spend / 2
+    )
 
 
 def _review(client: ModelClient) -> str:

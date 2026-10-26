@@ -65,6 +65,7 @@ from acceptance.llm import ModelClient, StrictResponseModel
 from acceptance.llm_batch import MessageBatcher
 from acceptance.model_base import PersistableModel
 from acceptance.review_state import Review
+from acceptance.usage import report as report_usage
 
 DEFAULT_RUNS_PER_MODEL = 3
 DEFAULT_MODELS: tuple[str, ...] = (DEFAULT_MODEL,)
@@ -725,11 +726,13 @@ def run_once(
     transcript_root: Path | None = None,
     client_factory: Callable[[RunConfig], ObservingClient] | None = None,
     batch: bool = False,
+    clients: list[ModelClient] | None = None,
 ) -> RunSnapshot:
     """One independent draw over `case`, snapshotted.
 
     `batch` sends the draw's live calls through the Message Batches API, at
-    half the price (#414); see `RunConfig.batch`.
+    half the price (#414); see `RunConfig.batch`. The draw's client is appended
+    to `clients` when one is given, so the caller can report what it spent.
     """
     config = RunConfig(model=run.model, mode=Mode.RECORD, seed=run.seed, batch=batch)
     if transcript_root is not None:
@@ -739,6 +742,8 @@ def run_once(
         client = client_factory(config)
     else:
         client = config.build_client(client_class=ObservingClient)
+    if clients is not None:
+        clients.append(client)
 
     scored = classify_case(case, client)
     review = scored.reviewer_output
@@ -847,6 +852,9 @@ def measure_instability(
         batcher=MessageBatcher() if batch else None,
     )
 
+    # Every client the measurement spends through, comparison client included,
+    # so the footer printed at the end accounts for every call it made (#415).
+    clients: list[ModelClient] = [comparison_client]
     per_model: list[ModelInstability] = []
     first_baseline: RunSnapshot | None = None
     for model in models:
@@ -857,6 +865,7 @@ def measure_instability(
                 transcript_root=transcript_root,
                 client_factory=client_factory,
                 batch=batch,
+                clients=clients,
             )
             for index, seed in enumerate(seeds)
         ]
@@ -873,10 +882,18 @@ def measure_instability(
             transcript_root=transcript_root,
             client_factory=client_factory,
             batch=batch,
+            clients=clients,
         )
         perturbation_result = _perturbation_result(
             perturbation.name, first_baseline, perturbed, comparison_client
         )
+
+    # On stderr, never in the report: the report is compared across runs, and
+    # what a run cost is not reproducible. Each client once, by identity: a
+    # `client_factory` may hand every draw the same client, and counting it per
+    # draw would multiply its calls.
+    unique = {id(client): client for client in clients}.values()
+    report_usage(call for client in unique for call in client.observed_calls)
 
     return InstabilityReport(
         provenance=MeasurementProvenance(

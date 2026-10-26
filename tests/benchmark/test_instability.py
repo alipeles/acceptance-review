@@ -7,6 +7,7 @@ design — that is what measuring a judge requires — so nothing here may.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -44,6 +45,7 @@ from acceptance.benchmark.instability import (
     summarize_model,
 )
 from acceptance.config import Mode, RunConfig
+from acceptance.llm import SERVED_FROM_RECORDING
 
 _EMPTY_BY_SCHEMA = {
     "_Decomposition": {"obligations": [], "open_questions": [], "requirement_dispositions": []},
@@ -524,6 +526,42 @@ def test_measure_instability_varies_the_seed_across_runs(tmp_path):
     )
 
     assert len({seed for seed, _ in calls}) == 2
+
+
+def test_the_measurement_prints_spend_for_every_call_it_made(tmp_path, capsys):
+    """When it finishes, the table on stderr counts every draw's calls and the
+    comparison client's too, live and replayed apart, with Claude's figure (#415)."""
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+    calls: list = []
+    comparison = client_finding_nothing()
+    # One replayed, priced call already on the comparison client: if the
+    # measurement left that client out, this call would be missing from the table.
+    comparison._observed_calls.append(
+        {
+            "stage": "comparison probe",
+            "key": "k",
+            "served_from": SERVED_FROM_RECORDING,
+            "model": "anthropic/claude-sonnet-5-5",
+            "usage": {"cost_usd": 0.25},
+            "seconds": None,
+        }
+    )
+
+    measure_instability(
+        case,
+        runs_per_model=2,
+        perturbation=None,
+        comparison_client=comparison,
+        client_factory=_observing_factory(calls),
+    )
+
+    printed = capsys.readouterr().err
+    assert "Model usage by stage:" in printed
+    counts = [tuple(map(int, row)) for row in re.findall(r"(\d+) live / (\d+) replayed", printed)]
+    assert sum(live for live, _ in counts) == len(calls) > 0
+    assert sum(replayed for _, replayed in counts) == 1
+    assert "comparison probe" in printed
+    assert "of which Claude credits: $0.0000 this run, $0.2500 recorded" in printed
 
 
 def test_measure_instability_records_the_conditions_that_produced_it(tmp_path):

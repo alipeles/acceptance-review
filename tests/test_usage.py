@@ -13,6 +13,8 @@ import json
 import tempfile
 from types import SimpleNamespace
 
+import pytest
+
 from acceptance.config import DEFAULT_MODEL
 from acceptance.llm import (
     SERVED_FROM_PROVIDER,
@@ -23,7 +25,7 @@ from acceptance.llm import (
     TranscriptStore,
     _extract_usage,
 )
-from acceptance.usage import _PIPELINE_ORDER, render, summarize
+from acceptance.usage import _PIPELINE_ORDER, is_claude, render, summarize
 
 
 def _call(stage, served_from, **usage):
@@ -272,6 +274,52 @@ def test_a_transcript_missing_its_usage_fields_is_counted_but_not_priced():
 
     assert usage.stages[0].calls == 1
     assert usage.evidence_cost_usd == 0.0
+
+
+# --- Claude credits, apart from every other provider (#415) --------------------
+
+
+def _priced(model, served_from, cost_usd):
+    return {**_call("decompose", served_from, cost_usd=cost_usd), "model": model}
+
+
+def test_claude_spend_is_a_figure_of_its_own_beside_other_providers():
+    """The run's total mixes Claude with embeddings and Jev; the Claude credits
+    must be readable without subtracting the others by hand."""
+    usage = summarize(
+        [
+            _priced("anthropic/claude-sonnet-5-5", SERVED_FROM_PROVIDER, 0.10),
+            _priced("anthropic/claude-sonnet-5-5", SERVED_FROM_RECORDING, 0.40),
+            _priced("voyage/voyage-3.5-lite", SERVED_FROM_PROVIDER, 0.01),
+            _priced("jev-latest", SERVED_FROM_PROVIDER, 0.02),
+        ]
+    )
+
+    assert usage.run_spend_usd == pytest.approx(0.13)
+    assert usage.claude_run_spend_usd == pytest.approx(0.10)
+    assert usage.claude_evidence_cost_usd == pytest.approx(0.50)
+    assert "of which Claude credits: $0.1000 this run, $0.5000 recorded" in render(usage)
+
+
+def test_a_run_with_no_claude_call_reports_no_claude_credits():
+    usage = summarize([_priced("jev-latest", SERVED_FROM_PROVIDER, 0.02)])
+
+    assert "of which Claude credits: $0.0000 this run, $0.0000 recorded" in render(usage)
+
+
+@pytest.mark.parametrize(
+    ("model", "expected"),
+    [
+        ("anthropic/claude-sonnet-5-5", True),
+        ("claude-haiku-5-5", True),
+        ("voyage/voyage-3.5-lite", False),
+        ("jev-latest", False),
+        ("openai/gpt-5", False),
+        (None, False),
+    ],
+)
+def test_a_call_counts_as_claude_by_its_recorded_model_name(model, expected):
+    assert is_claude(model) is expected
 
 
 # --- the determinism controls this must not touch ------------------------------
