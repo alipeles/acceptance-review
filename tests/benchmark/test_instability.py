@@ -540,6 +540,7 @@ def _comparison_with_one_replayed_call():
             "key": "k",
             "served_from": SERVED_FROM_RECORDING,
             "model": "anthropic/claude-sonnet-5-5",
+            "provider": "anthropic",
             "usage": {"cost_usd": 0.25},
             "seconds": None,
         }
@@ -578,7 +579,7 @@ def test_the_measurement_prints_spend_for_every_call_it_made(tmp_path, capsys):
     counts = [tuple(map(int, row)) for row in re.findall(r"(\d+) live / (\d+) replayed", printed)]
     assert sum(live for live, _ in counts) == len(calls) > 0
     assert sum(replayed for _, replayed in counts) == 1
-    assert "of which Claude credits: $0.0000 this run, $0.2500 recorded" in printed
+    assert "of which Anthropic credits: $0.0000 this run, $0.2500 recorded" in printed
 
 
 def test_a_client_every_draw_shares_has_its_calls_counted_once(tmp_path, capsys):

@@ -242,9 +242,9 @@ def test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at(tm
     batched.complete(MESSAGES, Verdict)
     direct.complete(MESSAGES, Verdict)
 
-    direct_spend = summarize_usage(direct.observed_calls).claude_run_spend_usd
+    direct_spend = summarize_usage(direct.observed_calls).anthropic_run_spend_usd
     assert direct_spend > 0
-    assert summarize_usage(batched.observed_calls).claude_run_spend_usd == pytest.approx(
+    assert summarize_usage(batched.observed_calls).anthropic_run_spend_usd == pytest.approx(
         direct_spend / 2
     )
 
@@ -428,6 +428,24 @@ def test_the_instability_experiment_batches_when_asked(tmp_path, batch):
         measure_instability(case, runs_per_model=2, client_factory=factory, batch=batch)
 
     assert seen[0].batch is batch
+
+
+@pytest.mark.parametrize(
+    ("model", "provider"),
+    [
+        ("anthropic/claude-sonnet-5-5", "anthropic"),
+        ("vertex_ai/claude-sonnet-5-5", "vertex_ai"),
+        ("bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0", "bedrock"),
+        ("voyage/voyage-3.5-lite", "voyage"),
+        ("claude-sonnet-5-5", None),
+        ("jev-latest", None),
+    ],
+)
+def test_the_provider_is_the_one_the_model_name_states(model, provider):
+    """Read off the configured name, never inferred from what the model is called."""
+    assert llm.provider_of(model) == provider
+    # Cache breakpoints follow the same decision, so they cannot disagree with it.
+    assert llm._needs_explicit_marker(model) is (provider == llm.ANTHROPIC)
 
 
 def test_the_default_model_is_one_that_batches():
