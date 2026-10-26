@@ -1,0 +1,712 @@
+tests run with: /Users/alipeles1/code/acceptance-worktrees/414-batches-and-cache/.venv/bin/python -m pytest, locked down (no network; set your own command with `acceptance set-test-command`)
+environment variables passed to the tests: HOME, LANG, LC_ALL, PATH, TMPDIR, USER
+Task completion: INCOMPLETE
+
+4 obligation(s) with non-discriminating test evidence (instability-measurement-prints-usage-table, usage-table-covers-every-measurement-call, usage-table-live-replayed-counted-apart, batch-call-counted-at-billed-price).
+
+Obligations:
+
+  1. When the benchmark's instability measurement finishes, it prints the same per-stage usage table that `acceptance check` and `acceptance decompose` already print.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/benchmark/instability.py#@@ -873,11 +882,19 @@ def measure_instability(
+         1.2  src/acceptance/usage.py#@@ -294,9 +328,23 @@ def render(usage: RunUsage) -> str:
+         1.3  src/acceptance/cli.py#@@ -364,7 +363,7 @@ def _report_usage(client: ModelClient) -> None:
+       test evidence: partially supported — kills 5 of 6 enumerated defects (static prediction)  [tier: static]
+         1.4  tests/benchmark/test_instability.py::test_omitted_parameters_fall_back_to_the_declared_defaults
+         1.5  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         recommended test: After the benchmark's instability measurement completes, the output contains the per-stage usage table in the same format as that printed by `acceptance check` and `acceptance decompose`.
+           inputs:  Run measure_instability with a client_factory that returns (a) the same single ObservingClient for every draw, and in a second case (b) distinct ObservingClient objects that each make a different number of calls (e.g. 2 and 3). Plus a comparison client with one pre-recorded call.
+           detects: Deduplicating clients by id() could drop distinct clients if ids collide, or double count if wrappers share the same underlying observed calls. A client_factory may also return clients sharing one call list.
+           full detail: acceptance recommendation --criterion instability-measurement-prints-usage-table
+
+  2. The per-stage usage table printed when the benchmark's instability measurement finishes accounts for every model call the measurement made, so that the table's totals equal the number of model calls issued during the measurement, with none omitted.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/benchmark/instability.py#@@ -725,11 +726,13 @@ def run_once(
+         2.2  src/acceptance/benchmark/instability.py#@@ -739,6 +742,8 @@ def run_once(
+         2.3  src/acceptance/benchmark/instability.py#@@ -847,6 +852,9 @@ def measure_instability(
+         2.4  src/acceptance/benchmark/instability.py#@@ -857,6 +865,7 @@ def measure_instability(
+         2.5  src/acceptance/benchmark/instability.py#@@ -873,11 +882,19 @@ def measure_instability(
+       test evidence: partially supported — kills 2 of 4 enumerated defects (static prediction)  [tier: static]
+         2.6  tests/benchmark/test_instability.py::test_a_caller_supplied_model_set_is_actually_measured
+         2.7  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         2.8  tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+         recommended test: After a measurement run that makes N model calls across its stages, the printed usage table's per-stage call counts sum to N, including calls from every stage and every repeated run of the measurement.
+           inputs:  measure_instability with a client_factory that (a) returns distinct wrapper ClientObjects each backed by one shared _observed_calls list, and (b) a client that is reset/mutated between draws, i.e. the factory reuses one object but clears or replaces its _observed_calls list after each draw. Each draw makes a known number of calls (e.g. 3).
+           detects: Clients are deduplicated by id(). If a client_factory returns distinct wrapper objects that share one underlying call log, calls are counted multiple times. If a client is rebuilt, mutated or reset between draws, earlier calls are lost. In either case the totals differ from the real number of calls.
+           full detail: acceptance recommendation --criterion usage-table-covers-every-measurement-call
+
+  3. The per-stage usage table printed at the end of the benchmark's instability measurement reports live model calls and replayed model calls as separate counts, rather than as a single combined figure.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/benchmark/instability.py#@@ -873,11 +882,19 @@ def measure_instability(
+         3.2  src/acceptance/usage.py#@@ -294,9 +328,23 @@ def render(usage: RunUsage) -> str:
+       test evidence: partially supported — kills 4 of 5 enumerated defects (static prediction)  [tier: static]
+         3.3  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         3.4  tests/test_usage.py::test_a_replayed_call_costs_this_run_nothing_but_still_cost_something_to_record
+         recommended test: The printed usage table shows distinct live and replayed call counts for each stage; a run mixing live and replayed calls shows each call counted under exactly one of the two, never merged into a single total.
+           inputs:  measure_instability where draws use a mix of live calls (served_from provider) and replayed calls (SERVED_FROM_RECORDING) across several distinct clients, a shared client reused by all draws, and a comparison client holding one replayed and one live call, all in the same stage name.
+           detects: Deduplicating clients by id() could drop distinct clients whose ids collide or drop calls, or conversely a shared client's calls could be double counted if dedup is not applied. Either would distort the live/replayed counts.
+           full detail: acceptance recommendation --criterion usage-table-live-replayed-counted-apart
+
+  4. The table presents the run's spend on Claude models as a figure separate from the run's spend on any other provider, so the Claude credits consumed by a run can be read off as its own figure.
+       requirements: task-02
+       code evidence: addressed
+         4.1  src/acceptance/usage.py#@@ -89,6 +96,9 @@ class StageUsage(BaseModel):
+         4.2  src/acceptance/usage.py#@@ -137,6 +147,14 @@ class RunUsage(BaseModel):
+         4.3  src/acceptance/usage.py#@@ -160,6 +178,18 @@ def _number(usage: Mapping[str, Any], name: str) -> float | None:
+         4.4  src/acceptance/usage.py#@@ -217,6 +247,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+         4.5  src/acceptance/usage.py#@@ -294,9 +328,23 @@ def render(usage: RunUsage) -> str:
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         4.6  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         4.7  tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+         4.8  tests/test_usage.py::test_a_call_counts_as_claude_by_its_recorded_model_name
+         4.9  tests/test_usage.py::test_a_run_with_no_claude_call_reports_no_claude_credits
+         4.10  tests/test_usage.py::test_claude_spend_is_a_figure_of_its_own_beside_other_providers
+
+  5. A call sent through the Message Batches API is counted in the run's spend at the price it was billed at (the batch price), not at the standard non-batch price for the same model.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/usage.py#@@ -17,6 +17,12 @@ reported, separately and by name:
+         5.2  src/acceptance/usage.py#@@ -217,6 +247,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+       test evidence: partially supported — kills 3 of 5 enumerated defects (static prediction)  [tier: static]
+         5.3  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         5.4  tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+         5.5  tests/test_llm_batch.py::test_a_batched_call_is_priced_at_half_the_direct_price
+         5.6  tests/test_usage.py::test_claude_spend_is_a_figure_of_its_own_beside_other_providers
+         recommended test: For a run containing a call made through the Message Batches API, the cost the table attributes to that call equals its billed batch price, and differs from what the standard non-batch rate would give.
+           inputs:  Run measure_instability with batch=True using a real or fake MessageBatcher and ObservingClient whose calls are only recorded into observed_calls when the batch is flushed/collected. Make the fake provider bill batch price 0.10 versus 0.20 direct, with at least 2 draws.
+           detects: If a batched client's `observed_calls` are filled only when the batch results are collected, reading them too early would give the footer calls with no cost or no batch price.
+           full detail: acceptance recommendation --criterion batch-call-counted-at-billed-price
+
+  6. Keep spend data absent from both the review state and the rendered report, as it is today; the review state and the rendered report contain no spend information.
+       requirements: task-03
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: strongly supported — kills 4 of 4 enumerated defects (static prediction)  [tier: static]
+         6.1  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         6.2  tests/benchmark/test_instability.py::test_the_three_movement_sources_are_reported_as_distinct_figures
+         6.3  tests/test_stage_attribution.py::test_the_check_command_prints_the_per_stage_breakdown
+         6.4  tests/test_stage_attribution.py::test_the_decompose_command_prints_the_per_stage_breakdown_too
+         6.5  tests/test_usage.py::test_claude_spend_is_a_figure_of_its_own_beside_other_providers
+
+  7. The change does not check the Console tier's rate limits against run sizes.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 24 changes across 7 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+  8. The change does not alter how any call is priced when it is recorded.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 24 changes across 7 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+  9. The change does not enforce a spending limit or stop a run that spends too much.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 24 changes across 7 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+Mandate coverage: 6 of 6 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] The cli.py usage reporting is refactored to call the new shared `report` helper, and its `render_usage` and `summarize_usage` imports are removed. No obligation needs this: `acceptance check` and `decompose` would print the new Claude line through `render` without it. It is a small dedup refactor of existing CLI code.
+       src/acceptance/cli.py#@@ -67,9 +67,8 @@ from acceptance.rerun import find_prior_review, task_digest
+       src/acceptance/cli.py#@@ -364,7 +363,7 @@ def _report_usage(client: ModelClient) -> None:
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  instability-measurement-prints-usage-table
+    [scope_too_narrow] instability-measurement-prints-usage-table/comparison-client-spend-omitted
+      The usage table may omit calls made by the comparison client (used for perturbation comparison), so the table does not cover all of the measurement's calls.
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/benchmark/instability.py#5
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [missing_case] instability-measurement-prints-usage-table/perturbed-run-client-not-collected
+      The perturbation run's client may not be added to the clients list, so its calls are missing from the table.
+      src/acceptance/benchmark/instability.py#4
+      src/acceptance/benchmark/instability.py#5
+      src/acceptance/benchmark/instability.py#2
+      pairs: 60 put to the model, 181 skipped once the defect was covered
+    [not_wired] instability-measurement-prints-usage-table/usage-report-not-called-on-all-paths
+      The usage report is printed only at the end of measure_instability on the normal path. The report may not be printed if the measurement returns early or raises, or if the CLI benchmark entry point bypasses this function.
+      src/acceptance/benchmark/instability.py#5
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [other] instability-measurement-prints-usage-table/dedup-by-identity-drops-or-duplicates-calls
+      Deduplicating clients by id() could drop distinct clients if ids collide, or double count if wrappers share the same underlying observed calls. A client_factory may also return clients sharing one call list.
+      src/acceptance/benchmark/instability.py#5
+      pairs: 241 put to the model, 0 skipped once the defect was covered
+    [wrong_output_shape] instability-measurement-prints-usage-table/table-format-differs-from-check-decompose
+      The render function now appends an extra Claude credits line, and the benchmark uses the shared report helper. If the format diverges between commands, the table is not the same as the one the others print.
+      src/acceptance/usage.py#6
+      src/acceptance/cli.py#1
+      src/acceptance/benchmark/instability.py#5
+      pairs: 4 put to the model, 237 skipped once the defect was covered
+    [other] instability-measurement-prints-usage-table/printed-to-stderr-not-stdout
+      The table is printed on stderr rather than stdout, so output captured from stdout does not contain the usage table.
+      src/acceptance/usage.py#6
+      src/acceptance/benchmark/instability.py#5
+      pairs: 4 put to the model, 4 skipped once the defect was covered
+
+  usage-table-covers-every-measurement-call
+    [scope_too_narrow] usage-table-covers-every-measurement-call/comparison-or-other-clients-untracked
+      The footer aggregates only the comparison client and the clients that run_once appends. Any other client the measurement spends through (for example one used by a perturbation step or a helper outside run_once) is never added to `clients`, so its calls are missing from the table.
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/benchmark/instability.py#5
+      pairs: 241 put to the model, 0 skipped once the defect was covered
+    [not_wired] usage-table-covers-every-measurement-call/run-once-client-not-registered-on-all-draws
+      The `clients` list reaches run_once only through explicit keyword arguments at each call site. If a call site (baseline draws, the perturbed draw, or another path) does not pass it, that draw's calls are never counted.
+      src/acceptance/benchmark/instability.py#1
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#4
+      src/acceptance/benchmark/instability.py#5
+      pairs: 12 put to the model, 229 skipped once the defect was covered
+    [other] usage-table-covers-every-measurement-call/identity-dedup-undercounts-distinct-clients
+      Clients are deduplicated by id(). If a client_factory returns distinct wrapper objects that share one underlying call log, calls are counted multiple times. If a client is rebuilt, mutated or reset between draws, earlier calls are lost. In either case the totals differ from the real number of calls.
+      src/acceptance/benchmark/instability.py#5
+      pairs: 241 put to the model, 0 skipped once the defect was covered
+    [missing_case] usage-table-covers-every-measurement-call/summarize-drops-calls-without-usage
+      summarize may skip calls that lack a usage record or stage name, such as replayed, batched or failed calls. The per-stage call counts then fall short of the number of calls actually issued.
+      src/acceptance/usage.py#5
+      pairs: 12 put to the model, 229 skipped once the defect was covered
+
+  usage-table-live-replayed-counted-apart
+    [scope_too_narrow] usage-table-live-replayed-counted-apart/comparison-client-not-in-footer
+      The footer for the instability measurement may omit calls from some clients (e.g. comparison client, perturbation draw client, or clients created by a client_factory), so their live/replayed calls are not counted in the per-stage table.
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/benchmark/instability.py#4
+      src/acceptance/benchmark/instability.py#5
+      src/acceptance/benchmark/instability.py#1
+      src/acceptance/benchmark/instability.py#2
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [other] usage-table-live-replayed-counted-apart/dedupe-by-id-drops-calls
+      Deduplicating clients by id() could drop distinct clients whose ids collide or drop calls, or conversely a shared client's calls could be double counted if dedup is not applied. Either would distort the live/replayed counts.
+      src/acceptance/benchmark/instability.py#5
+      pairs: 241 put to the model, 0 skipped once the defect was covered
+    [not_wired] usage-table-live-replayed-counted-apart/footer-not-called-on-benchmark-path
+      The usage report is only invoked at the end of measure_instability; other benchmark paths or early returns may not print the table, and the table might never be emitted for the instability measurement if the call is bypassed.
+      src/acceptance/benchmark/instability.py#5
+      src/acceptance/usage.py#6
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [wrong_output_shape] usage-table-live-replayed-counted-apart/render-merges-live-replayed-counts
+      The rendered table may show only a combined call count per stage, or the new Claude summary line shows only dollar figures, rather than distinct live and replayed counts per stage. The diff shows only the totals line mentioning replayed calls; the per-stage rows' columns are not visible and may merge counts.
+      src/acceptance/usage.py#6
+      src/acceptance/usage.py#2
+      pairs: 4 put to the model, 237 skipped once the defect was covered
+    [other] usage-table-live-replayed-counted-apart/summarize-miscounts-call-category
+      In summarize, a call could be counted both as live and as replayed, or as neither (e.g. calls without usage or with missing provider flags), so counts are merged or lost.
+      src/acceptance/usage.py#5
+      src/acceptance/usage.py#3
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+
+  claude-spend-separate-figure
+    [scope_too_narrow] claude-spend-separate-figure/is-claude-prefix-match-too-narrow
+      is_claude only matches model names whose last '/'-separated segment starts with 'claude'. Claude models recorded under other naming schemes (for example a dotted Bedrock-style id like 'anthropic.claude-...') or with a different case are not counted, so their cost is left out of the Claude figure.
+      src/acceptance/usage.py#4
+      pairs: 4 put to the model, 237 skipped once the defect was covered
+    [other] claude-spend-separate-figure/claude-accumulation-uses-wrong-model-source
+      The Claude accumulation in summarize relies on a `model` value that the diff does not show being read from each call. If that value is stale, taken from the wrong field, or missing for some calls, Claude costs are misclassified or dropped, and the figure no longer equals the sum of Claude model costs only.
+      src/acceptance/usage.py#5
+      pairs: 4 put to the model, 3 skipped once the defect was covered
+    [not_wired] claude-spend-separate-figure/claude-line-missing-on-some-render-paths
+      The Claude figure is added only as a closing line in render's totals block. Any earlier-return path in render, such as an empty-usage message, or any other usage display, such as the per-label table, would show no Claude figure.
+      src/acceptance/usage.py#6
+      src/acceptance/cli.py#1
+      pairs: 4 put to the model, 237 skipped once the defect was covered
+    [missing_case] claude-spend-separate-figure/instability-footer-misses-some-clients
+      The instability footer sums only the clients explicitly appended to `clients`. Clients created elsewhere, for example inside classify_case, the batcher, or the perturbation comparison, are not tracked. Their Claude spend would be missing from the Claude figure.
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/benchmark/instability.py#5
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+
+  batch-call-counted-at-billed-price
+    [other] batch-call-counted-at-billed-price/summarize-reprices-batch-calls
+      The per-call cost summed in `summarize` could be recomputed from token counts at the standard model rate instead of read from the billed cost recorded on the call. A batched call would then show the full direct price in the table and the Claude lines, not half of it.
+      src/acceptance/usage.py#5
+      src/acceptance/usage.py#0
+      pairs: 4 put to the model, 237 skipped once the defect was covered
+    [missing_case] batch-call-counted-at-billed-price/batch-call-without-model-excluded-from-claude-figure
+      `is_claude` returns False for any call whose recorded model is missing or not a string. If batched calls are recorded with a different or absent model field, their billed cost is dropped from the 'of which Claude credits' line while still counted in the total.
+      src/acceptance/usage.py#4
+      src/acceptance/usage.py#5
+      pairs: 4 put to the model, 4 skipped once the defect was covered
+    [not_wired] batch-call-counted-at-billed-price/instability-clients-not-all-collected
+      Spend is reported from the `clients` list gathered in `measure_instability`. A client that spends batched calls but is never appended (for example one built outside `run_once`, or any path that skips the `clients` argument) is missing from the footer, so its batch-priced calls never reach the table.
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/benchmark/instability.py#4
+      src/acceptance/benchmark/instability.py#5
+      pairs: 4 put to the model, 237 skipped once the defect was covered
+    [other] batch-call-counted-at-billed-price/usage-reported-before-batched-calls-recorded
+      If a batched client's `observed_calls` are filled only when the batch results are collected, reading them too early would give the footer calls with no cost or no batch price.
+      src/acceptance/benchmark/instability.py#5
+      src/acceptance/usage.py#6
+      pairs: 241 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] batch-call-counted-at-billed-price/batch-spend-reported-only-for-instability-path
+      Usage reporting was wired for the instability benchmark and the CLI review path. Other entry points that run batched calls may print no footer, or a footer without the billed batch price.
+      src/acceptance/cli.py#1
+      src/acceptance/benchmark/instability.py#5
+      pairs: 241 put to the model, 0 skipped once the defect was covered
+
+  spend-excluded-from-review-state-and-report
+    [unenforced_on_one_path] spend-excluded-from-review-state-and-report/instability-footer-wrong-stream
+      The new instability measurement path prints the spend footer through a shared helper; if that helper wrote to stdout, or the footer were folded into the InstabilityReport, spend would leak into the rendered report on this path while the CLI path keeps it on stderr.
+      src/acceptance/benchmark/instability.py#5
+      src/acceptance/usage.py#6
+      pairs: 4 put to the model, 4 skipped once the defect was covered
+    [other] spend-excluded-from-review-state-and-report/report-helper-prints-to-stdout
+      The new shared `report` helper is the single point deciding where spend is printed. Both the CLI and instability paths now depend on it, so an incorrect stream there would put spend figures in the rendered report output.
+      src/acceptance/usage.py#6
+      src/acceptance/cli.py#1
+      pairs: 4 put to the model, 4 skipped once the defect was covered
+    [scope_too_narrow] spend-excluded-from-review-state-and-report/new-claude-spend-fields-leak-into-persisted-state
+      New claude_run_spend_usd and claude_evidence_cost_usd fields were added to StageUsage and RunUsage, which are pydantic models. If these models are serialised into review state or the report (for example via model_dump or PersistableModel), the new spend fields would be persisted.
+      src/acceptance/usage.py#2
+      src/acceptance/usage.py#3
+      src/acceptance/usage.py#5
+      pairs: 4 put to the model, 237 skipped once the defect was covered
+    [established_not_maintained] spend-excluded-from-review-state-and-report/run-once-clients-leak-into-snapshot
+      run_once now collects clients and their observed calls for spend reporting. If the collected calls or spend data were attached to the RunSnapshot or review (which are compared across runs and persisted), spend would enter review state.
+      src/acceptance/benchmark/instability.py#1
+      src/acceptance/benchmark/instability.py#2
+      pairs: 60 put to the model, 181 skipped once the defect was covered
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [passed_under_edit] batch-call-counted-at-billed-price/batch-call-without-model-excluded-from-claude-figure x 233 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 4 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] claude-spend-separate-figure/claude-accumulation-uses-wrong-model-source x 234 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 3 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] claude-spend-separate-figure/instability-footer-misses-some-clients x 236 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] instability-measurement-prints-usage-table/comparison-client-spend-omitted x 236 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] instability-measurement-prints-usage-table/printed-to-stderr-not-stdout x 233 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 4 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] instability-measurement-prints-usage-table/usage-report-not-called-on-all-paths x 236 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] spend-excluded-from-review-state-and-report/instability-footer-wrong-stream x 233 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 4 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] spend-excluded-from-review-state-and-report/report-helper-prints-to-stdout x 233 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 4 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] usage-table-live-replayed-counted-apart/comparison-client-not-in-footer x 236 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] usage-table-live-replayed-counted-apart/footer-not-called-on-benchmark-path x 236 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] usage-table-live-replayed-counted-apart/summarize-miscounts-call-category x 236 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] batch-call-counted-at-billed-price/batch-call-without-model-excluded-from-claude-figure x 4 candidate test(s), ranked 201 to 221
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+  [defect_already_covered] batch-call-counted-at-billed-price/instability-clients-not-all-collected x 237 candidate test(s), ranked 5 to 241
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] batch-call-counted-at-billed-price/summarize-reprices-batch-calls x 237 candidate test(s), ranked 5 to 241
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at, tests/test_llm_batch.py::test_a_batched_call_is_priced_at_half_the_direct_price, tests/test_usage.py::test_claude_spend_is_a_figure_of_its_own_beside_other_providers
+  [defect_already_covered] claude-spend-separate-figure/claude-accumulation-uses-wrong-model-source x 3 candidate test(s), ranked 171 to 234
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made, tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at, tests/test_usage.py::test_claude_spend_is_a_figure_of_its_own_beside_other_providers
+  [defect_already_covered] claude-spend-separate-figure/claude-line-missing-on-some-render-paths x 237 candidate test(s), ranked 5 to 241
+    not asked: the defect was already covered by tests/test_usage.py::test_a_run_with_no_claude_call_reports_no_claude_credits, tests/test_usage.py::test_claude_spend_is_a_figure_of_its_own_beside_other_providers
+  [defect_already_covered] claude-spend-separate-figure/instability-footer-misses-some-clients x 1 candidate test(s), ranked 220 to 220
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] claude-spend-separate-figure/is-claude-prefix-match-too-narrow x 237 candidate test(s), ranked 5 to 241
+    not asked: the defect was already covered by tests/test_usage.py::test_a_call_counts_as_claude_by_its_recorded_model_name
+  [defect_already_covered] instability-measurement-prints-usage-table/comparison-client-spend-omitted x 1 candidate test(s), ranked 232 to 232
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] instability-measurement-prints-usage-table/perturbed-run-client-not-collected x 181 candidate test(s), ranked 61 to 241
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_omitted_parameters_fall_back_to_the_declared_defaults
+  [defect_already_covered] instability-measurement-prints-usage-table/printed-to-stderr-not-stdout x 4 candidate test(s), ranked 140 to 236
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] instability-measurement-prints-usage-table/table-format-differs-from-check-decompose x 237 candidate test(s), ranked 5 to 241
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] instability-measurement-prints-usage-table/usage-report-not-called-on-all-paths x 1 candidate test(s), ranked 205 to 205
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] spend-excluded-from-review-state-and-report/instability-footer-wrong-stream x 4 candidate test(s), ranked 72 to 225
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] spend-excluded-from-review-state-and-report/new-claude-spend-fields-leak-into-persisted-state x 237 candidate test(s), ranked 5 to 241
+    not asked: the defect was already covered by tests/test_usage.py::test_claude_spend_is_a_figure_of_its_own_beside_other_providers
+  [defect_already_covered] spend-excluded-from-review-state-and-report/report-helper-prints-to-stdout x 4 candidate test(s), ranked 119 to 208
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made, tests/test_stage_attribution.py::test_the_check_command_prints_the_per_stage_breakdown, tests/test_stage_attribution.py::test_the_decompose_command_prints_the_per_stage_breakdown_too
+  [defect_already_covered] spend-excluded-from-review-state-and-report/run-once-clients-leak-into-snapshot x 181 candidate test(s), ranked 61 to 241
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_three_movement_sources_are_reported_as_distinct_figures
+  [defect_already_covered] usage-table-covers-every-measurement-call/run-once-client-not-registered-on-all-draws x 229 candidate test(s), ranked 13 to 241
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_caller_supplied_model_set_is_actually_measured, tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] usage-table-covers-every-measurement-call/summarize-drops-calls-without-usage x 229 candidate test(s), ranked 13 to 241
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+  [defect_already_covered] usage-table-live-replayed-counted-apart/comparison-client-not-in-footer x 1 candidate test(s), ranked 236 to 236
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] usage-table-live-replayed-counted-apart/footer-not-called-on-benchmark-path x 1 candidate test(s), ranked 189 to 189
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] usage-table-live-replayed-counted-apart/render-merges-live-replayed-counts x 237 candidate test(s), ranked 5 to 241
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] usage-table-live-replayed-counted-apart/summarize-miscounts-call-category x 1 candidate test(s), ranked 192 to 192
+    not asked: the defect was already covered by tests/test_usage.py::test_a_replayed_call_costs_this_run_nothing_but_still_cost_something_to_record
+
+Running the project's tests:
+  the project's tests were run: 28 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [killed, NOT COUNTED] batch-call-counted-at-billed-price/batch-call-without-model-excluded-from-claude-figure
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 190-190:
+      -     return isinstance(model, str) and model.rsplit("/", 1)[-1].startswith("claude")
+      +     return isinstance(model, str) and model.startswith("claude")
+    caught by (4):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+      tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+      tests/test_usage.py::test_a_call_counts_as_claude_by_its_recorded_model_name
+      tests/test_usage.py::test_claude_spend_is_a_figure_of_its_own_beside_other_providers
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 233 dropped as not worth asking, 4 skipped once the defect was covered
+
+  [killed, NOT COUNTED] batch-call-counted-at-billed-price/batch-spend-reported-only-for-instability-path
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 896-896:
+      -     report_usage(call for client in unique for call in client.observed_calls)
+      (lines deleted)
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 241 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [survived, NOT COUNTED] batch-call-counted-at-billed-price/instability-clients-not-all-collected
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 885-885:
+      -             clients=clients,
+      +             clients=None,
+    no test caught it; 237 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 237 skipped once the defect was covered
+
+  [not_mutable] batch-call-counted-at-billed-price/summarize-reprices-batch-calls
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 237 skipped once the defect was covered
+    Lines 245-253 of `summarize` read the recorded `cost_usd` from the call's usage, so the code currently does the EXPECTED behaviour. Making the DEFECTIVE behaviour true needs a standard non-batch price per model, or a batch marker on the call. I can't see either in the offered regions, such as a pricing table or helper in usage.py, or a batch flag in the call mapping. I'd have to invent a rate or a field name, and that would not be a faithful mutant, so I give no edit.
+
+  [killed, NOT COUNTED] batch-call-counted-at-billed-price/usage-reported-before-batched-calls-recorded
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 887-896:
+      -         perturbation_result = _perturbation_result(
+      -             perturbation.name, first_baseline, perturbed, comparison_client
+      -         )
+      - 
+      -     # On stderr, never in the report: the report is compared across runs, and
+      -     # what a run cost is not reproducible. Each client once, by identity: a
+      -     # `client_factory` may hand every draw the same client, and counting it per
+      -     # draw would multiply its calls.
+      -     unique = {id(client): client for client in clients}.values()
+      -     report_usage(call for client in unique for call in client.observed_calls)
+      +         # On stderr, never in the report: the report is compared across runs, and
+      +         # what a run cost is not reproducible. Each client once, by identity: a
+      +         # `client_factory` may hand every draw the same client, and counting it per
+      +         # draw would multiply its calls.
+      +         unique = {id(client): client for client in clients}.values()
+      +         report_usage(call for client in unique for call in client.observed_calls)
+      + 
+      +         perturbation_result = _perturbation_result(
+      +             perturbation.name, first_baseline, perturbed, comparison_client
+      +         )
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 241 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] claude-spend-separate-figure/claude-accumulation-uses-wrong-model-source
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 250-250:
+      -             if is_claude(model):
+      +             if is_claude(call.get("model_id")):
+    caught by (3):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+      tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+      tests/test_usage.py::test_claude_spend_is_a_figure_of_its_own_beside_other_providers
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 234 dropped as not worth asking, 3 skipped once the defect was covered
+
+  [survived, NOT COUNTED] claude-spend-separate-figure/claude-line-missing-on-some-render-paths
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 345-345:
+      -     print(render(summarize(calls)), file=sys.stderr)
+      +     calls = list(calls)
+      +     if not calls:
+      +         print("no model calls this run", file=sys.stderr)
+      +         return
+      +     print(render(summarize(calls)), file=sys.stderr)
+    no test caught it; 237 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 237 skipped once the defect was covered
+
+  [killed, NOT COUNTED] claude-spend-separate-figure/instability-footer-misses-some-clients
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 857-857:
+      -     clients: list[ModelClient] = [comparison_client]
+      +     clients: list[ModelClient] = []
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 236 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [already_present] claude-spend-separate-figure/is-claude-prefix-match-too-narrow
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 237 skipped once the defect was covered
+    Line 190 does the DEFECTIVE behaviour: it takes the last '/'-segment and uses a case-sensitive startswith('claude'). Names like 'anthropic.claude-...' or 'Claude-...' are not matched. The repair matches 'claude' case-insensitively anywhere in the name, regardless of prefix or separator. Non-str models are still excluded, and voyage names do not contain 'claude'.
+
+  [killed, NOT COUNTED] instability-measurement-prints-usage-table/comparison-client-spend-omitted
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 857-857:
+      -     clients: list[ModelClient] = [comparison_client]
+      +     clients: list[ModelClient] = []
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 236 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [already_present] instability-measurement-prints-usage-table/dedup-by-identity-drops-or-duplicates-calls
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 241 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    Lines 895-896 deduplicate clients by id(client) and then count every call of each surviving client. Distinct client objects that share one underlying call list are each counted, so calls are double counted. The repair deduplicates by call identity instead, so each distinct call is counted once however many clients expose it.
+
+  [survived, NOT COUNTED] instability-measurement-prints-usage-table/perturbed-run-client-not-collected
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 885-885:
+      -             clients=clients,
+      (lines deleted)
+    no test caught it; 237 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 60 put to the model, 0 dropped as not worth asking, 181 skipped once the defect was covered
+
+  [killed, NOT COUNTED] instability-measurement-prints-usage-table/printed-to-stderr-not-stdout
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 345-345:
+      -     print(render(summarize(calls)), file=sys.stderr)
+      +     print(render(summarize(calls)), file=sys.stdout)
+    caught by (4):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+      tests/test_cli.py::test_the_removal_is_reported_in_json_mode_too
+      tests/test_stage_attribution.py::test_the_check_command_prints_the_per_stage_breakdown
+      tests/test_stage_attribution.py::test_the_decompose_command_prints_the_per_stage_breakdown_too
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 233 dropped as not worth asking, 4 skipped once the defect was covered
+
+  [survived, NOT COUNTED] instability-measurement-prints-usage-table/table-format-differs-from-check-decompose
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (refused_after_run): every one of the 9 tests that failed under the edit failed with NameError, which means the edited code no longer loads or names something that does not exist. Those failures say nothing about the named defect, so this is not counted as a kill and the defect goes to the static judge.
+         at src/acceptance/benchmark/instability.py lines 896-896:
+           -     report_usage(call for client in unique for call in client.observed_calls)
+           +     print("\n".join(
+           +         f"{call.get('stage', 'call')}: {call.get('model', '')}"
+           +         for client in unique
+           +         for call in client.observed_calls
+           +     ), file=sys.stderr)
+    injected at src/acceptance/benchmark/instability.py lines 896-896:
+      -     report_usage(call for client in unique for call in client.observed_calls)
+      +     import sys
+      +     from acceptance.usage import render, summarize
+      + 
+      +     table = render(summarize(call for client in unique for call in client.observed_calls))
+      +     print(table.replace("  ", " "), file=sys.stderr)
+    no test caught it; 237 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 237 skipped once the defect was covered
+
+  [killed, NOT COUNTED] instability-measurement-prints-usage-table/usage-report-not-called-on-all-paths
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 896-896:
+      -     report_usage(call for client in unique for call in client.observed_calls)
+      +     if perturbation_result is not None:
+      +         report_usage(call for client in unique for call in client.observed_calls)
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 236 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [killed, NOT COUNTED] spend-excluded-from-review-state-and-report/instability-footer-wrong-stream
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 345-345:
+      -     print(render(summarize(calls)), file=sys.stderr)
+      +     print(render(summarize(calls)))
+    caught by (4):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+      tests/test_cli.py::test_the_removal_is_reported_in_json_mode_too
+      tests/test_stage_attribution.py::test_the_check_command_prints_the_per_stage_breakdown
+      tests/test_stage_attribution.py::test_the_decompose_command_prints_the_per_stage_breakdown_too
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 233 dropped as not worth asking, 4 skipped once the defect was covered
+
+  [not_mutable] spend-excluded-from-review-state-and-report/new-claude-spend-fields-leak-into-persisted-state
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 237 skipped once the defect was covered
+    In the visible code, StageUsage and RunUsage are built by summarize() and rendered only to stderr (usage.py:345), so the code does the EXPECTED behaviour. Making the DEFECTIVE behaviour true would need the review-state or report code to serialise these models, for example by adding a field that holds RunUsage and dumping it. That code is outside the three offered regions, so no single contiguous edit inside them can do it. Adding fields or serialisation inside usage.py would not put spend values into a persisted review or report.
+
+  [killed, NOT COUNTED] spend-excluded-from-review-state-and-report/report-helper-prints-to-stdout
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 345-345:
+      -     print(render(summarize(calls)), file=sys.stderr)
+      +     print(render(summarize(calls)))
+    caught by (4):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+      tests/test_cli.py::test_the_removal_is_reported_in_json_mode_too
+      tests/test_stage_attribution.py::test_the_check_command_prints_the_per_stage_breakdown
+      tests/test_stage_attribution.py::test_the_decompose_command_prints_the_per_stage_breakdown_too
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 233 dropped as not worth asking, 4 skipped once the defect was covered
+
+  [not_mutable] spend-excluded-from-review-state-and-report/run-once-clients-leak-into-snapshot
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 60 put to the model, 0 dropped as not worth asking, 181 skipped once the defect was covered
+    The code currently does the EXPECTED behaviour. run_once only appends the client to the caller's `clients` list (lines 745-746), and the snapshot comes from `snapshot_review(review, run)` at line 753, which carries no calls or cost data. To make the DEFECTIVE behaviour real, spend data would have to be stored on RunSnapshot or Review. That needs a new field on those models and a change to snapshot_review or the persistence code, none of which is in the offered regions. The regions only cover the config and client setup and the classify_case call. An edit confined to them cannot add that field without guessing at model fields I cannot see.
+
+  [killed, NOT COUNTED] usage-table-covers-every-measurement-call/comparison-or-other-clients-untracked
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 857-857:
+      -     clients: list[ModelClient] = [comparison_client]
+      +     clients: list[ModelClient] = []
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 241 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [already_present] usage-table-covers-every-measurement-call/identity-dedup-undercounts-distinct-clients
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 241 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    Lines 895-896 deduplicate whole clients by id(client), which is the DEFECTIVE behaviour. Distinct wrapper clients that share one call log have each log counted in full, so calls are counted more than once. The repair deduplicates the individual call records by identity, so a shared log is counted once. This does not recover calls that a reused client has already dropped from its own log.
+
+  [survived, NOT COUNTED] usage-table-covers-every-measurement-call/run-once-client-not-registered-on-all-draws
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 885-885:
+      -             clients=clients,
+      (lines deleted)
+    no test caught it; 237 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 229 skipped once the defect was covered
+
+  [survived, NOT COUNTED] usage-table-covers-every-measurement-call/summarize-drops-calls-without-usage
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 255-255:
+      -     return RunUsage(stages=[by_stage[name] for name in sorted(by_stage, key=_position)])
+      +     return RunUsage(stages=[by_stage[name] for name in sorted(by_stage, key=_position) if name])
+    no test caught it; 237 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 229 skipped once the defect was covered
+
+  [killed, NOT COUNTED] usage-table-live-replayed-counted-apart/comparison-client-not-in-footer
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 857-857:
+      -     clients: list[ModelClient] = [comparison_client]
+      +     clients: list[ModelClient] = []
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 236 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [survived, NOT COUNTED] usage-table-live-replayed-counted-apart/dedupe-by-id-drops-calls
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 895-895:
+      -     unique = {id(client): client for client in clients}.values()
+      +     unique = clients
+    no test caught it; 237 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 241 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] usage-table-live-replayed-counted-apart/footer-not-called-on-benchmark-path
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 896-896:
+      -     report_usage(call for client in unique for call in client.observed_calls)
+      (lines deleted)
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 236 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [not_mutable] usage-table-live-replayed-counted-apart/render-merges-live-replayed-counts
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 237 skipped once the defect was covered
+    The code that renders the per-stage rows lies before line 328 and is not shown. I can see only the StageUsage fields (separate provider_calls and replayed_calls) and the tail of render (the totals line and the Claude summary line). Whether each row prints live and replayed counts as separate columns or one combined count cannot be determined from these lines, so I give no edit.
+
+  [killed, NOT COUNTED] usage-table-live-replayed-counted-apart/summarize-miscounts-call-category
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (failed_check): the span 221..224 falls outside the region(s) the defect named in src/acceptance/usage.py (147..160, 247..256)
+         at src/acceptance/usage.py lines 221-224:
+           -         if from_provider:
+           -             stage.provider_calls += 1
+           -         else:
+           -             stage.replayed_calls += 1
+           +         if from_provider:
+           +             stage.provider_calls += 1
+           +         if not from_provider and usage:
+           +             stage.replayed_calls += 1
+    injected at src/acceptance/usage.py lines 248-249:
+      -             if from_provider:
+      -                 stage.run_spend_usd += cost
+      +             if from_provider:
+      +                 stage.run_spend_usd += cost
+      +                 stage.replayed_calls += 1
+    caught by (1):
+      tests/test_usage.py::test_a_replayed_call_costs_this_run_nothing_but_still_cost_something_to_record
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 236 dropped as not worth asking, 1 skipped once the defect was covered
+
+Defects the delivered code already has, as asserted by the model (static tier; needs human review):
+  claude-spend-separate-figure/is-claude-prefix-match-too-narrow
+    Line 190 does the DEFECTIVE behaviour: it takes the last '/'-segment and uses a case-sensitive startswith('claude'). Names like 'anthropic.claude-...' or 'Claude-...' are not matched. The repair matches 'claude' case-insensitively anywhere in the name, regardless of prefix or separator. Non-str models are still excluded, and voyage names do not contain 'claude'.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/usage.py lines 190-190:
+      -     return isinstance(model, str) and model.rsplit("/", 1)[-1].startswith("claude")
+      +     return isinstance(model, str) and "claude" in model.lower()
+  instability-measurement-prints-usage-table/dedup-by-identity-drops-or-duplicates-calls
+    Lines 895-896 deduplicate clients by id(client) and then count every call of each surviving client. Distinct client objects that share one underlying call list are each counted, so calls are double counted. The repair deduplicates by call identity instead, so each distinct call is counted once however many clients expose it.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/benchmark/instability.py lines 895-896:
+      -     unique = {id(client): client for client in clients}.values()
+      -     report_usage(call for client in unique for call in client.observed_calls)
+      +     unique_calls = {
+      +         id(call): call for client in clients for call in client.observed_calls
+      +     }.values()
+      +     report_usage(unique_calls)
+  usage-table-covers-every-measurement-call/identity-dedup-undercounts-distinct-clients
+    Lines 895-896 deduplicate whole clients by id(client), which is the DEFECTIVE behaviour. Distinct wrapper clients that share one call log have each log counted in full, so calls are counted more than once. The repair deduplicates the individual call records by identity, so a shared log is counted once. This does not recover calls that a reused client has already dropped from its own log.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/benchmark/instability.py lines 895-896:
+      -     unique = {id(client): client for client in clients}.values()
+      -     report_usage(call for client in unique for call in client.observed_calls)
+      +     unique_calls = {
+      +         id(call): call for client in clients for call in client.observed_calls
+      +     }.values()
+      +     report_usage(unique_calls)
+
+Candidate tests set aside (no conclusion rests on these):
+  [not_started] tests/fixtures/archetypes/08-unrequested-change-separable/head/test_report.py::test_low_stock_report_filters_by_threshold
+    the project's own pytest does not collect this test, so asking it to run would make the whole run fail without running anything. Test discovery found the file; pytest declines it.
+  [timed_out] tests/benchmark/test_rating_regression.py::test_a_judge_that_never_issues_strongly_supported_fails_the_suite
+    the test exceeded its own time budget
+    it failed with: _acceptance_sandbox_netblock.TestTimedOut: ACCEPTANCE_TEST_TIMEOUT: the test exceeded its per-test time budget
+  [failed: UnresolvableRevisionError] tests/benchmark/test_rating_regression.py::test_a_judge_that_always_issues_strongly_supported_fails_the_suite
+    the test passes in the project but not in an unmodified copy of it, so a failure under an injected defect could not be attributed to the defect. In the copy it was: failed
+    it failed with: acceptance.benchmark.corpus.UnresolvableRevisionError: case '163-gate2-run1' names revision '4d13ba1', which this repository no longer resolves. The corpus cases are pinned to real history; a rewritten or pruned commit breaks them by design rather than shrinking the suite silently.
+  [failed: UnresolvableRevisionError] tests/benchmark/test_rating_regression.py::test_scoring_goes_through_the_shared_benchmark_path
+    the test passes in the project but not in an unmodified copy of it, so a failure under an injected defect could not be attributed to the defect. In the copy it was: failed
+    it failed with: acceptance.benchmark.corpus.UnresolvableRevisionError: case '163-gate2-run1' names revision '4d13ba1', which this repository no longer resolves. The corpus cases are pinned to real history; a rewritten or pruned commit breaks them by design rather than shrinking the suite silently.
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run 0abf1ff71bd245a8
+  continuing 0120ca7731131f30
+  continue this run with: --continue 0abf1ff71bd245a8
+Model usage by stage:
+  stage                                model                                                                        calls     prompt  output  reasoning  cached  this run  recorded  time this run
+  -----------------------------------  ---------------------------------------------------  -----------------------------  ---------  ------  ---------  ------  --------  --------  -------------
+  obligation linking                   voyage/voyage-3.5-lite                                     1 (0 live / 1 replayed)        582       0          —       —   $0.0000   $0.0000              —
+  defect enumeration                   anthropic/claude-sonnet-5-5                                6 (6 live / 0 replayed)     35,456   8,939      2,116    0.0%   $0.1769   $0.1769          85.9s
+  defect-to-test pair mapping          voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5      28 (28 live / 0 replayed)    181,858   5,305      5,080    0.0%   $0.3330   $0.3330          91.5s
+  coverage classification              anthropic/claude-sonnet-5-5                                1 (1 live / 0 replayed)     10,029   1,057          0    0.0%   $0.0356   $0.0356           8.0s
+  unrequested-change detection         anthropic/claude-sonnet-5-5                                1 (1 live / 0 replayed)      8,972     583        402    0.0%   $0.0283   $0.0283           7.0s
+  test recommendation                  anthropic/claude-sonnet-5-5                                1 (1 live / 0 replayed)      9,094   3,336          0    0.0%   $0.0555   $0.0555          25.6s
+  defect-to-test pair judgement (Jev)  jev-latest                                           1662 (1662 live / 0 replayed)  6,734,417  33,240          —       —   $0.2828   $0.2828         592.0s
+  mutation descriptor                  anthropic/claude-sonnet-5-5                              30 (30 live / 0 replayed)    136,222  14,070      7,725   13.5%   $0.4087   $0.4087         186.4s
+  this run spent $1.3208 on 1729 live call(s); the evidence cost $1.3208 to record (1 call(s) replayed at no cost to this run)
+  of which Claude credits: $1.0371 this run, $1.0371 recorded
+

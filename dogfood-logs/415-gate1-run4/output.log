@@ -1,0 +1,68 @@
+run 0120ca7731131f30
+  continuing 79fd0c73e215688e
+  requirements: 0 derived, 5 carried, 1 revised; 4 decompose call(s)
+  continue this run with: --continue 0120ca7731131f30
+Model usage by stage:
+  stage                        model                                                                  calls  prompt  output  cached  this run  recorded  time this run
+  ---------------------------  ---------------------------------------------------  -----------------------  ------  ------  ------  --------  --------  -------------
+  decompose                    anthropic/claude-sonnet-5-5                          3 (3 live / 0 replayed)  28,295     850    0.0%   $0.0789   $0.0789          15.3s
+  decompose-summary            anthropic/claude-sonnet-5-5                          1 (1 live / 0 replayed)   1,527     463    0.0%   $0.0083   $0.0083           4.7s
+  obligation linking           voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5  2 (2 live / 0 replayed)   2,109     164    0.0%   $0.0053   $0.0053           3.3s
+  requirement carry alignment  anthropic/claude-sonnet-5-5                          1 (1 live / 0 replayed)     789      32    0.0%   $0.0019   $0.0019           2.3s
+  this run spent $0.0944 on 7 live call(s); the evidence cost $0.0944 to record (0 call(s) replayed at no cost to this run)
+Requirements: 6   with obligations: 6
+
+[task-01] When the benchmark's instability measurement finishes, it prints the per-stage
+    usage table that `acceptance check` and `acceptance decompose` already print,
+    covering every model call the measurement made, with live and replayed calls counted
+    apart.
+    -> instability-measurement-prints-usage-table  [functional/explicit, code_and_tests]
+       When the benchmark's instability measurement finishes, it prints the same per-
+       stage usage table that `acceptance check` and `acceptance decompose` already
+       print.
+    -> usage-table-covers-every-measurement-call  [functional/explicit, code_and_tests]
+       The per-stage usage table printed when the benchmark's instability measurement
+       finishes accounts for every model call the measurement made, so that the table's
+       totals equal the number of model calls issued during the measurement, with none
+       omitted.
+    -> usage-table-live-replayed-counted-apart  [functional/explicit, code_and_tests]
+       The per-stage usage table printed at the end of the benchmark's instability
+       measurement reports live model calls and replayed model calls as separate counts,
+       rather than as a single combined figure.
+
+[task-02] The table shows what the run spent on Claude models separately from what it
+    spent on any other provider, so the Claude credits a run consumed can be read off as
+    a figure of its own. A call sent through the Message Batches API counts at the price
+    it was billed at.
+    -> claude-spend-separate-figure  [functional/explicit, code_and_tests]
+       The table presents the run's spend on Claude models as a figure separate from the
+       run's spend on any other provider, so the Claude credits consumed by a run can be
+       read off as its own figure.
+    -> batch-call-counted-at-billed-price  [functional/explicit, code_and_tests]
+       A call sent through the Message Batches API is counted in the run's spend at the
+       price it was billed at (the batch price), not at the standard non-batch price for
+       the same model.
+
+[task-03] Spend stays out of the review state and the rendered report, as it is today.
+    -> spend-excluded-from-review-state-and-report  [invariant/explicit, code_and_tests]
+       Keep spend data absent from both the review state and the rendered report, as it
+       is today; the review state and the rendered report contain no spend information.
+
+[exclusion-01] Checking the Console tier's rate limits against run sizes.
+    -> no-console-rate-limit-check  [invariant/explicit, code_only, satisfied by absence]
+       The change does not check the Console tier's rate limits against run sizes.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+
+[exclusion-02] Changing how any call is priced when it is recorded.
+    -> no-change-to-call-pricing-at-record-time  [invariant/explicit, code_only, satisfied by absence]
+       The change does not alter how any call is priced when it is recorded.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+
+[exclusion-03] Enforcing a spending limit or stopping a run that spends too much.
+    -> no-spend-limit-enforcement  [invariant/explicit, code_only, satisfied by absence]
+       The change does not enforce a spending limit or stop a run that spends too much.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+

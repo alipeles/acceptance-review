@@ -1,0 +1,1062 @@
+tests run with: /Users/alipeles1/code/acceptance-worktrees/414-batches-and-cache/.venv/bin/python -m pytest, locked down (no network; set your own command with `acceptance set-test-command`)
+environment variables passed to the tests: HOME, LANG, LC_ALL, PATH, TMPDIR, USER
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm.turn_on_debug()'.
+
+Task completion: INCOMPLETE
+
+4 obligation(s) with non-discriminating test evidence (instability-measurement-prints-usage-table, usage-table-covers-every-measurement-call, provider-routing-by-model-name, provider-decision-single-source).
+
+Obligations:
+
+  1. When the benchmark's instability measurement finishes, it prints the same per-stage usage table that `acceptance check` and `acceptance decompose` already print.
+       requirements: task-01
+       code evidence: addressed
+         1.1  src/acceptance/benchmark/instability.py#@@ -65,6 +65,7 @@ from acceptance.llm import ModelClient, StrictResponseModel
+         1.2  src/acceptance/benchmark/instability.py#@@ -847,36 +852,51 @@ def measure_instability(
+         1.3  src/acceptance/usage.py#@@ -294,9 +318,27 @@ def render(usage: RunUsage) -> str:
+       test evidence: partially supported — kills 4 of 5 enumerated defects (static prediction)  [tier: static]
+         1.4  tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+         1.5  tests/benchmark/test_instability.py::test_a_measurement_that_fails_part_way_still_prints_what_it_spent
+         1.6  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         1.7  tests/test_usage.py::test_a_run_with_no_anthropic_call_reports_no_anthropic_credits
+         1.8  tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+         recommended test: After the benchmark's instability measurement completes, the output contains the per-stage usage table in the same format as that printed by `acceptance check` and `acceptance decompose`.
+           inputs:  Run measure_instability on the 01-missed-obligation archetype (build_benchmark_case) with runs_per_model=2, a Perturbation noop, and a comparison client whose observed_calls grows when the report is assembled (a subclass or wrapper of client_finding_nothing() that appends a priced observed call each time its complete/embed is invoked, plus one that fires only when the InstabilityReport/provenance is built). Use an observing client_factory like _observing_factory(calls).
+           detects: The usage footer is printed in the `finally` block before the `InstabilityReport` is built. Any model call made after that point (for example by the comparison client while assembling provenance or the report) is missing from the printed table.
+           full detail: acceptance recommendation --criterion instability-measurement-prints-usage-table
+
+  2. The per-stage usage table printed when the benchmark's instability measurement finishes accounts for every model call the measurement made, so that the table's totals equal the number of model calls issued during the measurement, with none omitted.
+       requirements: task-01
+       code evidence: addressed
+         2.1  src/acceptance/benchmark/instability.py#@@ -725,11 +726,13 @@ def run_once(
+         2.2  src/acceptance/benchmark/instability.py#@@ -739,6 +742,8 @@ def run_once(
+         2.3  src/acceptance/benchmark/instability.py#@@ -847,36 +852,51 @@ def measure_instability(
+       test evidence: partially supported — kills 3 of 4 enumerated defects (static prediction)  [tier: static]
+         2.4  tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+         2.5  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         2.6  tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+         2.7  tests/test_usage.py::test_a_stage_the_order_does_not_name_is_reported_last_rather_than_dropped
+         2.8  tests/test_usage.py::test_a_transcript_missing_its_usage_fields_is_counted_but_not_priced
+         recommended test: After a measurement run that makes N model calls across its stages, the printed usage table's per-stage call counts sum to N, including calls from every stage and every repeated run of the measurement.
+           inputs:  Run measure_instability on the 01-missed-obligation archetype with runs_per_model=2, models=['test/model-a','test/model-b'], a Perturbation noop, and a comparison client (wrapping client_finding_nothing()) that records a new observed call whenever summarize_model, _perturbation_result, or the provenance/report build uses it. Include the pre-seeded replayed call from _comparison_with_one_replayed_call. Configure the factory so the number of calls N is known: len(calls) live calls from draws plus the comparison client's calls.
+           detects: The usage footer is printed in the `finally` block, before `InstabilityReport` is built. Any model call made while building the report, such as comparison-client calls in the provenance or the final assembly, happens after the footer and is missing from the table.
+           full detail: acceptance recommendation --criterion usage-table-covers-every-measurement-call
+
+  3. The per-stage usage table printed at the end of the benchmark's instability measurement reports live model calls and replayed model calls as separate counts, rather than as a single combined figure.
+       requirements: task-01
+       code evidence: addressed
+         3.1  src/acceptance/benchmark/instability.py#@@ -847,36 +852,51 @@ def measure_instability(
+         3.2  src/acceptance/usage.py#@@ -294,9 +318,27 @@ def render(usage: RunUsage) -> str:
+       test evidence: strongly supported — kills 5 of 5 enumerated defects (static prediction)  [tier: static]
+         3.3  tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+         3.4  tests/benchmark/test_instability.py::test_a_measurement_that_fails_part_way_still_prints_what_it_spent
+         3.5  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         3.6  tests/test_usage.py::test_a_replayed_call_costs_this_run_nothing_but_still_cost_something_to_record
+
+  4. The table presents the run's spend on calls billed to Anthropic's own API as a figure separate from the run's spend on calls billed to any other provider.
+       requirements: task-02
+       code evidence: addressed
+         4.1  src/acceptance/usage.py#@@ -89,6 +98,9 @@ class StageUsage(BaseModel):
+         4.2  src/acceptance/usage.py#@@ -137,6 +149,14 @@ class RunUsage(BaseModel):
+         4.3  src/acceptance/usage.py#@@ -217,6 +237,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+         4.4  src/acceptance/usage.py#@@ -294,9 +318,27 @@ def render(usage: RunUsage) -> str:
+       test evidence: strongly supported — kills 6 of 6 enumerated defects (static prediction)  [tier: static]
+         4.5  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         4.6  tests/test_stage_attribution.py::test_the_breakdown_never_reaches_review_state
+         4.7  tests/test_stage_attribution.py::test_the_breakdown_never_reaches_the_rendered_report
+         4.8  tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states
+         4.9  tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+         4.10  tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+
+  5. The table presents the Anthropic credits consumed by a run as a distinct figure of its own, so a reader can read off the Anthropic total directly without deriving it from a combined total.
+       requirements: task-02
+       code evidence: addressed
+         5.1  src/acceptance/usage.py#@@ -89,6 +98,9 @@ class StageUsage(BaseModel):
+         5.2  src/acceptance/usage.py#@@ -137,6 +149,14 @@ class RunUsage(BaseModel):
+         5.3  src/acceptance/usage.py#@@ -217,6 +237,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+         5.4  src/acceptance/usage.py#@@ -294,9 +318,27 @@ def render(usage: RunUsage) -> str:
+       test evidence: strongly supported — kills 6 of 6 enumerated defects (static prediction)  [tier: static]
+         5.5  tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+         5.6  tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+         5.7  tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+         5.8  tests/test_llm_batch.py::test_the_provider_is_the_one_the_model_name_states
+         5.9  tests/test_usage.py::test_a_run_with_no_anthropic_call_reports_no_anthropic_credits
+         5.10  tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states
+         5.11  tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+         5.12  tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+
+  6. A call sent through the Message Batches API is counted in the spend table at the price it was actually billed at, rather than at the standard (non-batch) price for that model.
+       requirements: task-02
+       code evidence: addressed
+         6.1  src/acceptance/usage.py#@@ -17,6 +17,14 @@ reported, separately and by name:
+         6.2  src/acceptance/usage.py#@@ -217,6 +237,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+       test evidence: strongly supported — kills 3 of 3 enumerated defects (static prediction)  [tier: static]
+         6.3  tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+         6.4  tests/test_llm_batch.py::test_a_batched_call_is_priced_at_half_the_direct_price
+         6.5  tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states
+         6.6  tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+         6.7  tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+
+  7. Each call is routed to the provider that its configured model name states; the provider is derived from the configured model name and not from any other source.
+       requirements: task-03
+       code evidence: addressed
+         7.1  src/acceptance/llm.py#@@ -238,6 +238,35 @@ _MIN_REUSABLE_OPENING_TOKENS = {
+         7.2  src/acceptance/config.py#@@ -215,6 +216,30 @@ class RunConfig(BaseModel):
+         7.3  src/acceptance/llm.py#@@ -808,6 +837,10 @@ class ModelClient:
+       test evidence: partially supported — kills 3 of 4 enumerated defects (static prediction)  [tier: static]
+         7.4  tests/test_config.py::test_a_model_name_that_states_no_provider_is_refused
+         7.5  tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+         7.6  tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states
+         7.7  tests/test_usage.py::test_an_observed_embedding_carries_the_provider_its_model_name_states
+         7.8  tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+         7.9  tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+         recommended test: For a given configured model name, the client dispatches the call to the provider that name states, and changing the configured model name to one stating a different provider changes the provider the call is sent to.
+           inputs:  Every model-name-bearing field of RunConfig other than model/embedding_model/stage_models (discover through RunConfig.model_fields: any field whose name contains 'model', e.g. reviewer, Jev or judge models), each set to a bare LiteLLM-inferrable name like 'claude-sonnet-5-5', and a recording completion_fn on a client built via RunConfig.build_client to see which model string actually reaches it.
+           detects: The provider-stating check is applied only to `model`, `embedding_model` and `stage_models`. Any other configured model name on RunConfig (or elsewhere) is not validated, so a bare `claude-...` name can still be routed by LiteLLM's own inference with no stated provider.
+           full detail: acceptance recommendation --criterion provider-routing-by-model-name
+
+  8. Every part of the client that depends on the provider (whether a request carries cache breakpoints, whether it can be batched, and whose credits it spent) derives its behavior from the one resolved provider decision, not from its own interpretation of the configured model name.
+       requirements: task-03
+       code evidence: addressed
+         8.1  src/acceptance/llm.py#@@ -238,6 +238,35 @@ _MIN_REUSABLE_OPENING_TOKENS = {
+         8.2  src/acceptance/llm.py#@@ -247,7 +276,7 @@ def _needs_explicit_marker(model: str) -> bool:
+         8.3  src/acceptance/llm.py#@@ -808,6 +837,10 @@ class ModelClient:
+         8.4  src/acceptance/llm.py#@@ -1320,7 +1353,7 @@ class ModelClient:
+         8.5  src/acceptance/usage.py#@@ -217,6 +237,10 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
+       test evidence: partially supported — kills 4 of 6 enumerated defects (static prediction)  [tier: static]
+         8.6  tests/test_config.py::test_a_model_name_that_states_no_provider_is_refused
+         8.7  tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+         8.8  tests/test_llm_batch.py::test_two_recorded_reviews_are_byte_identical_whichever_way_their_calls_were_sent
+         8.9  tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states
+         8.10  tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+         recommended test: For a given configured model name, cache-breakpoint inclusion, batch eligibility, and credit attribution all agree with the single resolved provider. Overriding or changing that one decision changes all three consistently, and no provider-dependent code path parses the model name itself.
+           inputs:  Enumerate RunConfig.model_fields and select every field that holds a model name (any str field or dict[str, str] whose name contains 'model', e.g. Jev/reviewer/judge model fields if present). Construct RunConfig with each such field set in turn to a bare provider-less name ('claude-sonnet-5-5', 'jev-latest'), leaving all other fields at default. Also build a ModelClient directly and call RunConfig.model_copy(update=...) or assign after construction with a bare name.
+           detects: The provider-stating validator is applied only to `model`, `embedding_model` and `stage_models`. Any other model-name field on `RunConfig` or elsewhere (for example a Jev or reviewer model), or a model name supplied through a path that bypasses config validation, can still reach the client without a stated provider. That name would be treated as having no provider for breakpoints, batching and credits.
+           full detail: acceptance recommendation --criterion provider-decision-single-source
+
+  9. Keep spend data absent from both the review state and the rendered report, as it is today; the review state and the rendered report contain no spend information.
+       requirements: task-04
+       code evidence: addressed
+         (no corresponding change)
+       test evidence: no plausible defect — no plausible static defect enumerated; test evidence is not obtainable here  [tier: static]
+         (no mapped test)
+
+  10. The change does not check the Console tier's rate limits against run sizes.
+       requirements: exclusion-01
+       code evidence: addressed
+         examined 51 changes across 9 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+  11. The change does not alter how any call is priced when it is recorded.
+       requirements: exclusion-02
+       code evidence: addressed
+         examined 51 changes across 9 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+  12. The change does not enforce a spending limit or stop a run that spends too much.
+       requirements: exclusion-03
+       code evidence: addressed
+         examined 51 changes across 9 files; none breaches this boundary
+       test evidence: not required — A scope exclusion is satisfied by work not done, which a reader confirms by inspecting the change; it is owed code evidence only, never a test.
+
+Mandate coverage: 7 of 7 requirements yielded obligations
+  (none)
+
+Unrequested changes:
+  1. [in_service] RunConfig now rejects any model, embedding_model or stage_models name that has no provider prefix. The obligations only ask that the provider be derived from the configured name. None asks that bare names be refused at config validation. This breaks existing callers, which is why many tests had to be renamed from 'm' to 'test/m'.
+       src/acceptance/config.py#@@ -29,7 +29,7 @@ from enum import Enum
+       src/acceptance/config.py#@@ -39,6 +39,7 @@ from acceptance.llm import (
+       src/acceptance/config.py#@@ -215,6 +216,30 @@ class RunConfig(BaseModel):
+       tests/test_config.py#@@ -10,6 +10,30 @@ from acceptance.config import (
+       tests/benchmark/test_instability.py#@@ -100,7 +104,7 @@ def _recording_factory(calls: list):
+       tests/benchmark/test_instability.py#@@ -286,7 +290,7 @@ def test_content_and_shape_are_reported_as_separate_figures():
+       tests/benchmark/test_instability.py#@@ -302,7 +306,7 @@ def test_presence_rows_show_an_obligation_missing_from_some_runs():
+       tests/benchmark/test_instability.py#@@ -318,7 +322,7 @@ def test_evidence_class_distribution_counts_every_draw():
+       tests/benchmark/test_instability.py#@@ -337,13 +341,13 @@ def test_the_harness_uses_the_benchmark_variance_path_and_not_a_second_one():
+       tests/benchmark/test_instability.py#@@ -352,8 +356,8 @@ def test_cross_model_agreement_is_reported_alongside_within_model_variance():
+       tests/benchmark/test_instability.py#@@ -361,7 +365,7 @@ def test_cross_model_agreement_is_none_with_a_single_model():
+       tests/benchmark/test_instability.py#@@ -499,7 +503,7 @@ def test_run_once_drives_the_real_pipeline_and_snapshots_its_output(tmp_path):
+       tests/benchmark/test_instability.py#@@ -540,7 +650,7 @@ def test_measure_instability_records_the_conditions_that_produced_it(tmp_path):
+       tests/benchmark/test_instability.py#@@ -583,7 +693,7 @@ def test_observations_do_not_leak_between_clients():
+       tests/benchmark/test_instability.py#@@ -600,15 +710,15 @@ def test_a_caller_supplied_model_set_is_actually_measured(tmp_path):
+       tests/benchmark/test_instability.py#@@ -687,7 +797,7 @@ def test_content_and_shape_counts_diverge_when_both_kinds_occur():
+       tests/benchmark/test_instability.py#@@ -727,7 +837,7 @@ def test_the_observing_client_does_not_change_what_the_pipeline_produces(tmp_pat
+       tests/benchmark/test_instability.py#@@ -748,7 +858,7 @@ def test_cross_model_agreement_covers_every_judgement_axis():
+       tests/benchmark/test_instability.py#@@ -757,7 +867,7 @@ def test_cross_model_agreement_covers_every_judgement_axis():
+       tests/benchmark/test_instability.py#@@ -807,7 +917,7 @@ def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
+       tests/benchmark/test_instability.py#@@ -815,7 +925,7 @@ def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
+       tests/benchmark/test_instability.py#@@ -841,7 +951,7 @@ def test_decomposition_variation_is_surfaced_and_not_only_evidence_variation():
+       tests/benchmark/test_instability.py#@@ -882,7 +992,7 @@ def test_the_harness_reports_variance_without_reducing_it():
+       tests/benchmark/test_instability.py#@@ -918,10 +1028,10 @@ def test_the_default_client_is_configured_as_run_config_builds_it(tmp_path, monk
+       tests/benchmark/test_instability.py#@@ -952,7 +1062,9 @@ def test_the_observing_client_forwards_every_parameter_complete_accepts(monkeypa
+       tests/benchmark/test_instability.py#@@ -1018,7 +1130,9 @@ def test_the_default_construction_runs_the_pipeline_end_to_end(tmp_path, monkeyp
+  2. [in_service] The measurement now prints the usage table from a `finally` block, so a failed measurement also prints it. The obligations only ask for the table when the measurement finishes. The body was also re-indented inside a try block, and a test was added for the partial-failure case.
+       src/acceptance/benchmark/instability.py#@@ -847,36 +852,51 @@ def measure_instability(
+       tests/benchmark/test_instability.py#@@ -526,12 +530,118 @@ def test_measure_instability_varies_the_seed_across_runs(tmp_path):
+
+Ways the change could fail a criterion (what each rating is measured against):
+
+  instability-measurement-prints-usage-table
+    [scope_too_narrow] instability-measurement-prints-usage-table/usage-after-finally-uncounted
+      The usage footer is printed in the `finally` block before the `InstabilityReport` is built. Any model call made after that point (for example by the comparison client while assembling provenance or the report) is missing from the printed table.
+      src/acceptance/benchmark/instability.py#3
+      pairs: 264 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] instability-measurement-prints-usage-table/clients-not-all-collected
+      Only the comparison client and the clients passed through `run_once` are collected. A client used elsewhere in the measurement (for example by `summarize_model` or `_perturbation_result` via a different client, or a `client_factory` client created outside `run_once`) is left out, and its calls are absent from the table.
+      src/acceptance/benchmark/instability.py#1
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [wrong_output_shape] instability-measurement-prints-usage-table/report-printed-to-stderr-only
+      The table is written to stderr via `report`, not to the benchmark's stdout output. If the criterion's "output" means stdout or the benchmark's result output, the table is not in it. The table also prints when the measurement raises, not only when it finishes.
+      src/acceptance/usage.py#5
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [wrong_output_shape] instability-measurement-prints-usage-table/footer-format-diverges
+      `render` was changed to append two extra lines (Anthropic credits and other providers) to the footer. This changes the table's shape compared with what `check` and `decompose` print, unless those commands also use this same `render`.
+      src/acceptance/usage.py#5
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [other] instability-measurement-prints-usage-table/calls-lost-or-double-counted-by-dedup
+      Clients are deduplicated by `id(client)`. Calls are read from `client.observed_calls`. If a client does not accumulate calls in that attribute, as with batched draws or a factory-built client, the table is empty or undercounted.
+      src/acceptance/benchmark/instability.py#3
+      src/acceptance/usage.py#4
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+
+  usage-table-covers-every-measurement-call
+    [scope_too_narrow] usage-table-covers-every-measurement-call/calls-after-report-omitted
+      The usage footer is printed in the `finally` block, before `InstabilityReport` is built. Any model call made while building the report, such as comparison-client calls in the provenance or the final assembly, happens after the footer and is missing from the table.
+      src/acceptance/benchmark/instability.py#3
+      pairs: 264 put to the model, 0 skipped once the defect was covered
+    [not_wired] usage-table-covers-every-measurement-call/draw-client-not-registered
+      A draw's client is added to `clients` only when the caller passes `clients`. A draw that does not receive the list, such as the perturbed run or a draw reached through another call path, contributes no calls to the table. The append also sits after client construction, so a client that is built but not appended is dropped.
+      src/acceptance/benchmark/instability.py#1
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [other] usage-table-covers-every-measurement-call/identity-dedup-drops-distinct-calls
+      Clients are deduplicated by `id()` so that a shared client is counted once. If a factory returns distinct client objects that share one call log, calls are double counted. If it returns one client whose `observed_calls` is replaced or reset per draw, calls from earlier draws are lost. Either way the total differs from the number of calls issued.
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [missing_case] usage-table-covers-every-measurement-call/summarize-drops-calls-by-stage
+      `summarize` groups calls by stage and counts provider calls and replayed calls separately. A call whose stage is missing or unrecognised, or a replayed or batched call, may fall outside the per-stage counts, so the table's per-stage call counts do not sum to N.
+      src/acceptance/usage.py#4
+      src/acceptance/usage.py#5
+      pairs: 12 put to the model, 252 skipped once the defect was covered
+
+  usage-table-live-replayed-counted-apart
+    [not_wired] usage-table-live-replayed-counted-apart/report-not-called-on-measurement-path
+      The footer is only printed if `report_usage` actually runs on the measurement path. If it were skipped, for example on an early return or an exception path outside the `finally`, no usage table would be printed at the end of the instability measurement.
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [scope_too_narrow] usage-table-live-replayed-counted-apart/draw-clients-not-collected
+      Clients are collected only when `run_once` is given a `clients` list. If a draw's client, such as a perturbed draw's or one built by a `client_factory`, is not appended, its live and replayed calls are missing from the table.
+      src/acceptance/benchmark/instability.py#1
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [other] usage-table-live-replayed-counted-apart/identity-dedup-miscounts-calls
+      Clients are deduplicated by `id()`. Distinct clients are all kept, but a shared client's observed calls could be counted once per draw, or two distinct clients' calls could be collapsed. In either case the live and replayed counts would be inflated or deflated.
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [other] usage-table-live-replayed-counted-apart/call-counted-in-both-live-and-replayed
+      In summarize, the new Anthropic accounting is gated on `from_provider`, and the live/replayed classification is made per call. If a call could be tallied as both live and replayed, or in neither, the two counts would not partition the calls.
+      src/acceptance/usage.py#4
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [wrong_output_shape] usage-table-live-replayed-counted-apart/render-merges-live-and-replayed
+      The rendered per-stage table could show a single combined call count instead of separate live and replayed columns. The new footer lines in render add spend breakdowns, not call-count breakdowns.
+      src/acceptance/usage.py#5
+      src/acceptance/usage.py#3
+      pairs: 28 put to the model, 236 skipped once the defect was covered
+
+  table-separates-anthropic-spend
+    [not_wired] table-separates-anthropic-spend/provider-field-missing-on-calls
+      The observed call record's 'provider' key is only set in one place in llm.py and may be absent on other call-record paths (e.g. replayed, embedding, or Jev calls), so summarize's call.get('provider') returns None and Anthropic calls are attributed to 'other providers'.
+      src/acceptance/llm.py#2
+      src/acceptance/usage.py#4
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [wrong_output_shape] table-separates-anthropic-spend/anthropic-split-only-in-total-lines
+      The per-stage table rows do not show the Anthropic-vs-other split; only two summary lines appended after the totals carry it. The 'table' itself may not contain a distinct Anthropic column, and the split is derived only at the footer.
+      src/acceptance/usage.py#5
+      pairs: 28 put to the model, 236 skipped once the defect was covered
+    [other] table-separates-anthropic-spend/other-providers-by-subtraction
+      The other-providers figure is computed as total minus Anthropic via float subtraction rather than attributed directly; floating point error can produce tiny negative or inexact values like -0.0000, and it lumps any miscounted call into 'other'.
+      src/acceptance/usage.py#5
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [missing_case] table-separates-anthropic-spend/provider-attribution-by-prefix-only
+      Attribution relies on provider_of reading the text before the first '/', so a model with no '/' (provider None) or a Claude model served through a different route is silently classified as non-Anthropic; and the 'provider' key is None if model is not a str.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#2
+      src/acceptance/config.py#2
+      pairs: 124 put to the model, 140 skipped once the defect was covered
+    [scope_too_narrow] table-separates-anthropic-spend/instability-footer-misses-calls
+      In measure_instability, only clients appended to the list are reported; clients built by other paths (e.g. perturbation, summarize_model internals, batcher) may spend without being included, so the Anthropic spend figure under-counts.
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [condition_inverted] table-separates-anthropic-spend/run-spend-gating-inconsistent
+      Anthropic run spend is added only when from_provider, nested under the Anthropic check; if the nesting or flag were wrong, replayed calls would count as this run's Anthropic spend or live ones would not.
+      src/acceptance/usage.py#4
+      pairs: 4 put to the model, 2 skipped once the defect was covered
+
+  anthropic-credits-own-figure
+    [not_wired] anthropic-credits-own-figure/provider-not-recorded-on-call
+      The observed call record's `provider` key is only set in one place in llm.py; if some call paths (e.g., batched, replayed, embedding, or other record constructors) do not carry `provider`, `summarize` never sees ANTHROPIC and those Anthropic calls are excluded from the Anthropic figure.
+      src/acceptance/llm.py#2
+      src/acceptance/usage.py#4
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [scope_too_narrow] anthropic-credits-own-figure/provider-from-model-name-prefix-only
+      The provider is derived from the text before the first '/' in the model name; Anthropic calls whose name is formatted differently (e.g. bare names, or non-'anthropic' prefix routing to Anthropic) get provider None/other and are not counted as Anthropic credits.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#2
+      src/acceptance/usage.py#4
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [condition_inverted] anthropic-credits-own-figure/anthropic-spend-ignores-replay-condition
+      Anthropic run spend is accumulated only when from_provider is true, while evidence cost is accumulated for all calls; if this gating is wrong or mismatched, the Anthropic 'credits consumed' figure counts replayed calls or omits live ones.
+      src/acceptance/usage.py#4
+      pairs: 4 put to the model, 3 skipped once the defect was covered
+    [wrong_output_shape] anthropic-credits-own-figure/anthropic-figure-missing-from-rendered-table
+      The Anthropic and other-provider lines are appended only at the end of render and may be skipped by early-return paths in render (e.g., empty usage), or are presented as lines of the footer not as figure in the table/stage rows; also 'other providers' is derived by subtraction, which can yield float residue or negative values.
+      src/acceptance/usage.py#5
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [missing_case] anthropic-credits-own-figure/instability-clients-not-reported
+      Footer accounting in measure_instability only includes clients appended via run_once or the comparison client; calls made by other clients (e.g. a client_factory returning clients whose observed_calls are not tracked, or summarize_model internals) would be absent from the Anthropic figure.
+      src/acceptance/benchmark/instability.py#2
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+    [other] anthropic-credits-own-figure/identity-dedup-drops-distinct-calls
+      Dedup by id(client) in the finally block is correct only if distinct clients are distinct objects; but ids of clients are fine while alive. However, a shared client's observed_calls would be counted once, which is intended; the risk is that a factory yielding fresh clients per draw is fine, whereas one that wraps shared state may double count or drop.
+      src/acceptance/benchmark/instability.py#3
+      pairs: 4 put to the model, 1 skipped once the defect was covered
+
+  batch-call-counted-at-billed-price
+    [other] batch-call-counted-at-billed-price/provider-read-from-returned-model-name
+      The observed call's `provider` is derived from the `model` taken from the recorded response. A batched Anthropic call may record a bare returned model name such as `claude-...` with no `anthropic/` prefix. `provider_of` then gives None, so a batched call's discounted cost never reaches the Anthropic figure.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#0
+      src/acceptance/usage.py#4
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [other] batch-call-counted-at-billed-price/batched-cost-repriced-at-list-price
+      The spend table may take each call's cost from a standard per-model price lookup instead of the cost recorded on the call at billing. A batched call would then show the full list price rather than the batch-discounted price. The docstring says nothing here re-prices, but the cost computation is not visible in the diff.
+      src/acceptance/usage.py#4
+      src/acceptance/usage.py#0
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [missing_case] batch-call-counted-at-billed-price/anthropic-spend-gated-on-served-from
+      The Anthropic run-spend figure is only added when `from_provider` is true. If batched calls are recorded with a `served_from` value other than the provider constant, their billed cost lands in the evidence figure only, and the Anthropic run-spend figure misses it.
+      src/acceptance/usage.py#4
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+
+  provider-routing-by-model-name
+    [scope_too_narrow] provider-routing-by-model-name/validator-skips-other-model-fields
+      The provider-stating check is applied only to `model`, `embedding_model` and `stage_models`. Any other configured model name on RunConfig (or elsewhere) is not validated, so a bare `claude-...` name can still be routed by LiteLLM's own inference with no stated provider.
+      src/acceptance/config.py#2
+      pairs: 264 put to the model, 0 skipped once the defect was covered
+    [missing_case] provider-routing-by-model-name/empty-provider-prefix-accepted
+      `provider_of` returns the text before the first `/` whenever a `/` exists. A name like `/claude-x` or ` /model` gives an empty or blank provider rather than None, so it passes validation and is treated as stating a provider.
+      src/acceptance/llm.py#0
+      src/acceptance/config.py#2
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [other] provider-routing-by-model-name/provider-label-from-record-model-not-request-model
+      The `provider` recorded on an observed call is derived from the `model` taken from the transcript record. This may differ from the configured model the call was actually dispatched with. The provider used for accounting could then disagree with the provider the configured name states.
+      src/acceptance/llm.py#2
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [not_wired] provider-routing-by-model-name/batching-and-markers-decided-by-different-tests
+      The Anthropic-vs-other decision is made by `is_anthropic_api` for cache markers and batching. Usage accounting uses a separate `call.get('provider') == ANTHROPIC` comparison on a stored label. Calls lacking the `provider` key, such as replayed older records, are counted as non-Anthropic even when the model name states anthropic.
+      src/acceptance/usage.py#4
+      src/acceptance/llm.py#3
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+
+  provider-decision-single-source
+    [other] provider-decision-single-source/provider-rederived-per-consumer
+      There is no single resolved provider decision. Cache-breakpoint inclusion, batch eligibility and credit attribution each call `provider_of` on a model string at their own site. Overriding or changing the provider in one place would not change the other two, and each could be handed a different string.
+      src/acceptance/llm.py#0
+      src/acceptance/llm.py#1
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [other] provider-decision-single-source/attribution-uses-recorded-model-not-request-model
+      Batching and cache markers are decided from the request's model. The `provider` stamped on the observed call comes from a different `model` value, which the comment says is the model the transcript was recorded against. If the two differ, for example on replay against a transcript from another provider, credits are attributed to a different provider than the one that drove breakpoints and batching.
+      src/acceptance/llm.py#2
+      src/acceptance/llm.py#3
+      pairs: 9 put to the model, 255 skipped once the defect was covered
+    [unenforced_on_one_path] provider-decision-single-source/usage-trusts-optional-provider-key
+      `summarize` attributes credits only when `call.get('provider') == ANTHROPIC`. Observed calls built on a path that does not stamp `provider` (other call types, older records, or a non-model-client source) silently count as 'other providers', even if their model is Anthropic's.
+      src/acceptance/usage.py#4
+      src/acceptance/llm.py#2
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+    [scope_too_narrow] provider-decision-single-source/cache-opening-threshold-still-parses-name
+      Only `_needs_explicit_marker` and the batching guard were moved onto `provider_of`. Other provider-dependent helpers, such as `_minimum_reusable_opening(model)`, may still interpret the model name themselves (substring or prefix checks), so they can disagree with the single decision.
+      src/acceptance/llm.py#1
+      pairs: 264 put to the model, 0 skipped once the defect was covered
+    [scope_too_narrow] provider-decision-single-source/validator-covers-only-some-model-fields
+      The provider-stating validator is applied only to `model`, `embedding_model` and `stage_models`. Any other model-name field on `RunConfig` or elsewhere (for example a Jev or reviewer model), or a model name supplied through a path that bypasses config validation, can still reach the client without a stated provider. That name would be treated as having no provider for breakpoints, batching and credits.
+      src/acceptance/config.py#2
+      pairs: 264 put to the model, 0 skipped once the defect was covered
+    [other] provider-decision-single-source/provider-parse-accepts-empty-head
+      `provider_of` returns the part before the first `/` whenever a `/` is present, so a name such as '/claude-x' yields an empty-string provider rather than None. The validator accepts it and every consumer treats it as a non-Anthropic provider.
+      src/acceptance/llm.py#0
+      src/acceptance/config.py#2
+      pairs: 4 put to the model, 260 skipped once the defect was covered
+
+  spend-excluded-from-review-state-and-report  (reused from an earlier run)
+    none enumerated: The diff keeps spend out of review state and the report. `report_usage` calls `print(..., file=sys.stderr)`, so the footer goes to stderr and is never returned or stored. In `measure_instability`, it is called before `InstabilityReport` is built, and its result (None) is not passed in. The new `provider` key is added only to the in-memory observed-call dicts, and `clients` holds only client objects. The new `anthropic_*` fields live on `StageUsage` and `RunUsage`, which are usage models, not review state or report models. `render` is the footer renderer, not the report renderer. Nothing in the diff writes spend into `Review`, `RunSnapshot`, `InstabilityReport` or the provenance, so no static path violates the invariant.
+
+Pairs left unjudged (a criterion's rating cannot account for these):
+  [passed_under_edit] anthropic-credits-own-figure/anthropic-spend-ignores-replay-condition x 257 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 3 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] anthropic-credits-own-figure/identity-dedup-drops-distinct-calls x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] anthropic-credits-own-figure/instability-clients-not-reported x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] instability-measurement-prints-usage-table/calls-lost-or-double-counted-by-dedup x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] instability-measurement-prints-usage-table/clients-not-all-collected x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] table-separates-anthropic-spend/instability-footer-misses-calls x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] table-separates-anthropic-spend/run-spend-gating-inconsistent x 258 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 2 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] usage-table-covers-every-measurement-call/draw-client-not-registered x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] usage-table-covers-every-measurement-call/identity-dedup-drops-distinct-calls x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] usage-table-live-replayed-counted-apart/call-counted-in-both-live-and-replayed x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] usage-table-live-replayed-counted-apart/draw-clients-not-collected x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] usage-table-live-replayed-counted-apart/identity-dedup-miscounts-calls x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [passed_under_edit] usage-table-live-replayed-counted-apart/report-not-called-on-measurement-path x 259 candidate test(s)
+    not asked: the test still passed when this defect was injected, and 1 other candidate test(s) failed under the same edit. The edit was not verified, so this is not evidence that the test fails to catch the defect.
+  [defect_already_covered] anthropic-credits-own-figure/anthropic-figure-missing-from-rendered-table x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_usage.py::test_a_run_with_no_anthropic_call_reports_no_anthropic_credits, tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+  [defect_already_covered] anthropic-credits-own-figure/anthropic-spend-ignores-replay-condition x 3 candidate test(s), ranked 160 to 261
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made, tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at, tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+  [defect_already_covered] anthropic-credits-own-figure/identity-dedup-drops-distinct-calls x 1 candidate test(s), ranked 253 to 253
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+  [defect_already_covered] anthropic-credits-own-figure/instability-clients-not-reported x 1 candidate test(s), ranked 251 to 251
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] anthropic-credits-own-figure/provider-from-model-name-prefix-only x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_the_provider_is_the_one_the_model_name_states, tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states
+  [defect_already_covered] anthropic-credits-own-figure/provider-not-recorded-on-call x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states, tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers, tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+  [defect_already_covered] batch-call-counted-at-billed-price/anthropic-spend-gated-on-served-from x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at, tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+  [defect_already_covered] batch-call-counted-at-billed-price/batched-cost-repriced-at-list-price x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at, tests/test_llm_batch.py::test_a_batched_call_is_priced_at_half_the_direct_price, tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+  [defect_already_covered] batch-call-counted-at-billed-price/provider-read-from-returned-model-name x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states, tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+  [defect_already_covered] instability-measurement-prints-usage-table/calls-lost-or-double-counted-by-dedup x 1 candidate test(s), ranked 246 to 246
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+  [defect_already_covered] instability-measurement-prints-usage-table/clients-not-all-collected x 1 candidate test(s), ranked 256 to 256
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] instability-measurement-prints-usage-table/footer-format-diverges x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_usage.py::test_a_run_with_no_anthropic_call_reports_no_anthropic_credits, tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+  [defect_already_covered] instability-measurement-prints-usage-table/report-printed-to-stderr-only x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_measurement_that_fails_part_way_still_prints_what_it_spent, tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] provider-decision-single-source/attribution-uses-recorded-model-not-request-model x 255 candidate test(s), ranked 6 to 264
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_two_recorded_reviews_are_byte_identical_whichever_way_their_calls_were_sent, tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states
+  [defect_already_covered] provider-decision-single-source/provider-parse-accepts-empty-head x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_config.py::test_a_model_name_that_states_no_provider_is_refused
+  [defect_already_covered] provider-decision-single-source/provider-rederived-per-consumer x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+  [defect_already_covered] provider-decision-single-source/usage-trusts-optional-provider-key x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at, tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+  [defect_already_covered] provider-routing-by-model-name/batching-and-markers-decided-by-different-tests x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at, tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers, tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+  [defect_already_covered] provider-routing-by-model-name/empty-provider-prefix-accepted x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_config.py::test_a_model_name_that_states_no_provider_is_refused
+  [defect_already_covered] provider-routing-by-model-name/provider-label-from-record-model-not-request-model x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states, tests/test_usage.py::test_an_observed_embedding_carries_the_provider_its_model_name_states
+  [defect_already_covered] table-separates-anthropic-spend/anthropic-split-only-in-total-lines x 236 candidate test(s), ranked 29 to 264
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made, tests/test_stage_attribution.py::test_the_breakdown_never_reaches_the_rendered_report
+  [defect_already_covered] table-separates-anthropic-spend/instability-footer-misses-calls x 1 candidate test(s), ranked 248 to 248
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] table-separates-anthropic-spend/other-providers-by-subtraction x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+  [defect_already_covered] table-separates-anthropic-spend/provider-attribution-by-prefix-only x 140 candidate test(s), ranked 125 to 264
+    not asked: the defect was already covered by tests/test_stage_attribution.py::test_the_breakdown_never_reaches_review_state, tests/test_stage_attribution.py::test_the_breakdown_never_reaches_the_rendered_report
+  [defect_already_covered] table-separates-anthropic-spend/provider-field-missing-on-calls x 260 candidate test(s), ranked 5 to 264
+    not asked: the defect was already covered by tests/test_usage.py::test_an_observed_call_carries_the_provider_its_model_name_states, tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers, tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+  [defect_already_covered] table-separates-anthropic-spend/run-spend-gating-inconsistent x 2 candidate test(s), ranked 231 to 260
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made, tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+  [defect_already_covered] usage-table-covers-every-measurement-call/draw-client-not-registered x 1 candidate test(s), ranked 259 to 259
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] usage-table-covers-every-measurement-call/identity-dedup-drops-distinct-calls x 1 candidate test(s), ranked 231 to 231
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+  [defect_already_covered] usage-table-covers-every-measurement-call/summarize-drops-calls-by-stage x 252 candidate test(s), ranked 13 to 264
+    not asked: the defect was already covered by tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at, tests/test_usage.py::test_a_stage_the_order_does_not_name_is_reported_last_rather_than_dropped, tests/test_usage.py::test_a_transcript_missing_its_usage_fields_is_counted_but_not_priced
+  [defect_already_covered] usage-table-live-replayed-counted-apart/call-counted-in-both-live-and-replayed x 1 candidate test(s), ranked 236 to 236
+    not asked: the defect was already covered by tests/test_usage.py::test_a_replayed_call_costs_this_run_nothing_but_still_cost_something_to_record
+  [defect_already_covered] usage-table-live-replayed-counted-apart/draw-clients-not-collected x 1 candidate test(s), ranked 252 to 252
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] usage-table-live-replayed-counted-apart/identity-dedup-miscounts-calls x 1 candidate test(s), ranked 221 to 221
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+  [defect_already_covered] usage-table-live-replayed-counted-apart/render-merges-live-and-replayed x 236 candidate test(s), ranked 29 to 264
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_measurement_that_fails_part_way_still_prints_what_it_spent, tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+  [defect_already_covered] usage-table-live-replayed-counted-apart/report-not-called-on-measurement-path x 1 candidate test(s), ranked 226 to 226
+    not asked: the defect was already covered by tests/benchmark/test_instability.py::test_a_measurement_that_fails_part_way_still_prints_what_it_spent
+
+Running the project's tests:
+  the project's tests were run: 39 enumerated defect(s) name an editable region and pair routing is on, so an observation can decide which pairs are worth a model call — it still cannot count as evidence, because edit verification is off
+
+Defects injected, and which tests caught them:
+
+  [already_present] anthropic-credits-own-figure/anthropic-figure-missing-from-rendered-table
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    Lines 325-328 derive the 'other providers' figures by subtracting the Anthropic figures from the totals. A tiny negative float residue would render as -0.0000, which is the DEFECTIVE behaviour. The repair clamps each difference at zero. I could not see render's earlier paths or the usage dataclass, so I cannot say whether other paths omit the Anthropic line, and a stored other-provider field would need edits outside this region.
+
+  [killed, NOT COUNTED] anthropic-credits-own-figure/anthropic-spend-ignores-replay-condition
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 242-243:
+      -                 if from_provider:
+      -                     stage.anthropic_run_spend_usd += cost
+      +                 if not from_provider:
+      +                     stage.anthropic_run_spend_usd += cost
+    caught by (3):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+      tests/test_llm_batch.py::test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at
+      tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 257 dropped as not worth asking, 3 skipped once the defect was covered
+
+  [killed, NOT COUNTED] anthropic-credits-own-figure/identity-dedup-drops-distinct-calls
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 898-898:
+      -         unique = {id(client): client for client in clients}.values()
+      +         unique = clients
+    caught by (1):
+      tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [killed, NOT COUNTED] anthropic-credits-own-figure/instability-clients-not-reported
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 886-886:
+      -                 clients=clients,
+      (lines deleted)
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [already_present] anthropic-credits-own-figure/provider-from-model-name-prefix-only
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    Lines 257-258 of provider_of take the text before the first '/' as the provider and return None for any name without '/'. is_anthropic_api (line 267) and the Anthropic-credit sums in usage.py (line 240) therefore match only names that start with 'anthropic/'. A bare Claude name such as 'claude-3-5-sonnet' is billed to Anthropic's own API but is recorded with provider None, so it falls into 'other providers'. That is the DEFECTIVE behaviour. The repair makes a bare 'claude…' name resolve to ANTHROPIC. It contradicts the docstring's statement that a name with no '/' states no provider, so this reading of 'expected' is a judgement. I did not handle non-'anthropic' prefixes that route to Anthropic, since the code gives no way to tell which prefixes those are.
+
+  [survived, NOT COUNTED] anthropic-credits-own-figure/provider-not-recorded-on-call
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 843-843:
+      -             "provider": provider_of(model) if isinstance(model, str) else None,
+      +             "provider": provider_of(model) if isinstance(model, str) and served_from == SERVED_FROM_PROVIDER else None,
+    no test caught it; 260 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+
+  [already_present] batch-call-counted-at-billed-price/anthropic-spend-gated-on-served-from
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    Lines 242-243 gate `stage.anthropic_run_spend_usd += cost` on `from_provider`, so a call whose `served_from` is not the provider constant adds nothing to the Anthropic run-spend figure. That is the DEFECTIVE behaviour. The repair drops the gate so a freshly billed Anthropic call adds its cost to both Anthropic figures.
+
+  [not_mutable] batch-call-counted-at-billed-price/batched-cost-repriced-at-list-price
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    summarize reads cost_usd straight from each call's recorded usage (line 235) and does no re-pricing, so it looks like the EXPECTED behaviour. To make it charge the list price I would need either a pricing lookup that usage.py already imports, or the field that marks a call as batched, so I could double its cost. Neither is visible in the regions or the surrounding code, and any edit I wrote would rest on a guessed name that might change nothing.
+
+  [survived, NOT COUNTED] batch-call-counted-at-billed-price/provider-read-from-returned-model-name
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 843-843:
+      -             "provider": provider_of(model) if isinstance(model, str) else None,
+      +             "provider": provider_of(record.get("model") or model) if isinstance(model, str) else None,
+    no test caught it; 260 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+
+  [killed, NOT COUNTED] instability-measurement-prints-usage-table/calls-lost-or-double-counted-by-dedup
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 898-898:
+      -         unique = {id(client): client for client in clients}.values()
+      +         unique = clients
+    caught by (1):
+      tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [killed, NOT COUNTED] instability-measurement-prints-usage-table/clients-not-all-collected
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 745-746:
+      -     if clients is not None:
+      -         clients.append(client)
+      +     if clients is not None and run.index == 0 and not run.perturbed:
+      +         clients.append(client)
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [not_mutable] instability-measurement-prints-usage-table/footer-format-diverges
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    `render` (lines 321-328) does append the Anthropic-credits and other-providers lines, and `report` (line 339) prints `render(summarize(calls))`. Whether the instability footer matches the `check` and `decompose` footers depends on which of them call `report` or `render`. No call sites are shown, so I cannot see that. If all three share `render`, the code does the EXPECTED behaviour. Even then, no edit inside the offered region could make only the instability footer differ, because `render` is shared. I will not guess an edit.
+
+  [already_present] instability-measurement-prints-usage-table/report-printed-to-stderr-only
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    The code already does the DEFECTIVE behaviour. `report` at usage.py:339 prints the table to `sys.stderr`, and instability.py:891-899 calls `report_usage` inside `finally`, so it also prints when the measurement raises. The repair is to write the table to stdout, the benchmark's output channel, so it appears in that output. I did not change the failure-path emission, because moving it out of `finally` is not a single contiguous edit.
+
+  [not_mutable] instability-measurement-prints-usage-table/usage-after-finally-uncounted
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 264 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The footer is printed in the `finally` block (lines 898-899) before `InstabilityReport` is built at line 901. That matches the DEFECTIVE sentence literally. But the code after the `finally` (provenance, `_digest`, `cross_model_agreement`) appears to make no model calls, so the EXPECTED behaviour also holds in practice. To make the defect real, a model call would have to run after the footer. That means moving the perturbation run or comparison out of the `try`, which is a multi-line restructure. To repair it instead, the `return` would have to move inside the `try`, and the `return` sits mostly outside the offered region (it only reaches line 902). Neither direction is a single contiguous edit inside the region.
+
+  [killed, NOT COUNTED] provider-decision-single-source/attribution-uses-recorded-model-not-request-model
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 843-843:
+      -             "provider": provider_of(model) if isinstance(model, str) else None,
+      +             "provider": provider_of(self.model) if isinstance(self.model, str) else None,
+    caught by (1):
+      tests/test_usage.py::test_an_observed_embedding_carries_the_provider_its_model_name_states
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 9 put to the model, 0 dropped as not worth asking, 255 skipped once the defect was covered
+
+  [not_mutable] provider-decision-single-source/cache-opening-threshold-still-parses-name
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 264 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+    The offered region only shows the signature line of `_minimum_reusable_opening` (line 282), not its body. I cannot see whether it calls `provider_of`/`is_anthropic_api` or parses the model name with its own string logic. `_needs_explicit_marker` (lines 270-279) already delegates to `is_anthropic_api`, but that is not the helper the defect names. Without the body I cannot say which behaviour the code has now, so I give no edit.
+
+  [already_present] provider-decision-single-source/provider-parse-accepts-empty-head
+    candidate edits: 2 asked for, 1 set aside, none used
+      1. set aside (changed_nothing): the replacement for src/acceptance/llm.py lines 258..258 is identical to what it replaces, so nothing would be injected and every test would 'survive' a defect that was never introduced
+         at src/acceptance/llm.py lines 258-258:
+           -     return head if separator else None
+           +     return head if separator else None
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    Line 257-258 of provider_of already do the defective behaviour. For '/claude-x', partition gives head='' and separator='/', so `head if separator else None` returns '' instead of None. The validator `provider_of(model) is None` then passes. The repair also requires a non-empty head, so an empty provider segment returns None.
+
+  [already_present] provider-decision-single-source/provider-rederived-per-consumer
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    The code already does the DEFECTIVE behaviour. `_needs_explicit_marker` (line 279) calls `is_anthropic_api(model)`, and the batching check in `_live_call` (line 1356) calls `is_anthropic_api(request["model"])`. Both go through `provider_of`. `_observe_call` (line 843) calls `provider_of(model)` for credit attribution. Each consumer resolves the provider on its own from whatever model string it has. A repair would resolve the provider once per call and pass that value into `mark_reusable_opening`, the batching check and `_observe_call`. That means coordinated edits across several functions and call sites (regions #1, #2 and #3 plus their callers), which cannot be one contiguous replacement. (no repair edit was given)
+
+  [already_present] provider-decision-single-source/usage-trusts-optional-provider-key
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    summarize line 240 uses call.get("provider") == ANTHROPIC, so a costed call with no provider key silently falls into 'other providers' whatever its model. That is the DEFECTIVE behaviour. The repair indexes call["provider"] so a missing key raises KeyError instead of being misattributed. _observe_call always stamps the key, so calls built through the model client are unaffected.
+
+  [killed, NOT COUNTED] provider-decision-single-source/validator-covers-only-some-model-fields
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 219-219:
+      -     @field_validator("model", "embedding_model")
+      +     @field_validator("model")
+    caught by (1):
+      tests/test_config.py::test_a_model_name_that_states_no_provider_is_refused
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 264 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [already_present] provider-routing-by-model-name/batching-and-markers-decided-by-different-tests
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    Line 240 in summarize() decides Anthropic attribution with `call.get("provider") == ANTHROPIC`, a stored label. Calls without that key, such as replayed older records, are counted as non-Anthropic even when the model name says anthropic. This is the DEFECTIVE behaviour. The repair derives the provider from the model name via provider_of, the same name-based routing that llm.py's batching and cache markers use through is_anthropic_api. I could not see usage.py's imports or provider_of's definition, so the edit imports provider_of locally and assumes it takes a model name and returns the ANTHROPIC constant.
+
+  [already_present] provider-routing-by-model-name/empty-provider-prefix-accepted
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    Lines 257-258 of provider_of return `head if separator else None`, so a name like '/claude-x' or ' /model' yields '' or ' ' rather than None, and passes the validator at config.py 229. This is the DEFECTIVE behaviour. The repair makes a blank head return None.
+
+  [survived, NOT COUNTED] provider-routing-by-model-name/provider-label-from-record-model-not-request-model
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 843-843:
+      -             "provider": provider_of(model) if isinstance(model, str) else None,
+      +             "provider": provider_of(record.get("model", model)) if isinstance(model, str) else None,
+    no test caught it; 260 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+
+  [killed, NOT COUNTED] provider-routing-by-model-name/validator-skips-other-model-fields
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/config.py lines 219-219:
+      -     @field_validator("model", "embedding_model")
+      +     @field_validator("model")
+    caught by (1):
+      tests/test_config.py::test_a_model_name_that_states_no_provider_is_refused
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 264 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [not_mutable] table-separates-anthropic-spend/anthropic-split-only-in-total-lines
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 236 skipped once the defect was covered
+    Lines 318-329 show that render() appends trailing summary lines carrying the Anthropic vs other-providers split. The per-stage table rows are built above line 318 and are not shown, so I cannot tell whether they already carry an Anthropic-specific figure. Removing the trailing lines would not make the defect real, since the rows might still show the split. A repair would have to touch the rows, which lie outside the offered region.
+
+  [killed, NOT COUNTED] table-separates-anthropic-spend/instability-footer-misses-calls
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 886-886:
+      -                 clients=clients,
+      (lines deleted)
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [already_present] table-separates-anthropic-spend/other-providers-by-subtraction
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+    Lines 326-327 compute the other-providers figures by subtracting the Anthropic figures from the totals (run_spend_usd - anthropic_run_spend_usd and evidence_cost_usd - anthropic_evidence_cost_usd), which is the DEFECTIVE behaviour. The repair reads directly accumulated fields. I could not see the usage dataclass or summarize(), so other_run_spend_usd and other_evidence_cost_usd are assumed names and would have to be added to summarize and the dataclass; that makes this repair larger than one contiguous edit in this region. (the repair failed 29 of 260 candidate tests, too many to say anything about this defect)
+
+  [already_present] table-separates-anthropic-spend/provider-attribution-by-prefix-only
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 124 put to the model, 0 dropped as not worth asking, 140 skipped once the defect was covered
+    provider_of (llm.py 257-258) returns None for any name without a '/', and _observe_call (line 843) records that None as the call's provider. A bare Claude name that Anthropic bills is therefore counted under other providers, which is the DEFECTIVE behaviour. The repair makes a bare `claude…` name resolve to ANTHROPIC, so it is attributed to Anthropic. It would also make the config validator accept bare Claude names, because provider_of no longer returns None for them.
+
+  [survived, NOT COUNTED] table-separates-anthropic-spend/provider-field-missing-on-calls
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/llm.py lines 843-843:
+      -             "provider": provider_of(model) if isinstance(model, str) else None,
+      +             "provider": provider_of(model) if served_from == SERVED_FROM_PROVIDER else None,
+    no test caught it; 260 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 0 dropped as not worth asking, 260 skipped once the defect was covered
+
+  [killed, NOT COUNTED] table-separates-anthropic-spend/run-spend-gating-inconsistent
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 242-243:
+      -                 if from_provider:
+      -                     stage.anthropic_run_spend_usd += cost
+      +                 stage.anthropic_run_spend_usd += cost
+    caught by (2):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+      tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 258 dropped as not worth asking, 2 skipped once the defect was covered
+
+  [survived, NOT COUNTED] usage-table-covers-every-measurement-call/calls-after-report-omitted
+    candidate edits: 2 asked for, 1 set aside, used candidate 2
+      1. set aside (failed_check): the edit replaces 23 lines, over the 12-line bound; the smallest edit that makes the defect true is what was asked for
+         at src/acceptance/benchmark/instability.py lines 877-899:
+           -         perturbation_result = None
+           -         if perturbation is not None and first_baseline is not None:
+           -             perturbed_case = perturbation.apply(case)
+           -             perturbed = run_once(
+           -                 perturbed_case,
+           -                 RunKey(model=models[0], seed=seeds[0], index=0, perturbed=True),
+           -                 transcript_root=transcript_root,
+           -                 client_factory=client_factory,
+           -                 batch=batch,
+           -                 clients=clients,
+           -             )
+           -             perturbation_result = _perturbation_result(
+           -                 perturbation.name, first_baseline, perturbed, comparison_client
+           -             )
+           -     finally:
+           -         # In `finally`, so a measurement that fails part-way still says what
+           -         # the calls it had already made cost. On stderr, never in the report:
+           -         # the report is compared across runs, and what a run cost is not
+           -         # reproducible. Each client once, by identity: a `client_factory` may
+           -         # hand every draw the same client, and counting it per draw would
+           -         # multiply its calls.
+           -         unique = {id(client): client for client in clients}.values()
+           -         report_usage(call for client in unique for call in client.observed_calls)
+           +     finally:
+           +         # In `finally`, so a measurement that fails part-way still says what
+           +         # the calls it had already made cost. On stderr, never in the report:
+           +         # the report is compared across runs, and what a run cost is not
+           +         # reproducible. Each client once, by identity: a `client_factory` may
+           +         # hand every draw the same client, and counting it per draw would
+           +         # multiply its calls.
+           +         unique = {id(client): client for client in clients}.values()
+           +         report_usage(call for client in unique for call in client.observed_calls)
+           + 
+           +     perturbation_result = None
+           +     if perturbation is not None and first_baseline is not None:
+           +         perturbed_case = perturbation.apply(case)
+           +         perturbed = run_once(
+           +             perturbed_case,
+           +             RunKey(model=models[0], seed=seeds[0], index=0, perturbed=True),
+           +             transcript_root=transcript_root,
+           +             client_factory=client_factory,
+           +             batch=batch,
+           +             clients=clients,
+           +         )
+           +         perturbation_result = _perturbation_result(
+           +             perturbation.name, first_baseline, perturbed, comparison_client
+           +         )
+    injected at src/acceptance/benchmark/instability.py lines 888-899:
+      -             perturbation_result = _perturbation_result(
+      -                 perturbation.name, first_baseline, perturbed, comparison_client
+      -             )
+      -     finally:
+      -         # In `finally`, so a measurement that fails part-way still says what
+      -         # the calls it had already made cost. On stderr, never in the report:
+      -         # the report is compared across runs, and what a run cost is not
+      -         # reproducible. Each client once, by identity: a `client_factory` may
+      -         # hand every draw the same client, and counting it per draw would
+      -         # multiply its calls.
+      -         unique = {id(client): client for client in clients}.values()
+      -         report_usage(call for client in unique for call in client.observed_calls)
+      +     finally:
+      +         # In `finally`, so a measurement that fails part-way still says what
+      +         # the calls it had already made cost. On stderr, never in the report:
+      +         # the report is compared across runs, and what a run cost is not
+      +         # reproducible. Each client once, by identity: a `client_factory` may
+      +         # hand every draw the same client, and counting it per draw would
+      +         # multiply its calls.
+      +         unique = {id(client): client for client in clients}.values()
+      +         report_usage(call for client in unique for call in client.observed_calls)
+      + 
+      +     if perturbation is not None and first_baseline is not None:
+      +         perturbation_result = _perturbation_result(
+      +             perturbation.name, first_baseline, perturbed, comparison_client
+      +         )
+    no test caught it; 260 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 264 put to the model, 0 dropped as not worth asking, 0 skipped once the defect was covered
+
+  [killed, NOT COUNTED] usage-table-covers-every-measurement-call/draw-client-not-registered
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 880-887:
+      -             perturbed = run_once(
+      -                 perturbed_case,
+      -                 RunKey(model=models[0], seed=seeds[0], index=0, perturbed=True),
+      -                 transcript_root=transcript_root,
+      -                 client_factory=client_factory,
+      -                 batch=batch,
+      -                 clients=clients,
+      -             )
+      +             perturbed = run_once(
+      +                 perturbed_case,
+      +                 RunKey(model=models[0], seed=seeds[0], index=0, perturbed=True),
+      +                 transcript_root=transcript_root,
+      +                 client_factory=client_factory,
+      +                 batch=batch,
+      +             )
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [killed, NOT COUNTED] usage-table-covers-every-measurement-call/identity-dedup-drops-distinct-calls
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 898-898:
+      -         unique = {id(client): client for client in clients}.values()
+      +         unique = clients
+    caught by (1):
+      tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [survived, NOT COUNTED] usage-table-covers-every-measurement-call/summarize-drops-calls-by-stage
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 245-245:
+      -     return RunUsage(stages=[by_stage[name] for name in sorted(by_stage, key=_position)])
+      +     return RunUsage(stages=[by_stage[name] for name in sorted(by_stage, key=_position) if name])
+    no test caught it; 260 candidate test(s) ran and none failed
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 12 put to the model, 0 dropped as not worth asking, 252 skipped once the defect was covered
+
+  [killed, NOT COUNTED] usage-table-live-replayed-counted-apart/call-counted-in-both-live-and-replayed
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/usage.py lines 238-239:
+      -             if from_provider:
+      -                 stage.run_spend_usd += cost
+      +             if from_provider:
+      +                 stage.run_spend_usd += cost
+      +                 stage.replayed_calls += 1
+    caught by (1):
+      tests/test_usage.py::test_a_replayed_call_costs_this_run_nothing_but_still_cost_something_to_record
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [killed, NOT COUNTED] usage-table-live-replayed-counted-apart/draw-clients-not-collected
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 886-886:
+      -                 clients=clients,
+      (lines deleted)
+    caught by (1):
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [killed, NOT COUNTED] usage-table-live-replayed-counted-apart/identity-dedup-miscounts-calls
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 898-898:
+      -         unique = {id(client): client for client in clients}.values()
+      +         unique = clients
+    caught by (1):
+      tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+  [not_mutable] usage-table-live-replayed-counted-apart/render-merges-live-and-replayed
+    candidate edits: 1 asked for, 0 set aside, none used
+    pairs: 0 settled by the run, 28 put to the model, 0 dropped as not worth asking, 236 skipped once the defect was covered
+    The per-stage table rows and column headers, where live and replayed call counts would be printed, are in render above line 318 and are not shown. The offered regions only contain the RunUsage sums and the footer spend lines, so I cannot tell whether the table has separate live and replayed columns. I give no edit rather than guess.
+
+  [killed, NOT COUNTED] usage-table-live-replayed-counted-apart/report-not-called-on-measurement-path
+    candidate edits: 1 asked for, 0 set aside, used candidate 1
+    injected at src/acceptance/benchmark/instability.py lines 891-899:
+      -     finally:
+      -         # In `finally`, so a measurement that fails part-way still says what
+      -         # the calls it had already made cost. On stderr, never in the report:
+      -         # the report is compared across runs, and what a run cost is not
+      -         # reproducible. Each client once, by identity: a `client_factory` may
+      -         # hand every draw the same client, and counting it per draw would
+      -         # multiply its calls.
+      -         unique = {id(client): client for client in clients}.values()
+      -         report_usage(call for client in unique for call in client.observed_calls)
+      +     finally:
+      +         unique = {id(client): client for client in clients}.values()
+      +     report_usage(call for client in unique for call in client.observed_calls)
+    caught by (1):
+      tests/benchmark/test_instability.py::test_a_measurement_that_fails_part_way_still_prints_what_it_spent
+    edit NOT verified to make the defect true, so this result is not counted; tier: static, and the defect went to the static judge
+    pairs: 0 settled by the run, 4 put to the model, 259 dropped as not worth asking, 1 skipped once the defect was covered
+
+Defects the delivered code already has, as asserted by the model (static tier; needs human review):
+  anthropic-credits-own-figure/anthropic-figure-missing-from-rendered-table
+    Lines 325-328 derive the 'other providers' figures by subtracting the Anthropic figures from the totals. A tiny negative float residue would render as -0.0000, which is the DEFECTIVE behaviour. The repair clamps each difference at zero. I could not see render's earlier paths or the usage dataclass, so I cannot say whether other paths omit the Anthropic line, and a stored other-provider field would need edits outside this region.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/usage.py lines 326-327:
+      -         f"  other providers: ${usage.run_spend_usd - usage.anthropic_run_spend_usd:.4f} this run, "
+      -         f"${usage.evidence_cost_usd - usage.anthropic_evidence_cost_usd:.4f} recorded"
+      +         f"  other providers: ${max(0.0, usage.run_spend_usd - usage.anthropic_run_spend_usd):.4f} this run, "
+      +         f"${max(0.0, usage.evidence_cost_usd - usage.anthropic_evidence_cost_usd):.4f} recorded"
+  anthropic-credits-own-figure/provider-from-model-name-prefix-only
+    Lines 257-258 of provider_of take the text before the first '/' as the provider and return None for any name without '/'. is_anthropic_api (line 267) and the Anthropic-credit sums in usage.py (line 240) therefore match only names that start with 'anthropic/'. A bare Claude name such as 'claude-3-5-sonnet' is billed to Anthropic's own API but is recorded with provider None, so it falls into 'other providers'. That is the DEFECTIVE behaviour. The repair makes a bare 'claude…' name resolve to ANTHROPIC. It contradicts the docstring's statement that a name with no '/' states no provider, so this reading of 'expected' is a judgement. I did not handle non-'anthropic' prefixes that route to Anthropic, since the code gives no way to tell which prefixes those are.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/test_config.py::test_a_model_name_that_states_no_provider_is_refused
+      tests/test_llm_batch.py::test_the_provider_is_the_one_the_model_name_states
+    repair at src/acceptance/llm.py lines 257-258:
+      -     head, separator, _ = model.partition("/")
+      -     return head if separator else None
+      +     head, separator, _ = model.partition("/")
+      +     if not separator:
+      +         return ANTHROPIC if model.startswith("claude") else None
+      +     return head
+  batch-call-counted-at-billed-price/anthropic-spend-gated-on-served-from
+    Lines 242-243 gate `stage.anthropic_run_spend_usd += cost` on `from_provider`, so a call whose `served_from` is not the provider constant adds nothing to the Anthropic run-spend figure. That is the DEFECTIVE behaviour. The repair drops the gate so a freshly billed Anthropic call adds its cost to both Anthropic figures.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+      tests/test_usage.py::test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers
+    repair at src/acceptance/usage.py lines 242-243:
+      -                 if from_provider:
+      -                     stage.anthropic_run_spend_usd += cost
+      +                 stage.anthropic_run_spend_usd += cost
+  instability-measurement-prints-usage-table/report-printed-to-stderr-only
+    The code already does the DEFECTIVE behaviour. `report` at usage.py:339 prints the table to `sys.stderr`, and instability.py:891-899 calls `report_usage` inside `finally`, so it also prints when the measurement raises. The repair is to write the table to stdout, the benchmark's output channel, so it appears in that output. I did not change the failure-path emission, because moving it out of `finally` is not a single contiguous edit.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/benchmark/test_instability.py::test_a_client_every_draw_shares_has_its_calls_counted_once
+      tests/benchmark/test_instability.py::test_a_measurement_that_fails_part_way_still_prints_what_it_spent
+      tests/benchmark/test_instability.py::test_the_measurement_prints_spend_for_every_call_it_made
+      tests/test_usage.py::test_report_prints_the_same_footer_on_stderr_even_for_no_call
+    repair at src/acceptance/usage.py lines 339-339:
+      -     print(render(summarize(calls)), file=sys.stderr)
+      +     print(render(summarize(calls)), file=sys.stdout)
+  provider-decision-single-source/provider-parse-accepts-empty-head
+    Line 257-258 of provider_of already do the defective behaviour. For '/claude-x', partition gives head='' and separator='/', so `head if separator else None` returns '' instead of None. The validator `provider_of(model) is None` then passes. The repair also requires a non-empty head, so an empty provider segment returns None.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/llm.py lines 258-258:
+      -     return head if separator else None
+      +     return head if separator and head else None
+  provider-decision-single-source/provider-rederived-per-consumer
+    The code already does the DEFECTIVE behaviour. `_needs_explicit_marker` (line 279) calls `is_anthropic_api(model)`, and the batching check in `_live_call` (line 1356) calls `is_anthropic_api(request["model"])`. Both go through `provider_of`. `_observe_call` (line 843) calls `provider_of(model)` for credit attribution. Each consumer resolves the provider on its own from whatever model string it has. A repair would resolve the provider once per call and pass that value into `mark_reusable_opening`, the batching check and `_observe_call`. That means coordinated edits across several functions and call sites (regions #1, #2 and #3 plus their callers), which cannot be one contiguous replacement. (no repair edit was given)
+    no test run supports or contradicts this claim
+  provider-decision-single-source/usage-trusts-optional-provider-key
+    summarize line 240 uses call.get("provider") == ANTHROPIC, so a costed call with no provider key silently falls into 'other providers' whatever its model. That is the DEFECTIVE behaviour. The repair indexes call["provider"] so a missing key raises KeyError instead of being misattributed. _observe_call always stamps the key, so calls built through the model client are unaffected.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/test_usage.py::test_a_fully_replayed_run_spends_nothing_and_says_so
+      tests/test_usage.py::test_a_replayed_call_costs_this_run_nothing_but_still_cost_something_to_record
+      tests/test_usage.py::test_a_replayed_call_took_no_time_this_run
+      tests/test_usage.py::test_live_call_time_is_summed_per_stage
+    repair at src/acceptance/usage.py lines 240-240:
+      -             if call.get("provider") == ANTHROPIC:
+      +             if call["provider"] == ANTHROPIC:
+  provider-routing-by-model-name/batching-and-markers-decided-by-different-tests
+    Line 240 in summarize() decides Anthropic attribution with `call.get("provider") == ANTHROPIC`, a stored label. Calls without that key, such as replayed older records, are counted as non-Anthropic even when the model name says anthropic. This is the DEFECTIVE behaviour. The repair derives the provider from the model name via provider_of, the same name-based routing that llm.py's batching and cache markers use through is_anthropic_api. I could not see usage.py's imports or provider_of's definition, so the edit imports provider_of locally and assumes it takes a model name and returns the ANTHROPIC constant.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/test_usage.py::test_the_footer_reads_the_recorded_provider_not_the_model_name
+    repair at src/acceptance/usage.py lines 240-240:
+      -             if call.get("provider") == ANTHROPIC:
+      +             from acceptance.llm import provider_of
+      +             if isinstance(model, str) and provider_of(model) == ANTHROPIC:
+  provider-routing-by-model-name/empty-provider-prefix-accepted
+    Lines 257-258 of provider_of return `head if separator else None`, so a name like '/claude-x' or ' /model' yields '' or ' ' rather than None, and passes the validator at config.py 229. This is the DEFECTIVE behaviour. The repair makes a blank head return None.
+    the candidate tests were run on an edit meant to repair it, and all passed. That fits no test pinning the expected behaviour, but the repair itself was not checked, so this does not confirm the claim
+    repair at src/acceptance/llm.py lines 257-258:
+      -     head, separator, _ = model.partition("/")
+      -     return head if separator else None
+      +     head, separator, _ = model.partition("/")
+      +     return head if separator and head.strip() else None
+  table-separates-anthropic-spend/other-providers-by-subtraction
+    Lines 326-327 compute the other-providers figures by subtracting the Anthropic figures from the totals (run_spend_usd - anthropic_run_spend_usd and evidence_cost_usd - anthropic_evidence_cost_usd), which is the DEFECTIVE behaviour. The repair reads directly accumulated fields. I could not see the usage dataclass or summarize(), so other_run_spend_usd and other_evidence_cost_usd are assumed names and would have to be added to summarize and the dataclass; that makes this repair larger than one contiguous edit in this region. (the repair failed 29 of 260 candidate tests, too many to say anything about this defect)
+    no test run supports or contradicts this claim
+    repair at src/acceptance/usage.py lines 325-328:
+      -     lines.append(
+      -         f"  other providers: ${usage.run_spend_usd - usage.anthropic_run_spend_usd:.4f} this run, "
+      -         f"${usage.evidence_cost_usd - usage.anthropic_evidence_cost_usd:.4f} recorded"
+      -     )
+      +     lines.append(
+      +         f"  other providers: ${usage.other_run_spend_usd:.4f} this run, "
+      +         f"${usage.other_evidence_cost_usd:.4f} recorded"
+      +     )
+  table-separates-anthropic-spend/provider-attribution-by-prefix-only
+    provider_of (llm.py 257-258) returns None for any name without a '/', and _observe_call (line 843) records that None as the call's provider. A bare Claude name that Anthropic bills is therefore counted under other providers, which is the DEFECTIVE behaviour. The repair makes a bare `claude…` name resolve to ANTHROPIC, so it is attributed to Anthropic. It would also make the config validator accept bare Claude names, because provider_of no longer returns None for them.
+    the candidate tests were run on an edit meant to repair it, and these failed there. That fits tests asserting the defective behaviour, but the repair itself was not checked, so this does not confirm the claim:
+      tests/test_config.py::test_a_model_name_that_states_no_provider_is_refused
+      tests/test_llm_batch.py::test_the_provider_is_the_one_the_model_name_states
+    repair at src/acceptance/llm.py lines 258-258:
+      -     return head if separator else None
+      +     if separator:
+      +         return head
+      +     return ANTHROPIC if model.startswith("claude") else None
+
+Candidate tests set aside (no conclusion rests on these):
+  [not_started] tests/fixtures/archetypes/08-unrequested-change-separable/head/test_report.py::test_low_stock_report_filters_by_threshold
+    the project's own pytest does not collect this test, so asking it to run would make the whole run fail without running anything. Test discovery found the file; pytest declines it.
+  [timed_out] tests/benchmark/test_rating_regression.py::test_a_judge_that_never_issues_strongly_supported_fails_the_suite
+    the test exceeded its own time budget
+    it failed with: _acceptance_sandbox_netblock.TestTimedOut: ACCEPTANCE_TEST_TIMEOUT: the test exceeded its per-test time budget
+  [failed: UnresolvableRevisionError] tests/benchmark/test_rating_regression.py::test_a_judge_that_always_issues_strongly_supported_fails_the_suite
+    the test passes in the project but not in an unmodified copy of it, so a failure under an injected defect could not be attributed to the defect. In the copy it was: failed
+    it failed with: acceptance.benchmark.corpus.UnresolvableRevisionError: case '163-gate2-run1' names revision '4d13ba1', which this repository no longer resolves. The corpus cases are pinned to real history; a rewritten or pruned commit breaks them by design rather than shrinking the suite silently.
+  [failed: UnresolvableRevisionError] tests/benchmark/test_rating_regression.py::test_scoring_goes_through_the_shared_benchmark_path
+    the test passes in the project but not in an unmodified copy of it, so a failure under an injected defect could not be attributed to the defect. In the copy it was: failed
+    it failed with: acceptance.benchmark.corpus.UnresolvableRevisionError: case '163-gate2-run1' names revision '4d13ba1', which this repository no longer resolves. The corpus cases are pinned to real history; a rewritten or pruned commit breaks them by design rather than shrinking the suite silently.
+
+Changes since 1f9af566:
+  closed:
+    - The table presents the run's spend on calls billed to Anthropic's own API as a figure separate from the run's spend on calls billed to any other provider.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+    - A call sent through the Message Batches API is counted in the spend table at the price it was actually billed at, rather than at the standard (non-batch) price for that model.
+        code evidence: addressed -> addressed
+        test evidence: partially supported -> strongly supported
+  moved:
+    - When the benchmark's instability measurement finishes, it prints the same per-stage usage table that `acceptance check` and `acceptance decompose` already print.
+        test evidence: strongly supported -> partially supported
+    - Each call is routed to the provider that its configured model name states; the provider is derived from the configured model name and not from any other source.
+        test evidence: strongly supported -> partially supported
+
+Evidence limitations:
+  1. Judgments are static inferences unless a higher tier is recorded; the full application was not independently executed.
+
+Next: retrieve a criterion's full recommendation with
+  acceptance recommendation --criterion <id>run c8ee2ade375d03b6
+  continuing 27526bbc2830607e
+  continue this run with: --continue c8ee2ade375d03b6
+Model usage by stage:
+  stage                                model                                                                        calls     prompt  output  reasoning  cached  this run  recorded  time this run
+  -----------------------------------  ---------------------------------------------------  -----------------------------  ---------  ------  ---------  ------  --------  --------  -------------
+  obligation linking                   voyage/voyage-3.5-lite                                     1 (0 live / 1 replayed)        822       0          —       —   $0.0000   $0.0000              —
+  defect enumeration                   anthropic/claude-sonnet-5-5                                8 (8 live / 0 replayed)     64,159  14,446      4,557   11.9%   $0.2850   $0.2850         218.2s
+  defect-to-test pair mapping          voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5      35 (35 live / 0 replayed)    216,621  10,885     10,597    0.0%   $0.4500   $0.4500         158.6s
+  coverage classification              anthropic/claude-sonnet-5-5                                1 (1 live / 0 replayed)     20,781   1,560          0    0.0%   $0.0676   $0.0676          10.7s
+  unrequested-change detection         anthropic/claude-sonnet-5-5                                1 (1 live / 0 replayed)     19,679   1,338        602    0.0%   $0.0626   $0.0626          10.4s
+  test recommendation                  anthropic/claude-sonnet-5-5                                1 (1 live / 0 replayed)     18,888   3,657          0    0.0%   $0.0833   $0.0833          33.8s
+  defect-to-test pair judgement (Jev)  jev-latest                                           1637 (1637 live / 0 replayed)  6,827,104  32,740          —       —   $0.2867   $0.2867         530.1s
+  mutation descriptor                  anthropic/claude-sonnet-5-5                              41 (41 live / 0 replayed)    195,255  23,134     13,057   23.6%   $0.5687   $0.5687         257.1s
+  this run spent $1.8038 on 1724 live call(s); the evidence cost $1.8038 to record (1 call(s) replayed at no cost to this run)
+  of which Anthropic credits: $1.5161 this run, $1.5161 recorded
+  other providers: $0.2877 this run, $0.2877 recorded
+

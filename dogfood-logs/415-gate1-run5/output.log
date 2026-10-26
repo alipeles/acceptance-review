@@ -1,0 +1,85 @@
+run 03257667299320cb
+  continuing 0120ca7731131f30
+  requirements: 1 derived, 5 carried, 1 revised; 7 decompose call(s)
+  continue this run with: --continue 03257667299320cb
+Model usage by stage:
+  stage                        model                                                                  calls  prompt  output  reasoning  cached  this run  recorded  time this run
+  ---------------------------  ---------------------------------------------------  -----------------------  ------  ------  ---------  ------  --------  --------  -------------
+  decompose                    anthropic/claude-sonnet-5-5                          5 (5 live / 0 replayed)  47,452   1,850        378    0.0%   $0.1365   $0.1365          37.8s
+  decompose-summary            anthropic/claude-sonnet-5-5                          2 (2 live / 0 replayed)   3,081     958          0   42.3%   $0.0139   $0.0139           9.5s
+  obligation linking           voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5  2 (2 live / 0 replayed)   2,327     235          0    0.0%   $0.0060   $0.0060           6.8s
+  requirement carry alignment  anthropic/claude-sonnet-5-5                          1 (1 live / 0 replayed)     883      32          0    0.0%   $0.0021   $0.0021           2.2s
+  this run spent $0.1585 on 10 live call(s); the evidence cost $0.1585 to record (0 call(s) replayed at no cost to this run)
+  of which Claude credits: $0.1584 this run, $0.1584 recorded
+Requirements: 7   with obligations: 7
+
+[task-01] When the benchmark's instability measurement finishes, it prints the per-stage
+    usage table that `acceptance check` and `acceptance decompose` already print,
+    covering every model call the measurement made, with live and replayed calls counted
+    apart.
+    -> instability-measurement-prints-usage-table  [functional/explicit, code_and_tests]
+       When the benchmark's instability measurement finishes, it prints the same per-
+       stage usage table that `acceptance check` and `acceptance decompose` already
+       print.
+    -> usage-table-covers-every-measurement-call  [functional/explicit, code_and_tests]
+       The per-stage usage table printed when the benchmark's instability measurement
+       finishes accounts for every model call the measurement made, so that the table's
+       totals equal the number of model calls issued during the measurement, with none
+       omitted.
+    -> usage-table-live-replayed-counted-apart  [functional/explicit, code_and_tests]
+       The per-stage usage table printed at the end of the benchmark's instability
+       measurement reports live model calls and replayed model calls as separate counts,
+       rather than as a single combined figure.
+
+[task-02] The table shows what the run spent on calls billed to Anthropic's own API
+    separately from what it spent on any other provider, so the Anthropic credits a run
+    consumed can be read off as a figure of its own. A call sent through the Message
+    Batches API counts at the price it was billed at.
+    -> table-separates-anthropic-spend  [functional/explicit, code_and_tests]
+       The table presents the run's spend on calls billed to Anthropic's own API as a
+       figure separate from the run's spend on calls billed to any other provider.
+    -> anthropic-credits-own-figure  [functional/explicit, code_and_tests]
+       The table presents the Anthropic credits consumed by a run as a distinct figure
+       of its own, so a reader can read off the Anthropic total directly without
+       deriving it from a combined total.
+    -> batch-call-counted-at-billed-price  [functional/explicit, code_and_tests]
+       A call sent through the Message Batches API is counted in the spend table at the
+       price it was actually billed at, rather than at the standard (non-batch) price
+       for that model.
+
+[task-03] Which provider a call goes to is the one its configured model name states, and
+    every part of the client that depends on the provider reads that one decision —
+    whether a request carries cache breakpoints, whether it can be batched, and whose
+    credits it spent — rather than each guessing from the model name in its own way.
+    -> provider-routing-by-model-name  [functional/explicit, code_and_tests]
+       Each call is routed to the provider that its configured model name states; the
+       provider is derived from the configured model name and not from any other source.
+    -> provider-decision-single-source  [invariant/explicit, code_and_tests]
+       Every part of the client that depends on the provider (whether a request carries
+       cache breakpoints, whether it can be batched, and whose credits it spent) derives
+       its behavior from the one resolved provider decision, not from its own
+       interpretation of the configured model name.
+
+[task-04] Spend stays out of the review state and the rendered report, as it is today.
+    -> spend-excluded-from-review-state-and-report  [invariant/explicit, code_and_tests]
+       Keep spend data absent from both the review state and the rendered report, as it
+       is today; the review state and the rendered report contain no spend information.
+
+[exclusion-01] Checking the Console tier's rate limits against run sizes.
+    -> no-console-rate-limit-check  [invariant/explicit, code_only, satisfied by absence]
+       The change does not check the Console tier's rate limits against run sizes.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+
+[exclusion-02] Changing how any call is priced when it is recorded.
+    -> no-change-to-call-pricing-at-record-time  [invariant/explicit, code_only, satisfied by absence]
+       The change does not alter how any call is priced when it is recorded.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+
+[exclusion-03] Enforcing a spending limit or stopping a run that spends too much.
+    -> no-spend-limit-enforcement  [invariant/explicit, code_only, satisfied by absence]
+       The change does not enforce a spending limit or stop a run that spends too much.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+

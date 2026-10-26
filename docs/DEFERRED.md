@@ -7936,3 +7936,73 @@ the record.
 - **Drafted fix:** comment on #273 (an explicit obligation restating another explicit obligation is not reconciled with it), child of #181 (decomposition umbrella):
   > Another case, within one requirement rather than across sections. #415's task-01 is one sentence: the benchmark runs print the usage table, "so a large offline run shows what it cost". Gate 1 run 3 derived `benchmark-cli-prints-usage-table` and, from the purpose clause, `offline-run-usage-cost-visible`, which restates it. No link. Run 2, over a two-sentence wording of the same paragraph, produced the same unlinked pair under other names. Evidence: `dogfood-logs/415-gate1-run{2,3}/`.
 - **Status:** filed 2026-10-25 as a comment on #273 (issuecomment-6405784683), approved at #415 Gate 1.
+
+### [2026-10-26] Comment on #424: "already present" defect assumes two clients share one call log
+- **Kind:** filing
+- **Found during:** #415, Gate 2 run 1 (`dogfood-logs/415-gate2-run1/`)
+- **Where:** static "Defects the delivered code already has" judgement
+- **Severity:** should-fix
+- **What's wrong:** two claims (`dedup-by-identity-drops-or-duplicates-calls`, `identity-dedup-undercounts-distinct-clients`) assert that counting each client once double counts "distinct client objects that share one call list". No such objects exist: every `ModelClient` creates its own list in `__init__`, and `observed_calls` returns copies. The proposed repair, dedupe by each call's `id()`, never matches a copy and would double count the shared-client case.
+- **Why I didn't act:** adds a finding to an existing issue.
+- **Drafted fix:** comment on #424 (a defect judge asserts a defect "already present" from a slice of a prompt that rules it out), child of #183 (evidence judgement umbrella):
+  > Another case, at #415's Gate 2 run 1. Two "already present" claims say `measure_instability`'s once-per-client count double counts distinct clients sharing one call list. The slice shown ends at `instability.py` lines 895-896; the code that rules it out is `ModelClient.__init__` (each client gets its own list) and `observed_calls` (returns copies). The proposed repair, dedupe by call `id()`, would never match and would double count a client shared by every draw, which a test now pins. Evidence: `dogfood-logs/415-gate2-run1/`.
+  >
+  > Runs 2 and 3 of the same gate added more of this shape (`dogfood-logs/415-gate2-run{2,3}/judgement.md`). Some contradict facts outside the slice: "`Anthropic/…` is misrouted" when LiteLLM rejects that name outright. Some ask for the design the task removed: "the footer should re-derive the provider from the model name". Some contradict an owner decision recorded in the task: "bare `claude-…` should count as Anthropic" when such names are now refused. Each arrives as a defect the delivered code already has, needing human review, so each round of the gate stops for the human on claims that the code, a library or the mandate already settles.
+- **Status:** open
+
+### [2026-10-26] Decision: a provider interface of our own, with LiteLLM as the general fallback
+- **Kind:** filing (decision)
+- **Found during:** #415, Gate 2, discussing the owner's question about LiteLLM
+- **Where:** `src/acceptance/llm.py` (`_live_call`, `_extract_usage`, `_count_tokens`, `mark_reusable_opening`), `src/acceptance/llm_batch.py`
+- **Severity:** should-fix
+- **What's wrong:** every model call goes through LiteLLM, and several facts we need are guessed or translated on the way: cost (direct price only, so #414 halves batched calls by hand), token counts (OpenAI's tokenizer for Claude), dropped controls (temperature and seed vanish silently on Claude), and the provider itself (inferred from bare names, closed in #415 by refusing them). Batches already bypass LiteLLM for the `anthropic` SDK.
+- **Why I didn't act:** a design decision that re-keys every recorded transcript; owner's call, out of #415's scope.
+- **Drafted fix:** file as a child of #412 (migrate model calls from OpenAI to the Claude API), labels `decision`, `migration`, `track:checker`:
+  > **Title:** Decide: a provider interface of our own, with native adapters where exactness matters and LiteLLM for breadth
+  >
+  > ## The problem
+  >
+  > Every model call goes through LiteLLM. Its value is breadth — many providers behind one call — and that still matters: a user may be constrained to particular providers, and cheaper options such as open-weight models are worth measuring. But on our main path it hides or guesses facts we then reconstruct:
+  >
+  > - **Cost.** `litellm.completion_cost` prices a direct call, so #414 records half of it for a batched call by hand.
+  > - **Tokens.** `litellm.token_counter` falls back to OpenAI's tokenizer for Claude, so the count that decides whether an opening gets a cache breakpoint is an estimate (queued at #414's Gate 1; the gap is unmeasured).
+  > - **Controls.** Temperature and seed are dropped for Claude without notice, which is why the review records `controls_in_force`.
+  > - **Request format.** It translates our schema into Anthropic's `output_config.format`; how that interacts with caching was learned from Anthropic's docs (#324, where every stage sends a unique schema and nothing caches).
+  > - **Provider.** It routes a bare `claude-…` to Anthropic by its own inference. #415 closed this by refusing model names with no `provider/` prefix.
+  > - **Coupling.** Tests patch LiteLLM internals (`litellm.llms.anthropic.chat.handler.get_httpx_client`), and replay needs lazy-import care to stay free of it.
+  >
+  > Batches already bypass it: LiteLLM cannot create an Anthropic batch, so #414 added the `anthropic` SDK.
+  >
+  > ## Proposal
+  >
+  > - **One small interface of our own, one adapter per provider**, chosen by the provider the model name states (`llm.provider_of`, from #415). The provider decision then picks the code path, not only the cache and batch behaviour.
+  > - **A native Anthropic adapter** on the official SDK for the main path, where batching, cache breakpoints, exact token counts and exact cost matter.
+  > - **A general adapter through LiteLLM** for every other provider, so a user's choice keeps working without new code. Most open-weight hosts (vLLM, Ollama, Together, Fireworks) speak the OpenAI-style API, which LiteLLM covers. A native adapter is written only for a provider used heavily enough that exactness pays.
+  > - **Each adapter declares its provider's capabilities** — structured output, cache breakpoints, batching, whether seed and temperature are honoured, where prices come from — instead of the client inferring them from the model name.
+  >
+  > ## Rejected alternatives
+  >
+  > - **Anthropic's SDK only.** Exact on Claude, but drops every other provider, which a user's constraints or a cost comparison may require.
+  > - **Stay on LiteLLM everywhere.** Keeps breadth, keeps every guess listed above.
+  >
+  > ## Cost
+  >
+  > Moving the Anthropic path off LiteLLM changes every request's bytes, so the whole transcript corpus re-records at once and benchmark figures before and after are not comparable — the shared-request-assembly case in `CLAUDE.md`. Do it once, deliberately, not inside another task. The general adapter alone changes nothing that is recorded today.
+  >
+  > ## Acceptance
+  >
+  > - A Claude run goes through the native adapter: its recorded usage and cost come from Anthropic's response, with no hand correction for batches.
+  > - A run on a provider with no native adapter completes through the general adapter.
+  > - Cache breakpoints, batching and control handling are read from the adapter's declared capabilities, not from the model name.
+  > - The corpus is re-recorded once, and the re-recording is noted where benchmark figures are compared.
+- **Status:** filed 2026-10-26 as #432, a sub-issue of #412 (approved by the owner).
+
+### [2026-10-26] A #414 batch test depends on a 0.05-second gather window
+- **Kind:** defect
+- **Found during:** #415, Gate 2 run 3 fixes
+- **Where:** tests/test_llm_batch.py::test_clients_built_from_one_configuration_share_one_batch; the `provider` fixture sets `llm_batch.GATHER_SECONDS = 0.05`
+- **Severity:** should-fix
+- **What's wrong:** failed once with batches `[1, 9]` instead of `[10]`, then passed five reruns. One thread's call went out before the others had queued, inside a 50 ms window. A flaky test in CI erodes the green gate.
+- **Why I didn't act:** #414's code and test, outside #415.
+- **Drafted fix:** have the test wait until all ten threads are waiting before the batch is released (a barrier, or the batcher's own count of waiting calls), rather than relying on the gather window. Child of #184 (determinism and reproducibility umbrella).
+- **Status:** open
