@@ -406,7 +406,9 @@ def test_the_check_command_prints_the_per_stage_breakdown(
     assert "Model usage by stage:" in captured.err
     assert "this run spent $" in captured.err
     assert "the evidence cost $" in captured.err
+    assert "of which Claude credits: $" in captured.err
     assert "Model usage" not in captured.out
+    assert "Claude credits" not in captured.out
 
 
 def test_the_decompose_command_prints_the_per_stage_breakdown_too(
