@@ -35,6 +35,7 @@ from acceptance.pipeline import run_review
 from acceptance.requirement.obligations import decompose
 from acceptance.requirement.task_file import parse_task_file
 from acceptance.review_state import Component, EvidenceTier, Finding, Link, Review
+from acceptance.usage import summarize as summarize_usage
 from tests.support import (
     _EMPTY_BY_SCHEMA,
     _completed,
@@ -234,6 +235,20 @@ def test_a_batched_call_is_priced_at_half_the_direct_price(tmp_path, provider):
         assert _record(batched)["usage"][name] == _record(direct)["usage"][name]
 
 
+def test_a_batched_call_counts_in_the_run_spend_at_the_price_it_was_billed_at(tmp_path, provider):
+    """The spend table reads the batch price off the call, not the direct one (#415)."""
+    batched = _client(tmp_path / "batched", batch=True)
+    direct = _client(tmp_path / "direct", batch=False)
+    batched.complete(MESSAGES, Verdict)
+    direct.complete(MESSAGES, Verdict)
+
+    direct_spend = summarize_usage(direct.observed_calls).anthropic_run_spend_usd
+    assert direct_spend > 0
+    assert summarize_usage(batched.observed_calls).anthropic_run_spend_usd == pytest.approx(
+        direct_spend / 2
+    )
+
+
 def _review(client: ModelClient) -> str:
     judgment = client.complete(MESSAGES, Verdict)
     finding = Finding(
@@ -413,6 +428,26 @@ def test_the_instability_experiment_batches_when_asked(tmp_path, batch):
         measure_instability(case, runs_per_model=2, client_factory=factory, batch=batch)
 
     assert seen[0].batch is batch
+
+
+@pytest.mark.parametrize(
+    ("model", "provider"),
+    [
+        ("anthropic/claude-sonnet-5-5", "anthropic"),
+        ("vertex_ai/claude-sonnet-5-5", "vertex_ai"),
+        ("bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0", "bedrock"),
+        ("voyage/voyage-3.5-lite", "voyage"),
+        ("claude-sonnet-5-5", None),
+        ("jev-latest", None),
+        ("/claude-sonnet-5-5", None),
+        (" /claude-sonnet-5-5", None),
+    ],
+)
+def test_the_provider_is_the_one_the_model_name_states(model, provider):
+    """Read off the configured name, never inferred from what the model is called."""
+    assert llm.provider_of(model) == provider
+    # Cache breakpoints follow the same decision, so they cannot disagree with it.
+    assert llm._needs_explicit_marker(model) is (provider == llm.ANTHROPIC)
 
 
 def test_the_default_model_is_one_that_batches():

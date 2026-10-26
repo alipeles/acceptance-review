@@ -13,6 +13,8 @@ import json
 import tempfile
 from types import SimpleNamespace
 
+import pytest
+
 from acceptance.config import DEFAULT_MODEL
 from acceptance.llm import (
     SERVED_FROM_PROVIDER,
@@ -22,8 +24,10 @@ from acceptance.llm import (
     StrictResponseModel,
     TranscriptStore,
     _extract_usage,
+    provider_of,
 )
-from acceptance.usage import _PIPELINE_ORDER, render, summarize
+from acceptance.usage import _PIPELINE_ORDER, render, report, summarize
+from tests.support import constant_embedding_fn
 
 
 def _call(stage, served_from, **usage):
@@ -272,6 +276,100 @@ def test_a_transcript_missing_its_usage_fields_is_counted_but_not_priced():
 
     assert usage.stages[0].calls == 1
     assert usage.evidence_cost_usd == 0.0
+
+
+# --- Anthropic credits, apart from every other provider (#415) --------------------
+
+
+def _priced(model, served_from, cost_usd):
+    call = {**_call("decompose", served_from, cost_usd=cost_usd), "model": model}
+    return {**call, "provider": provider_of(model)}
+
+
+def test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers():
+    """The run's total mixes Anthropic's API with embeddings and Jev; the
+    Anthropic credits must be readable without subtracting the others by hand."""
+    usage = summarize(
+        [
+            _priced("anthropic/claude-sonnet-5-5", SERVED_FROM_PROVIDER, 0.10),
+            _priced("anthropic/claude-sonnet-5-5", SERVED_FROM_RECORDING, 0.40),
+            _priced("voyage/voyage-3.5-lite", SERVED_FROM_PROVIDER, 0.01),
+            _priced("jev-latest", SERVED_FROM_PROVIDER, 0.02),
+        ]
+    )
+
+    assert usage.run_spend_usd == pytest.approx(0.13)
+    assert usage.anthropic_run_spend_usd == pytest.approx(0.10)
+    assert usage.anthropic_evidence_cost_usd == pytest.approx(0.50)
+    assert "of which Anthropic credits: $0.1000 this run, $0.5000 recorded" in render(usage)
+    assert "other providers: $0.0300 this run, $0.0300 recorded" in render(usage)
+
+
+def test_claude_reached_through_another_provider_spends_no_anthropic_credits():
+    """Billed by Google, not Anthropic, whatever the model is called."""
+    usage = summarize([_priced("vertex_ai/claude-sonnet-5-5", SERVED_FROM_PROVIDER, 0.10)])
+
+    assert usage.run_spend_usd == pytest.approx(0.10)
+    assert usage.anthropic_run_spend_usd == 0.0
+
+
+def test_the_footer_reads_the_recorded_provider_not_the_model_name():
+    """One decision, made when the call is observed; the footer never re-derives it."""
+    call = {**_priced("anthropic/claude-sonnet-5-5", SERVED_FROM_PROVIDER, 0.10), "provider": None}
+
+    assert summarize([call]).anthropic_run_spend_usd == 0.0
+
+
+def test_report_prints_the_same_footer_on_stderr_even_for_no_call(capsys):
+    report([])
+
+    captured = capsys.readouterr()
+    assert captured.err == render(summarize([])) + "\n"
+    assert captured.out == ""
+
+
+def test_a_run_with_no_anthropic_call_reports_no_anthropic_credits():
+    usage = summarize([_priced("jev-latest", SERVED_FROM_PROVIDER, 0.02)])
+
+    assert "of which Anthropic credits: $0.0000 this run, $0.0000 recorded" in render(usage)
+
+
+def test_an_observed_call_carries_the_provider_its_model_name_states():
+    store = TranscriptStore(tempfile.mkdtemp())
+    client = _client(SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2), store)
+
+    client.complete(_MESSAGES, _Answer)
+
+    assert [call["provider"] for call in client.observed_calls] == ["anthropic"]
+
+
+def test_a_replayed_call_carries_its_provider_so_its_recorded_cost_counts():
+    """A replayed Anthropic call cost this run nothing, but its recorded cost is
+    Anthropic credits all the same."""
+    store = TranscriptStore(tempfile.mkdtemp())
+    usage = SimpleNamespace(prompt_tokens=1, completion_tokens=1, total_tokens=2)
+    _client(usage, store).complete(_MESSAGES, _Answer)
+    replaying = ModelClient(model=DEFAULT_MODEL, mode=Mode.REPLAY, store=store)
+
+    replaying.complete(_MESSAGES, _Answer)
+
+    [call] = replaying.observed_calls
+    assert call["served_from"] == SERVED_FROM_RECORDING
+    assert call["provider"] == "anthropic"
+
+
+def test_an_observed_embedding_carries_the_provider_its_model_name_states():
+    client = ModelClient(
+        model=DEFAULT_MODEL,
+        mode=Mode.RECORD,
+        store=TranscriptStore(tempfile.mkdtemp()),
+        embedding_model="voyage/voyage-3.5-lite",
+        embedding_fn=constant_embedding_fn,
+    )
+
+    client.embed(["text"], stage="obligation linking")
+
+    assert [call["provider"] for call in client.observed_calls] == ["voyage"]
 
 
 # --- the determinism controls this must not touch ------------------------------

@@ -272,7 +272,7 @@ def test_a_real_review_run_attributes_every_call_it_made(tmp_path):
     # which is None for a replayed call and never reaches a transcript.
     # A completion call also carries the controls it ran under, for the
     # per-stage provenance (#366); an embedding sends none and carries none.
-    fields = {"stage", "key", "served_from", "model", "usage", "seconds"}
+    fields = {"stage", "key", "served_from", "model", "provider", "usage", "seconds"}
     for call in observed:
         assert set(call) in (fields, fields | {"controls"})
         assert call["served_from"] in {"provider", "recording"}
@@ -406,7 +406,9 @@ def test_the_check_command_prints_the_per_stage_breakdown(
     assert "Model usage by stage:" in captured.err
     assert "this run spent $" in captured.err
     assert "the evidence cost $" in captured.err
+    assert "of which Anthropic credits: $" in captured.err
     assert "Model usage" not in captured.out
+    assert "Anthropic credits" not in captured.out
 
 
 def test_the_decompose_command_prints_the_per_stage_breakdown_too(

@@ -238,6 +238,36 @@ _MIN_REUSABLE_OPENING_TOKENS = {
 _DEFAULT_MIN_REUSABLE_OPENING_TOKENS = 512
 
 
+#: The provider a model name states for Anthropic's own API, which is what
+#: batches, takes explicit cache breakpoints, and spends Anthropic credits.
+ANTHROPIC = "anthropic"
+
+
+def provider_of(model: str) -> str | None:
+    """The provider a configured model name states: the part before its first `/`.
+
+    The one place the provider is decided (#415). The name is the choice the run
+    was configured with, in LiteLLM's `provider/model` form, so the provider is
+    read off it rather than guessed from what the model is called: Claude reached
+    through Bedrock (`bedrock/anthropic.claude-…`) is billed by AWS, not by
+    Anthropic, whatever its name contains. A name with no `/` states no provider,
+    and None says so rather than inferring one. Never LiteLLM's own resolution:
+    a replayed run builds its requests without importing it.
+    """
+    head, separator, _ = model.partition("/")
+    # `/claude-x` has a separator and still names nobody.
+    return head if separator and head.strip() else None
+
+
+def is_anthropic_api(model: str) -> bool:
+    """Whether calls to `model` go to Anthropic's own API, per `provider_of`.
+
+    Every behaviour that turns on this — cache breakpoints, batching — asks here,
+    so none of them can drift into a test of its own.
+    """
+    return provider_of(model) == ANTHROPIC
+
+
 def _needs_explicit_marker(model: str) -> bool:
     """Whether this provider must be TOLD where the reusable opening ends.
 
@@ -247,7 +277,7 @@ def _needs_explicit_marker(model: str) -> bool:
     that there is nothing to mark — the ordering `request_blocks` does is the
     whole of the lever.
     """
-    return model.split("/", 1)[0] == "anthropic"
+    return is_anthropic_api(model)
 
 
 def _minimum_reusable_opening(model: str) -> int:
@@ -808,6 +838,10 @@ class ModelClient:
             # rather than off `self.model`, so a replayed call reports the
             # model its transcript was recorded against.
             "model": model,
+            # Whose account the call was billed to, decided once by
+            # `provider_of` so the spend footer reads it rather than
+            # re-deriving it from the model's name (#415).
+            "provider": provider_of(model) if isinstance(model, str) else None,
             "usage": dict(record.get("usage") or {}),
             # How long a LIVE call took, for the footer's time column
             # (#334). Kept here, in memory, and never in the transcript:
@@ -1320,7 +1354,7 @@ class ModelClient:
         batched = (
             self._batcher is not None
             and self._completion_fn is _default_completion_fn
-            and _needs_explicit_marker(request["model"])
+            and is_anthropic_api(request["model"])
         )
         transport = {"client": self._batcher.transport()} if batched else {}
 

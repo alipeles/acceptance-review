@@ -29,7 +29,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, field_validator
 
 from acceptance.defects.pair_mapping import DEFAULT_TESTS_PER_BATCH
 from acceptance.defects.pair_ranking import DEFAULT_STOP_AFTER_KILLS
@@ -39,6 +39,7 @@ from acceptance.llm import (
     ModelClient,
     ReasoningEffort,
     TranscriptStore,
+    provider_of,
 )
 from acceptance.llm_batch import MessageBatcher
 from acceptance.review_state import (
@@ -214,6 +215,30 @@ class RunConfig(BaseModel):
     # One batcher per run, shared by every client the run builds, so calls from
     # two of them still go out in one batch.
     _batcher: MessageBatcher | None = PrivateAttr(default=None)
+
+    @field_validator("model", "embedding_model")
+    @classmethod
+    def _model_states_its_provider(cls, model: str) -> str:
+        """Refuse a model name that does not say which provider serves it (#415).
+
+        The provider is the run's choice, and `llm.provider_of` reads it off the
+        name rather than guessing. A bare `claude-…` would still reach Anthropic
+        through LiteLLM's own inference while stating no provider, so its credits
+        would go uncounted and its calls unbatched and unmarked.
+        """
+        if provider_of(model) is None:
+            raise ValueError(
+                f"model {model!r} names no provider; write it as provider/model, "
+                f"for example {DEFAULT_MODEL!r}"
+            )
+        return model
+
+    @field_validator("stage_models")
+    @classmethod
+    def _stage_models_state_their_provider(cls, models: dict[str, str]) -> dict[str, str]:
+        for model in models.values():
+            cls._model_states_its_provider(model)
+        return models
 
     def _run_batcher(self) -> MessageBatcher:
         if self._batcher is None:

@@ -17,6 +17,14 @@ reported, separately and by name:
 `run_spend_usd <= evidence_cost_usd` always, and on a fully replayed run the
 first is zero while the second is not.
 
+Both are also kept for calls billed to Anthropic's own API alone (#415): a run's
+total mixes them with embeddings and Jev, and what a run consumed of its
+Anthropic credits is a figure that has to be read off on its own. Which calls
+those are is the `provider` each observed call carries, decided once by
+`llm.provider_of`, never re-derived here from the model's name. A batched call
+already carries its billed price, half the direct one, from the moment it was
+recorded (#414), so nothing here re-prices it.
+
 **None of this may enter review state or the rendered report.** Cost varies
 between two recordings of the same review, so a byte-identical rerun (M0.5) is
 impossible if it does. This module is consumed by the CLI, which prints it to
@@ -25,12 +33,13 @@ stderr for exactly the reason the run id goes there.
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Iterable, Mapping
 from typing import Any
 
 from pydantic import BaseModel
 
-from acceptance.llm import SERVED_FROM_PROVIDER
+from acceptance.llm import ANTHROPIC, SERVED_FROM_PROVIDER
 
 # The order `pipeline.py::run_review` actually calls the stages in (§10.1), which
 # is the order the footer reports them in. Alphabetical was the first cut and it
@@ -89,6 +98,11 @@ class StageUsage(BaseModel):
     cache_write_tokens: int = 0
     run_spend_usd: float = 0.0
     evidence_cost_usd: float = 0.0
+    # The same two figures over calls billed to Anthropic's own API (#415).
+    anthropic_run_spend_usd: float = 0.0
+    anthropic_evidence_cost_usd: float = 0.0
+    other_run_spend_usd: float = 0.0
+    other_evidence_cost_usd: float = 0.0
     # Summed provider time over this run's LIVE calls (#334), measured in
     # memory and never written to a transcript. None when the stage made no
     # live call. A sum, not elapsed time: calls in a stage run concurrently, so
@@ -136,6 +150,22 @@ class RunUsage(BaseModel):
     @property
     def evidence_cost_usd(self) -> float:
         return sum(stage.evidence_cost_usd for stage in self.stages)
+
+    @property
+    def anthropic_run_spend_usd(self) -> float:
+        return sum(stage.anthropic_run_spend_usd for stage in self.stages)
+
+    @property
+    def anthropic_evidence_cost_usd(self) -> float:
+        return sum(stage.anthropic_evidence_cost_usd for stage in self.stages)
+
+    @property
+    def other_run_spend_usd(self) -> float:
+        return sum(stage.other_run_spend_usd for stage in self.stages)
+
+    @property
+    def other_evidence_cost_usd(self) -> float:
+        return sum(stage.other_evidence_cost_usd for stage in self.stages)
 
     @property
     def provider_calls(self) -> int:
@@ -217,6 +247,16 @@ def summarize(calls: Iterable[Mapping[str, Any]]) -> RunUsage:
             stage.evidence_cost_usd += cost
             if from_provider:
                 stage.run_spend_usd += cost
+            # Each call into exactly one of the two, summed directly, so neither
+            # figure is the other subtracted from a total (which can print -0.0000).
+            if call.get("provider") == ANTHROPIC:
+                stage.anthropic_evidence_cost_usd += cost
+                if from_provider:
+                    stage.anthropic_run_spend_usd += cost
+            else:
+                stage.other_evidence_cost_usd += cost
+                if from_provider:
+                    stage.other_run_spend_usd += cost
 
     return RunUsage(stages=[by_stage[name] for name in sorted(by_stage, key=_position)])
 
@@ -294,7 +334,25 @@ def render(usage: RunUsage) -> str:
         f"the evidence cost ${usage.evidence_cost_usd:.4f} to record "
         f"({usage.replayed_calls} call(s) replayed at no cost to this run)"
     )
+    lines.append(
+        f"  of which Anthropic credits: ${usage.anthropic_run_spend_usd:.4f} this run, "
+        f"${usage.anthropic_evidence_cost_usd:.4f} recorded"
+    )
+    lines.append(
+        f"  other providers: ${usage.other_run_spend_usd:.4f} this run, "
+        f"${usage.other_evidence_cost_usd:.4f} recorded"
+    )
     return "\n".join(lines)
+
+
+def report(calls: Iterable[Mapping[str, Any]]) -> None:
+    """Print the footer for `calls` on stderr, where every run reports its spend.
+
+    stderr because cost is not reproducible — a replayed run spends nothing where
+    the run that recorded it spent money — and stdout is what two runs over the
+    same input must produce byte-identically.
+    """
+    print(render(summarize(calls)), file=sys.stderr)
 
 
 class LabelUsage(BaseModel):
