@@ -1,0 +1,73 @@
+run 7824dd3f0fe076da
+  requirements: 6 derived, 0 carried, 0 revised; 12 decompose call(s)
+  continue this run with: --continue 7824dd3f0fe076da
+Model usage by stage:
+  stage               model                                                                  calls  prompt  output  reasoning  cached  this run  recorded  time this run
+  ------------------  ---------------------------------------------------  -----------------------  ------  ------  ---------  ------  --------  --------  -------------
+  decompose           anthropic/claude-sonnet-5-5                          9 (9 live / 0 replayed)  85,727   3,410        456    0.0%   $0.2470   $0.2470          65.7s
+  decompose-summary   anthropic/claude-sonnet-5-5                          3 (3 live / 0 replayed)   4,561   1,400        268   57.1%   $0.0188   $0.0188          14.6s
+  obligation linking  voyage/voyage-3.5-lite, anthropic/claude-sonnet-5-5  2 (2 live / 0 replayed)   2,191     105          0    0.0%   $0.0046   $0.0046           2.6s
+  this run spent $0.2704 on 14 live call(s); the evidence cost $0.2704 to record (0 call(s) replayed at no cost to this run)
+Requirements: 6   with obligations: 6
+
+[task-01] Every run that calls a model reports what it spent, not only `acceptance
+    check` and `acceptance decompose`. The benchmark's command-line runs — the
+    instability measurement and the mutant audit — print the same per-stage usage table
+    when they finish, with live and replayed calls counted apart, so a large offline run
+    shows what it cost.
+    -> every-model-run-reports-spend  [functional/explicit, code_and_tests]
+       Every run that calls a model reports what it spent on completion, regardless of
+       which command or entry point issued the call, and not only for `acceptance check`
+       and `acceptance decompose`.
+    -> check-decompose-keep-reporting-spend  [regression/inferred, code_and_tests]
+       Preserve the existing spend reporting of `acceptance check` and `acceptance
+       decompose` while extending it to every other run that calls a model.
+    -> benchmark-cli-prints-usage-table  [functional/explicit, code_and_tests]
+       When the benchmark's instability measurement command-line run finishes, it prints
+       the same per-stage usage table that `acceptance check` and `acceptance decompose`
+       print.
+    -> mutant-audit-prints-usage-table  [functional/explicit, code_and_tests]
+       When the benchmark's mutant audit command-line run finishes, it prints the same
+       per-stage usage table that `acceptance check` and `acceptance decompose` print.
+    -> usage-table-live-replayed-counted-apart  [functional/explicit, code_and_tests]
+       The per-stage usage table printed by the benchmark's command-line runs (the
+       instability measurement and the mutant audit) counts live model calls and
+       replayed calls separately, so that the two are reported apart rather than merged
+       into a single count.
+
+[task-02] The table shows what the run spent on Claude models separately from what it
+    spent on any other provider, so the Claude credits a run consumed can be read off as
+    a figure of its own. A call sent through the Message Batches API counts at the price
+    it was billed at.
+    -> claude-spend-separate-figure  [functional/explicit, code_and_tests]
+       The table presents the run's spend on Claude models as a figure separate from the
+       run's spend on any other provider, so the Claude credits consumed by a run can be
+       read off as its own figure.
+    -> batch-call-counted-at-billed-price  [functional/explicit, code_and_tests]
+       A call sent through the Message Batches API is counted in the run's spend at the
+       price it was billed at (the batch price), not at the standard non-batch price for
+       the same model.
+
+[task-03] Spend stays out of the review state and the rendered report, as it is today.
+    -> spend-excluded-from-review-state-and-report  [invariant/explicit, code_and_tests]
+       Keep spend data absent from both the review state and the rendered report, as it
+       is today; the review state and the rendered report contain no spend information.
+
+[exclusion-01] Checking the Console tier's rate limits against run sizes.
+    -> no-console-rate-limit-check  [invariant/explicit, code_only, satisfied by absence]
+       The change does not check the Console tier's rate limits against run sizes.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+
+[exclusion-02] Changing how any call is priced when it is recorded.
+    -> no-change-to-call-pricing-at-record-time  [invariant/explicit, code_only, satisfied by absence]
+       The change does not alter how any call is priced when it is recorded.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+
+[exclusion-03] Enforcing a spending limit or stopping a run that spends too much.
+    -> no-spend-limit-enforcement  [invariant/explicit, code_only, satisfied by absence]
+       The change does not enforce a spending limit or stop a run that spends too much.
+       why code_only: A scope exclusion is satisfied by work not done, which a reader
+       confirms by inspecting the change; it is owed code evidence only, never a test.
+

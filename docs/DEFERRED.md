@@ -7925,3 +7925,14 @@ the record.
   > - A claimed defect whose expected behaviour is stated by no requirement is reported as an open question naming the behaviour, not as a defect the code already has.
   > - Two runs over the same mandate never assert opposite expected behaviours for the same code region as defects.
 - **Status:** filed as #430, 2026-10-25
+
+### [2026-10-25] Comment on #273: a purpose clause yields an obligation restating its own sentence, unlinked
+- **Kind:** filing
+- **Found during:** #415, Gate 1 runs 2 and 3 (`dogfood-logs/415-gate1-run{2,3}/`)
+- **Where:** `requirement/linking.py`; decomposition of task-01
+- **Severity:** nice-to-have
+- **What's wrong:** one sentence asking the benchmark runs to print the usage table "so a large offline run shows what it cost" yielded `benchmark-cli-prints-usage-table` and `offline-run-usage-cost-visible`. The second restates the first, and linking left them apart. Run 2 had the same shape from a two-sentence wording; merging the sentences moved the duplicate instead of removing it.
+- **Why I didn't act:** adds a finding to an existing issue.
+- **Drafted fix:** comment on #273 (an explicit obligation restating another explicit obligation is not reconciled with it), child of #181 (decomposition umbrella):
+  > Another case, within one requirement rather than across sections. #415's task-01 is one sentence: the benchmark runs print the usage table, "so a large offline run shows what it cost". Gate 1 run 3 derived `benchmark-cli-prints-usage-table` and, from the purpose clause, `offline-run-usage-cost-visible`, which restates it. No link. Run 2, over a two-sentence wording of the same paragraph, produced the same unlinked pair under other names. Evidence: `dogfood-logs/415-gate1-run{2,3}/`.
+- **Status:** filed 2026-10-25 as a comment on #273 (issuecomment-6405784683), approved at #415 Gate 1.
