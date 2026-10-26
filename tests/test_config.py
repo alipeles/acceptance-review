@@ -10,6 +10,30 @@ from acceptance.config import (
 )
 
 
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"model": "claude-sonnet-5-5"},
+        {"embedding_model": "voyage-3.5-lite"},
+        {"stage_models": {"decompose": "claude-opus-5-5"}},
+    ],
+)
+def test_a_model_name_that_states_no_provider_is_refused(fields):
+    """The provider is the run's choice, so every model name must state it (#415)."""
+    with pytest.raises(ValidationError, match="names no provider"):
+        RunConfig(**fields)
+
+
+def test_model_names_that_state_their_provider_are_accepted():
+    config = RunConfig(
+        model="anthropic/claude-sonnet-5-5",
+        embedding_model="voyage/voyage-3.5-lite",
+        stage_models={"decompose": "anthropic/claude-opus-5-5"},
+    )
+
+    assert config.stage_models == {"decompose": "anthropic/claude-opus-5-5"}
+
+
 def test_scope_expansion_policy_defaults_to_strict():
     # DR-081's recall-forward stance: surface more, let the user dismiss.
     assert RunConfig().scope_expansion_policy is ScopeExpansionPolicy.STRICT

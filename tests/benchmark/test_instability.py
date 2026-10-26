@@ -104,7 +104,7 @@ def _recording_factory(calls: list):
 ARCHETYPES_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "archetypes"
 
 
-def _snapshot(index, obligations, evidence=None, questions=(), defects=(), model="m"):
+def _snapshot(index, obligations, evidence=None, questions=(), defects=(), model="test/m"):
     return RunSnapshot(
         run=RunKey(model=model, seed=1000 + index, index=index),
         obligations=obligations,
@@ -290,7 +290,7 @@ def test_content_and_shape_are_reported_as_separate_figures():
         alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}],
     )
 
-    summary = summarize_model("m", [left, right], client)
+    summary = summarize_model("test/m", [left, right], client)
 
     assert summary.content_differences
     assert summary.content_difference_count.mean is not None
@@ -306,7 +306,7 @@ def test_presence_rows_show_an_obligation_missing_from_some_runs():
         {"sometimes lost": False}, alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}]
     )
 
-    summary = summarize_model("m", [left, right], client)
+    summary = summarize_model("test/m", [left, right], client)
     rows = {row.subject: row for row in summary.obligation_presence}
 
     assert rows["kept"].runs_present == 2 and rows["kept"].stable()
@@ -322,7 +322,7 @@ def test_evidence_class_distribution_counts_every_draw():
     ]
     client = _coverage_client({}, alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}])
 
-    summary = summarize_model("m", snapshots, client)
+    summary = summarize_model("test/m", snapshots, client)
     distribution = {d.subject: d for d in summary.evidence_class_distribution}["x"]
 
     assert distribution.counts == {"strongly_supported": 2, "partially_supported": 1}
@@ -341,13 +341,13 @@ def test_the_harness_uses_the_benchmark_variance_path_and_not_a_second_one():
 
 def test_cross_model_agreement_is_reported_alongside_within_model_variance():
     a = ModelInstability(
-        model="model-a",
+        model="test/model-a",
         evidence_class_distribution=[
             ClassDistribution(subject="x", counts={"strongly_supported": 3})
         ],
     )
     b = ModelInstability(
-        model="model-b",
+        model="test/model-b",
         evidence_class_distribution=[ClassDistribution(subject="x", counts={"unsupported": 3})],
     )
 
@@ -356,8 +356,8 @@ def test_cross_model_agreement_is_reported_alongside_within_model_variance():
     assert len(rows) == 1
     assert rows[0].agreement() == 0.0
     assert rows[0].modal_class_by_model == {
-        "model-a": "strongly_supported",
-        "model-b": "unsupported",
+        "test/model-a": "strongly_supported",
+        "test/model-b": "unsupported",
     }
 
 
@@ -365,7 +365,7 @@ def test_cross_model_agreement_is_none_with_a_single_model():
     """One model yields no pairs. Reporting 1.0 would claim agreement that was
     never tested."""
     only = ModelInstability(
-        model="model-a",
+        model="test/model-a",
         evidence_class_distribution=[ClassDistribution(subject="x", counts={"unsupported": 1})],
     )
 
@@ -503,7 +503,7 @@ def test_run_once_drives_the_real_pipeline_and_snapshots_its_output(tmp_path):
     calls: list = []
 
     snapshot = run_once(
-        case, RunKey(model="m", seed=7, index=0), client_factory=_observing_factory(calls)
+        case, RunKey(model="test/m", seed=7, index=0), client_factory=_observing_factory(calls)
     )
 
     assert isinstance(snapshot, RunSnapshot)
@@ -641,7 +641,7 @@ def test_measure_instability_records_the_conditions_that_produced_it(tmp_path):
 
     report = measure_instability(
         case,
-        models=["model-a"],
+        models=["test/model-a"],
         runs_per_model=2,
         perturbation=None,
         comparison_client=client_finding_nothing(),
@@ -650,7 +650,7 @@ def test_measure_instability_records_the_conditions_that_produced_it(tmp_path):
 
     assert isinstance(report, InstabilityReport)
     provenance = report.provenance
-    assert provenance.models == ["model-a"]
+    assert provenance.models == ["test/model-a"]
     assert provenance.runs_per_model == 2
     assert provenance.seeds == seeds_for(2)
     assert provenance.case_id == case.case_id
@@ -693,7 +693,7 @@ def test_observations_do_not_leak_between_clients():
 
     def build():
         return ObservingClient(
-            model="m", mode=Mode.RECORD, store=TranscriptStore(tempfile.mkdtemp())
+            model="test/m", mode=Mode.RECORD, store=TranscriptStore(tempfile.mkdtemp())
         )
 
     first, second = build(), build()
@@ -710,15 +710,15 @@ def test_a_caller_supplied_model_set_is_actually_measured(tmp_path):
 
     report = measure_instability(
         case,
-        models=["model-a", "model-b"],
+        models=["test/model-a", "test/model-b"],
         runs_per_model=2,
         perturbation=None,
         comparison_client=client_finding_nothing(),
         client_factory=_recording_factory(calls),
     )
 
-    assert {model for model, _, _ in calls} == {"model-a", "model-b"}
-    assert [m.model for m in report.per_model] == ["model-a", "model-b"]
+    assert {model for model, _, _ in calls} == {"test/model-a", "test/model-b"}
+    assert [m.model for m in report.per_model] == ["test/model-a", "test/model-b"]
 
 
 def test_the_default_run_count_produces_three_runs_per_model(tmp_path):
@@ -797,7 +797,7 @@ def test_content_and_shape_counts_diverge_when_both_kinds_occur():
         alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}],
     )
 
-    summary = summarize_model("m", [left, right], client)
+    summary = summarize_model("test/m", [left, right], client)
 
     assert len(summary.content_differences) == 1
     assert len(summary.shape_differences) == 1
@@ -837,7 +837,7 @@ def test_the_observing_client_does_not_change_what_the_pipeline_produces(tmp_pat
 
     plain = classify_case(case, client_finding_nothing(seed=5))
     observed = classify_case(
-        case, _recording_factory([])(RunConfig(model="m", mode=Mode.RECORD, seed=5))
+        case, _recording_factory([])(RunConfig(model="test/m", mode=Mode.RECORD, seed=5))
     )
 
     assert plain.reviewer_output is not None and observed.reviewer_output is not None
@@ -858,7 +858,7 @@ def test_cross_model_agreement_covers_every_judgement_axis():
     from acceptance.benchmark.instability import AgreementAxis, PresenceRow
 
     a = ModelInstability(
-        model="model-a",
+        model="test/model-a",
         evidence_class_distribution=[
             ClassDistribution(subject="ob", counts={"strongly_supported": 3})
         ],
@@ -867,7 +867,7 @@ def test_cross_model_agreement_covers_every_judgement_axis():
         open_question_presence=[PresenceRow(subject="what format?", runs_present=3, runs_total=3)],
     )
     b = ModelInstability(
-        model="model-b",
+        model="test/model-b",
         evidence_class_distribution=[
             ClassDistribution(subject="ob", counts={"strongly_supported": 3})
         ],
@@ -917,7 +917,7 @@ def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
 
     report = measure_instability(
         case,
-        models=["model-a", "model-b"],
+        models=["test/model-a", "test/model-b"],
         runs_per_model=2,
         perturbation=Perturbation(name="noop", apply=lambda c: c),
         comparison_client=client_finding_nothing(),
@@ -925,7 +925,7 @@ def test_the_three_movement_sources_are_reported_as_distinct_figures(tmp_path):
     )
 
     # 1. resample — per model, from repeated runs
-    assert [m.model for m in report.per_model] == ["model-a", "model-b"]
+    assert [m.model for m in report.per_model] == ["test/model-a", "test/model-b"]
     assert all(m.content_difference_count is not None for m in report.per_model)
     # 2. perturbation — its own field, with its own figure
     assert report.perturbation is not None
@@ -951,7 +951,7 @@ def test_decomposition_variation_is_surfaced_and_not_only_evidence_variation():
         alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}],
     )
 
-    summary = summarize_model("m", [left, right], client)
+    summary = summarize_model("test/m", [left, right], client)
 
     presence = {row.subject: row for row in summary.obligation_presence}
     assert presence["obligation only this run produced"].runs_present == 1
@@ -992,7 +992,7 @@ def test_the_harness_reports_variance_without_reducing_it():
     ]
     client = _coverage_client({}, alignment_matches=[{"ground_truth": "g0", "reviewer": "r0"}])
 
-    summary = summarize_model("m", snapshots, client)
+    summary = summarize_model("test/m", snapshots, client)
     distribution = {d.subject: d for d in summary.evidence_class_distribution}["x"]
 
     # The lone outlier is still there; a mitigating harness would have dropped it.
@@ -1028,10 +1028,10 @@ def test_the_default_client_is_configured_as_run_config_builds_it(tmp_path, monk
     case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
 
     with pytest.raises(_StopAfterBuild):
-        run_once(case, RunKey(model="m", seed=7, index=0), transcript_root=tmp_path / "t")
+        run_once(case, RunKey(model="test/m", seed=7, index=0), transcript_root=tmp_path / "t")
 
     expected = RunConfig(
-        model="m", mode=Mode.RECORD, seed=7, transcript_root=tmp_path / "t"
+        model="test/m", mode=Mode.RECORD, seed=7, transcript_root=tmp_path / "t"
     ).build_client()
     harness = built[0]
 
@@ -1062,7 +1062,9 @@ def test_the_observing_client_forwards_every_parameter_complete_accepts(monkeypa
     names = [name for name in inspect.signature(ModelClient.complete).parameters if name != "self"]
     monkeypatch.setattr(ModelClient, "complete", recording_complete)
 
-    client = ObservingClient(model="m", mode=Mode.RECORD, store=TranscriptStore(tempfile.mkdtemp()))
+    client = ObservingClient(
+        model="test/m", mode=Mode.RECORD, store=TranscriptStore(tempfile.mkdtemp())
+    )
     sentinels = {name: object() for name in names}
 
     result = client.complete(**sentinels)
@@ -1128,7 +1130,9 @@ def test_the_default_construction_runs_the_pipeline_end_to_end(tmp_path, monkeyp
     monkeypatch.setattr(llm, "missing_keys", lambda model: [])
     case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
 
-    snapshot = run_once(case, RunKey(model="m", seed=7, index=0), transcript_root=tmp_path / "t")
+    snapshot = run_once(
+        case, RunKey(model="test/m", seed=7, index=0), transcript_root=tmp_path / "t"
+    )
 
     assert embedded, "obligation linking must have embedded through the harness's client"
     assert "_Verdicts" in schemas, "obligation linking must have run"
