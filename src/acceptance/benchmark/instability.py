@@ -855,45 +855,48 @@ def measure_instability(
     # Every client the measurement spends through, comparison client included,
     # so the footer printed at the end accounts for every call it made (#415).
     clients: list[ModelClient] = [comparison_client]
-    per_model: list[ModelInstability] = []
-    first_baseline: RunSnapshot | None = None
-    for model in models:
-        snapshots = [
-            run_once(
-                case,
-                RunKey(model=model, seed=seed, index=index),
+    try:
+        per_model: list[ModelInstability] = []
+        first_baseline: RunSnapshot | None = None
+        for model in models:
+            snapshots = [
+                run_once(
+                    case,
+                    RunKey(model=model, seed=seed, index=index),
+                    transcript_root=transcript_root,
+                    client_factory=client_factory,
+                    batch=batch,
+                    clients=clients,
+                )
+                for index, seed in enumerate(seeds)
+            ]
+            if first_baseline is None:
+                first_baseline = snapshots[0]
+            per_model.append(summarize_model(model, snapshots, comparison_client))
+
+        perturbation_result = None
+        if perturbation is not None and first_baseline is not None:
+            perturbed_case = perturbation.apply(case)
+            perturbed = run_once(
+                perturbed_case,
+                RunKey(model=models[0], seed=seeds[0], index=0, perturbed=True),
                 transcript_root=transcript_root,
                 client_factory=client_factory,
                 batch=batch,
                 clients=clients,
             )
-            for index, seed in enumerate(seeds)
-        ]
-        if first_baseline is None:
-            first_baseline = snapshots[0]
-        per_model.append(summarize_model(model, snapshots, comparison_client))
-
-    perturbation_result = None
-    if perturbation is not None and first_baseline is not None:
-        perturbed_case = perturbation.apply(case)
-        perturbed = run_once(
-            perturbed_case,
-            RunKey(model=models[0], seed=seeds[0], index=0, perturbed=True),
-            transcript_root=transcript_root,
-            client_factory=client_factory,
-            batch=batch,
-            clients=clients,
-        )
-        perturbation_result = _perturbation_result(
-            perturbation.name, first_baseline, perturbed, comparison_client
-        )
-
-    # On stderr, never in the report: the report is compared across runs, and
-    # what a run cost is not reproducible. Each client once, by identity: a
-    # `client_factory` may hand every draw the same client, and counting it per
-    # draw would multiply its calls.
-    unique = {id(client): client for client in clients}.values()
-    report_usage(call for client in unique for call in client.observed_calls)
+            perturbation_result = _perturbation_result(
+                perturbation.name, first_baseline, perturbed, comparison_client
+            )
+    finally:
+        # In `finally`, so a measurement that fails part-way still says what
+        # the calls it had already made cost. On stderr, never in the report:
+        # the report is compared across runs, and what a run cost is not
+        # reproducible. Each client once, by identity: a `client_factory` may
+        # hand every draw the same client, and counting it per draw would
+        # multiply its calls.
+        unique = {id(client): client for client in clients}.values()
+        report_usage(call for client in unique for call in client.observed_calls)
 
     return InstabilityReport(
         provenance=MeasurementProvenance(

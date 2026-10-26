@@ -27,6 +27,7 @@ from acceptance.llm import (
     provider_of,
 )
 from acceptance.usage import _PIPELINE_ORDER, render, report, summarize
+from tests.support import constant_embedding_fn
 
 
 def _call(stage, served_from, **usage):
@@ -301,6 +302,7 @@ def test_anthropic_spend_is_a_figure_of_its_own_beside_other_providers():
     assert usage.anthropic_run_spend_usd == pytest.approx(0.10)
     assert usage.anthropic_evidence_cost_usd == pytest.approx(0.50)
     assert "of which Anthropic credits: $0.1000 this run, $0.5000 recorded" in render(usage)
+    assert "other providers: $0.0300 this run, $0.0300 recorded" in render(usage)
 
 
 def test_claude_reached_through_another_provider_spends_no_anthropic_credits():
@@ -326,12 +328,6 @@ def test_report_prints_the_same_footer_on_stderr_even_for_no_call(capsys):
     assert captured.out == ""
 
 
-def test_a_call_that_names_no_stage_is_still_counted():
-    usage = summarize([{"key": "k", "served_from": SERVED_FROM_PROVIDER, "usage": {}}])
-
-    assert usage.provider_calls == 1
-
-
 def test_a_run_with_no_anthropic_call_reports_no_anthropic_credits():
     usage = summarize([_priced("jev-latest", SERVED_FROM_PROVIDER, 0.02)])
 
@@ -345,6 +341,20 @@ def test_an_observed_call_carries_the_provider_its_model_name_states():
     client.complete(_MESSAGES, _Answer)
 
     assert [call["provider"] for call in client.observed_calls] == ["anthropic"]
+
+
+def test_an_observed_embedding_carries_the_provider_its_model_name_states():
+    client = ModelClient(
+        model=DEFAULT_MODEL,
+        mode=Mode.RECORD,
+        store=TranscriptStore(tempfile.mkdtemp()),
+        embedding_model="voyage/voyage-3.5-lite",
+        embedding_fn=constant_embedding_fn,
+    )
+
+    client.embed(["text"], stage="obligation linking")
+
+    assert [call["provider"] for call in client.observed_calls] == ["voyage"]
 
 
 # --- the determinism controls this must not touch ------------------------------

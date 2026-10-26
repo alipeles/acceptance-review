@@ -548,7 +548,8 @@ def _comparison_with_one_replayed_call():
     return comparison
 
 
-def test_the_measurement_prints_spend_for_every_call_it_made(tmp_path, capsys):
+@pytest.mark.parametrize("batch", [False, True])
+def test_the_measurement_prints_spend_for_every_call_it_made(tmp_path, capsys, batch):
     """When it finishes, the table on stderr is exactly the one `acceptance
     check` prints, over every client the measurement spent through: each draw's,
     the perturbed run's and the comparison client's (#415)."""
@@ -570,6 +571,7 @@ def test_the_measurement_prints_spend_for_every_call_it_made(tmp_path, capsys):
         perturbation=Perturbation(name="noop", apply=lambda c: c),
         comparison_client=comparison,
         client_factory=factory,
+        batch=batch,
     )
 
     assert len(built) == 3, "two draws and the perturbed run"
@@ -580,6 +582,33 @@ def test_the_measurement_prints_spend_for_every_call_it_made(tmp_path, capsys):
     assert sum(live for live, _ in counts) == len(calls) > 0
     assert sum(replayed for _, replayed in counts) == 1
     assert "of which Anthropic credits: $0.0000 this run, $0.2500 recorded" in printed
+
+
+def test_a_measurement_that_fails_part_way_still_prints_what_it_spent(tmp_path, capsys):
+    """Calls made before a failure were billed; the table still accounts for them."""
+    case = build_benchmark_case(ARCHETYPES_DIR / "01-missed-obligation", tmp_path / "repo")
+    calls: list = []
+    built: list = []
+    observing = _observing_factory(calls)
+
+    def factory(config):
+        if built:
+            raise RuntimeError("the second draw fails")
+        built.append(observing(config))
+        return built[0]
+
+    with pytest.raises(RuntimeError, match="second draw"):
+        measure_instability(
+            case,
+            runs_per_model=2,
+            perturbation=None,
+            comparison_client=client_finding_nothing(),
+            client_factory=factory,
+        )
+
+    printed = capsys.readouterr().err
+    assert printed == render_usage(summarize_usage(built[0].observed_calls)) + "\n"
+    assert len(built[0].observed_calls) > 0
 
 
 def test_a_client_every_draw_shares_has_its_calls_counted_once(tmp_path, capsys):

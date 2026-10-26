@@ -322,6 +322,10 @@ def render(usage: RunUsage) -> str:
         f"  of which Anthropic credits: ${usage.anthropic_run_spend_usd:.4f} this run, "
         f"${usage.anthropic_evidence_cost_usd:.4f} recorded"
     )
+    lines.append(
+        f"  other providers: ${usage.run_spend_usd - usage.anthropic_run_spend_usd:.4f} this run, "
+        f"${usage.evidence_cost_usd - usage.anthropic_evidence_cost_usd:.4f} recorded"
+    )
     return "\n".join(lines)
 
 

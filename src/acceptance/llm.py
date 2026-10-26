@@ -258,6 +258,15 @@ def provider_of(model: str) -> str | None:
     return head if separator else None
 
 
+def is_anthropic_api(model: str) -> bool:
+    """Whether calls to `model` go to Anthropic's own API, per `provider_of`.
+
+    Every behaviour that turns on this — cache breakpoints, batching — asks here,
+    so none of them can drift into a test of its own.
+    """
+    return provider_of(model) == ANTHROPIC
+
+
 def _needs_explicit_marker(model: str) -> bool:
     """Whether this provider must be TOLD where the reusable opening ends.
 
@@ -267,7 +276,7 @@ def _needs_explicit_marker(model: str) -> bool:
     that there is nothing to mark — the ordering `request_blocks` does is the
     whole of the lever.
     """
-    return provider_of(model) == ANTHROPIC
+    return is_anthropic_api(model)
 
 
 def _minimum_reusable_opening(model: str) -> int:
@@ -1344,7 +1353,7 @@ class ModelClient:
         batched = (
             self._batcher is not None
             and self._completion_fn is _default_completion_fn
-            and provider_of(request["model"]) == ANTHROPIC
+            and is_anthropic_api(request["model"])
         )
         transport = {"client": self._batcher.transport()} if batched else {}
 
